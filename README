@@ -2,3 +2,4 @@ knowledgebase database and api
 ==================================
 
 uses orientdb as a backend
+api developed in node
