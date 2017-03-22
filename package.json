@@ -1,19 +1,15 @@
 {
-  "name": "knowledgebase-api",
-  "main": "index.js",
-  "dependencies": {
-    "express": "^4.14.0",
-    "body-parser": "^1.15.2",
-    "orientjs": "^2.2.3"
-  },
-  "devDependencies": {
-    "babel-cli": "^6.24.0",
-    "babel-preset-es2015": "^6.24.0",
-    "babel-preset-stage-2": "^6.22.0",
-    "babel-standard": "^0.2.0",
-    "nodemon": "^1.11.0"
-  },
-  "scripts": {
-    "dev": "nodemon index.js"
-  }
+    "name": "knowledgebase-api",
+    "main": "index.js",
+    "dependencies": {
+        "express": "^4.14.0",
+        "body-parser": "^1.15.2",
+        "orientjs": "^2.2.3"
+    },
+    "devDependencies": {
+        "nodemon": "^1.11.0"
+    },
+    "scripts": {
+        "dev": "nodemon index.js"
+    }
 }
