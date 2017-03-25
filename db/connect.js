@@ -1,3 +1,4 @@
+"use strict";
 const OrientDB = require('orientjs');
 
 module.exports = (opt) => {
@@ -34,13 +35,9 @@ module.exports = (opt) => {
     });
     console.log('Using Database:'  + db.name);
     
-    // build the schema
-    /*
-    db.class.create('box3', 'V, E', null, true) // name, parentName, cluster, isAbstract
-    .then((resp) => {
-        console.log('created class', resp.name, resp)
-    }).catch(err => {
-        console.log('couldn\'t create class', err);
-    });*/
-    return db
+    return {
+        server:server,
+        db:db,
+        publication: require('./publication.js')
+    };
 }; 

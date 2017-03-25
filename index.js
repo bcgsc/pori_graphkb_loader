@@ -4,9 +4,8 @@
 const express = require('express');
 const app = express();
 const bodyParser = require('body-parser');
-const OrientDB = require('orientjs');
 const conf = require('./config/db');  // get the database connection configuration
-const db = require('./app/models/kb_orient')(conf);
+const repo = require('./db/connect')(conf);
 
 // set up middleware parser to deal with jsons
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -21,7 +20,7 @@ router.use((req, res, next) => {
     next();
 });
 
-require('./app/routes')(router, db); // second arg here is the DB
+require('./routes')(router, repo.db); // second arg here is the DB
 
 // last catch any errors for undefined routes
 // all actual routes should be defined above
@@ -40,9 +39,9 @@ const appServer = app.listen(port, () => {
 const cleanup = (msg='') => {
     console.log('cleaning up', msg);
     appServer.close();
-    db.close()
+    repo.db.close()
     .then(() => {
-        server.close();
+        repo.server.close();
         process.exit();
     }).catch(err => {
         console.log('error in closing the db/server', err);
@@ -50,4 +49,3 @@ const cleanup = (msg='') => {
 };
 process.on('SIGINT', cleanup);
 process.on('uncaughtException', cleanup);
-process.on('exit', cleanup);

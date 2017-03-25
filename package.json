@@ -7,9 +7,16 @@
         "orientjs": "^2.2.3"
     },
     "devDependencies": {
-        "nodemon": "^1.11.0"
+        "nodemon": "^1.11.0",
+        "chai": "^3.5.0",
+        "co-mocha": "^1.1.2",
+        "mocha": "^2.5.3",
+        "sinon": "^1.17.4",
+        "sinon-chai": "^2.8.0"
     },
     "scripts": {
-        "dev": "nodemon index.js"
+        "dev": "nodemon index.js",
+        "schema": "nodemon scripts/create_schema.js",
+        "test-unit": "NODE_ENV=test mocha --require co-mocha 'tests/unit/test_*.js'"
     }
 }
