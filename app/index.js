@@ -1,16 +1,18 @@
 "use strict";
 
 // required packages
-const express = require('express');
+import express from 'express';
+import bodyParser from 'body-parser';
+import conf from './../config/db'; // get the database connection configuration
+import connect from './db/connect';
+import routes from './routes';
 const app = express();
-const bodyParser = require('body-parser');
-const conf = require('./config/db');  // get the database connection configuration
-const repo = require('./db/connect')(conf);
+const repo = connect(conf);
 
 // set up middleware parser to deal with jsons
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
-const port = 8080;
+const port = process.env.PORT || 8080;
 
 // set up the routes
 const router = express.Router();
@@ -20,7 +22,7 @@ router.use((req, res, next) => {
     next();
 });
 
-require('./routes')(router, repo.db); // second arg here is the DB
+routes(router, repo); // second arg here is the DB
 
 // last catch any errors for undefined routes
 // all actual routes should be defined above

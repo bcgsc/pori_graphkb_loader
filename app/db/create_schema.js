@@ -1,9 +1,11 @@
 "use strict";
 
 // required packages
-const OrientDB = require('orientjs');
-const conf = require('./../config/db');  // get the database connection configuration
-const repo = require('./../app/models/kb_orient')(conf);
+import OrientDB from 'orientjs';
+import conf from './../config/db';
+import connect from './connect';
+
+const repo = connect(conf);
 const db = repo.db;
 const server = repo.server;
 // now we have a db connection. We need to create the classes, properties and edges
@@ -26,7 +28,7 @@ db.class.create('context', 'V', null, true)
                         return feature.property.create({name: "source", type: "string", mandatory: true, notNull: true});
                     }).then(() => {
                         // allow version to be null since we won't always know this info
-                        return feature.property.create({name: "source_version", type: "string", mandatory: true, notNull: false}); 
+                        return feature.property.create({name: "source_version", type: "string", mandatory: true, notNull: false});
                     }).then(() => {
                         return feature.property.create({name: "biotype", type: "string", mandatory: true, notNull: true})
                     });

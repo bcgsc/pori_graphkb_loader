@@ -1,5 +1,8 @@
-const { expect } = require('chai');
-const repo = require('./../../db/connect');
+import expect from 'chai';
+import conf from './../../config/db';
+import connect from './../../app/db/connect';
+
+const repo = connect(conf);
 
 describe('publication', () => {
     it('create', () => {
