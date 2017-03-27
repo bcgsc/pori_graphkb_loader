@@ -2,27 +2,20 @@
   "name": "knowledgebase-api",
   "main": "index.js",
   "dependencies": {
-    "babel-polyfill": "^6.1.18",
     "express": "^4.14.0",
     "body-parser": "^1.15.2",
-    "orientjs": "^2.2.3"
+    "orientjs": "^2.2.3",
+    "extendable-error-class": "^0.1.1"
   },
   "devDependencies": {
-    "babel-cli": "^6.24.0",
-    "babel-core": "^6.1.18",
-    "babel-preset-es2015": "^6.1.18",
-    "babel-preset-es2017": "^6.22.0",
-    "babel-preset-react": "^6.1.18",
     "chai": "^3.5.0",
     "co-mocha": "^1.1.2",
     "mocha": "^2.5.3",
     "nodemon": "^1.11.0"
   },
   "scripts": {
-    "watch": "nodemon app/index.js --exec babel-node --presets es2015 --use-strict",
+    "watch": "nodemon app/index.js --use-strict",
     "schema": "nodemon app/db/create_schema.js",
-    "compile": "babel --presets es2015 -d dist/ app/",
-    "serve": "node dist/index.js",
-    "test": "mocha --compilers js:babel-core/register tests/*/*.js"
+    "test": "mocha --compilers tests/*/*.js"
   }
 }

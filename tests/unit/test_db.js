@@ -1,6 +1,6 @@
-import expect from 'chai';
-import conf from './../../config/db';
-import connect from './../../app/db/connect';
+const expect = require('chai');
+const conf = require('./../../config/db');
+const connect = require('./../../app/db/connect');
 
 const repo = connect(conf);
 

@@ -1,24 +1,49 @@
-import AttributeError from './error';
+const {AttributeError} = require('./error');
+
+const errorJSON = function(error) {
+    return {type: error.type, message: error.message};
+}
+
 
 class Base {
-    constructor(db, clsname='V', parameters=['id']) {
+    constructor(db, clsname='V', parameters=[]) {
         this.db = db;
         this.clsname = clsname;
         this.parameters = parameters;
     }
     get_by_id(id){
-        return this.db.record.get(`#${id}`);
+        console.log('get_by_id', id);
+        return this.db.record.get('#9:0');
     }
     get(opt){
-        const m = new Map();
-        for (let key of this.parameters) {
-            if (opt.hasOwnProperty(key)) {
-                m.set(key, opt[key]);
-            } else {
+        return new Promise((resolve, reject) => {
+            const queryArgs = [];
+            for (let key of Object.keys(opt)) {
+                if (this.parameters.includes(key)) {
+                    queryArgs.push(`${key}=:${key}`);
+                } else {
+                    reject(new AttributeError(`invalid parameter ${key}`));
+                }
             }
-        }
-        for [key, value]
+            if (queryArgs.length > 0){
+                console.log(`select * from ${this.clsname} where ${queryArgs.join(' AND ')}`, opt);
+                this.db.select().from(this.clsname).where(opt).all()
+                    .then((result) => {
+                        resolve(result);
+                    }).catch((error) => {
+                        reject(error);
+                    });
+            } else {
+                console.log(`select * from ${this.clsname}`);
+                this.db.select().from(this.clsname).all()
+                    .then((result) => {
+                        resolve(result);
+                    }).catch((error) => {
+                        reject(error);
+                    });
+            }
+        });
     }
 }
 
-export default Base;
+module.exports = Base;

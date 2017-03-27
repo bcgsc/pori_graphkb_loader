@@ -1,13 +1,12 @@
 "use strict";
 
 // required packages
-import express from 'express';
-import bodyParser from 'body-parser';
-import conf from './../config/db'; // get the database connection configuration
-import connect from './db/connect';
-import routes from './routes';
+const express = require('express');
+const bodyParser = require('body-parser');
+const conf = require('./../config/db'); // get the database connection configuration
+const routes = require('./routes');
 const app = express();
-const repo = connect(conf);
+const repo = require('./db/connect')(conf);
 
 // set up middleware parser to deal with jsons
 app.use(bodyParser.urlencoded({ extended: true }));

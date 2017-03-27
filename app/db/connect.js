@@ -1,9 +1,9 @@
 "use strict";
 /* establishes a connection with the orientdb server */
-import OrientDB from 'orientjs';
-import Publication from './publication';
+const OrientDB  = require('orientjs');
+const {Publication} = require('./models');
 
-export default function(opt){
+module.exports = (opt) => {
     const auth = {
         user: opt.dbUsername,
         pass: opt.dbPassword
@@ -14,8 +14,7 @@ export default function(opt){
         host: opt.host,
         HTTPport: opt.port,
         username: opt.serverUsername,
-        password: opt.serverPassword,
-        useToken: true
+        password: opt.serverPassword
     });
 
     // connect to the database through the db server
@@ -25,6 +24,17 @@ export default function(opt){
         password: opt.dbPassword
     });
     console.log('Using Database:'  + db.name);
+    
 
-    return {publication: new Publication(db), db: db, server: server};
+    const nsp = {publication: new Publication(db), db: db, server: server};
+    nsp.publication.db.class.list()
+        .then((classes) => {
+            console.log('has the following classes');
+            for (let c of classes) {
+                console.log(` - ${c.name}`);
+            }
+        }).catch((error) => {
+            console.log('error: in listing the classes');
+        });
+    return nsp;
 };
