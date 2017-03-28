@@ -1,11 +1,10 @@
 "use strict";
 
 // required packages
-import OrientDB from 'orientjs';
-import conf from './../config/db';
-import connect from './connect';
+const OrientDB = require('orientjs');
+const conf = require('./../../config/db');
+const repo = require('./connect')(conf);
 
-const repo = connect(conf);
 const db = repo.db;
 const server = repo.server;
 // now we have a db connection. We need to create the classes, properties and edges
@@ -18,21 +17,18 @@ const server = repo.server;
 //     });
 
 // create the context abstract class
-db.class.create('context', 'V', null, true)
-    .then((context) => {
+repo.model.context.create()
+    .catch((err) => {
+        if (err.type != 'com.orientechnologies.orient.core.exception.OSchemaException') {
+            throw err;
+        } else {
+            console.log('ignoring error:', err.message);
+        }
+    }).then(() => {
         // create the feature class
-        db.class.create('feature', context.name)
-            .then((feature) => {
-                feature.property.create({name: "name", type: "string", mandatory: true, notNull: true})
-                    .then(() => {
-                        return feature.property.create({name: "source", type: "string", mandatory: true, notNull: true});
-                    }).then(() => {
-                        // allow version to be null since we won't always know this info
-                        return feature.property.create({name: "source_version", type: "string", mandatory: true, notNull: false});
-                    }).then(() => {
-                        return feature.property.create({name: "biotype", type: "string", mandatory: true, notNull: true})
-                    });
-            });
+        repo.model.feature.create()
+            .then(() => { console.log('created feature class'); })
+            .catch((error) => { console.log(error.message); });
         // create the disease class
         db.class.create('disease', context.name)
             .then((disease) => {
@@ -67,7 +63,7 @@ db.class.create('context', 'V', null, true)
 
         // create the comparison class
     }).catch((err) => {
-        console.log(err.type, err.message);
+        console.log(err);
     });
 
 
@@ -83,51 +79,39 @@ db.class.create('context', 'V', null, true)
 
 // create the evidence class set
 
-db.class.create('evidence', 'V', null, true)
-.then((evidence) => {
-    // success, add properties and create the dependant classes
-    // create the publication class
-    db.class.create('publication', 'evidence')
-    .then((evidence) => {
-        console.log('created class', evidence.name);
-        // now add properties
-        evidence.property.create({name: "journal", type: "string"})
-            .then(() => {
-                return evidence.property.create({name: "year", type: "integer"});
-            }).then(() => {
-                return evidence.property.create({name: "title", type: "string", mandatory: true, notNull: true});
-            }).then(() => {
-                return evidence.property.create({name: "pubmed_id", type: "integer"});
-            }).then(() => {
-                // create the index
-                return db.index.create({
-                    name: evidence.name + '.index_pubmed',
-                    type: 'unique',
-                    metadata: {ignoreNullValues: true},
-                    properties: 'pubmed_id',
-                    'class':  evidence.name
-                });
-            });
+repo.model.evidence.create()
+    .catch((err) => {
+        if (err.type != 'com.orientechnologies.orient.core.exception.OSchemaException') {
+            throw err;
+        } else {
+            console.log('ignoring error:', err.message);
+        }
+    }).then(() => {
+        // success, add properties and create the dependant classes
+        // create the publication class
+        repo.model.publication.create()
+            .then((cls) => {
+                console.log('created class:', cls);
+            }).catch((error) => {
+                console.log('error creating class:', error.message);
+            })
+        // create the clinical trial class
+        //db.class.create('study', 'evidence')
+        //.then((evidence) => {
+        //    console.log('created class', evidence.name);
+        //}).catch((err) => {
+        //    console.log(err.type, err.message);
+        //});
+        //// create the external DB class
+        //db.class.create('external_db', 'evidence')
+        //.then((evidence) => {
+        //    console.log('created class', evidence.name);
+        //}).catch((err) => {
+        //    console.log(err.type, err.message);
+        //});
     }).catch((err) => {
         console.log(err.type, err.message);
     });
-    // create the clinical trial class
-    //db.class.create('study', 'evidence')
-    //.then((evidence) => {
-    //    console.log('created class', evidence.name);
-    //}).catch((err) => {
-    //    console.log(err.type, err.message);
-    //});
-    //// create the external DB class
-    //db.class.create('external_db', 'evidence')
-    //.then((evidence) => {
-    //    console.log('created class', evidence.name);
-    //}).catch((err) => {
-    //    console.log(err.type, err.message);
-    //});
-}).catch((err) => {
-    console.log(err.type, err.message);
-});
 
 
 // cleanup

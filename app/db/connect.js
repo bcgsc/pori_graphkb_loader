@@ -1,7 +1,7 @@
 "use strict";
 /* establishes a connection with the orientdb server */
 const OrientDB  = require('orientjs');
-const {Publication} = require('./models');
+const models = require('./models');
 
 module.exports = (opt) => {
     const auth = {
@@ -26,8 +26,8 @@ module.exports = (opt) => {
     console.log('Using Database:'  + db.name);
     
 
-    const nsp = {publication: new Publication(db), db: db, server: server};
-    nsp.publication.db.class.list()
+    const nsp = {model: models(db), db:db, server: server};
+    nsp.model.publication.db.class.list()
         .then((classes) => {
             console.log('has the following classes');
             for (let c of classes) {

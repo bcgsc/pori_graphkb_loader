@@ -13,7 +13,7 @@ class Base {
     }
     get_by_id(id){
         console.log('get_by_id', id);
-        return this.db.record.get('#9:0');
+        return this.db.record.get(`#${id}`);
     }
     get(opt){
         return new Promise((resolve, reject) => {
