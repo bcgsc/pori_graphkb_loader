@@ -13,7 +13,7 @@ const add_routes = (router, repo) => {
     router.route('/publication')
         .get((req, res, next) => {
             console.log('GET /publication', req.query);
-            repo.publication.get(req.query)
+            repo.model.publication.get(req.query)
                 .then((result) => {
                     res.json(result);
                 }).catch((err) => {
@@ -23,7 +23,7 @@ const add_routes = (router, repo) => {
     router.route('/publication/:id')
         .get((req, res, next) => {
             console.log('GET /publication/:id', req.params);
-            repo.publication.get_by_id(req.params.id)
+            repo.model.publication.get_by_id(req.params.id)
                 .then((result) => {
                     res.send(result)
                 }).catch((error) => {

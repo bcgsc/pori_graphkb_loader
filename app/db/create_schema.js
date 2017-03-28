@@ -13,31 +13,32 @@ const server = repo.server;
 // add the change_version attribute to all vertex and edges
 // db.class.get('V')
 //     .then((v) => {
-//         v.property.create({name: 'edit_version', mandatory: true, notNull: true, type: 'integer'})
+//         v.property.create_class({name: 'edit_version', mandatory: true, notNull: true, type: 'integer'})
 //     });
 
 // create the context abstract class
-repo.model.context.create()
+repo.model.context.create_class()
     .catch((err) => {
         if (err.type != 'com.orientechnologies.orient.core.exception.OSchemaException') {
             throw err;
         } else {
-            console.log('ignoring error:', err.message);
+            console.log('ignoring error:', err.message)
         }
     }).then(() => {
         // create the feature class
-        repo.model.feature.create()
+        repo.model.feature.create_class()
             .then((cls) => { console.log(`created ${cls.name} class`); })
             .catch((error) => { console.log(error.message); });
         // create the disease class
-        repo.model.disease.create()
+        repo.model.disease.create_class()
             .then((cls) => { console.log(`created ${cls.name} class`); })
             .catch((error) => { console.log(error.message); });
         // create the therapy class
-        repo.model.therapy.create()
+        repo.model.therapy.create_class()
             .then((cls) => { console.log(`created ${cls.name} class`); })
             .catch((error) => { console.log(error.message); });
         // create the evaluation class
+
 
         // create the comparison class
     }).catch((err) => {
@@ -57,7 +58,7 @@ repo.model.context.create()
 
 // create the evidence class set
 
-repo.model.evidence.create()
+repo.model.evidence.create_class()
     .catch((err) => {
         if (err.type != 'com.orientechnologies.orient.core.exception.OSchemaException') {
             throw err;
@@ -67,21 +68,18 @@ repo.model.evidence.create()
     }).then(() => {
         // success, add properties and create the dependant classes
         // create the publication class
-        repo.model.publication.create()
-            .then((cls) => {
-                console.log('created class:', cls);
-            }).catch((error) => {
-                console.log('error creating class:', error.message);
-            })
+        repo.model.publication.create_class()
+            .then((cls) => { console.log(`created ${cls.name} class`); })
+            .catch((error) => { console.log(error.message); });
         // create the clinical trial class
-        //db.class.create('study', 'evidence')
+        //db.class.create_class('study', 'evidence')
         //.then((evidence) => {
         //    console.log('created class', evidence.name);
         //}).catch((err) => {
         //    console.log(err.type, err.message);
         //});
         //// create the external DB class
-        //db.class.create('external_db', 'evidence')
+        //db.class.create_class('external_db', 'evidence')
         //.then((evidence) => {
         //    console.log('created class', evidence.name);
         //}).catch((err) => {

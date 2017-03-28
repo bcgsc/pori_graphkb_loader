@@ -1,4 +1,5 @@
 const {AttributeError} = require('./error');
+const uuidV4 = require('uuid/v4');
 
 const errorJSON = function(error) {
     return {type: error.type, message: error.message};
@@ -6,10 +7,19 @@ const errorJSON = function(error) {
 
 
 class Base {
-    constructor(db, clsname='V', parameters=[]) {
-        this.db = db;
-        this.clsname = clsname;
-        this.parameters = parameters;
+    constructor(dbClass) {
+        this.dbClass = dbClass;
+        dbClass.property.list()
+            .then((list) => {
+            }).catch((error) => {
+                console.log('error in creating class', clsname, error);
+            });
+    }
+    get properties() {
+        return Array.from(this.dbClass.properties, ({name}) => name);
+    }
+    create_record(opt) {
+        
     }
     get_by_id(id){
         console.log('get_by_id', id);
@@ -42,6 +52,23 @@ class Base {
                         reject(error);
                     });
             }
+        });
+    }
+    static get clsname() {
+        var clsname = this.name;
+        clsname = clsname.replace(/([a-z])([A-Z])/, '$1_$2');
+        return clsname.toLowerCase();
+    }
+    static loadClass(db) {
+        return new Promise((resolve, reject) => {
+            db.class.get(this.clsname)
+                .then((cls) => {
+                    console.log('got cls from db', cls.name);
+                    const c = new this(cls);
+                    resolve(c);
+                }).catch((error) => {
+                    reject(error);
+                })
         });
     }
 }

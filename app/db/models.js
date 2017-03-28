@@ -4,67 +4,78 @@
 const Base = require('./base');
 
 class Evidence extends Base {
-    constructor(db) {
-        super(db, 'evidence');
-    }
-    create(){
-        return this.db.class.create(this.clsname, 'V', null, true); //extends='V', cluster=null, abstract=true
+    constructor(dbClass) { super(dbClass); }
+    
+    static createClass(db){
+        return new Promise((resolve, reject) => {
+            db.class.create(this.clsname, 'V', null, true) //extends='V', cluster=null, abstract=true
+                .then((cls) => {
+                    resolve(new this(cls));
+                }).catch((error) => {
+                    reject(error);
+                }); 
+        });
     }
 }
 
 class Publication extends Base {
-    constructor(db) {
-        const parameters = ['title', 'pubmed_id', 'journal', 'year'];
-        super(db, 'publication', parameters);
-    }
-    create(){
+    constructor(dbClass) { super(dbClass); }
+    
+    createClass(db){
         return new Promise((resolve, reject) => {
-            this.db.class.create(this.clsname, 'evidence') //publication inherits evidence
-            .then((publication) => {
-                // now add properties
-                publication.property.create({name: "journal", type: "string"})
-                    .then(() => {
-                        return publication.property.create({name: "year", type: "integer"});
-                    }).then(() => {
-                        return publication.property.create({name: "title", type: "string", mandatory: true, notNull: true});
-                    }).then(() => {
-                        return publication.property.create({name: "pubmed_id", type: "integer"});
-                    }).then(() => {
-                        // create the index
-                        return db.index.create({
-                            name: publication.name + '.index_pubmed',
-                            type: 'unique',
-                            metadata: {ignoreNullValues: true},
-                            properties: 'pubmed_id',
-                            'class':  publication.name
+            db.class.create(this.clsname, Evidence.clsname) //publication inherits evidence
+                .then((publication) => {
+                    // now add properties
+                    publication.property.create({name: "journal", type: "string"})
+                        .then(() => {
+                            return publication.property.create({name: "year", type: "integer"});
+                        }).then(() => {
+                            return publication.property.create({name: "title", type: "string", mandatory: true, notNull: true});
+                        }).then(() => {
+                            return publication.property.create({name: "pubmed_id", type: "integer"});
+                        }).then(() => {
+                            // create the index
+                            return db.index.create({
+                                name: publication.name + '.index_pubmed',
+                                type: 'unique',
+                                metadata: {ignoreNullValues: true},
+                                properties: 'pubmed_id',
+                                'class':  publication.name
+                            });
+                        }).catch((error) => {
+                            reject(error);
                         });
-                    }).catch((error) => {
-                        reject(error);
-                    });
-                resolve(publication);
-            }).catch((error) => {
-                reject(error);
-            });
+                    const pub = new this(publication);
+                    resolve(pub);
+                }).catch((error) => {
+                    reject(error);
+                });
         });
     }
 };
 
 class Context extends Base {
-    constructor(db) {
-        super(db, 'context');
+    constructor(dbClass) { super(dbClass); }
+    
+    static createClass(db){
+        return new Promise((resolve, reject) => {
+            db.class.create(this.clsname, 'V', null, true) //extends='V', cluster=null, abstract=true
+                .then((cls) => {
+                    resolve(new this(db));
+                }).catch((error) => {
+                    reject(error);
+                }); 
+        });
     }
-    create() {
-        return this.db.class.create(this.clsname, 'V', null, true); //extends='V', cluster=null, abstract=true
-    }
+
 }
 
 class Feature extends Base {
-    constructor(db){
-        super(db, 'feature', ['name', 'source', 'source_version', 'biotype']);
-    }
-    create() {
+    constructor(dbClass) { super(dbClass); }
+    
+    createClass(db) {
         return new Promise((resolve, reject) => {
-            this.db.class.create(this.clsname, 'context')
+            db.class.create(this.clsname, Context.clsname)
                 .then((feature) => {
                     feature.property.create({name: "name", type: "string", mandatory: true, notNull: true})
                         .then(() => {
@@ -86,13 +97,12 @@ class Feature extends Base {
 }
 
 class Disease extends Base {
-    constructor(db) {
-        super(db, 'disease', ['name']);
-    }
-    create() {
+    constructor(dbClass) { super(dbClass); }
+
+    createClass(db) {
         // create the disease class
         return new Promise((resolve, reject) => {
-            const disease = this.db.class.create(this.clsname, 'context')
+            const disease = db.class.create(this.clsname, Context.clsname)
                 .then((disease) => {
                     return disease.property.create({name: "name", type: "string", mandatory: true, notNull: true})
                 }).then(() => {
@@ -107,19 +117,18 @@ class Disease extends Base {
                 }).catch((error) => {
                     reject(error);
                 });
-            resolve(disease);
+            resolve(new Disease(db));
         });
     }
 }
 
 class Therapy extends Base {
-    constructor(db) {
-        super(db, 'therapy', ['name']);
-    }
-    create() {
+    constructor(dbClass) { super(dbClass); }
+
+    createClass(db) {
         // create the therapy class
         return new Promise((resolve, reject) => {
-            const therapy = this.db.class.create(this.clsname, 'context')
+            const therapy = db.class.create(this.clsname, 'context')
                 .then((therapy) => {
                     return therapy.property.create({name: "name", type: "string", mandatory: true, notNull: true})
                 }).then(() => {
@@ -140,13 +149,22 @@ class Therapy extends Base {
 }
 
 
-module.exports = (db) => {
-    return {
-        publication: new Publication(db),
-        evidence: new Evidence(db),
-        context: new Context(db),
-        feature: new Feature(db),
-        disease: new Disease(db),
-        therapy: new Therapy(db)
-    };
-};
+const load = (db) => {
+    return new Promise((resolve, reject) => {
+        const promises = Array.from([Evidence, Publication, Therapy, Context, Feature, Disease], (cls) => cls.loadClass(db));
+        Promise.all(promises)
+            .then((classes) => {
+                const result = {};
+                for (let cls of classes) {
+                    result[cls.clsname] = cls;
+                }
+                resolve(result);
+            }).catch((error) => {
+                reject(error);
+            });
+    });
+}
+
+module.exports = {Evidence, Publication, load};
+
+

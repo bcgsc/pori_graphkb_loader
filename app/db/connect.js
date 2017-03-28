@@ -25,9 +25,9 @@ module.exports = (opt) => {
     });
     console.log('Using Database:'  + db.name);
     
+    console.log('load the required classes');
 
-    const nsp = {model: models(db), db:db, server: server};
-    nsp.model.publication.db.class.list()
+    db.class.list()
         .then((classes) => {
             console.log('has the following classes');
             for (let c of classes) {
@@ -36,5 +36,5 @@ module.exports = (opt) => {
         }).catch((error) => {
             console.log('error: in listing the classes');
         });
-    return nsp;
+    return {db:db, server: server, models: models.load(db)};
 };
