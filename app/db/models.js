@@ -12,7 +12,7 @@ class Evidence extends Base {
     }
 }
 
-class Publication extends Base { 
+class Publication extends Base {
     constructor(db) {
         const parameters = ['title', 'pubmed_id', 'journal', 'year'];
         super(db, 'publication', parameters);
@@ -92,25 +92,49 @@ class Disease extends Base {
     create() {
         // create the disease class
         return new Promise((resolve, reject) => {
-            this.db.create(this.clsname, 'context')
+            const disease = this.db.class.create(this.clsname, 'context')
                 .then((disease) => {
-                    disease.property.create({name: "name", type: "string", mandatory: true, notNull: true})
-                        .then(() => {
-                            // build the index to ensure no duplicate disease names
-                            return db.index.create({
-                                name: disease.name + '.index_name',
-                                type: 'unique',
-                                metadata: {ignoreNullValues: false},
-                                properties: 'name',
-                                'class':  disease.name
-                            });
-                        }).catch((error) => { 
-                            reject(error); 
-                        });
-                    resolve(disease);
-                }).catch((error) => { 
-                    reject(error); 
+                    return disease.property.create({name: "name", type: "string", mandatory: true, notNull: true})
+                }).then(() => {
+                    // build the index to ensure no duplicate disease names
+                    return db.index.create({
+                        name: disease.name + '.index_name',
+                        type: 'unique',
+                        metadata: {ignoreNullValues: false},
+                        properties: 'name',
+                        'class':  disease.name
+                    });
+                }).catch((error) => {
+                    reject(error);
                 });
+            resolve(disease);
+        });
+    }
+}
+
+class Therapy extends Base {
+    constructor(db) {
+        super(db, 'therapy', ['name']);
+    }
+    create() {
+        // create the therapy class
+        return new Promise((resolve, reject) => {
+            const therapy = this.db.class.create(this.clsname, 'context')
+                .then((therapy) => {
+                    return therapy.property.create({name: "name", type: "string", mandatory: true, notNull: true})
+                }).then(() => {
+                    // build the index to ensure no duplicate therapy names
+                    return db.index.create({
+                        name: therapy.name + '.index_name',
+                        type: 'unique',
+                        metadata: {ignoreNullValues: false},
+                        properties: 'name',
+                        'class':  therapy.name
+                    });
+                }).catch((error) => {
+                    reject(error);
+                });
+            resolve(therapy);
         });
     }
 }
@@ -118,9 +142,11 @@ class Disease extends Base {
 
 module.exports = (db) => {
     return {
-        publication: new Publication(db), 
+        publication: new Publication(db),
         evidence: new Evidence(db),
         context: new Context(db),
-        feature: new Feature(db)
+        feature: new Feature(db),
+        disease: new Disease(db),
+        therapy: new Therapy(db)
     };
 };

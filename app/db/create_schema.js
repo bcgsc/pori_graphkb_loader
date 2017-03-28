@@ -27,38 +27,16 @@ repo.model.context.create()
     }).then(() => {
         // create the feature class
         repo.model.feature.create()
-            .then(() => { console.log('created feature class'); })
+            .then((cls) => { console.log(`created ${cls.name} class`); })
             .catch((error) => { console.log(error.message); });
         // create the disease class
-        db.class.create('disease', context.name)
-            .then((disease) => {
-                disease.property.create({name: "name", type: "string", mandatory: true, notNull: true})
-                    .then(() => {
-                        // build the index to ensure no duplicate disease names
-                        return db.index.create({
-                            name: disease.name + '.index_name',
-                            type: 'unique',
-                            metadata: {ignoreNullValues: false},
-                            properties: 'name',
-                            'class':  disease.name
-                        });
-                    });
-            });
+        repo.model.disease.create()
+            .then((cls) => { console.log(`created ${cls.name} class`); })
+            .catch((error) => { console.log(error.message); });
         // create the therapy class
-        db.class.create('therapy', context.name)
-            .then((therapy) => {
-                therapy.property.create({name: "name", type: "string", mandatory: true, notNull: true})
-                    .then(() => {
-                        // build the index to ensure no duplicate therapy names
-                        return db.index.create({
-                            name: therapy.name + '.index_name',
-                            type: 'unique',
-                            metadata: {ignoreNullValues: false},
-                            properties: 'name',
-                            'class':  therapy.name
-                        });
-                    });
-            });
+        repo.model.therapy.create()
+            .then((cls) => { console.log(`created ${cls.name} class`); })
+            .catch((error) => { console.log(error.message); });
         // create the evaluation class
 
         // create the comparison class
