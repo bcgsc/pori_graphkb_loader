@@ -1,7 +1,6 @@
 "use strict";
 /* establishes a connection with the orientdb server */
 const OrientDB  = require('orientjs');
-const models = require('./models');
 
 module.exports = (opt) => {
     const auth = {
@@ -23,18 +22,16 @@ module.exports = (opt) => {
         username: opt.dbUsername,
         password: opt.dbPassword
     });
-    console.log('Using Database:'  + db.name);
+    console.log('Using Database:', db.name);
     
-    console.log('load the required classes');
-
     db.class.list()
         .then((classes) => {
-            console.log('has the following classes');
+            console.log('DB Classes:');
             for (let c of classes) {
                 console.log(` - ${c.name}`);
             }
         }).catch((error) => {
             console.log('error: in listing the classes');
         });
-    return {db:db, server: server, models: models.load(db)};
+    return {db:db, server: server};
 };

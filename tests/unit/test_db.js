@@ -4,7 +4,9 @@ const connect = require('./../../app/db/connect');
 
 const repo = connect(conf);
 
-describe('publication', () => {
+// test building the database
+
+describe('', () => {
     it('create', () => {
         const pub = repo.publication.create({pubmed_id: 111111, title: 'dummy'});
     });

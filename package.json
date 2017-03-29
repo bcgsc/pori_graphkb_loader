@@ -12,7 +12,8 @@
     "chai": "^3.5.0",
     "co-mocha": "^1.1.2",
     "mocha": "^2.5.3",
-    "nodemon": "^1.11.0"
+    "nodemon": "^1.11.0",
+    "shelljs": "^0.7.7"
   },
   "scripts": {
     "watch": "nodemon app/index.js --use-strict",
