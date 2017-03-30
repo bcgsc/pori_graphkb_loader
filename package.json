@@ -2,10 +2,11 @@
   "name": "knowledgebase-api",
   "main": "index.js",
   "dependencies": {
-    "express": "^4.14.0",
     "body-parser": "^1.15.2",
-    "orientjs": "^2.2.3",
+    "express": "^4.14.0",
     "extendable-error-class": "^0.1.1",
+    "lodash": "^4.17.4",
+    "orientjs": "^2.2.3",
     "uuid": "^3.0.1"
   },
   "devDependencies": {
@@ -14,12 +15,11 @@
     "jsctags": "^5.1.1",
     "mocha": "^2.5.3",
     "nodemon": "^1.11.0",
-    "shelljs": "^0.7.7",
-    "should": "^11.2.1"
+    "shelljs": "^0.7.7"
   },
   "scripts": {
     "watch": "nodemon app/index.js --use-strict",
     "schema": "nodemon app/db/create_schema.js",
-    "test": "mocha tests/unit/test_db.js"
+    "test": "mocha tests/integration/test_db.js"
   }
 }

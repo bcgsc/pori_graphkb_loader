@@ -1,5 +1,7 @@
 const {AttributeError} = require('./error');
 const uuidV4 = require('uuid/v4');
+const _ = require('lodash');
+
 
 const errorJSON = function(error) {
     return {type: error.type, message: error.message};
@@ -22,12 +24,19 @@ class Base {
     get properties() {
         return Array.from(this.dbClass.properties, ({name}) => name);
     }
-    create_record(opt) {
-        
+    create_record(opt) { 
+        // TODO 
     }
     get_by_id(id){
         console.log('get_by_id', id);
         return this.db.record.get(`#${id}`);
+    }
+    get is_abstract() {
+        if (_.isEqual(this.dbClass.clusterIds, [-1])) {
+            return true;
+        } else {
+            return false;
+        }
     }
     get(opt){
         return new Promise((resolve, reject) => {
@@ -68,8 +77,7 @@ class Base {
             db.class.get(this.clsname)
                 .then((cls) => {
                     console.log('got cls from db', cls.name);
-                    const c = new this(cls);
-                    resolve(c);
+                    resolve(new this(cls));
                 }).catch((error) => {
                     reject(error);
                 })

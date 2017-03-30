@@ -2,7 +2,12 @@
 /* establishes a connection with the orientdb server */
 const OrientDB  = require('orientjs');
 
-module.exports = (opt) => {
+/**
+ * connects to the server using the config
+ * @returns {Promise<orientjs.Server,AttributeError>} returns the server instance on resolve and an
+ * attribute error on reject which happens if a required parameter was not given
+ */
+const connect = (opt) => {
     return new Promise((resolve, reject) => {
         for (let param of ['host', 'port', 'serverUsername', 'serverPassword']) {
             if (opt[param] === undefined) {
@@ -30,3 +35,5 @@ module.exports = (opt) => {
             })
     });
 };
+
+module.exports = connect;
