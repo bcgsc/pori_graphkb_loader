@@ -6,13 +6,13 @@ const OrientDB  = require('orientjs');
 
 
 describe('empty database tests', () => {
-    var connection, db = null;
+    var server, db = null;
     before((done) => { /* build and connect to the empty database */
         // set up the database server
         connect(conf)
             .then((result) => {
-                connection = result;
-                return connection.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+                server = result;
+                return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
             }).then((result) => {
                 db = result;
                 return db.class.list();
@@ -26,21 +26,20 @@ describe('empty database tests', () => {
     it('creating the schema', () => {
         createSchema(db)
             .then((result) => {
-                result.should.have.property('evidence');
+                expect(result).to.have.all.keys(['evidence', 'context']);
+                expect(result.evidence).to.have.property('properties');
+                expect(result.evidence.properties).to.have.members([]);
             })
     });
     after((done) => {
         /* disconnect from the database */
-        console.log('disconnecting from the db');
-        db.close()
-            .then(() => {
-                console.log('dropping the test database');
-                return connection.drop({name: conf.emptyDbName});
-            }).catch((error) => {
+        console.log('dropping the test database');
+        server.drop({name: conf.emptyDbName})
+            .catch((error) => {
                 console.log('error:', error);
             }).then(() => {
-                console.log('closing the server connection');
-                return connection.server.close();
+                console.log('closing the server server');
+                return server.close();
             }).then(() => {
                 done();
             }).catch((error) => {

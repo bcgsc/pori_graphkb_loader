@@ -122,6 +122,10 @@ class Disease extends Base {
     }
 }
 
+/**
+ * db model for the Therapy class
+ * @class 
+ */ 
 class Therapy extends Base {
     constructor(dbClass) { super(dbClass); }
 
@@ -149,6 +153,10 @@ class Therapy extends Base {
 }
 
 const loadSchema = (db) => {
+    /**
+     * loads the db models from the db connection
+     * @returns {Promise} if all models were loaded successfully
+     */
     return new Promise((resolve, reject) => {
         const promises = Array.from([Evidence, Publication, Therapy, Context, Feature, Disease], (cls) => cls.loadClass(db));
         Promise.all(promises)
@@ -165,6 +173,10 @@ const loadSchema = (db) => {
 }
 
 const createSchema = (db) => {
+    /**
+     * builds the schema from the models. Assumes an empty db
+     * @returns {Promise}
+     */
     // creates the schema and returns promise
     // if the promise succeeds it will return {classname: clsobject, classname: clsobject}
     // if the promise fails it will return the first error it encountered
