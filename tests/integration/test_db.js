@@ -1,7 +1,6 @@
 const {expect} = require('chai');
 const conf = require('./../config/db');
-const {models, createSchema, loadSchema} = require('./../../app/db/models');
-const connect = require('./../../app/db/connect');
+const {models, createSchema, loadSchema, serverConnect} = require('./../../app/repo');
 const OrientDB  = require('orientjs');
 const _ = require('lodash');
 
@@ -10,7 +9,7 @@ describe('database schema tests (empty db)', () => {
     var server, db = null;
     beforeEach((done) => { /* build and connect to the empty database */
         // set up the database server
-        connect(conf)
+        serverConnect(conf)
             .then((result) => {
                 server = result;
                 return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
@@ -56,7 +55,7 @@ describe('database schema tests (empty db)', () => {
             }).then((result) => {
                 expect(result).to.be.an.instanceof(models.Study);
                 expect(result).to.have.property('dbClass');
-                expect(result.is_abstract).to.be.false; 
+                expect(result.is_abstract).to.be.false;
             });
     });
     it('create the evidence-external_db schema model', () => {
