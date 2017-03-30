@@ -15,6 +15,10 @@ class Base {
                 console.log('error in creating class', clsname, error);
             });
     }
+    /**
+     * getter for the class properties/attributes
+     * @returns {Array} array of property names
+     */
     get properties() {
         return Array.from(this.dbClass.properties, ({name}) => name);
     }

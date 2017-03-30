@@ -3,35 +3,59 @@
 const OrientDB  = require('orientjs');
 
 module.exports = (opt) => {
-    const auth = {
-        user: opt.dbUsername,
-        pass: opt.dbPassword
-    };
-
-    // set up the database server
-    const server = OrientDB({
-        host: opt.host,
-        HTTPport: opt.port,
-        username: opt.serverUsername,
-        password: opt.serverPassword
-    });
-
-    // connect to the database through the db server
-    const db = server.use({
-        name: opt.dbName,
-        username: opt.dbUsername,
-        password: opt.dbPassword
-    });
-    console.log('Using Database:', db.name);
-    
-    db.class.list()
-        .then((classes) => {
-            console.log('DB Classes:');
-            for (let c of classes) {
-                console.log(` - ${c.name}`);
+    return new Promise((resolve, reject) => {
+        for (let param of ['host', 'port', 'serverUsername', 'serverPassword']) {
+            if (opt[param] === undefined) {
+                throw new AttributeError(`missing required attribute ${param}`);
             }
-        }).catch((error) => {
-            console.log('error: in listing the classes');
-        });
-    return {db:db, server: server};
+        }
+        const serverConf = {
+            host: opt.host,
+            HTTPport: opt.port,
+            username: opt.serverUsername,
+            password: opt.serverPassword
+        };
+        // set up the database server
+        const server = OrientDB(serverConf);
+        const connection = {
+            server: server,
+            conf: serverConf,
+            reconnect: function() {
+                this.server = OrientDB(this.conf);
+            },
+            drop: function(opt) {
+                return new Promise((resolve, reject) => {
+                    this.server.drop(opt)
+                        .then(() => {
+                            resovle();
+                        }).catch((error) => {
+                            if (error.type === 'com.orientechnologies.common.io.OIOException') { // connection dropped. reconnect
+                                this.reconnect();
+                                return this.server.drop(opt);
+                            } else {
+                                reject(error);
+                            }
+                        }).then(() => {
+                            resolve();
+                        }).catch((error) => {
+                            reject(error);
+                        });
+                });
+            },
+            create: function(opt) {
+                return this.server.create(opt);
+            }
+        }
+        server.list()
+            .then((dbList) => {
+                console.log('Databases on the Server:');
+                for (let c of dbList) {
+                    console.log(` - ${c.name}`);
+                }
+                resolve(connection);
+            }).catch((error) => {
+                console.log('error listing databases:', error);
+                reject(error);
+            })
+    });
 };

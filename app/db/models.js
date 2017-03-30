@@ -189,6 +189,7 @@ const createSchema = (db) => {
     return new Promise((resolve, reject) => {
         Promise.all([p1, p2])
             .then(() => {
+                console.log('load the schema');
                 return loadSchema(db);
             }).then((models) => {
                 resolve(models);
@@ -199,4 +200,4 @@ const createSchema = (db) => {
 }
 
 
-module.exports = {Evidence, Publication, loadSchema, createSchema};
+module.exports = {models: [Publication, Evidence], loadSchema, createSchema};

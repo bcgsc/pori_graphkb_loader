@@ -6,7 +6,10 @@ const bodyParser = require('body-parser');
 const conf = require('./../config/db'); // get the database connection configuration
 const routes = require('./routes');
 const app = express();
-const repo = require('./db/connect')(conf);
+const connect = require('./db/connect');
+const repo = connect(conf).then().catch((error) => {
+    console.log('error in connection', error);
+});
 
 // set up middleware parser to deal with jsons
 app.use(bodyParser.urlencoded({ extended: true }));

@@ -4,8 +4,10 @@ let emptyDbName = "test_empty";
 let dummyDbName = "test_dummy";
 
 module.exports = {
-    serverUsername: 'root',
-    serverPassword: 'root',
+    host: "localhost",
+    port: 2480,
+    serverUsername: "root",
+    serverPassword: "root",
     dbUsername: 'admin',
     dbPassword: 'admin',
     emptyDbName: emptyDbName,
