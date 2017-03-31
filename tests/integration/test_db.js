@@ -1,7 +1,6 @@
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {models, createSchema, loadSchema, serverConnect} = require('./../../app/repo');
-const OrientDB  = require('orientjs');
 const _ = require('lodash');
 
 
@@ -36,20 +35,20 @@ describe('database schema tests (empty db)', () => {
     it('create the evidence-publication schema model', () => {
         return models.Evidence.createClass(db)
             .catch((error) => {
-                this.skip('dependency fail');
+                throw DependencyError(error.message);
             }).then(() => {
                 return models.Publication.createClass(db);
             }).then((result) => {
                 expect(result).to.be.an.instanceof(models.Publication);
                 expect(result).to.have.property('dbClass');
-                expect(result.properties).to.have.members(['pubmed_id', 'title', 'journal', 'year']);
+                expect(result.propertyNames).to.have.members(['pubmed_id', 'title', 'journal', 'year']);
                 expect(result.is_abstract).to.be.false; 
             });
     });
     it('create the evidence-study schema model', () => {
         return models.Evidence.createClass(db)
             .catch((error) => {
-                this.skip('dependency fail');
+                throw DependencyError(error.message);
             }).then(() => {
                 return models.Study.createClass(db);
             }).then((result) => {
@@ -61,7 +60,7 @@ describe('database schema tests (empty db)', () => {
     it('create the evidence-external_db schema model', () => {
         return models.Evidence.createClass(db)
             .catch((error) => {
-                this.skip('dependency fail');
+                throw DependencyError(error.message);
             }).then(() => {
                 return models.ExternalDB.createClass(db);
             }).then((result) => {
@@ -80,11 +79,61 @@ describe('database schema tests (empty db)', () => {
                 expect(result.is_abstract).to.be.true;
             });
     });
-    it('create the context-evaluation model');
-    it('create the context-evaluation-comparison model');
+    it('create the context-evaluation model', () => {
+        return models.Context.createClass(db)
+            .catch((error) => {
+                throw DependencyError(error.message);
+            }).then((result) => {
+                return models.Evaluation.createClass(db);
+            }).then((result) => {
+                expect(result).to.be.an.instanceof(models.Evaluation);
+                expect(result).to.have.property('dbClass');
+                expect(result.is_abstract).to.be.false;
+                expect(result.propertyNames).to.have.members(['consequence']);
+            });
+    });
+    it('create the context-evaluation-comparison model', () => {
+        return models.Context.createClass(db)
+            .then(() => {
+                return models.Evaluation.createClass(db); 
+            }).catch((error) => {
+                throw DependencyError(error.message);
+            }).then((result) => {
+                return models.Comparison.createClass(db);
+            }).then((result) => {
+                expect(result).to.be.an.instanceof(models.Comparison);
+                expect(result).to.have.property('dbClass');
+                expect(result.is_abstract).to.be.false;
+                expect(result.propertyNames).to.have.members(['consequence']);
+            });
+    });
     it('create the context-feature model');
-    it('create the context-disease model');
-    it('create the context-therapy model');
+    it('create the context-disease model', () => {
+        return models.Context.createClass(db)
+            .catch((error) => {
+                throw DependencyError(error.message);
+            }).then((result) => {
+                return models.Disease.createClass(db);
+            }).then((result) => {
+                expect(result).to.be.an.instanceof(models.Disease);
+                expect(result).to.have.property('dbClass');
+                expect(result.is_abstract).to.be.false;
+                expect(result.propertyNames).to.have.members(['name']);
+            });
+    });
+    it('create the context-therapy model', () => {
+        return models.Context.createClass(db)
+            .catch((error) => {
+                throw DependencyError(error.message);
+            }).then((result) => {
+                return models.Therapy.createClass(db);
+            }).then((result) => {
+                expect(result).to.be.an.instanceof(models.Therapy);
+                expect(result).to.have.property('dbClass');
+                expect(result.is_abstract).to.be.false;
+                expect(result.propertyNames).to.have.members(['name']);
+            });
+    });
     it('create the context-event model');
     it('create the context-event-vocab model');
     it('create the context-event-positional model');

@@ -2,12 +2,13 @@ const Base = require('./base');
 
 
 class Context extends Base {
-    constructor(dbClass) { super(dbClass); }
+
+    constructor(dbClass, props) { super(dbClass, props); }
     
     static createClass(db){
         return new Promise((resolve, reject) => {
-            db.class.create(this.clsname, 'V', null, true) //extends='V', cluster=null, abstract=true
-                .then((result) => {
+            super.createClass({db, clsname: this.clsname, superClasses: 'V', is_abstract: true})
+                .then(() => {
                     return this.loadClass(db);
                 }).then((result) => {
                     resolve(result);
@@ -20,27 +21,22 @@ class Context extends Base {
 }
 
 class Feature extends Base {
-    constructor(dbClass) { super(dbClass); }
+
+    constructor(dbClass, props) { super(dbClass, props); }
     
     static createClass(db) {
         return new Promise((resolve, reject) => {
-            db.class.create(this.clsname, Context.clsname)
-                .then((feature) => {
-                    feature.property.create({name: "name", type: "string", mandatory: true, notNull: true})
-                        .then(() => {
-                            return feature.property.create({name: "source", type: "string", mandatory: true, notNull: true});
-                        }).then(() => {
-                            // allow version to be null since we won't always know this info
-                            return feature.property.create({name: "source_version", type: "string", mandatory: true, notNull: false});
-                        }).then(() => {
-                            return feature.property.create({name: "biotype", type: "string", mandatory: true, notNull: true});
-                        }).then(() => {
-                            return this.loadClass(db);
-                        }).then((result) => {
-                            resolve(result);
-                        }).catch((error) => {
-                            reject(error);
-                        });
+            const props = [
+                {name: "name", type: "string", mandatory: true, notNull: true},
+                {name: "source", type: "string", mandatory: true, notNull: true},
+                {name: "source_version", type: "string", mandatory: true, notNull: false},
+                {name: "biotype", type: "string", mandatory: true, notNull: true}
+            ];
+            super.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((result) => {
+                    resolve(result);
                 }).catch((error) => {
                     reject(error);
                 });
@@ -49,24 +45,24 @@ class Feature extends Base {
 }
 
 class Disease extends Base {
-    constructor(dbClass) { super(dbClass); }
 
-   static createClass(db) {
+    constructor(dbClass, props) { super(dbClass, props); }
+    
+    static createClass(db) {
         // create the disease class
         return new Promise((resolve, reject) => {
-            db.class.create(this.clsname, Context.clsname)
-                .then((disease) => {
-                    return disease.property.create({name: "name", type: "string", mandatory: true, notNull: true})
-                }).then(() => {
-                    // build the index to ensure no duplicate disease names
-                    return db.index.create({
-                        name: disease.name + '.index_name',
-                        type: 'unique',
-                        metadata: {ignoreNullValues: false},
-                        properties: 'name',
-                        'class':  disease.name
-                    });
-                }).then(() => {
+            const props = [
+                {name: "name", type: "string", mandatory: true, notNull: true}
+            ];
+            const idxs = [{
+                name: this.clsname + '.index_name',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: 'name',
+                'class':  this.clsname
+            }];
+            super.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props, indices: idxs})
+                .then(() => {
                     return this.loadClass(db);
                 }).then((result) => {
                     resolve(result);
@@ -82,24 +78,24 @@ class Disease extends Base {
  * @class 
  */ 
 class Therapy extends Base {
-    constructor(dbClass) { super(dbClass); }
 
+    constructor(dbClass, props) { super(dbClass, props); }
+    
     static createClass(db) {
         // create the therapy class
         return new Promise((resolve, reject) => {
-            const therapy = db.class.create(this.clsname, 'context')
-                .then((therapy) => {
-                    return therapy.property.create({name: "name", type: "string", mandatory: true, notNull: true})
-                }).then(() => {
-                    // build the index to ensure no duplicate therapy names
-                    return db.index.create({
-                        name: therapy.name + '.index_name',
-                        type: 'unique',
-                        metadata: {ignoreNullValues: false},
-                        properties: 'name',
-                        'class':  therapy.name
-                    });
-                }).then(() => {
+            const props = [
+                {name: "name", type: "string", mandatory: true, notNull: true}
+            ];
+            const idxs = [{
+                name: this.clsname + '.index_name',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: 'name',
+                'class':  this.clsname
+            }];
+            super.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props, indices: idxs})
+                .then(() => {
                     return this.loadClass(db);
                 }).then((result) => {
                     resolve(result);
@@ -111,10 +107,46 @@ class Therapy extends Base {
 }
 
 
-class Evaluation extends Base { /* TODO */ }
+class Evaluation extends Base {
+
+    constructor(dbClass, props) { super(dbClass, props); }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: "consequence", type: "string", mandatory: true, notNull: true}
+            ];
+            super.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((result) => {
+                    resolve(result);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
 
 
-class Comparison extends Base { /* TODO */ }
+class Comparison extends Base {
+
+    constructor(dbClass, props) { super(dbClass, props); }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [];
+            super.createClass({db, clsname: this.clsname, superClasses: Evaluation.clsname, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((result) => {
+                    resolve(result);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
 
 
 class Event extends Base { /* TODO */ }

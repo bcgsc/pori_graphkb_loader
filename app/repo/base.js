@@ -7,22 +7,36 @@ const errorJSON = function(error) {
     return {type: error.type, message: error.message};
 }
 
+/**
+ * @returns {Promise<Array,Error>} array of properties from the current class and inherited classes
+ */
+const getAllProperties = (cls) => {
+    return new Promise((resolve, reject) => {
+        var properties = cls.properties;
+        if (cls.superClass !== null) {
+            cls.db.class.get(cls.superClass)
+                .then((result) => {
+                    return getAllProperties(result);
+                }).then((props) => {
+                    resolve(_.concat(properties, props));
+                }).catch((error) => {
+                    reject(error);
+                });
+        } else {
+            resolve(properties);
+        }
+    });
+}
+
 
 class Base {
-    constructor(dbClass) {
+    constructor(dbClass, properties=[]) {
         this.dbClass = dbClass;
-        dbClass.property.list()
-            .then((list) => {
-            }).catch((error) => {
-                console.log('error in creating class', clsname, error);
-            });
+        this.properties = properties;
     }
-    /**
-     * getter for the class properties/attributes
-     * @returns {Array} array of property names
-     */
-    get properties() {
-        return Array.from(this.dbClass.properties, ({name}) => name);
+
+    get propertyNames() {
+        return Array.from(this.properties, ({name}) => name);
     }
     create_record(opt) { 
         // TODO 
@@ -77,10 +91,45 @@ class Base {
             db.class.get(this.clsname)
                 .then((cls) => {
                     console.log('got cls from db', cls.name);
-                    resolve(new this(cls));
+                    getAllProperties(cls)
+                        .then((props) => {
+                            resolve(new this(cls, props));
+                        }).catch((error) => {
+                            reject(error);
+                        });
                 }).catch((error) => {
                     reject(error);
                 })
+        });
+    }
+
+    static createClass(opt) {
+        return new Promise((resolve, reject) => {
+            // preliminary error checking and defaults
+            opt.properties = opt.properties || [];
+            opt.indices = opt.indices || [];
+            opt.is_abstract = opt.is_abstract || false;
+            
+            if (opt.clsname === undefined || opt.superClasses === undefined || opt.db === undefined) {
+                reject(new AttributeError(
+                    `required attribute was not defined: clsname=${opt.clsname}, superClasses=${opt.superClasses}, db=${opt.db}`));
+            } else {
+                opt.db.class.create(opt.clsname, opt.superClasses, null, opt.is_abstract) // create the class first
+                    .then((cls) => { 
+                        // now add properties
+                        Promise.all(Array.from(opt.properties, (prop) => cls.property.create(prop)))
+                            .then(() => {
+                                // create the indices
+                                return Promise.all(Array.from(opt.indices, (i) => opt.db.index.create(i)));
+                            }).then(() => {
+                                resolve();
+                            }).catch((error) => {
+                                reject(error);
+                            });
+                    }).catch((error) => {
+                        reject(error);
+                    });
+            }
         });
     }
 }

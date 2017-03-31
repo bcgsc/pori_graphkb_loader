@@ -10,4 +10,11 @@ class AttributeError extends ExtendableError {
     }
 };
 
+
+class DependencyError extends ExtendableError {
+    constructor(message) {
+        super(message);
+    }
+}
+
 module.exports = {AttributeError, errorJSON};
