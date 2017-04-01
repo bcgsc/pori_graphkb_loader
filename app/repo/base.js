@@ -30,11 +30,18 @@ const getAllProperties = (cls) => {
 
 
 class Base {
+    /**
+     * @param {orientjs.Class} dbClass the class loaded from the database
+     * @param {orientjs.Property[]} properties array of properties associated with this class (including inherited)
+     */ 
     constructor(dbClass, properties=[]) {
         this.dbClass = dbClass;
         this.properties = properties;
     }
-
+    /**
+     * computed property, convenience method to get the names of the properties for this class
+     * @returns {string[]} property names
+     */ 
     get propertyNames() {
         return Array.from(this.properties, ({name}) => name);
     }
@@ -45,6 +52,9 @@ class Base {
         console.log('get_by_id', id);
         return this.db.record.get(`#${id}`);
     }
+    /**
+     * @returns {boolean} if the current class is an abstract class
+     */ 
     get is_abstract() {
         if (_.isEqual(this.dbClass.clusterIds, [-1])) {
             return true;
@@ -86,6 +96,12 @@ class Base {
         clsname = clsname.replace(/([a-z])([A-Z])/, '$1_$2');
         return clsname.toLowerCase();
     }
+    /**
+     * load class from the database
+     *
+     * @param {orientjs.Db} db the database object
+     * @returns {Promise} a new class instance or an error
+     */ 
     static loadClass(db) {
         return new Promise((resolve, reject) => {
             db.class.get(this.clsname)
@@ -102,7 +118,19 @@ class Base {
                 })
         });
     }
-
+    /**
+     * create a new class in the database
+     *
+     * @param {Object} opt the input options
+     * @param {orientjs.Db} opt.db the database object
+     * @param {Object[]} opt.properties property specifications
+     * @param {Object[]} opt.indices indices to create
+     * @param {boolean} opt.is_abstract true if the class to be created an abstract class
+     * @param {string} opt.clsname name of the class
+     * @param {string} opt.superClass class(es) to inherit
+     *
+     * @returns {Promise}
+     */
     static createClass(opt) {
         return new Promise((resolve, reject) => {
             // preliminary error checking and defaults
