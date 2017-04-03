@@ -1,9 +1,11 @@
 const Base = require('./base');
 
-
+/**
+ * @class
+ * @extends Base
+ */
 class Evidence extends Base {
-    constructor(dbClass, props) { super(dbClass, props); }
-    
+
     static createClass(db){
         return new Promise((resolve, reject) => {
             super.createClass({db, clsname: this.clsname, superClasses: 'V', is_abstract: true})
@@ -13,15 +15,17 @@ class Evidence extends Base {
                     resolve(cls);
                 }).catch((error) => {
                     reject(error);
-                }); 
+                });
         });
     }
 }
 
-
+/**
+ * @class
+ * @extends Base
+ */
 class Publication extends Base {
-    constructor(dbClass, props) { super(dbClass, props); }
-    
+
     static createClass(db){
         return new Promise((resolve, reject) => {
             const props = [
@@ -49,9 +53,11 @@ class Publication extends Base {
     }
 };
 
-
-class Study extends Base { 
-    constructor(dbClass, props) { super(dbClass, props); }
+/**
+ * @class
+ * @extends Base
+ */
+class Study extends Base {
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
@@ -74,7 +80,10 @@ class Study extends Base {
     }
 }
 
-
+/**
+ * @class
+ * @extends Base
+ */
 class ExternalDB extends Base { /* TODO */ }
 
 

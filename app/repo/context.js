@@ -1,10 +1,11 @@
 const Base = require('./base');
 
-
+/**
+ * @class
+ * @extends Base
+ */
 class Context extends Base {
 
-    constructor(dbClass, props) { super(dbClass, props); }
-    
     static createClass(db){
         return new Promise((resolve, reject) => {
             super.createClass({db, clsname: this.clsname, superClasses: 'V', is_abstract: true})
@@ -14,16 +15,18 @@ class Context extends Base {
                     resolve(result);
                 }).catch((error) => {
                     reject(error);
-                }); 
+                });
         });
     }
 
 }
 
+/**
+ * @class
+ * @extends Base
+ */
 class Feature extends Base {
 
-    constructor(dbClass, props) { super(dbClass, props); }
-    
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
@@ -44,10 +47,12 @@ class Feature extends Base {
     }
 }
 
+/**
+ * @class
+ * @extends Base
+ */
 class Disease extends Base {
 
-    constructor(dbClass, props) { super(dbClass, props); }
-    
     static createClass(db) {
         // create the disease class
         return new Promise((resolve, reject) => {
@@ -74,13 +79,11 @@ class Disease extends Base {
 }
 
 /**
- * db model for the Therapy class
- * @class 
- */ 
+ * @class
+ * @extends Base
+ */
 class Therapy extends Base {
 
-    constructor(dbClass, props) { super(dbClass, props); }
-    
     static createClass(db) {
         // create the therapy class
         return new Promise((resolve, reject) => {
@@ -106,10 +109,11 @@ class Therapy extends Base {
     }
 }
 
-
+/**
+ * @class
+ * @extends Base
+ */
 class Evaluation extends Base {
-
-    constructor(dbClass, props) { super(dbClass, props); }
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
@@ -128,10 +132,11 @@ class Evaluation extends Base {
     }
 }
 
-
+/**
+ * @class
+ * @extends Base
+ */
 class Comparison extends Base {
-
-    constructor(dbClass, props) { super(dbClass, props); }
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
@@ -148,13 +153,22 @@ class Comparison extends Base {
     }
 }
 
-
+/**
+ * @class
+ * @extends Base
+ */
 class Event extends Base { /* TODO */ }
 
-
+/**
+ * @class
+ * @extends Base
+ */
 class SpecificEvent extends Base { /* TODO */ }
 
-
+/**
+ * @class
+ * @extends Base
+ */
 class VocabEvent extends Base { /* TODO */ }
 
 

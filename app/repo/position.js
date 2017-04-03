@@ -1,65 +1,95 @@
 const Base = require('./base');
 
+/**
+ * @class
+ * @extends Base
+ */
+class Range extends Base {
 
-class Range extends Base { 
-    
-    constructor(dbClass, props) { super(dbClass, props); }
-    
-    /* TODO */ 
-
-}
-
-
-class Position extends Base { 
-    
-    constructor(dbClass, props) { super(dbClass, props); }
-    
-    /* TODO */ 
+    /* TODO */
 
 }
 
+/**
+ * @class
+ * @extends Base
+ */
+class Position extends Base {
 
-class GenomicPosition extends Base { 
-    
-    constructor(dbClass, props) { super(dbClass, props); }
-    
-    /* TODO */ 
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            super.createClass({db, clsname: this.clsname, superClasses: 'V', is_abstract: true})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+/**
+ * @class
+ * @extends Base
+ */
+class GenomicPosition extends Base {
+
+    static createClass(db) {
+        const props = [
+            {name: "pos", type: "integer", mandatory: true, notNull: true}
+        ];
+        return new Promise((resolve, reject) => {
+            super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+/**
+ * @class
+ * @extends Base
+ */
+class ExonicPosition extends Base {
+
+    /* TODO */
 
 }
 
+/**
+ * @class
+ * @extends Base
+ */
+class CodingSequencePosition extends Base {
 
-class ExonicPosition extends Base { 
-    
-    constructor(dbClass, props) { super(dbClass, props); }
-    
-    /* TODO */ 
-
-}
-
-
-class CodingSequencePosition extends Base { 
-    
-    constructor(dbClass, props) { super(dbClass, props); }
-    
-    /* TODO */ 
+    /* TODO */
 
 }
 
+/**
+ * @class
+ * @extends Base
+ */
+class ProteinPosition extends Base {
 
-class ProteinPosition extends Base { 
-    
-    constructor(dbClass, props) { super(dbClass, props); }
-    
-    /* TODO */ 
+    /* TODO */
 
 }
 
+/**
+ * @class
+ * @extends Base
+ */
+class CytobandPosition extends Base {
 
-class CytobandPosition extends Base { 
-    
-    constructor(dbClass, props) { super(dbClass, props); }
-    
-    /* TODO */ 
+    /* TODO */
 
 }
 

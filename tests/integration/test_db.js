@@ -2,6 +2,7 @@ const {expect} = require('chai');
 const conf = require('./../config/db');
 const {models, createSchema, loadSchema, serverConnect} = require('./../../app/repo');
 const _ = require('lodash');
+const {DependencyError} = require('./../../app/repo/error');
 
 
 describe('database schema tests (empty db)', () => {
@@ -28,45 +29,78 @@ describe('database schema tests (empty db)', () => {
                 expect(result).to.be.an.instanceof(models.Evidence);
                 expect(result).to.have.property('dbClass');
                 expect(result.properties).to.be.empty;
-                expect(result.is_abstract).to.be.true;
-                // test creating a record?
+                expect(result.isAbstract).to.be.true;
+            });
+    });
+    it('create an evidence record (should error)', () => {
+        return models.Evidence.createClass(db)
+            .catch((error) => {
+                throw new DependencyError(error.message);
+            }).then((result) => {
+                return result.createRecord(); // test creating a record?
+            }).then((result) => {
+                throw new Error('expected error. class is abstract');
+            }).catch((error) => {
+                expect(error.type).to.equal('com.orientechnologies.orient.core.exception.OSchemaException');
+                expect(error.name).to.equal('OrientDB.RequestError');
+                expect(error.message).to.include('abstract class');
             });
     });
     it('create the evidence-publication schema model', () => {
         return models.Evidence.createClass(db)
             .catch((error) => {
-                throw DependencyError(error.message);
+                throw new DependencyError(error.message);
             }).then(() => {
                 return models.Publication.createClass(db);
             }).then((result) => {
                 expect(result).to.be.an.instanceof(models.Publication);
                 expect(result).to.have.property('dbClass');
                 expect(result.propertyNames).to.have.members(['pubmed_id', 'title', 'journal', 'year']);
-                expect(result.is_abstract).to.be.false; 
+                expect(result.isAbstract).to.be.false;
             });
+    });
+    describe('create publication records', () => {
+        var pub = null;
+        before((done) => {
+            models.Evidence.createClass(db)
+                .then((result) => {
+                    pub = models.Publication.createClass(db);
+                    done();
+                }).catch((error) => {
+                    done(new DependencyError(error.message));
+                });
+        });
+        it('title only', () => {
+            return pub.createRecord({title: 'title'})
+                .then((result) => {
+                    expect(result).to.have.property('uuid');
+                    expect(result).to.have.property('title');
+                    expect(result.title).to.equal('title');
+                });
+        });
     });
     it('create the evidence-study schema model', () => {
         return models.Evidence.createClass(db)
             .catch((error) => {
-                throw DependencyError(error.message);
+                throw new DependencyError(error.message);
             }).then(() => {
                 return models.Study.createClass(db);
             }).then((result) => {
                 expect(result).to.be.an.instanceof(models.Study);
                 expect(result).to.have.property('dbClass');
-                expect(result.is_abstract).to.be.false;
+                expect(result.isAbstract).to.be.false;
             });
     });
     it('create the evidence-external_db schema model', () => {
         return models.Evidence.createClass(db)
             .catch((error) => {
-                throw DependencyError(error.message);
+                throw new DependencyError(error.message);
             }).then(() => {
                 return models.ExternalDB.createClass(db);
             }).then((result) => {
                 expect(result).to.be.an.instanceof(models.ExternalDB);
                 expect(result).to.have.property('dbClass');
-                expect(result.is_abstract).to.be.false; 
+                expect(result.isAbstract).to.be.false;
             });
     });
 
@@ -76,34 +110,34 @@ describe('database schema tests (empty db)', () => {
                 expect(result).to.be.an.instanceof(models.Context);
                 expect(result).to.have.property('dbClass');
                 expect(result.properties).to.be.empty;
-                expect(result.is_abstract).to.be.true;
+                expect(result.isAbstract).to.be.true;
             });
     });
     it('create the context-evaluation model', () => {
         return models.Context.createClass(db)
             .catch((error) => {
-                throw DependencyError(error.message);
+                throw new DependencyError(error.message);
             }).then((result) => {
                 return models.Evaluation.createClass(db);
             }).then((result) => {
                 expect(result).to.be.an.instanceof(models.Evaluation);
                 expect(result).to.have.property('dbClass');
-                expect(result.is_abstract).to.be.false;
+                expect(result.isAbstract).to.be.false;
                 expect(result.propertyNames).to.have.members(['consequence']);
             });
     });
     it('create the context-evaluation-comparison model', () => {
         return models.Context.createClass(db)
             .then(() => {
-                return models.Evaluation.createClass(db); 
+                return models.Evaluation.createClass(db);
             }).catch((error) => {
-                throw DependencyError(error.message);
+                throw new DependencyError(error.message);
             }).then((result) => {
                 return models.Comparison.createClass(db);
             }).then((result) => {
                 expect(result).to.be.an.instanceof(models.Comparison);
                 expect(result).to.have.property('dbClass');
-                expect(result.is_abstract).to.be.false;
+                expect(result.isAbstract).to.be.false;
                 expect(result.propertyNames).to.have.members(['consequence']);
             });
     });
@@ -111,33 +145,33 @@ describe('database schema tests (empty db)', () => {
     it('create the context-disease model', () => {
         return models.Context.createClass(db)
             .catch((error) => {
-                throw DependencyError(error.message);
+                throw new DependencyError(error.message);
             }).then((result) => {
                 return models.Disease.createClass(db);
             }).then((result) => {
                 expect(result).to.be.an.instanceof(models.Disease);
                 expect(result).to.have.property('dbClass');
-                expect(result.is_abstract).to.be.false;
+                expect(result.isAbstract).to.be.false;
                 expect(result.propertyNames).to.have.members(['name']);
             });
     });
     it('create the context-therapy model', () => {
         return models.Context.createClass(db)
             .catch((error) => {
-                throw DependencyError(error.message);
+                throw new DependencyError(error.message);
             }).then((result) => {
                 return models.Therapy.createClass(db);
             }).then((result) => {
                 expect(result).to.be.an.instanceof(models.Therapy);
                 expect(result).to.have.property('dbClass');
-                expect(result.is_abstract).to.be.false;
+                expect(result.isAbstract).to.be.false;
                 expect(result.propertyNames).to.have.members(['name']);
             });
     });
     it('create the context-event model');
     it('create the context-event-vocab model');
     it('create the context-event-positional model');
-    if('create the range model');
+    it('create the range model');
     it('create the position model');
     it('create the position-genomic model');
     it('create the position-cds model');
@@ -174,5 +208,3 @@ describe('database schema tests (empty db)', () => {
             });
     })
 });
-
-

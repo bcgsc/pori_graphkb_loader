@@ -17,4 +17,4 @@ class DependencyError extends ExtendableError {
     }
 }
 
-module.exports = {AttributeError, errorJSON};
+module.exports = {AttributeError, errorJSON, DependencyError};
