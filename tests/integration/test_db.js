@@ -7,8 +7,9 @@ const {DependencyError} = require('./../../app/repo/error');
 
 describe('database schema tests (empty db)', () => {
     var server, db = null;
-    beforeEach((done) => { /* build and connect to the empty database */
+    beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
+        console.log('\nconnecting to the server');
         serverConnect(conf)
             .then((result) => {
                 server = result;
@@ -61,12 +62,16 @@ describe('database schema tests (empty db)', () => {
     });
     describe('create publication records', () => {
         var pub = null;
-        before((done) => {
+        beforeEach((done) => {
+            console.log('setting up the publication class');
             models.Evidence.createClass(db)
                 .then((result) => {
-                    pub = models.Publication.createClass(db);
+                    return models.Publication.createClass(db);
+                }).then((result) => {
+                    pub = result;
                     done();
                 }).catch((error) => {
+                    console.log(error);
                     done(new DependencyError(error.message));
                 });
         });
@@ -76,6 +81,31 @@ describe('database schema tests (empty db)', () => {
                     expect(result).to.have.property('uuid');
                     expect(result).to.have.property('title');
                     expect(result.title).to.equal('title');
+                    // should not have 
+                    expect(result).to.not.have.property('journal');
+                    expect(result).to.not.have.property('year');
+                });
+        });
+        it('null title error', () => {
+            return pub.createRecord({title: null})
+                .then((result) => {
+                    throw new Error('Expected error. Violated title != null constraint');
+                }).catch((error) => {
+                    expect(error.type).to.equal('com.orientechnologies.orient.core.exception.OValidationException');
+                    expect(error.name).to.equal('OrientDB.RequestError');
+                    expect(error.message).to.include('cannot be null');
+                });
+        });
+        it('pubmed duplicate error', () => {
+            return pub.createRecord({title: 'title', pubmed_id: 1})
+                .then((result) => {
+                    return pub.createRecord({title: 'title2', pubmed_id: 1});
+                }).then((result) => {
+                    throw new Error('Expected error. Violated pubmed unique index constraint');
+                }).catch((error) => {
+                    expect(error.type).to.equal('com.orientechnologies.orient.core.storage.ORecordDuplicatedException');
+                    expect(error.name).to.equal('OrientDB.RequestError');
+                    expect(error.message).to.include('duplicated key');
                 });
         });
     });
