@@ -1,3 +1,4 @@
+"use strict";
 const ExtendableError = require('extendable-error-class');
 
 const errorJSON = function(error) {

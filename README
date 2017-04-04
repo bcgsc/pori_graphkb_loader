@@ -16,3 +16,50 @@ Guidelines for Contributors
 3. API must follow REST guidelines (for example see https://github.com/Microsoft/api-guidelines/blob/vNext/Guidelines.md)
 4. JS code should be written with ES6 syntax (where possible) see https://github.com/lukehoban/es6features
 
+Schema Plan
+============
+
+- input_by (E)
+    - evaluation => user
+
+- approved_by (E)
+    - evaluation => user
+
+- rejected_by (E)
+    - evaluation => user
+
+- applies_to (E)
+    - evaluation => context
+
+- requires (E)
+    - evaluation => context
+
+- over (E)
+    - evaluation => context
+
+- supports (E)
+    - evidence => evaluation
+
+- subclass_of (E)
+    - disease => disease
+    - therapy => therapy
+
+- alias_of (E)
+    - disease => disease 
+    - therapy => therapy
+    - feature => feature
+
+- product_of (E)
+    - feature => feature 
+
+- deprecated_by (E): use this when an older version must be maintained but has a 'production' equivalent or 'newer' version also present in the db
+    - disease => disease 
+    - therapy => therapy
+    - feature => feature
+
+Managing Versioning
+----------------------
+
+- updated_to (E)
+    - V => V where uuid == uuid and edit_version < edit_version
+    - E => E where uuid == uuid and edit_version < edit_version

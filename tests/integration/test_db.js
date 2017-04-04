@@ -1,8 +1,9 @@
+"use strict";
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {models, createSchema, loadSchema, serverConnect} = require('./../../app/repo');
 const _ = require('lodash');
-const {DependencyError} = require('./../../app/repo/error');
+const {DependencyError, AttributeError} = require('./../../app/repo/error');
 
 
 describe('database schema tests (empty db)', () => {
@@ -71,7 +72,6 @@ describe('database schema tests (empty db)', () => {
                     pub = result;
                     done();
                 }).catch((error) => {
-                    console.log(error);
                     done(new DependencyError(error.message));
                 });
         });
@@ -106,6 +106,14 @@ describe('database schema tests (empty db)', () => {
                     expect(error.type).to.equal('com.orientechnologies.orient.core.storage.ORecordDuplicatedException');
                     expect(error.name).to.equal('OrientDB.RequestError');
                     expect(error.message).to.include('duplicated key');
+                });
+        });
+        it('invalid attribute', () => {
+            return pub.createRecord({title: 'title', pubmed_id: 1, invalid_attribute: 2})
+                .then((result) => {
+                    throw new Error('Expected error. Invalid attribute');
+                }).catch((error) => {
+                    expect(error).to.be.an.instanceof(AttributeError);
                 });
         });
     });

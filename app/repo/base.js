@@ -1,3 +1,4 @@
+"use strict";
 const {AttributeError} = require('./error');
 const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
@@ -48,25 +49,33 @@ class Base {
     get propertyNames() {
         return Array.from(this.properties, ({name}) => name);
     }
-    /**
-     * defines the create type
-     * @returns {string} VERTEX or EDGE
-     */
-    static get createType() {
-        return 'VERTEX';
-    }
+    
     /**
      * create new record
      * @param  {object} opt record content
      * @return {Promise}  if resolved returns ? otherwise returns the db error
      */
     createRecord(opt={}) {
-        const args = { uuid : this.dbClass.db.rawExpression("uuid()") };
-        for (let key of Object.keys(opt)) {
-            args[key] = opt[key];
-        }
-        console.log('this.clsname', this.createType, this.constructor.clsname);
-        return this.dbClass.db.create(this.constructor.createType, this.constructor.clsname).set(args).one();
+        return new Promise((resolve, reject) => {
+            const args = {
+                uuid : this.dbClass.db.rawExpression("uuid()"),
+                edit_version: 0
+            };
+            for (let key of Object.keys(opt)) {
+                if (! _.includes(this.propertyNames, key)) {
+                    throw new AttributeError(`invalid attribute ${key}`);
+                }
+                args[key] = opt[key];
+            }
+            
+            this.dbClass.create(args)
+                .then((result) => {
+                    resolve(result);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+        
     }
     get_by_id(id) {
         console.log('get_by_id', id);
