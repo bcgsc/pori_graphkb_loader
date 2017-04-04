@@ -59,7 +59,9 @@ class Base {
         return new Promise((resolve, reject) => {
             const args = {
                 uuid : this.dbClass.db.rawExpression("uuid()"),
-                edit_version: 0
+                edit_version: 0,
+                created_at: this.dbClass.db.rawExpression("sysdate()"),
+                deleted_at: null
             };
             for (let key of Object.keys(opt)) {
                 if (! _.includes(this.propertyNames, key)) {
@@ -185,7 +187,7 @@ class Base {
      * @param {orientjs.Db} opt.db the database object
      * @param {Object[]} opt.properties property specifications
      * @param {Object[]} opt.indices indices to create
-     * @param {boolean} opt.is_abstract true if the class to be created an abstract class
+     * @param {boolean} opt.isAbstract true if the class to be created an abstract class
      * @param {string} opt.clsname name of the class
      * @param {string} opt.superClass class(es) to inherit
      *
@@ -196,13 +198,13 @@ class Base {
             // preliminary error checking and defaults
             opt.properties = opt.properties || [];
             opt.indices = opt.indices || [];
-            opt.is_abstract = opt.is_abstract || false;
+            opt.isAbstract = opt.isAbstract || false;
 
             if (opt.clsname === undefined || opt.superClasses === undefined || opt.db === undefined) {
                 reject(new AttributeError(
                     `required attribute was not defined: clsname=${opt.clsname}, superClasses=${opt.superClasses}, db=${opt.db}`));
             } else {
-                opt.db.class.create(opt.clsname, opt.superClasses, null, opt.is_abstract) // create the class first
+                opt.db.class.create(opt.clsname, opt.superClasses, null, opt.isAbstract) // create the class first
                     .then((cls) => {
                         // now add properties
                         Promise.all(Array.from(opt.properties, (prop) => cls.property.create(prop)))

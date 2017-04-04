@@ -9,7 +9,7 @@ class Evidence extends Base {
 
     static createClass(db){
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: 'V', is_abstract: true})
+            super.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true})
                 .then((result) => {
                     return this.loadClass(db);
                 }).then((cls) => {

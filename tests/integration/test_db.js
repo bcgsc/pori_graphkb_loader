@@ -3,6 +3,7 @@ const {expect} = require('chai');
 const conf = require('./../config/db');
 const {models, createSchema, loadSchema, serverConnect} = require('./../../app/repo');
 const _ = require('lodash');
+const {augmentWithVersioning} = require('./../../app/repo/versioning')
 const {DependencyError, AttributeError} = require('./../../app/repo/error');
 
 
@@ -23,6 +24,21 @@ describe('database schema tests (empty db)', () => {
             }).catch((error) => {
                 console.log('error in connecting', error);
                 done(error);
+            });
+    });
+    it('add the versioning superclass', () => {
+        return augmentWithVersioning(db);
+    });
+    it('check property inheritance of versioning', () => {
+        return augmentWithVersioning(db)
+            .catch((error) => {
+                throw DependencyError(error.message);
+            }).then(() => {
+                return models.Evidence.createClass(db);
+            }).catch((error) => {
+                throw DependencyError(error.message);
+            }).then((result) => {
+                expect(result.propertyNames).to.have.members(['uuid', 'created_at', 'edit_version', 'deleted_at']);
             });
     });
     it('create the evidence schema model', () => {

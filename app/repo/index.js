@@ -4,6 +4,7 @@
  */
 const _ = require('lodash');
 const connect = require('./connect');
+const {augmentWithVersioning} = require('./versioning');
 const models = {};
 _.assign(models, require('./evidence'));
 _.assign(models, require('./context'));
@@ -35,7 +36,6 @@ const loadSchema = (db) => {
  * @return {Promise}    {Base[]} array of loaded classes on success, {error} on fail
  */
 const createSchema = (db) => {
-
     const p1 = new Promise((resolve, reject) => {
         // build the abstract classes and then their dependencies
         Evidence.createClass(db)
@@ -55,9 +55,9 @@ const createSchema = (db) => {
                 reject(error);
             });
     });
-
+    
     return new Promise((resolve, reject) => {
-        Promise.all([p1, p2])
+        Promise.all([p1, p2, augmentWithVersioning(db)]) // can be concurrent
             .then(() => {
                 console.log('load the schema');
                 return loadSchema(db);
