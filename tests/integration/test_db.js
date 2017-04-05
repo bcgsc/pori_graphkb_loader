@@ -3,8 +3,25 @@ const {expect} = require('chai');
 const conf = require('./../config/db');
 const {models, createSchema, loadSchema, serverConnect} = require('./../../app/repo');
 const _ = require('lodash');
-const {augmentWithVersioning} = require('./../../app/repo/versioning')
+const {augmentWithVersioning} = require('./../../app/repo/versioning');
 const {DependencyError, AttributeError} = require('./../../app/repo/error');
+const Base = require('./../../app/repo/base');
+
+
+class MockVertexClass extends Base { // simple non-abstract class for tests
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            super.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: false})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
 
 
 describe('database schema tests (empty db)', () => {
@@ -29,17 +46,25 @@ describe('database schema tests (empty db)', () => {
     it('add the versioning superclass', () => {
         return augmentWithVersioning(db);
     });
-    it('check property inheritance of versioning', () => {
-        return augmentWithVersioning(db)
-            .catch((error) => {
-                throw DependencyError(error.message);
-            }).then(() => {
-                return models.Evidence.createClass(db);
-            }).catch((error) => {
-                throw DependencyError(error.message);
-            }).then((result) => {
-                expect(result.propertyNames).to.have.members(['uuid', 'created_at', 'edit_version', 'deleted_at']);
-            });
+    describe('test base inheritance for mock class', () => {
+        var cls;
+        beforeEach(function(done) {
+            augmentWithVersioning(db)
+                .then(() => {
+                    return MockVertexClass.createClass(db);
+                }).then((result) => {
+                    cls = result;
+                    done();
+                }).catch((error) => {
+                    done(error);
+                });
+        });
+        it('clsname', () => {
+            expect(cls.constructor.clsname).to.equal('mock_vertex_class');
+        });
+        it('inherited versioning properties', () => {
+            expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'edit_version', 'deleted_at'])
+        });
     });
     it('create the evidence schema model', () => {
         return models.Evidence.createClass(db)

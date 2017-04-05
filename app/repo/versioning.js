@@ -2,6 +2,12 @@
 
 const Base = require('./base');
 
+/**
+ * creates the abstract super class "versioning" and adds it as the super class for V and E
+ *
+ * @param {orientjs.Db} db the database instance
+ * @returns {Promise} returns a promise which returns nothing on resolve and an error on reject
+ */ 
 const augmentWithVersioning = (db) => {
     return new Promise((resolve, reject) => {
         const props = [

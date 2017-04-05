@@ -57,7 +57,7 @@ class Base {
      */
     createRecord(opt={}) {
         return new Promise((resolve, reject) => {
-            const args = {
+            const args = { // default arguments
                 uuid : this.dbClass.db.rawExpression("uuid()"),
                 edit_version: 0,
                 created_at: this.dbClass.db.rawExpression("sysdate()"),
@@ -156,7 +156,7 @@ class Base {
      */
     static get clsname() {
         var clsname = this.name;
-        clsname = clsname.replace(/([a-z])([A-Z])/, '$1_$2');
+        clsname = clsname.replace(/([a-z])([A-Z])/g, '$1_$2');
         return clsname.toLowerCase();
     }
     /**
