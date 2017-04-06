@@ -1,5 +1,6 @@
 "use strict";
 const Base = require('./base');
+const {KBVertex} = require('./versioning');
 
 /**
  * @class
@@ -9,7 +10,7 @@ class Context extends Base {
 
     static createClass(db){
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true})
+            super.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: true})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((result) => {

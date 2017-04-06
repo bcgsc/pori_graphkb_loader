@@ -2,6 +2,8 @@
 const {AttributeError} = require('./error');
 const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
+const moment = require('moment');
+const MOMENT_TIME_FORMAT = 'YYYY-MM-DDTHH:mm:ss.SSSZZ'
 
 
 const errorJSON = function(error) {
@@ -14,7 +16,7 @@ const errorJSON = function(error) {
  */
 const getAllProperties = (cls) => {
     return new Promise((resolve, reject) => {
-        var properties = cls.properties;
+        let properties = cls.properties;
         if (cls.superClass !== null) {
             cls.db.class.get(cls.superClass)
                 .then((result) => {
@@ -58,18 +60,17 @@ class Base {
     createRecord(opt={}) {
         return new Promise((resolve, reject) => {
             const args = { // default arguments
-                uuid : this.dbClass.db.rawExpression("uuid()"),
+                uuid : uuidV4(),
                 edit_version: 0,
-                created_at: this.dbClass.db.rawExpression("sysdate()"),
+                created_at: moment().format(MOMENT_TIME_FORMAT),
                 deleted_at: null
             };
             for (let key of Object.keys(opt)) {
                 if (! _.includes(this.propertyNames, key)) {
                     throw new AttributeError(`invalid attribute ${key}`);
                 }
-                args[key] = opt[key];
+                args[key] = opt[key]; // overrides the defaults if given
             }
-            
             this.dbClass.create(args)
                 .then((result) => {
                     resolve(result);
@@ -155,7 +156,7 @@ class Base {
      * @type {string}
      */
     static get clsname() {
-        var clsname = this.name;
+        let clsname = this.name;
         clsname = clsname.replace(/([a-z])([A-Z])/g, '$1_$2');
         return clsname.toLowerCase();
     }
@@ -194,6 +195,7 @@ class Base {
      * @returns {Promise} on resolve returns a instance of Base (or subclass) otherwise Error
      */
     static createClass(opt) {
+        // extend versioning if not versioning
         return new Promise((resolve, reject) => {
             // preliminary error checking and defaults
             opt.properties = opt.properties || [];
@@ -206,7 +208,7 @@ class Base {
             } else {
                 opt.db.class.create(opt.clsname, opt.superClasses, null, opt.isAbstract) // create the class first
                     .then((cls) => {
-                        // now add properties
+                        // add the properties
                         Promise.all(Array.from(opt.properties, (prop) => cls.property.create(prop)))
                             .then(() => {
                                 // create the indices
@@ -216,6 +218,7 @@ class Base {
                             }).catch((error) => {
                                 reject(error);
                             });
+
                     }).catch((error) => {
                         reject(error);
                     });
