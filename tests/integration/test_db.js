@@ -65,17 +65,17 @@ describe('database schema tests (empty db):', () => {
             });
     });
     it('create KBVertex class', () => {
-        KBVertex.createClass(db)
+        return KBVertex.createClass(db)
             .then((cls) => {
-                expect(cls.properties).to.have.members(['uuid', 'created_at', 'deleted_at', 'edit_version']);
+                expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'edit_version']);
                 expect(KBVertex.clsname).to.equal('kbvertex');
                 expect(KBVertex.createType).to.equal('vertex');
             });
     });
     it('create History class', () => {
-        History.createClass(db)
+        return History.createClass(db)
             .then((cls) => {
-                expect(cls.properties).to.have.members(['comment']);
+                expect(cls.propertyNames).to.have.members(['comment']);
                 expect(History.clsname).to.equal('history');
                 expect(History.createType).to.equal('edge');
             });

@@ -66,9 +66,10 @@ class Base {
             const args = { // default arguments
                 uuid : uuidV4(),
                 edit_version: 0,
-                created_at: moment().format(MOMENT_TIME_FORMAT),
+                created_at: moment().unix(),
                 deleted_at: null
             };
+            console.log('createRecord', args.created_at);
             for (let key of Object.keys(opt)) {
                 if (! _.includes(this.propertyNames, key)) {
                     throw new AttributeError(`invalid attribute ${key}`);
@@ -108,42 +109,51 @@ class Base {
             }
 
             // get the record from the db
-            console.log('select');
             this.dbClass.db.select().from(this.constructor.clsname).where({uuid: opt.uuid}).one()
                 .then((record) => {
-                    console.log('updateRecord: record', record);
                     const duplicate = {};
+                    const timestamp = moment().unix() + 1;
+                    const updates = {
+                        edit_version: record.edit_version + 1,
+                        created_at: timestamp
+                    };
+                    
                     // create a copy of the current record
-
                     for (let key of Object.keys(record)) {
                         if (! key.startsWith('@')) {
                             duplicate[key] = record[key];
                         }
                     }
                     for (let key of Object.keys(opt)) {
-                        record[key] = opt[key];
+                        if (! key.startsWith('@')) {
+                            updates[key] = opt[key];
+                        }
                     }
-                    record.edit_version += 1
-                    console.log('updateRecord: record', record);
-                    console.log('updateRecord: updated', duplicate);
 
-                    duplicate['deleted_at'] = moment().format(MOMENT_TIME_FORMAT); // set the deletion time
+                    duplicate['deleted_at'] = timestamp; // set the deletion time
                     // start the transaction
-                    this.dbClass.db.let('updated', (tx) => {
+                    var commit = this.dbClass.db
+                        .let('updatedRID', (tx) => {
                             // update the existing node
-                            console.log('update the existing record');
-                            tx.update(record);
+                            return tx.update(`${record['@rid'].toString()}`).set(updates).return('AFTER @rid');
                         }).let('duplicate', (tx) => {
                             //duplicate the old node
-                            console.log('duplicate the old record');
-                            tx.create(this.constructor.create_type, this.constructor.clsname, duplicate);
-                        }).let('history', (tx) => {
+                            return tx.create(this.constructor.createType, this.constructor.clsname)
+                                .set(duplicate);
+                        }).let('historyEdge', (tx) => {
                             //connect the nodes
-                            console.log('create the history record');
-                            tx.create(History.create_type, History.clsname)
-                                .from('$updated').to('$duplicate');
-                        }).commit().return('$edge').all().then((results) => {
-                            console.log('result', result);
+                            return tx.create(History.createType, History.clsname)
+                                .from('$updatedRID')
+                                .to('$duplicate');
+                        }).commit();
+                    console.log("Statement: " + commit.buildStatement());
+                    commit.return('$updatedRID').one()
+                        .then((rid) => {
+                            return this.dbClass.db.record.get(rid);
+                        }).then((record) => {
+                            console.log('result', record);
+                        }).catch((error) => {
+                            console.log('error', error);
                         });
                     // update the original with the new values
                     // add a history edge
@@ -312,8 +322,8 @@ class KBVertex extends Base {
             const props = [
                 {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
                 {name: 'edit_version', type: 'integer', mandatory: true, notNull: true},
-                {name: 'created_at', type: 'datetime', mandatory: true, notNull: true},
-                {name: 'deleted_at', type: 'Date', mandatory: true, notNull: false}
+                {name: 'created_at', type: 'long', mandatory: true, notNull: true},
+                {name: 'deleted_at', type: 'long', mandatory: true, notNull: false}
             ];
             const idxs = [
                 {
@@ -331,7 +341,7 @@ class KBVertex extends Base {
                 }
             ];
 
-            super.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true, properties: props, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true, properties: props, indices: []})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -344,14 +354,18 @@ class KBVertex extends Base {
 }
 
 class KBEdge extends Base {
+    
+    static get createType() {
+        return 'edge';
+    }
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
                 {name: 'edit_version', type: 'integer', mandatory: true, notNull: true},
-                {name: 'created_at', type: 'datetime', mandatory: true, notNull: true},
-                {name: 'deleted_at', type: 'Date', mandatory: true, notNull: false}
+                {name: 'created_at', type: 'long', mandatory: true, notNull: true},
+                {name: 'deleted_at', type: 'long', mandatory: true, notNull: false}
             ];
             const idxs = [
                 {
@@ -369,7 +383,7 @@ class KBEdge extends Base {
                 }
             ];
 
-            super.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: true, properties: props, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: true, properties: props, indices: []})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -384,7 +398,7 @@ class KBEdge extends Base {
 class History extends Base {
     
     static get createType() {
-        return 'vertex';
+        return 'edge';
     }
 
     static createClass(db) {

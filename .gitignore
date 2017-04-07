@@ -1,4 +1,3 @@
-/config/db.js
 /node_modules/*
 /.orientdb_history
 /dist
