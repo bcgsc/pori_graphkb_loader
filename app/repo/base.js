@@ -3,7 +3,6 @@ const {AttributeError} = require('./error');
 const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
 const moment = require('moment');
-const MOMENT_TIME_FORMAT = 'YYYY-MM-DDTHH:mm:ss.SSSZZ'
 
 
 const errorJSON = function(error) {
@@ -69,7 +68,6 @@ class Base {
                 created_at: moment().unix(),
                 deleted_at: null
             };
-            console.log('createRecord', args.created_at);
             for (let key of Object.keys(opt)) {
                 if (! _.includes(this.propertyNames, key)) {
                     throw new AttributeError(`invalid attribute ${key}`);
@@ -146,19 +144,19 @@ class Base {
                                 .from('$updatedRID')
                                 .to('$duplicate');
                         }).commit();
-                    console.log("Statement: " + commit.buildStatement());
+                    //console.log("Statement: " + commit.buildStatement());
                     commit.return('$updatedRID').one()
                         .then((rid) => {
                             return this.dbClass.db.record.get(rid);
                         }).then((record) => {
-                            console.log('result', record);
+                            resolve(record);
                         }).catch((error) => {
-                            console.log('error', error);
+                            reject(error);
                         });
                     // update the original with the new values
                     // add a history edge
                 }).catch((error) => {
-                    console.log('error', error);
+                    reject(error);
                 });
         });
     }

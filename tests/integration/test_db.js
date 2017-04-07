@@ -55,9 +55,6 @@ describe('database schema tests (empty db):', () => {
                 db = result;
                 return db.class.list();
             }).then((clsList) => {
-                // now try to alter the datetime format
-                return db.query(`ALTER DATABASE DATETIMEFORMAT "${ORIENT_DB_TIME_FORMAT}"`);
-            }).then((result) => {
                 done();
             }).catch((error) => {
                 console.log('error in connecting', error);
@@ -95,7 +92,6 @@ describe('database schema tests (empty db):', () => {
                 mockClass = cls;
                 return cls.createRecord();
             }).then((record) => {
-                console.log('mockRecord', record);
                 mockRecord = record;
                 done();
             }).catch((error) => {
@@ -103,11 +99,12 @@ describe('database schema tests (empty db):', () => {
             });
         });
         it('update a mock record', () => {
-            console.log('mock record');
+            const uuid = mockRecord.uuid;
+            const edit_version = mockRecord.edit_version;
             return mockClass.updateRecord(mockRecord, null, true)
                 .then((record) => {
-                    console.log('updated record', record);
-                    expect(record.uuid).to.equal(mockRecord.uuid);
+                    expect(record.uuid).to.equal(uuid);
+                    expect(record.edit_version).to.equal(edit_version + 1);
                 });
         });
     });

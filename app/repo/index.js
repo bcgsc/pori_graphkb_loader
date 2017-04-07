@@ -8,8 +8,6 @@ const models = {};
 _.assign(models, require('./evidence'));
 _.assign(models, require('./context'));
 
-const ORIENT_DB_TIME_FORMAT = "yyyy-MM-dd'T'HH:mm:ss.SSSZ";
-
 
 const loadSchema = (db) => {
     /**
@@ -75,6 +73,5 @@ module.exports = {
     models: models,
     loadSchema,
     createSchema,
-    serverConnect: connect,
-    ORIENT_DB_TIME_FORMAT
+    serverConnect: connect
 };
