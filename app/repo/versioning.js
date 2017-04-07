@@ -85,4 +85,25 @@ class KBEdge extends Base {
     }
 }
 
-module.exports = {KBVertex, KBEdge};
+class History extends Base {
+    
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: 'user', type: 'link', mandatory: true, notNull: true, readOnly: true, linkedClass: 'user'},
+                {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true}
+            ];
+
+            super.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: false, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+module.exports = {KBVertex, KBEdge, History};

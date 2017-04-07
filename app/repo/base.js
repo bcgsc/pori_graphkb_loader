@@ -80,6 +80,62 @@ class Base {
         });
         
     }
+    /**
+     * update an existing record. This will be based on the uuid or the record and
+     * will create a copy of the current record, a history edge, and then will edit the 
+     * current record. This will be wrapped in a transaction. Will need to ensure the 
+     *
+     * @param  {object} opt record content
+     * @return {Promise}  if resolved returns ? otherwise returns the db error
+     */
+    updateRecord(opt={}) {
+        return new Promise((resolve, reject) => {
+            if (opt.uuid === undefined) {
+                throw new AttributeError('uuid');
+            }
+            for (let key of Object.keys(opt)) {
+                if (key.startsWith('@') || key === 'edit_version') {
+                    throw new AttributeError(`reserved attribute ${key} cannot be given`);
+                }
+            }
+
+            // get the record from the db
+            this.dbClass.db.select().from(opt.clsname).where({uuid: opt.uuid}).one()
+                .then((record) => {
+                    console.log(record);
+                    const duplicate = {};
+                    // create a copy of the current record
+                    
+                    for (let key of Object.keys(record)) {
+                        if (! key.startsWith('@')) {
+                            duplicate[key] = record[key];
+                        }
+                    }
+                    for (let key of Object.keys(opt)) {
+                        record[key] = opt[key];
+                    }
+                    record.edit_version += 1
+                    
+                    duplicate['deleted_at'] = moment().format(MOMENT_TIME_FORMAT); // set the deletion time
+                    // start the transaction
+                    this.dbClass.db
+                        .let('updated', (tx) => {
+                            // update the existing node
+                            tx.update(record);
+                        }).let('duplicate', (tx) => {
+                            //duplicate the old node
+                            tx.create(this.constructor.create_type, this.constructor.clsname, duplicate);
+                        }).let('history', (tx) => {
+                            //connect the nodes
+                            tx.create(History.create_type, History.clsname, )
+                        });
+                    // update the original with the new values
+                    // add a history edge
+                }).catch((error) => {
+                
+                });
+        }); 
+    }
     get_by_id(id) {
         console.log('get_by_id', id);
         return this.db.record.get(`#${id}`);
