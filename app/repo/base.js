@@ -339,7 +339,7 @@ class KBVertex extends Base {
                 }
             ];
 
-            super.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true, properties: props, indices: []})
+            super.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true, properties: props, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -381,7 +381,7 @@ class KBEdge extends Base {
                 }
             ];
 
-            super.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: true, properties: props, indices: []})
+            super.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: true, properties: props, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
