@@ -3,15 +3,14 @@ const {expect} = require('chai');
 const conf = require('./../config/db');
 const {models, createSchema, loadSchema, serverConnect, ORIENT_DB_TIME_FORMAT} = require('./../../app/repo');
 const _ = require('lodash');
-const {KBVertex, KBEdge} = require('./../../app/repo/versioning');
 const {DependencyError, AttributeError} = require('./../../app/repo/error');
-const Base = require('./../../app/repo/base');
+const {Base, History, KBVertex, KBEdge} = require('./../../app/repo/base');
 
 
 class MockVertexClass extends Base { // simple non-abstract class for tests
     static createClass(db) {
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: 'V'})
+            super.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -65,17 +64,54 @@ describe('database schema tests (empty db):', () => {
                 done(error);
             });
     });
-    describe('KBVertex:', () => {
-        it('create class', () => {
-            KBVertex.createClass(db)
-                .then((cls) => {
-                    expect(cls.properties).to.have.members(['uuid', 'created_at', 'deleted_at', 'edit_version']);
-                    expect(KBVertex.clsname).to.equal('kbvertex');
+    it('create KBVertex class', () => {
+        KBVertex.createClass(db)
+            .then((cls) => {
+                expect(cls.properties).to.have.members(['uuid', 'created_at', 'deleted_at', 'edit_version']);
+                expect(KBVertex.clsname).to.equal('kbvertex');
+                expect(KBVertex.createType).to.equal('vertex');
+            });
+    });
+    it('create History class', () => {
+        History.createClass(db)
+            .then((cls) => {
+                expect(cls.properties).to.have.members(['comment']);
+                expect(History.clsname).to.equal('history');
+                expect(History.createType).to.equal('edge');
+            });
+    });
+
+    describe('History Tracking', () => {
+        let mockRecord, mockClass;
+        beforeEach((done) => {
+            Promise.all([
+                KBVertex.createClass(db),
+                History.createClass(db)
+            ]).then(() => {
+                return MockVertexClass.createClass(db);
+            }).then(() => {
+                return MockVertexClass.loadClass(db);
+            }).then((cls) => {
+                mockClass = cls;
+                return cls.createRecord();
+            }).then((record) => {
+                console.log('mockRecord', record);
+                mockRecord = record;
+                done();
+            }).catch((error) => {
+                done(error);
+            });
+        });
+        it('update a mock record', () => {
+            console.log('mock record');
+            return mockClass.updateRecord(mockRecord, null, true)
+                .then((record) => {
+                    console.log('updated record', record);
+                    expect(record.uuid).to.equal(mockRecord.uuid);
                 });
         });
-    })
-    
-    describe('Versioning dependent:', () => {
+    });
+    describe('KBVertex dependent:', () => {
         beforeEach((done) => {
             KBVertex.createClass(db)
                 .then((cls) => {
@@ -103,7 +139,7 @@ describe('database schema tests (empty db):', () => {
                 }).then((result) => {
                     throw new Error('expected error. class is abstract');
                 }).catch((error) => {
-                    return expectAbstractClassError(error); 
+                    return expectAbstractClassError(error);
                 });
         });
         it('create the evidence-publication schema model', () => {
@@ -139,7 +175,7 @@ describe('database schema tests (empty db):', () => {
                         expect(result).to.have.property('uuid');
                         expect(result).to.have.property('title');
                         expect(result.title).to.equal('title');
-                        // should not have 
+                        // should not have
                         expect(result).to.not.have.property('journal');
                         expect(result).to.not.have.property('year');
                     });

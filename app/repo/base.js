@@ -51,7 +51,11 @@ class Base {
     get propertyNames() {
         return Array.from(this.properties, ({name}) => name);
     }
-    
+
+    static get createType() {
+        return 'vertex';
+    }
+
     /**
      * create new record
      * @param  {object} opt record content
@@ -78,34 +82,39 @@ class Base {
                     reject(error);
                 });
         });
-        
+
     }
     /**
      * update an existing record. This will be based on the uuid or the record and
-     * will create a copy of the current record, a history edge, and then will edit the 
-     * current record. This will be wrapped in a transaction. Will need to ensure the 
+     * will create a copy of the current record, a history edge, and then will edit the
+     * current record. This will be wrapped in a transaction. Will need to ensure the
      *
      * @param  {object} opt record content
      * @return {Promise}  if resolved returns ? otherwise returns the db error
      */
-    updateRecord(opt={}) {
+    updateRecord(opt={}, user, drop_invalid_attr=true) {
         return new Promise((resolve, reject) => {
             if (opt.uuid === undefined) {
                 throw new AttributeError('uuid');
             }
             for (let key of Object.keys(opt)) {
                 if (key.startsWith('@') || key === 'edit_version') {
-                    throw new AttributeError(`reserved attribute ${key} cannot be given`);
+                    if (drop_invalid_attr == true) {
+                        delete opt[key];
+                    } else {
+                        throw new AttributeError(`reserved attribute ${key} cannot be given`);
+                    }
                 }
             }
 
             // get the record from the db
-            this.dbClass.db.select().from(opt.clsname).where({uuid: opt.uuid}).one()
+            console.log('select');
+            this.dbClass.db.select().from(this.constructor.clsname).where({uuid: opt.uuid}).one()
                 .then((record) => {
-                    console.log(record);
+                    console.log('updateRecord: record', record);
                     const duplicate = {};
                     // create a copy of the current record
-                    
+
                     for (let key of Object.keys(record)) {
                         if (! key.startsWith('@')) {
                             duplicate[key] = record[key];
@@ -115,26 +124,33 @@ class Base {
                         record[key] = opt[key];
                     }
                     record.edit_version += 1
-                    
+                    console.log('updateRecord: record', record);
+                    console.log('updateRecord: updated', duplicate);
+
                     duplicate['deleted_at'] = moment().format(MOMENT_TIME_FORMAT); // set the deletion time
                     // start the transaction
-                    this.dbClass.db
-                        .let('updated', (tx) => {
+                    this.dbClass.db.let('updated', (tx) => {
                             // update the existing node
+                            console.log('update the existing record');
                             tx.update(record);
                         }).let('duplicate', (tx) => {
                             //duplicate the old node
+                            console.log('duplicate the old record');
                             tx.create(this.constructor.create_type, this.constructor.clsname, duplicate);
                         }).let('history', (tx) => {
                             //connect the nodes
-                            tx.create(History.create_type, History.clsname, )
+                            console.log('create the history record');
+                            tx.create(History.create_type, History.clsname)
+                                .from('$updated').to('$duplicate');
+                        }).commit().return('$edge').all().then((results) => {
+                            console.log('result', result);
                         });
                     // update the original with the new values
                     // add a history edge
                 }).catch((error) => {
-                
+                    console.log('error', error);
                 });
-        }); 
+        });
     }
     get_by_id(id) {
         console.log('get_by_id', id);
@@ -283,4 +299,111 @@ class Base {
     }
 }
 
-module.exports = Base;
+/**
+ * creates the abstract super class "versioning" and adds it as the super class for V and E
+ *
+ * @param {orientjs.Db} db the database instance
+ * @returns {Promise} returns a promise which returns nothing on resolve and an error on reject
+ */
+class KBVertex extends Base {
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+                {name: 'edit_version', type: 'integer', mandatory: true, notNull: true},
+                {name: 'created_at', type: 'datetime', mandatory: true, notNull: true},
+                {name: 'deleted_at', type: 'Date', mandatory: true, notNull: false}
+            ];
+            const idxs = [
+                {
+                    name: `${this.clsname}_edit_version`,
+                    type: 'unique',
+                    properties: ['uuid', 'edit_version'],
+                    'class':  this.clsname
+                },
+                {
+                    name: `${this.clsname}_single_null_deleted_at`,
+                    type: 'unique',
+                    metadata: {ignoreNullValues: false},
+                    properties: ['uuid', 'deleted_at'],
+                    'class':  this.clsname
+                }
+            ];
+
+            super.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true, properties: props, indices: idxs})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+class KBEdge extends Base {
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+                {name: 'edit_version', type: 'integer', mandatory: true, notNull: true},
+                {name: 'created_at', type: 'datetime', mandatory: true, notNull: true},
+                {name: 'deleted_at', type: 'Date', mandatory: true, notNull: false}
+            ];
+            const idxs = [
+                {
+                    name: `${this.clsname}_edit_version`,
+                    type: 'unique',
+                    properties: ['uuid', 'edit_version'],
+                    'class':  this.clsname
+                },
+                {
+                    name: `${this.clsname}_single_null_deleted_at`,
+                    type: 'unique',
+                    metadata: {ignoreNullValues: false},
+                    properties: ['uuid', 'deleted_at'],
+                    'class':  this.clsname
+                }
+            ];
+
+            super.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: true, properties: props, indices: idxs})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+class History extends Base {
+    
+    static get createType() {
+        return 'vertex';
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                //{name: 'user', type: 'link', mandatory: true, notNull: true, readOnly: true, linkedClass: 'user'},
+                {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true}
+            ];
+
+            super.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: false, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+module.exports = {Base, History, KBVertex, KBEdge};

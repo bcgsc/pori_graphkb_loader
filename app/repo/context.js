@@ -1,6 +1,5 @@
 "use strict";
-const Base = require('./base');
-const {KBVertex} = require('./versioning');
+const {Base, KBVertex} = require('./base');
 
 /**
  * @class

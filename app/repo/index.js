@@ -4,7 +4,6 @@
  */
 const _ = require('lodash');
 const connect = require('./connect');
-const {augmentWithVersioning} = require('./versioning');
 const models = {};
 _.assign(models, require('./evidence'));
 _.assign(models, require('./context'));
@@ -57,7 +56,7 @@ const createSchema = (db) => {
                 reject(error);
             });
     });
-    
+
     return new Promise((resolve, reject) => {
         Promise.all([p1, p2, augmentWithVersioning(db)]) // can be concurrent
             .then(() => {
