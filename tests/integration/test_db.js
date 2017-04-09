@@ -105,6 +105,23 @@ describe('database schema tests (empty db):', () => {
                 .then((record) => {
                     expect(record.uuid).to.equal(uuid);
                     expect(record.edit_version).to.equal(edit_version + 1);
+                    expect(record['@class']).to.equal(MockVertexClass.clsname);
+                });
+        });
+        it('constraint: duplicate uuid + edit_version', () => {
+            return mockClass.createRecord({uuid: mockRecord.uuid, edit_version: mockRecord.edit_version})
+                .then((record) => {
+                    expect.fail('violated constraint should have thrown error');
+                }, (error) => {
+                    expectDuplicateKeyError(error);
+                });
+        });
+        it('constraint: duplicate uuid + deleted_at', () => {
+            return mockClass.createRecord({uuid: mockRecord.uuid, edit_version: mockRecord.edit_version + 1})
+                .then((record) => {
+                    expect.fail('violated constraint should have thrown error');
+                }, (error) => {
+                    expectDuplicateKeyError(error);
                 });
         });
     });
@@ -134,7 +151,7 @@ describe('database schema tests (empty db):', () => {
                 }).then((result) => {
                     return result.createRecord(); // test creating a record?
                 }).then((result) => {
-                    throw new Error('expected error. class is abstract');
+                    expect.fail('violated constraint should have thrown error');
                 }).catch((error) => {
                     return expectAbstractClassError(error);
                 });
@@ -180,7 +197,7 @@ describe('database schema tests (empty db):', () => {
             it('null title error', () => {
                 return pub.createRecord({title: null})
                     .then((result) => {
-                        throw new Error('Expected error. Violated title != null constraint');
+                        expect.fail('violated null constraint should have thrown error');
                     }).catch((error) => {
                         return expectNullConstraintError(error);
                     });
@@ -190,7 +207,7 @@ describe('database schema tests (empty db):', () => {
                     .then((result) => {
                         return pub.createRecord({title: 'title2', pubmed_id: 1});
                     }).then((result) => {
-                        throw new Error('Expected error. Violated pubmed unique index constraint');
+                        expect.fail('violated constraint should have thrown error');
                     }).catch((error) => {
                         return expectDuplicateKeyError(error);
                     });
@@ -198,7 +215,7 @@ describe('database schema tests (empty db):', () => {
             it('invalid attribute', () => {
                 return pub.createRecord({title: 'title', pubmed_id: 1, invalid_attribute: 2})
                     .then((result) => {
-                        throw new Error('Expected error. Invalid attribute');
+                        expect.fail('invalid attribute. should have thrown error');
                     }).catch((error) => {
                         expect(error).to.be.an.instanceof(AttributeError);
                     });
