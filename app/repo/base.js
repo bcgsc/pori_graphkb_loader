@@ -31,6 +31,14 @@ const getAllProperties = (cls) => {
     });
 }
 
+const softGetRID = (record) => {
+    if (record['@rid'] !== undefined) {
+        return `#${record['@rid'].cluster}:${record['@rid'].position}`;
+    } else {
+        return record;
+    }
+}
+
 /**
  * @class
  */
@@ -416,4 +424,4 @@ class History extends Base {
     }
 }
 
-module.exports = {Base, History, KBVertex, KBEdge};
+module.exports = {Base, History, KBVertex, KBEdge, softGetRID};
