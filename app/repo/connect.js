@@ -24,10 +24,10 @@ const connect = (opt) => {
         const server = OrientDB(serverConf);
         server.list()
             .then((dbList) => {
-                console.log('Databases on the Server:');
-                for (let c of dbList) {
-                    console.log(` - ${c.name}`);
-                }
+                //console.log('Databases on the Server:');
+                //for (let c of dbList) {
+                //    console.log(` - ${c.name}`);
+                //}
                 resolve(server);
             }).catch((error) => {
                 console.log('error listing databases:', error);

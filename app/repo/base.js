@@ -64,7 +64,7 @@ class Base {
         return new Promise((resolve, reject) => {
             const args = { // default arguments
                 uuid : uuidV4(),
-                edit_version: 0,
+                version: 0,
                 created_at: moment().unix(),
                 deleted_at: null
             };
@@ -97,7 +97,7 @@ class Base {
                 throw new AttributeError('uuid');
             }
             for (let key of Object.keys(opt)) {
-                if (key.startsWith('@') || key === 'edit_version') {
+                if (key.startsWith('@') || key === 'version') {
                     if (drop_invalid_attr == true) {
                         delete opt[key];
                     } else {
@@ -112,7 +112,7 @@ class Base {
                     const duplicate = {};
                     const timestamp = moment().unix() + 1;
                     const updates = {
-                        edit_version: record.edit_version + 1,
+                        version: record.version + 1,
                         created_at: timestamp
                     };
                     
@@ -153,8 +153,6 @@ class Base {
                         }).catch((error) => {
                             reject(error);
                         });
-                    // update the original with the new values
-                    // add a history edge
                 }).catch((error) => {
                     reject(error);
                 });
@@ -319,15 +317,15 @@ class KBVertex extends Base {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
-                {name: 'edit_version', type: 'integer', mandatory: true, notNull: true},
+                {name: 'version', type: 'integer', mandatory: true, notNull: true},
                 {name: 'created_at', type: 'long', mandatory: true, notNull: true},
                 {name: 'deleted_at', type: 'long', mandatory: true, notNull: false}
             ];
             const idxs = [
                 {
-                    name: `${this.clsname}_edit_version`,
+                    name: `${this.clsname}_version`,
                     type: 'unique',
-                    properties: ['uuid', 'edit_version'],
+                    properties: ['uuid', 'version'],
                     'class':  this.clsname
                 },
                 {
@@ -361,15 +359,15 @@ class KBEdge extends Base {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
-                {name: 'edit_version', type: 'integer', mandatory: true, notNull: true},
+                {name: 'version', type: 'integer', mandatory: true, notNull: true},
                 {name: 'created_at', type: 'long', mandatory: true, notNull: true},
                 {name: 'deleted_at', type: 'long', mandatory: true, notNull: false}
             ];
             const idxs = [
                 {
-                    name: `${this.clsname}_edit_version`,
+                    name: `${this.clsname}_version`,
                     type: 'unique',
-                    properties: ['uuid', 'edit_version'],
+                    properties: ['uuid', 'version'],
                     'class':  this.clsname
                 },
                 {

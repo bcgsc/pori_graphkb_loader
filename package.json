@@ -22,6 +22,6 @@
   "scripts": {
     "watch": "nodemon app/index.js --use-strict",
     "schema": "nodemon app/db/create_schema.js",
-    "test": "mocha tests/integration/test_db.js"
+    "test": "mocha tests/integration/test_history_and_versioning.js"
   }
 }
