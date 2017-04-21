@@ -63,6 +63,23 @@ class Base {
         return 'vertex';
     }
 
+    validateContent(content) {
+        const args = { // default arguments
+            uuid : uuidV4(),
+            version: 0,
+            created_at: moment().unix(),
+            deleted_at: null
+        };
+
+        for (let key of Object.keys(content)) {
+            if (! _.includes(this.propertyNames, key)) {
+                throw new AttributeError(`invalid attribute ${key}`);
+            }
+            args[key] = content[key]; // overrides the defaults if given
+        }
+        return args;
+    }
+
     /**
      * create new record
      * @param  {object} opt record content
@@ -70,18 +87,8 @@ class Base {
      */
     createRecord(opt={}) {
         return new Promise((resolve, reject) => {
-            const args = { // default arguments
-                uuid : uuidV4(),
-                version: 0,
-                created_at: moment().unix(),
-                deleted_at: null
-            };
-            for (let key of Object.keys(opt)) {
-                if (! _.includes(this.propertyNames, key)) {
-                    throw new AttributeError(`invalid attribute ${key}`);
-                }
-                args[key] = opt[key]; // overrides the defaults if given
-            }
+            const args = this.validateContent(opt);
+
             this.dbClass.create(args)
                 .then((result) => {
                     resolve(result);
@@ -123,7 +130,7 @@ class Base {
                         version: record.version + 1,
                         created_at: timestamp
                     };
-                    
+
                     // create a copy of the current record
                     for (let key of Object.keys(record)) {
                         if (! key.startsWith('@')) {
@@ -358,7 +365,7 @@ class KBVertex extends Base {
 }
 
 class KBEdge extends Base {
-    
+
     static get createType() {
         return 'edge';
     }
@@ -400,7 +407,7 @@ class KBEdge extends Base {
 }
 
 class History extends Base {
-    
+
     static get createType() {
         return 'edge';
     }

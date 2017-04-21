@@ -10,11 +10,11 @@ const oError = require('./orientdb_errors');
 
 const {
     Position,
-    GenomicPosition, 
-    ExonicPosition, 
-    ProteinPosition, 
-    CodingSequencePosition, 
-    CytobandPosition, 
+    GenomicPosition,
+    ExonicPosition,
+    ProteinPosition,
+    CodingSequencePosition,
+    CytobandPosition,
     Range
 } = require('./../../app/repo/position');
 
@@ -76,7 +76,7 @@ describe('Position schema tests:', () => {
                     expect(result.isAbstract).to.be.false;
                 });
         });
-        
+
         describe('genomic', () => {
             let currClass;
             beforeEach(function(done) {
@@ -105,7 +105,7 @@ describe('Position schema tests:', () => {
                     });
             });
         });
-        
+
         it('create protein subclass', () => {
             return ProteinPosition.createClass(db)
                 .then((result) => {
@@ -166,7 +166,7 @@ describe('Position schema tests:', () => {
             });
 
         });
-        
+
         it('create exon subclass', () => {
             return ExonicPosition.createClass(db)
                 .then((result) => {
@@ -203,7 +203,7 @@ describe('Position schema tests:', () => {
                     });
             });
         });
-        
+
         it('create cds subclass', () => {
             return CodingSequencePosition.createClass(db)
                 .then((result) => {
@@ -255,7 +255,7 @@ describe('Position schema tests:', () => {
                     });
             });
         });
-        
+
         it('create cytoband subclass', () => {
             return CytobandPosition.createClass(db)
                 .then((result) => {
@@ -324,7 +324,7 @@ describe('Position schema tests:', () => {
                     });
             });
         });
-        
+
         it('create range subclass', () => {
             return Range.createClass(db)
                 .then((result) => {
@@ -334,73 +334,51 @@ describe('Position schema tests:', () => {
         });
 
         describe('range', () => {
-            let currClass, cds1, cds2, gen1;
+            let currClass, cdsClass, genClass;
             beforeEach(function(done) {
                 Promise.all([
                     Range.createClass(db),
                     CodingSequencePosition.createClass(db),
                     GenomicPosition.createClass(db)
                 ]).then((plist) => {
-                    currClass = plist[0];
-                    return Promise.all([
-                        plist[1].createRecord({pos: 1}),
-                        plist[1].createRecord({pos: 1}),
-                        plist[2].createRecord({pos: 1})
-                    ]);
-                }).then((plist) => {
-                    cds1 = softGetRID(plist[0]);
-                    cds2 = softGetRID(plist[1]);
-                    gen1 = softGetRID(plist[2]);
+                    [currClass, cdsClass, genClass] = plist;
                     done();
                 }).catch((error) => {
                     done(error);
                 });
             });
             it('start null/undefined error', () => {
-                return currClass.createRecord({end: cds1})
+                return currClass.createRecord({end: {pos: 1}}, cdsClass)
                     .then(() => {
                         expect.fail('expected error');
                     }, (error) => {
-                        expect(error).to.be.instanceof(TypeError);
+                        expect(error).to.be.instanceof(AttributeError);
                     });
             });
             it('end null/undefined error', () => {
-                return currClass.createRecord({start: cds1})
+                return currClass.createRecord({start: {pos: 1}}, cdsClass)
                     .then(() => {
                         expect.fail('expected error');
                     }, (error) => {
-                        expect(error).to.be.instanceof(TypeError);
+                        expect(error).to.be.instanceof(AttributeError);
                     });
             });
 
             it('two positions', () => {
-                console.log({start: cds1, end: cds2});
-                return currClass.createRecord({start: cds1, end: cds2})
+                return currClass.createRecord({start: {pos: 1}, end: {pos: 1}}, cdsClass)
                     .then((record) => {
                         expect(record.start).to.equal(cds1);
                         expect(record.end).to.equal(cds2);
                     });
             });
             it('same uuid for start/end error', () => {
-                return currClass.createRecord({start: cds1, end: cds1})
+                return currClass.createRecord({start: {pos: 1, uuid: '1'}, end: {pos: 1, uuid: '1'}}, cdsClass)
                     .then((record) => {
                         expect.fail('expected an error');
                     }, (error) => {
                         expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('two positions, incompatible classes error', () => {
-                return currClass.createRecord({start: cds1, end: gen1})
-                    .then((record) => {
-                        expect.fail('expected an error');
-                    }, (error) => {
-                        expect(error).to.be.instanceof(AttributeError);
-                    });
-            });
-            it('position and another range');
-            it('position and another range, incompatible classes error');
-            it('two ranges');
-            it('two ranges, incompatible classes error');
         });
     });
 

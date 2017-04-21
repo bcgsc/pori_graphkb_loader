@@ -29,54 +29,48 @@ class Position extends Base {
  * @extends Base
  */
 class Range extends Base {
-    
-    createRecord(opt={}) {
-        return new Promise((resolve, reject) => {
-            const descClasses = new Set();
-            const descUUID = new Set();
-            opt.start = softGetRID(opt.start);
-            opt.end = softGetRID(opt.end);
-            
-            Promise.all([
-                this.dbClass.db.record.get(opt.start),
-                this.dbClass.db.record.get(opt.end)
-            ]).then((plist) => {
-                // check that the start and end are the same type of nodes or ranges
-                const new_promises = [];
-                for (let record of plist) {
-                    if (record['@class'] == this.constructor.clsname) {
-                        new_promises.push(this.dbClass.db.record.get(record.start));
-                        new_promises.push(this.dbClass.db.record.get(record.end));
-                    } else {
-                        descClasses.add(record['@class']);
-                        if (descUUID.has(record.uuid)) {
-                            throw new AttributeError('duplicate uuid');
-                        } else {
-                            descUUID.add(record.uuid);
-                        }
-                    }
-                }
-                return Promise.all(new_promises);
-            }).then((plist) => {
-                // check that the start and end are the same type of nodes or ranges
-                for (let record of plist) {
-                    descClasses.add(record['@class']);
-                    if (descUUID.has(record.uuid)) {
-                        throw new AttributeError('duplicate uuid');
-                    } else {
-                        descUUID.add(record.uuid);
-                    }
-                }
-                if (descClasses.size != 1) {
-                    throw new AttributeError(`incompatible types in range: ${descClasses}`);
-                }
+    validateContent(content, positionClass) {
+        if (content.start == undefined || content.end == undefined) {
+            throw new AttributeError('both start and end must be specified and not null');
+        }
+        content.start = positionClass.validateContent(content.start);
+        content.end = positionClass.validateContent(content.end);
+        console.log(content);
+        if (content.start.uuid == content.end.uuid) {
+            throw new AttributeError(`range start and end cannot point to the same node: ${content.start.uuid}`);
+        }
+        return super.validateContent(content);
+    }
 
-                return super.createRecord(opt);
-            }).then((record) => {
-                resolve(record);
-            }).catch((error) => {
-                reject(error);
-            });
+    createRecord(opt, positionClass) {
+        return new Promise((resolve, reject) => {
+            const args = this.validateContent(opt, positionClass);
+            console.log(args.start);
+            // start the transaction
+            var commit = this.dbClass.db
+                .let('startPos', (tx) => {
+                    // create the start position
+                    return tx.create(positionClass.constructor.createType, positionClass.constructor.clsname)
+                        .set(args.start);
+                }).let('endPos', (tx) => {
+                    // create the end position
+                    return tx.create(positionClass.constructor.createType, positionClass.constructor.clsname)
+                        .set(args.end);
+                }).let('range', (tx) => {
+                    //connect the nodes
+                    let temp = Object.assign(args, {start: '$startPos', end: '$endPos'});
+                    console.log(temp);
+                    return tx.create(this.constructor.createType, this.constructor.clsname).set(temp);
+                }).commit();
+            console.log("Statement: " + commit.buildStatement());
+            commit.return('$range').one()
+                .then((rid) => {
+                    return this.dbClass.db.record.get(rid);
+                }).then((record) => {
+                    resolve(record);
+                }).catch((error) => {
+                    reject(error);
+                });
         });
     }
 
@@ -105,10 +99,10 @@ class Range extends Base {
  * @extends Base
  */
 class GenomicPosition extends Base {
-    
+
     static createClass(db) {
         const props = [
-            {name: "pos", type: "integer", mandatory: true, notNull: true}
+            {name: "pos", type: "integer", mandatory: true, notNull: true, min: 1}
         ];
         return new Promise((resolve, reject) => {
             super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
@@ -131,7 +125,7 @@ class ExonicPosition extends Base {
 
     static createClass(db) {
         const props = [
-            {name: "pos", type: "integer", mandatory: true, notNull: true}
+            {name: "pos", type: "integer", mandatory: true, notNull: true, min: 1}
         ];
         return new Promise((resolve, reject) => {
             super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
@@ -152,22 +146,15 @@ class ExonicPosition extends Base {
  * @extends Base
  */
 class CodingSequencePosition extends Base {
-    
-    createRecord(opt={}) {
-        return new Promise((resolve, reject) => {
-            opt = Object.assign({offset: 0}, opt);
-            super.createRecord(opt)
-                .then((result) => {
-                    resolve(result);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+
+    validateContent(content) {
+        const args = Object.assign({offset: 0}, content);
+        return super.validateContent(args);
     }
 
     static createClass(db) {
         const props = [
-            {name: "pos", type: "integer", mandatory: true, notNull: true},
+            {name: "pos", type: "integer", mandatory: true, notNull: true,  min: 1},
             {name: "offset", type: "integer", mandatory: true, notNull: true}
         ];
         return new Promise((resolve, reject) => {
@@ -189,28 +176,21 @@ class CodingSequencePosition extends Base {
  * @extends Base
  */
 class ProteinPosition extends Base {
-    
-    createRecord(opt={}) {
-        return new Promise((resolve, reject) => {
-            opt = Object.assign({ref_aa: null}, opt);
-            if (opt.ref_aa != null) {
-                if (opt.ref_aa.length != 1) {
-                    throw new AttributeError(`ref_aa must be a single character: ${opt.ref_aa}`);
-                }
-                opt.ref_aa = opt.ref_aa.toUpperCase();
+
+    validateContent(content) {
+        const args = Object.assign({ref_aa: null}, content);
+        if (args.ref_aa != null) {
+            if (args.ref_aa.length != 1) {
+                throw new AttributeError(`ref_aa must be a single character: ${args.ref_aa}`);
             }
-            super.createRecord(opt)
-                .then((result) => {
-                    resolve(result);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+            args.ref_aa = args.ref_aa.toUpperCase();
+        }
+        return super.validateContent(args);
     }
 
     static createClass(db) {
         const props = [
-            {name: "pos", type: "integer", mandatory: true, notNull: true},
+            {name: "pos", type: "integer", mandatory: true, notNull: true,  min: 1},
             {name: "ref_aa", type: "string", mandatory: true, notNull: false}
         ];
         return new Promise((resolve, reject) => {
@@ -232,30 +212,23 @@ class ProteinPosition extends Base {
  * @extends Base
  */
 class CytobandPosition extends Base {
-    
-    createRecord(opt={}) {
-        return new Promise((resolve, reject) => {
-            opt = Object.assign({major_band: null, minor_band: null}, opt); // set defaults
-            if (opt.major_band === null && opt.minor_band !== null) {
-                throw new AttributeError(`major band must be specified in order to specify the minor band`);
-            }
-            if (! ['p', 'q', 'P', 'Q'].includes(opt.arm)) {
-                throw new AttributeError(`invalid value for arm, must be p or q found: ${opt.arm}`);
-            }
-            opt.arm = opt.arm.toLowerCase();
-            super.createRecord(opt)
-                .then((result) => {
-                    resolve(result);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+
+    validateContent(content) {
+        const args = Object.assign({major_band: null, minor_band: null}, content); // set defaults
+        if (args.major_band === null && args.minor_band !== null) {
+            throw new AttributeError(`major band must be specified in order to specify the minor band`);
+        }
+        if (! ['p', 'q', 'P', 'Q'].includes(args.arm)) {
+            throw new AttributeError(`invalid value for arm, must be p or q found: ${args.arm}`);
+        }
+        args.arm = args.arm.toLowerCase();
+        return super.validateContent(args);
     }
 
     static createClass(db) {
         const props = [
             {name: "arm", type: "string", mandatory: true, notNull: true},
-            {name: "major_band", type: "integer", mandatory: true, notNull: false},
+            {name: "major_band", type: "integer", mandatory: true, notNull: false,  min: 1},
             {name: "minor_band", type: "integer", mandatory: true, notNull: false}
         ];
         return new Promise((resolve, reject) => {
