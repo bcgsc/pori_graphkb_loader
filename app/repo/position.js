@@ -58,7 +58,7 @@ class Range extends Base {
                         .set(args.end);
                 }).let('range', (tx) => {
                     //connect the nodes
-                    let temp = Object.assign(args, {start: '$startPos', end: '$endPos'});
+                    let temp = Object.assign(args, {start: '$startPos.@rid.asString()', end: '$endPos.@rid.asString()'});
                     console.log(temp);
                     return tx.create(this.constructor.createType, this.constructor.clsname).set(temp);
                 }).commit();
