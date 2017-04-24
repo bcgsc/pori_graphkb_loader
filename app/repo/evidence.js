@@ -85,7 +85,30 @@ class Study extends Base {
  * @class
  * @extends Base
  */
-class ExternalDB extends Base { /* TODO */ }
 
+/*
+class ExternalDB extends Base {
 
-module.exports = {Publication, Evidence, Study, ExternalDB};
+    static createClass(db) {
+        const prop = [
+                {};
+                {};
+                {};
+                {};
+                {};
+            ];
+
+    const idxs = [{
+                ,
+                ,
+                type: 'unique',
+                metadata: {ignoreNullValues: true},
+            }];
+    super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props})
+        .then( () => {}).catch( () => {} )
+    }
+}
+
+*/
+
+module.exports = {Publication, Evidence, Study} //, ExternalDB};
