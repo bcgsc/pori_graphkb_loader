@@ -1,5 +1,12 @@
 "use strict";
 const {Base, KBVertex} = require('./base');
+const {AttributeError} = require('./error');
+
+/**
+@todo Complete the documentaiton 
+@todo Complete the externalDB class
+@todo versioning ... 
+*/
 
 /**
  * @class
@@ -27,21 +34,43 @@ class Evidence extends Base {
  */
 class Publication extends Base {
 
+    validateContent(content) {
+        const args = Object.assign({idType: "pmid"}, content)
+        if ([content.title, content.id].some(x => x == undefined)) {
+            throw new AttributeError('violated null constraint');
+        }
+        args.title = args.title.toLowerCase();
+        args.idType = args.idType.toLowerCase();
+        args.id = args.id.toLowerCase();
+        return super.validateContent(args)
+    }
+    
     static createClass(db){
         return new Promise((resolve, reject) => {
             const props = [
                 {name: "journal", type: "string"},
                 {name: "year", type: "integer"},
                 {name: "title", type: "string", mandatory: true, notNull: true},
-                {name: "pubmed_id", type: "integer"}
+                {name: "idType", type: "string", mandatory: true, notNull: true},
+                {name: "id", type: "string", mandatory: true, notNull: true},
             ];
             const idxs = [{
-                name: this.clsname + '.index_pubmed',
+                name: this.clsname + '.index_id',
                 type: 'unique',
-                metadata: {ignoreNullValues: true},
-                properties: 'pubmed_id',
+                metadata: {ignoreNullValues: false},
+                properties: ['idType', 'id'],
                 'class':  this.clsname
-            }];
+            }, 
+            /*
+            {
+                name: this.clsname + '.index_vesrion',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['version', 'id'],
+                'class':  this.clsname
+            }
+            */
+            ];
             super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
@@ -85,30 +114,21 @@ class Study extends Base {
  * @class
  * @extends Base
  */
-
-/*
+ /*
 class ExternalDB extends Base {
 
     static createClass(db) {
         const prop = [
-                {};
-                {};
+                {name: "name", type: "string"};
+                {name: "url", type: "string"};
                 {};
                 {};
                 {};
             ];
-
-    const idxs = [{
-                ,
-                ,
-                type: 'unique',
-                metadata: {ignoreNullValues: true},
-            }];
     super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props})
         .then( () => {}).catch( () => {} )
     }
 }
-
 */
 
 module.exports = {Publication, Evidence, Study} //, ExternalDB};
