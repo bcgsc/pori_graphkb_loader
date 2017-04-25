@@ -37,6 +37,7 @@ describe('Evidence schema tests:', () => {
         return Evidence.createClass(db)
             .then((result) => {
                 expect(result).to.be.an.instanceof(Evidence);
+                expect(result.propertyNames).to.include('uuid', 'version', 'created_at', 'deleted_at')
                 expect(result).to.have.property('dbClass');
                 expect(result.isAbstract).to.be.true;
                 expect(result.dbClass.superClass).to.equal('kbvertex');
@@ -69,7 +70,7 @@ describe('Evidence schema tests:', () => {
                 .then((result) => {
                     expect(result).to.be.an.instanceof(Publication);
                     expect(result).to.have.property('dbClass');
-                    expect(result.propertyNames).to.include('pubmed_id', 'title', 'journal', 'year');
+                    expect(result.propertyNames).to.include('idType', 'id', 'title', 'journal', 'year','version','created_at','deleted_at');
                     expect(result.isAbstract).to.be.false;
                 });
         });
@@ -82,6 +83,7 @@ describe('Evidence schema tests:', () => {
                     expect(result.isAbstract).to.be.false;
                 });
         });
+
         it.skip('create the ExternalDB class', () => {
             // TODO
             return ExternalDB.createClass(db)
@@ -104,38 +106,84 @@ describe('Evidence schema tests:', () => {
                     });
             });
 
-            it('title only', () => {
-                return pub.createRecord({title: 'title'})
+            it('test mandatory props', () => {
+                return pub.createRecord({title: 'tiTLe', idType: 'PMcID', id: 'PMC1'})
                     .then((result) => {
                         expect(result).to.have.property('uuid');
                         expect(result).to.have.property('title');
+                        expect(result).to.have.property('idType');
+                        expect(result).to.have.property('id');
+                        expect(result).to.have.property('version');
+                        expect(result).to.have.property('created_at');
+                        expect(result).to.have.property('deleted_at');
                         expect(result.title).to.equal('title');
+                        expect(result.idType).to.equal('pmcid');
+                        expect(result.id).to.equal('pmc1');
                         // should not have
                         expect(result).to.not.have.property('journal');
                         expect(result).to.not.have.property('year');
                     });
             });
-            it('null title error', () => {
-                return pub.createRecord({title: null})
+            it('null for mandatory porps error', () => {
+                return pub.createRecord({title: 'title'})
                     .then((result) => {
                         expect.fail('violated null constraint should have thrown error');
                     }).catch((error) => {
-                        return oError.expectNullConstraintError(error);
+                        expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('pubmed duplicate error', () => {
+            it('one idType duplicate IDs error', () => {
                 // TODO: account for versioning in index
-                return pub.createRecord({title: 'title', pubmed_id: 1})
+                return pub.createRecord({title: 'title', idType: 'PMcID', id: 'pmc1'})
                     .then((result) => {
-                        return pub.createRecord({title: 'title2', pubmed_id: 1});
+                        return pub.createRecord({title: 'title2', idType: 'PMcid', id: 'PMC1'});
                     }).then((result) => {
                         expect.fail('violated constraint should have thrown error');
                     }).catch((error) => {
                         return oError.expectDuplicateKeyError(error);
                     });
             });
+            it('duplicate title and idType', () => {
+                return pub.createRecord({title: 'title', idType: 'pmid', id: '13456'})
+                    .then((result) => {
+                        return pub.createRecord({title: 'title', idType: 'PMID', id: '65412'});
+                    }).then((result) => {
+                        expect(result).to.have.property('title');
+                        expect(result.idType).to.equal('pmid');                        
+                    }).catch((error) => {
+                        return oError.expectDuplicateKeyError(error);
+                    });
+            });
+            it('identical entries', () => {
+                return pub.createRecord({title: 'title', id: '12456'})
+                    .then((result) => {
+                        return pub.createRecord({title: 'title', idType: 'PMID', id: '12456'});
+                    }).then((result) => {
+                        expect.fail('expected error');                        
+                    }).catch((error) => {
+                        return oError.expectDuplicateKeyError(error);
+                    });
+            });
+            it('idType default pmid', () => {
+                return pub.createRecord({title: 'title', id:'654'})
+                    .then((result) => {
+                        expect(result.idType).to.equal('pmid');
+                        expect(result.id).to.equal('654');
+                    }, (error) => {
+                        oError.expectNullConstraintError(error);
+                    });
+            });
+            it('duplicate titles`', () => {
+                return pub.createRecord({title: 'title', id:'654'})
+                    .then((result) => {
+                        expect(result.idType).to.equal('pmid');
+                        expect(result.id).to.equal('654');
+                    }, (error) => {
+                        oError.expectNullConstraintError(error);
+                    });
+            });
             it('invalid attribute', () => {
-                return pub.createRecord({title: 'title', pubmed_id: 1, invalid_attribute: 2})
+                return pub.createRecord({title: 'title', idType: 'pmid', invalid_attribute: 2})
                     .then((result) => {
                         expect.fail('invalid attribute. should have thrown error');
                     }).catch((error) => {
