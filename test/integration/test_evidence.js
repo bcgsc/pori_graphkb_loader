@@ -6,7 +6,8 @@ const _ = require('lodash');
 const {DependencyError, AttributeError} = require('./../../app/repo/error');
 const {Base, History, KBVertex, KBEdge} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
-const {Evidence, Study, Publication, ExternalDB} = require('./../../app/repo/evidence');
+const {Evidence, Study, Publication, ExternalSource} = require('./../../app/repo/evidence');
+const moment = require('moment');
 
 
 
@@ -84,9 +85,8 @@ describe('Evidence schema tests:', () => {
                 });
         });
 
-        it.skip('create the ExternalDB class', () => {
-            // TODO
-            return ExternalDB.createClass(db)
+        it.skip('create the ExternalSource class', () => {
+            return ExternalSource.createClass(db)
                 .then((result) => {
                     expect(result).to.be.an.instanceof(ExternalDB);
                     expect(result).to.have.property('dbClass');
@@ -191,8 +191,62 @@ describe('Evidence schema tests:', () => {
                     });
             });
         });
-        // TODO: tests for study constraints
-        // TODO: tests for externalDB constraints
+
+        describe('study constraints', () => {
+            let currClass = null;
+            beforeEach(function(done) {
+                Study.createClass(db)
+                    .then((studyClass) => {
+                        currClass = studyClass;
+                        done();
+                    }).catch((error) => {
+                        done(error);
+                    });
+            });
+            it('test mandatory props', () => {
+                return currClass.createRecord({title: 'POG', url: 'http://donate.bccancerfoundation.com/site/PageNavigator/POG2017.html?s_src=PPC&gclid=CPKLvZDowNMCFYNGXgodQp8GeQ'})
+                    .then((record) => {
+                        expect(record).to.have.property('uuid');
+                        expect(record).to.have.property('version');
+                        expect(record).to.have.property('created_at');
+                        expect(record).to.have.property('deleted_at');
+                        expect(record).to.have.property('title');
+                        expect(record).to.have.property('url');
+                        // should not have
+                        expect(record).not.to.have.property('year');
+                        expect(record).not.to.have.property('sample_population');
+                        expect(record).not.to.have.property('sample_population_size');
+                        expect(record).not.to.have.property('method');
+                    });
+            });
+        });
+
+        describe('external sources constraints', () => {
+            let currClass = null;
+            beforeEach(function(done) {
+                ExternalSource.createClass(db)
+                    .then((esClass) => {
+                        currClass = esClass;
+                        done();
+                    }).catch((error) => {
+                        done(error);
+                    });
+            });
+            it('test mandatory props', () => {
+                return currClass.createRecord({url: 'https://www.intogen.org/search?gene=MAP3K11', extractionDate: moment().unix() })
+                    .then((record) => {
+                        expect(record).to.have.property('uuid');
+                        expect(record).to.have.property('version');
+                        expect(record).to.have.property('created_at');
+                        expect(record).to.have.property('deleted_at');
+                        expect(record).to.have.property('url');
+                        expect(record).to.have.property('extractionDate');
+                        // should not have
+                        expect(record).to.not.have.property('title');
+                    });
+            });
+        });
+
     });
 
     afterEach((done) => {
