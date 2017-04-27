@@ -364,11 +364,14 @@ describe('Position schema tests:', () => {
                     });
             });
 
-            it('two positions', () => {
+            it('create range', () => {
                 return currClass.createRecord({start: {pos: 1}, end: {pos: 1}}, cdsClass)
                     .then((record) => {
-                        expect(record.start).to.equal(cds1);
-                        expect(record.end).to.equal(cds2);
+                        expect(record.start).to.have.property('uuid');
+                        expect(record.end).to.have.property('uuid');
+                        expect(record.start.uuid).to.not.equal(record.end.uuid);
+                        expect(record.start).to.have.property('pos', 1);
+                        expect(record.end).to.have.property('pos', 1);
                     });
             });
             it('same uuid for start/end error', () => {

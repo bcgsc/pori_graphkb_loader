@@ -35,7 +35,6 @@ class Range extends Base {
         }
         content.start = positionClass.validateContent(content.start);
         content.end = positionClass.validateContent(content.end);
-        console.log(content);
         if (content.start.uuid == content.end.uuid) {
             throw new AttributeError(`range start and end cannot point to the same node: ${content.start.uuid}`);
         }
@@ -45,7 +44,6 @@ class Range extends Base {
     createRecord(opt, positionClass) {
         return new Promise((resolve, reject) => {
             const args = this.validateContent(opt, positionClass);
-            console.log(args.start);
             // start the transaction
             var commit = this.dbClass.db
                 .let('startPos', (tx) => {
@@ -54,20 +52,29 @@ class Range extends Base {
                         .set(args.start);
                 }).let('endPos', (tx) => {
                     // create the end position
+                    // return tx.insert().into(positionClass.constructor.clsname).set(args.end).return("@rid.convert(\'string\')");
                     return tx.create(positionClass.constructor.createType, positionClass.constructor.clsname)
                         .set(args.end);
                 }).let('range', (tx) => {
                     //connect the nodes
-                    let temp = Object.assign(args, {start: '$startPos.@rid.asString()', end: '$endPos.@rid.asString()'});
-                    console.log(temp);
-                    return tx.create(this.constructor.createType, this.constructor.clsname).set(temp);
+                    const sub = Object.assign({}, args);
+                    delete sub.end;
+                    delete sub.start;
+                    return tx.create(this.constructor.createType, this.constructor.clsname).set(sub).set("start = $startPos, end = $endPos");
                 }).commit();
-            console.log("Statement: " + commit.buildStatement());
-            commit.return('$range').one()
-                .then((rid) => {
-                    return this.dbClass.db.record.get(rid);
-                }).then((record) => {
-                    resolve(record);
+            //console.log("Statement: " + commit.buildStatement());
+            commit.return("$range").one()
+                .then((record) => {
+                    Promise.all([
+                        this.dbClass.db.record.get(record.start),
+                        this.dbClass.db.record.get(record.end)
+                    ]).then((positions) => {
+                        record.start = positions[0];
+                        record.end = positions[1];
+                        resolve(record);
+                    }).catch((error) => {
+                        reject(error);
+                    });
                 }).catch((error) => {
                     reject(error);
                 });
