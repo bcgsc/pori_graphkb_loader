@@ -6,7 +6,7 @@ const _ = require('lodash');
 const {DependencyError, AttributeError} = require('./../../app/repo/error');
 const {Base, History, KBVertex, KBEdge} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
-const {Evidence, Study, Publication, ExternalSource} = require('./../../app/repo/evidence');
+const {Evidence, Publication, Journal, Study, ClinicalTrial, ExternalSource} = require('./../../app/repo/evidence');
 const moment = require('moment');
 
 
@@ -71,27 +71,62 @@ describe('Evidence schema tests:', () => {
                 .then((result) => {
                     expect(result).to.be.an.instanceof(Publication);
                     expect(result).to.have.property('dbClass');
-                    expect(result.propertyNames).to.include('idType', 'id', 'title', 'journal', 'year','version','created_at','deleted_at');
+                    expect(result.propertyNames).to.include('year', 'title', 'doi', 'pmid','version','created_at','deleted_at');
                     expect(result.isAbstract).to.be.false;
                 });
         });
 
-        it('create the study class', () => {
+        it('create journal class', () => {
+            return Journal.createClass(db)
+                .then((result) => {
+                    expect(result).to.be.an.instanceof(Journal);
+                    expect(result).to.have.property('dbClass');
+                    expect(result.propertyNames).to.include('name','version','created_at','deleted_at');
+                    expect(result.isAbstract).to.be.false;
+                });
+        });
+
+        it('create ExternalSource class', () => {
+            return ExternalSource.createClass(db)
+                .then((result) => {
+                    expect(result).to.be.an.instanceof(ExternalSource);
+                    expect(result).to.have.property('dbClass');
+                    expect(result.propertyNames).to.include('title', 'extractionDate', 'url','version','created_at','deleted_at');
+                    expect(result.isAbstract).to.be.false;
+                });
+        });
+
+                it('create study class', () => {
             return Study.createClass(db)
                 .then((result) => {
                     expect(result).to.be.an.instanceof(Study);
                     expect(result).to.have.property('dbClass');
+                    expect(result.propertyNames).to.include('title', 'year', 'sample_population', 'sample_population_size', 'method', 'url','version','created_at','deleted_at');
                     expect(result.isAbstract).to.be.false;
                 });
         });
 
-        it.skip('create the ExternalSource class', () => {
-            return ExternalSource.createClass(db)
+        describe('study subclasses', () => {
+            beforeEach(function(done) {
+                Study.createClass(db)
+                    .then(() => {
+                        done();
+                    }).catch((error) => {
+                        done(error);
+                    });
+            });
+
+            it('create clinicalTrial class', () => {
+            return ClinicalTrial.createClass(db)
                 .then((result) => {
-                    expect(result).to.be.an.instanceof(ExternalDB);
+                    expect(result).to.be.an.instanceof(ClinicalTrial);
                     expect(result).to.have.property('dbClass');
+                    expect(result.propertyNames).to.include('sample_population','phase', 'trialID', 'officialTitle', 'summary','version','created_at','deleted_at');
                     expect(result.isAbstract).to.be.false;
+                    expect(result.dbClass.superClass).to.equal('study')
                 });
+            });
+
         });
 
         describe('publication constraints', () => {
@@ -173,15 +208,6 @@ describe('Evidence schema tests:', () => {
                         oError.expectNullConstraintError(error);
                     });
             });
-            it('duplicate titles`', () => {
-                return pub.createRecord({title: 'title', id:'654'})
-                    .then((result) => {
-                        expect(result.idType).to.equal('pmid');
-                        expect(result.id).to.equal('654');
-                    }, (error) => {
-                        oError.expectNullConstraintError(error);
-                    });
-            });
             it('invalid attribute', () => {
                 return pub.createRecord({title: 'title', idType: 'pmid', invalid_attribute: 2})
                     .then((result) => {
@@ -204,19 +230,47 @@ describe('Evidence schema tests:', () => {
                     });
             });
             it('test mandatory props', () => {
-                return currClass.createRecord({title: 'POG', url: 'http://donate.bccancerfoundation.com/site/PageNavigator/POG2017.html?s_src=PPC&gclid=CPKLvZDowNMCFYNGXgodQp8GeQ'})
+                return currClass.createRecord({protocol: "NCT02657434"})
                     .then((record) => {
                         expect(record).to.have.property('uuid');
                         expect(record).to.have.property('version');
                         expect(record).to.have.property('created_at');
                         expect(record).to.have.property('deleted_at');
-                        expect(record).to.have.property('title');
-                        expect(record).to.have.property('url');
+                        expect(record).to.have.property('protocol');
                         // should not have
+                        expect(record).not.to.have.property('title');
+                        expect(record).not.to.have.property('url');
+                        expect(record).not.to.have.property('status');
                         expect(record).not.to.have.property('year');
                         expect(record).not.to.have.property('sample_population');
                         expect(record).not.to.have.property('sample_population_size');
                         expect(record).not.to.have.property('method');
+                    });
+            });
+            it('null for mandatory porps error', () => {
+                return currClass.createRecord({title: 'title'})
+                    .then((result) => {
+                        expect.fail('violated null constraint. expected error');
+                    }).catch((error) => {
+                        expect(error).to.be.instanceof(AttributeError);
+                    });
+            });
+            it('duplicate protocol', () => {
+                return currClass.createRecord({protocol: "NCT02657434"})
+                    .then((result) => {
+                        return currClass.createRecord({protocol: "nct02657434"});
+                    }).then((result) => {
+                        expect.fail('expected error');                        
+                    }).catch((error) => {
+                        return oError.expectDuplicateKeyError(error);
+                    });
+            });
+            it('invalid attribute', () => {
+                return currClass.createRecord({protocol: "NCT02657434", invalid_attribute: 2})
+                    .then((record) => {
+                        expect.fail('invalid attribute. error is expected');
+                    }).catch((error) => {
+                        expect(error).to.be.an.instanceof(AttributeError);
                     });
             });
         });
@@ -233,7 +287,7 @@ describe('Evidence schema tests:', () => {
                     });
             });
             it('test mandatory props', () => {
-                return currClass.createRecord({url: 'https://www.intogen.org/search?gene=MAP3K11', extractionDate: moment().unix() })
+                return currClass.createRecord({url: 'https://www.intogen.org/', extractionDate: moment().unix() })
                     .then((record) => {
                         expect(record).to.have.property('uuid');
                         expect(record).to.have.property('version');
@@ -243,6 +297,14 @@ describe('Evidence schema tests:', () => {
                         expect(record).to.have.property('extractionDate');
                         // should not have
                         expect(record).to.not.have.property('title');
+                    });
+            });
+            it('invalid attribute', () => {
+                return currClass.createRecord({url: 'https://www.intogen.org', extractionDate: moment().unix(), invalid_attribute: 2})
+                    .then((record) => {
+                        expect.fail('invalid attribute. error is expected');
+                    }).catch((error) => {
+                        expect(error).to.be.an.instanceof(AttributeError);
                     });
             });
         });
