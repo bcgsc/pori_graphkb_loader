@@ -3,12 +3,6 @@ const {Base, KBVertex} = require('./base');
 const {AttributeError} = require('./error');
 
 /**
-@todo Complete the documentaiton 
-@todo Complete the externalDB class
-@todo versioning ... 
-*/
-
-/**
  * @class
  * @extends Base
  */
@@ -35,43 +29,34 @@ class Evidence extends Base {
 class Publication extends Base {
 
     validateContent(content) {
-        const args = Object.assign({idType: "pmid"}, content);
-        if ([content.title, content.id].some(x => x == undefined)) {
-            throw new AttributeError('violated constraint');
+        if ([content.title, content.journal, content.year].some(x => x == undefined)) {
+            throw new AttributeError('violated null constraint');
         }
         args.title = args.title.toLowerCase();
-        args.idType = args.idType.toLowerCase();
-        args.id = args.id.toLowerCase();
+        if (! content.doi == undefined || content.pmid == undefined ) {
+            content.doi = content.doi.toLowerCase();
+            content.pmid = content.pmid.toLowerCase();
+        }
+        
         return super.validateContent(args);
     }
-    
+
     static createClass(db){
         return new Promise((resolve, reject) => {
             const props = [
-                {name: "journal", type: "string"},
-                {name: "year", type: "integer"},
+                {name: "journal", type: "link", mandatory: true, notNull: true, linkedClass: Evidence.clsname},
+                {name: "year", type: "integer", mandatory: true, notNull: true},
                 {name: "title", type: "string", mandatory: true, notNull: true},
-                {name: "idType", type: "string", mandatory: true, notNull: true},
-                {name: "id", type: "string", mandatory: true, notNull: true},
+                {name: "doi", type: "string", mandatory: false},
+                {name: "pmid", type: "integer", mandatory: false},
             ];
             const idxs = [{
-                name: this.clsname + '.index_id',
+                name: this.clsname + '.index_jyt',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['idType', 'id'],
+                properties: ['journal', 'year', 'title'],
                 'class':  this.clsname
-            }, 
-            // TODO
-            /*
-            {
-                name: this.clsname + '.index_vesrion',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: ['version', 'id'],
-                'class':  this.clsname
-            }
-            */
-            ];
+            }];
             super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
@@ -84,36 +69,25 @@ class Publication extends Base {
     }
 };
 
+
 /**
  * @class
  * @extends Base
  */
-class Study extends Base {
+class Journal extends Base {
 
     validateContent(content) {
-        if ( content.url == undefined || content.title == undefined ) {
-            throw new AttributeError('violated constraint');
+        if (content.name == undefined) {
+            throw new AttributeError('violated null constraint');
         }
-        content.title = content.title.toLowerCase();
-        content.url = content.url.toLowerCase();
-        return super.validateContent(content);
+        cotent.name = content.name.toLowerCase();
+        return super.validateContent(cotent);
     }
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
-                {name: "year", type: "integer"},
-                {name: "title", type: "string", mandatory: true, notNull: true},
-                {name: "sample_population", type: "string"}, //, mandatory: true, notNull: true}, // Question: why is this string? 
-                {name: "sample_population_size"}, //, type: "integer", mandatory: true},
-                {name: "method", type: "string"}, //, mandatory: true},
-                {name: "url", type: "string", mandatory: true, notNull: true}
-                // TODO: should we add the following information:
-                //      Status (e.g. Completed, Recruiting,  Enrolling by invitation, Active, etc.)
-                //      Location (i.e. Alberta or Canada)
-                //      Sponsor (aka associated institution)
-                //      Identifier/Protocol (e.g. ClinicalTrials.gov ID)
-                //      Phase
+                {name: "name", type: "string", mandatory: true, notNull: true},
             ];
             super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props})
                 .then(() => {
@@ -126,6 +100,94 @@ class Study extends Base {
         });
     }
 }
+
+
+/**
+ * @class
+ * @extends Base
+ */
+class Study extends Base {
+
+    validateContent(content) {
+        if ([content.title, content.year].some(x => x == undefined)) {
+            throw new AttributeError('violated null constraint');
+        }
+        // TODO: Validate year
+        content.title = content.title.toLowerCase();
+        return super.validateContent(content);
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: "title", type: "string", mandatory: true, notNull: true},
+                {name: "year", type: "integer", mandatory: true, notNull: true},
+                {name: "sample_population", type: "string"},
+                {name: "sample_population_size", type: "integer"},
+                {name: "method", type: "string"},
+                {name: "url", type: "string"}
+            ];
+            const idxs = [{
+                name: this.clsname + '.index_ty',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['title', 'year'],
+                'class':  this.clsname
+            }];
+            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, indices: idxs})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+ 
+
+/**
+ * @class
+ * @extends Base
+ */
+class ClinicalTrial extends Base {
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+
+                {name: "phase", type: "integer"},
+                {name: "trialID", type: "string"},
+                {name: "officialTitle", type: "string"},
+                {name: "summary", type: "string"}
+            ];
+            const idxs = [{
+                name: this.clsname + '.index_trialID',
+                type: 'unique',
+                metadata: {ignoreNullValues: true},
+                properties: ['trialID'],
+                'class':  this.clsname
+            },
+            {
+                name: this.clsname + '.index_officialTitle',
+                type: 'unique',
+                metadata: {ignoreNullValues: true},
+                properties: ['officialTitle'],
+                'class':  this.clsname
+            }];
+            super.createClass({db, clsname: this.clsname, superClasses: Study.clsname, properties: props, indices: idxs})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
 
 /**
  * @class
@@ -138,7 +200,7 @@ class ExternalSource extends Base {
             const props = [
                 {name: "title", type: "string"},
                 {name: "url", type: "string", mandatory: true, notNull: true},
-                {name: "extractionDate", type: 'long', mandatory: true, notNull: true},
+                {name: "extractionDate", type: 'long', mandatory: true, notNull: true}
             ];
             super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props})
                 .then(() => {
@@ -152,4 +214,4 @@ class ExternalSource extends Base {
     }
 }
 
-module.exports = {Publication, Evidence, Study, ExternalSource};
+module.exports = {Evidence, Publication, Journal, Study, ClinicalTrial, ExternalSource};
