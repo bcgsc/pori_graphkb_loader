@@ -8,7 +8,8 @@
     "lodash": "^4.17.4",
     "moment": "^2.18.1",
     "orientjs": "^2.2.3",
-    "uuid": "^3.0.1"
+    "uuid": "^3.0.1",
+    "year": "^0.2.1"
   },
   "devDependencies": {
     "chai": "^3.5.0",
