@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 const {AttributeError} = require('./error');
 const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
@@ -7,7 +7,7 @@ const moment = require('moment');
 
 const errorJSON = function(error) {
     return {type: error.type, message: error.message};
-}
+};
 
 /**
  * @returns {Promise} if resolved, returns {orientjs.Property[]} array of properties from the current class and inherited classes
@@ -29,7 +29,7 @@ const getAllProperties = (cls) => {
             resolve(properties);
         }
     });
-}
+};
 
 const softGetRID = (record) => {
     if (record['@rid'] !== undefined) {
@@ -37,7 +37,7 @@ const softGetRID = (record) => {
     } else {
         return record;
     }
-}
+};
 
 /**
  * @class
@@ -271,7 +271,7 @@ class Base {
                         });
                 }).catch((error) => {
                     reject(error);
-                })
+                });
         });
     }
     /**
@@ -431,4 +431,4 @@ class History extends Base {
     }
 }
 
-module.exports = {Base, History, KBVertex, KBEdge, softGetRID};
+module.exports = {Base, History, KBVertex, KBEdge, softGetRID, errorJSON};

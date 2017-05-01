@@ -1,5 +1,5 @@
-"use strict";
-const {Base, KBVertex, softGetRID} = require('./base');
+'use strict';
+const {Base, KBVertex} = require('./base');
 const {AttributeError} = require('./error');
 
 
@@ -60,10 +60,10 @@ class Range extends Base {
                     const sub = Object.assign({}, args);
                     delete sub.end;
                     delete sub.start;
-                    return tx.create(this.constructor.createType, this.constructor.clsname).set(sub).set("start = $startPos, end = $endPos");
+                    return tx.create(this.constructor.createType, this.constructor.clsname).set(sub).set('start = $startPos, end = $endPos');
                 }).commit();
             //console.log("Statement: " + commit.buildStatement());
-            commit.return("$range").one()
+            commit.return('$range').one()
                 .then((record) => {
                     Promise.all([
                         this.dbClass.db.record.get(record.start),
@@ -83,8 +83,8 @@ class Range extends Base {
 
     static createClass(db) {
         const props = [
-            {name: "start", type: "link", mandatory: true, notNull: true, linkedClass: Position.clsname},
-            {name: "end", type: "link", mandatory: true, notNull: true, linkedClass: Position.clsname}
+            {name: 'start', type: 'link', mandatory: true, notNull: true, linkedClass: Position.clsname},
+            {name: 'end', type: 'link', mandatory: true, notNull: true, linkedClass: Position.clsname}
         ];
         return new Promise((resolve, reject) => {
             super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, isAbstract: false, properties: props})
@@ -109,7 +109,7 @@ class GenomicPosition extends Base {
 
     static createClass(db) {
         const props = [
-            {name: "pos", type: "integer", mandatory: true, notNull: true, min: 1}
+            {name: 'pos', type: 'integer', mandatory: true, notNull: true, min: 1}
         ];
         return new Promise((resolve, reject) => {
             super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
@@ -132,7 +132,7 @@ class ExonicPosition extends Base {
 
     static createClass(db) {
         const props = [
-            {name: "pos", type: "integer", mandatory: true, notNull: true, min: 1}
+            {name: 'pos', type: 'integer', mandatory: true, notNull: true, min: 1}
         ];
         return new Promise((resolve, reject) => {
             super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
@@ -161,8 +161,8 @@ class CodingSequencePosition extends Base {
 
     static createClass(db) {
         const props = [
-            {name: "pos", type: "integer", mandatory: true, notNull: true,  min: 1},
-            {name: "offset", type: "integer", mandatory: true, notNull: true}
+            {name: 'pos', type: 'integer', mandatory: true, notNull: true,  min: 1},
+            {name: 'offset', type: 'integer', mandatory: true, notNull: true}
         ];
         return new Promise((resolve, reject) => {
             super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
@@ -197,8 +197,8 @@ class ProteinPosition extends Base {
 
     static createClass(db) {
         const props = [
-            {name: "pos", type: "integer", mandatory: true, notNull: true,  min: 1},
-            {name: "ref_aa", type: "string", mandatory: true, notNull: false}
+            {name: 'pos', type: 'integer', mandatory: true, notNull: true,  min: 1},
+            {name: 'ref_aa', type: 'string', mandatory: true, notNull: false}
         ];
         return new Promise((resolve, reject) => {
             super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
@@ -223,7 +223,7 @@ class CytobandPosition extends Base {
     validateContent(content) {
         const args = Object.assign({major_band: null, minor_band: null}, content); // set defaults
         if (args.major_band === null && args.minor_band !== null) {
-            throw new AttributeError(`major band must be specified in order to specify the minor band`);
+            throw new AttributeError('major band must be specified in order to specify the minor band');
         }
         if (! ['p', 'q', 'P', 'Q'].includes(args.arm)) {
             throw new AttributeError(`invalid value for arm, must be p or q found: ${args.arm}`);
@@ -234,9 +234,9 @@ class CytobandPosition extends Base {
 
     static createClass(db) {
         const props = [
-            {name: "arm", type: "string", mandatory: true, notNull: true},
-            {name: "major_band", type: "integer", mandatory: true, notNull: false,  min: 1},
-            {name: "minor_band", type: "integer", mandatory: true, notNull: false}
+            {name: 'arm', type: 'string', mandatory: true, notNull: true},
+            {name: 'major_band', type: 'integer', mandatory: true, notNull: false,  min: 1},
+            {name: 'minor_band', type: 'integer', mandatory: true, notNull: false}
         ];
         return new Promise((resolve, reject) => {
             super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
@@ -253,4 +253,4 @@ class CytobandPosition extends Base {
 }
 
 
-module.exports = {Position, Range, ProteinPosition, GenomicPosition, ExonicPosition, CodingSequencePosition, ProteinPosition, CytobandPosition};
+module.exports = {Position, Range, ProteinPosition, GenomicPosition, ExonicPosition, CodingSequencePosition, CytobandPosition};

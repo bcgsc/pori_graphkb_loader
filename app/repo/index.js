@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 /*
  * Repository-layer. Responsible for operations which access the database
  */
@@ -27,7 +27,7 @@ const loadSchema = (db) => {
                 reject(error);
             });
     });
-}
+};
 
 /**
  * builds the schema from the models. Assumes an empty db
@@ -66,7 +66,7 @@ const createSchema = (db) => {
                 reject(error);
             });
     });
-}
+};
 
 
 module.exports = {
