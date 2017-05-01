@@ -1,10 +1,9 @@
-"use strict";
+'use strict';
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {serverConnect} = require('./../../app/repo');
-const _ = require('lodash');
-const {DependencyError, AttributeError} = require('./../../app/repo/error');
-const {History, KBVertex, KBEdge, softGetRID} = require('./../../app/repo/base');
+const {AttributeError} = require('./../../app/repo/error');
+const {History, KBVertex, KBEdge} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 
 
@@ -67,7 +66,7 @@ describe('Position schema tests:', () => {
                     expect.fail('expected error');
                 }, (error) => {
                     oError.expectAbstractClassError(error);
-                })
+                });
         });
         it('create genomic subclass', () => {
             return GenomicPosition.createClass(db)
@@ -334,14 +333,13 @@ describe('Position schema tests:', () => {
         });
 
         describe('range', () => {
-            let currClass, cdsClass, genClass;
+            let currClass, cdsClass;
             beforeEach(function(done) {
                 Promise.all([
                     Range.createClass(db),
-                    CodingSequencePosition.createClass(db),
-                    GenomicPosition.createClass(db)
+                    CodingSequencePosition.createClass(db)
                 ]).then((plist) => {
-                    [currClass, cdsClass, genClass] = plist;
+                    [currClass, cdsClass] = plist;
                     done();
                 }).catch((error) => {
                     done(error);
@@ -376,7 +374,7 @@ describe('Position schema tests:', () => {
             });
             it('same uuid for start/end error', () => {
                 return currClass.createRecord({start: {pos: 1, uuid: '1'}, end: {pos: 1, uuid: '1'}}, cdsClass)
-                    .then((record) => {
+                    .then(() => {
                         expect.fail('expected an error');
                     }, (error) => {
                         expect(error).to.be.instanceof(AttributeError);
@@ -397,5 +395,5 @@ describe('Position schema tests:', () => {
             }).catch((error) => {
                 done(error);
             });
-    })
+    });
 });

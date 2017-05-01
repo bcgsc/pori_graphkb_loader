@@ -1,7 +1,8 @@
 {
     "env": {
         "es6": true,
-        "node": true
+        "node": true,
+        "mocha": true
     },
     "extends": "eslint:recommended",
     "parserOptions": {
@@ -29,6 +30,7 @@
         "array-bracket-spacing": ["error", "never"],
         "computed-property-spacing": ["error", "never"],
         "no-whitespace-before-property": "error",
-        "space-in-parens": ["error", "never"]
+        "space-in-parens": ["error", "never"],
+        "no-mixed-spaces-and-tabs": "error"
     }
 }
