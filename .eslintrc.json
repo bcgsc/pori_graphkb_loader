@@ -24,6 +24,11 @@
             "error",
             "always"
         ],
-        "no-console": 0
+        "no-console": 0,
+        "object-curly-spacing": ["error", "never"],
+        "array-bracket-spacing": ["error", "never"],
+        "computed-property-spacing": ["error", "never"],
+        "no-whitespace-before-property": "error",
+        "space-in-parens": ["error", "never"]
     }
 }
