@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 const {Base, KBVertex} = require('./base');
 const {AttributeError} = require('./error');
 const currYear = require('year');
@@ -44,7 +44,7 @@ class Publication extends Base {
             throw new AttributeError('publication year cannot be in the future');
         }
 
-        content.journal = journalClass.validateContent(content.journal)
+        content.journal = journalClass.validateContent(content.journal);
         content.title = content.title.toLowerCase();
         if (content.doi != undefined || content.pmid != undefined ) {
             content.doi = content.doi.toLowerCase();
@@ -64,9 +64,9 @@ class Publication extends Base {
                     //connect the nodes
                     const sub = Object.assign({}, args);
                     delete sub.journal;
-                    return trs.create(this.constructor.createType, this.constructor.clsname).set(sub).set("journal = $journalName");
+                    return trs.create(this.constructor.createType, this.constructor.clsname).set(sub).set('journal = $journalName');
                 }).commit();
-            commit.return("$link").one().then((record) => {
+            commit.return('$link').one().then((record) => {
                 this.dbClass.db.record.get(record.journal).then((journalName) => {
                     record.journal = journalName;
                     resolve(record);
@@ -82,11 +82,11 @@ class Publication extends Base {
     static createClass(db){
         return new Promise((resolve, reject) => {
             const props = [
-                {name: "journal", type: "link", mandatory: true, notNull: true, linkedClass: Evidence.clsname},
-                {name: "year", type: "integer", mandatory: true, notNull: true},
-                {name: "title", type: "string", mandatory: true, notNull: true},
-                {name: "doi", type: "string", mandatory: false},
-                {name: "pmid", type: "integer", mandatory: false},
+                {name: 'journal', type: 'link', mandatory: true, notNull: true, linkedClass: Evidence.clsname},
+                {name: 'year', type: 'integer', mandatory: true, notNull: true},
+                {name: 'title', type: 'string', mandatory: true, notNull: true},
+                {name: 'doi', type: 'string', mandatory: false},
+                {name: 'pmid', type: 'integer', mandatory: false},
             ];
             const idxs = [{
                 name: this.clsname + '.index_jyt',
@@ -105,7 +105,7 @@ class Publication extends Base {
                 });
         });
     }
-};
+}
 
 
 /**
@@ -125,7 +125,7 @@ class Journal extends Base {
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
-                {name: "name", type: "string", mandatory: true, notNull: true},
+                {name: 'name', type: 'string', mandatory: true, notNull: true},
             ];
             const idxs = [{
                 name: this.clsname + '.index_name',
@@ -168,12 +168,12 @@ class Study extends Base {
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
-                {name: "title", type: "string", mandatory: true, notNull: true},
-                {name: "year", type: "integer", mandatory: true, notNull: true},
-                {name: "sample_population", type: "string"},
-                {name: "sample_population_size", type: "integer"},
-                {name: "method", type: "string"},
-                {name: "url", type: "string"}
+                {name: 'title', type: 'string', mandatory: true, notNull: true},
+                {name: 'year', type: 'integer', mandatory: true, notNull: true},
+                {name: 'sample_population', type: 'string'},
+                {name: 'sample_population_size', type: 'integer'},
+                {name: 'method', type: 'string'},
+                {name: 'url', type: 'string'}
             ];
             const idxs = [{
                 name: this.clsname + '.index_ty',
@@ -202,17 +202,17 @@ class Study extends Base {
 class ClinicalTrial extends Base {
 
     validateContent(content) {
-        return super.validateContent(content)
+        return super.validateContent(content);
     }
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
 
-                {name: "phase", type: "integer"},
-                {name: "trialID", type: "string"},
-                {name: "officialTitle", type: "string"},
-                {name: "summary", type: "string"}
+                {name: 'phase', type: 'integer'},
+                {name: 'trialID', type: 'string'},
+                {name: 'officialTitle', type: 'string'},
+                {name: 'summary', type: 'string'}
             ];
             const idxs = [{
                 name: this.clsname + '.index_trialID',
@@ -251,15 +251,15 @@ class ExternalSource extends Base {
         if (content.url == undefined || content.extractionDate == undefined) {
             throw new AttributeError('violated null constraint');
         }
-        return super.validateContent(content)
+        return super.validateContent(content);
     }
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
-                {name: "title", type: "string"},
-                {name: "url", type: "string", mandatory: true, notNull: true},
-                {name: "extractionDate", type: 'long', mandatory: true, notNull: true}
+                {name: 'title', type: 'string'},
+                {name: 'url', type: 'string', mandatory: true, notNull: true},
+                {name: 'extractionDate', type: 'long', mandatory: true, notNull: true}
             ];
             const idxs = [{
                 name: this.clsname + '.index_urlDate',
