@@ -14,6 +14,7 @@
   "devDependencies": {
     "chai": "^3.5.0",
     "co-mocha": "^1.1.2",
+    "eslint": "^3.19.0",
     "jsctags": "^5.1.1",
     "jsdoc": "^3.4.3",
     "mocha": "^2.5.3",
