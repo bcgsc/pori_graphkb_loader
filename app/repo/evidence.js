@@ -45,7 +45,7 @@ class Publication extends Base {
 
         content.journal = journalClass.validateContent(content.journal);
         content.title = content.title.toLowerCase();
-        if (content.doi != undefined || content.pmid != undefined ) {
+        if (content.doi != undefined || content.pmid != undefined) {
             content.doi = content.doi.toLowerCase();
             content.pmid = content.pmid.toLowerCase();
         }
@@ -159,9 +159,9 @@ class Journal extends Base {
 class Study extends Base {
 
     validateContent(content) {
-        if ( content.title == undefined || content.year == undefined) {
+        if (content.title == undefined || content.year == undefined) {
             throw new AttributeError('violated null constraint');
-        } else if ( content.year > currYear('yyyy') ) {
+        } else if ((content.year < 1000) || (content.year > currYear('yyyy'))) {
             throw new AttributeError('study year cannot be in the future');
         }
 
