@@ -18,4 +18,10 @@ class DependencyError extends ExtendableError {
     }
 }
 
-module.exports = {AttributeError, errorJSON, DependencyError};
+class ParsingError extends ExtendableError {
+    constructor(message) {
+        super(message);
+    }
+}
+
+module.exports = {AttributeError, errorJSON, DependencyError, ParsingError};
