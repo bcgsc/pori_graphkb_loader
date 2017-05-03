@@ -5,8 +5,6 @@ const currYear = require('year');
 
 /**
 *
-* @todo take versioning into account by implementing partial indexes
-* @todo make sure the value of year is provided in yyyy format
 * @todo more properties to be added to journal class
 *
 */
@@ -20,7 +18,7 @@ class Evidence extends Base {
     static createClass(db){
         return new Promise((resolve, reject) => {
             super.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: true})
-                .then((result) => {
+                .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
                     resolve(cls);
@@ -40,13 +38,13 @@ class Publication extends Base {
     validateContent(content, journalClass) {
         if ([content.title, content.journal, content.year].some(x => x == undefined)) {
             throw new AttributeError('violated null constraint');
-        } else if ( content.year > currYear('yyyy') ) {
-            throw new AttributeError('publication year cannot be in the future');
+        } else if ((content.year < 1000) || (content.year > currYear('yyyy'))) {
+            throw new AttributeError('publication year cannot be too old or in the future');
         }
 
         content.journal = journalClass.validateContent(content.journal);
         content.title = content.title.toLowerCase();
-        if (content.doi != undefined || content.pmid != undefined ) {
+        if (content.doi != undefined || content.pmid != undefined) {
             content.doi = content.doi.toLowerCase();
             content.pmid = content.pmid.toLowerCase();
         }
@@ -92,10 +90,10 @@ class Publication extends Base {
                 name: this.clsname + '.index_jyt',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['journal', 'year', 'title'],
+                properties: ['deleted_at', 'journal', 'year', 'title'],
                 'class':  this.clsname
             }];
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -131,10 +129,10 @@ class Journal extends Base {
                 name: this.clsname + '.index_name',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['name'],
+                properties: ['deleted_at', 'name'],
                 'class':  this.clsname
             }];
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -154,9 +152,9 @@ class Journal extends Base {
 class Study extends Base {
 
     validateContent(content) {
-        if ([content.title, content.year].some(x => x == undefined)) {
+        if (content.title == undefined || content.year == undefined) {
             throw new AttributeError('violated null constraint');
-        } else if ( content.year > currYear('yyyy') ) {
+        } else if ((content.year < 1000) || (content.year > currYear('yyyy'))) {
             throw new AttributeError('study year cannot be in the future');
         }
 
@@ -179,10 +177,10 @@ class Study extends Base {
                 name: this.clsname + '.index_ty',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['title', 'year'],
+                properties: ['deleted_at', 'title', 'year'],
                 'class':  this.clsname
             }];
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -210,25 +208,25 @@ class ClinicalTrial extends Base {
             const props = [
 
                 {name: 'phase', type: 'integer'},
-                {name: 'trialID', type: 'string'},
-                {name: 'officialTitle', type: 'string'},
+                {name: 'trial_id', type: 'string'},
+                {name: 'official_title', type: 'string'},
                 {name: 'summary', type: 'string'}
             ];
             const idxs = [{
-                name: this.clsname + '.index_trialID',
+                name: this.clsname + '.index_trial_id',
                 type: 'unique',
-                metadata: {ignoreNullValues: true},
-                properties: ['trialID'],
+                metadata: {ignoreNullValues: false},
+                properties: ['deleted_at','trial_id'],
                 'class':  this.clsname
             },
             {
-                name: this.clsname + '.index_officialTitle',
+                name: this.clsname + '.index_official_title',
                 type: 'unique',
-                metadata: {ignoreNullValues: true},
-                properties: ['officialTitle'],
+                metadata: {ignoreNullValues: false},
+                properties: ['deleted_at','official_title'],
                 'class':  this.clsname
             }];
-            super.createClass({db, clsname: this.clsname, superClasses: Study.clsname, properties: props, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: Study.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -248,7 +246,7 @@ class ClinicalTrial extends Base {
 class ExternalSource extends Base {
 
     validateContent(content) {
-        if (content.url == undefined || content.extractionDate == undefined) {
+        if (content.url == undefined || content.extraction_date == undefined) {
             throw new AttributeError('violated null constraint');
         }
         return super.validateContent(content);
@@ -259,16 +257,16 @@ class ExternalSource extends Base {
             const props = [
                 {name: 'title', type: 'string'},
                 {name: 'url', type: 'string', mandatory: true, notNull: true},
-                {name: 'extractionDate', type: 'long', mandatory: true, notNull: true}
+                {name: 'extraction_date', type: 'string', mandatory: true, notNull: true}
             ];
             const idxs = [{
-                name: this.clsname + '.index_urlDate',
+                name: this.clsname + '.index_url_date',
                 type: 'unique',
-                metadata: {ignoreNullValues: true},
-                properties: ['url', 'extractionDate'],
+                metadata: {ignoreNullValues: false},
+                properties: ['deleted_at', 'url', 'extraction_date'],
                 'class':  this.clsname
             }];
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
