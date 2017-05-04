@@ -55,7 +55,7 @@ const parsePosition = (prefix, string) => {
 }
 
 const parseContinuous  = (prefix, string) => {
-    const p = '([A-Z0-9\\*\\?\\+\\-]*[0-9\\?])'
+    const p = '([A-Z0-9\\*\\?\\+\\-]*[0-9\\?]|[pq][0-9\\.\?]*)'
     let regex = nRegex(
         `^(?<break1>${p}|(\\(${p}_${p}\\)))`
         + `(_(?<break2>${p}|(\\(${p}_${p}\\))))?`
@@ -119,7 +119,7 @@ const parseContinuous  = (prefix, string) => {
         }
         case 'g':
         case 'c': {
-            Array.prototype.push.apply(validTypes, ['ins', '>']);
+            Array.prototype.push.apply(validTypes, ['ins', '>', 'delins']);
         }
         case 'y': {
             validTypes.push('inv');
@@ -129,11 +129,54 @@ const parseContinuous  = (prefix, string) => {
             break;
         }
         default: {
-            throw new ParsingError(`invalid type '${result.type} for the given prefix notation '${prefix}'`);
+            throw new ParsingError(`invalid prefix '${prefix}'`);
         }
     }
+    if (! validTypes.includes(result.type)) {
+        throw new ParsingError(`invalid type '${result.type} for the given prefix notation '${prefix}'`);
+    }
     return result;
-}
+};
+
+
+const parseHistoneVariant = (string) => {
+    /**
+     * https://epigeneticsandchromatin.biomedcentral.com/articles/10.1186/1756-8935-5-7
+     * function to parse histone modification variant notation
+     * @type {string} input string
+     */
+     const r = nRegex(
+         '^(?<histone>H[0-9A-Z-]+)'
+         + '(\\.(?<subtype>[A-Z0-9]))?'
+         + '(?<aa>K|Lys|Arg|R|Ser|S)'
+         + '(?<pos>[0-9]+)'
+         + '(?<modification>me|ac|ub)'
+         + '(?<count>[1-9][0-9]*|\\?)?$'
+     );
+     const match = r.exec(string);
+
+     if (match === null) {
+         throw new ParsingError(`input string did not match expected pattern: ${string}`);
+     }
+     const count = parseInt(match.group('count'));
+
+     return {
+         histone: match.group('histone'),
+         subtype: match.group('subtype'),
+         protein_position: {
+             ref_aa: match.group('aa'),
+             pos: parseInt(match.group('pos')),
+             prefix: 'p'
+         },
+         modification: {
+             type: match.group('modification'),
+             count: count == undefined ? undefined : count
+         }
+     };
+};
+
+const parseDiscontinuous = (prefix, string) => {
+};
 
 
 const parse = (string) => {
@@ -149,7 +192,6 @@ const parse = (string) => {
         return parseContinuous(prefix, string);
     } catch(ParsingError) {
     }
-
 }
 
-module.exports = {parse, parsePosition, parseContinuous};
+module.exports = {parsePosition, parseContinuous, parseDiscontinuous, parseHistoneVariant};

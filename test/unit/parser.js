@@ -1,7 +1,12 @@
 "use strict";
 const {expect} = require('chai');
 const {DependencyError, AttributeError, ParsingError} = require('./../../app/repo/error');
-const {parse, parsePosition, parseContinuous} = require('./../../app/parser/notation');
+const {
+    parsePosition,
+    parseContinuous,
+    parseDiscontinuous,
+    parseHistoneVariant
+} = require('./../../app/parser/notation');
 
 
 describe('parsePosition', () => {
@@ -125,7 +130,7 @@ describe('parsePosition', () => {
 });
 
 
-describe('parse continuous', () => {
+describe('parseContinuous', () => {
     describe('DNA variant:', () => {
         it('deletion single bp', () => {
             const result = parseContinuous('g', '3del');
@@ -366,8 +371,48 @@ describe('parse continuous', () => {
         });
     });
     describe('exon variants', () => {
-        it('exon cannot have substitution type');
-        it('exon cannot have insertion type');
+        it('errors because exon cannot have substitution type', () => {
+            expect(() => { parseContinuous('e', '1C>T'); }).to.throw(ParsingError);
+            expect(() => { parseContinuous('e', 'C1T'); }).to.throw(ParsingError);
+        });
+        it('errors because exon cannot have insertion type', () => {
+            expect(() => { parseContinuous('e', '1_2ins'); }).to.throw(ParsingError);
+            expect(() => { parseContinuous('e', '2ins'); }).to.throw(ParsingError);
+        });
+        it('duplication single exon', () => {
+            const result = parseContinuous('e', '1dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
+        });
+        it('duplication single exon with uncertainty', () => {
+            const result = parseContinuous('e', '(1_2)dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({start: {pos: 1, prefix: 'e'}, end: {pos: 2, prefix: 'e'}});
+        });
+        it('duplication of multiple exons', () => {
+            const result = parseContinuous('e', '1_3dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
+            expect(result.break2).to.eql({pos: 3, prefix: 'e'});
+        });
+        it('duplication of multiple exons with uncertainty', () => {
+            const result = parseContinuous('e', '(1_2)_(3_4)dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({start: {pos: 1, prefix: 'e'}, end: {pos: 2, prefix: 'e'}});
+            expect(result.break2).to.eql({start: {pos: 3, prefix: 'e'}, end: {pos: 4, prefix: 'e'}});
+        });
+        it('duplication of multiple exons with uncertainty', () => {
+            const result = parseContinuous('e', '(1_2)_4dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({start: {pos: 1, prefix: 'e'}, end: {pos: 2, prefix: 'e'}});
+            expect(result.break2).to.eql({pos: 4, prefix: 'e'});
+        });
+        it('duplication of multiple exons with uncertainty', () => {
+            const result = parseContinuous('e', '2_(3_4)dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({pos: 2, prefix: 'e'});
+            expect(result.break2).to.eql({start: {pos: 3, prefix: 'e'}, end: {pos: 4, prefix: 'e'}});
+        });
     });
     describe('protein variants', () => {
         it('frameshift alt specified', () => {
@@ -429,15 +474,158 @@ describe('parse continuous', () => {
         });
     });
     describe('cytoband variants', () => {
-
+        it('errors because cytoband variant cannot have ins type', () => {
+            expect(() => { parseContinuous('y', 'p12.1ins'); }).to.throw(ParsingError);
+            expect(() => { parseContinuous('y', 'p12.1_p13ins'); }).to.throw(ParsingError);
+        });
+        it('errors because cytoband variant cannot have delins type', () => {
+            expect(() => { parseContinuous('y', 'p12.1delins'); }).to.throw(ParsingError);
+            expect(() => { parseContinuous('y', 'p12.1_p13delins'); }).to.throw(ParsingError);
+        });
+        it('errors because cytoband variant cannot have > type', () => {
+            expect(() => { parseContinuous('y', 'p12.1G>T'); }).to.throw(ParsingError);
+            expect(() => { parseContinuous('y', 'Gp12.1T'); }).to.throw(ParsingError);
+        });
+        it('errors because cytoband variant cannot have fs type', () => {
+            expect(() => { parseContinuous('y', 'p12.1fs'); }).to.throw(ParsingError);
+            expect(() => { parseContinuous('y', '(p12.1_p13)fs'); }).to.throw(ParsingError);
+        });
+        it('duplication of whole p arm', () => {
+            const result = parseContinuous('y', 'pdup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({arm: 'p', major_band: undefined, minor_band: undefined, prefix: 'y'});
+        });
+        it('duplication of range on p major band', () => {
+            const result = parseContinuous('y', 'p11dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({arm: 'p', major_band: 11, minor_band: undefined, prefix: 'y'});
+        });
+        it('duplication of range on p minor band', () => {
+            const result = parseContinuous('y', 'p11.1dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({arm: 'p', major_band: 11, minor_band: 1, prefix: 'y'});
+        });
+        it('duplication of range on p arm', () => {
+            const result = parseContinuous('y', 'p11.1_p13.3dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({arm: 'p', major_band: 11, minor_band: 1, prefix: 'y'});
+            expect(result.break2).to.eql({arm: 'p', major_band: 13, minor_band: 3, prefix: 'y'});
+        });
+        it('duplication on p arm uncertain positions', () => {
+            const result = parseContinuous('y', '(p11.1_p11.2)_(p13.4_p14)dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1.start).to.eql({arm: 'p', major_band: 11, minor_band: 1, prefix: 'y'});
+            expect(result.break1.end).to.eql({arm: 'p', major_band: 11, minor_band: 2, prefix: 'y'});
+            expect(result.break2.start).to.eql({arm: 'p', major_band: 13, minor_band: 4, prefix: 'y'});
+            expect(result.break2.end).to.eql({arm: 'p', major_band: 14, minor_band: undefined, prefix: 'y'});
+        });
+        it('duplication on p arm uncertain start', () => {
+            const result = parseContinuous('y', '(p11.1_p11.2)_p13.3dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1.start).to.eql({arm: 'p', major_band: 11, minor_band: 1, prefix: 'y'});
+            expect(result.break1.end).to.eql({arm: 'p', major_band: 11, minor_band: 2, prefix: 'y'});
+            expect(result.break2).to.eql({arm: 'p', major_band: 13, minor_band: 3, prefix: 'y'});
+        });
+        it('duplication on p arm uncertain end', () => {
+            const result = parseContinuous('y', 'p13.3_(p15.1_p15.2)dup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({arm: 'p', major_band: 13, minor_band: 3, prefix: 'y'});
+            expect(result.break2.start).to.eql({arm: 'p', major_band: 15, minor_band: 1, prefix: 'y'});
+            expect(result.break2.end).to.eql({arm: 'p', major_band: 15, minor_band: 2, prefix: 'y'});
+        });
+        it('duplication of whole q arm', () => {
+            const result = parseContinuous('y', 'qdup');
+            expect(result).to.have.property('type', 'dup');
+            expect(result.break1).to.eql({arm: 'q', major_band: undefined, minor_band: undefined, prefix: 'y'});
+        });
+        it('deletion of whole p arm', () => {
+            const result = parseContinuous('y', 'pdel');
+            expect(result).to.have.property('type', 'del');
+            expect(result.break1).to.eql({arm: 'p', major_band: undefined, minor_band: undefined, prefix: 'y'});
+        });
+        it('inversion of a range on the p arm', () => {
+            const result = parseContinuous('y', 'p11.1_p13.3inv');
+            expect(result).to.have.property('type', 'inv');
+            expect(result.break1).to.eql({arm: 'p', major_band: 11, minor_band: 1, prefix: 'y'});
+            expect(result.break2).to.eql({arm: 'p', major_band: 13, minor_band: 3, prefix: 'y'});
+        });
     });
 });
 
 
 describe('discontinuous', () => {
-    describe('DNA variants', () => {});
+    describe('DNA variants', () => {
+
+    });
     describe('cds variants', () => {});
-    describe('exon variants', () => {});
+    describe('exon variants', () => {
+        it('single gene fusion', () => {
+            const result = parseDiscontinuous('e', 'fus(GENE1)(1,3)');
+            expect(result).to.have.property('type', 'fus');
+            expect(result.break1_feature).to.eql({name: 'GENE1'});
+            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
+            expect(result.break2).to.eql({pos: 3, prefix: 'e'});
+        });
+        it('two gene fusion', () => {
+            const result = parseDiscontinuous('e', 'fus(GENE1,GENE2)(1,2)');
+            expect(result).to.have.property('type', 'fus');
+            expect(result.break1_feature).to.eql({name: 'GENE1'});
+            expect(result.break2_feature).to.eql({name: 'GENE2'});
+            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
+            expect(result.break2).to.eql({pos: 2, prefix: 'e'});
+        });
+        it('two gene inversion', () => {
+            const result = parseDiscontinuous('e', 'inv(GENE1,GENE2)(1,2)');
+            expect(result).to.have.property('type', 'inv');
+            expect(result.break1_feature).to.eql({name: 'GENE1'});
+            expect(result.break2_feature).to.eql({name: 'GENE2'});
+            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
+            expect(result.break2).to.eql({pos: 2, prefix: 'e'});
+        });
+        it('single gene inversion', () => {
+            const result = parseDiscontinuous('e', 'inv(GENE1)(4, 7)');
+            expect(result).to.have.property('type', 'inv');
+            expect(result.break1_feature).to.eql({name: 'GENE1'});
+            expect(result.break2_feature).to.eql({name: 'GENE1'});
+            expect(result.break1).to.eql({pos: 4, prefix: 'e'});
+            expect(result.break2).to.eql({pos: 7, prefix: 'e'});
+        });
+        it('two gene duplication', () => {
+            const result = parseDiscontinuous('e', 'dup(GENE1,GENE2)(1,2)');
+            expect(result).to.have.property('type', 'dup');
+        });
+        it('single gene duplication', () => {
+            const result = parseDiscontinuous('e', 'dup(GENE1)(1,8)');
+            expect(result).to.have.property('type', 'dup');
+        });
+        it('deletion two gene fusion', () => {
+            const result = parseDiscontinuous('e', 'del(GENE1,GENE2)(1,2)');
+            expect(result).to.have.property('type', 'del');
+        });
+        it('deletion single gene fusion', () => {
+            const result = parseDiscontinuous('e', 'del(GENE1)(1,8)');
+            expect(result).to.have.property('type', 'del');
+        });
+    });
     describe('protein variants', () => {});
-    describe('cytoband variants', () => {});
+    describe('cytoband variants', () => {
+        it('translocation');
+    });
+});
+
+
+describe('parseHistoneVariant', () => {
+    it('ubiquitination', () => {
+        const result = parseHistoneVariant('H2BK123ub1');
+        expect(result).to.have.property('histone', 'H2B');
+        expect(result.protein_position).to.eql({ref_aa: 'K', pos: 123, prefix: 'p'});
+        expect(result.modification).to.eql({type: 'ub', count: 1});
+    });
+    it('methylation', () => {
+        const result = parseHistoneVariant('H3.3K4me3');
+        expect(result).to.have.property('histone', 'H3');
+        expect(result).to.have.property('subtype', '3');
+        expect(result.protein_position).to.eql({ref_aa: 'K', pos: 4, prefix: 'p'});
+        expect(result.modification).to.eql({type: 'me', count: 3});
+    });
 });

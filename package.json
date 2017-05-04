@@ -9,11 +9,13 @@
     "moment": "^2.18.1",
     "named-js-regexp": "^1.3.2",
     "orientjs": "^2.2.3",
-    "uuid": "^3.0.1"
+    "uuid": "^3.0.1",
+    "year": "^0.2.1"
   },
   "devDependencies": {
     "chai": "^3.5.0",
     "co-mocha": "^1.1.2",
+    "eslint": "^3.19.0",
     "jsctags": "^5.1.1",
     "jsdoc": "^3.4.3",
     "mocha": "^2.5.3",
@@ -24,6 +26,10 @@
     "watch": "nodemon app/index.js --use-strict",
     "schema": "nodemon app/db/create_schema.js",
     "integration-tests": "mocha test/integration --timeout 5000",
+<<<<<<< HEAD
     "unit": "mocha test/unit"
+=======
+    "lint": "eslint -c .eslintrc.json app test"
+>>>>>>> d1edeb1f86b2074d60bb842ca700a04f1a68129b
   }
 }
