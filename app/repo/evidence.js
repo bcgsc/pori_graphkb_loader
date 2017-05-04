@@ -5,7 +5,6 @@ const currYear = require('year');
 
 /**
 *
-* @todo take versioning into account by implementing partial indexes
 * @todo more properties to be added to journal class
 *
 */
@@ -46,8 +45,12 @@ class Publication extends Base {
         content.journal = journalClass.validateContent(content.journal);
         content.title = content.title.toLowerCase();
         if (content.doi != undefined || content.pmid != undefined) {
-            content.doi = content.doi.toLowerCase();
-            content.pmid = content.pmid.toLowerCase();
+            if (! content.pmid % 1 === 0) {
+                // if pmid is not an integer
+                throw new AttributeError('PMID must be integer');
+            } else {
+                content.doi = content.doi.toLowerCase();
+            }
         }
         
         return super.validateContent(content);
@@ -87,17 +90,14 @@ class Publication extends Base {
                 {name: 'doi', type: 'string', mandatory: false},
                 {name: 'pmid', type: 'integer', mandatory: false},
             ];
-            // pending partial index issue
-            /*
             const idxs = [{
                 name: this.clsname + '.index_jyt',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['journal', 'year', 'title'],
+                properties: ['deleted_at', 'journal', 'year', 'title'],
                 'class':  this.clsname
             }];
-            */
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false}) //, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -129,17 +129,14 @@ class Journal extends Base {
             const props = [
                 {name: 'name', type: 'string', mandatory: true, notNull: true},
             ];
-            // pending partial index issue
-            /*
             const idxs = [{
                 name: this.clsname + '.index_name',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['name'],
+                properties: ['deleted_at', 'name'],
                 'class':  this.clsname
             }];
-            */
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false}) //, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -180,17 +177,14 @@ class Study extends Base {
                 {name: 'method', type: 'string'},
                 {name: 'url', type: 'string'}
             ];
-            // pending partial index issue
-            /*
             const idxs = [{
                 name: this.clsname + '.index_ty',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['title', 'year'],
+                properties: ['deleted_at', 'title', 'year'],
                 'class':  this.clsname
             }];
-            */
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false}) //, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -222,24 +216,21 @@ class ClinicalTrial extends Base {
                 {name: 'official_title', type: 'string'},
                 {name: 'summary', type: 'string'}
             ];
-            // pending partial index issue
-            /*
             const idxs = [{
                 name: this.clsname + '.index_trial_id',
                 type: 'unique',
-                metadata: {ignoreNullValues: true},
-                properties: ['trialID'],
+                metadata: {ignoreNullValues: false},
+                properties: ['deleted_at','trial_id'],
                 'class':  this.clsname
             },
             {
-                name: this.clsname + '.index_officialTitle',
+                name: this.clsname + '.index_official_title',
                 type: 'unique',
-                metadata: {ignoreNullValues: true},
-                properties: ['officialTitle'],
+                metadata: {ignoreNullValues: false},
+                properties: ['deleted_at','official_title'],
                 'class':  this.clsname
             }];
-            */
-            super.createClass({db, clsname: this.clsname, superClasses: Study.clsname, properties: props, isAbstract: false}) //, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: Study.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -270,19 +261,16 @@ class ExternalSource extends Base {
             const props = [
                 {name: 'title', type: 'string'},
                 {name: 'url', type: 'string', mandatory: true, notNull: true},
-                {name: 'extraction_date', type: 'long', mandatory: true, notNull: true}
+                {name: 'extraction_date', type: 'string', mandatory: true, notNull: true}
             ];
-            // pending partial index issue
-            /*
             const idxs = [{
-                name: this.clsname + '.index_urlDate',
+                name: this.clsname + '.index_url_date',
                 type: 'unique',
-                metadata: {ignoreNullValues: true},
-                properties: ['url', 'extractionDate'],
+                metadata: {ignoreNullValues: false},
+                properties: ['deleted_at', 'url', 'extraction_date'],
                 'class':  this.clsname
             }];
-            */
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false}) //, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {

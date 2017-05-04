@@ -67,7 +67,7 @@ class Base {
         const args = { // default arguments
             uuid : uuidV4(),
             version: 0,
-            created_at: moment().unix(),
+            created_at: moment().valueOf(),
             deleted_at: null
         };
 
@@ -110,7 +110,7 @@ class Base {
         return new Promise((resolve, reject) => {
             if (opt.uuid === undefined) {
                 throw new AttributeError('uuid');
-            }
+            }/*
             for (let key of Object.keys(opt)) {
                 if (key.startsWith('@') || key === 'version') {
                     if (drop_invalid_attr == true) {
@@ -119,13 +119,19 @@ class Base {
                         throw new AttributeError(`reserved attribute ${key} cannot be given`);
                     }
                 }
-            }
+            }*/
 
             // get the record from the db
-            this.dbClass.db.select().from(this.constructor.clsname).where({uuid: opt.uuid}).one()
+            this.dbClass.db.select().from(this.constructor.clsname).where({uuid: opt.uuid, deleted_at: null}).one()
                 .then((record) => {
+                    const required_matches = ['uuid', 'deleted_at','version', 'created_at'];
+                    for (let m of required_matches) {
+                        if (opt[m] !== undefined && opt[m] !== record[m]) {
+                            throw new Error('Concurrency error. Updating an out-of-date record');
+                        }
+                    }
                     const duplicate = {};
-                    const timestamp = moment().unix() + 1;
+                    const timestamp = moment().valueOf();
                     const updates = {
                         version: record.version + 1,
                         created_at: timestamp
@@ -138,7 +144,7 @@ class Base {
                         }
                     }
                     for (let key of Object.keys(opt)) {
-                        if (! key.startsWith('@')) {
+                        if (! key.startsWith('@') && key !== 'version') {
                             updates[key] = opt[key];
                         }
                     }
@@ -159,7 +165,6 @@ class Base {
                                 .from('$updatedRID')
                                 .to('$duplicate');
                         }).commit();
-                    //console.log("Statement: " + commit.buildStatement());
                     commit.return('$updatedRID').one()
                         .then((rid) => {
                             return this.dbClass.db.record.get(rid);
