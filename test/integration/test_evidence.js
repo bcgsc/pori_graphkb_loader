@@ -165,6 +165,14 @@ describe('Evidence schema tests:', () => {
                         expect(error).to.be.an.instanceof(AttributeError);
                     });
             });
+            it('test wrong pmid value (i.e. string)', () => {
+                return pubClass.createRecord({title: 'title', year: 2016, pmid: '212456', journal: {name: 'journal'}}, journalClass)
+                    .then((result) => {
+                        expect.fail('invalid attribute. should have thrown error');
+                    }).catch((error) => {
+                        expect(error).to.be.an.instanceof(AttributeError);
+                    });
+            });
             it('duplicate active entries', () => {
                 return pubClass.createRecord({title: 'title', year: 2008, journal: {name: 'journal'}}, journalClass)
                     .then((result) => {
