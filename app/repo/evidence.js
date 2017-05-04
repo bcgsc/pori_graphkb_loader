@@ -45,8 +45,12 @@ class Publication extends Base {
         content.journal = journalClass.validateContent(content.journal);
         content.title = content.title.toLowerCase();
         if (content.doi != undefined || content.pmid != undefined) {
-            content.doi = content.doi.toLowerCase();
-            content.pmid = content.pmid.toLowerCase();
+            if (! content.pmid % 1 === 0) {
+                // if pmid is not an integer
+                throw new AttributeError('PMID must be integer');
+            } else {
+                content.doi = content.doi.toLowerCase();
+            }
         }
         
         return super.validateContent(content);
