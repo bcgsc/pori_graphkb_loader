@@ -1,8 +1,9 @@
 'use strict';
-const {AttributeError} = require('./error');
+const {AttributeError, ControlledVocabularyError} = require('./error');
 const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
 const moment = require('moment');
+const cache = require('./cached/data');
 
 
 const errorJSON = function(error) {
@@ -70,10 +71,15 @@ class Base {
             created_at: moment().valueOf(),
             deleted_at: null
         };
-
+        let subcache = cache.vocab[this.constructor.clsname];
         for (let key of Object.keys(content)) {
             if (! _.includes(this.propertyNames, key)) {
                 throw new AttributeError(`invalid attribute ${key}`);
+            }
+            let value = content[key];
+            if (subcache !== undefined && subcache[key] !== undefined && subcache[key][value] === undefined) {
+                throw new ControlledVocabularyError(
+                    `controlled term ${key} in class ${this.constructor.clsname} is not an allowed value: ${subcache[key][content[key]]}`);
             }
             args[key] = content[key]; // overrides the defaults if given
         }
@@ -88,7 +94,6 @@ class Base {
     createRecord(opt={}) {
         return new Promise((resolve, reject) => {
             const args = this.validateContent(opt);
-
             this.dbClass.create(args)
                 .then((result) => {
                     resolve(result);

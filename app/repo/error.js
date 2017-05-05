@@ -24,4 +24,11 @@ class ParsingError extends ExtendableError {
     }
 }
 
-module.exports = {AttributeError, errorJSON, DependencyError, ParsingError};
+
+class ControlledVocabularyError extends ExtendableError {
+    constructor(message) {
+        super(message);
+    }
+} 
+
+module.exports = {AttributeError, errorJSON, DependencyError, ParsingError, ControlledVocabularyError};

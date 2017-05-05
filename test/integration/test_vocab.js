@@ -6,6 +6,7 @@ const {AttributeError} = require('./../../app/repo/error');
 const {History, KBVertex, KBEdge} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 const {fetchValues, Vocab} = require('./../../app/repo/vocab');
+const cache = require('./../../app/repo/cached/data');
 
 
 describe('Vocab schema tests:', () => {
@@ -37,6 +38,7 @@ describe('Vocab schema tests:', () => {
             .then((result) => {
                 expect(result.propertyNames).to.include('class', 'property', 'term', 'definition', 'uuid', 'created_at', 'deleted_at', 'version');
                 expect(result.isAbstract).to.be.false;
+                expect(cache.vocab).to.not.have.property('feature');
             });
     });
 
@@ -108,6 +110,13 @@ describe('Vocab schema tests:', () => {
                     expect(second).to.have.property('term', 'protein');
                 });
         });
+        
+        it('create record updates cache', () => {
+            return vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein'})
+                .then((first)  => {
+                    expect(cache.vocab.feature).to.be.instanceof(Object);
+                });
+        });
         it('pull table into json', () => {
             return Promise.all([
                 vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein', definition: ''}),
@@ -115,15 +124,14 @@ describe('Vocab schema tests:', () => {
                 vocabInstance.createRecord({class: 'other', property: 'name', term: 'protein'})
             ]).then(() => {
                 return fetchValues(db);
-            }).then((cache) => {
-                console.log(cache);
-                expect(cache).to.have.property('feature');
-                expect(cache).to.have.property('other');
-                expect(cache.feature).to.have.property('name');
-                expect(cache.feature.name).to.have.property('protein', '');
-                expect(cache.feature.name).to.have.property('gene', undefined);
-                expect(cache.other).to.have.property('name');
-                expect(cache.other.name).to.have.property('protein');
+            }).then((localCache) => {
+                expect(localCache).to.have.property('feature');
+                expect(localCache).to.have.property('other');
+                expect(localCache.feature).to.have.property('name');
+                expect(localCache.feature.name).to.have.property('protein');
+                expect(localCache.feature.name).to.have.property('gene');
+                expect(localCache.other).to.have.property('name');
+                expect(localCache.other.name).to.have.property('protein');
             });
         });
         it('cache: create initial');

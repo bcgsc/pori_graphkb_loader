@@ -1,12 +1,12 @@
 'use strict';
 const {Base, KBVertex} = require('./base');
+const vocab = require('./cached/data').vocab;
 
 
 class Feature extends Base {
     
     validateContent(content) {
         const args = Object.assign({source_version: null}, content);
-        
         return super.validateContent(args);
     }
 
@@ -40,3 +40,6 @@ class Feature extends Base {
         });
     }
 }
+
+
+module.exports = {Feature};

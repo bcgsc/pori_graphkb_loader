@@ -2,6 +2,11 @@
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {serverConnect} = require('./../../app/repo');
+const {KBVertex, KBEdge, History} = require('./../../app/repo/base');
+const {Vocab} = require('./../../app/repo/vocab');
+const {Feature} = require('./../../app/repo/feature');
+const cache = require('./../../app/repo/cached/data');
+const {ControlledVocabularyError} = require('./../../app/repo/error');
 
 
 describe('Feature schema tests:', () => {
@@ -28,10 +33,14 @@ describe('Feature schema tests:', () => {
             });
     });
 
-    it('create the feature class');
+    it('create the feature class', () => {
+        Feature.createClass(db)
+            .then((cls) => {
+                expect(cls.propertyNames).to.include('name', 'biotype', 'uuid', 'version', 'source', 'source_version', 'created_at', 'deleted_at');
+            });
+    });
     
     describe('create record', () => {
-        it('errors on invalid biotype');
         it('allows no biotype');
         it('errors on no name');
         it('errors on null name');
@@ -41,6 +50,37 @@ describe('Feature schema tests:', () => {
         it('allows null source_version');
         it('errors on duplicate name + source + source_version where deleted_at=null');
         it('allows update of biotype without violating unique index');
+    });
+
+    describe('controlled vocabulary', () => {
+        let curClass, vocabClass;
+        beforeEach((done) => {
+            Vocab.createClass(db)
+                .then((cls) => {
+                    vocabClass = cls;
+                    return Feature.createClass(db);
+                }).then((cls) => {
+                    curClass = cls;
+                    return Promise.all([
+                        vocabClass.createRecord({class: Feature.clsname, property: 'biotype', term: 'protein'}),
+                        vocabClass.createRecord({class: Feature.clsname, property: 'biotype', term: 'gene'})
+                    ]);
+                }).then(() => {
+                    done();
+                }).catch((error) => {
+                    done(error);
+                });
+        });
+        it('errors on invalid biotype', () => {
+            return curClass.createRecord({name: 'KRAS', biotype: 'invalid', source: 'HUGO', source_version: null})
+                .then((record) => {
+                    console.log(record);
+                    expect.fail('expected an error'); 
+                }, (error) => {
+                    expect(error).to.be.instanceof(ControlledVocabularyError);
+                })
+        });
+        it('allows on valid biotype');
     });
 
     afterEach((done) => {
