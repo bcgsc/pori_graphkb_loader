@@ -87,20 +87,34 @@ describe('Position schema tests:', () => {
                         done(error);
                     });
             });
-            it('pos mandatory error', () => {
+            it('errors on mandatory pos not given', () => {
                 return currClass.createRecord()
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
-                        oError.expectMissingMandatoryAttributeError(error);
+                        expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('pos null error', () => {
+            it('errors on pos null', () => {
                 return currClass.createRecord({pos: null})
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
-                        oError.expectNullConstraintError(error);
+                        expect(error).to.be.instanceof(AttributeError);
+                    });
+            });
+            it('errors on pos below minimum', () => {
+                return currClass.createRecord({pos: 0})
+                    .then(() => {
+                        expect.fail('error was expected');
+                    }, (error) => {
+                        expect(error).to.be.instanceof(AttributeError);
+                    });
+            });
+            it('allows pos at min', () => {
+                return currClass.createRecord({pos: 1})
+                    .then((record) => {
+                        expect(record).to.have.property('pos', 1);
                     });
             });
         });
@@ -124,23 +138,23 @@ describe('Position schema tests:', () => {
                         done(error);
                     });
             });
-            it('pos mandatory error', () => {
+            it('errors on mandatory pos not given', () => {
                 return currClass.createRecord({ref_aa: null})
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
-                        oError.expectMissingMandatoryAttributeError(error);
+                        expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('pos null error', () => {
+            it('errors on pos null', () => {
                 return currClass.createRecord({pos: null, ref_aa: null})
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
-                        oError.expectNullConstraintError(error);
+                        expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('ref_aa too long error', () => {
+            it('errors on ref_aa too long', () => {
                 return currClass.createRecord({pos: 1, ref_aa: 'DD'})
                     .then(() => {
                         expect.fail('error was expected');
@@ -148,7 +162,7 @@ describe('Position schema tests:', () => {
                         expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('ref_aa empty string error', () => {
+            it('errors on ref_aa empty string', () => {
                 return currClass.createRecord({pos: 1, ref_aa: ''})
                     .then(() => {
                         expect.fail('error was expected');
@@ -156,14 +170,20 @@ describe('Position schema tests:', () => {
                         expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('ref_aa default null', () => {
+            it('allows ref_aa default null', () => {
                 return currClass.createRecord({pos: 1})
                     .then((record) => {
                         expect(record.ref_aa).to.be.null;
                         expect(record.pos).to.equal(1);
                     });
             });
-
+            it('allows pos at min', () => {
+                return currClass.createRecord({pos: 1, ref_aa: 'X'})
+                    .then((record) => {
+                        expect(record.pos).to.equal(1);
+                        expect(record.ref_aa).to.equal('X');
+                    });
+            });
         });
 
         it('create exon subclass', () => {
@@ -185,20 +205,34 @@ describe('Position schema tests:', () => {
                         done(error);
                     });
             });
-            it('pos mandatory error', () => {
+            it('errors on mandatory pos not given', () => {
                 return currClass.createRecord()
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
-                        oError.expectMissingMandatoryAttributeError(error);
+                         expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('pos null error', () => {
+            it('errors on pos null', () => {
                 return currClass.createRecord({pos: null})
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
-                        oError.expectNullConstraintError(error);
+                        expect(error).to.be.instanceof(AttributeError);
+                    });
+            });
+            it('errors on pos below min', () => {
+                return currClass.createRecord({pos: 0})
+                    .then(() => {
+                        expect.fail('error was expected');
+                    }, (error) => {
+                        expect(error).to.be.instanceof(AttributeError);
+                    });
+            });
+            it('allows pos at min', () => {
+                return currClass.createRecord({pos: 1})
+                    .then((record) => {
+                        expect(record).to.have.property('pos', 1);
                     });
             });
         });
@@ -222,35 +256,57 @@ describe('Position schema tests:', () => {
                         done(error);
                     });
             });
-            it('pos mandatory error', () => {
+            it('errors on mandatory pos not given', () => {
                 return currClass.createRecord()
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
-                        oError.expectMissingMandatoryAttributeError(error);
+                        expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('pos null error', () => {
+            it('errors on pos null', () => {
                 return currClass.createRecord({pos: null})
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
-                        oError.expectNullConstraintError(error);
+                        expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('offset default 0', () => {
+            it('allows offset to default to 0', () => {
                 return currClass.createRecord({pos: 1})
                     .then((record) => {
                         expect(record.pos).to.equal(1);
                         expect(record.offset).to.equal(0);
                     });
             });
-            it('offset null error', () => {
+            it('allows offset to be negative', () => {
+                return currClass.createRecord({pos: 1, offset: -2})
+                    .then((record) => {
+                        expect(record.pos).to.equal(1);
+                        expect(record.offset).to.equal(-2);
+                    });
+            });
+            it('allows offset to be positive', () => {
+                return currClass.createRecord({pos: 1, offset: 2})
+                    .then((record) => {
+                        expect(record.pos).to.equal(1);
+                        expect(record.offset).to.equal(2);
+                    });
+            });
+            it('errors on offset null', () => {
                 return currClass.createRecord({pos: 1, offset: null})
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
-                        oError.expectNullConstraintError(error);
+                        expect(error).to.be.instanceof(AttributeError);
+                    });
+            });
+            it('errors on pos below min', () => {
+                return currClass.createRecord({pos: 0})
+                    .then(() => {
+                        expect.fail('error was expected');
+                    }, (error) => {
+                        expect(error).to.be.instanceof(AttributeError);
                     });
             });
         });
@@ -274,7 +330,7 @@ describe('Position schema tests:', () => {
                         done(error);
                     });
             });
-            it('arm null error', () => {
+            it('errors on arm null', () => {
                 return currClass.createRecord({arm: null})
                     .then(() => {
                         expect.fail('expected error');
@@ -282,7 +338,7 @@ describe('Position schema tests:', () => {
                         expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('arm mandatory error', () => {
+            it('errors on mandatory arm not given', () => {
                 return currClass.createRecord()
                     .then(() => {
                         expect.fail('expected error');
@@ -290,7 +346,7 @@ describe('Position schema tests:', () => {
                         expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('arm not p/q error', () => {
+            it('errors on arm not p/q', () => {
                 return currClass.createRecord({arm: 'k'})
                     .then(() => {
                         expect.fail('expected error');
@@ -298,7 +354,7 @@ describe('Position schema tests:', () => {
                         expect(error).to.be.instanceof(AttributeError);
                     });
             });
-            it('arm p force lower case', () => {
+            it('allows arm p to force lower case', () => {
                 return currClass.createRecord({arm: 'P'})
                     .then((record) => {
                         expect(record.arm).to.equal('p');
@@ -306,7 +362,7 @@ describe('Position schema tests:', () => {
                         expect(record.minor_band).to.be.null;
                     });
             });
-            it('arm q force lower case', () => {
+            it('allows arm q to force lower case', () => {
                 return currClass.createRecord({arm: 'Q'})
                     .then((record) => {
                         expect(record.arm).to.equal('q');
@@ -314,7 +370,7 @@ describe('Position schema tests:', () => {
                         expect(record.minor_band).to.be.null;
                     });
             });
-            it('minor_band not null when major band null error', () => {
+            it('errors on minor_band not null when major band null', () => {
                 return currClass.createRecord({arm: 'p', minor_band: 1})
                     .then(() => {
                         expect.fail('expected error');

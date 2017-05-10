@@ -1,5 +1,7 @@
 const {Base, KBVertex} = require('./base');
+const {NoResultFoundError} = require('./error');
 const cache = require('./cached/data');
+const Promise = require('bluebird');
 
 
 class Vocab extends Base {
@@ -56,6 +58,52 @@ class Vocab extends Base {
                     reject(error);
                 });
         });
+    }
+    
+    updateDefinition(cls, property, term, definition) {
+        return new Promise((resolve, reject) => {
+            this.dbClass.db.select().from(this.constructor.clsname)
+                .where({
+                    'class': cls, property: property, term: term
+                }).one()
+                .then((record) => {
+                    if (record.definition === definition) {
+                        resolve(record);
+                    } else {
+                        record.definition = definition;
+                        return this.updateRecord(record);
+                    }
+                }).then((record) => {
+                    resolve(record);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+
+    addTermIfNotExists(term) {
+        return new Promise((resolve, reject) => {
+            this.selectExactlyOne({
+                    'class': term.class, property: term.property, term: term.term
+                }).catch(NoResultFoundError, () => {
+                    return this.createRecord({
+                        'class': term.class, property: term.property, term: term.term, definition: term.definition
+                    });
+                }).then((record) => {
+                    resolve(record);
+                }).catch((error) => {
+                    reject(error);
+                });
+        }); 
+    }
+    
+    /**
+     * adds new terminology if they do not already exist. Ignores existing terminology
+     */
+    createRecords(records) {
+        return Promise.all(Array.from(records, x => { 
+            return this.addTermIfNotExists(x); 
+        }));
     }
 }
 

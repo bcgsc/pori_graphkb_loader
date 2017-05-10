@@ -7,6 +7,9 @@ const {History, KBVertex, KBEdge} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 const {fetchValues, Vocab} = require('./../../app/repo/vocab');
 const cache = require('./../../app/repo/cached/data');
+const data = require('./data.json');
+const Promise = require('bluebird');
+
 
 
 describe('Vocab schema tests:', () => {
@@ -53,7 +56,20 @@ describe('Vocab schema tests:', () => {
                     done(error);
                 });
         });
-        it('create record: error on duplicate within category', () => {
+        it('createRecords: create multiple records', () => {
+            return vocabInstance.createRecords(data.vocab)
+                .then(() => {
+                    console.log(cache);
+                    expect(cache.vocab).to.have.property('feature');
+                    expect(cache.vocab.feature).to.have.property('biotype');
+                    expect(cache.vocab.feature.biotype).to.include.keys('protein', 'gene', 'template', 'exon', 'domain', 'transcript');
+                }).catch((error) => {
+                    console.log(error);
+                    throw error;
+                });
+        });
+        it('createRecords: create multiple records (some exist)');
+        it('createRecord: error on duplicate within category', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
                 .then(()  => {
                     return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'});
@@ -65,7 +81,7 @@ describe('Vocab schema tests:', () => {
                     oError.expectDuplicateKeyError(error);
                 });
         });
-        it('update record definition', () => {
+        it('updateRecord: update record definition', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
                 .then((record)  => {
                     expect(record).to.have.property('class', 'feature');
@@ -133,6 +149,8 @@ describe('Vocab schema tests:', () => {
                 expect(localCache.other).to.have.property('name');
                 expect(localCache.other.name).to.have.property('protein');
             });
+        });
+        describe('operations on existing records', () => {
         });
         it('cache: create initial');
         it('cache: update an entry');

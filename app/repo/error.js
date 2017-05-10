@@ -1,34 +1,24 @@
 'use strict';
-const ExtendableError = require('extendable-error-class');
 
 const errorJSON = function(error) {
     return {type: error.type, message: error.message};
 };
 
-class AttributeError extends ExtendableError {
-    constructor(message) {
-        super(message);
-    }
-}
+class AttributeError extends Error {}
 
 
-class DependencyError extends ExtendableError {
-    constructor(message) {
-        super(message);
-    }
-}
-
-class ParsingError extends ExtendableError {
-    constructor(message) {
-        super(message);
-    }
-}
+class ParsingError extends Error {}
 
 
-class ControlledVocabularyError extends ExtendableError {
-    constructor(message) {
-        super(message);
-    }
-} 
+class ControlledVocabularyError extends Error {} 
 
-module.exports = {AttributeError, errorJSON, DependencyError, ParsingError, ControlledVocabularyError};
+
+class NoResultFoundError extends Error {}
+
+
+class MultipleResultsFoundError extends Error {}
+
+
+module.exports = {
+    AttributeError, errorJSON, ParsingError, ControlledVocabularyError, NoResultFoundError, MultipleResultsFoundError
+};

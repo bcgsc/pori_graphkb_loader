@@ -2,6 +2,8 @@
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {serverConnect} = require('./../../app/repo');
+const Promise = require('bluebird');
+
 
 
 describe('Event schema tests:', () => {

@@ -7,6 +7,8 @@ const {Vocab} = require('./../../app/repo/vocab');
 const {Feature} = require('./../../app/repo/feature');
 const cache = require('./../../app/repo/cached/data');
 const {ControlledVocabularyError} = require('./../../app/repo/error');
+const Promise = require('bluebird');
+
 
 
 describe('Feature schema tests:', () => {

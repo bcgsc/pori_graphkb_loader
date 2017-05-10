@@ -1,6 +1,8 @@
 'use strict';
 const {Base, KBVertex} = require('./base');
 const vocab = require('./cached/data').vocab;
+const Promise = require('bluebird');
+
 
 
 class Feature extends Base {
