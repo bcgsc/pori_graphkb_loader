@@ -1,4 +1,4 @@
-const {Base, KBVertex} = require('./base');
+const {Base, KBVertex, KBEdge} = require('./base');
 const {AttributeError} = require('./error');
 const {Context} = require('./context');
 
@@ -36,7 +36,7 @@ class Disease extends Base {
                 name: this.clsname + '.index_doid',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['doid' , 'deleted_at'],
+                properties: ['name' , 'deleted_at'],
                 'class':  this.clsname
             }];
 
@@ -51,3 +51,101 @@ class Disease extends Base {
         });
     }
 }
+
+class SubClassOf extends Base {
+
+    static get createType() {
+        return 'edge';
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true}
+            ];
+
+            super.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+class RelatedTo extends Base {
+
+    static get createType() {
+        return 'edge';
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true}
+            ];
+
+            super.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+class SynonymFor extends Base {
+
+    static get createType() {
+        return 'edge';
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true}
+            ];
+
+            super.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+class DepricatedBy extends Base {
+
+    static get createType() {
+        return 'edge';
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true}
+            ];
+
+            super.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+module.exports = {Disease};
