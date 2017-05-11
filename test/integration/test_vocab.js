@@ -68,7 +68,17 @@ describe('Vocab schema tests:', () => {
                     throw error;
                 });
         });
-        it('createRecords: create multiple records (some exist)');
+        it('createRecords: create multiple records (some exist)', () => {
+            return vocabInstance.createRecords(data.vocab)
+                .then(() => {
+                    return vocabInstance.createRecords(data.vocab);
+                }).then(() => {
+                    console.log(cache);
+                    expect(cache.vocab).to.have.property('feature');
+                    expect(cache.vocab.feature).to.have.property('biotype');
+                    expect(cache.vocab.feature.biotype).to.include.keys('protein', 'gene', 'template', 'exon', 'domain', 'transcript');
+                });
+        });
         it('createRecord: error on duplicate within category', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
                 .then(()  => {
@@ -90,6 +100,25 @@ describe('Vocab schema tests:', () => {
                     expect(record).to.have.property('version', 0);
                     record.definition = 'this is a defn';
                     return vocabInstance.updateRecord(record);
+                }, (error) => {
+                    assert.fail('creating the initial record failed', error);
+                }).then((updated) => {
+                    expect(updated).to.have.property('version', 1);
+                    expect(updated).to.have.property('definition', 'this is a defn');
+                    expect(updated).to.have.property('class', 'feature');
+                    expect(updated).to.have.property('property', 'biotype');
+                    expect(updated).to.have.property('term', 'protein');
+                });
+        });
+        it('updateDefinition: update record definition', () => {
+            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
+                .then((record)  => {
+                    expect(record).to.have.property('class', 'feature');
+                    expect(record).to.have.property('property', 'biotype');
+                    expect(record).to.have.property('term', 'protein');
+                    expect(record).to.have.property('version', 0);
+                    record.definition = 'this is a defn';
+                    return vocabInstance.updateDefinition(record);
                 }, (error) => {
                     assert.fail('creating the initial record failed', error);
                 }).then((updated) => {
@@ -149,8 +178,6 @@ describe('Vocab schema tests:', () => {
                 expect(localCache.other).to.have.property('name');
                 expect(localCache.other.name).to.have.property('protein');
             });
-        });
-        describe('operations on existing records', () => {
         });
         it('cache: create initial');
         it('cache: update an entry');

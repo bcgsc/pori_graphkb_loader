@@ -60,21 +60,27 @@ class Vocab extends Base {
         });
     }
     
-    updateDefinition(cls, property, term, definition) {
+    updateDefinition(record) {
         return new Promise((resolve, reject) => {
-            this.dbClass.db.select().from(this.constructor.clsname)
-                .where({
-                    'class': cls, property: property, term: term
-                }).one()
-                .then((record) => {
-                    if (record.definition === definition) {
-                        resolve(record);
+            for (let req of ['class', 'property', 'term']) {
+                if (record[req] == undefined) {
+                    throw new AttributeError(`required attribute '${req}'is missing`);
+                }
+            }
+            this.selectExactlyOne({
+                    'class': record.class,
+                    property: record.property,
+                    term: record.term,
+                    deleted_at: null
+                }).then((rec) => {
+                    if (rec.definition === record.definition) {
+                        resolve(rec);
                     } else {
-                        record.definition = definition;
-                        return this.updateRecord(record);
+                        rec.definition = record.definition;
+                        return this.updateRecord(rec);
                     }
-                }).then((record) => {
-                    resolve(record);
+                }).then((rec) => {
+                    resolve(rec);
                 }).catch((error) => {
                     reject(error);
                 });
@@ -84,7 +90,7 @@ class Vocab extends Base {
     addTermIfNotExists(term) {
         return new Promise((resolve, reject) => {
             this.selectExactlyOne({
-                    'class': term.class, property: term.property, term: term.term
+                    'class': term.class, property: term.property, term: term.term, deleted_at: null
                 }).catch(NoResultFoundError, () => {
                     return this.createRecord({
                         'class': term.class, property: term.property, term: term.term, definition: term.definition

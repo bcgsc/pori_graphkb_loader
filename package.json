@@ -2,6 +2,7 @@
   "name": "knowledgebase-api",
   "main": "index.js",
   "dependencies": {
+    "bluebird": "^3.5.0",
     "body-parser": "^1.15.2",
     "express": "^4.14.0",
     "extendable-error-class": "^0.1.1",
@@ -25,7 +26,7 @@
   "scripts": {
     "watch": "nodemon app/index.js --use-strict",
     "schema": "nodemon app/db/create_schema.js",
-    "integration": "mocha test/integration --timeout 5000",
+    "integration": "mocha test/integration --timeout 20000",
     "unit": "mocha test/unit",
     "lint": "eslint -c .eslintrc.json app test"
   }
