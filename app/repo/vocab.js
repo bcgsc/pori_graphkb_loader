@@ -1,5 +1,7 @@
 const {Base, KBVertex} = require('./base');
+const {NoResultFoundError} = require('./error');
 const cache = require('./cached/data');
+const Promise = require('bluebird');
 
 
 class Vocab extends Base {
@@ -56,6 +58,58 @@ class Vocab extends Base {
                     reject(error);
                 });
         });
+    }
+    
+    updateDefinition(record) {
+        return new Promise((resolve, reject) => {
+            for (let req of ['class', 'property', 'term']) {
+                if (record[req] == undefined) {
+                    throw new AttributeError(`required attribute '${req}'is missing`);
+                }
+            }
+            this.selectExactlyOne({
+                    'class': record.class,
+                    property: record.property,
+                    term: record.term,
+                    deleted_at: null
+                }).then((rec) => {
+                    if (rec.definition === record.definition) {
+                        resolve(rec);
+                    } else {
+                        rec.definition = record.definition;
+                        return this.updateRecord(rec);
+                    }
+                }).then((rec) => {
+                    resolve(rec);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+
+    addTermIfNotExists(term) {
+        return new Promise((resolve, reject) => {
+            this.selectExactlyOne({
+                    'class': term.class, property: term.property, term: term.term, deleted_at: null
+                }).catch(NoResultFoundError, () => {
+                    return this.createRecord({
+                        'class': term.class, property: term.property, term: term.term, definition: term.definition
+                    });
+                }).then((record) => {
+                    resolve(record);
+                }).catch((error) => {
+                    reject(error);
+                });
+        }); 
+    }
+    
+    /**
+     * adds new terminology if they do not already exist. Ignores existing terminology
+     */
+    createRecords(records) {
+        return Promise.all(Array.from(records, x => { 
+            return this.addTermIfNotExists(x); 
+        }));
     }
 }
 

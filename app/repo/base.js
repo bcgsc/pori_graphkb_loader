@@ -1,9 +1,11 @@
 'use strict';
-const {AttributeError, ControlledVocabularyError} = require('./error');
+const {AttributeError, ControlledVocabularyError, MultipleResultsFoundError, NoResultFoundError} = require('./error');
 const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
 const moment = require('moment');
 const cache = require('./cached/data');
+const Promise = require('bluebird');
+
 
 
 const errorJSON = function(error) {
@@ -73,6 +75,10 @@ class Base {
         };
         let subcache = cache.vocab[this.constructor.clsname];
         for (let key of Object.keys(content)) {
+            if (content[key] === undefined) {
+                delete content[key];
+                continue;
+            }
             if (! _.includes(this.propertyNames, key)) {
                 throw new AttributeError(`invalid attribute ${key}`);
             }
@@ -82,6 +88,21 @@ class Base {
                     `controlled term ${key} in class ${this.constructor.clsname} is not an allowed value: ${subcache[key][content[key]]}`);
             }
             args[key] = content[key]; // overrides the defaults if given
+        }
+        for (let prop of this.properties) {
+            if (prop.mandatory) {
+                if (args[prop.name] === undefined) {
+                    throw new AttributeError(`mandatory property ${prop.name} was not specified`);
+                }
+            }
+            if (args[prop.name] !== undefined) {
+                if (prop.notNull && args[prop.name] === null) {
+                    throw new AttributeError(`violated notNull constraint of ${prop.name} property`);
+                }
+                if (prop.min != undefined && args[prop.name] != null && args[prop.name] < prop.min) {
+                    throw new AttributeError(`${args[prop.name]} is below the allowed minimum: ${prop.min}`);
+                }
+            }
         }
         return args;
     }
@@ -103,6 +124,34 @@ class Base {
         });
 
     }
+    
+    /**
+     * select from the current class given the where filters
+     *
+     * @param {object} where filters for the select
+     * @throws MultipleResultsFoundError if more than one record is selected
+     * @throws NoResultFoundError if no records are selected
+     * @returns {Promise}
+     */
+    selectExactlyOne(where={}) {
+        return new Promise((resolve, reject) => {
+            const query = this.dbClass.db.select().from(this.constructor.clsname).where(where);
+            const stat = query.buildStatement();
+            query.all()
+                .then((reclist) => {
+                    if (reclist.length == 0) {
+                        reject(new NoResultFoundError(stat));
+                    } else if (reclist.length > 1) {
+                        reject(new MultipleResultsFoundError(stat));
+                    } else {
+                        resolve(reclist[0]);
+                    }
+                }, (error) => {
+                    reject(error);
+                });
+        });
+    }
+
     /**
      * update an existing record. This will be based on the uuid or the record and
      * will create a copy of the current record, a history edge, and then will edit the
@@ -115,19 +164,10 @@ class Base {
         return new Promise((resolve, reject) => {
             if (opt.uuid === undefined) {
                 throw new AttributeError('uuid');
-            }/*
-            for (let key of Object.keys(opt)) {
-                if (key.startsWith('@') || key === 'version') {
-                    if (drop_invalid_attr == true) {
-                        delete opt[key];
-                    } else {
-                        throw new AttributeError(`reserved attribute ${key} cannot be given`);
-                    }
-                }
-            }*/
+            }
 
             // get the record from the db
-            this.dbClass.db.select().from(this.constructor.clsname).where({uuid: opt.uuid, deleted_at: null}).one()
+            this.selectExactlyOne({uuid: opt.uuid, deleted_at: null})
                 .then((record) => {
                     const required_matches = ['uuid', 'deleted_at','version', 'created_at'];
                     for (let m of required_matches) {
@@ -184,7 +224,6 @@ class Base {
         });
     }
     get_by_id(id) {
-        console.log('get_by_id', id);
         return this.db.record.get(`#${id}`);
     }
     /**

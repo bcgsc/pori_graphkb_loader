@@ -35,7 +35,6 @@ class Range extends Base {
         }
         content.start = positionClass.validateContent(content.start);
         content.end = positionClass.validateContent(content.end);
-        console.log(content);
         if (content.start.uuid == content.end.uuid) {
             throw new AttributeError(`range start and end cannot point to the same node: ${content.start.uuid}`);
         }
@@ -45,7 +44,6 @@ class Range extends Base {
     createRecord(opt, positionClass) {
         return new Promise((resolve, reject) => {
             const args = this.validateContent(opt, positionClass);
-            console.log(args.start);
             // start the transaction
             var commit = this.dbClass.db
                 .let('startPos', (tx) => {

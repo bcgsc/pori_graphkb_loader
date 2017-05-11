@@ -7,6 +7,9 @@ const {History, KBVertex, KBEdge} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 const {fetchValues, Vocab} = require('./../../app/repo/vocab');
 const cache = require('./../../app/repo/cached/data');
+const data = require('./data.json');
+const Promise = require('bluebird');
+
 
 
 describe('Vocab schema tests:', () => {
@@ -53,7 +56,30 @@ describe('Vocab schema tests:', () => {
                     done(error);
                 });
         });
-        it('create record: error on duplicate within category', () => {
+        it('createRecords: create multiple records', () => {
+            return vocabInstance.createRecords(data.vocab)
+                .then(() => {
+                    console.log(cache);
+                    expect(cache.vocab).to.have.property('feature');
+                    expect(cache.vocab.feature).to.have.property('biotype');
+                    expect(cache.vocab.feature.biotype).to.include.keys('protein', 'gene', 'template', 'exon', 'domain', 'transcript');
+                }).catch((error) => {
+                    console.log(error);
+                    throw error;
+                });
+        });
+        it('createRecords: create multiple records (some exist)', () => {
+            return vocabInstance.createRecords(data.vocab)
+                .then(() => {
+                    return vocabInstance.createRecords(data.vocab);
+                }).then(() => {
+                    console.log(cache);
+                    expect(cache.vocab).to.have.property('feature');
+                    expect(cache.vocab.feature).to.have.property('biotype');
+                    expect(cache.vocab.feature.biotype).to.include.keys('protein', 'gene', 'template', 'exon', 'domain', 'transcript');
+                });
+        });
+        it('createRecord: error on duplicate within category', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
                 .then(()  => {
                     return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'});
@@ -65,7 +91,7 @@ describe('Vocab schema tests:', () => {
                     oError.expectDuplicateKeyError(error);
                 });
         });
-        it('update record definition', () => {
+        it('updateRecord: update record definition', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
                 .then((record)  => {
                     expect(record).to.have.property('class', 'feature');
@@ -74,6 +100,25 @@ describe('Vocab schema tests:', () => {
                     expect(record).to.have.property('version', 0);
                     record.definition = 'this is a defn';
                     return vocabInstance.updateRecord(record);
+                }, (error) => {
+                    assert.fail('creating the initial record failed', error);
+                }).then((updated) => {
+                    expect(updated).to.have.property('version', 1);
+                    expect(updated).to.have.property('definition', 'this is a defn');
+                    expect(updated).to.have.property('class', 'feature');
+                    expect(updated).to.have.property('property', 'biotype');
+                    expect(updated).to.have.property('term', 'protein');
+                });
+        });
+        it('updateDefinition: update record definition', () => {
+            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
+                .then((record)  => {
+                    expect(record).to.have.property('class', 'feature');
+                    expect(record).to.have.property('property', 'biotype');
+                    expect(record).to.have.property('term', 'protein');
+                    expect(record).to.have.property('version', 0);
+                    record.definition = 'this is a defn';
+                    return vocabInstance.updateDefinition(record);
                 }, (error) => {
                     assert.fail('creating the initial record failed', error);
                 }).then((updated) => {
