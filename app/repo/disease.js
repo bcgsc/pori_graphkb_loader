@@ -24,6 +24,22 @@ class Disease extends Base {
         return super.validateContent(content);
     }
 
+    getParents(opt) {
+        
+    }
+
+    getRelatives(opt) {
+
+    }
+
+    getSynonyms(opt) {
+
+    }
+
+    deprecator(opt) {
+
+    }
+
     static createClass(db) {
         // create the disease class
         return new Promise((resolve, reject) => {
