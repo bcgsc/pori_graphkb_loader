@@ -1,6 +1,9 @@
+'use strict';
+
 const {Base, KBVertex, KBEdge} = require('./base');
 const {AttributeError} = require('./error');
-const {Context} = require('./context');
+const Promise = require('bluebird');
+
 
 /**
  * @class
@@ -9,54 +12,95 @@ const {Context} = require('./context');
 class Disease extends Base {
 
     validateContent(content) {
-
-        if (content.doid != undefined || content.name != undefined) {
-            if (! content.doid % 1 === 0) {
+        if (content.doid != undefined && content.name != undefined) {
+            if (! content.doid === parseInt(content.doid, 10)) {
                 // if doid is not an integer
                 throw new AttributeError('DOID must be an integer');
             } else {
-                content.name = content.doi.toLowerCase();
+                content.name = content.name.toLowerCase();
             }
         } else {
             throw new AttributeError('violated null constraint');
         }
-
         return super.validateContent(content);
     }
 
-    getParents(opt) {
-        
+    //placeholder for what comes ne
+    createRecord(content={}) {
+    	const args = this.validateContent(content);
+        return new Promise((resolve, reject) => {
+            super.createRecord(args)
+                .then((record) => {
+                    resolve(record);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
     }
 
-    getRelatives(opt) {
+    linkToParent(parentName, childName) {
+    	return new Promise((resolve, reject) => {
+    		const parent = {};
+    		const child = {};
 
+            this.selectExactlyOne({
+                name: parentName,
+                deleted_at: null
+                }).then((record) => {
+                    parent = record;
+                }).catch((NoResultFoundError) => {
+               	    reject(NoResultFoundError)
+                });
+
+            this.selectExactlyOne({
+                name: childName,
+                deleted_at: null
+                }).then((record) => {
+                    child = record;
+                }).catch((NoResultFoundError) => {
+               	    reject(NoResultFoundError)
+                });
+
+            console.log(parent)
+            console.log(child)
+  			console.log(Disease.clsname)
+    		console.log(parentName)
+    		console.log(childName)
+    	});
     }
 
-    getSynonyms(opt) {
+    // getRelatives(args) {
 
-    }
+    // }
 
-    deprecator(opt) {
+    // getSynonyms(args) {
 
-    }
+    // }
+
+    // deprecator(args) {
+
+    // }
 
     static createClass(db) {
         // create the disease class
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'name', type: 'string', mandatory: true, notNull: true},
-                {name: 'doid', type: 'integer', mandatory: true, notNull: true}
+                {name: 'doid', type: 'integer', mandatory: true, notNull: true},
+                {name: 'url', type: 'string', mandatory: false, notNull: false},
+                {name: 'definition', type: 'string', mandatory: false, notNull: false},
+                {name: 'xref', type: 'string', mandatory: false, notNull: false}
             ];
 
             const idxs = [{
-                name: this.clsname + '.index_doid',
+                name: this.clsname + '.index_name',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
                 properties: ['name' , 'deleted_at'],
                 'class':  this.clsname
             }];
 
-            super.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props, indices: idxs})
+            super.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, properties: props, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((result) => {
@@ -67,6 +111,7 @@ class Disease extends Base {
         });
     }
 }
+
 
 class SubClassOf extends Base {
 
@@ -164,4 +209,4 @@ class DepricatedBy extends Base {
     }
 }
 
-module.exports = {Disease};
+module.exports = {Disease, SubClassOf, RelatedTo, SynonymFor, DepricatedBy};
