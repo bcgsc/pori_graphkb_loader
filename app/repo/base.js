@@ -62,10 +62,6 @@ class Base {
         return Array.from(this.properties, ({name}) => name);
     }
 
-    static get createType() {
-        return 'vertex';
-    }
-
     validateContent(content) {
         const args = { // default arguments
             uuid : uuidV4(),
@@ -122,7 +118,6 @@ class Base {
                     reject(error);
                 });
         });
-
     }
     
     /**
@@ -376,6 +371,10 @@ class Base {
  * @returns {Promise} returns a promise which returns nothing on resolve and an error on reject
  */
 class KBVertex extends Base {
+    
+    static get createType() {
+        return 'vertex';
+    }
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
@@ -401,7 +400,7 @@ class KBVertex extends Base {
                 }
             ];
 
-            super.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true, properties: props, indices: idxs})
+            Base.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true, properties: props, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -443,11 +442,69 @@ class KBEdge extends Base {
                 }
             ];
 
-            super.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: true, properties: props, indices: idxs})
+            Base.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: true, properties: props, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
                     resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+    
+    /**
+     *
+     */
+    createRecord(data={}) {
+        return new Promise((resolve, reject) => {
+            const args = this.validateContent(data);
+            // select both records from the db
+            Promise.all([
+                this.selectExactlyOne(data.from),
+                this.selectExactlyOne(data.to)
+            ]).then((recList) => {
+                let [src, tgt] = recList;
+                for (let key of data.from) {
+                    if (data.from[key] !== src[key]) {
+                        throw new Error(`Record pulled from DB differs from input on attr ${key}: ${src[key]} vs ${data.from[key]}`);
+                    }
+                }
+                for (let key of data.to) {
+                    if (data.to[key] !== tgt[key]) {
+                        throw new Error(`Record pulled from DB differs from input on attr ${key}: ${tgt[key]} vs ${data.to[key]}`);
+                    }
+                }
+                delete args.to;
+                delete args.from;
+                // now create the edge
+                this.dbClass.create(args).from(src['@rid']).to(tgt['@rid']).set(args)
+                    .then((result) => {
+                        console.log(result);
+                        resolve(result);
+                    }).catch((error) => {
+                        reject(error);
+                    });
+            }).catch((error) => {
+                reject(error);
+            });
+            
+
+            var commit = this.dbClass.db
+                .let('src', (tx) => {
+                    return tx.select().from(KBVertex.clsname).where(src);
+                }).let('tgt', (tx) => {
+                    return tx.select().from(KBVertex.clsname).where(tgt);
+                }).let('edge', (tx) => {
+                    //connect the nodes
+                    return tx.create(this.createType, this.clsname)
+                        .from('$src')
+                        .to('$tgt');
+                }).commit();
+            commit.return('[$edge, $src, $tgt]').all()
+                .then((recList) => {
+                    console.log(recList);
+                    resolve(recList);
                 }).catch((error) => {
                     reject(error);
                 });
@@ -468,7 +525,7 @@ class History extends Base {
                 {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true}
             ];
 
-            super.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: false, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: false, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {

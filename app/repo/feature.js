@@ -1,5 +1,5 @@
 'use strict';
-const {Base, KBVertex} = require('./base');
+const {Base, KBVertex, KBEdge} = require('./base');
 const {AttributeError} = require('./error');
 const vocab = require('./cached/data').vocab;
 const Promise = require('bluebird');
@@ -18,21 +18,19 @@ const SOURCE = {
     ENSEMBL: 'ensembl',
     REFSEQ: 'refseq',
     LRG: 'lrg',
-    GRC: 'genome reference consortium'
+    GRC: 'genome reference consortium (human)'
 };
 
-class Feature extends Base {
+class Feature extends KBVertex {
     
     validateContent(content) {
         
         const args = Object.assign({source_version: null}, content);
         let namePattern = /\S+/;
-        let versionPattern = /^\d+$/;
 
         switch (args.source) {
             case SOURCE.HGNC:
                 namePattern = /^[A-Z]([A-Z]|-|\d|orf)*$/;
-                versionPattern = /^\d\d\d\d-\d\d-\d\d$/;
                 if (args.biotype !== BIOTYPE.GENE) {
                     throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
                 }
@@ -83,7 +81,6 @@ class Feature extends Base {
                 }
                 break;
             case SOURCE.GRC:
-                versionPattern = /^(GRCh\d+|hg18)$/;
                 if (args.biotype !== BIOTYPE.TEMPLATE) {
                     throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
                 }
@@ -94,9 +91,6 @@ class Feature extends Base {
         if (namePattern.exec(args.name) === null) {
             throw new AttributeError(`feature name '${args.name}' did not match the expected pattern '${namePattern}'`);
         }
-        if (args.source_version !== null && versionPattern.exec(args.source_version) === null) {
-            throw new AttributeError(`feature source version '${args.source_version}' did not match the expected pattern '${versionPattern}'`);
-        }
         return super.validateContent(args);
     }
 
@@ -104,7 +98,7 @@ class Feature extends Base {
         const props = [
             {name: 'name', type: 'string', mandatory: true, notNull: true},
             {name: 'source', type: 'string', mandatory: true, notNull: true},
-            {name: 'source_version', type: 'string', mandatory: true, notNull: false},
+            {name: 'source_version', type: 'integer', mandatory: true, notNull: false},
             {name: 'source_id', type: 'string', mandatory: false},
             {name: 'biotype', type: 'string', mandatory: true, notNull: true}
         ];
@@ -120,7 +114,7 @@ class Feature extends Base {
         ];
 
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: false, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: false, properties: props, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -132,5 +126,57 @@ class Feature extends Base {
     }
 }
 
+
+class FeatureDeprecatedBy extends KBEdge {
+    
+    validateContent(content) {
+        const args = super.validateContent(content);
+        if (args.from['@class'] !== Feature.clsname || args.to['@class'] !== Feature.clsname) {
+            throw new AttributeError('can only connect feature class nodes');
+        }
+        for (let key of ['source', 'biotype']) {
+            if (args.from[key] !== args.to[key]) {
+                throw new AttributeError(`cannot deprecate a feature using a different ${key}`);
+            }
+        }
+        if (args.from.version !== null && args.from.version >= args.to.version) {
+            throw new AttributeError('source_version must increase in order to deprecate a feature node');
+        }
+        return super.validateContent(content);
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: []})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+    
+}
+
+
+class FeatureAliasOf extends KBEdge {
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: []})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
 
 module.exports = {Feature, SOURCE, BIOTYPE};

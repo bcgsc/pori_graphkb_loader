@@ -4,7 +4,7 @@ const cache = require('./cached/data');
 const Promise = require('bluebird');
 
 
-class Vocab extends Base {
+class Vocab extends KBVertex {
 
     static createClass(db) {
         /**
@@ -27,7 +27,7 @@ class Vocab extends Base {
             }
         ];
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: false, properties: props, indices: idxs})
+            Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: false, properties: props, indices: idxs})
                 .then(() => {
                     return Promise.all([
                         this.loadClass(db),

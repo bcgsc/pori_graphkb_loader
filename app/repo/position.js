@@ -1,17 +1,17 @@
 'use strict';
-const {Base, KBVertex} = require('./base');
+const {KBVertex, Base} = require('./base');
 const {AttributeError} = require('./error');
 
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class Position extends Base {
+class Position extends KBVertex {
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: true})
+            Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: true})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -26,9 +26,9 @@ class Position extends Base {
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class Range extends Base {
+class Range extends KBVertex {
     validateContent(content, positionClass) {
         if (content.start == undefined || content.end == undefined) {
             throw new AttributeError('both start and end must be specified and not null');
@@ -86,7 +86,7 @@ class Range extends Base {
             {name: 'end', type: 'link', mandatory: true, notNull: true, linkedClass: Position.clsname}
         ];
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, isAbstract: false, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: Position.clsname, isAbstract: false, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -102,16 +102,16 @@ class Range extends Base {
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class GenomicPosition extends Base {
+class GenomicPosition extends KBVertex {
 
     static createClass(db) {
         const props = [
             {name: 'pos', type: 'integer', mandatory: true, notNull: true, min: 1}
         ];
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -125,16 +125,16 @@ class GenomicPosition extends Base {
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class ExonicPosition extends Base {
+class ExonicPosition extends KBVertex {
 
     static createClass(db) {
         const props = [
             {name: 'pos', type: 'integer', mandatory: true, notNull: true, min: 1}
         ];
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -149,9 +149,9 @@ class ExonicPosition extends Base {
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class CodingSequencePosition extends Base {
+class CodingSequencePosition extends KBVertex {
 
     validateContent(content) {
         const args = Object.assign({offset: 0}, content);
@@ -164,7 +164,7 @@ class CodingSequencePosition extends Base {
             {name: 'offset', type: 'integer', mandatory: true, notNull: true}
         ];
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -179,9 +179,9 @@ class CodingSequencePosition extends Base {
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class ProteinPosition extends Base {
+class ProteinPosition extends KBVertex {
 
     validateContent(content) {
         const args = Object.assign({ref_aa: null}, content);
@@ -200,7 +200,7 @@ class ProteinPosition extends Base {
             {name: 'ref_aa', type: 'string', mandatory: true, notNull: false}
         ];
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -215,9 +215,9 @@ class ProteinPosition extends Base {
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class CytobandPosition extends Base {
+class CytobandPosition extends KBVertex {
 
     validateContent(content) {
         const args = Object.assign({major_band: null, minor_band: null}, content); // set defaults
@@ -238,7 +238,7 @@ class CytobandPosition extends Base {
             {name: 'minor_band', type: 'integer', mandatory: true, notNull: false}
         ];
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {

@@ -8,6 +8,7 @@ const {Feature, SOURCE, BIOTYPE} = require('./../../app/repo/feature');
 const cache = require('./../../app/repo/cached/data');
 const {ControlledVocabularyError, AttributeError} = require('./../../app/repo/error');
 const Promise = require('bluebird');
+const {expectDuplicateKeyError} = require('./orientdb_errors');
 
 
 
@@ -42,203 +43,6 @@ describe('Feature schema tests:', () => {
             });
     });
     
-    describe('validateContent', () => {
-        let currClass;
-        beforeEach((done) => {
-            Feature.createClass(db)
-                .then((cls) => {
-                    currClass = cls;
-                    done();
-                }).catch((error) => {
-                    done(error);
-                });
-        });
-        describe(SOURCE.HGNC, () => {
-            let validEntry;
-            beforeEach(function(done) {
-                validEntry = {source: SOURCE.HGNC, biotype: BIOTYPE.GENE, name: 'KRAS', source_version: '2017-01-01'};
-                done();
-            });
-
-            it('allows valid', () => {
-                expect(() => {
-                    return currClass.validateContent(validEntry);
-                }).to.not.throw(AttributeError);
-            });
-            it('errors on invalid source_version', () => {
-                validEntry.source_version = '2017-12-1';
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('allows source_version to be null', () => {
-                validEntry.source_version = null;
-                expect(() => { return currClass.validateContent(validEntry); }).to.not.throw(AttributeError);
-            });
-            it('errors if source_version is not defined', () => {
-                delete validEntry.source_version;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on invalid biotype', () => {
-                validEntry.biotype = BIOTYPE.PROTEIN;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on null biotype', () => {
-                validEntry.biotype = null;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors if biotype is not defined', () => {
-                delete validEntry.biotype;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on invalid name', () => {
-                validEntry.name = 'abc';
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-                validEntry.name = '1RAS';
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on null name', () => {
-                validEntry.name = null;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors if name is not defined', () => {
-                delete validEntry.name;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-        });
-        describe(SOURCE.ENSEMBL, () => {
-            let validEntry;
-            beforeEach(function(done) {
-                validEntry = {source: SOURCE.ENSEMBL, biotype: BIOTYPE.GENE, name: 'ENSG001', source_version: '69'};
-                done();
-            });
-
-            it('allows valid gene', () => {
-                expect(() => {
-                    return currClass.validateContent(validEntry);
-                }).to.not.throw(AttributeError);
-            });
-            it('allows valid protein', () => {
-                validEntry.biotype = BIOTYPE.PROTEIN;
-                validEntry.name = 'ENSP001';
-                expect(() => {
-                    return currClass.validateContent(validEntry);
-                }).to.not.throw(AttributeError);
-            });
-            it('allows valid transcript', () => {
-                validEntry.biotype = BIOTYPE.TRANSCRIPT;
-                validEntry.name = 'ENST001';
-                expect(() => {
-                    return currClass.validateContent(validEntry);
-                }).to.not.throw(AttributeError);
-            });
-            it('errors on bad string for source_version', () => {
-                validEntry.source_version = 'v69';
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('allows source_version to be null', () => {
-                validEntry.source_version = null;
-                expect(() => { return currClass.validateContent(validEntry); }).to.not.throw(AttributeError);
-            });
-            it('errors if source_version is not defined', () => {
-                delete validEntry.source_version;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on invalid biotype', () => {
-                validEntry.biotype = BIOTYPE.TEMPLATE;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on null biotype', () => {
-                validEntry.biotype = null;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors if biotype is not defined', () => {
-                delete validEntry.biotype;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on invalid name', () => {
-                validEntry.name = 'ENST001';
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-                validEntry.name = 'ENSP001';
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on null name', () => {
-                validEntry.name = null;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors if name is not defined', () => {
-                delete validEntry.name;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-        });
-        describe(SOURCE.REFSEQ, () => {
-            let validEntry;
-            beforeEach(function(done) {
-                validEntry = {source: SOURCE.REFSEQ, biotype: BIOTYPE.GENE, name: 'NG_001', source_version: '1'};
-                done();
-            });
-
-            it('allows valid gene', () => {
-                expect(() => {
-                    return currClass.validateContent(validEntry);
-                }).to.not.throw(AttributeError);
-            });
-            it('allows valid protein', () => {
-                validEntry.biotype = BIOTYPE.PROTEIN;
-                validEntry.name = 'NP_001';
-                expect(() => {
-                    return currClass.validateContent(validEntry);
-                }).to.not.throw(AttributeError);
-            });
-            it('allows valid transcript', () => {
-                validEntry.biotype = BIOTYPE.TRANSCRIPT;
-                validEntry.name = 'NM_001';
-                expect(() => {
-                    return currClass.validateContent(validEntry);
-                }).to.not.throw(AttributeError);
-            });
-            it('errors on bad string for source_version', () => {
-                validEntry.source_version = 'v1';
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('allows null source_version', () => {
-                validEntry.source_version = null;
-                expect(() => { return currClass.validateContent(validEntry); }).to.not.throw(AttributeError);
-            });
-            it('errors if source_version is not defined', () => {
-                delete validEntry.source_version;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on bad string for biotype', () => {
-                validEntry.biotype = BIOTYPE.TEMPLATE;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on null biotype', () => {
-                validEntry.biotype = null;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors if biotype is not defined', () => {
-                delete validEntry.biotype;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on bad string for name', () => {
-                validEntry.name = 'NP_001';
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-                validEntry.name = 'NM_001';
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors on null name', () => {
-                validEntry.name = null;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-            it('errors when name is not defined', () => {
-                delete validEntry.name;
-                expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
-            });
-        });
-        it('errors on invalid source', () => {
-            let entry = {source: SOURCE.HGNC, biotype: BIOTYPE.GENE, name: null, source_version: '2017-01-01'};
-            expect(() => { return currClass.validateContent(entry); }).to.throw(AttributeError);
-        });
-    });
     describe('indices', () => {
         let currClass;
         beforeEach((done) => {
@@ -250,11 +54,335 @@ describe('Feature schema tests:', () => {
                     done(error);
                 });
         });
-        it('errors on active name not unique');
-        it('allows name duplicate when one node is deleted');
+        it('errors on active name not unique within source/version', () => {
+            const entry = {source: SOURCE.REFSEQ, biotype: BIOTYPE.GENE, name: 'NG_001', source_version: null};
+            return currClass.createRecord(entry)
+                .then((record) => {
+                    return currClass.createRecord(entry);
+                }, (error) => {
+                    expect.fail('failed on initial record creation');
+                }).then((record2) => {
+                    expect.fail('expected an error');
+                }).catch((error) => {
+                    expectDuplicateKeyError(error);
+                });
+        });
+        it('allows name duplicate within a source in different source versions', () => {
+            const entry = {source: SOURCE.REFSEQ, biotype: BIOTYPE.GENE, name: 'NG_001', source_version: null};
+            const secondEntry = {source: SOURCE.REFSEQ, biotype: BIOTYPE.GENE, name: 'NG_001', source_version: 1};
+            return currClass.createRecord(entry)
+                .then((record) => {
+                    expect(record).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                    return currClass.createRecord(secondEntry);
+                }, (error) => {
+                    expect.fail('failed on initial record creation');
+                }).then((record2) => {
+                    expect(record2).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                });
+        });
+        it('allows name duplicate when one node is deleted', () => {
+            const entry = {source: SOURCE.REFSEQ, biotype: BIOTYPE.GENE, name: 'NG_001', source_version: null};
+            return currClass.createRecord(entry)
+                .then((record) => {
+                    expect(record).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                    record.source_version = 1;
+                    return currClass.updateRecord(record);
+                }, (error) => {
+                    expect.fail('failed on initial record creation');
+                }).then((record2) => {
+                    expect(record2).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                });
+        });
+        it('allows name duplicates in separate sources', () => {
+            const entry = {source: SOURCE.ENSEMBL, biotype: BIOTYPE.GENE, name: 'ENSG001', source_version: null};
+            const secondEntry = {source: SOURCE.HGNC, biotype: BIOTYPE.GENE, name: 'ENSG001', source_version: null};
+            return currClass.createRecord(entry)
+                .then((record) => {
+                    expect(record).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                    return currClass.createRecord(secondEntry);
+                }, (error) => {
+                    expect.fail('failed on initial record creation');
+                }).then((record2) => {
+                    expect(record2).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                });
+        });
     });
 
     afterEach((done) => {
+        /* disconnect from the database */
+        server.drop({name: conf.emptyDbName})
+            .catch((error) => {
+                console.log('error:', error);
+            }).then(() => {
+                return server.close();
+            }).then(() => {
+                done();
+            }).catch((error) => {
+                done(error);
+            });
+    });
+});
+
+
+describe('Feature.validateContent', () => {
+    let server, db, currClass;
+    before(function(done) { /* build and connect to the empty database */
+        // set up the database server
+        serverConnect(conf)
+            .then((result) => {
+                // create the empty database
+                server = result;
+                return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+            }).then((result) => {
+                db = result;
+                return Promise.all([
+                    KBVertex.createClass(db),
+                    History.createClass(db),
+                    KBEdge.createClass(db)
+                ]);
+            }).then(() => {
+                return Feature.createClass(db);
+            }).then((cls) => {
+                currClass = cls;
+                done();
+            }).catch((error) => {
+                console.log('error', error);
+                done(error);
+            });
+    });
+
+    describe(SOURCE.HGNC, () => {
+        let validEntry;
+        beforeEach(function(done) {
+            validEntry = {source: SOURCE.HGNC, biotype: BIOTYPE.GENE, name: 'KRAS', source_version: 20170101};
+            done();
+        });
+
+        it('allows valid', () => {
+            expect(() => {
+                return currClass.validateContent(validEntry);
+            }).to.not.throw(AttributeError);
+        });
+        it('allows source_version to be null', () => {
+            validEntry.source_version = null;
+            expect(() => { return currClass.validateContent(validEntry); }).to.not.throw(AttributeError);
+        });
+        it('source_version defaults to null', () => {
+            delete validEntry.source_version;
+            const record = currClass.validateContent(validEntry)
+            expect(record).to.have.property('source_version', null);
+        });
+        it('errors on invalid biotype', () => {
+            validEntry.biotype = BIOTYPE.PROTEIN;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on null biotype', () => {
+            validEntry.biotype = null;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors if biotype is not defined', () => {
+            delete validEntry.biotype;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on invalid name', () => {
+            validEntry.name = 'abc';
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            validEntry.name = '1RAS';
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on null name', () => {
+            validEntry.name = null;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors if name is not defined', () => {
+            delete validEntry.name;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+    });
+    describe(SOURCE.ENSEMBL, () => {
+        let validEntry;
+        beforeEach(function(done) {
+            validEntry = {source: SOURCE.ENSEMBL, biotype: BIOTYPE.GENE, name: 'ENSG001', source_version: 69};
+            done();
+        });
+
+        it('allows valid gene', () => {
+            expect(() => {
+                return currClass.validateContent(validEntry);
+            }).to.not.throw(AttributeError);
+        });
+        it('allows valid protein', () => {
+            validEntry.biotype = BIOTYPE.PROTEIN;
+            validEntry.name = 'ENSP001';
+            expect(() => {
+                return currClass.validateContent(validEntry);
+            }).to.not.throw(AttributeError);
+        });
+        it('allows valid transcript', () => {
+            validEntry.biotype = BIOTYPE.TRANSCRIPT;
+            validEntry.name = 'ENST001';
+            expect(() => {
+                return currClass.validateContent(validEntry);
+            }).to.not.throw(AttributeError);
+        });
+        it('allows source_version to be null', () => {
+            validEntry.source_version = null;
+            expect(() => { return currClass.validateContent(validEntry); }).to.not.throw(AttributeError);
+        });
+        it('source_version defaults to null', () => {
+            delete validEntry.source_version;
+            const record = currClass.validateContent(validEntry)
+            expect(record).to.have.property('source_version', null);
+        });
+        it('errors on invalid biotype', () => {
+            validEntry.biotype = BIOTYPE.TEMPLATE;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on null biotype', () => {
+            validEntry.biotype = null;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors if biotype is not defined', () => {
+            delete validEntry.biotype;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on invalid name', () => {
+            validEntry.name = 'ENST001';
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            validEntry.name = 'ENSP001';
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on null name', () => {
+            validEntry.name = null;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors if name is not defined', () => {
+            delete validEntry.name;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+    });
+    describe(SOURCE.REFSEQ, () => {
+        let validEntry;
+        beforeEach(function(done) {
+            validEntry = {source: SOURCE.REFSEQ, biotype: BIOTYPE.GENE, name: 'NG_001', source_version: 1};
+            done();
+        });
+
+        it('allows valid gene', () => {
+            expect(() => {
+                return currClass.validateContent(validEntry);
+            }).to.not.throw(AttributeError);
+        });
+        it('allows valid protein', () => {
+            validEntry.biotype = BIOTYPE.PROTEIN;
+            validEntry.name = 'NP_001';
+            expect(() => {
+                return currClass.validateContent(validEntry);
+            }).to.not.throw(AttributeError);
+        });
+        it('allows valid transcript', () => {
+            validEntry.biotype = BIOTYPE.TRANSCRIPT;
+            validEntry.name = 'NM_001';
+            expect(() => {
+                return currClass.validateContent(validEntry);
+            }).to.not.throw(AttributeError);
+        });
+        it('allows null source_version', () => {
+            validEntry.source_version = null;
+            expect(() => { return currClass.validateContent(validEntry); }).to.not.throw(AttributeError);
+        });
+        it('source_version defaults to null', () => {
+            delete validEntry.source_version;
+            const record = currClass.validateContent(validEntry)
+            expect(record).to.have.property('source_version', null);
+        });
+        it('errors on bad string for biotype', () => {
+            validEntry.biotype = BIOTYPE.TEMPLATE;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on null biotype', () => {
+            validEntry.biotype = null;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors if biotype is not defined', () => {
+            delete validEntry.biotype;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on bad string for name', () => {
+            validEntry.name = 'NP_001';
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            validEntry.name = 'NM_001';
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on null name', () => {
+            validEntry.name = null;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors when name is not defined', () => {
+            delete validEntry.name;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+    });
+    describe(SOURCE.LRG, () => {});
+    describe(SOURCE.GRC, () => {});
+    it('errors on invalid source', () => {
+        let entry = {source: SOURCE.HGNC, biotype: BIOTYPE.GENE, name: null, source_version: '2017-01-01'};
+        expect(() => { return currClass.validateContent(entry); }).to.throw(AttributeError);
+    });
+    
+    after((done) => {
+        /* disconnect from the database */
+        server.drop({name: conf.emptyDbName})
+            .catch((error) => {
+                console.log('error:', error);
+            }).then(() => {
+                return server.close();
+            }).then(() => {
+                done();
+            }).catch((error) => {
+                done(error);
+            });
+    });
+});
+
+
+// test FeatureDeprecatedBy
+describe('FeatureDeprecatedBy', () => {
+    let server, db, currClass, featureClass;
+    before(function(done) { /* build and connect to the empty database */
+        // set up the database server
+        serverConnect(conf)
+            .then((result) => {
+                // create the empty database
+                server = result;
+                return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+            }).then((result) => {
+                db = result;
+                return Promise.all([
+                    KBVertex.createClass(db),
+                    History.createClass(db),
+                    KBEdge.createClass(db)
+                ]);
+            }).then(() => {
+                return Promise.all([
+                    FeatureDeprecatedBy.createClass(db),
+                    Feature.createClass(db)
+                ]);
+            }).then((clsList) => {
+                [currClass, featureClass] = clsList;
+                done();
+            }).catch((error) => {
+                console.log('error', error);
+                done(error);
+            });
+    });
+
+    it('errors when deprecating a feature from another class');
+    it('errors when deprecating a feature with a different biotype');
+    it('errors when deprecating a feature with a different source');
+    it('errors when the deprecated version is not lower than the new version');
+
+    after((done) => {
         /* disconnect from the database */
         server.drop({name: conf.emptyDbName})
             .catch((error) => {
