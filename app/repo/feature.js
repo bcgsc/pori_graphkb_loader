@@ -22,9 +22,9 @@ const SOURCE = {
 };
 
 class Feature extends KBVertex {
-    
+
     validateContent(content) {
-        
+
         const args = Object.assign({source_version: null}, content);
         let namePattern = /\S+/;
 
@@ -128,7 +128,7 @@ class Feature extends KBVertex {
 
 
 class FeatureDeprecatedBy extends KBEdge {
-    
+
     validateContent(content) {
         const args = super.validateContent(content);
         if (args.from['@class'] !== Feature.clsname || args.to['@class'] !== Feature.clsname) {
@@ -158,7 +158,7 @@ class FeatureDeprecatedBy extends KBEdge {
                 });
         });
     }
-    
+
 }
 
 
@@ -179,4 +179,4 @@ class FeatureAliasOf extends KBEdge {
     }
 }
 
-module.exports = {Feature, SOURCE, BIOTYPE};
+module.exports = {Feature, FeatureDeprecatedBy, FeatureAliasOf, SOURCE, BIOTYPE};

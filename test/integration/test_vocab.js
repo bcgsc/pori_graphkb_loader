@@ -59,7 +59,6 @@ describe('Vocab schema tests:', () => {
         it('createRecords: create multiple records', () => {
             return vocabInstance.createRecords(data.vocab)
                 .then(() => {
-                    console.log(cache);
                     expect(cache.vocab).to.have.property('feature');
                     expect(cache.vocab.feature).to.have.property('biotype');
                     expect(cache.vocab.feature.biotype).to.include.keys('protein', 'gene', 'template', 'exon', 'domain', 'transcript');
@@ -73,7 +72,6 @@ describe('Vocab schema tests:', () => {
                 .then(() => {
                     return vocabInstance.createRecords(data.vocab);
                 }).then(() => {
-                    console.log(cache);
                     expect(cache.vocab).to.have.property('feature');
                     expect(cache.vocab.feature).to.have.property('biotype');
                     expect(cache.vocab.feature.biotype).to.include.keys('protein', 'gene', 'template', 'exon', 'domain', 'transcript');
@@ -155,7 +153,7 @@ describe('Vocab schema tests:', () => {
                     expect(second).to.have.property('term', 'protein');
                 });
         });
-        
+
         it('create record updates cache', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein'})
                 .then((first)  => {

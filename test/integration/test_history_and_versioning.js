@@ -6,10 +6,10 @@ const {Base, History, KBVertex} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 
 
-class MockVertexClass extends Base { // simple non-abstract class for tests
+class MockVertexClass extends KBVertex { // simple non-abstract class for tests
     static createClass(db) {
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname})
+            Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {

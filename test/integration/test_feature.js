@@ -4,7 +4,7 @@ const conf = require('./../config/db');
 const {serverConnect} = require('./../../app/repo');
 const {KBVertex, KBEdge, History} = require('./../../app/repo/base');
 const {Vocab} = require('./../../app/repo/vocab');
-const {Feature, SOURCE, BIOTYPE} = require('./../../app/repo/feature');
+const {Feature, FeatureDeprecatedBy, SOURCE, BIOTYPE} = require('./../../app/repo/feature');
 const cache = require('./../../app/repo/cached/data');
 const {ControlledVocabularyError, AttributeError} = require('./../../app/repo/error');
 const Promise = require('bluebird');
@@ -42,7 +42,7 @@ describe('Feature schema tests:', () => {
                 expect(cls.propertyNames).to.include('name', 'biotype', 'uuid', 'version', 'source', 'source_version', 'created_at', 'deleted_at');
             });
     });
-    
+
     describe('indices', () => {
         let currClass;
         beforeEach((done) => {
@@ -329,7 +329,7 @@ describe('Feature.validateContent', () => {
         let entry = {source: SOURCE.HGNC, biotype: BIOTYPE.GENE, name: null, source_version: '2017-01-01'};
         expect(() => { return currClass.validateContent(entry); }).to.throw(AttributeError);
     });
-    
+
     after((done) => {
         /* disconnect from the database */
         server.drop({name: conf.emptyDbName})

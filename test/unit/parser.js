@@ -2,11 +2,12 @@
 const {expect} = require('chai');
 const {DependencyError, AttributeError, ParsingError} = require('./../../app/repo/error');
 const {
-    parsePosition,
     parseContinuous,
     parseDiscontinuous,
     parseHistoneVariant
-} = require('./../../app/parser/notation');
+} = require('./../../app/parser/variant');
+const {parsePosition} = require('./../../app/parser/position');
+const {parseFeature} = require('./../../app/parser/feature');
 
 
 describe('parsePosition', () => {
@@ -553,7 +554,20 @@ describe('parseContinuous', () => {
 });
 
 
-describe('discontinuous', () => {
+describe('parseFeature', () => {
+    it('returns a hugo gene', () => {
+        const result = parseFeature('KRAS');
+        expect(result).to.have.property('name', 'KRAS');
+        expect(result).to.have.property('source_version', undefined);
+        expect(result).to.have.property('source', 'hgnc');
+        expect(result).to.have.property('biotype', 'gene');
+    });
+    it('returns a hugo gene with version datestamp');
+    it('errors when the hugo gene version is not a date');
+});
+
+
+describe('parseDiscontinuous', () => {
     describe('DNA variants', () => {
 
     });
@@ -562,52 +576,71 @@ describe('discontinuous', () => {
         it('single gene fusion', () => {
             const result = parseDiscontinuous('e', 'fus(GENE1)(1,3)');
             expect(result).to.have.property('type', 'fus');
-            expect(result.break1_feature).to.eql({name: 'GENE1'});
+            expect(result.feature1).to.have.property('name', 'GENE1');
+            expect(result.feature2).to.have.property('name', 'GENE1');
             expect(result.break1).to.eql({pos: 1, prefix: 'e'});
             expect(result.break2).to.eql({pos: 3, prefix: 'e'});
         });
         it('two gene fusion', () => {
             const result = parseDiscontinuous('e', 'fus(GENE1,GENE2)(1,2)');
             expect(result).to.have.property('type', 'fus');
-            expect(result.break1_feature).to.eql({name: 'GENE1'});
-            expect(result.break2_feature).to.eql({name: 'GENE2'});
+            expect(result.feature1).to.have.property('name', 'GENE1');
+            expect(result.feature2).to.have.property('name', 'GENE2');
             expect(result.break1).to.eql({pos: 1, prefix: 'e'});
             expect(result.break2).to.eql({pos: 2, prefix: 'e'});
         });
         it('two gene inversion', () => {
             const result = parseDiscontinuous('e', 'inv(GENE1,GENE2)(1,2)');
             expect(result).to.have.property('type', 'inv');
-            expect(result.break1_feature).to.eql({name: 'GENE1'});
-            expect(result.break2_feature).to.eql({name: 'GENE2'});
+            expect(result.feature1).to.have.property('name', 'GENE1');
+            expect(result.feature2).to.have.property('name', 'GENE2');
             expect(result.break1).to.eql({pos: 1, prefix: 'e'});
             expect(result.break2).to.eql({pos: 2, prefix: 'e'});
         });
         it('single gene inversion', () => {
             const result = parseDiscontinuous('e', 'inv(GENE1)(4, 7)');
             expect(result).to.have.property('type', 'inv');
-            expect(result.break1_feature).to.eql({name: 'GENE1'});
-            expect(result.break2_feature).to.eql({name: 'GENE1'});
+            expect(result.feature1).to.have.property('name', 'GENE1');
+            expect(result.feature2).to.have.property('name', 'GENE1');
             expect(result.break1).to.eql({pos: 4, prefix: 'e'});
             expect(result.break2).to.eql({pos: 7, prefix: 'e'});
         });
         it('two gene duplication', () => {
             const result = parseDiscontinuous('e', 'dup(GENE1,GENE2)(1,2)');
             expect(result).to.have.property('type', 'dup');
+            expect(result.feature1).to.have.property('name', 'GENE1');
+            expect(result.feature2).to.have.property('name', 'GENE2');
+            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
+            expect(result.break2).to.eql({pos: 2, prefix: 'e'});
         });
         it('single gene duplication', () => {
             const result = parseDiscontinuous('e', 'dup(GENE1)(1,8)');
             expect(result).to.have.property('type', 'dup');
+            expect(result.feature1).to.have.property('name', 'GENE1');
+            expect(result.feature2).to.have.property('name', 'GENE1');
+            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
+            expect(result.break2).to.eql({pos: 8, prefix: 'e'});
         });
         it('deletion two gene fusion', () => {
             const result = parseDiscontinuous('e', 'del(GENE1,GENE2)(1,2)');
             expect(result).to.have.property('type', 'del');
+            expect(result.feature1).to.have.property('name', 'GENE1');
+            expect(result.feature2).to.have.property('name', 'GENE2');
+            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
+            expect(result.break2).to.eql({pos: 2, prefix: 'e'});
         });
         it('deletion single gene fusion', () => {
             const result = parseDiscontinuous('e', 'del(GENE1)(1,8)');
+            expect(result.feature1).to.have.property('name', 'GENE1');
+            expect(result.feature2).to.have.property('name', 'GENE1');
             expect(result).to.have.property('type', 'del');
+            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
+            expect(result.break2).to.eql({pos: 8, prefix: 'e'});
         });
     });
-    describe('protein variants', () => {});
+    describe('protein variants', () => {
+
+    });
     describe('cytoband variants', () => {
         it('translocation');
     });

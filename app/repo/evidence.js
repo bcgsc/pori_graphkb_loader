@@ -11,13 +11,13 @@ const currYear = require('year');
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class Evidence extends Base {
-    
+class Evidence extends KBVertex {
+
     static createClass(db){
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: true})
+            Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: true})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -31,9 +31,9 @@ class Evidence extends Base {
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class Publication extends Base {
+class Publication extends KBVertex {
 
     validateContent(content, journalClass) {
         if ([content.title, content.journal, content.year].some(x => x == undefined)) {
@@ -52,7 +52,7 @@ class Publication extends Base {
                 content.doi = content.doi.toLowerCase();
             }
         }
-        
+
         return super.validateContent(content);
     }
 
@@ -72,8 +72,8 @@ class Publication extends Base {
                 this.dbClass.db.record.get(record.journal).then((journalName) => {
                     record.journal = journalName;
                     resolve(record);
-                }).catch((error) => { 
-                    reject(error); 
+                }).catch((error) => {
+                    reject(error);
                 });
             }).catch((error) => {
                 reject(error);
@@ -97,7 +97,7 @@ class Publication extends Base {
                 properties: ['deleted_at', 'journal', 'year', 'title'],
                 'class':  this.clsname
             }];
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
+            Base.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -112,9 +112,9 @@ class Publication extends Base {
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class Journal extends Base {
+class Journal extends KBVertex {
 
     validateContent(content) {
         if (content.name == undefined) {
@@ -136,7 +136,7 @@ class Journal extends Base {
                 properties: ['deleted_at', 'name'],
                 'class':  this.clsname
             }];
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
+            Base.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -151,9 +151,9 @@ class Journal extends Base {
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class Study extends Base {
+class Study extends KBVertex {
 
     validateContent(content) {
         if (content.title == undefined || content.year == undefined) {
@@ -184,7 +184,7 @@ class Study extends Base {
                 properties: ['deleted_at', 'title', 'year'],
                 'class':  this.clsname
             }];
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
+            Base.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -195,13 +195,13 @@ class Study extends Base {
         });
     }
 }
- 
+
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class ClinicalTrial extends Base {
+class ClinicalTrial extends KBVertex {
 
     validateContent(content) {
         return super.validateContent(content);
@@ -230,7 +230,7 @@ class ClinicalTrial extends Base {
                 properties: ['deleted_at','official_title'],
                 'class':  this.clsname
             }];
-            super.createClass({db, clsname: this.clsname, superClasses: Study.clsname, properties: props, isAbstract: false, indices: idxs})
+            Base.createClass({db, clsname: this.clsname, superClasses: Study.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -245,9 +245,9 @@ class ClinicalTrial extends Base {
 
 /**
  * @class
- * @extends Base
+ * @extends KBVertex
  */
-class ExternalSource extends Base {
+class ExternalSource extends KBVertex {
 
     validateContent(content) {
         if (content.url == undefined || content.extraction_date == undefined) {
@@ -270,7 +270,7 @@ class ExternalSource extends Base {
                 properties: ['deleted_at', 'url', 'extraction_date'],
                 'class':  this.clsname
             }];
-            super.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
+            Base.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
