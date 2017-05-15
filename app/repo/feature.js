@@ -46,6 +46,9 @@ class Feature extends KBVertex {
                     case BIOTYPE.GENE:
                         namePattern = /^ENSG\d+$/;
                         break;
+                    case BIOTYPE.EXON:
+                        namePattern = /^ENSE\d+$/;
+                        break;
                     default:
                         throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
                 }
@@ -126,7 +129,9 @@ class Feature extends KBVertex {
     }
 }
 
-
+/**
+ * edges responsible for tracking deprecation in external sources
+ */
 class FeatureDeprecatedBy extends KBEdge {
 
     validateContent(content) {

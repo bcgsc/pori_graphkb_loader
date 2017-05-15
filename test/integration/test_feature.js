@@ -225,12 +225,23 @@ describe('Feature.validateContent', () => {
                 return currClass.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
+        it('allows valid exon', () => {
+            validEntry.biotype = BIOTYPE.EXON;
+            validEntry.name = 'ENSE001';
+            expect(() => {
+                return currClass.validateContent(validEntry);
+            }).to.not.throw(AttributeError);
+        });
         it('errors on gene name not compatible with transcript biotype', () => {
             validEntry.biotype = BIOTYPE.TRANSCRIPT;
             expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on gene name not compatible with protein biotype', () => {
             validEntry.biotype = BIOTYPE.PROTEIN;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on gene name not compatible with exon biotype', () => {
+            validEntry.biotype = BIOTYPE.EXON;
             expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on transcript name not compatible with gene biotype', () => {
@@ -242,6 +253,11 @@ describe('Feature.validateContent', () => {
             validEntry.biotype = BIOTYPE.PROTEIN;
             expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
         });
+        it('errors on transcript name not compatible with exon biotype', () => {
+            validEntry.name = 'ENST0001';
+            validEntry.biotype = BIOTYPE.EXON;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
         it('errors on protein name not compatible with gene biotype', () => {
             validEntry.name = 'ENSP0001';
             expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
@@ -249,6 +265,11 @@ describe('Feature.validateContent', () => {
         it('errors on protein name not compatible with transcript biotype', () => {
             validEntry.name = 'ENSP0001';
             validEntry.biotype = BIOTYPE.TRANSCRIPT;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on protein name not compatible with exon biotype', () => {
+            validEntry.name = 'ENSP0001';
+            validEntry.biotype = BIOTYPE.EXON;
             expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('allows source_version to be null', () => {
@@ -442,12 +463,54 @@ describe('Feature.validateContent', () => {
         });
     });
     describe(SOURCE.GRC, () => {
-        it('allows GRCh');
-        it('allows hg18');
-        it('allows with chr prefix');
-        it('allows without chr prefix');
-        it('allows alternative chromosomes GL...');
-        it('allows MT');
+        let validEntry;
+        beforeEach(function(done) {
+            validEntry = {source: SOURCE.GRC, biotype: BIOTYPE.TEMPLATE, name: 'chr11', source_version: 19};
+            done();
+        });
+        it('allows version', () => {
+            const result = currClass.validateContent(validEntry);
+            expect(result).to.have.property('source', SOURCE.GRC);
+            expect(result).to.have.property('source_version', 19);
+            expect(result).to.have.property('name', 'chr11');
+            expect(result).to.have.property('biotype', BIOTYPE.TEMPLATE);
+        });
+        it('allows with chr prefix', () => {
+            validEntry.name = 'chr1';
+            const result = currClass.validateContent(validEntry);
+            expect(result).to.have.property('name', 'chr1');
+        });
+        it('allows without chr prefix', () => {
+            validEntry.name = 1;
+            const result = currClass.validateContent(validEntry);
+            expect(result).to.have.property('name', 1);
+        });
+        it('allows alternative chromosomes chr1_gl000191_random', () => {
+            validEntry.name = 'chr1_gl000191_random';
+            const result = currClass.validateContent(validEntry);
+            expect(result).to.have.property('name', 'chr1_gl000191_random');
+        });
+        it('allows MT', () => {
+            validEntry.name = 'MT';
+            const result = currClass.validateContent(validEntry);
+            expect(result).to.have.property('name', 'MT');
+        });
+        it('errors on biotype gene', () => {
+            validEntry.biotype = BIOTYPE.GENE;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on biotype transcript', () => {
+            validEntry.biotype = BIOTYPE.TRANSCRIPT;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on biotype protein', () => {
+            validEntry.biotype = BIOTYPE.PROTEIN;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
+        it('errors on biotype exon', () => {
+            validEntry.biotype = BIOTYPE.EXON;
+            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+        });
     });
     it('errors on invalid source', () => {
         let entry = {source: SOURCE.HGNC, biotype: BIOTYPE.GENE, name: null, source_version: '2017-01-01'};
