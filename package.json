@@ -28,6 +28,7 @@
     "schema": "nodemon app/db/create_schema.js",
     "integration": "mocha --recursive test/integration --timeout 20000",
     "unit": "mocha --recursive test/unit",
+    "test": "mocha --recursive test --timeout 20000",
     "lint": "eslint -c .eslintrc.json app test"
   }
 }

@@ -141,7 +141,7 @@ class FeatureDeprecatedBy extends KBEdge {
         }
         args.in['@class'] = args.in['@class'] != undefined ? args.in['@class'] : Feature.clsname;
         args.out['@class'] = args.out['@class'] != undefined ? args.out['@class'] : Feature.clsname;
-        return super.validateContent(content);
+        return args;
     }
 
     static createClass(db) {
@@ -162,6 +162,16 @@ class FeatureDeprecatedBy extends KBEdge {
 
 
 class FeatureAliasOf extends KBEdge {
+    
+    validateContent(content) {
+        const args = super.validateContent(content);
+        if (args.in.biotype !== args.out.biotype) {
+            throw new AttributeError(`cannot alias a feature with a different biotype`);
+        }
+        args.in['@class'] = args.in['@class'] != undefined ? args.in['@class'] : Feature.clsname;
+        args.out['@class'] = args.out['@class'] != undefined ? args.out['@class'] : Feature.clsname;
+        return args;
+    }
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
