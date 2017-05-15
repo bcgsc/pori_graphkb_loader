@@ -1,7 +1,7 @@
 'use strict';
 const {expect} = require('chai');
 const conf = require('./../config/db');
-const {serverConnect} = require('./../../app/repo');
+const {connectServer} = require('./../../app/repo/connect');
 const {Base, History, KBVertex} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 
@@ -26,7 +26,7 @@ describe('Versioning/History Tracking tests', () => {
     let server, db;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
-        serverConnect(conf)
+        connectServer(conf)
             .then((result) => {
                 server = result;
                 return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});

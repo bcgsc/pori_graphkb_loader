@@ -1,7 +1,7 @@
 'use strict';
 const {expect} = require('chai');
 const conf = require('./../config/db');
-const {serverConnect} = require('./../../app/repo');
+const {connectServer, createDB} = require('./../../app/repo/connect');
 const {KBVertex, KBEdge, History} = require('./../../app/repo/base');
 const {Vocab} = require('./../../app/repo/vocab');
 const {Feature, FeatureDeprecatedBy, SOURCE, BIOTYPE} = require('./../../app/repo/feature');
@@ -16,19 +16,19 @@ describe('Feature schema tests:', () => {
     let server, db;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
-        serverConnect(conf)
+        connectServer(conf)
             .then((result) => {
                 // create the empty database
                 server = result;
-                return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+                return createDB({
+                    name: conf.emptyDbName, 
+                    username: conf.dbUsername,
+                    password: conf.dbPassword,
+                    server: server,
+                    models: {KBVertex, KBEdge, History}
+                });
             }).then((result) => {
-                db = result;
-                return Promise.all([
-                    KBVertex.createClass(db),
-                    History.createClass(db),
-                    KBEdge.createClass(db)
-                ]);
-            }).then(() => {
+                db = result.db;
                 done();
             }).catch((error) => {
                 console.log('error', error);
@@ -128,19 +128,19 @@ describe('Feature.validateContent', () => {
     let server, db, currClass;
     before(function(done) { /* build and connect to the empty database */
         // set up the database server
-        serverConnect(conf)
+        connectServer(conf)
             .then((result) => {
                 // create the empty database
                 server = result;
-                return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+                return createDB({
+                    name: conf.emptyDbName, 
+                    username: conf.dbUsername,
+                    password: conf.dbPassword,
+                    server: server,
+                    models: {KBVertex, KBEdge, History}
+                });
             }).then((result) => {
-                db = result;
-                return Promise.all([
-                    KBVertex.createClass(db),
-                    History.createClass(db),
-                    KBEdge.createClass(db)
-                ]);
-            }).then(() => {
+                db = result.db;
                 return Feature.createClass(db);
             }).then((cls) => {
                 currClass = cls;
@@ -348,28 +348,28 @@ describe('Feature.validateContent', () => {
 
 // test FeatureDeprecatedBy
 describe('FeatureDeprecatedBy', () => {
-    let server, db, currClass, featureClass;
-    before(function(done) { /* build and connect to the empty database */
+    let server, db, deprecatedByClass, featureClass;
+    beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
-        serverConnect(conf)
+        connectServer(conf)
             .then((result) => {
                 // create the empty database
                 server = result;
-                return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+                return createDB({
+                    name: conf.emptyDbName, 
+                    username: conf.dbUsername,
+                    password: conf.dbPassword,
+                    server: server,
+                    models: {KBVertex, KBEdge, History}
+                });
             }).then((result) => {
-                db = result;
-                return Promise.all([
-                    KBVertex.createClass(db),
-                    History.createClass(db),
-                    KBEdge.createClass(db)
-                ]);
-            }).then(() => {
+                db = result.db;
                 return Promise.all([
                     FeatureDeprecatedBy.createClass(db),
                     Feature.createClass(db)
                 ]);
             }).then((clsList) => {
-                [currClass, featureClass] = clsList;
+                [deprecatedByClass, featureClass] = clsList;
                 done();
             }).catch((error) => {
                 console.log('error', error);
@@ -377,12 +377,70 @@ describe('FeatureDeprecatedBy', () => {
             });
     });
 
-    it('errors when deprecating a feature from another class');
-    it('errors when deprecating a feature with a different biotype');
-    it('errors when deprecating a feature with a different source');
-    it('errors when the deprecated version is not lower than the new version');
-
-    after((done) => {
+    it('errors when deprecating a feature with a different biotype', () => {
+        return Promise.all([
+            featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
+            featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENST001', biotype: BIOTYPE.TRANSCRIPT, source_version: 11})
+        ]).then((recList) => {
+            return deprecatedByClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            console.log(edge);
+            expect.fail('should not have been able to create the record');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+    it('errors when deprecating a feature with a different source', () => {
+        return Promise.all([
+            featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
+            featureClass.createRecord({source: SOURCE.REFSEQ, name: 'NG_001', biotype: BIOTYPE.GENE, source_version: 11})
+        ]).then((recList) => {
+            return deprecatedByClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            console.log(edge);
+            expect.fail('should not have been able to create the record');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+    it('errors when the deprecated version is not lower than the new version', () => {
+        return Promise.all([
+            featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 11}),
+            featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG002', biotype: BIOTYPE.GENE, source_version: 11})
+        ]).then((recList) => {
+            return deprecatedByClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            console.log(edge);
+            expect.fail('should not have been able to create the record');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+    it('errors when null version deprecates non-null version', () => {
+        return Promise.all([
+            featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
+            featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: null})
+        ]).then((recList) => {
+            return deprecatedByClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            console.log(edge);
+            expect.fail('should not have been able to create the record');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+     it('allows version higher', () => {
+        return Promise.all([
+            featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
+            featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 11})
+        ]).then((recList) => {
+            return deprecatedByClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+        });
+    });
+    
+    afterEach((done) => {
         /* disconnect from the database */
         server.drop({name: conf.emptyDbName})
             .catch((error) => {

@@ -75,7 +75,8 @@ class Base {
                 delete content[key];
                 continue;
             }
-            if (! _.includes(this.propertyNames, key)) {
+            if (this.constructor.createType == 'edge' && (key == 'in' || key == 'out')) {
+            } else if (! _.includes(this.propertyNames, key)) {
                 throw new AttributeError(`invalid attribute ${key}`);
             }
             let value = content[key];
@@ -130,8 +131,18 @@ class Base {
      */
     selectExactlyOne(where={}) {
         return new Promise((resolve, reject) => {
-            const query = this.dbClass.db.select().from(this.constructor.clsname).where(where);
-            const stat = query.buildStatement();
+            const clsname = where['@class'] == undefined ? this.constructor.clsname : where['@class'];
+            const selectionWhere = Object.assign({}, where);
+            for (let key of Object.keys(selectionWhere)) {
+                if (key.startsWith('@')) {
+                    delete selectionWhere[key];
+                }
+            }
+            const query = this.dbClass.db.select().from(clsname).where(selectionWhere);
+            let stat = query.buildStatement();
+            for (let key of Object.keys(query._state.params)) {
+                stat = stat.replace(':' + key, `"${query._state.params[key]}"`);
+            }
             query.all()
                 .then((reclist) => {
                     if (reclist.length == 0) {
@@ -461,53 +472,36 @@ class KBEdge extends Base {
             const args = this.validateContent(data);
             // select both records from the db
             Promise.all([
-                this.selectExactlyOne(data.from),
-                this.selectExactlyOne(data.to)
+                this.selectExactlyOne(data.in),
+                this.selectExactlyOne(data.out)
             ]).then((recList) => {
                 let [src, tgt] = recList;
-                for (let key of data.from) {
-                    if (data.from[key] !== src[key]) {
-                        throw new Error(`Record pulled from DB differs from input on attr ${key}: ${src[key]} vs ${data.from[key]}`);
+                for (let key of Object.keys(data.in)) {
+                    if (key === '@rid' && data.in[key].toString() !== src[key].toString() || key !== '@rid' && data.in[key] !== src[key]) {
+                        throw new Error(`Record pulled from DB differs from input on attr ${key}: ${src[key]} vs ${data.in[key]}`);
                     }
                 }
-                for (let key of data.to) {
-                    if (data.to[key] !== tgt[key]) {
-                        throw new Error(`Record pulled from DB differs from input on attr ${key}: ${tgt[key]} vs ${data.to[key]}`);
+                for (let key of Object.keys(data.out)) {
+                    if (key === '@rid' && data.out[key].toString() !== tgt[key].toString() || key !== '@rid' && data.out[key] !== tgt[key]) {
+                        throw new Error(`Record pulled from DB differs from input on attr ${key}: ${tgt[key]} vs ${data.out[key]}`);
                     }
                 }
-                delete args.to;
-                delete args.from;
+                delete args.out;
+                delete args.in;
                 // now create the edge
-                this.dbClass.create(args).from(src['@rid']).to(tgt['@rid']).set(args)
+                this.dbClass.db.create(this.constructor.createType, this.constructor.clsname)
+                    .from(src['@rid'].toString()).to(tgt['@rid'].toString()).set(args).one()
                     .then((result) => {
-                        console.log(result);
+                        return this.selectExactlyOne(result);
+                    }).then((result) => {
                         resolve(result);
                     }).catch((error) => {
+                        console.log(error);
                         reject(error);
                     });
             }).catch((error) => {
                 reject(error);
             });
-            
-
-            var commit = this.dbClass.db
-                .let('src', (tx) => {
-                    return tx.select().from(KBVertex.clsname).where(src);
-                }).let('tgt', (tx) => {
-                    return tx.select().from(KBVertex.clsname).where(tgt);
-                }).let('edge', (tx) => {
-                    //connect the nodes
-                    return tx.create(this.createType, this.clsname)
-                        .from('$src')
-                        .to('$tgt');
-                }).commit();
-            commit.return('[$edge, $src, $tgt]').all()
-                .then((recList) => {
-                    console.log(recList);
-                    resolve(recList);
-                }).catch((error) => {
-                    reject(error);
-                });
         });
     }
 }

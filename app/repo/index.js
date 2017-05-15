@@ -72,6 +72,5 @@ const createSchema = (db) => {
 module.exports = {
     models: models,
     loadSchema,
-    createSchema,
-    serverConnect: connect
+    createSchema
 };

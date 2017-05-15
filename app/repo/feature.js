@@ -131,17 +131,16 @@ class FeatureDeprecatedBy extends KBEdge {
 
     validateContent(content) {
         const args = super.validateContent(content);
-        if (args.from['@class'] !== Feature.clsname || args.to['@class'] !== Feature.clsname) {
-            throw new AttributeError('can only connect feature class nodes');
-        }
         for (let key of ['source', 'biotype']) {
-            if (args.from[key] !== args.to[key]) {
+            if (args.in[key] !== args.out[key]) {
                 throw new AttributeError(`cannot deprecate a feature using a different ${key}`);
             }
         }
-        if (args.from.version !== null && args.from.version >= args.to.version) {
+        if (args.in.source_version !== null && args.in.source_version >= args.out.source_version) {
             throw new AttributeError('source_version must increase in order to deprecate a feature node');
         }
+        args.in['@class'] = args.in['@class'] != undefined ? args.in['@class'] : Feature.clsname;
+        args.out['@class'] = args.out['@class'] != undefined ? args.out['@class'] : Feature.clsname;
         return super.validateContent(content);
     }
 

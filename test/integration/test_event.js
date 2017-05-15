@@ -1,7 +1,7 @@
 'use strict';
 const {expect} = require('chai');
 const conf = require('./../config/db');
-const {serverConnect} = require('./../../app/repo');
+const {connectServer} = require('./../../app/repo/connect');
 const Promise = require('bluebird');
 
 
@@ -10,7 +10,7 @@ describe('Event schema tests:', () => {
     let server, db;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
-        serverConnect(conf)
+        connectServer(conf)
             .then((result) => {
                 // create the empty database
                 server = result;
