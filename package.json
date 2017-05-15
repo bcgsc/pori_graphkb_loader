@@ -26,8 +26,8 @@
   "scripts": {
     "watch": "nodemon app/index.js --use-strict",
     "schema": "nodemon app/db/create_schema.js",
-    "integration": "mocha test/integration --timeout 20000",
-    "unit": "mocha test/unit",
+    "integration": "mocha --recursive test/integration --timeout 20000",
+    "unit": "mocha --recursive test/unit",
     "lint": "eslint -c .eslintrc.json app test"
   }
 }

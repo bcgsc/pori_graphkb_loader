@@ -137,7 +137,7 @@ const parseHistoneVariant = (string) => {
 const parseDiscontinuous = (prefix, string) => {
     const exp = '<type>(<5\' feature>,<3\' feature>)(<position 1>,<position 2>)';
     const regex = nRegex(
-        '(?<type>[^\\)\\(]+)'
+        '(?<type>[^\\)\\(]*)'
         + '\\('
         + '(?<feature1>[^,]+)'
         + '(,(?<feature2>[^,]+))?'
@@ -153,9 +153,9 @@ const parseDiscontinuous = (prefix, string) => {
         throw new ParsingError(`input string: ${string} did not match the expected pattern: ${exp}`);
     }
     match = match.groups();
-    const acceptableTypes = ['del', 'inv', 'dup', 't', 'fus', 'itrans', '?'];
+    const acceptableTypes = ['del', 'inv', 'dup', 't', 'fusion', 'itrans', '?'];
     if (! acceptableTypes.includes(match.type)) {
-        throw new ParsingError(`unexpected type: ${match.type}`);
+        throw new ParsingError(`unexpected type: ${match.type}. Expected: ${acceptableTypes}`);
     }
     return {
         type: match.type,
@@ -172,6 +172,10 @@ const parse = (string) => {
         throw new AttributeError(`Too short. Must be a minimum of three characters: ${string}`);
     }
     const prefix = string[0];
+    const expectedPrefix = ['g', 'c', 'e', 'y', 'p'];
+    if (expectedPrefix.includes(prefix)) {
+        throw new ParsingError(`'${prefix}' is not an accepted prefix. Expected: ${expectedPrefix}`);
+    }
     if (string[1] != '.') {
         throw new ParsingError(`Missing '.' separator after prefix: ${string}`);
     }
@@ -179,6 +183,7 @@ const parse = (string) => {
     try {
         return parseContinuous(prefix, string);
     } catch(ParsingError) {
+        return parseDiscontinuous(prefix, string);
     }
 }
 
