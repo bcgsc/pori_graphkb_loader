@@ -195,9 +195,10 @@ class Base {
 
     deleteRecord(where) {
         return new Promise((resolve, reject) => {
+            where.deleted_at = null;
             this.selectExactlyOne(where)
                 .then((record) => {
-                    record.deleted_at = null;
+                    record.deleted_at = moment().valueOf();
                     return this.dbClass.db.record.update(record);
                 }).then((updatedRecord) => {
                     resolve(updatedRecord);
