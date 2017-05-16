@@ -62,6 +62,17 @@ class Base {
         return Array.from(this.properties, ({name}) => name);
     }
 
+    /**
+     * @returns {boolean} if the current class is an abstract class
+     **/
+    get isAbstract() {
+        if (_.isEqual(this.dbClass.clusterIds, [-1])) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     validateContent(content) {
         const args = { // default arguments
             uuid : uuidV4(),
@@ -106,12 +117,12 @@ class Base {
 
     /**
      * create new record
-     * @param  {object} opt record content
+     * @param  {object} where record content
      * @return {Promise}  if resolved returns ? otherwise returns the db error
      */
-    createRecord(opt={}) {
+    createRecord(where={}) {
         return new Promise((resolve, reject) => {
-            const args = this.validateContent(opt);
+            const args = this.validateContent(where);
             this.dbClass.create(args)
                 .then((result) => {
                     resolve(result);
@@ -131,12 +142,28 @@ class Base {
      */
     selectExactlyOne(where={}) {
         return new Promise((resolve, reject) => {
+            this.select(where, false, 1, true)
+                .then((recList) => {
+                    resolve(recList[0]);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+
+    select(where={}, activeOnly=false, exactlyN=null, ignoreAtPrefixed=true) {
+        return new Promise((resolve, reject) => {
             const clsname = where['@class'] == undefined ? this.constructor.clsname : where['@class'];
             const selectionWhere = Object.assign({}, where);
-            for (let key of Object.keys(selectionWhere)) {
-                if (key.startsWith('@')) {
-                    delete selectionWhere[key];
+            if (ignoreAtPrefixed) {
+                for (let key of Object.keys(selectionWhere)) {
+                    if (key.startsWith('@')) {
+                        delete selectionWhere[key];
+                    }
                 }
+            }
+            if (activeOnly) {
+                selectionWhere.deleted_at = null;
             }
             const query = this.dbClass.db.select().from(clsname).where(selectionWhere);
             let stat = query.buildStatement();
@@ -145,14 +172,36 @@ class Base {
             }
             query.all()
                 .then((reclist) => {
-                    if (reclist.length == 0) {
-                        reject(new NoResultFoundError(stat));
-                    } else if (reclist.length > 1) {
-                        reject(new MultipleResultsFoundError(stat));
+                    if (exactlyN !== null) {
+                        if (reclist.length == 0) {
+                            if (exactlyN === 0) {
+                                resolve([]);
+                            } else {
+                                reject(new NoResultFoundError(stat));
+                            }
+                        } else if (exactlyN != reclist.length) {
+                            reject(new MultipleResultsFoundError(stat + `returned ${reclist.length} results but expected ${exactlyN} results`));
+                        } else {
+                            resolve(reclist);
+                        }
                     } else {
-                        resolve(reclist[0]);
+                        resolve(reclist);
                     }
                 }, (error) => {
+                    reject(error);
+                });
+        });
+    }
+
+    deleteRecord(where) {
+        return new Promise((resolve, reject) => {
+            this.selectExactlyOne(where)
+                .then((record) => {
+                    record.deleted_at = null;
+                    return this.dbClass.db.record.update(record);
+                }).then((updatedRecord) => {
+                    resolve(updatedRecord);
+                }).catch((error) => {
                     reject(error);
                 });
         });
@@ -163,22 +212,21 @@ class Base {
      * will create a copy of the current record, a history edge, and then will edit the
      * current record. This will be wrapped in a transaction. Will need to ensure the
      *
-     * @param  {object} opt record content
+     * @param  {object} where record content
      * @return {Promise}  if resolved returns ? otherwise returns the db error
      */
-    updateRecord(opt={}, user, drop_invalid_attr=true) {
+    updateRecord(where={}) {
         return new Promise((resolve, reject) => {
-            if (opt.uuid === undefined) {
-                throw new AttributeError('uuid');
-            }
-
             // get the record from the db
-            this.selectExactlyOne({uuid: opt.uuid, deleted_at: null})
+            if (where.uuid == undefined) {
+                throw new AttributeError('uuid is a required parameter');
+            }
+            this.selectExactlyOne({uuid: where.uuid})
                 .then((record) => {
                     const required_matches = ['uuid', 'deleted_at','version', 'created_at'];
                     for (let m of required_matches) {
-                        if (opt[m] !== undefined && opt[m] !== record[m]) {
-                            throw new Error('Concurrency error. Updating an out-of-date record');
+                        if (where[m] !== undefined && where[m] !== record[m]) {
+                            throw new Error(`Concurrency error. Updating an out-of-date record. Property ${m}: ${where[m]} and ${record[m]}`);
                         }
                     }
                     const duplicate = {};
@@ -194,9 +242,9 @@ class Base {
                             duplicate[key] = record[key];
                         }
                     }
-                    for (let key of Object.keys(opt)) {
+                    for (let key of Object.keys(where)) {
                         if (! key.startsWith('@') && key !== 'version') {
-                            updates[key] = opt[key];
+                            updates[key] = where[key];
                         }
                     }
 
@@ -227,76 +275,6 @@ class Base {
                 }).catch((error) => {
                     reject(error);
                 });
-        });
-    }
-    get_by_id(id) {
-        return this.db.record.get(`#${id}`);
-    }
-    /**
-     * @returns {boolean} if the current class is an abstract class
-     */
-    get isAbstract() {
-        if (_.isEqual(this.dbClass.clusterIds, [-1])) {
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-     /**
-      *  gets a class record using the input parameters as key value pairs to filter using the where clause
-      * If no filter parameters are given then all records of this class are returned
-      *
-      * @param  {object} whereFilters key value pairs for filtering the selection clause
-      * @param  {int} limit the number of records to return
-      * @return {Promise} if resolved, returns Array of orientjs.Record else returns and Error
-      */
-    get(whereFilters, limit) {
-        return new Promise((resolve, reject) => {
-            const queryArgs = [];
-            for (let key of Object.keys(whereFilters)) {
-                if (this.parameterNames.includes(key)) {
-                    queryArgs.push(`${key}=:${key}`);
-                } else {
-                    reject(new AttributeError(`invalid parameter ${key}`));
-                }
-            }
-            if (queryArgs.length > 0) {
-                // no arguments, return all records of this class
-                console.log(`select * from ${this.constructor.clsname} where ${queryArgs.join(' AND ')}`, whereFilters);
-                if (limit !== undefined) {
-                    this.db.select().from(this.constructor.clsname).where(whereFilters).all()
-                        .then((result) => {
-                            resolve(result);
-                        }).catch((error) => {
-                            reject(error);
-                        });
-                } else {
-                    this.db.select().from(this.constructor.clsname).where(whereFilters).fetch({limit: limit}).all()
-                        .then((result) => {
-                            resolve(result);
-                        }).catch((error) => {
-                            reject(error);
-                        });
-                }
-            } else {
-                console.log(`select * from ${this.constructor.clsname}`);
-                if (limit !== undefined) {
-                    this.db.select().from(this.constructor.clsname).all()
-                        .then((result) => {
-                            resolve(result);
-                        }).catch((error) => {
-                            reject(error);
-                        });
-                } else {
-                    this.db.select().from(this.constructor.clsname).fetch({limit: limit}).all()
-                        .then((result) => {
-                            resolve(result);
-                        }).catch((error) => {
-                            reject(error);
-                        });
-                }
-            }
         });
     }
     /**

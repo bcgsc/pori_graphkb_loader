@@ -42,9 +42,9 @@ class Vocab extends KBVertex {
         });
     }
 
-    createRecord(content={}) {
+    createRecord(where={}) {
         return new Promise((resolve, reject) => {
-            super.createRecord(content)
+            super.createRecord(where)
                 .then((record) => {
                     if (cache.vocab[record.class] == undefined) {
                         cache.vocab[record.class] = {};
@@ -53,6 +53,24 @@ class Vocab extends KBVertex {
                         cache.vocab[record.class][record.property] = {};
                     }
                     cache.vocab[record.class][record.property][record.term] = record;
+                    resolve(record);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+
+    deleteRecord(where={}) {
+        return new Promise((resolve, reject) => {
+            super.deleteRecord(where)
+                .then((record) => {
+                    try {
+                        delete cache.vocab[record.class][record.property][record.term];
+                    } catch (e) {
+                        if (! e instanceof TypeError) {
+                            throw e;
+                        } 
+                    }
                     resolve(record);
                 }).catch((error) => {
                     reject(error);

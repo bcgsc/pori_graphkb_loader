@@ -64,6 +64,9 @@ class Feature extends KBVertex {
                     case BIOTYPE.GENE:
                         namePattern = /^NG_\d+$/;
                         break;
+                    case BIOTYPE.TEMPLATE:
+                        namePattern = /^NC_\d+$/;
+                        break;
                     default:
                         throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
                 }

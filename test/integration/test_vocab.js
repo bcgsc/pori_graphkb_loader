@@ -99,7 +99,8 @@ describe('Vocab schema tests:', () => {
                     record.definition = 'this is a defn';
                     return vocabInstance.updateRecord(record);
                 }, (error) => {
-                    assert.fail('creating the initial record failed', error);
+                    console.log(error);
+                    expect.fail('creating the initial record failed', error);
                 }).then((updated) => {
                     expect(updated).to.have.property('version', 1);
                     expect(updated).to.have.property('definition', 'this is a defn');
@@ -177,10 +178,20 @@ describe('Vocab schema tests:', () => {
                 expect(localCache.other.name).to.have.property('protein');
             });
         });
-        it('cache: create initial');
-        it('cache: update an entry');
-        it('cache: delete something');
-        it('cache: add a new entry');
+        it('cache: delete something', () => {
+            return Promise.all([
+                vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein', definition: ''}),
+            ]).then((record) => {
+                return fetchValues(db);
+            }).then((localCache) => {
+                expect(localCache).to.have.property('feature');
+                expect(localCache.feature).to.have.property('name');
+                expect(localCache.feature.name).to.have.property('protein');
+                return vocabInstance.deleteRecord({class: 'feature', property: 'name', term: 'protein'});
+            }).then((localCache) => {
+                expect(localCache).to.not.have.property('feature');
+            });
+        });
     });
 
     afterEach((done) => {
