@@ -48,7 +48,7 @@ describe('Ontology schema tests:', () => {
                 expect(result.dbClass.superClass).to.equal('context');
             });
     });
-    it('create an ontology record (should error)', () => {
+    it('create an ontology record (should fail)', () => {
         return Ontology.createClass(db)
             .catch((error) => {
                 throw new DependencyError(error.message);
@@ -365,8 +365,8 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         const entry_disease = {name: 'name1', id: 1234};
         const secondEntry_disease = {name: 'name2', id: 123};
         return Promise.all([
-            diseaseClass.createRecord(entry_disease),
-            diseaseClass.createRecord(secondEntry_disease)
+            therapyClass.createRecord(entry_disease),
+            therapyClass.createRecord(secondEntry_disease)
         ]).then((recList) => {
             return ontologySubClassOfClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
@@ -375,7 +375,156 @@ describe('Ontology Edges (Therapy & Disease)', () => {
             expect(error).to.be.instanceof(AttributeError);
         });
     });
+
+    it('errors when creating an OntologySubClassOf edge between disease nodes with identical doids', () => {
+        const entry_disease = {name: 'name1', doid: 1234};
+        const secondEntry_disease = {name: 'name2', doid: 123};
+        return Promise.all([
+            diseaseClass.createRecord(entry_disease),
+            diseaseClass.createRecord(secondEntry_disease)
+        ]).then((recList) => {
+            return ontologySubClassOfClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            expect.fail('should not have been able to create the record');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+
+    it('errors when creating an OntologySubClassOf edge between therapy nodes with identical ids', () => {
+        const entry_disease = {name: 'name1', id: 1234};
+        const secondEntry_disease = {name: 'name2', id: 1234};
+        return Promise.all([
+            therapyClass.createRecord(entry_disease),
+            therapyClass.createRecord(secondEntry_disease)
+        ]).then((recList) => {
+            return ontologySubClassOfClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            expect.fail('should not have been able to create the record');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+
+    it('allows an OntologyRelatedTo edge between disease nodes', () => {
+        const entry_disease = {name: 'name1', doid: 1234};
+        const secondEntry_disease = {name: 'name2', doid: 123};
+        return Promise.all([
+            diseaseClass.createRecord(entry_disease),
+            diseaseClass.createRecord(secondEntry_disease)
+        ]).then((recList) => {
+            return ontologyRelatedToClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
     
+    it('allows an OntologyRelatedTo edge between therapy nodes', () => {
+        const entry_disease = {name: 'name1', id: 1234};
+        const secondEntry_disease = {name: 'name2', id: 123};
+        return Promise.all([
+            therapyClass.createRecord(entry_disease),
+            therapyClass.createRecord(secondEntry_disease)
+        ]).then((recList) => {
+            return ontologyRelatedToClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+
+    it('errors when creating an OntologyRelatedTo edge between disease nodes with identical doids', () => {
+        const entry_disease = {name: 'name1', doid: 1234};
+        const secondEntry_disease = {name: 'name2', doid: 1234};
+        return Promise.all([
+            diseaseClass.createRecord(entry_disease),
+            diseaseClass.createRecord(secondEntry_disease)
+        ]).then((recList) => {
+            return ontologyRelatedToClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            expect.fail('should not have been able to create the record');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+    
+    it('errors when creating an OntologyRelatedTo edge between therapy nodes with identical ids', () => {
+        const entry_disease = {name: 'name1', id: 1234};
+        const secondEntry_disease = {name: 'name2', id: 1234};
+        return Promise.all([
+            therapyClass.createRecord(entry_disease),
+            therapyClass.createRecord(secondEntry_disease)
+        ]).then((recList) => {
+            return ontologyRelatedToClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            expect.fail('should not have been able to create the record');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+
+        it('allows an OntologyDepricatedBy edge between disease nodes', () => {
+        const entry_disease = {name: 'name1', doid: 1234};
+        const secondEntry_disease = {name: 'name2', doid: 123};
+        return Promise.all([
+            diseaseClass.createRecord(entry_disease),
+            diseaseClass.createRecord(secondEntry_disease)
+        ]).then((recList) => {
+            return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+    
+    it('allows an OntologyDepricatedBy edge between therapy nodes', () => {
+        const entry_disease = {name: 'name1', id: 1234};
+        const secondEntry_disease = {name: 'name2', id: 123};
+        return Promise.all([
+            therapyClass.createRecord(entry_disease),
+            therapyClass.createRecord(secondEntry_disease)
+        ]).then((recList) => {
+            return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+
+    it('allows an OntologyDepricatedBy edge between disease nodes with identical doids', () => {
+        const entry_disease = {name: 'name1', doid: 1234};
+        const secondEntry_disease = {name: 'name2', doid: 1234};
+        return Promise.all([
+            diseaseClass.createRecord(entry_disease),
+            diseaseClass.createRecord(secondEntry_disease)
+        ]).then((recList) => {
+            return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
+    
+    it('allows an OntologyDepricatedBy edge between therapy nodes with identical ids', () => {
+        const entry_disease = {name: 'name1', id: 1234};
+        const secondEntry_disease = {name: 'name2', id: 1234};
+        return Promise.all([
+            therapyClass.createRecord(entry_disease),
+            therapyClass.createRecord(secondEntry_disease)
+        ]).then((recList) => {
+            return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]});
+        }).then((edge) => {
+            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+        }, (error) => {
+            expect(error).to.be.instanceof(AttributeError);
+        });
+    });
 
     afterEach((done) => {
         /* disconnect from the database */
