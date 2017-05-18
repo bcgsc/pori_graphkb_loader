@@ -158,8 +158,7 @@ describe('Evidence schema tests:', () => {
                         return pubClass.createRecord({title: 'title3', year: 2008, journal: {name: 'journal'}}, journalClass)
                             .then((result3) => {
                                 expect(result3.content).to.have.property('journal');
-                                console.log(result3)
-                        });
+                            });
                     })                            
                 });
             });
@@ -230,7 +229,7 @@ describe('Evidence schema tests:', () => {
                     });
             });
         });
-        /*
+        
         describe('study constraints', () => {
             let currClass = null;
             beforeEach(function(done) {
@@ -554,7 +553,7 @@ describe('Evidence schema tests:', () => {
                         expect(error).to.be.an.instanceof(AttributeError);
                     });
             });
-         });*/
+         });
 
     });
 
