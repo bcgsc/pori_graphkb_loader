@@ -2,7 +2,7 @@
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
-const {KBVertex, KBEdge, History} = require('./../../app/repo/base');
+const {KBVertex, KBEdge, History, Record} = require('./../../app/repo/base');
 const {ControlledVocabularyError, AttributeError} = require('./../../app/repo/error');
 const {Context} = require('./../../app/repo/context');
 const Promise = require('bluebird');
@@ -156,12 +156,12 @@ describe('Ontology schema tests:', () => {
                 const secondEntry = {name: 'name2', doid: 123};
                 return currClass.createRecord(entry)
                     .then((record) => {
-                        expect(record).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
+                        expect(record.content).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
                         return currClass.createRecord(secondEntry);
                     }, (error) => {
                         expect.fail('failed on initial record creation');
                     }).then((record2) => {
-                        expect(record2).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
+                        expect(record2.content).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
                     });
             });
 
@@ -169,13 +169,13 @@ describe('Ontology schema tests:', () => {
                 const entry = {name: 'name1', doid: 123};
                 return currClass.createRecord(entry)
                     .then((record) => {
-                        expect(record).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
-                        record.doid = 1234;
-                        return currClass.updateRecord(record);
+                        expect(record.content).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
+                        record.content.doid = 1234;
+                        return currClass.updateRecord(record.content);
                     }, (error) => {
                         expect.fail('failed on initial record creation');
                     }).then((record2) => {
-                        expect(record2).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
+                        expect(record2.content).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
                     });
             });
         });
@@ -211,12 +211,12 @@ describe('Ontology schema tests:', () => {
                 const secondEntry = {name: 'name2', id: 123};
                 return currClass.createRecord(entry)
                     .then((record) => {
-                        expect(record).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
+                        expect(record.content).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
                         return currClass.createRecord(secondEntry);
                     }, (error) => {
                         expect.fail('failed on initial record creation');
                     }).then((record2) => {
-                        expect(record2).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
+                        expect(record2.content).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
                     });
             });
 
@@ -224,13 +224,13 @@ describe('Ontology schema tests:', () => {
                 const entry = {name: 'name1', id: 123};
                 return currClass.createRecord(entry)
                     .then((record) => {
-                        expect(record).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
-                        record.doid = 1234;
-                        return currClass.updateRecord(record);
+                        expect(record.content).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
+                        record.content.doid = 1234;
+                        return currClass.updateRecord(record.content);
                     }, (error) => {
                         expect.fail('failed on initial record creation');
                     }).then((record2) => {
-                        expect(record2).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
+                        expect(record2.content).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
                     });
             });
         });
@@ -297,7 +297,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         ]).then((recList) => {
             return ontologyAliasOfClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
         });
@@ -311,14 +311,14 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         ]).then((recList) => {
             return ontologyAliasOfClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
         });
     });
-    it('errors when creating an OntologyAliasOf edge between disease nodes with different ids', () => {
-        const entry_therapy = {name: 'name1', id: 123};
-        const secondEntry_therapy = {name: 'name2', id: 12345};
+    it('errors when creating an OntologyAliasOf edge between disease nodes with different doids', () => {
+        const entry_therapy = {name: 'name1', doid: 123};
+        const secondEntry_therapy = {name: 'name2', doid: 12345};
         return Promise.all([
             diseaseClass.createRecord(entry_therapy),
             diseaseClass.createRecord(secondEntry_therapy)
@@ -355,7 +355,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         ]).then((recList) => {
             return ontologySubClassOfClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
         });
@@ -370,7 +370,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         ]).then((recList) => {
             return ontologySubClassOfClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
         });
@@ -415,7 +415,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         ]).then((recList) => {
             return ontologyRelatedToClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
         });
@@ -430,7 +430,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         ]).then((recList) => {
             return ontologyRelatedToClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
         });
@@ -475,7 +475,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         ]).then((recList) => {
             return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
         });
@@ -490,7 +490,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         ]).then((recList) => {
             return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
         });
@@ -505,7 +505,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         ]).then((recList) => {
             return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
         });
@@ -520,7 +520,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         ]).then((recList) => {
             return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
         });
