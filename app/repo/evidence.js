@@ -1,6 +1,6 @@
 'use strict';
 const {Base, KBVertex} = require('./base');
-const {AttributeError} = require('./error');
+const {AttributeError, NoResultFoundError} = require('./error');
 const currYear = require('year');
 
 /**
@@ -56,10 +56,7 @@ class Publication extends KBVertex {
         return super.validateContent(content);
     }
 
-    createRecord(opt, journalClass) {
-        return new Promise((resolve, reject) => {
-            const args = this.validateContent(opt, journalClass);
-            var commit = this.dbClass.db
+/*            var commit = this.dbClass.db
                 .let('journalName', (trs) => {
                     return trs.create(journalClass.constructor.createType, journalClass.constructor.clsname).set(args.journal);
                 }).let('link', (trs) => {
@@ -68,6 +65,7 @@ class Publication extends KBVertex {
                     delete sub.journal;
                     return trs.create(this.constructor.createType, this.constructor.clsname).set(sub).set('journal = $journalName');
                 }).commit();
+            
             commit.return('$link').one().then((record) => {
                 this.dbClass.db.record.get(record.journal).then((journalName) => {
                     record.journal = journalName;
@@ -77,14 +75,12 @@ class Publication extends KBVertex {
                 });
             }).catch((error) => {
                 reject(error);
-            });
-        });
-    }
+            });*/
 
     static createClass(db){
         return new Promise((resolve, reject) => {
             const props = [
-                {name: 'journal', type: 'link', mandatory: true, notNull: true, linkedClass: Evidence.clsname},
+                {name: 'journal', type: 'link', mandatory: true, notNull: true, linkedClass: Journal.clsname},
                 {name: 'year', type: 'integer', mandatory: true, notNull: true},
                 {name: 'title', type: 'string', mandatory: true, notNull: true},
                 {name: 'doi', type: 'string', mandatory: false},
@@ -102,6 +98,35 @@ class Publication extends KBVertex {
                     return this.loadClass(db);
                 }).then((cls) => {
                     resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+
+    createRecord(opt, journalClass) {            
+        return new Promise((resolve, reject) => {
+            const args = this.validateContent(opt, journalClass);
+            this.selectExactlyOne(args.journal)
+                .catch(NoResultFoundError, () => {
+                    console.log("THIS SHOULD ONLY APPEAR *ONCE*")
+                    return journalClass.createRecord(args.journal);
+                }).then((journalRecord) => {
+                    var commit = this.dbClass.db
+                        .let('link', (trs) => {
+                        //connect the nodes
+                        const sub = Object.assign({}, args);
+                        args.journal = journalRecord['@rid'];
+                        return trs.create(this.constructor.createType, this.constructor.clsname).set(args);
+                    }).commit();
+                    commit.return('$link').one().then((record) => {
+                        this.dbClass.db.record.get(record.journal).then((journalName) => {
+                            record.journal = journalName;
+                            resolve(record);
+                        }).catch((error) => {
+                            reject(error);
+                        });
+                    });
                 }).catch((error) => {
                     reject(error);
                 });
