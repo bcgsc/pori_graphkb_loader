@@ -1,6 +1,6 @@
 'use strict';
 
-const {Base, KBVertex, KBEdge} = require('./base');
+const {Base, KBVertex, KBEdge, Record} = require('./base');
 const {AttributeError} = require('./error');
 const {Context} = require('./context');
 const Promise = require('bluebird');
@@ -125,8 +125,8 @@ class OntologySubClassOf extends KBEdge {
         if (args.in.doid == args.out.doid || args.in.id == args.out.id) {
             throw new AttributeError('These two nodes are aliases of each other. No other relationship can be defined.');
         }
-        args.in['@class'] = args.in['@class'] != undefined ? args.in['@class'] : Ontology.clsname;
-        args.out['@class'] = args.out['@class'] != undefined ? args.out['@class'] : Ontology.clsname;
+        args.in.content['@class'] = args.in.content['@class'] != undefined ? args.in.content['@class'] : Ontology.clsname;
+        args.out.content['@class'] = args.out.content['@class'] != undefined ? args.out.content['@class'] : Ontology.clsname;
 
         return args;
     }
@@ -152,8 +152,8 @@ class OntologyRelatedTo extends KBEdge {
         if (args.in.doid == args.out.doid || args.in.id == args.out.id) {
             throw new AttributeError('These two nodes are aliases of each other. No other relationship can be defined.');
         }
-        args.in['@class'] = args.in['@class'] != undefined ? args.in['@class'] : Ontology.clsname;
-        args.out['@class'] = args.out['@class'] != undefined ? args.out['@class'] : Ontology.clsname;
+        args.in.content['@class'] = args.in.content['@class'] != undefined ? args.in.content['@class'] : Ontology.clsname;
+        args.out.content['@class'] = args.out.content['@class'] != undefined ? args.out.content['@class'] : Ontology.clsname;
 
         return args;
     }
@@ -176,11 +176,11 @@ class OntologyAliasOf extends KBEdge {
 
     validateContent(content, ontology) {
         const args = super.validateContent(content);
-        if (args.in.doid !== args.out.doid || args.in.id !== args.out.id) {
+        if (args.in.content.doid !== args.out.doid || args.in.content.id !== args.out.id) {
             throw new AttributeError('cannot connect diseases with different DOID');
         } 
-        args.in['@class'] = args.in['@class'] != undefined ? args.in['@class'] : Ontology.clsname;
-        args.out['@class'] = args.out['@class'] != undefined ? args.out['@class'] : Ontology.clsname;
+        args.in.content['@class'] = args.in.content['@class'] != undefined ? args.in.content['@class'] : Ontology.clsname;
+        args.out.content['@class'] = args.out.content['@class'] != undefined ? args.out.content['@class'] : Ontology.clsname;
 
         return args;
     }
@@ -203,8 +203,8 @@ class OntologyDepricatedBy extends KBEdge {
 
     validateContent(content, ontology) {
         const args = super.validateContent(content);
-        args.in['@class'] = args.in['@class'] != undefined ? args.in['@class'] : Ontology.clsname;
-        args.out['@class'] = args.out['@class'] != undefined ? args.out['@class'] : Ontology.clsname;
+        args.in.content['@class'] = args.in.content['@class'] != undefined ? args.in.content['@class'] : Ontology.clsname;
+        args.out.content['@class'] = args.out.content['@class'] != undefined ? args.out.content['@class'] : Ontology.clsname;
 
         return args;
     }
