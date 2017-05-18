@@ -1,5 +1,5 @@
 'use strict';
-const {KBVertex, Base} = require('./base');
+const {KBVertex, Base, Record} = require('./base');
 const {AttributeError} = require('./error');
 
 
@@ -41,7 +41,7 @@ class Range extends KBVertex {
         return super.validateContent(content);
     }
 
-    createRecord(opt, positionClass) {
+    createRecord(opt) {
         return new Promise((resolve, reject) => {
             const args = this.validateContent(opt, positionClass);
             // start the transaction
@@ -80,7 +80,7 @@ class Range extends KBVertex {
         });
     }
 
-    static createClass(db) {
+    static createClass(db, positionClass) {
         const props = [
             {name: 'start', type: 'link', mandatory: true, notNull: true, linkedClass: Position.clsname},
             {name: 'end', type: 'link', mandatory: true, notNull: true, linkedClass: Position.clsname}

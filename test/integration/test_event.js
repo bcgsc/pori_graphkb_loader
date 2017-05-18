@@ -36,7 +36,10 @@ describe('Event schema tests:', () => {
     it('create the CategoryEvent class');
 
     describe('PositionalEvent', () => {
-        it('allows events with same start/end positions');
+        it('allows events with same start/end positions', () => {
+        });
+        it('errors when event start > end position', () => {
+        });
         it('errors on either position not given');
         it('errors on invalid event subtype');
         it('errors on null subtype');

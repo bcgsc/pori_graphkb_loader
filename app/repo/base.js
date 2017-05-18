@@ -42,6 +42,16 @@ const softGetRID = (record) => {
     }
 };
 
+
+class Record {
+
+    constructor(content, parentClass) {
+        this.content = content;
+        this.generator = parentClass;
+    }
+}
+
+
 /**
  * @class
  */
@@ -125,7 +135,7 @@ class Base {
             const args = this.validateContent(where);
             this.dbClass.create(args)
                 .then((result) => {
-                    resolve(result);
+                    resolve(new Record(result, this));
                 }).catch((error) => {
                     reject(error);
                 });
@@ -152,6 +162,9 @@ class Base {
     }
 
     select(where={}, activeOnly=false, exactlyN=null, ignoreAtPrefixed=true) {
+        if (where instanceof Record) {
+            where = where.content;
+        }
         return new Promise((resolve, reject) => {
             const clsname = where['@class'] == undefined ? this.constructor.clsname : where['@class'];
             const selectionWhere = Object.assign({}, where);
@@ -171,7 +184,11 @@ class Base {
                 stat = stat.replace(':' + key, `"${query._state.params[key]}"`);
             }
             query.all()
-                .then((reclist) => {
+                .then((rl) => {
+                    const reclist = [];
+                    for (let r of rl) {
+                        reclist.push(new Record(r, this));
+                    }
                     if (exactlyN !== null) {
                         if (reclist.length == 0) {
                             if (exactlyN === 0) {
@@ -194,14 +211,17 @@ class Base {
     }
 
     deleteRecord(where) {
+        if (where instanceof Record) {
+            where = where.content;
+        }
         return new Promise((resolve, reject) => {
             where.deleted_at = null;
             this.selectExactlyOne(where)
                 .then((record) => {
-                    record.deleted_at = moment().valueOf();
-                    return this.dbClass.db.record.update(record);
+                    record.content.deleted_at = moment().valueOf();
+                    return this.dbClass.db.record.update(record.content);
                 }).then((updatedRecord) => {
-                    resolve(updatedRecord);
+                    resolve(new Record(updatedRecord, this));
                 }).catch((error) => {
                     reject(error);
                 });
@@ -226,21 +246,21 @@ class Base {
                 .then((record) => {
                     const required_matches = ['uuid', 'deleted_at','version', 'created_at'];
                     for (let m of required_matches) {
-                        if (where[m] !== undefined && where[m] !== record[m]) {
-                            throw new Error(`Concurrency error. Updating an out-of-date record. Property ${m}: ${where[m]} and ${record[m]}`);
+                        if (where[m] !== undefined && where[m] !== record.content[m]) {
+                            throw new Error(`Concurrency error. Updating an out-of-date record. Property ${m}: ${where[m]} and ${record.content[m]}`);
                         }
                     }
                     const duplicate = {};
                     const timestamp = moment().valueOf();
                     const updates = {
-                        version: record.version + 1,
+                        version: record.content.version + 1,
                         created_at: timestamp
                     };
 
                     // create a copy of the current record
-                    for (let key of Object.keys(record)) {
+                    for (let key of Object.keys(record.content)) {
                         if (! key.startsWith('@')) {
-                            duplicate[key] = record[key];
+                            duplicate[key] = record.content[key];
                         }
                     }
                     for (let key of Object.keys(where)) {
@@ -254,7 +274,7 @@ class Base {
                     var commit = this.dbClass.db
                         .let('updatedRID', (tx) => {
                             // update the existing node
-                            return tx.update(`${record['@rid'].toString()}`).set(updates).return('AFTER @rid');
+                            return tx.update(`${record.content['@rid'].toString()}`).set(updates).return('AFTER @rid');
                         }).let('duplicate', (tx) => {
                             //duplicate the old node
                             return tx.create(this.constructor.createType, this.constructor.clsname)
@@ -269,7 +289,7 @@ class Base {
                         .then((rid) => {
                             return this.dbClass.db.record.get(rid);
                         }).then((record) => {
-                            resolve(record);
+                            resolve(new Record(record, this));
                         }).catch((error) => {
                             reject(error);
                         });
@@ -442,34 +462,65 @@ class KBEdge extends Base {
                 });
         });
     }
+
+    validateContent(content) {
+        const src = content.in.content || content.in;
+        const tgt = content.out.content || content.out;
+        src['@class'] = src['@class'] != undefined ? src['@class'] : KBVertex.clsname;
+        tgt['@class'] = tgt['@class'] != undefined ? tgt['@class'] : KBVertex.clsname;
+        const args = super.validateContent(content);
+        return args;
+    }
     
     /**
      *
      */
     createRecord(data={}) {
+        const args = this.validateContent(data);
+        const srcIn = data.in.content || data.in;
+        const tgtIn = data.out.content || data.out;
         return new Promise((resolve, reject) => {
-            const args = this.validateContent(data);
+
             // select both records from the db
             Promise.all([
-                this.selectExactlyOne(data.in),
-                this.selectExactlyOne(data.out)
+                this.selectExactlyOne(srcIn),
+                this.selectExactlyOne(tgtIn)
             ]).then((recList) => {
                 let [src, tgt] = recList;
-                for (let key of Object.keys(data.in)) {
-                    if (key === '@rid' && data.in[key].toString() !== src[key].toString() || key !== '@rid' && data.in[key] !== src[key]) {
-                        throw new Error(`Record pulled from DB differs from input on attr ${key}: ${src[key]} vs ${data.in[key]}`);
+                
+                for (let key of Object.keys(src.content)) {
+                    if (srcIn[key] === undefined || key === '@class') {
+                        continue;
+                    } else {
+                        if (key === '@rid') {
+                            if (srcIn[key].toString() === src.content[key].toString()) {
+                                continue;
+                            }
+                        } else if (srcIn[key] === src.content[key]) {
+                            continue;
+                        }
                     }
+                    throw new Error(`Record pulled from DB differs from input on attr ${key}: ${src[key]} vs ${srcIn[key]}`);
                 }
-                for (let key of Object.keys(data.out)) {
-                    if (key === '@rid' && data.out[key].toString() !== tgt[key].toString() || key !== '@rid' && data.out[key] !== tgt[key]) {
-                        throw new Error(`Record pulled from DB differs from input on attr ${key}: ${tgt[key]} vs ${data.out[key]}`);
+                for (let key of Object.keys(tgt.content)) {
+                    if (tgtIn[key] === undefined || key === '@class') {
+                        continue;
+                    } else {
+                        if (key === '@rid') {
+                            if (tgtIn[key].toString() === tgt.content[key].toString()) {
+                                continue;
+                            }
+                        } else if (tgtIn[key] === tgt.content[key]) {
+                            continue;
+                        }
                     }
+                    throw new Error(`Record pulled from DB differs from input on attr ${key}: ${tgt[key]} vs ${tgtIn[key]}`);
                 }
-                delete args.out;
                 delete args.in;
+                delete args.out;
                 // now create the edge
                 this.dbClass.db.create(this.constructor.createType, this.constructor.clsname)
-                    .from(src['@rid'].toString()).to(tgt['@rid'].toString()).set(args).one()
+                    .from(src.content['@rid'].toString()).to(tgt.content['@rid'].toString()).set(args).one()
                     .then((result) => {
                         return this.selectExactlyOne(result);
                     }).then((result) => {
@@ -510,4 +561,4 @@ class History extends Base {
     }
 }
 
-module.exports = {Base, History, KBVertex, KBEdge, softGetRID, errorJSON};
+module.exports = {Base, History, KBVertex, KBEdge, softGetRID, Record, errorJSON};

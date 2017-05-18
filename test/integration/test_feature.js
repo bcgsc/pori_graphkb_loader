@@ -72,25 +72,25 @@ describe('Feature schema tests:', () => {
             const secondEntry = {source: SOURCE.REFSEQ, biotype: BIOTYPE.GENE, name: 'NG_001', source_version: 1};
             return currClass.createRecord(entry)
                 .then((record) => {
-                    expect(record).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                    expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
                     return currClass.createRecord(secondEntry);
                 }, (error) => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
-                    expect(record2).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                    expect(record2.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
                 });
         });
         it('allows name duplicate when one node is deleted', () => {
             const entry = {source: SOURCE.REFSEQ, biotype: BIOTYPE.GENE, name: 'NG_001', source_version: null};
             return currClass.createRecord(entry)
                 .then((record) => {
-                    expect(record).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
-                    record.source_version = 1;
-                    return currClass.updateRecord(record);
+                    expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                    record.content.source_version = 1;
+                    return currClass.updateRecord(record.content);
                 }, (error) => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
-                    expect(record2).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                    expect(record2.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
                 });
         });
         it('allows name duplicates in separate sources', () => {
@@ -98,12 +98,12 @@ describe('Feature schema tests:', () => {
             const secondEntry = {source: SOURCE.HGNC, biotype: BIOTYPE.GENE, name: 'ENSG001', source_version: null};
             return currClass.createRecord(entry)
                 .then((record) => {
-                    expect(record).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                    expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
                     return currClass.createRecord(secondEntry);
                 }, (error) => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
-                    expect(record2).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
+                    expect(record2.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
                 });
         });
     });
@@ -623,7 +623,7 @@ describe('FeatureDeprecatedBy', () => {
         ]).then((recList) => {
             return deprecatedByClass.createRecord({in: recList[0], out: recList[1]});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         });
     });
     
@@ -679,7 +679,7 @@ describe('FeatureAliasOf', () => {
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENST001', biotype: BIOTYPE.TRANSCRIPT, source_version: 11})
         ]).then((recList) => {
-            return aliasOfClass.createRecord({in: recList[0], out: recList[1]});
+            return aliasOfClass.createRecord({in: recList[0].content, out: recList[1].content});
         }).then((edge) => {
             console.log(edge);
             expect.fail('should not have been able to create the record');
@@ -692,9 +692,9 @@ describe('FeatureAliasOf', () => {
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
             featureClass.createRecord({source: SOURCE.REFSEQ, name: 'NG_0001', biotype: BIOTYPE.GENE, source_version: 11})
         ]).then((recList) => {
-            return aliasOfClass.createRecord({in: recList[0], out: recList[1]});
+            return aliasOfClass.createRecord({in: recList[0].content, out: recList[1].content});
         }).then((edge) => {
-            expect(edge).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         });
     });
     

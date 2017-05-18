@@ -46,13 +46,13 @@ class Vocab extends KBVertex {
         return new Promise((resolve, reject) => {
             super.createRecord(where)
                 .then((record) => {
-                    if (cache.vocab[record.class] == undefined) {
-                        cache.vocab[record.class] = {};
+                    if (cache.vocab[record.content.class] == undefined) {
+                        cache.vocab[record.content.class] = {};
                     }
-                    if (cache.vocab[record.class][record.property] == undefined) {
-                        cache.vocab[record.class][record.property] = {};
+                    if (cache.vocab[record.content.class][record.content.property] == undefined) {
+                        cache.vocab[record.content.class][record.content.property] = {};
                     }
-                    cache.vocab[record.class][record.property][record.term] = record;
+                    cache.vocab[record.content.class][record.content.property][record.content.term] = record.content;
                     resolve(record);
                 }).catch((error) => {
                     reject(error);
@@ -65,7 +65,7 @@ class Vocab extends KBVertex {
             super.deleteRecord(where)
                 .then((record) => {
                     try {
-                        delete cache.vocab[record.class][record.property][record.term];
+                        delete cache.vocab[record.content.class][record.content.property][record.content.term];
                     } catch (e) {
                         if (! e instanceof TypeError) {
                             throw e;
@@ -78,27 +78,27 @@ class Vocab extends KBVertex {
         });
     }
     
-    updateDefinition(record) {
+    updateDefinition(where) {
         return new Promise((resolve, reject) => {
             for (let req of ['class', 'property', 'term']) {
-                if (record[req] == undefined) {
+                if (where[req] == undefined) {
                     throw new AttributeError(`required attribute '${req}'is missing`);
                 }
             }
             this.selectExactlyOne({
-                    'class': record.class,
-                    property: record.property,
-                    term: record.term,
+                    'class': where.class,
+                    property: where.property,
+                    term: where.term,
                     deleted_at: null
-                }).then((rec) => {
-                    if (rec.definition === record.definition) {
-                        resolve(rec);
+                }).then((record) => {
+                    if (record.content.definition === where.definition) {
+                        resolve(record);
                     } else {
-                        rec.definition = record.definition;
-                        return this.updateRecord(rec);
+                        record.content.definition = where.definition;
+                        return this.updateRecord(record.content);
                     }
-                }).then((rec) => {
-                    resolve(rec);
+                }).then((record) => {
+                    resolve(record);
                 }).catch((error) => {
                     reject(error);
                 });

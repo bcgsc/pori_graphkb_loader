@@ -139,16 +139,16 @@ class FeatureDeprecatedBy extends KBEdge {
 
     validateContent(content) {
         const args = super.validateContent(content);
+        const srcIn = args.in.content || args.in;
+        const tgtIn = args.out.content || args.out;
         for (let key of ['source', 'biotype']) {
-            if (args.in[key] !== args.out[key]) {
+            if (srcIn[key] !== tgtIn[key]) {
                 throw new AttributeError(`cannot deprecate a feature using a different ${key}`);
             }
         }
-        if (args.in.source_version !== null && args.in.source_version >= args.out.source_version) {
+        if (srcIn.source_version !== null && srcIn.source_version >= tgtIn.source_version) {
             throw new AttributeError('source_version must increase in order to deprecate a feature node');
         }
-        args.in['@class'] = args.in['@class'] != undefined ? args.in['@class'] : Feature.clsname;
-        args.out['@class'] = args.out['@class'] != undefined ? args.out['@class'] : Feature.clsname;
         return args;
     }
 
@@ -173,11 +173,11 @@ class FeatureAliasOf extends KBEdge {
     
     validateContent(content) {
         const args = super.validateContent(content);
-        if (args.in.biotype !== args.out.biotype) {
+        const srcIn = args.in.content || args.in;
+        const tgtIn = args.out.content || args.out;
+        if (srcIn.biotype !== tgtIn.biotype) {
             throw new AttributeError(`cannot alias a feature with a different biotype`);
         }
-        args.in['@class'] = args.in['@class'] != undefined ? args.in['@class'] : Feature.clsname;
-        args.out['@class'] = args.out['@class'] != undefined ? args.out['@class'] : Feature.clsname;
         return args;
     }
 
