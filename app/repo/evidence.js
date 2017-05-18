@@ -1,5 +1,5 @@
 'use strict';
-const {Base, KBVertex} = require('./base');
+const {Base, KBVertex, Record} = require('./base');
 const {AttributeError, NoResultFoundError} = require('./error');
 const currYear = require('year');
 
@@ -65,9 +65,9 @@ class Publication extends KBVertex {
                     args.journal = journalRecord.content['@rid'];
                     return this.dbClass.create(args)
                         .then((record) => {
-                            this.dbClass.db.record.get(record.journal).then((journalName) => {
-                                record.journal = journalName;
-                                resolve(record);
+                            this.dbClass.db.record.get(record.journal).then((journalRecord) => {
+                                record.journal = journalRecord;
+                                resolve(new Record(record, this));
                             }).catch((error) => {
                                 reject(error);
                             })
