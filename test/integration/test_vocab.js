@@ -3,7 +3,7 @@ const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer} = require('./../../app/repo/connect');
 const {AttributeError} = require('./../../app/repo/error');
-const {History, KBVertex, KBEdge} = require('./../../app/repo/base');
+const {History, KBVertex, KBEdge, Record} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 const {fetchValues, Vocab} = require('./../../app/repo/vocab');
 const cache = require('./../../app/repo/cached/data');
@@ -56,7 +56,7 @@ describe('Vocab schema tests:', () => {
                     done(error);
                 });
         });
-        it('createRecords: create multiple records', () => {
+        it('allows createRecords to create multiple records', () => {
             return vocabInstance.createRecords(data.vocab)
                 .then(() => {
                     expect(cache.vocab).to.have.property('feature');
@@ -67,7 +67,7 @@ describe('Vocab schema tests:', () => {
                     throw error;
                 });
         });
-        it('createRecords: create multiple records (some exist)', () => {
+        it('allows createRecords to create multiple records when some already exist', () => {
             return vocabInstance.createRecords(data.vocab)
                 .then(() => {
                     return vocabInstance.createRecords(data.vocab);
@@ -77,7 +77,7 @@ describe('Vocab schema tests:', () => {
                     expect(cache.vocab.feature.biotype).to.include.keys('protein', 'gene', 'template', 'exon', 'domain', 'transcript');
                 });
         });
-        it('createRecord: error on duplicate within category', () => {
+        it('errors createRecord on duplicate within category', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
                 .then(()  => {
                     return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'});
@@ -89,69 +89,70 @@ describe('Vocab schema tests:', () => {
                     oError.expectDuplicateKeyError(error);
                 });
         });
-        it('updateRecord: update record definition', () => {
+        it('allows updateRecord', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
                 .then((record)  => {
-                    expect(record).to.have.property('class', 'feature');
-                    expect(record).to.have.property('property', 'biotype');
-                    expect(record).to.have.property('term', 'protein');
-                    expect(record).to.have.property('version', 0);
-                    record.definition = 'this is a defn';
-                    return vocabInstance.updateRecord(record);
+                    expect(record).to.be.an.instanceof(Record);
+                    expect(record.content).to.have.property('class', 'feature');
+                    expect(record.content).to.have.property('property', 'biotype');
+                    expect(record.content).to.have.property('term', 'protein');
+                    expect(record.content).to.have.property('version', 0);
+                    record.content.definition = 'this is a defn';
+                    return vocabInstance.updateRecord(record.content);
                 }, (error) => {
                     console.log(error);
                     expect.fail('creating the initial record failed', error);
                 }).then((updated) => {
-                    expect(updated).to.have.property('version', 1);
-                    expect(updated).to.have.property('definition', 'this is a defn');
-                    expect(updated).to.have.property('class', 'feature');
-                    expect(updated).to.have.property('property', 'biotype');
-                    expect(updated).to.have.property('term', 'protein');
+                    expect(updated.content).to.have.property('version', 1);
+                    expect(updated.content).to.have.property('definition', 'this is a defn');
+                    expect(updated.content).to.have.property('class', 'feature');
+                    expect(updated.content).to.have.property('property', 'biotype');
+                    expect(updated.content).to.have.property('term', 'protein');
                 });
         });
-        it('updateDefinition: update record definition', () => {
+        it('allows updateDefinition to update record definition', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
                 .then((record)  => {
-                    expect(record).to.have.property('class', 'feature');
-                    expect(record).to.have.property('property', 'biotype');
-                    expect(record).to.have.property('term', 'protein');
-                    expect(record).to.have.property('version', 0);
-                    record.definition = 'this is a defn';
-                    return vocabInstance.updateDefinition(record);
+                    expect(record.content).to.have.property('class', 'feature');
+                    expect(record.content).to.have.property('property', 'biotype');
+                    expect(record.content).to.have.property('term', 'protein');
+                    expect(record.content).to.have.property('version', 0);
+                    record.content.definition = 'this is a defn';
+                    return vocabInstance.updateDefinition(record.content);
                 }, (error) => {
                     assert.fail('creating the initial record failed', error);
                 }).then((updated) => {
-                    expect(updated).to.have.property('version', 1);
-                    expect(updated).to.have.property('definition', 'this is a defn');
-                    expect(updated).to.have.property('class', 'feature');
-                    expect(updated).to.have.property('property', 'biotype');
-                    expect(updated).to.have.property('term', 'protein');
+                    expect(updated.content).to.have.property('version', 1);
+                    expect(updated.content).to.have.property('definition', 'this is a defn');
+                    expect(updated.content).to.have.property('class', 'feature');
+                    expect(updated.content).to.have.property('property', 'biotype');
+                    expect(updated.content).to.have.property('term', 'protein');
                 });
         });
         it('create record: allows different terms within same class & property', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
                 .then((first)  => {
-                    expect(first).to.have.property('class', 'feature');
-                    expect(first).to.have.property('property', 'biotype');
-                    expect(first).to.have.property('term', 'protein');
+                    expect(first.content).to.have.property('class', 'feature');
+                    expect(first.content).to.have.property('property', 'biotype');
+                    expect(first.content).to.have.property('term', 'protein');
                     return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'gene'});
                 }).then((second) => {
-                    expect(second).to.have.property('class', 'feature');
-                    expect(second).to.have.property('property', 'biotype');
-                    expect(second).to.have.property('term', 'gene');
+                    expect(second.content).to.have.property('class', 'feature');
+                    expect(second.content).to.have.property('property', 'biotype');
+                    expect(second.content).to.have.property('term', 'gene');
                 });
         });
         it('create record: allows duplicate terms when property is different', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein'})
                 .then((first)  => {
-                    expect(first).to.have.property('class', 'feature');
-                    expect(first).to.have.property('property', 'name');
-                    expect(first).to.have.property('term', 'protein');
+                    expect(first.content).to.have.property('class', 'feature');
+                    expect(first.content).to.have.property('property', 'name');
+                    expect(first.content).to.have.property('term', 'protein');
                     return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'});
                 }).then((second) => {
-                    expect(second).to.have.property('class', 'feature');
-                    expect(second).to.have.property('property', 'biotype');
-                    expect(second).to.have.property('term', 'protein');
+                    expect(second.content).to.have.property('class', 'feature');
+                    expect(second.content).to.have.property('property', 'biotype');
+                    expect(second.content).to.have.property('term', 'protein');
                 });
         });
 

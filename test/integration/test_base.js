@@ -2,7 +2,7 @@
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer} = require('./../../app/repo/connect');
-const {Base, History, KBVertex} = require('./../../app/repo/base');
+const {Base, History, KBVertex, Record, KBEdge} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 
 
@@ -22,7 +22,7 @@ class MockVertexClass extends KBVertex { // simple non-abstract class for tests
 }
 
 
-describe('Versioning/History Tracking tests', () => {
+describe('base module', () => {
     let server, db;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
@@ -38,25 +38,32 @@ describe('Versioning/History Tracking tests', () => {
                 done(error);
             });
     });
-    it('create KBVertex class', () => {
+    it('create KBVertex', () => {
         return KBVertex.createClass(db)
             .then((cls) => {
                 expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version']);
-                expect(KBVertex.clsname).to.equal('kbvertex');
-                expect(KBVertex.createType).to.equal('vertex');
+                expect(cls.constructor.clsname).to.equal('kbvertex');
+                expect(cls.constructor.createType).to.equal('vertex');
             });
     });
-    it('create History class', () => {
+    it('create History', () => {
         return History.createClass(db)
             .then((cls) => {
                 expect(cls.propertyNames).to.have.members(['comment']);
-                expect(History.clsname).to.equal('history');
-                expect(History.createType).to.equal('edge');
+                expect(cls.constructor.clsname).to.equal('history');
+                expect(cls.constructor.createType).to.equal('edge');
             });
     });
-    it('create the KBEdge class');
+    it('create KBEdge', () => {
+        return KBEdge.createClass(db)
+            .then((cls) => {
+                expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version']);
+                expect(cls.constructor.clsname).to.equal('kbedge');
+                expect(cls.constructor.createType).to.equal('edge');
+            });
+    });
 
-    describe('MockClass tests', () => {
+    describe('MockClass', () => {
         let mockRecord, mockClass;
         beforeEach((done) => {
             Promise.all([
@@ -77,25 +84,25 @@ describe('Versioning/History Tracking tests', () => {
             });
         });
         it('update a mock record', () => {
-            const uuid = mockRecord.uuid;
-            const version = mockRecord.version;
-            return mockClass.updateRecord(mockRecord, null, true)
+            const uuid = mockRecord.content.uuid;
+            const version = mockRecord.content.version;
+            return mockClass.updateRecord(mockRecord.content, null, true)
                 .then((record) => {
-                    expect(record.uuid).to.equal(uuid);
-                    expect(record.version).to.equal(version + 1);
-                    expect(record['@class']).to.equal(MockVertexClass.clsname);
+                    expect(record.content.uuid).to.equal(uuid);
+                    expect(record.content.version).to.equal(version + 1);
+                    expect(record.content['@class']).to.equal(MockVertexClass.clsname);
                 });
         });
-        it('constraint: duplicate uuid + version', () => {
-            return mockClass.createRecord({uuid: mockRecord.uuid, version: mockRecord.version})
+        it('duplicate uuid + version violates unique constraint', () => {
+            return mockClass.createRecord({uuid: mockRecord.content.uuid, version: mockRecord.content.version})
                 .then(() => {
                     expect.fail('violated constraint should have thrown error');
                 }, (error) => {
                     oError.expectDuplicateKeyError(error);
                 });
         });
-        it('constraint: duplicate uuid + deleted_at', () => {
-            return mockClass.createRecord({uuid: mockRecord.uuid, version: mockRecord.version + 1})
+        it('duplicate uuid + deleted_at violates unique constraint', () => {
+            return mockClass.createRecord({uuid: mockRecord.content.uuid, version: mockRecord.content.version + 1})
                 .then(() => {
                     expect.fail('violated constraint should have thrown error');
                 }, (error) => {
@@ -120,7 +127,7 @@ describe('Versioning/History Tracking tests', () => {
 });
 
 
-describe('Mock Class', () => {
+describe('MockClass static', () => {
     let cls;
     beforeEach(function(done) {
         cls = new MockVertexClass();

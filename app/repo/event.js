@@ -45,7 +45,11 @@ class CategoryEvent extends Base {
 
 
 class PositionalEvent extends Base {
-    
+    validateContent(content) {
+        const args = Object.assign({}, content);
+
+        return super.validateContent(args);
+    }
     static createClass(db) {
         const props = [
             {name: 'start', type: 'link', mandatory: true, notNull: true, linkedClass: Position.clsname},
