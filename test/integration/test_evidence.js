@@ -4,7 +4,7 @@ const conf = require('./../config/db');
 const {connectServer} = require('./../../app/repo/connect');
 const _ = require('lodash');
 const {DependencyError, AttributeError} = require('./../../app/repo/error');
-const {Base, History, KBVertex, KBEdge} = require('./../../app/repo/base');
+const {Base, History, KBVertex, KBEdge, Record} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 const {Evidence, Publication, Journal, Study, ClinicalTrial, ExternalSource} = require('./../../app/repo/evidence');
 const moment = require('moment');
@@ -244,13 +244,13 @@ describe('Evidence schema tests:', () => {
             it('test mandatory props', () => {
                 return currClass.createRecord({title: 'title', year: 2008})
                     .then((record) => {
-                        expect(record).to.have.property('title');
-                        expect(record).to.have.property('year');
+                        expect(record.content).to.have.property('title');
+                        expect(record.content).to.have.property('year');
                         // should not have
-                        expect(record).not.to.have.property('sample_population');
-                        expect(record).not.to.have.property('sample_population_size');
-                        expect(record).not.to.have.property('method');
-                        expect(record).not.to.have.property('url'); 
+                        expect(record.content).not.to.have.property('sample_population');
+                        expect(record.content).not.to.have.property('sample_population_size');
+                        expect(record.content).not.to.have.property('method');
+                        expect(record.content).not.to.have.property('url'); 
                     });
             });
             it('null for mandatory porps error', () => {
@@ -273,9 +273,9 @@ describe('Evidence schema tests:', () => {
             });
             it('duplicate entries deleted at the same time', () => {
                 return currClass.createRecord({title: 'title', year: 2008, deleted_at: 1493760183196})
-                    .then((result) => {
+                    .then(() => {
                         return currClass.createRecord({title: 'title', year: 2008, deleted_at: 1493760183196});
-                    }).then((result) => {
+                    }).then(() => {
                         expect.fail('expected error');                        
                     }).catch((error) => {
                         return oError.expectDuplicateKeyError(error);
@@ -286,8 +286,8 @@ describe('Evidence schema tests:', () => {
                     .then((result) => {
                         return currClass.createRecord({title: 'title', year: 2008, deleted_at: 1493760183199});
                     }).then((result) => {
-                        expect(result).to.have.property('title');
-                        expect(result).to.have.property('year');                       
+                        expect(result.content).to.have.property('title');
+                        expect(result.content).to.have.property('year');                       
                     }).catch((error) => {
                         return oError.expectDuplicateKeyError(error);
                     });
@@ -297,8 +297,8 @@ describe('Evidence schema tests:', () => {
                     .then((result) => {
                         return currClass.createRecord({title: 'title', year: 2008, deleted_at: 1493760183199});
                     }).then((result) => {
-                        expect(result).to.have.property('title');
-                        expect(result).to.have.property('year');                       
+                        expect(result.content).to.have.property('title');
+                        expect(result.content).to.have.property('year');                       
                     }).catch((error) => {
                         return oError.expectDuplicateKeyError(error);
                     });
@@ -334,13 +334,13 @@ describe('Evidence schema tests:', () => {
                 it('test mandatory props', () => {
                     return mockClass.createRecord({title: 'title', year: 2008})
                         .then((clinicalRecord) => {
-                            expect(clinicalRecord).to.have.property('title');
-                            expect(clinicalRecord ).to.have.property('year');
+                            expect(clinicalRecord.content).to.have.property('title');
+                            expect(clinicalRecord.content).to.have.property('year');
                             // should not have
-                            expect(clinicalRecord).not.to.have.property('phase');
-                            expect(clinicalRecord).not.to.have.property('trial_id');
-                            expect(clinicalRecord).not.to.have.property('official_title');
-                            expect(clinicalRecord).not.to.have.property('summary'); 
+                            expect(clinicalRecord.content).not.to.have.property('phase');
+                            expect(clinicalRecord.content).not.to.have.property('trial_id');
+                            expect(clinicalRecord.content).not.to.have.property('official_title');
+                            expect(clinicalRecord.content).not.to.have.property('summary'); 
                         });
                 });
                 it('null for mandatory porps error', () => {
@@ -386,7 +386,7 @@ describe('Evidence schema tests:', () => {
                         .then((clinicalResult) => {
                             return mockClass.createRecord({title: 'title', year: 2008, phase: 2, trial_id: 'trial_id', official_title: 'official_title', deleted_at: 1493760183198});
                         }).then((clinicalResult) => {
-                            expect(clinicalResult).to.have.property('title');                       
+                            expect(clinicalResult.content).to.have.property('title');                       
                         }).catch((clinicalError) => {
                             return oError.expectDuplicateKeyError(clinicalError);
                         });
@@ -417,11 +417,11 @@ describe('Evidence schema tests:', () => {
             it('test mandatory props', () => {
                 return currClass.createRecord({name: 'name'})
                     .then((record) => {
-                        expect(record).to.have.property('uuid');
-                        expect(record).to.have.property('version');
-                        expect(record).to.have.property('created_at');
-                        expect(record).to.have.property('deleted_at');
-                        expect(record).to.have.property('name');
+                        expect(record.content).to.have.property('uuid');
+                        expect(record.content).to.have.property('version');
+                        expect(record.content).to.have.property('created_at');
+                        expect(record.content).to.have.property('deleted_at');
+                        expect(record.content).to.have.property('name');
                     });
             });
             it('null for mandatory porps error', () => {
@@ -457,7 +457,7 @@ describe('Evidence schema tests:', () => {
                     .then((result) => {
                         return currClass.createRecord({name: 'naturE', deleted_at: 1493760183198});
                     }).then((result) => {
-                        expect(result).to.have.property('name');                        
+                        expect(result.content).to.have.property('name');                        
                     }).catch((error) => {
                         return oError.expectDuplicateKeyError(error);
                     });
@@ -467,7 +467,7 @@ describe('Evidence schema tests:', () => {
                     .then((result) => {
                         return currClass.createRecord({name: 'naturE', deleted_at: 1493760183196});
                     }).then((result) => {
-                       expect(result).to.have.property('name');                        
+                       expect(result.content).to.have.property('name');                        
                     }).catch((error) => {
                         return oError.expectDuplicateKeyError(error);
                     });
@@ -496,12 +496,12 @@ describe('Evidence schema tests:', () => {
             it('test mandatory props', () => {
                 return currClass.createRecord({url: 'url', extraction_date: moment().unix()})
                     .then((record) => {
-                        expect(record).to.have.property('uuid');
-                        expect(record).to.have.property('version');
-                        expect(record).to.have.property('created_at');
-                        expect(record).to.have.property('deleted_at');
-                        expect(record).to.have.property('url');
-                        expect(record).to.have.property('extraction_date');
+                        expect(record.content).to.have.property('uuid');
+                        expect(record.content).to.have.property('version');
+                        expect(record.content).to.have.property('created_at');
+                        expect(record.content).to.have.property('deleted_at');
+                        expect(record.content).to.have.property('url');
+                        expect(record.content).to.have.property('extraction_date');
                         // should not have
                         expect(record).to.not.have.property('title');
                     });
@@ -539,8 +539,8 @@ describe('Evidence schema tests:', () => {
                     .then((result) => {
                         return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', deleted_at: 1493760183198});
                     }).then((result) => {
-                        expect(result).to.have.property('url');
-                        expect(result).to.have.property('extraction_date')                        
+                        expect(result.content).to.have.property('url');
+                        expect(result.content).to.have.property('extraction_date')                        
                     }).catch((error) => {
                         return oError.expectDuplicateKeyError(error);
                     });
