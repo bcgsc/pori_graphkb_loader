@@ -1,5 +1,5 @@
-"use strict";
-const Base = require('./base');
+'use strict';
+const {Base, KBVertex} = require('./base');
 
 /**
  * @class
@@ -9,7 +9,7 @@ class Context extends Base {
 
     static createClass(db){
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true})
+            super.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: true})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((result) => {
@@ -31,10 +31,10 @@ class Feature extends Base {
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
-                {name: "name", type: "string", mandatory: true, notNull: true},
-                {name: "source", type: "string", mandatory: true, notNull: true},
-                {name: "source_version", type: "string", mandatory: true, notNull: false},
-                {name: "biotype", type: "string", mandatory: true, notNull: true}
+                {name: 'name', type: 'string', mandatory: true, notNull: true},
+                {name: 'source', type: 'string', mandatory: true, notNull: true},
+                {name: 'source_version', type: 'string', mandatory: true, notNull: false},
+                {name: 'biotype', type: 'string', mandatory: true, notNull: true}
             ];
             super.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props})
                 .then(() => {
@@ -58,7 +58,7 @@ class Disease extends Base {
         // create the disease class
         return new Promise((resolve, reject) => {
             const props = [
-                {name: "name", type: "string", mandatory: true, notNull: true}
+                {name: 'name', type: 'string', mandatory: true, notNull: true}
             ];
             const idxs = [{
                 name: this.clsname + '.index_name',
@@ -89,7 +89,7 @@ class Therapy extends Base {
         // create the therapy class
         return new Promise((resolve, reject) => {
             const props = [
-                {name: "name", type: "string", mandatory: true, notNull: true}
+                {name: 'name', type: 'string', mandatory: true, notNull: true}
             ];
             const idxs = [{
                 name: this.clsname + '.index_name',
@@ -119,7 +119,7 @@ class Evaluation extends Base {
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
-                {name: "consequence", type: "string", mandatory: true, notNull: true}
+                {name: 'consequence', type: 'string', mandatory: true, notNull: true}
             ];
             super.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props})
                 .then(() => {

@@ -1,6 +1,7 @@
-"use strict";
+'use strict';
 /* establishes a connection with the orientdb server */
 const OrientDB  = require('orientjs');
+const {AttributeError} = require('./error');
 
 /**
  * connects to the server using the config
@@ -23,16 +24,12 @@ const connect = (opt) => {
         // set up the database server
         const server = OrientDB(serverConf);
         server.list()
-            .then((dbList) => {
-                console.log('Databases on the Server:');
-                for (let c of dbList) {
-                    console.log(` - ${c.name}`);
-                }
+            .then(() => {
                 resolve(server);
             }).catch((error) => {
                 console.log('error listing databases:', error);
                 reject(error);
-            })
+            });
     });
 };
 

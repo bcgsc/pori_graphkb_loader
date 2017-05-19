@@ -1,0 +1,36 @@
+{
+    "env": {
+        "es6": true,
+        "node": true,
+        "mocha": true
+    },
+    "extends": "eslint:recommended",
+    "parserOptions": {
+        "sourceType": "module"
+    },
+    "rules": {
+        "indent": [
+            "error",
+            4
+        ],
+        "linebreak-style": [
+            "error",
+            "unix"
+        ],
+        "quotes": [
+            "error",
+            "single"
+        ],
+        "semi": [
+            "error",
+            "always"
+        ],
+        "no-console": 0,
+        "object-curly-spacing": ["error", "never"],
+        "array-bracket-spacing": ["error", "never"],
+        "computed-property-spacing": ["error", "never"],
+        "no-whitespace-before-property": "error",
+        "space-in-parens": ["error", "never"],
+        "no-mixed-spaces-and-tabs": "error"
+    }
+}

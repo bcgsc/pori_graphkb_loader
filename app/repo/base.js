@@ -1,12 +1,13 @@
-"use strict";
+'use strict';
 const {AttributeError} = require('./error');
 const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
+const moment = require('moment');
 
 
 const errorJSON = function(error) {
     return {type: error.type, message: error.message};
-}
+};
 
 /**
  * @returns {Promise} if resolved, returns {orientjs.Property[]} array of properties from the current class and inherited classes
@@ -14,7 +15,7 @@ const errorJSON = function(error) {
  */
 const getAllProperties = (cls) => {
     return new Promise((resolve, reject) => {
-        var properties = cls.properties;
+        let properties = cls.properties;
         if (cls.superClass !== null) {
             cls.db.class.get(cls.superClass)
                 .then((result) => {
@@ -28,7 +29,15 @@ const getAllProperties = (cls) => {
             resolve(properties);
         }
     });
-}
+};
+
+const softGetRID = (record) => {
+    if (record['@rid'] !== undefined) {
+        return `#${record['@rid'].cluster}:${record['@rid'].position}`;
+    } else {
+        return record;
+    }
+};
 
 /**
  * @class
@@ -49,7 +58,28 @@ class Base {
     get propertyNames() {
         return Array.from(this.properties, ({name}) => name);
     }
-    
+
+    static get createType() {
+        return 'vertex';
+    }
+
+    validateContent(content) {
+        const args = { // default arguments
+            uuid : uuidV4(),
+            version: 0,
+            created_at: moment().valueOf(),
+            deleted_at: null
+        };
+
+        for (let key of Object.keys(content)) {
+            if (! _.includes(this.propertyNames, key)) {
+                throw new AttributeError(`invalid attribute ${key}`);
+            }
+            args[key] = content[key]; // overrides the defaults if given
+        }
+        return args;
+    }
+
     /**
      * create new record
      * @param  {object} opt record content
@@ -57,19 +87,8 @@ class Base {
      */
     createRecord(opt={}) {
         return new Promise((resolve, reject) => {
-            const args = { // default arguments
-                uuid : this.dbClass.db.rawExpression("uuid()"),
-                edit_version: 0,
-                created_at: this.dbClass.db.rawExpression("sysdate()"),
-                deleted_at: null
-            };
-            for (let key of Object.keys(opt)) {
-                if (! _.includes(this.propertyNames, key)) {
-                    throw new AttributeError(`invalid attribute ${key}`);
-                }
-                args[key] = opt[key];
-            }
-            
+            const args = this.validateContent(opt);
+
             this.dbClass.create(args)
                 .then((result) => {
                     resolve(result);
@@ -77,7 +96,87 @@ class Base {
                     reject(error);
                 });
         });
-        
+
+    }
+    /**
+     * update an existing record. This will be based on the uuid or the record and
+     * will create a copy of the current record, a history edge, and then will edit the
+     * current record. This will be wrapped in a transaction. Will need to ensure the
+     *
+     * @param  {object} opt record content
+     * @return {Promise}  if resolved returns ? otherwise returns the db error
+     */
+    updateRecord(opt={}, user, drop_invalid_attr=true) {
+        return new Promise((resolve, reject) => {
+            if (opt.uuid === undefined) {
+                throw new AttributeError('uuid');
+            }/*
+            for (let key of Object.keys(opt)) {
+                if (key.startsWith('@') || key === 'version') {
+                    if (drop_invalid_attr == true) {
+                        delete opt[key];
+                    } else {
+                        throw new AttributeError(`reserved attribute ${key} cannot be given`);
+                    }
+                }
+            }*/
+
+            // get the record from the db
+            this.dbClass.db.select().from(this.constructor.clsname).where({uuid: opt.uuid, deleted_at: null}).one()
+                .then((record) => {
+                    const required_matches = ['uuid', 'deleted_at','version', 'created_at'];
+                    for (let m of required_matches) {
+                        if (opt[m] !== undefined && opt[m] !== record[m]) {
+                            throw new Error('Concurrency error. Updating an out-of-date record');
+                        }
+                    }
+                    const duplicate = {};
+                    const timestamp = moment().valueOf();
+                    const updates = {
+                        version: record.version + 1,
+                        created_at: timestamp
+                    };
+
+                    // create a copy of the current record
+                    for (let key of Object.keys(record)) {
+                        if (! key.startsWith('@')) {
+                            duplicate[key] = record[key];
+                        }
+                    }
+                    for (let key of Object.keys(opt)) {
+                        if (! key.startsWith('@') && key !== 'version') {
+                            updates[key] = opt[key];
+                        }
+                    }
+
+                    duplicate['deleted_at'] = timestamp; // set the deletion time
+                    // start the transaction
+                    var commit = this.dbClass.db
+                        .let('updatedRID', (tx) => {
+                            // update the existing node
+                            return tx.update(`${record['@rid'].toString()}`).set(updates).return('AFTER @rid');
+                        }).let('duplicate', (tx) => {
+                            //duplicate the old node
+                            return tx.create(this.constructor.createType, this.constructor.clsname)
+                                .set(duplicate);
+                        }).let('historyEdge', (tx) => {
+                            //connect the nodes
+                            return tx.create(History.createType, History.clsname)
+                                .from('$updatedRID')
+                                .to('$duplicate');
+                        }).commit();
+                    commit.return('$updatedRID').one()
+                        .then((rid) => {
+                            return this.dbClass.db.record.get(rid);
+                        }).then((record) => {
+                            resolve(record);
+                        }).catch((error) => {
+                            reject(error);
+                        });
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
     }
     get_by_id(id) {
         console.log('get_by_id', id);
@@ -155,7 +254,7 @@ class Base {
      * @type {string}
      */
     static get clsname() {
-        var clsname = this.name;
+        let clsname = this.name;
         clsname = clsname.replace(/([a-z])([A-Z])/g, '$1_$2');
         return clsname.toLowerCase();
     }
@@ -177,7 +276,7 @@ class Base {
                         });
                 }).catch((error) => {
                     reject(error);
-                })
+                });
         });
     }
     /**
@@ -194,6 +293,7 @@ class Base {
      * @returns {Promise} on resolve returns a instance of Base (or subclass) otherwise Error
      */
     static createClass(opt) {
+        // extend versioning if not versioning
         return new Promise((resolve, reject) => {
             // preliminary error checking and defaults
             opt.properties = opt.properties || [];
@@ -206,7 +306,7 @@ class Base {
             } else {
                 opt.db.class.create(opt.clsname, opt.superClasses, null, opt.isAbstract) // create the class first
                     .then((cls) => {
-                        // now add properties
+                        // add the properties
                         Promise.all(Array.from(opt.properties, (prop) => cls.property.create(prop)))
                             .then(() => {
                                 // create the indices
@@ -216,6 +316,7 @@ class Base {
                             }).catch((error) => {
                                 reject(error);
                             });
+
                     }).catch((error) => {
                         reject(error);
                     });
@@ -224,4 +325,115 @@ class Base {
     }
 }
 
-module.exports = Base;
+/**
+ * creates the abstract super class "versioning" and adds it as the super class for V and E
+ *
+ * @param {orientjs.Db} db the database instance
+ * @returns {Promise} returns a promise which returns nothing on resolve and an error on reject
+ */
+class KBVertex extends Base {
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+                {name: 'version', type: 'integer', mandatory: true, notNull: true},
+                {name: 'created_at', type: 'long', mandatory: true, notNull: true},
+                {name: 'deleted_at', type: 'long', mandatory: true, notNull: false}
+            ];
+            const idxs = [
+                {
+                    name: `${this.clsname}_version`,
+                    type: 'unique',
+                    properties: ['uuid', 'version'],
+                    'class':  this.clsname
+                },
+                {
+                    name: `${this.clsname}_single_null_deleted_at`,
+                    type: 'unique',
+                    metadata: {ignoreNullValues: false},
+                    properties: ['uuid', 'deleted_at'],
+                    'class':  this.clsname
+                }
+            ];
+
+            super.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true, properties: props, indices: idxs})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+class KBEdge extends Base {
+
+    static get createType() {
+        return 'edge';
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+                {name: 'version', type: 'integer', mandatory: true, notNull: true},
+                {name: 'created_at', type: 'long', mandatory: true, notNull: true},
+                {name: 'deleted_at', type: 'long', mandatory: true, notNull: false}
+            ];
+            const idxs = [
+                {
+                    name: `${this.clsname}_version`,
+                    type: 'unique',
+                    properties: ['uuid', 'version'],
+                    'class':  this.clsname
+                },
+                {
+                    name: `${this.clsname}_single_null_deleted_at`,
+                    type: 'unique',
+                    metadata: {ignoreNullValues: false},
+                    properties: ['uuid', 'deleted_at'],
+                    'class':  this.clsname
+                }
+            ];
+
+            super.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: true, properties: props, indices: idxs})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+class History extends Base {
+
+    static get createType() {
+        return 'edge';
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                //{name: 'user', type: 'link', mandatory: true, notNull: true, readOnly: true, linkedClass: 'user'},
+                {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true}
+            ];
+
+            super.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: false, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+module.exports = {Base, History, KBVertex, KBEdge, softGetRID, errorJSON};

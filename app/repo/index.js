@@ -1,10 +1,9 @@
-"use strict";
+'use strict';
 /*
  * Repository-layer. Responsible for operations which access the database
  */
 const _ = require('lodash');
 const connect = require('./connect');
-const {augmentWithVersioning} = require('./versioning');
 const models = {};
 _.assign(models, require('./evidence'));
 _.assign(models, require('./context'));
@@ -28,7 +27,7 @@ const loadSchema = (db) => {
                 reject(error);
             });
     });
-}
+};
 
 /**
  * builds the schema from the models. Assumes an empty db
@@ -55,7 +54,7 @@ const createSchema = (db) => {
                 reject(error);
             });
     });
-    
+
     return new Promise((resolve, reject) => {
         Promise.all([p1, p2, augmentWithVersioning(db)]) // can be concurrent
             .then(() => {
@@ -67,7 +66,7 @@ const createSchema = (db) => {
                 reject(error);
             });
     });
-}
+};
 
 
 module.exports = {
