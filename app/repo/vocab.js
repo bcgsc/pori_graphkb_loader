@@ -14,7 +14,9 @@ class Vocab extends KBVertex {
             {name: 'class', type: 'string', mandatory: true, notNull: true},
             {name: 'property', type: 'string', mandatory: true, notNull: true},
             {name: 'term', type: 'string', mandatory: true, notNull: true},
-            {name: 'definition', type: 'string', mandatory: false, notNull: true}
+            {name: 'definition', type: 'string', mandatory: false, notNull: true},
+            {name: 'conditional_property', type: 'string', mandatory: false, notNull: false},  // apply only to values where type=conditional
+            {name: 'conditional_value', type: 'string', mandatory: false, notNull: false}
         ];
 
         const idxs = [
@@ -40,6 +42,14 @@ class Vocab extends KBVertex {
                     reject(error);
                 });
         });
+    }
+
+    validateContent(content) {
+        if ((content.conditional_property && ! content.conditional_value) || (! content.conditional_property && content.conditional_value)) {
+            throw new AttributeError(`if either of the conditionals are specified they must both be specified: `
+                + `conditional_property=${content.conditional_property}, conditional_value=${content.conditional_value}`);
+        }
+        return super.validateContent(content);
     }
 
     createRecord(where={}) {

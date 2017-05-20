@@ -21,20 +21,19 @@ const {
 describe('Position schema tests:', () => {
     let server, db;
     beforeEach(function(done) { /* build and connect to the empty database */
-        // set up the database server
         connectServer(conf)
             .then((result) => {
                 // create the empty database
                 server = result;
-                return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
-            }).then((result) => {
-                db = result;
-                return Promise.all([
-                    KBVertex.createClass(db),
-                    History.createClass(db),
-                    KBEdge.createClass(db)
-                ]);
-            }).then(() => {
+                return createDB({
+                    name: conf.emptyDbName, 
+                    username: conf.dbUsername, 
+                    password: conf.dbPassword, 
+                    server: server,
+                    models: {KBEdge, KBVertex, History}
+                });
+            }).then((connection) => {
+                db = connection;
                 done();
             }).catch((error) => {
                 console.log('error', error);
@@ -42,7 +41,7 @@ describe('Position schema tests:', () => {
             });
     });
     it('test create position class', () => {
-        return Position.createClass(db)
+        return Position.createClass(db.conn)
             .then((result) => {
                 expect(result.propertyNames).to.include('uuid', 'version', 'created_at', 'deleted_at');
                 expect(result.isAbstract).to.be.true;
@@ -52,7 +51,7 @@ describe('Position schema tests:', () => {
     describe('position subclasses', () => {
         let posClass;
         beforeEach(function(done) {
-            Position.createClass(db)
+            Position.createClass(db.conn)
                 .then((result) => {
                     posClass = result;
                     done();
@@ -69,7 +68,7 @@ describe('Position schema tests:', () => {
                 });
         });
         it('create genomic subclass', () => {
-            return GenomicPosition.createClass(db)
+            return GenomicPosition.createClass(db.conn)
                 .then((result) => {
                     expect(result.propertyNames).to.include('pos');
                     expect(result.isAbstract).to.be.false;
@@ -79,7 +78,7 @@ describe('Position schema tests:', () => {
         describe('genomic', () => {
             let currClass;
             beforeEach(function(done) {
-                GenomicPosition.createClass(db)
+                GenomicPosition.createClass(db.conn)
                     .then((result) => {
                         currClass = result;
                         done();
@@ -114,13 +113,13 @@ describe('Position schema tests:', () => {
             it('allows pos at min', () => {
                 return currClass.createRecord({pos: 1})
                     .then((record) => {
-                        expect(record).to.have.property('pos', 1);
+                        expect(record.content).to.have.property('pos', 1);
                     });
             });
         });
 
         it('create protein subclass', () => {
-            return ProteinPosition.createClass(db)
+            return ProteinPosition.createClass(db.conn)
                 .then((result) => {
                     expect(result.propertyNames).to.include('pos', 'ref_aa');
                     expect(result.isAbstract).to.be.false;
@@ -130,7 +129,7 @@ describe('Position schema tests:', () => {
         describe('protein', () => {
             let currClass;
             beforeEach(function(done) {
-                ProteinPosition.createClass(db)
+                ProteinPosition.createClass(db.conn)
                     .then((result) => {
                         currClass = result;
                         done();
@@ -173,21 +172,21 @@ describe('Position schema tests:', () => {
             it('allows ref_aa default null', () => {
                 return currClass.createRecord({pos: 1})
                     .then((record) => {
-                        expect(record.ref_aa).to.be.null;
-                        expect(record.pos).to.equal(1);
+                        expect(record.content.ref_aa).to.be.null;
+                        expect(record.content.pos).to.equal(1);
                     });
             });
             it('allows pos at min', () => {
                 return currClass.createRecord({pos: 1, ref_aa: 'X'})
                     .then((record) => {
-                        expect(record.pos).to.equal(1);
-                        expect(record.ref_aa).to.equal('X');
+                        expect(record.content.pos).to.equal(1);
+                        expect(record.content.ref_aa).to.equal('X');
                     });
             });
         });
 
         it('create exon subclass', () => {
-            return ExonicPosition.createClass(db)
+            return ExonicPosition.createClass(db.conn)
                 .then((result) => {
                     expect(result.propertyNames).to.include('pos');
                     expect(result.isAbstract).to.be.false;
@@ -197,7 +196,7 @@ describe('Position schema tests:', () => {
         describe('exonic', () => {
             let currClass;
             beforeEach(function(done) {
-                ExonicPosition.createClass(db)
+                ExonicPosition.createClass(db.conn)
                     .then((result) => {
                         currClass = result;
                         done();
@@ -232,13 +231,13 @@ describe('Position schema tests:', () => {
             it('allows pos at min', () => {
                 return currClass.createRecord({pos: 1})
                     .then((record) => {
-                        expect(record).to.have.property('pos', 1);
+                        expect(record.content).to.have.property('pos', 1);
                     });
             });
         });
 
         it('create cds subclass', () => {
-            return CodingSequencePosition.createClass(db)
+            return CodingSequencePosition.createClass(db.conn)
                 .then((result) => {
                     expect(result.propertyNames).to.include('pos', 'offset');
                     expect(result.isAbstract).to.be.false;
@@ -248,7 +247,7 @@ describe('Position schema tests:', () => {
         describe('cds', () => {
             let currClass;
             beforeEach(function(done) {
-                CodingSequencePosition.createClass(db)
+                CodingSequencePosition.createClass(db.conn)
                     .then((result) => {
                         currClass = result;
                         done();
@@ -275,22 +274,22 @@ describe('Position schema tests:', () => {
             it('allows offset to default to 0', () => {
                 return currClass.createRecord({pos: 1})
                     .then((record) => {
-                        expect(record.pos).to.equal(1);
-                        expect(record.offset).to.equal(0);
+                        expect(record.content.pos).to.equal(1);
+                        expect(record.content.offset).to.equal(0);
                     });
             });
             it('allows offset to be negative', () => {
                 return currClass.createRecord({pos: 1, offset: -2})
                     .then((record) => {
-                        expect(record.pos).to.equal(1);
-                        expect(record.offset).to.equal(-2);
+                        expect(record.content.pos).to.equal(1);
+                        expect(record.content.offset).to.equal(-2);
                     });
             });
             it('allows offset to be positive', () => {
                 return currClass.createRecord({pos: 1, offset: 2})
                     .then((record) => {
-                        expect(record.pos).to.equal(1);
-                        expect(record.offset).to.equal(2);
+                        expect(record.content.pos).to.equal(1);
+                        expect(record.content.offset).to.equal(2);
                     });
             });
             it('errors on offset null', () => {
@@ -312,7 +311,7 @@ describe('Position schema tests:', () => {
         });
 
         it('create cytoband subclass', () => {
-            return CytobandPosition.createClass(db)
+            return CytobandPosition.createClass(db.conn)
                 .then((result) => {
                     expect(result.propertyNames).to.include('arm', 'major_band', 'minor_band');
                     expect(result.isAbstract).to.be.false;
@@ -322,7 +321,7 @@ describe('Position schema tests:', () => {
         describe('cytoband', () => {
             let currClass;
             beforeEach(function(done) {
-                CytobandPosition.createClass(db)
+                CytobandPosition.createClass(db.conn)
                     .then((result) => {
                         currClass = result;
                         done();
@@ -357,17 +356,17 @@ describe('Position schema tests:', () => {
             it('allows arm p to force lower case', () => {
                 return currClass.createRecord({arm: 'P'})
                     .then((record) => {
-                        expect(record.arm).to.equal('p');
-                        expect(record.major_band).to.be.null;
-                        expect(record.minor_band).to.be.null;
+                        expect(record.content.arm).to.equal('p');
+                        expect(record.content.major_band).to.be.null;
+                        expect(record.content.minor_band).to.be.null;
                     });
             });
             it('allows arm q to force lower case', () => {
                 return currClass.createRecord({arm: 'Q'})
                     .then((record) => {
-                        expect(record.arm).to.equal('q');
-                        expect(record.major_band).to.be.null;
-                        expect(record.minor_band).to.be.null;
+                        expect(record.content.arm).to.equal('q');
+                        expect(record.content.major_band).to.be.null;
+                        expect(record.content.minor_band).to.be.null;
                     });
             });
             it('errors on minor_band not null when major band null', () => {
@@ -381,7 +380,7 @@ describe('Position schema tests:', () => {
         });
 
         it('create range subclass', () => {
-            return Range.createClass(db)
+            return Range.createClass(db.conn)
                 .then((result) => {
                     expect(result.propertyNames).to.include('start', 'end');
                     expect(result.isAbstract).to.be.false;
@@ -392,8 +391,8 @@ describe('Position schema tests:', () => {
             let currClass, cdsClass;
             beforeEach(function(done) {
                 Promise.all([
-                    Range.createClass(db),
-                    CodingSequencePosition.createClass(db)
+                    Range.createClass(db.conn),
+                    CodingSequencePosition.createClass(db.conn)
                 ]).then((plist) => {
                     [currClass, cdsClass] = plist;
                     done();
@@ -421,11 +420,11 @@ describe('Position schema tests:', () => {
             it('create range', () => {
                 return currClass.createRecord({start: {pos: 1}, end: {pos: 1}}, cdsClass)
                     .then((record) => {
-                        expect(record.start).to.have.property('uuid');
-                        expect(record.end).to.have.property('uuid');
-                        expect(record.start.uuid).to.not.equal(record.end.uuid);
-                        expect(record.start).to.have.property('pos', 1);
-                        expect(record.end).to.have.property('pos', 1);
+                        expect(record.content.start).to.have.property('uuid');
+                        expect(record.content.end).to.have.property('uuid');
+                        expect(record.content.start.uuid).to.not.equal(record.content.end.uuid);
+                        expect(record.content.start).to.have.property('pos', 1);
+                        expect(record.content.end).to.have.property('pos', 1);
                     });
             });
             it('same uuid for start/end error', () => {

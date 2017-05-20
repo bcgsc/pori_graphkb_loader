@@ -28,7 +28,7 @@ describe('Feature schema tests:', () => {
                     models: {KBVertex, KBEdge, History}
                 });
             }).then((result) => {
-                db = result.db;
+                db = result.conn;
                 done();
             }).catch((error) => {
                 console.log('error', error);
@@ -140,7 +140,7 @@ describe('Feature.validateContent', () => {
                     models: {KBVertex, KBEdge, History}
                 });
             }).then((result) => {
-                db = result.db;
+                db = result.conn;
                 return Feature.createClass(db);
             }).then((cls) => {
                 currClass = cls;
@@ -550,7 +550,7 @@ describe('FeatureDeprecatedBy', () => {
                     models: {KBVertex, KBEdge, History}
                 });
             }).then((result) => {
-                db = result.db;
+                db = result.conn;
                 return Promise.all([
                     FeatureDeprecatedBy.createClass(db),
                     Feature.createClass(db)
@@ -569,7 +569,7 @@ describe('FeatureDeprecatedBy', () => {
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENST001', biotype: BIOTYPE.TRANSCRIPT, source_version: 11})
         ]).then((recList) => {
-            return deprecatedByClass.createRecord({in: recList[0], out: recList[1]});
+            return deprecatedByClass.createRecord({out: recList[0], in: recList[1]});
         }).then((edge) => {
             console.log(edge);
             expect.fail('should not have been able to create the record');
@@ -582,7 +582,7 @@ describe('FeatureDeprecatedBy', () => {
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
             featureClass.createRecord({source: SOURCE.REFSEQ, name: 'NG_001', biotype: BIOTYPE.GENE, source_version: 11})
         ]).then((recList) => {
-            return deprecatedByClass.createRecord({in: recList[0], out: recList[1]});
+            return deprecatedByClass.createRecord({out: recList[0], in: recList[1]});
         }).then((edge) => {
             console.log(edge);
             expect.fail('should not have been able to create the record');
@@ -595,7 +595,7 @@ describe('FeatureDeprecatedBy', () => {
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 11}),
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG002', biotype: BIOTYPE.GENE, source_version: 11})
         ]).then((recList) => {
-            return deprecatedByClass.createRecord({in: recList[0], out: recList[1]});
+            return deprecatedByClass.createRecord({out: recList[0], in: recList[1]});
         }).then((edge) => {
             console.log(edge);
             expect.fail('should not have been able to create the record');
@@ -608,7 +608,7 @@ describe('FeatureDeprecatedBy', () => {
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: null})
         ]).then((recList) => {
-            return deprecatedByClass.createRecord({in: recList[0], out: recList[1]});
+            return deprecatedByClass.createRecord({out: recList[0], in: recList[1]});
         }).then((edge) => {
             console.log(edge);
             expect.fail('should not have been able to create the record');
@@ -621,7 +621,7 @@ describe('FeatureDeprecatedBy', () => {
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 11})
         ]).then((recList) => {
-            return deprecatedByClass.createRecord({in: recList[0], out: recList[1]});
+            return deprecatedByClass.createRecord({out: recList[0], in: recList[1]});
         }).then((edge) => {
             expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         });
@@ -660,7 +660,7 @@ describe('FeatureAliasOf', () => {
                     models: {KBVertex, KBEdge, History}
                 });
             }).then((result) => {
-                db = result.db;
+                db = result.conn;
                 return Promise.all([
                     FeatureAliasOf.createClass(db),
                     Feature.createClass(db)
@@ -679,7 +679,7 @@ describe('FeatureAliasOf', () => {
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENST001', biotype: BIOTYPE.TRANSCRIPT, source_version: 11})
         ]).then((recList) => {
-            return aliasOfClass.createRecord({in: recList[0].content, out: recList[1].content});
+            return aliasOfClass.createRecord({out: recList[0].content, in: recList[1].content});
         }).then((edge) => {
             console.log(edge);
             expect.fail('should not have been able to create the record');
@@ -692,7 +692,7 @@ describe('FeatureAliasOf', () => {
             featureClass.createRecord({source: SOURCE.ENSEMBL, name: 'ENSG001', biotype: BIOTYPE.GENE, source_version: 10}),
             featureClass.createRecord({source: SOURCE.REFSEQ, name: 'NG_0001', biotype: BIOTYPE.GENE, source_version: 11})
         ]).then((recList) => {
-            return aliasOfClass.createRecord({in: recList[0].content, out: recList[1].content});
+            return aliasOfClass.createRecord({out: recList[0].content, in: recList[1].content});
         }).then((edge) => {
             expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         });

@@ -1,5 +1,6 @@
 'use strict';
-const {KBVertex, Base, Record} = require('./base');
+const {KBVertex, Base, Record, KBEdge} = require('./base');
+const {Feature} = require('./feature');
 const {AttributeError} = require('./error');
 
 
@@ -41,7 +42,7 @@ class Range extends KBVertex {
         return super.validateContent(content);
     }
 
-    createRecord(opt) {
+    createRecord(opt, positionClass) {
         return new Promise((resolve, reject) => {
             const args = this.validateContent(opt, positionClass);
             // start the transaction
@@ -70,7 +71,7 @@ class Range extends KBVertex {
                     ]).then((positions) => {
                         record.start = positions[0];
                         record.end = positions[1];
-                        resolve(record);
+                        resolve(new Record(record, this));
                     }).catch((error) => {
                         reject(error);
                     });
@@ -250,6 +251,7 @@ class CytobandPosition extends KBVertex {
     }
 
 }
+
 
 
 module.exports = {Position, Range, ProteinPosition, GenomicPosition, ExonicPosition, CodingSequencePosition, CytobandPosition};

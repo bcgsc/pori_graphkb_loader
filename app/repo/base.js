@@ -97,13 +97,21 @@ class Base {
                 continue;
             }
             if (this.constructor.createType == 'edge' && (key == 'in' || key == 'out')) {
+                // ignore edges reserved properties
             } else if (! _.includes(this.propertyNames, key)) {
                 throw new AttributeError(`invalid attribute ${key}`);
             }
             let value = content[key];
-            if (subcache !== undefined && subcache[key] !== undefined && subcache[key][value] === undefined) {
-                throw new ControlledVocabularyError(
-                    `controlled term ${key} in class ${this.constructor.clsname} is not an allowed value: ${subcache[key][content[key]]}`);
+            if (subcache !== undefined && subcache[key] !== undefined) {
+                const term = subcache[key][value];
+                if (term === undefined) {
+                    throw new ControlledVocabularyError(
+                        `controlled term ${key} in class ${this.constructor.clsname} is not an allowed value: ${value}`);
+                } else if (term.type_conditional != null && term.type_conditional != content.type) {
+                    throw new ControlledVocabularyError(
+                        `controlled term ${key} in class ${this.constructor.clsname} is not an allowed value: `
+                        + `${value} for the given type: ${content.type}. Expected ${term.type_conditional}`);
+                }
             }
             args[key] = content[key]; // overrides the defaults if given
         }
@@ -464,10 +472,10 @@ class KBEdge extends Base {
     }
 
     validateContent(content) {
-        const src = content.in.content || content.in;
-        const tgt = content.out.content || content.out;
-        src['@class'] = src['@class'] != undefined ? src['@class'] : KBVertex.clsname;
-        tgt['@class'] = tgt['@class'] != undefined ? tgt['@class'] : KBVertex.clsname;
+        const tgt = content.in.content || content.in;
+        const src = content.out.content || content.out;
+        src['@class'] = src['@class'] || KBVertex.clsname;
+        tgt['@class'] = tgt['@class'] || KBVertex.clsname;
         const args = super.validateContent(content);
         return args;
     }
@@ -477,8 +485,8 @@ class KBEdge extends Base {
      */
     createRecord(data={}) {
         const args = this.validateContent(data);
-        const srcIn = data.in.content || data.in;
-        const tgtIn = data.out.content || data.out;
+        const tgtIn = data.in.content || data.in;
+        const srcIn = data.out.content || data.out;
         return new Promise((resolve, reject) => {
 
             // select both records from the db

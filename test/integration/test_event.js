@@ -1,9 +1,12 @@
 'use strict';
 const {expect} = require('chai');
 const conf = require('./../config/db');
-const {connectServer} = require('./../../app/repo/connect');
+const {connectServer, createDB} = require('./../../app/repo/connect');
+const {KBVertex, KBEdge, Base, Record, History} = require('./../../app/repo/base');
+const {CategoryEvent, PositionalEvent, Event, EVENT_TYPE, EVENT_SUBTYPE} = require('./../../app/repo/event');
+const {Feature, SOURCE, BIOTYPE} = require('./../../app/repo/feature');
 const Promise = require('bluebird');
-
+const {AttributeError} = require('./../../app/repo/error');
 
 
 describe('Event schema tests:', () => {
@@ -14,15 +17,18 @@ describe('Event schema tests:', () => {
             .then((result) => {
                 // create the empty database
                 server = result;
-                return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
-            }).then((result) => {
-                db = result;
-                return Promise.all([
-                    KBVertex.createClass(db),
-                    History.createClass(db),
-                    KBEdge.createClass(db)
-                ]);
-            }).then(() => {
+                return createDB({
+                    name: conf.emptyDbName, 
+                    username: conf.dbUsername, 
+                    password: conf.dbPassword, 
+                    server: server,
+                    models: {KBEdge, KBVertex, History}
+                });
+            }).then((connection) => {
+                db = connection;
+                return Feature.createClass(connection.conn);
+            }).then((cls) => {
+                db.models.Feature = cls;
                 done();
             }).catch((error) => {
                 console.log('error', error);
@@ -36,10 +42,8 @@ describe('Event schema tests:', () => {
     it('create the CategoryEvent class');
 
     describe('PositionalEvent', () => {
-        it('allows events with same start/end positions', () => {
-        });
-        it('errors when event start > end position', () => {
-        });
+        it('allows events with same start/end positions');
+        it('errors when event start > end position');
         it('errors on either position not given');
         it('errors on invalid event subtype');
         it('errors on null subtype');
@@ -54,12 +58,57 @@ describe('Event schema tests:', () => {
     });
     
     describe('CategoryEvent', () => {
-        it('errors on invalid term');
-        it('errors when a term is not specified');
-        it('errors on null term');
+        beforeEach((done) => {
+            Event.createClass(db.conn)
+                .then((event) => {
+                    db.models.Event = event;
+                    return CategoryEvent.createClass(db.conn)
+                }).then((ce) => {
+                    db.models.CategoryEvent = ce;
+                    done();
+                }).catch((error) => {
+                    done(error);
+                });
+        });
+        it('errors on invalid term for any event type');
+        it('errors on invalid term for RNA expression event');
+        it('allows term specific to copy number variants');
+        it('allows term non-specific for CNVs');
+        it('errors when a term is not specified', () => {
+            return db.models.CategoryEvent.createRecord({})
+                .then(() => {
+                    expect.fail('expected error');
+                }).catch(AttributeError, () => {});
+        });
+        it('errors on null term', () => {
+            return db.models.CategoryEvent.createRecord({term: null})
+                .then(() => {
+                    expect.fail('expected error');
+                }).catch(AttributeError, () => {});
+        });
         it('errors on invalid zygosity');
-        it('allows null zygosity');
-        it('allows no zygosity');
+        it('allows null (not specified) zygosity', () => {
+            let feature;
+            return db.models.Feature.createRecord({name: 'HUGO', source: SOURCE.HGNC, biotype: BIOTYPE.GENE})
+                .then((f) => {
+                    feature = f;
+                    return db.models.CategoryEvent.createRecord({term: 'not specified', type: EVENT_TYPE.RNA, zygosity: null, primary_feature: f});
+                }).then((record) => {
+                    console.log(record);
+                    expect(record).to.be.instanceof(Record);
+                    expect(record.content).to.have.property('zygosity', null);
+                });
+        });
+        it('defaults no zygosity to null and germline to null', () => {
+            return db.models.CategoryEvent.createRecord({term: 'not specified', type: EVENT_TYPE.RNA})
+                .then((record) => {
+                    expect(record).to.be.instanceof(Record);
+                    expect(record.content).to.have.property('term', 'not specified');
+                    expect(record.content).to.have.property('zygosity', null);
+                    expect(record.content).to.have.property('germline', null);
+                    expect(record.content).to.have.property('type', 'RNA expression');
+                });
+        });
         it('errors on invalid event type');
         it('errors on no event type');
         it('errors on null event type');

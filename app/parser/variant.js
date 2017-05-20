@@ -1,6 +1,7 @@
 "use strict";
 const nRegex = require("named-js-regexp");
 const {ParsingError} = require('./../repo/error');
+const {PositionalEvent, EVENT_SUBTYPE, NOTATION_TO_SUBTYPE} = require('./../repo/event');
 const {parsePosition} = require('./position');
 const {parseFeature} = require('./feature');
 
@@ -62,29 +63,17 @@ const parseContinuous  = (prefix, string) => {
     } else {
         throw new ParsingError(`Did not recognize type: ${string}`);
     }
+    
 
     let validTypes = [];
-    switch(prefix) {
-        case 'p': {
-            validTypes.push('fs');
-        }
-        case 'g':
-        case 'c': {
-            Array.prototype.push.apply(validTypes, ['ins', '>', 'delins']);
-        }
-        case 'y': {
-            validTypes.push('inv');
-        }
-        case 'e': {
-            Array.prototype.push.apply(validTypes, ['del', 'dup']);
-            break;
-        }
-        default: {
-            throw new ParsingError(`invalid prefix '${prefix}'`);
-        }
+
+    if (! NOTATION_TO_SUBTYPE.has(result.type)) {
+        throw new ParsingError(`unsupported event type: ${result.type}`);
     }
-    if (! validTypes.includes(result.type)) {
-        throw new ParsingError(`invalid type '${result.type} for the given prefix notation '${prefix}'`);
+    try {
+        PositionalEvent.subtypeValidation(result.prefix, NOTATION_TO_SUBTYPE.get(result.type));
+    } catch(e) {
+        throw new ParsingError(e.message);
     }
     return result;
 };

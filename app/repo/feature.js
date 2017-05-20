@@ -139,8 +139,8 @@ class FeatureDeprecatedBy extends KBEdge {
 
     validateContent(content) {
         const args = super.validateContent(content);
-        const srcIn = args.in.content || args.in;
-        const tgtIn = args.out.content || args.out;
+        const tgtIn = args.in.content || args.in;
+        const srcIn = args.out.content || args.out;
         for (let key of ['source', 'biotype']) {
             if (srcIn[key] !== tgtIn[key]) {
                 throw new AttributeError(`cannot deprecate a feature using a different ${key}`);
@@ -173,8 +173,8 @@ class FeatureAliasOf extends KBEdge {
     
     validateContent(content) {
         const args = super.validateContent(content);
-        const srcIn = args.in.content || args.in;
-        const tgtIn = args.out.content || args.out;
+        const tgtIn = args.in.content || args.in;
+        const srcIn = args.out.content || args.out;
         if (srcIn.biotype !== tgtIn.biotype) {
             throw new AttributeError(`cannot alias a feature with a different biotype`);
         }

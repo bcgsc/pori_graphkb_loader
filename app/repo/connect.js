@@ -43,18 +43,18 @@ const createDB = (opt) => {
         if (opt.models === undefined) {
             opt.models = {};
         }
-        const result = {server: opt.server, name: opt.name, db: null, models: {}};
+        const result = {server: opt.server, name: opt.name, conn: null, models: {}};
         const modelNames = Object.keys(opt.models);
         const modelClasses = Array.from(modelNames, x => opt.models[x]);
 
         opt.server.create({name: opt.name, username: opt.username, password: opt.password})
             .then((con) => {
-                result.db = con;
+                result.conn = con;
                 // alter db to relax blueprint constraints (otherwise null property value error)
-                return result.db.query('alter database custom standardElementConstraints=false');
+                return result.conn.query('alter database custom standardElementConstraints=false');
             }).then(() => {
                 // now initialize all models
-                return Promise.all(Array.from(modelClasses, x => x.createClass(result.db)));
+                return Promise.all(Array.from(modelClasses, x => x.createClass(result.conn)));
             }).then((modelsList) => {
                 for (let i = 0; i < modelsList.length; i++) {
                     result.models[modelNames[i]] = modelsList[i]; 
