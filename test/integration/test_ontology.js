@@ -25,7 +25,7 @@ describe('Ontology schema tests:', () => {
                     models: {KBVertex, KBEdge, History}
                 });
             }).then((result) => {
-                db = result.db;
+                db = result;
                 return Promise.all([
                     Context.createClass(db)
                 ]);
@@ -43,9 +43,7 @@ describe('Ontology schema tests:', () => {
             .then((result) => {
                 expect(result).to.be.an.instanceof(Ontology);
                 expect(result.propertyNames).to.include('uuid', 'version', 'created_at', 'deleted_at')
-                expect(result).to.have.property('dbClass');
                 expect(result.isAbstract).to.be.true;
-                expect(result.dbClass.superClass).to.equal('context');
             });
     });
     it('create an ontology record (should fail)', () => {
@@ -75,7 +73,6 @@ describe('Ontology schema tests:', () => {
             return Disease.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('name', 'id', 'xref', 'definition', 'url', 'uuid', 'created_at', 'deleted_at', 'version');
-                    expect(result).to.have.property('dbClass');
                     expect(result.isAbstract).to.be.false;
                 });
         });
@@ -84,7 +81,6 @@ describe('Ontology schema tests:', () => {
             return Therapy.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('name', 'id','uuid', 'created_at', 'deleted_at', 'version');
-                    expect(result).to.have.property('dbClass');
                     expect(result.isAbstract).to.be.false;
                 });
         });    
@@ -93,7 +89,6 @@ describe('Ontology schema tests:', () => {
             return OntologySubClassOf.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('uuid', 'created_at', 'deleted_at', 'version');
-                    expect(result).to.have.property('dbClass');
                     expect(result.isAbstract).to.be.false;
                 });
         });
@@ -102,7 +97,6 @@ describe('Ontology schema tests:', () => {
             return OntologyAliasOf.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('uuid', 'created_at', 'deleted_at', 'version');
-                    expect(result).to.have.property('dbClass');
                     expect(result.isAbstract).to.be.false;
                 });
         });
@@ -111,7 +105,6 @@ describe('Ontology schema tests:', () => {
             return OntologyRelatedTo.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('uuid', 'created_at', 'deleted_at', 'version');
-                    expect(result).to.have.property('dbClass');
                     expect(result.isAbstract).to.be.false;
                 });
         });
@@ -120,7 +113,6 @@ describe('Ontology schema tests:', () => {
             return OntologyDepricatedBy.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('uuid', 'created_at', 'deleted_at', 'version');
-                    expect(result).to.have.property('dbClass');
                     expect(result.isAbstract).to.be.false;
                 });
         });
@@ -268,7 +260,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
                     models: {KBVertex, KBEdge, History}
                 });
             }).then((result) => {
-                db = result.db;
+                db = result;
                 return Promise.all([
                     Context.createClass(db),
                     Ontology.createClass(db),
@@ -528,11 +520,11 @@ describe('Ontology Edges (Therapy & Disease)', () => {
 
     afterEach((done) => {
         /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
+        db.server.drop({name: conf.emptyDbName})
             .catch((error) => {
                 console.log('error:', error);
             }).then(() => {
-                return server.close();
+                return db.server.close();
             }).then(() => {
                 done();
             }).catch((error) => {

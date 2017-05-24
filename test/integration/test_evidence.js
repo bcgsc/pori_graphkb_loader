@@ -1,7 +1,7 @@
 "use strict";
 const {expect} = require('chai');
 const conf = require('./../config/db');
-const {connectServer} = require('./../../app/repo/connect');
+const {connectServer, createDB} = require('./../../app/repo/connect');
 const _ = require('lodash');
 const {DependencyError, AttributeError} = require('./../../app/repo/error');
 const {Base, History, KBVertex, KBEdge, Record} = require('./../../app/repo/base');
@@ -18,14 +18,15 @@ describe('Evidence schema tests:', () => {
             .then((result) => {
                 // create the empty database
                 server = result;
-                return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+                return createDB({
+                    name: conf.emptyDbName, 
+                    username: conf.dbUsername,
+                    password: conf.dbPassword,
+                    server: server,
+                    models: {KBVertex, KBEdge, History}
+                });
             }).then((result) => {
                 db = result;
-                return Promise.all([
-                    KBVertex.createClass(db),
-                    History.createClass(db),
-                    KBEdge.createClass(db)
-                ]);
             }).then(() => {
                 done();
             }).catch((error) => {
@@ -38,9 +39,7 @@ describe('Evidence schema tests:', () => {
             .then((result) => {
                 expect(result).to.be.an.instanceof(Evidence);
                 expect(result.propertyNames).to.include('uuid', 'version', 'created_at', 'deleted_at')
-                expect(result).to.have.property('dbClass');
                 expect(result.isAbstract).to.be.true;
-                expect(result.dbClass.superClass).to.equal('kbvertex');
             });
     });
     it('create an evidence record (should error)', () => {
@@ -69,7 +68,6 @@ describe('Evidence schema tests:', () => {
             return Publication.createClass(db)
                 .then((result) => {
                     expect(result).to.be.an.instanceof(Publication);
-                    expect(result).to.have.property('dbClass');
                     expect(result.isAbstract).to.be.false;
                 });
         });
@@ -78,7 +76,6 @@ describe('Evidence schema tests:', () => {
             return Journal.createClass(db)
                 .then((result) => {
                     expect(result).to.be.an.instanceof(Journal);
-                    expect(result).to.have.property('dbClass');
                     expect(result.propertyNames).to.include('name','version','created_at','deleted_at');
                     expect(result.isAbstract).to.be.false;
                 });
@@ -87,7 +84,6 @@ describe('Evidence schema tests:', () => {
             return ExternalSource.createClass(db)
                 .then((result) => {
                     expect(result).to.be.an.instanceof(ExternalSource);
-                    expect(result).to.have.property('dbClass');
                     expect(result.propertyNames).to.include('title', 'extraction_date', 'url','version','created_at','deleted_at');
                     expect(result.isAbstract).to.be.false;
                 });
@@ -96,7 +92,6 @@ describe('Evidence schema tests:', () => {
             return Study.createClass(db)
                 .then((result) => {
                     expect(result).to.be.an.instanceof(Study);
-                    expect(result).to.have.property('dbClass');
                     expect(result.propertyNames).to.include('title', 'year', 'sample_population', 'sample_population_size', 'method', 'url','version','created_at','deleted_at');
                     expect(result.isAbstract).to.be.false;
                 });
@@ -116,10 +111,9 @@ describe('Evidence schema tests:', () => {
             return ClinicalTrial.createClass(db)
                 .then((result) => {
                     expect(result).to.be.an.instanceof(ClinicalTrial);
-                    expect(result).to.have.property('dbClass');
                     expect(result.propertyNames).to.include('sample_population','phase', 'trial_id', 'official_title', 'summary','version','created_at','deleted_at');
                     expect(result.isAbstract).to.be.false;
-                    expect(result.dbClass.superClass).to.equal('study')
+                    expect(result.conn.superClass).to.equal('study')
                 });
             });
 
@@ -559,11 +553,11 @@ describe('Evidence schema tests:', () => {
 
     afterEach((done) => {
         /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
+        db.server.drop({name: conf.emptyDbName})
             .catch((error) => {
                 console.log('error:', error);
             }).then(() => {
-                return server.close();
+                return db.server.close();
             }).then(() => {
                 done();
             }).catch((error) => {
