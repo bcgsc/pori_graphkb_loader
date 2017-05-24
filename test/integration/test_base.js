@@ -1,7 +1,7 @@
 'use strict';
 const {expect} = require('chai');
 const conf = require('./../config/db');
-const {connectServer} = require('./../../app/repo/connect');
+const {connectServer, createDB} = require('./../../app/repo/connect');
 const {Base, History, KBVertex, Record, KBEdge} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 
@@ -23,13 +23,13 @@ class MockVertexClass extends KBVertex { // simple non-abstract class for tests
 
 
 describe('base module', () => {
-    let server, db;
+    let db, server;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
-            .then((result) => {
-                server = result;
-                return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+            .then((s) => {
+                server = s;
+                return createDB({server: s, name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
             }).then((result) => {
                 db = result;
                 done();
@@ -38,7 +38,7 @@ describe('base module', () => {
                 done(error);
             });
     });
-    it('create KBVertex', () => {
+    it('createClass KBVertex', () => {
         return KBVertex.createClass(db)
             .then((cls) => {
                 expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version']);
@@ -46,7 +46,7 @@ describe('base module', () => {
                 expect(cls.constructor.createType).to.equal('vertex');
             });
     });
-    it('create History', () => {
+    it('createClass History', () => {
         return History.createClass(db)
             .then((cls) => {
                 expect(cls.propertyNames).to.have.members(['comment']);
@@ -54,7 +54,7 @@ describe('base module', () => {
                 expect(cls.constructor.createType).to.equal('edge');
             });
     });
-    it('create KBEdge', () => {
+    it('createClass KBEdge', () => {
         return KBEdge.createClass(db)
             .then((cls) => {
                 expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version']);
@@ -63,8 +63,8 @@ describe('base module', () => {
             });
     });
 
-    describe('MockClass', () => {
-        let mockRecord, mockClass;
+    describe('instance', () => {
+        let mockRecord;
         beforeEach((done) => {
             Promise.all([
                 KBVertex.createClass(db),
@@ -72,10 +72,7 @@ describe('base module', () => {
             ]).then(() => {
                 return MockVertexClass.createClass(db);
             }).then(() => {
-                return MockVertexClass.loadClass(db);
-            }).then((cls) => {
-                mockClass = cls;
-                return cls.createRecord();
+                return db.models.MockVertexClass.createRecord();
             }).then((record) => {
                 mockRecord = record;
                 done();
@@ -83,31 +80,45 @@ describe('base module', () => {
                 done(error);
             });
         });
-        it('update a mock record', () => {
+        it('properties: retrieve inherited properties');
+        it('superClasses: retrieve inherited classes', () => {
+            const supers = db.models.MockVertexClass.superClasses;
+            expect(supers).to.include('kbvertex', 'V');
+        });
+        it('isAbstract: status as db class', () => {
+            expect(db.models.MockVertexClass.isAbstract).to.be.false;
+        });
+        it('propertyNames: returns names only', () => {
+            const names = db.models.MockVertexClass.propertyNames;
+            expect(names).to.include('uuid', 'created_at', 'deleted_at', 'version');
+        });
+        it('updateRecord', () => {
             const uuid = mockRecord.content.uuid;
             const version = mockRecord.content.version;
-            return mockClass.updateRecord(mockRecord.content, null, true)
+            return db.models.MockVertexClass.updateRecord(mockRecord.content, null, true)
                 .then((record) => {
                     expect(record.content.uuid).to.equal(uuid);
                     expect(record.content.version).to.equal(version + 1);
                     expect(record.content['@class']).to.equal(MockVertexClass.clsname);
                 });
         });
-        it('duplicate uuid + version violates unique constraint', () => {
-            return mockClass.createRecord({uuid: mockRecord.content.uuid, version: mockRecord.content.version})
-                .then(() => {
-                    expect.fail('violated constraint should have thrown error');
-                }, (error) => {
-                    oError.expectDuplicateKeyError(error);
-                });
-        });
-        it('duplicate uuid + deleted_at violates unique constraint', () => {
-            return mockClass.createRecord({uuid: mockRecord.content.uuid, version: mockRecord.content.version + 1})
-                .then(() => {
-                    expect.fail('violated constraint should have thrown error');
-                }, (error) => {
-                    oError.expectDuplicateKeyError(error);
-                });
+        describe('createRecord', () => {
+            it('errors on duplicate uuid + version', () => {
+                return db.models.MockVertexClass.createRecord({uuid: mockRecord.content.uuid, version: mockRecord.content.version})
+                    .then(() => {
+                        expect.fail('violated constraint should have thrown error');
+                    }, (error) => {
+                        oError.expectDuplicateKeyError(error);
+                    });
+            });
+            it('errors on duplicate uuid + deleted_at', () => {
+                return db.models.MockVertexClass.createRecord({uuid: mockRecord.content.uuid, version: mockRecord.content.version + 1})
+                    .then(() => {
+                        expect.fail('violated constraint should have thrown error');
+                    }, (error) => {
+                        oError.expectDuplicateKeyError(error);
+                    });
+            });
         });
     });
     afterEach((done) => {
@@ -127,7 +138,7 @@ describe('base module', () => {
 });
 
 
-describe('MockClass static', () => {
+describe('static', () => {
     let cls;
     beforeEach(function(done) {
         cls = new MockVertexClass();

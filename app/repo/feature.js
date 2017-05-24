@@ -138,18 +138,25 @@ class Feature extends KBVertex {
 class FeatureDeprecatedBy extends KBEdge {
 
     validateContent(content) {
-        const args = super.validateContent(content);
-        const tgtIn = args.in.content || args.in;
-        const srcIn = args.out.content || args.out;
-        for (let key of ['source', 'biotype']) {
-            if (srcIn[key] !== tgtIn[key]) {
-                throw new AttributeError(`cannot deprecate a feature using a different ${key}`);
+        const tgt = content.in.content || content.in;
+        const src = content.out.content || content.out;
+        for (let node of [tgt, src]) {
+            if (node['@class'] === undefined) {
+                node['@class'] = Feature.clsname;
+            } else if (! this.db.models[node['@class']].superClasses.includes(Feature.clsname)) {
+                throw new AttributeError(`edge endpoint must be a descendant of ${Feature.clsname}. Found '${node['@class']}'`);
             }
         }
-        if (srcIn.source_version !== null && srcIn.source_version >= tgtIn.source_version) {
+        if (src.biotype != tgt.biotype) {
+            throw new AttributeError('cannot alias between features with unequal biotype');
+        }
+        if (src.source != tgt.source) {
+            throw new AttributeError('cannot alias between features with unequal source');
+        }
+        if (src.source_version !== null && src.source_version >= tgt.source_version) {
             throw new AttributeError('source_version must increase in order to deprecate a feature node');
         }
-        return args;
+        return super.validateContent(content);
     }
 
     static createClass(db) {
@@ -172,13 +179,19 @@ class FeatureDeprecatedBy extends KBEdge {
 class FeatureAliasOf extends KBEdge {
     
     validateContent(content) {
-        const args = super.validateContent(content);
-        const tgtIn = args.in.content || args.in;
-        const srcIn = args.out.content || args.out;
-        if (srcIn.biotype !== tgtIn.biotype) {
-            throw new AttributeError(`cannot alias a feature with a different biotype`);
+        const tgt = content.in.content || content.in;
+        const src = content.out.content || content.out;
+        for (let node of [tgt, src]) {
+            if (node['@class'] === undefined) {
+                node['@class'] = Feature.clsname;
+            } else if (! this.db.models[node['@class']].superClasses.includes(Feature.clsname)) {
+                throw new AttributeError(`edge endpoint must be a descendant of ${Feature.clsname}. Found '${node['@class']}'`);
+            }
         }
-        return args;
+        if (src.biotype != tgt.biotype) {
+            throw new AttributeError('cannot alias between features with unequal biotype');
+        }
+        return super.validateContent(content);
     }
 
     static createClass(db) {

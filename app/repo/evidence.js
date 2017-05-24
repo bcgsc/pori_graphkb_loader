@@ -65,7 +65,7 @@ class Publication extends KBVertex {
                     args.journal = journalRecord.content['@rid'];
                     return this.dbClass.create(args)
                         .then((record) => {
-                            this.dbClass.db.record.get(record.journal).then((journalRecord) => {
+                            this.db.conn.record.get(record.journal).then((journalRecord) => {
                                 record.journal = journalRecord;
                                 resolve(new Record(record, this));
                             }).catch((error) => {

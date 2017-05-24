@@ -18,21 +18,25 @@ const errorJSON = function(error) {
  */
 const getAllProperties = (cls) => {
     return new Promise((resolve, reject) => {
-        let properties = cls.properties;
+        let result = {properties: cls.properties, superClasses: []};
         if (cls.superClass !== null) {
+            result.superClasses.push(cls.superClass);
             cls.db.class.get(cls.superClass)
-                .then((result) => {
-                    return getAllProperties(result);
+                .then((superClass) => {
+                    return getAllProperties(superClass);
                 }).then((props) => {
-                    resolve(_.concat(properties, props));
+                    result.properties = _.concat(result.properties, props.properties);
+                    result.superClasses = _.concat(result.superClasses, props.superClasses);
+                    resolve(result);
                 }).catch((error) => {
                     reject(error);
                 });
         } else {
-            resolve(properties);
+            resolve(result);
         }
     });
 };
+
 
 const softGetRID = (record) => {
     if (record['@rid'] !== undefined) {
@@ -60,9 +64,11 @@ class Base {
      * @param {orientjs.Class} dbClass the class loaded from the database
      * @param {orientjs.Property[]} properties array of properties associated with this class (including inherited)
      */
-    constructor(dbClass, properties=[]) {
-        this.dbClass = dbClass;
+    constructor(db, conn, properties=[], superClasses=[]) {
+        this.db = db;
+        this.conn = conn;
         this.properties = properties;
+        this.superClasses = superClasses;
     }
     /**
      * computed property, convenience method to get the names of the properties for this class
@@ -76,7 +82,7 @@ class Base {
      * @returns {boolean} if the current class is an abstract class
      **/
     get isAbstract() {
-        if (_.isEqual(this.dbClass.clusterIds, [-1])) {
+        if (_.isEqual(this.conn.clusterIds, [-1])) {
             return true;
         } else {
             return false;
@@ -90,7 +96,6 @@ class Base {
             created_at: moment().valueOf(),
             deleted_at: null
         };
-        let subcache = cache.vocab[this.constructor.clsname];
         for (let key of Object.keys(content)) {
             if (content[key] === undefined) {
                 delete content[key];
@@ -102,16 +107,21 @@ class Base {
                 throw new AttributeError(`invalid attribute ${key}`);
             }
             let value = content[key];
-            if (subcache !== undefined && subcache[key] !== undefined) {
-                const term = subcache[key][value];
-                if (term === undefined) {
-                    throw new ControlledVocabularyError(
-                        `controlled term ${key} in class ${this.constructor.clsname} is not an allowed value: ${value}`);
-                } else if (term.type_conditional != null && term.type_conditional != content.type) {
-                    throw new ControlledVocabularyError(
-                        `controlled term ${key} in class ${this.constructor.clsname} is not an allowed value: `
-                        + `${value} for the given type: ${content.type}. Expected ${term.type_conditional}`);
+            const allowedValues = [];
+            try {
+                for (let term of cache.vocab[this.constructor.clsname][key]) {
+                    if (term.conditional === null || term.conditional === content.type) {
+                        allowedValues.push(term);
+                    }
                 }
+            } catch (e) {
+                if (! e instanceof TypeError) {
+                    throw e;
+                }
+            }
+            if (allowedValues.length > 0 && ! allowedValues.includes(value)) {
+                throw new ControlledVocabularyError(
+                    `controlled term ${key} in class ${this.constructor.clsname} is not an allowed value: ${value}`);
             }
             args[key] = content[key]; // overrides the defaults if given
         }
@@ -141,7 +151,7 @@ class Base {
     createRecord(where={}) {
         return new Promise((resolve, reject) => {
             const args = this.validateContent(where);
-            this.dbClass.create(args)
+            this.conn.create(args)
                 .then((result) => {
                     resolve(new Record(result, this));
                 }).catch((error) => {
@@ -186,7 +196,7 @@ class Base {
             if (activeOnly) {
                 selectionWhere.deleted_at = null;
             }
-            const query = this.dbClass.db.select().from(clsname).where(selectionWhere);
+            const query = this.db.conn.select().from(clsname).where(selectionWhere);
             let stat = query.buildStatement();
             for (let key of Object.keys(query._state.params)) {
                 stat = stat.replace(':' + key, `"${query._state.params[key]}"`);
@@ -227,7 +237,7 @@ class Base {
             this.selectExactlyOne(where)
                 .then((record) => {
                     record.content.deleted_at = moment().valueOf();
-                    return this.dbClass.db.record.update(record.content);
+                    return this.db.conn.record.update(record.content);
                 }).then((updatedRecord) => {
                     resolve(new Record(updatedRecord, this));
                 }).catch((error) => {
@@ -279,7 +289,7 @@ class Base {
 
                     duplicate['deleted_at'] = timestamp; // set the deletion time
                     // start the transaction
-                    var commit = this.dbClass.db
+                    var commit = this.db.conn
                         .let('updatedRID', (tx) => {
                             // update the existing node
                             return tx.update(`${record.content['@rid'].toString()}`).set(updates).return('AFTER @rid');
@@ -295,7 +305,7 @@ class Base {
                         }).commit();
                     commit.return('$updatedRID').one()
                         .then((rid) => {
-                            return this.dbClass.db.record.get(rid);
+                            return this.db.conn.record.get(rid);
                         }).then((record) => {
                             resolve(new Record(record, this));
                         }).catch((error) => {
@@ -323,11 +333,14 @@ class Base {
      */
     static loadClass(db) {
         return new Promise((resolve, reject) => {
-            db.class.get(this.clsname)
+            db.conn.class.get(this.clsname)
                 .then((cls) => {
                     getAllProperties(cls)
-                        .then((props) => {
-                            resolve(new this(cls, props));
+                        .then((result) => {
+                            let c = new this(db, cls, result.properties, result.superClasses);
+                            db.models[this.name] = c;
+                            db.models[this.clsname] = c;
+                            resolve(c);
                         }).catch((error) => {
                             reject(error);
                         });
@@ -361,13 +374,13 @@ class Base {
                 reject(new AttributeError(
                     `required attribute was not defined: clsname=${opt.clsname}, superClasses=${opt.superClasses}, db=${opt.db}`));
             } else {
-                opt.db.class.create(opt.clsname, opt.superClasses, null, opt.isAbstract) // create the class first
+                opt.db.conn.class.create(opt.clsname, opt.superClasses, null, opt.isAbstract) // create the class first
                     .then((cls) => {
                         // add the properties
                         Promise.all(Array.from(opt.properties, (prop) => cls.property.create(prop)))
                             .then(() => {
                                 // create the indices
-                                return Promise.all(Array.from(opt.indices, (i) => opt.db.index.create(i)));
+                                return Promise.all(Array.from(opt.indices, (i) => opt.db.conn.index.create(i)));
                             }).then(() => {
                                 resolve();
                             }).catch((error) => {
@@ -527,7 +540,7 @@ class KBEdge extends Base {
                 delete args.in;
                 delete args.out;
                 // now create the edge
-                this.dbClass.db.create(this.constructor.createType, this.constructor.clsname)
+                this.db.conn.create(this.constructor.createType, this.constructor.clsname)
                     .from(src.content['@rid'].toString()).to(tgt.content['@rid'].toString()).set(args).one()
                     .then((result) => {
                         return this.selectExactlyOne(result);

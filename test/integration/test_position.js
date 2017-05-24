@@ -41,7 +41,7 @@ describe('Position schema tests:', () => {
             });
     });
     it('test create position class', () => {
-        return Position.createClass(db.conn)
+        return Position.createClass(db)
             .then((result) => {
                 expect(result.propertyNames).to.include('uuid', 'version', 'created_at', 'deleted_at');
                 expect(result.isAbstract).to.be.true;
@@ -51,7 +51,7 @@ describe('Position schema tests:', () => {
     describe('position subclasses', () => {
         let posClass;
         beforeEach(function(done) {
-            Position.createClass(db.conn)
+            Position.createClass(db)
                 .then((result) => {
                     posClass = result;
                     done();
@@ -68,7 +68,7 @@ describe('Position schema tests:', () => {
                 });
         });
         it('create genomic subclass', () => {
-            return GenomicPosition.createClass(db.conn)
+            return GenomicPosition.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('pos');
                     expect(result.isAbstract).to.be.false;
@@ -78,7 +78,7 @@ describe('Position schema tests:', () => {
         describe('genomic', () => {
             let currClass;
             beforeEach(function(done) {
-                GenomicPosition.createClass(db.conn)
+                GenomicPosition.createClass(db)
                     .then((result) => {
                         currClass = result;
                         done();
@@ -119,7 +119,7 @@ describe('Position schema tests:', () => {
         });
 
         it('create protein subclass', () => {
-            return ProteinPosition.createClass(db.conn)
+            return ProteinPosition.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('pos', 'ref_aa');
                     expect(result.isAbstract).to.be.false;
@@ -129,7 +129,7 @@ describe('Position schema tests:', () => {
         describe('protein', () => {
             let currClass;
             beforeEach(function(done) {
-                ProteinPosition.createClass(db.conn)
+                ProteinPosition.createClass(db)
                     .then((result) => {
                         currClass = result;
                         done();
@@ -186,7 +186,7 @@ describe('Position schema tests:', () => {
         });
 
         it('create exon subclass', () => {
-            return ExonicPosition.createClass(db.conn)
+            return ExonicPosition.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('pos');
                     expect(result.isAbstract).to.be.false;
@@ -196,7 +196,7 @@ describe('Position schema tests:', () => {
         describe('exonic', () => {
             let currClass;
             beforeEach(function(done) {
-                ExonicPosition.createClass(db.conn)
+                ExonicPosition.createClass(db)
                     .then((result) => {
                         currClass = result;
                         done();
@@ -237,7 +237,7 @@ describe('Position schema tests:', () => {
         });
 
         it('create cds subclass', () => {
-            return CodingSequencePosition.createClass(db.conn)
+            return CodingSequencePosition.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('pos', 'offset');
                     expect(result.isAbstract).to.be.false;
@@ -247,7 +247,7 @@ describe('Position schema tests:', () => {
         describe('cds', () => {
             let currClass;
             beforeEach(function(done) {
-                CodingSequencePosition.createClass(db.conn)
+                CodingSequencePosition.createClass(db)
                     .then((result) => {
                         currClass = result;
                         done();
@@ -311,7 +311,7 @@ describe('Position schema tests:', () => {
         });
 
         it('create cytoband subclass', () => {
-            return CytobandPosition.createClass(db.conn)
+            return CytobandPosition.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('arm', 'major_band', 'minor_band');
                     expect(result.isAbstract).to.be.false;
@@ -321,7 +321,7 @@ describe('Position schema tests:', () => {
         describe('cytoband', () => {
             let currClass;
             beforeEach(function(done) {
-                CytobandPosition.createClass(db.conn)
+                CytobandPosition.createClass(db)
                     .then((result) => {
                         currClass = result;
                         done();
@@ -380,7 +380,7 @@ describe('Position schema tests:', () => {
         });
 
         it('create range subclass', () => {
-            return Range.createClass(db.conn)
+            return Range.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('start', 'end');
                     expect(result.isAbstract).to.be.false;
@@ -391,8 +391,8 @@ describe('Position schema tests:', () => {
             let currClass, cdsClass;
             beforeEach(function(done) {
                 Promise.all([
-                    Range.createClass(db.conn),
-                    CodingSequencePosition.createClass(db.conn)
+                    Range.createClass(db),
+                    CodingSequencePosition.createClass(db)
                 ]).then((plist) => {
                     [currClass, cdsClass] = plist;
                     done();

@@ -28,7 +28,7 @@ describe('Feature schema tests:', () => {
                     models: {KBVertex, KBEdge, History}
                 });
             }).then((result) => {
-                db = result.conn;
+                db = result;
                 done();
             }).catch((error) => {
                 console.log('error', error);
@@ -140,7 +140,7 @@ describe('Feature.validateContent', () => {
                     models: {KBVertex, KBEdge, History}
                 });
             }).then((result) => {
-                db = result.conn;
+                db = result;
                 return Feature.createClass(db);
             }).then((cls) => {
                 currClass = cls;
@@ -550,7 +550,7 @@ describe('FeatureDeprecatedBy', () => {
                     models: {KBVertex, KBEdge, History}
                 });
             }).then((result) => {
-                db = result.conn;
+                db = result;
                 return Promise.all([
                     FeatureDeprecatedBy.createClass(db),
                     Feature.createClass(db)
@@ -660,7 +660,7 @@ describe('FeatureAliasOf', () => {
                     models: {KBVertex, KBEdge, History}
                 });
             }).then((result) => {
-                db = result.conn;
+                db = result;
                 return Promise.all([
                     FeatureAliasOf.createClass(db),
                     Feature.createClass(db)

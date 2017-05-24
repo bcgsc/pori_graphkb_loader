@@ -1,7 +1,7 @@
 'use strict';
 const {expect} = require('chai');
 const conf = require('./../config/db');
-const {connectServer} = require('./../../app/repo/connect');
+const {connectServer, createDB} = require('./../../app/repo/connect');
 const {AttributeError} = require('./../../app/repo/error');
 const {History, KBVertex, KBEdge, Record} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
@@ -13,14 +13,13 @@ const Promise = require('bluebird');
 
 
 describe('Vocab schema tests:', () => {
-    let server, db;
+    let db;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
             .then((result) => {
                 // create the empty database
-                server = result;
-                return server.create({name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+                return createDB({server: result, name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
             }).then((result) => {
                 db = result;
                 return Promise.all([
@@ -61,10 +60,7 @@ describe('Vocab schema tests:', () => {
                 .then(() => {
                     expect(cache.vocab).to.have.property('feature');
                     expect(cache.vocab.feature).to.have.property('biotype');
-                    expect(cache.vocab.feature.biotype).to.include.keys('protein', 'gene', 'template', 'exon', 'domain', 'transcript');
-                }).catch((error) => {
-                    console.log(error);
-                    throw error;
+                    expect(cache.vocab.feature.biotype.length).to.equal(6);
                 });
         });
         it('allows createRecords to create multiple records when some already exist', () => {
@@ -74,7 +70,7 @@ describe('Vocab schema tests:', () => {
                 }).then(() => {
                     expect(cache.vocab).to.have.property('feature');
                     expect(cache.vocab.feature).to.have.property('biotype');
-                    expect(cache.vocab.feature.biotype).to.include.keys('protein', 'gene', 'template', 'exon', 'domain', 'transcript');
+                    expect(cache.vocab.feature.biotype.length).to.equal(6);
                 });
         });
         it('errors createRecord on duplicate within category', () => {
@@ -82,11 +78,21 @@ describe('Vocab schema tests:', () => {
                 .then(()  => {
                     return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'});
                 }, (error) => {
-                    assert.fail('creating the initial record failed', error);
+                    expect.fail('creating the initial record failed', error);
                 }).then(() => {
-                    assert.fail('expected duplicate key error');
+                    expect.fail('expected duplicate key error');
                 }, (error) => {
                     oError.expectDuplicateKeyError(error);
+                });
+        });
+        it('allows duplicate within category if conditional is specified', () => {
+            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
+                .then(()  => {
+                    return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein', conditional: 'other'});
+                }, (error) => {
+                    expect.fail('creating the initial record failed', error);
+                }).then((record) => {
+                    expect(cache.vocab.feature.biotype.length).to.equal(2);
                 });
         });
         it('allows updateRecord', () => {
@@ -120,7 +126,7 @@ describe('Vocab schema tests:', () => {
                     record.content.definition = 'this is a defn';
                     return vocabInstance.updateDefinition(record.content);
                 }, (error) => {
-                    assert.fail('creating the initial record failed', error);
+                    expect.fail('creating the initial record failed', error);
                 }).then((updated) => {
                     expect(updated.content).to.have.property('version', 1);
                     expect(updated.content).to.have.property('definition', 'this is a defn');
@@ -173,35 +179,34 @@ describe('Vocab schema tests:', () => {
                 expect(localCache).to.have.property('feature');
                 expect(localCache).to.have.property('other');
                 expect(localCache.feature).to.have.property('name');
-                expect(localCache.feature.name).to.have.property('protein');
-                expect(localCache.feature.name).to.have.property('gene');
+                expect(localCache.feature.name.length).to.equal(2);
                 expect(localCache.other).to.have.property('name');
-                expect(localCache.other.name).to.have.property('protein');
+                expect(localCache.other.name.length).to.equal(1);
             });
         });
         it('cache: delete something', () => {
             return Promise.all([
                 vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein', definition: ''}),
-            ]).then((record) => {
-                return fetchValues(db);
-            }).then((localCache) => {
-                expect(localCache).to.have.property('feature');
-                expect(localCache.feature).to.have.property('name');
-                expect(localCache.feature.name).to.have.property('protein');
+            ]).then(() => {
+                expect(cache.vocab).to.have.property('feature');
+                expect(cache.vocab.feature).to.have.property('name');
+                expect(cache.vocab.feature.name.length).to.equal(1);
                 return vocabInstance.deleteRecord({class: 'feature', property: 'name', term: 'protein'});
-            }).then((localCache) => {
-                expect(localCache).to.not.have.property('feature');
+            }).then(() => {
+                expect(cache.vocab).to.have.property('feature');
+                expect(cache.vocab.feature).to.have.property('name');
+                expect(cache.vocab.feature.name.length).to.equal(0);
             });
         });
     });
 
     afterEach((done) => {
         /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
+        db.server.drop({name: conf.emptyDbName})
             .catch((error) => {
                 console.log('error:', error);
             }).then(() => {
-                return server.close();
+                return db.server.close();
             }).then(() => {
                 done();
             }).catch((error) => {

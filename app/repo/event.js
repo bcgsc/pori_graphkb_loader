@@ -2,7 +2,7 @@
 const {Base, KBVertex, KBEdge, Record} = require('./base');
 const Promise = require('bluebird');
 const {Feature} = require('./feature');
-const {AttributeError} = require('./error');
+const {AttributeError, ControlledVocabularyError} = require('./error');
 const _ = require('lodash');
 
 
@@ -32,7 +32,7 @@ const EVENT_SUBTYPE = {
     DUP: 'duplication',
     ME: 'methylation',
     AC: 'acetylation',
-    UB: 'ubiquitination'
+    UB: 'ubiquitination',
     SPL: 'splice-site mutation'
 }
 
@@ -51,7 +51,7 @@ const NOTATION_TO_SUBTYPE = new Map([
     ['ins', EVENT_SUBTYPE.INS],
     ['copygain', EVENT_SUBTYPE.GAIN],
     ['copyloss', EVENT_SUBTYPE.LOSS],
-    ['t', EVENT_SUBTYPE.TRANS]
+    ['t', EVENT_SUBTYPE.TRANS],
     ['spl', EVENT_SUBTYPE.SPL]
 ]);
 
@@ -151,7 +151,7 @@ class CategoryEvent extends Base {
                 if (args.secondary_feature) {
                     args.secondary_feature = secondary_feature['@rid'].toString();
                 }
-                return this.dbClass.create(args);
+                return this.conn.create(args);
             }).then((rec) => {
                 rec.primary_feature = primary_feature.content || primary_feature;
                 if (secondary_feature) {
@@ -207,7 +207,7 @@ class PositionalEvent extends Base {
                 args.secondary_feature == undefined || args.secondary_feature['@rid'] ? Promise.resolve(args.secondary_feature) : this.selectExactlyOne(args.secondary_feature)
             ]).then((pList) => {
                 [args.start, args.end, args.primary_feature, args.secondary_feature] = pList;
-                return this.dbClass.create(args);
+                return this.conn.create(args);
             }).then((rec) => {
                 resolve(new Record(rec, this));
             }).catch((error) => {

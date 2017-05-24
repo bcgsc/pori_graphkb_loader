@@ -5,6 +5,11 @@ const Promise = require('bluebird');
 
 
 class Vocab extends KBVertex {
+    
+    validateContent(content) {
+        const args = Object.assign({conditional: null, definition: ''}, content);
+        return super.validateContent(args);
+    }
 
     static createClass(db) {
         /**
@@ -15,8 +20,7 @@ class Vocab extends KBVertex {
             {name: 'property', type: 'string', mandatory: true, notNull: true},
             {name: 'term', type: 'string', mandatory: true, notNull: true},
             {name: 'definition', type: 'string', mandatory: false, notNull: true},
-            {name: 'conditional_property', type: 'string', mandatory: false, notNull: false},  // apply only to values where type=conditional
-            {name: 'conditional_value', type: 'string', mandatory: false, notNull: false}
+            {name: 'conditional', type: 'string', mandatory: true, notNull: false}
         ];
 
         const idxs = [
@@ -24,7 +28,7 @@ class Vocab extends KBVertex {
                 name: `${this.clsname}_active_term_in_category_unique`,
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['class', 'property', 'term', 'deleted_at'],
+                properties: ['class', 'property', 'term', 'deleted_at', 'conditional'],
                 'class':  this.clsname
             }
         ];
@@ -44,25 +48,11 @@ class Vocab extends KBVertex {
         });
     }
 
-    validateContent(content) {
-        if ((content.conditional_property && ! content.conditional_value) || (! content.conditional_property && content.conditional_value)) {
-            throw new AttributeError(`if either of the conditionals are specified they must both be specified: `
-                + `conditional_property=${content.conditional_property}, conditional_value=${content.conditional_value}`);
-        }
-        return super.validateContent(content);
-    }
-
     createRecord(where={}) {
         return new Promise((resolve, reject) => {
             super.createRecord(where)
                 .then((record) => {
-                    if (cache.vocab[record.content.class] == undefined) {
-                        cache.vocab[record.content.class] = {};
-                    }
-                    if (cache.vocab[record.content.class][record.content.property] == undefined) {
-                        cache.vocab[record.content.class][record.content.property] = {};
-                    }
-                    cache.vocab[record.content.class][record.content.property][record.content.term] = record.content;
+                    upsertCache(record.content);
                     resolve(record);
                 }).catch((error) => {
                     reject(error);
@@ -74,13 +64,7 @@ class Vocab extends KBVertex {
         return new Promise((resolve, reject) => {
             super.deleteRecord(where)
                 .then((record) => {
-                    try {
-                        delete cache.vocab[record.content.class][record.content.property][record.content.term];
-                    } catch (e) {
-                        if (! e instanceof TypeError) {
-                            throw e;
-                        } 
-                    }
+                    removeFromCache(record.content);
                     resolve(record);
                 }).catch((error) => {
                     reject(error);
@@ -99,7 +83,8 @@ class Vocab extends KBVertex {
                     'class': where.class,
                     property: where.property,
                     term: where.term,
-                    deleted_at: null
+                    deleted_at: null,
+                    conditional: where.conditional || null
                 }).then((record) => {
                     if (record.content.definition === where.definition) {
                         resolve(record);
@@ -118,10 +103,10 @@ class Vocab extends KBVertex {
     addTermIfNotExists(term) {
         return new Promise((resolve, reject) => {
             this.selectExactlyOne({
-                    'class': term.class, property: term.property, term: term.term, deleted_at: null
+                    'class': term.class, property: term.property, term: term.term, deleted_at: null, conditional: term.conditional || null
                 }).catch(NoResultFoundError, () => {
                     return this.createRecord({
-                        'class': term.class, property: term.property, term: term.term, definition: term.definition
+                        'class': term.class, property: term.property, term: term.term, definition: term.definition, conditional: term.conditional || null
                     });
                 }).then((record) => {
                     resolve(record);
@@ -142,20 +127,70 @@ class Vocab extends KBVertex {
 }
 
 
-const fetchValues = (db) => {
+const cacheIndexOf = (record) => {
+    let indexOf = -1;
+    try {
+        for (let i=0; i < cache.vocab[record.class][record.property].length; i++) {
+            let same = true;
+            let r = cache.vocab[record.class][record.property][i];
+            for (let key of ['class', 'term', 'property', 'conditional']) {
+                if (record[key] != r[key]) {
+                    same = false;
+                    break;
+                }
+            }
+            if (same) {
+                indexOf = i;
+                break;
+            }
+        }
+    } catch (e) {
+        if (! e instanceof TypeError) {
+            throw e;
+        }
+    }
+    return indexOf;
+}
+
+
+const upsertCache = (record) => {
+    if (cache.vocab[record.class] == undefined) {
+        cache.vocab[record.class] = {};
+    }
+    if (cache.vocab[record.class][record.property] == undefined) {
+        cache.vocab[record.class][record.property] = [];
+    }
+    let indexOf =  cacheIndexOf(record);
+    if (indexOf < 0) {
+        cache.vocab[record.class][record.property].push(record);
+    } else {
+        vocab[record.class][record.property][indexOf] = record;
+    }
+}
+
+
+const removeFromCache = (record) => {
+    let indexOf =  cacheIndexOf(record);
+    if (indexOf >= 0) {
+        cache.vocab[record.class][record.property].splice(indexOf, 1);
+    }
+}
+
+
+const fetchValues = (dbconn) => {
     // pull the table from the db
     return new Promise((resolve, reject) => {
         const local = {};
-        db.select().from(Vocab.clsname).where({deleted_at: null}).all()  // all active records
+        dbconn.conn.select().from(Vocab.clsname).where({deleted_at: null}).all()  // all active records
             .then((records) => {
                 for (let r of records) {
                     if (local[r.class] == undefined) {
                         local[r.class] = {};
                     }
                     if (local[r.class][r.property] == undefined) {
-                        local[r.class][r.property] = {};
+                        local[r.class][r.property] = [];
                     }
-                    local[r.class][r.property][r.term] = r;
+                    local[r.class][r.property].push(r);
                 }
                 resolve(local);
             }, (error) => {

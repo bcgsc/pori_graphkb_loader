@@ -33,6 +33,20 @@ const connectServer = (opt) => {
     });
 };
 
+
+class DB {
+
+    constructor(connection, name) {
+        this.conn = connection;
+        this.name = name;
+        this.models = {};
+    }
+
+    get server() {
+        return this.conn.server;
+    }
+}
+
 const createDB = (opt) => {
     return new Promise((resolve, reject) => {
         for (let param of ['server', 'name', 'username', 'password']) {
@@ -43,7 +57,7 @@ const createDB = (opt) => {
         if (opt.models === undefined) {
             opt.models = {};
         }
-        const result = {server: opt.server, name: opt.name, conn: null, models: {}};
+        const result = new DB(null, opt.name);
         const modelNames = Object.keys(opt.models);
         const modelClasses = Array.from(modelNames, x => opt.models[x]);
 
@@ -54,7 +68,7 @@ const createDB = (opt) => {
                 return result.conn.query('alter database custom standardElementConstraints=false');
             }).then(() => {
                 // now initialize all models
-                return Promise.all(Array.from(modelClasses, x => x.createClass(result.conn)));
+                return Promise.all(Array.from(modelClasses, x => x.createClass(result)));
             }).then((modelsList) => {
                 for (let i = 0; i < modelsList.length; i++) {
                     result.models[modelNames[i]] = modelsList[i]; 

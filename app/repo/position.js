@@ -46,7 +46,7 @@ class Range extends KBVertex {
         return new Promise((resolve, reject) => {
             const args = this.validateContent(opt, positionClass);
             // start the transaction
-            var commit = this.dbClass.db
+            var commit = this.db.conn
                 .let('startPos', (tx) => {
                     // create the start position
                     return tx.create(positionClass.constructor.createType, positionClass.constructor.clsname)
@@ -66,8 +66,8 @@ class Range extends KBVertex {
             commit.return('$range').one()
                 .then((record) => {
                     Promise.all([
-                        this.dbClass.db.record.get(record.start),
-                        this.dbClass.db.record.get(record.end)
+                        this.db.conn.record.get(record.start),
+                        this.db.conn.record.get(record.end)
                     ]).then((positions) => {
                         record.start = positions[0];
                         record.end = positions[1];
