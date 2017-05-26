@@ -1,6 +1,6 @@
 const nRegex = require("named-js-regexp");
 const {ParsingError} = require('./../repo/error');
-const {SOURCE, BIOTYPE} = require('./../repo/feature');
+const {FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../repo/feature');
 
 
 const parseFeature = (string) => {
@@ -8,7 +8,7 @@ const parseFeature = (string) => {
     let match;
     if (match = /^(ENS([TGPE])\d\d\d+)(.+)?$/.exec(string)) {
         // ensembl features: http://www.ensembl.org/info/genome/stable_ids/index.html
-        const type = {G: BIOTYPE.GENE, P: BIOTYPE.PROTEIN, T: BIOTYPE.TRANSCRIPT, E: BIOTYPE.EXON};
+        const type = {G: FEATURE_BIOTYPE.GENE, P: FEATURE_BIOTYPE.PROTEIN, T: FEATURE_BIOTYPE.TRANSCRIPT, E: FEATURE_BIOTYPE.EXON};
         let version = null;
         if (match[3] !== undefined) {
             if (match[3][0] != '.') {
@@ -23,12 +23,12 @@ const parseFeature = (string) => {
         return {
             name: match[1],
             source_version: version,
-            source: SOURCE.ENSEMBL,
+            source: FEATURE_SOURCE.ENSEMBL,
             biotype: type[match[2]]
         };
     } else if (match = /^(N([MPGC])_\d\d\d+)(.+)?$/.exec(string)) {
         // refseq features
-        const type = {G: BIOTYPE.GENE, P: BIOTYPE.PROTEIN, M: BIOTYPE.TRANSCRIPT, C: BIOTYPE.TEMPLATE};
+        const type = {G: FEATURE_BIOTYPE.GENE, P: FEATURE_BIOTYPE.PROTEIN, M: FEATURE_BIOTYPE.TRANSCRIPT, C: FEATURE_BIOTYPE.TEMPLATE};
         let version = null;
         if (match[3] !== undefined) {
             if (match[3][0] != '.') {
@@ -43,7 +43,7 @@ const parseFeature = (string) => {
         return {
             name: match[1],
             source_version: version,
-            source: SOURCE.REFSEQ,
+            source: FEATURE_SOURCE.REFSEQ,
             biotype: type[match[2]]
         };
     } else if (match = /^LRG_\d+(.+)?$/.exec(string)) {
@@ -52,14 +52,14 @@ const parseFeature = (string) => {
         const result = {
             name: string,
             source_version: null,
-            source: SOURCE.LRG
+            source: FEATURE_SOURCE.LRG
         };
         if (match[1] === undefined) {
-            result.biotype = BIOTYPE.GENE;
+            result.biotype = FEATURE_BIOTYPE.GENE;
         } else if (/^t\d+$/.exec(match[1]) !== null) {
-            result.biotype = BIOTYPE.TRANSCRIPT;
+            result.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
         } else if (/^p\d+$/.exec(match[1]) !== null) {
-            result.biotype = BIOTYPE.PROTEIN;
+            result.biotype = FEATURE_BIOTYPE.PROTEIN;
         } else {
             throw new ParsingError(`protein/transcript specification did not fit the expected pattern /[pt]\\d+/ found: '${match[2]}'`);
         }
@@ -78,8 +78,8 @@ const parseFeature = (string) => {
         } 
         return {
             name: match[1],
-            source: SOURCE.GRC,
-            biotype: BIOTYPE.TEMPLATE,
+            source: FEATURE_SOURCE.GRC,
+            biotype: FEATURE_BIOTYPE.TEMPLATE,
             source_version: version
         };
     } else if (string.startsWith('chr')) {
@@ -103,8 +103,8 @@ const parseFeature = (string) => {
         return {
             name: match[1],
             source_version: version,
-            source: SOURCE.HGNC,
-            biotype: BIOTYPE.GENE
+            source: FEATURE_SOURCE.HGNC,
+            biotype: FEATURE_BIOTYPE.GENE
         };
     } else {
         throw new ParsingError(`string did not match expected pattern: ${string}`);

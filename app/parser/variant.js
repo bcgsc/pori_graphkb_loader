@@ -67,14 +67,7 @@ const parseContinuous  = (prefix, string) => {
 
     let validTypes = [];
 
-    if (! NOTATION_TO_SUBTYPE.has(result.type)) {
-        throw new ParsingError(`unsupported event type: ${result.type}`);
-    }
-    try {
-        PositionalEvent.subtypeValidation(result.prefix, NOTATION_TO_SUBTYPE.get(result.type));
-    } catch(e) {
-        throw new ParsingError(e.message);
-    }
+    
     return result;
 };
 
@@ -142,10 +135,6 @@ const parseDiscontinuous = (prefix, string) => {
         throw new ParsingError(`input string: ${string} did not match the expected pattern: ${exp}`);
     }
     match = match.groups();
-    const acceptableTypes = ['del', 'inv', 'dup', 't', 'fusion', 'itrans', '?'];
-    if (! acceptableTypes.includes(match.type)) {
-        throw new ParsingError(`unexpected type: ${match.type}. Expected: ${acceptableTypes}`);
-    }
     return {
         type: match.type,
         break1: parsePosition(prefix, match.position1),
@@ -162,18 +151,31 @@ const parse = (string) => {
     }
     const prefix = string[0];
     const expectedPrefix = ['g', 'c', 'e', 'y', 'p'];
-    if (expectedPrefix.includes(prefix)) {
+    if (! expectedPrefix.includes(prefix)) {
         throw new ParsingError(`'${prefix}' is not an accepted prefix. Expected: ${expectedPrefix}`);
     }
     if (string[1] != '.') {
         throw new ParsingError(`Missing '.' separator after prefix: ${string}`);
     }
     string = string.slice(2);
+    let result;
+    let continuous = true;
     try {
-        return parseContinuous(prefix, string);
+        result = parseContinuous(prefix, string);
     } catch(ParsingError) {
-        return parseDiscontinuous(prefix, string);
+        continuous = false;
+        result = parseDiscontinuous(prefix, string);
     }
+    if (! NOTATION_TO_SUBTYPE.has(result.type)) {
+        throw new ParsingError(`unsupported event type: ${result.type}`);
+    }
+    result.type = NOTATION_TO_SUBTYPE.get(result.type);
+    try {
+        PositionalEvent.subtypeValidation(prefix, result.type, continuous);
+    } catch(e) {
+        throw new ParsingError(e.message);
+    }
+    return result;
 }
 
-module.exports = {parsePosition, parseContinuous, parseDiscontinuous, parseHistoneVariant};
+module.exports = {parsePosition, parseHistoneVariant, parse};
