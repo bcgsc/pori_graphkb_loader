@@ -52,7 +52,8 @@ const NOTATION_TO_SUBTYPE = new Map([
     ['copygain', EVENT_SUBTYPE.GAIN],
     ['copyloss', EVENT_SUBTYPE.LOSS],
     ['t', EVENT_SUBTYPE.TRANS],
-    ['spl', EVENT_SUBTYPE.SPL]
+    ['spl', EVENT_SUBTYPE.SPL],
+    ['fus', EVENT_SUBTYPE.FUSION]
 ]);
 
 
@@ -220,45 +221,47 @@ class PositionalEvent extends Base {
      * ensures that the subtype is one of the expected values for a given prefix.
      * some subtypes do not make sense with some prefixes. for example 'e' and 'insertion'
      */ 
-    static subtypeValidation(prefix, subtype) {
+    static subtypeValidation(prefix, subtype, continuous=true) {
         const validTypes = [];
-        switch(prefix) {
-            case 'p': {
-                Array.prototype.push.apply(validTypes, [
-                    EVENT_SUBTYPE.FS, 
-                    EVENT_SUBTYPE.EXT, 
-                    EVENT_SUBTYPE.ME, 
-                    EVENT_SUBTYPE.AC, 
-                    EVENT_SUBTYPE.UB,
-                    EVENT_SUBTYPE.SPL
-                ]);
-            }
-            case 'g':
-            case 'c': {
-                Array.prototype.push.apply(validTypes, [
-                    EVENT_SUBTYPE.INS, 
-                    EVENT_SUBTYPE.SUB, 
-                    EVENT_SUBTYPE.INDEL, 
-                    EVENT_SUBTYPE.LOSS, 
-                    EVENT_SUBTYPE.GAIN
-                ]);
-            }
-            case 'y': 
-            case 'e': {
-                Array.prototype.push.apply(validTypes, [
-                    EVENT_SUBTYPE.DEL, 
-                    EVENT_SUBTYPE.DUP, 
-                    EVENT_SUBTYPE.FUSION, 
-                    EVENT_SUBTYPE.TRANS, 
-                    EVENT_SUBTYPE.ITRANS, 
-                    EVENT_SUBTYPE.INV
-                ]);
-                break;
-            }
-            default: {
-                throw new AttributeError(`invalid/unsupported prefix '${prefix}'`);
+        if (continuous) {
+            switch(prefix) {
+                case 'p': {
+                    Array.prototype.push.apply(validTypes, [
+                        EVENT_SUBTYPE.FS, 
+                        EVENT_SUBTYPE.EXT, 
+                        EVENT_SUBTYPE.ME, 
+                        EVENT_SUBTYPE.AC, 
+                        EVENT_SUBTYPE.UB,
+                        EVENT_SUBTYPE.SPL
+                    ]);
+                }
+                case 'g':
+                case 'c': {
+                    Array.prototype.push.apply(validTypes, [
+                        EVENT_SUBTYPE.INS, 
+                        EVENT_SUBTYPE.SUB, 
+                        EVENT_SUBTYPE.INDEL, 
+                        EVENT_SUBTYPE.LOSS, 
+                        EVENT_SUBTYPE.GAIN
+                    ]);
+                }
+                case 'y': 
+                case 'e': {
+                    break;
+                }
+                default: {
+                    throw new AttributeError(`invalid/unsupported prefix '${prefix}'`);
+                }
             }
         }
+        Array.prototype.push.apply(validTypes, [
+            EVENT_SUBTYPE.DEL, 
+            EVENT_SUBTYPE.DUP, 
+            EVENT_SUBTYPE.FUSION, 
+            EVENT_SUBTYPE.TRANS, 
+            EVENT_SUBTYPE.ITRANS, 
+            EVENT_SUBTYPE.INV
+        ]);
         if (! validTypes.includes(subtype)) {
             throw new AttributeError(`invalid value '${subtype}' for subtype. Prefix '${prefix}' allows subtypes: ${validTypes}`);
         }

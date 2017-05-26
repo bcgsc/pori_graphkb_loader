@@ -38,7 +38,7 @@ describe('base module', () => {
                 done(error);
             });
     });
-    it('createClass KBVertex', () => {
+    it('KBVertex.createClass', () => {
         return KBVertex.createClass(db)
             .then((cls) => {
                 expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version']);
@@ -46,7 +46,7 @@ describe('base module', () => {
                 expect(cls.constructor.createType).to.equal('vertex');
             });
     });
-    it('createClass History', () => {
+    it('History.createClass', () => {
         return History.createClass(db)
             .then((cls) => {
                 expect(cls.propertyNames).to.have.members(['comment']);
@@ -54,7 +54,7 @@ describe('base module', () => {
                 expect(cls.constructor.createType).to.equal('edge');
             });
     });
-    it('createClass KBEdge', () => {
+    it('KBEdge.createClass', () => {
         return KBEdge.createClass(db)
             .then((cls) => {
                 expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version']);
@@ -63,7 +63,7 @@ describe('base module', () => {
             });
     });
 
-    describe('instance', () => {
+    describe('MockVertexClass (instance)', () => {
         let mockRecord;
         beforeEach((done) => {
             Promise.all([
@@ -91,6 +91,17 @@ describe('base module', () => {
         it('propertyNames: returns names only', () => {
             const names = db.models.MockVertexClass.propertyNames;
             expect(names).to.include('uuid', 'created_at', 'deleted_at', 'version');
+        });
+        describe('isOrHasAncestor', () => {
+            it('true for V', () => {
+                expect(db.models.MockVertexClass.isOrHasAncestor('V')).to.be.true;
+            });
+            it('true for mock_vertex_class', () => {
+                expect(db.models.MockVertexClass.isOrHasAncestor('mock_vertex_class')).to.be.true;
+            });
+            it('false for E', () => {
+                expect(db.models.MockVertexClass.isOrHasAncestor('E')).to.be.false;
+            });
         });
         it('updateRecord', () => {
             const uuid = mockRecord.content.uuid;

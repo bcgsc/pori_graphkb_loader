@@ -1,6 +1,8 @@
 const {Base, KBVertex, KBEdge, Record} = require('./base');
-const {AttributeError, NoResultFoundError} = require('./error');
+const {AttributeError, NoResultFoundError, ControlledVocabularyError} = require('./error');
 const {Context} = require('./context');
+const _ = require('lodash');
+const Promise = require('bluebird');
 
 
 const STATEMENT_TYPE = {
@@ -15,7 +17,7 @@ class Statement extends KBVertex {
     
     validateContent(content) {
         if (! _.values(STATEMENT_TYPE).includes(content.type)) {
-            throw new AttributeError(`invalid type '${content.type}'`);
+            throw new ControlledVocabularyError(`invalid type '${content.type}'`);
         }
         return super.validateContent(content);
     }
@@ -46,12 +48,12 @@ class AppliesTo extends KBEdge {
         const src = content.out.content || content.out;
         if (tgt['@class'] === undefined) {
             tgt['@class'] = Context.clsname;
-        } else if (! this.db.models[tgt['@class']].superClasses.includes(Context.clsname)) {
-            throw new AttributeError(`edge target must be a descendant of context. Found '${tgt['@class']}'`);
+        } else if (! this.db.models[tgt['@class']].isOrHasAncestor(Context.clsname) || this.db.models[tgt['@class']].isOrHasAncestor(Statement.clsname)) {
+            throw new AttributeError(`edge target must be a descendant of context (except statement). Found '${tgt['@class']}'`);
         }
         if (src['@class'] === undefined) {
             src['@class'] = Statement.clsname;
-        } else if (! this.db.models[src['@class']].superClasses.includes(Statement.clsname)) {
+        } else if (! this.db.models[src['@class']].isOrHasAncestor(Statement.clsname)) {
             throw new AttributeError(`edge source must be a descendant of statement. Found: '${src['@class']}'`);
         }
         return super.validateContent(content);
@@ -80,12 +82,12 @@ class AsComparedTo extends KBEdge {
         const src = content.out.content || content.out;
         if (tgt['@class'] === undefined) {
             tgt['@class'] = Context.clsname;
-        } else if (! this.db.models[tgt['@class']].superClasses.includes(Context.clsname)) {
-            throw new AttributeError(`edge target must be a descendant of context. Found '${tgt['@class']}'`);
+        } else if (! this.db.models[tgt['@class']].isOrHasAncestor(Context.clsname) || this.db.models[tgt['@class']].isOrHasAncestor(Statement.clsname)) {
+            throw new AttributeError(`edge target must be a descendant of context (except statement). Found '${tgt['@class']}'`);
         }
         if (src['@class'] === undefined) {
             src['@class'] = Statement.clsname;
-        } else if (! this.db.models[src['@class']].superClasses.includes(Statement.clsname)) {
+        } else if (! this.db.models[src['@class']].isOrHasAncestor(Statement.clsname)) {
             throw new AttributeError(`edge source must be a descendant of statement. Found: '${src['@class']}'`);
         }
         return super.validateContent(content);
@@ -114,13 +116,16 @@ class Requires extends KBEdge {
         const src = content.out.content || content.out;
         if (tgt['@class'] === undefined) {
             tgt['@class'] = Statement.clsname;
-        } else if (! this.db.models[tgt['@class']].superClasses.includes(Statement.clsname)) {
+        } else if (! this.db.models[tgt['@class']].isOrHasAncestor(Context.clsname)) {
             throw new AttributeError(`edge target must be a descendant of context. Found '${tgt['@class']}'`);
         }
         if (src['@class'] === undefined) {
             src['@class'] = Context.clsname;
-        } else if (! this.db.models[src['@class']].superClasses.includes(Context.clsname)) {
+        } else if (! this.db.models[src['@class']].isOrHasAncestor(Statement.clsname)) {
             throw new AttributeError(`edge source must be a descendant of statement. Found: '${src['@class']}'`);
+        }
+        if (tgt.uuid && src.uuid && tgt.uuid === src.uuid) {
+            throw new AttributeError('a statement cannot require itself');
         }
         return super.validateContent(content);
     }

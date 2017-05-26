@@ -4,7 +4,7 @@ const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
 const {KBVertex, KBEdge, Base, Record, History} = require('./../../app/repo/base');
 const {CategoryEvent, PositionalEvent, Event, EVENT_TYPE, EVENT_SUBTYPE} = require('./../../app/repo/event');
-const {Feature, SOURCE, BIOTYPE} = require('./../../app/repo/feature');
+const {Feature, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
 const Promise = require('bluebird');
 const {AttributeError, ControlledVocabularyError} = require('./../../app/repo/error');
 
@@ -26,11 +26,13 @@ describe('Event schema tests:', () => {
                 });
             }).then((connection) => {
                 db = connection;
-                return Feature.createClass(connection);
-            }).then((cls) => {
+                return Context.createClass(db);
+            }).then(() => {
+                return Feature.createClass(db);
+            }).then(() => {
                 return Promise.all([
-                    db.models.Feature.createRecord({name: 'HUGO1', source: SOURCE.HGNC, biotype: BIOTYPE.GENE}),
-                    db.models.Feature.createRecord({name: 'HUGO2', source: SOURCE.HGNC, biotype: BIOTYPE.GENE})
+                    db.models.Feature.createRecord({name: 'HUGO1', source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE}),
+                    db.models.Feature.createRecord({name: 'HUGO2', source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE})
                 ]);
             }).then((pList) => {
                 [primary_feature, secondary_feature] = pList;

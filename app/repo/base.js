@@ -52,6 +52,7 @@ class Record {
     constructor(content, parentClass) {
         this.content = content;
         this.generator = parentClass;
+        this.content['@class'] = parentClass.constructor.clsname;
     }
 }
 
@@ -89,6 +90,14 @@ class Base {
         }
     }
 
+    isOrHasAncestor(ancestor) {
+        if (ancestor === this.constructor.clsname || this.superClasses.includes(ancestor)) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     validateContent(content) {
         const args = { // default arguments
             uuid : uuidV4(),
@@ -111,7 +120,7 @@ class Base {
             try {
                 for (let term of cache.vocab[this.constructor.clsname][key]) {
                     if (term.conditional === null || term.conditional === content.type) {
-                        allowedValues.push(term);
+                        allowedValues.push(term.term);
                     }
                 }
             } catch (e) {
@@ -121,7 +130,7 @@ class Base {
             }
             if (allowedValues.length > 0 && ! allowedValues.includes(value)) {
                 throw new ControlledVocabularyError(
-                    `controlled term ${key} in class ${this.constructor.clsname} is not an allowed value: ${value}`);
+                    `'${value}' is not an allowed term for ${this.constructor.clsname}:${key}(type=${content.type}). Valid terms include: ${allowedValues.toString()}`);
             }
             args[key] = content[key]; // overrides the defaults if given
         }
@@ -497,11 +506,10 @@ class KBEdge extends Base {
      *
      */
     createRecord(data={}) {
-        const args = this.validateContent(data);
-        const tgtIn = data.in.content || data.in;
-        const srcIn = data.out.content || data.out;
         return new Promise((resolve, reject) => {
-
+            const args = this.validateContent(data);
+            const tgtIn = data.in.content || data.in;
+            const srcIn = data.out.content || data.out;
             // select both records from the db
             Promise.all([
                 this.selectExactlyOne(srcIn),
@@ -547,7 +555,6 @@ class KBEdge extends Base {
                     }).then((result) => {
                         resolve(result);
                     }).catch((error) => {
-                        console.log(error);
                         reject(error);
                     });
             }).catch((error) => {
