@@ -5,6 +5,7 @@ const {connectServer, createDB} = require('./../../app/repo/connect');
 const {KBVertex, KBEdge, Base, Record, History} = require('./../../app/repo/base');
 const {CategoryEvent, PositionalEvent, Event, EVENT_TYPE, EVENT_SUBTYPE} = require('./../../app/repo/event');
 const {Feature, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
+const {Context} = require('./../../app/repo/context');
 const Promise = require('bluebird');
 const {AttributeError, ControlledVocabularyError} = require('./../../app/repo/error');
 
