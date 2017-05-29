@@ -22,6 +22,19 @@ class Position extends KBVertex {
                 });
         });
     }
+
+    static compare(curr, other) {
+        if (curr.pos == null || other.pos == null) {
+            throw new TypeError('cannot compare objects where pos is not defined');
+        }
+        if (curr.pos < other.pos) {
+            return -1;
+        } else if (curr.pos > other.pos) {
+            return 1;
+        } else {
+            return 0;
+        }
+    }
 }
 
 
@@ -122,6 +135,10 @@ class GenomicPosition extends KBVertex {
                 });
         });
     }
+
+    static compare(curr, other) {
+        return Position.compare(curr, other);
+    }
 }
 
 /**
@@ -145,7 +162,10 @@ class ExonicPosition extends KBVertex {
                 });
         });
     }
-
+    
+    static compare(curr, other) {
+        return Position.compare(curr, other);
+    }
 }
 
 /**
@@ -174,6 +194,24 @@ class CodingSequencePosition extends KBVertex {
                     reject(error);
                 });
         });
+    }
+    
+    static compare(curr, other) {
+        const comp = Position.compare(curr, other);
+        if (comp === 0) {
+            if (curr.offset == null || other.offset == null) {
+                throw new TypeError('cannot compare non-specific cds positions. Offset must be given');
+            }
+            if (curr.offset < other.offset) {
+                return -1;
+            } else if (curr.offset > other.offset) {
+                return 1;
+            } else {
+                return 0;
+            }
+        } else {
+            return comp;
+        }
     }
 
 }
@@ -211,7 +249,10 @@ class ProteinPosition extends KBVertex {
                 });
         });
     }
-
+    
+    static compare(curr, other) {
+        return Position.compare(curr, other);
+    }
 }
 
 /**
@@ -249,7 +290,30 @@ class CytobandPosition extends KBVertex {
                 });
         });
     }
-
+    
+    static compare(curr, other) {
+        if (curr.arm === other.arm) {
+            if (curr.major_band == null || other.major_band == null) {
+                throw new TypeError('cannot compare otherwise equivalent positions when the major_band is not specified');
+            } else if (curr.major_band < other.major_band) {
+                return -1;
+            } else if (curr.major_band > other.major_band) {
+                return 1;
+            } else if (curr.minor_band == null || other.minor_band == null) {
+                throw new TypeError('cannot compare otherwise equivalent positions when the minor_band is not specified')
+            } else if (curr.minor_band < other.minor_band) {
+                return -1;
+            } else if (curr.minor_band > other.minor_band) {
+                return 1;
+            } else {
+                return 0;
+            }
+        } else if (curr.arm < other.arm) {
+            return -1;
+        } else {
+            return 1;
+        }
+    }
 }
 
 
