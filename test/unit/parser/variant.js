@@ -371,12 +371,12 @@ describe('parse', () => {
         it('duplication of whole p arm', () => {
             const result = parse('y.pdup');
             expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({arm: 'p', major_band: undefined, minor_band: undefined, prefix: 'y'});
+            expect(result.break1).to.eql({arm: 'p', major_band: null, minor_band: null, prefix: 'y'});
         });
         it('duplication of range on p major band', () => {
             const result = parse('y.p11dup');
             expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({arm: 'p', major_band: 11, minor_band: undefined, prefix: 'y'});
+            expect(result.break1).to.eql({arm: 'p', major_band: 11, minor_band: null, prefix: 'y'});
         });
         it('duplication of range on p minor band', () => {
             const result = parse('y.p11.1dup');
@@ -395,7 +395,7 @@ describe('parse', () => {
             expect(result.break1.start).to.eql({arm: 'p', major_band: 11, minor_band: 1, prefix: 'y'});
             expect(result.break1.end).to.eql({arm: 'p', major_band: 11, minor_band: 2, prefix: 'y'});
             expect(result.break2.start).to.eql({arm: 'p', major_band: 13, minor_band: 4, prefix: 'y'});
-            expect(result.break2.end).to.eql({arm: 'p', major_band: 14, minor_band: undefined, prefix: 'y'});
+            expect(result.break2.end).to.eql({arm: 'p', major_band: 14, minor_band: null, prefix: 'y'});
         });
         it('duplication on p arm uncertain start', () => {
             const result = parse('y.(p11.1_p11.2)_p13.3dup');
@@ -414,12 +414,12 @@ describe('parse', () => {
         it('duplication of whole q arm', () => {
             const result = parse('y.qdup');
             expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({arm: 'q', major_band: undefined, minor_band: undefined, prefix: 'y'});
+            expect(result.break1).to.eql({arm: 'q', major_band: null, minor_band: null, prefix: 'y'});
         });
         it('deletion of whole p arm', () => {
             const result = parse('y.pdel');
             expect(result).to.have.property('type', EVENT_SUBTYPE.DEL);
-            expect(result.break1).to.eql({arm: 'p', major_band: undefined, minor_band: undefined, prefix: 'y'});
+            expect(result.break1).to.eql({arm: 'p', major_band: null, minor_band: null, prefix: 'y'});
         });
         it('inversion of a range on the p arm', () => {
             const result = parse('y.p11.1_p13.3inv');
@@ -557,15 +557,58 @@ describe('parse', () => {
         });
     });
     describe('cytoband variants', () => {
-        it('allows single gene fusion');
-        it('allows two gene fusion');
-        it('allows deletion');
-        it('errors on insertion');
-        it('errors on indel');
-        it('allows duplication');
-        it('allows inversion');
-        it('errors on missense');
-        it('errors on frameshift');
+        it('allows single gene fusion', () => {
+            const result = parse('y.fus(chr1)(p12.1,q11)');
+            expect(result.feature1).to.have.property('name', 'chr1');
+            expect(result.feature2).to.have.property('name', 'chr1');
+            expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
+            expect(result.break1).to.eql({arm: 'p', major_band: 12, minor_band: 1, prefix: 'y'});
+            expect(result.break2).to.eql({arm: 'q', major_band: 11, minor_band: null, prefix: 'y'});
+        });
+        it('allows two gene fusion', () => {
+            const result = parse('y.fus(chr1,chr2)(p12.1,q11)');
+            expect(result.feature1).to.have.property('name', 'chr1');
+            expect(result.feature2).to.have.property('name', 'chr2');
+            expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
+            expect(result.break1).to.eql({arm: 'p', major_band: 12, minor_band: 1, prefix: 'y'});
+            expect(result.break2).to.eql({arm: 'q', major_band: 11, minor_band: null, prefix: 'y'});
+        });
+        it('allows deletion', () => {
+            const result = parse('y.del(chr1,chr2)(p12.1,q11)');
+            expect(result.feature1).to.have.property('name', 'chr1');
+            expect(result.feature2).to.have.property('name', 'chr2');
+            expect(result).to.have.property('type', EVENT_SUBTYPE.DEL);
+            expect(result.break1).to.eql({arm: 'p', major_band: 12, minor_band: 1, prefix: 'y'});
+            expect(result.break2).to.eql({arm: 'q', major_band: 11, minor_band: null, prefix: 'y'});
+        });
+        it('errors on insertion', () => {
+            expect(() => { parse('y.ins(chr1,chr2)(p12.1,q11)'); }).to.throw(ParsingError);
+        });
+        it('errors on indel', () => {
+            expect(() => { parse('y.delins(chr1,chr2)(p12.1,q11)'); }).to.throw(ParsingError);
+        });
+        it('allows duplication', () => {
+            const result = parse('y.dup(chr1,chr2)(p12.1,q11)');
+            expect(result.feature1).to.have.property('name', 'chr1');
+            expect(result.feature2).to.have.property('name', 'chr2');
+            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
+            expect(result.break1).to.eql({arm: 'p', major_band: 12, minor_band: 1, prefix: 'y'});
+            expect(result.break2).to.eql({arm: 'q', major_band: 11, minor_band: null, prefix: 'y'});
+        });
+        it('allows inversion', () => {
+            const result = parse('y.inv(chr1,chr2)(p12.1,q11)');
+            expect(result.feature1).to.have.property('name', 'chr1');
+            expect(result.feature2).to.have.property('name', 'chr2');
+            expect(result).to.have.property('type', EVENT_SUBTYPE.INV);
+            expect(result.break1).to.eql({arm: 'p', major_band: 12, minor_band: 1, prefix: 'y'});
+            expect(result.break2).to.eql({arm: 'q', major_band: 11, minor_band: null, prefix: 'y'});
+        });
+        it('errors on missense', () => {
+            expect(() => { parse('y.>(chr1,chr2)(p12.1,q11)'); }).to.throw(ParsingError);
+        });
+        it('errors on frameshift', () => {
+            expect(() => { parse('y.fs(chr1,chr2)(p12.1,q11)'); }).to.throw(ParsingError);
+        });
     });
 });
 

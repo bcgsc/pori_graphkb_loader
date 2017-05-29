@@ -14,7 +14,7 @@ const parsePosition = (prefix, string) => {
         case 'c': {
             const m = /^(\d+)([-\+]\d+)?$/.exec(string);
             if (m === null) {
-                throw new ParsingError(`failed to match expected pattern: ${string}`);
+                throw new ParsingError(`input '${string}' did not match the expected pattern for 'c' prefixed positions`);
             }
             return {
                 pos: parseInt(m[1]),
@@ -25,7 +25,7 @@ const parsePosition = (prefix, string) => {
         case 'p': {
             const m = /^([A-Z\?\*])?(\d+)$/.exec(string);
             if (m === null) {
-                throw new ParsingError(`failed to match expected pattern: ${string}`);
+                throw new ParsingError(`input string '${string}' did not match the expected pattern for 'p' prefixed positions`);
             }
             return {
                 pos: parseInt(m[2]),
@@ -36,12 +36,12 @@ const parsePosition = (prefix, string) => {
         case 'y': {
             const m = /^([pq])((\d+)(\.(\d+))?)?$/.exec(string);
             if (m == null) {
-                throw new ParsingError(`failed to match expected pattern: ${string}`);
+                throw new ParsingError(`input string '${string}' did not match the expected pattern for 'y' prefixed positions`);
             }
             return {
                 arm: m[1],
-                major_band: m[3] === undefined ? undefined : parseInt(m[3]),
-                minor_band: m[5] === undefined ? undefined : parseInt(m[5]),
+                major_band: m[3] === undefined ? null : parseInt(m[3]),
+                minor_band: m[5] === undefined ? null : parseInt(m[5]),
                 prefix
             };
         }

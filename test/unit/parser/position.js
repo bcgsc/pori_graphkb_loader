@@ -108,14 +108,14 @@ describe('parsePosition', () => {
             const result = parsePosition('y', 'q1');
             expect(result.arm).to.equal('q');
             expect(result.major_band).to.equal(1);
-            expect(result.minor_band).to.be.undefined;
+            expect(result.minor_band).to.be.null;
             expect(result.prefix).to.equal('y');
         });
         it('major band null if not given', () => {
             const result = parsePosition('y', 'q');
             expect(result.arm).to.equal('q');
-            expect(result.major_band).to.be.undefined;
-            expect(result.minor_band).to.be.undefined;
+            expect(result.major_band).to.be.null;
+            expect(result.minor_band).to.be.null;
             expect(result.prefix).to.equal('y');
         });
         it('errors on minor band but no major band', () => {
