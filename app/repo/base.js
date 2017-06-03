@@ -6,10 +6,12 @@ const moment = require('moment');
 const cache = require('./cached/data');
 const Promise = require('bluebird');
 
-
-
 const errorJSON = function(error) {
     return {type: error.type, message: error.message};
+};
+
+const RULES = {
+    BINF: [{disease: ['read']}, {ontology: ['write']}],
 };
 
 /**
@@ -45,7 +47,6 @@ const softGetRID = (record) => {
         return record;
     }
 };
-
 
 class Record {
 
@@ -269,21 +270,24 @@ class Base {
             if (where.uuid == undefined) {
                 throw new AttributeError('uuid is a required parameter');
             }
-            this.selectExactlyOne({uuid: where.uuid})
-                .then((record) => {
-                    const required_matches = ['uuid', 'deleted_at','version', 'created_at'];
+
+            Promise.all([
+                this.selectExactlyOne({uuid: where.uuid}),
+                this.db.models.KBUser.selectExactlyOne({username: this.db.conn.username})
+            ]).then((recList)=> {
+                let [record, userRecord] = recList;
+                const required_matches = ['uuid', 'deleted_at','version', 'created_at'];
                     for (let m of required_matches) {
                         if (where[m] !== undefined && where[m] !== record.content[m]) {
                             throw new Error(`Concurrency error. Updating an out-of-date record. Property ${m}: ${where[m]} and ${record.content[m]}`);
                         }
-                    }
+                    }                          
                     const duplicate = {};
                     const timestamp = moment().valueOf();
                     const updates = {
                         version: record.content.version + 1,
                         created_at: timestamp
                     };
-
                     // create a copy of the current record
                     for (let key of Object.keys(record.content)) {
                         if (! key.startsWith('@')) {
@@ -295,7 +299,6 @@ class Base {
                             updates[key] = where[key];
                         }
                     }
-
                     duplicate['deleted_at'] = timestamp; // set the deletion time
                     // start the transaction
                     var commit = this.db.conn
@@ -310,9 +313,10 @@ class Base {
                             //connect the nodes
                             return tx.create(History.createType, History.clsname)
                                 .from('$updatedRID')
-                                .to('$duplicate');
+                                .to('$duplicate')
+                                .set({user: userRecord.content['@rid'].toString()});
                         }).commit();
-                    commit.return('$updatedRID').one()
+                    commit.return('$updatedRID').one() 
                         .then((rid) => {
                             return this.db.conn.record.get(rid);
                         }).then((record) => {
@@ -320,9 +324,9 @@ class Base {
                         }).catch((error) => {
                             reject(error);
                         });
-                }).catch((error) => {
-                    reject(error);
-                });
+            }).catch((error) => {
+                reject(error);
+            });          
         });
     }
     /**
@@ -452,6 +456,7 @@ class KBVertex extends Base {
     }
 }
 
+
 class KBEdge extends Base {
 
     static get createType() {
@@ -564,6 +569,112 @@ class KBEdge extends Base {
     }
 }
 
+class KBUser extends Base {
+
+    validateContent(content) {
+        content.role = content.role || {name: 'BINF'};
+        content.status = content.status || 'ACTIVE'; 
+        const args = super.validateContent(content);
+        return args;
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+
+            const props = [
+                {name: 'username', type: 'string', mandatory: true, notNull: false},
+                //{name: 'username', type: 'link', mandatory: true, notNull: true,  linkedClass: 'OUser'}
+                {name: 'status', type: 'string', mandatory: true, notNull: false},
+                {name: 'role', type: 'link', mandatory: true, notNull: true,  linkedClass: 'ORole'} //readOnly: true,
+                // More properties can be added to store metadata in the future 
+            ];
+
+            const idxs = [{
+                name: this.clsname + '.index_username',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['username'],
+                'class':  this.clsname
+            }];
+
+            Base.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: false, properties: props, indices: idxs})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+
+    createRecord(opt) {            
+        return new Promise((resolve, reject) => {
+            const args = this.validateContent(opt);
+            this.db.conn.select().from(KBRole.clsname).where({name: args.role}).all()
+                .then((roleClassRecList) => {
+                    if (roleClassRecList.length == 0) {
+                        reject(new NoResultFoundError());
+                    } else if ((roleClassRecList.length > 1)) {
+                        reject(new MultipleResultsFoundError());
+                    } else {
+                        args.role = roleClassRecList[0]['@rid'];
+                        return this.conn.create(args).then((userRecord) => {
+                            this.db.conn.record.get(args.role).then((roleRecord) => {
+                                userRecord.role = roleRecord;
+                                resolve(new Record(userRecord, this));
+                            }).catch((error) => {
+                                reject(error);
+                            });
+                        }).catch((error) => {
+                            reject(error);
+                        });
+                    }
+                })
+        });
+    }
+}
+
+/**
+ * @class
+ * @extends KBVertex
+ */
+class KBRole extends Base {
+
+    validateContent(content) {
+        const args = super.validateContent(content);
+        return args;
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+
+            const props = [
+                {name: 'name', type: 'string', mandatory: true, notNull: false},
+                {name: 'rules', type: 'embeddedset', mandatory: true, notNull: false},
+                {name: 'mode', type: 'integer', mandatory: true, notNull: false}
+            ];
+
+            const idxs = [{
+                name: this.clsname + '.index_name',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['name'],
+                'class':  this.clsname
+            }];
+
+            Base.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: false, properties: props, indices: idxs})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
 class History extends Base {
 
     static get createType() {
@@ -573,8 +684,9 @@ class History extends Base {
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
-                //{name: 'user', type: 'link', mandatory: true, notNull: true, readOnly: true, linkedClass: 'user'},
-                {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true}
+                {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true},
+                {name: 'user', type: 'link', mandatory: false, notNull: false, readOnly: true, linkedClass: KBUser.clsname}
+                //{name: 'user', type: 'string', mandatory: true, notNull: true, readOnly: true}
             ];
 
             Base.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: false, properties: props})
@@ -589,4 +701,4 @@ class History extends Base {
     }
 }
 
-module.exports = {Base, History, KBVertex, KBEdge, softGetRID, Record, errorJSON};
+module.exports = {Base, History, KBVertex, KBEdge, softGetRID, Record, errorJSON, KBUser, KBRole};
