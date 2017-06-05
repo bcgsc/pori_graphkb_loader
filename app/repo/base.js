@@ -269,13 +269,16 @@ class Base {
             // get the record from the db
             if (where.uuid == undefined) {
                 throw new AttributeError('uuid is a required parameter');
-            }
+            }    
 
-            Promise.all([
-                this.selectExactlyOne({uuid: where.uuid}),
-                this.db.models.KBUser.selectExactlyOne({username: this.db.conn.username})
-            ]).then((recList)=> {
-                let [record, userRecord] = recList;
+            // TMP-FIX
+            // Promise.all([
+            //     this.selectExactlyOne({uuid: where.uuid}),
+            //     this.db.models.KBUser.selectExactlyOne({username: this.db.conn.username})
+            // ]).then((recList)=> {
+            //     let [record, userRecord] = recList;
+            this.selectExactlyOne({uuid: where.uuid})
+                .then((record) => {
                 const required_matches = ['uuid', 'deleted_at','version', 'created_at'];
                     for (let m of required_matches) {
                         if (where[m] !== undefined && where[m] !== record.content[m]) {
@@ -314,7 +317,8 @@ class Base {
                             return tx.create(History.createType, History.clsname)
                                 .from('$updatedRID')
                                 .to('$duplicate')
-                                .set({user: userRecord.content['@rid'].toString()});
+                                // TMP-FIX
+                                //.set({user: userRecord.content['@rid'].toString()});
                         }).commit();
                     commit.return('$updatedRID').one() 
                         .then((rid) => {
@@ -685,8 +689,8 @@ class History extends Base {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true},
-                {name: 'user', type: 'link', mandatory: false, notNull: false, readOnly: true, linkedClass: KBUser.clsname}
-                //{name: 'user', type: 'string', mandatory: true, notNull: true, readOnly: true}
+                // TMP-FIX
+                //{name: 'user', type: 'link', mandatory: false, notNull: false, readOnly: true, linkedClass: KBUser.clsname}
             ];
 
             Base.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: false, properties: props})
