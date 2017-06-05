@@ -99,6 +99,18 @@ class Base {
         }
     }
 
+    getAllowedTermsList(propertyName) {
+        const terms = [];
+        for (let cls of Object.keys(cache.vocab)) {
+            if (cache.vocab[cls][propertyName] != undefined && this.isOrHasAncestor(cls)) {
+                for (let term of cache.vocab[cls][propertyName]) {
+                    terms.push(term);
+                }
+            }
+        }
+        return terms;
+    }
+
     validateContent(content) {
         const args = { // default arguments
             uuid : uuidV4(),
@@ -118,15 +130,9 @@ class Base {
             }
             let value = content[key];
             const allowedValues = [];
-            try {
-                for (let term of cache.vocab[this.constructor.clsname][key]) {
-                    if (term.conditional === null || term.conditional === content.type) {
-                        allowedValues.push(term.term);
-                    }
-                }
-            } catch (e) {
-                if (! e instanceof TypeError) {
-                    throw e;
+            for (let term of this.getAllowedTermsList(key)) {
+                if (term.conditional === null || term.conditional === content.type) {
+                    allowedValues.push(term.term);
                 }
             }
             if (allowedValues.length > 0 && ! allowedValues.includes(value)) {
