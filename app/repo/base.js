@@ -113,12 +113,7 @@ class Base {
 
 
     validateContent(content) {
-        const args = { // default arguments
-            uuid : uuidV4(),
-            version: 0,
-            created_at: moment().valueOf(),
-            deleted_at: null
-        };
+        const args = {};
         for (let key of Object.keys(content)) {
             if (content[key] === undefined) {
                 delete content[key];
@@ -263,83 +258,7 @@ class Base {
         });
     }
 
-    /**
-     * update an existing record. This will be based on the uuid or the record and
-     * will create a copy of the current record, a history edge, and then will edit the
-     * current record. This will be wrapped in a transaction. Will need to ensure the
-     *
-     * @param  {object} where record content
-     * @return {Promise}  if resolved returns ? otherwise returns the db error
-     */
-    updateRecord(where={}) {
-        return new Promise((resolve, reject) => {
-            // get the record from the db
-            if (where.uuid == undefined) {
-                throw new AttributeError('uuid is a required parameter');
-            }    
-
-            // TMP-FIX
-            // Promise.all([
-            //     this.selectExactlyOne({uuid: where.uuid}),
-            //     this.db.models.KBUser.selectExactlyOne({username: this.db.conn.username})
-            // ]).then((recList)=> {
-            //     let [record, userRecord] = recList;
-            this.selectExactlyOne({uuid: where.uuid})
-                .then((record) => {
-                const required_matches = ['uuid', 'deleted_at','version', 'created_at'];
-                    for (let m of required_matches) {
-                        if (where[m] !== undefined && where[m] !== record.content[m]) {
-                            throw new Error(`Concurrency error. Updating an out-of-date record. Property ${m}: ${where[m]} and ${record.content[m]}`);
-                        }
-                    }                          
-                    const duplicate = {};
-                    const timestamp = moment().valueOf();
-                    const updates = {
-                        version: record.content.version + 1,
-                        created_at: timestamp
-                    };
-                    // create a copy of the current record
-                    for (let key of Object.keys(record.content)) {
-                        if (! key.startsWith('@')) {
-                            duplicate[key] = record.content[key];
-                        }
-                    }
-                    for (let key of Object.keys(where)) {
-                        if (! key.startsWith('@') && key !== 'version') {
-                            updates[key] = where[key];
-                        }
-                    }
-                    duplicate['deleted_at'] = timestamp; // set the deletion time
-                    // start the transaction
-                    var commit = this.db.conn
-                        .let('updatedRID', (tx) => {
-                            // update the existing node
-                            return tx.update(`${record.content['@rid'].toString()}`).set(updates).return('AFTER @rid');
-                        }).let('duplicate', (tx) => {
-                            //duplicate the old node
-                            return tx.create(this.constructor.createType, this.constructor.clsname)
-                                .set(duplicate);
-                        }).let('historyEdge', (tx) => {
-                            //connect the nodes
-                            return tx.create(History.createType, History.clsname)
-                                .from('$updatedRID')
-                                .to('$duplicate')
-                                // TMP-FIX
-                                //.set({user: userRecord.content['@rid'].toString()});
-                        }).commit();
-                    commit.return('$updatedRID').one() 
-                        .then((rid) => {
-                            return this.db.conn.record.get(rid);
-                        }).then((record) => {
-                            resolve(new Record(record, this));
-                        }).catch((error) => {
-                            reject(error);
-                        });
-            }).catch((error) => {
-                reject(error);
-            });          
-        });
-    }
+    
     /**
      * the name of the class
      * @type {string}
@@ -427,6 +346,16 @@ class Base {
  */
 class KBVertex extends Base {
     
+    validateContent(content) {
+        const args = Object.assign({ // default arguments
+            uuid : uuidV4(),
+            version: 0,
+            created_at: moment().valueOf(),
+            deleted_at: null
+        }, content);
+        return super.validateContent(args);
+    }
+
     static get createType() {
         return 'vertex';
     }
@@ -463,6 +392,84 @@ class KBVertex extends Base {
                 }).catch((error) => {
                     reject(error);
                 });
+        });
+    }
+
+    /**
+     * update an existing record. This will be based on the uuid or the record and
+     * will create a copy of the current record, a history edge, and then will edit the
+     * current record. This will be wrapped in a transaction. Will need to ensure the
+     *
+     * @param  {object} where record content
+     * @return {Promise}  if resolved returns ? otherwise returns the db error
+     */
+    updateRecord(where={}) {
+        return new Promise((resolve, reject) => {
+            // get the record from the db
+            if (where.uuid == undefined) {
+                throw new AttributeError('uuid is a required parameter');
+            }    
+
+            // TMP-FIX
+            // Promise.all([
+            //     this.selectExactlyOne({uuid: where.uuid}),
+            //     this.db.models.KBUser.selectExactlyOne({username: this.db.conn.username})
+            // ]).then((recList)=> {
+            //     let [record, userRecord] = recList;
+            this.selectExactlyOne({uuid: where.uuid})
+                .then((record) => {
+                const required_matches = ['uuid', 'deleted_at','version', 'created_at'];
+                    for (let m of required_matches) {
+                        if (where[m] !== undefined && where[m] !== record.content[m]) {
+                            throw new Error(`Concurrency error. Updating an out-of-date record. Property ${m}: ${where[m]} and ${record.content[m]}`);
+                        }
+                    }                          
+                    const duplicate = {};
+                    const timestamp = moment().valueOf();
+                    const updates = {
+                        version: record.content.version + 1,
+                        created_at: timestamp
+                    };
+                    // create a copy of the current record
+                    for (let key of Object.keys(record.content)) {
+                        if (! key.startsWith('@')) {
+                            duplicate[key] = record.content[key];
+                        }
+                    }
+                    for (let key of Object.keys(where)) {
+                        if (! key.startsWith('@') && key !== 'version') {
+                            updates[key] = where[key];
+                        }
+                    }
+                    duplicate['deleted_at'] = timestamp; // set the deletion time
+                    // start the transaction
+                    var commit = this.db.conn
+                        .let('updatedRID', (tx) => {
+                            // update the existing node
+                            return tx.update(`${record.content['@rid'].toString()}`).set(updates).return('AFTER @rid');
+                        }).let('duplicate', (tx) => {
+                            //duplicate the old node
+                            return tx.create(this.constructor.createType, this.constructor.clsname)
+                                .set(duplicate);
+                        }).let('historyEdge', (tx) => {
+                            //connect the nodes
+                            return tx.create(History.createType, History.clsname)
+                                .from('$updatedRID')
+                                .to('$duplicate')
+                                // TMP-FIX
+                                //.set({user: userRecord.content['@rid'].toString()});
+                        }).commit();
+                    commit.return('$updatedRID').one() 
+                        .then((rid) => {
+                            return this.db.conn.record.get(rid);
+                        }).then((record) => {
+                            resolve(new Record(record, this));
+                        }).catch((error) => {
+                            reject(error);
+                        });
+            }).catch((error) => {
+                reject(error);
+            });          
         });
     }
 }
@@ -510,12 +517,17 @@ class KBEdge extends Base {
     }
 
     validateContent(content) {
-        const tgt = content.in.content || content.in;
-        const src = content.out.content || content.out;
+        const args = Object.assign({ // default arguments
+            uuid : uuidV4(),
+            version: 0,
+            created_at: moment().valueOf(),
+            deleted_at: null
+        }, content);
+        const tgt = args.in.args || args.in;
+        const src = args.out.args || args.out;
         src['@class'] = src['@class'] || KBVertex.clsname;
         tgt['@class'] = tgt['@class'] || KBVertex.clsname;
-        const args = super.validateContent(content);
-        return args;
+        return super.validateargs(args);
     }
     
     /**

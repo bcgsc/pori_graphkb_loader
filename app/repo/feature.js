@@ -161,9 +161,15 @@ class FeatureDeprecatedBy extends KBEdge {
     }
 
     static createClass(db) {
+        
+        const props = [
+            {name: 'out', type: 'link', mandatory: true, notNull: true, linkedClass: Feature.clsname},
+            {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Feature.clsname},
+        ];
+
         return new Promise((resolve, reject) => {
 
-            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: []})
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -197,8 +203,11 @@ class FeatureAliasOf extends KBEdge {
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
-
-            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: []})
+            const props = [
+                {name: 'out', type: 'link', mandatory: true, notNull: true, linkedClass: Feature.clsname},
+                {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Feature.clsname},
+            ];
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {

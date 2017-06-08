@@ -29,8 +29,7 @@ describe('Position schema tests:', () => {
                     name: conf.emptyDbName, 
                     username: conf.dbUsername, 
                     password: conf.dbPassword, 
-                    server: server,
-                    models: {KBEdge, KBVertex, History}
+                    server: server
                 });
             }).then((connection) => {
                 db = connection;
@@ -43,7 +42,6 @@ describe('Position schema tests:', () => {
     it('test create position class', () => {
         return Position.createClass(db)
             .then((result) => {
-                expect(result.propertyNames).to.include('uuid', 'version', 'created_at', 'deleted_at');
                 expect(result.isAbstract).to.be.true;
             });
     });
@@ -387,12 +385,14 @@ describe('Position schema tests:', () => {
                 });
         });
 
-        describe('range', () => {
+        describe('range.createRecord', () => {
             let currClass, cdsClass;
             beforeEach(function(done) {
                 Promise.all([
                     Range.createClass(db),
-                    CodingSequencePosition.createClass(db)
+                    CodingSequencePosition.createClass(db),
+                    GenomicPosition.createClass(db),
+                    ProteinPosition.createClass(db)
                 ]).then((plist) => {
                     [currClass, cdsClass] = plist;
                     done();
@@ -401,7 +401,7 @@ describe('Position schema tests:', () => {
                 });
             });
             it('start null/undefined error', () => {
-                return currClass.createRecord({end: {pos: 1}}, cdsClass)
+                return currClass.createRecord({end: {pos: 1}}, GenomicPosition.clsname)
                     .then(() => {
                         expect.fail('expected error');
                     }, (error) => {
@@ -409,7 +409,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('end null/undefined error', () => {
-                return currClass.createRecord({start: {pos: 1}}, cdsClass)
+                return currClass.createRecord({start: {pos: 1}}, GenomicPosition.clsname)
                     .then(() => {
                         expect.fail('expected error');
                     }, (error) => {
@@ -418,19 +418,29 @@ describe('Position schema tests:', () => {
             });
 
             it('create range', () => {
-                return currClass.createRecord({start: {pos: 1}, end: {pos: 1}}, cdsClass)
+                return currClass.createRecord({start: {pos: 1}, end: {pos: 2}}, GenomicPosition.clsname)
                     .then((record) => {
-                        expect(record.content.start).to.have.property('uuid');
-                        expect(record.content.end).to.have.property('uuid');
-                        expect(record.content.start.uuid).to.not.equal(record.content.end.uuid);
+                        expect(record.content).to.include.keys('start', 'end');
                         expect(record.content.start).to.have.property('pos', 1);
-                        expect(record.content.end).to.have.property('pos', 1);
+                        expect(record.content.end).to.have.property('pos', 2);
+                        expect(record.content.start).to.have.property('@class', GenomicPosition.clsname);
+                        expect(record.content.end).to.have.property('@class', GenomicPosition.clsname);
                     });
             });
-            it('same uuid for start/end error', () => {
-                return currClass.createRecord({start: {pos: 1, uuid: '1'}, end: {pos: 1, uuid: '1'}}, cdsClass)
-                    .then(() => {
-                        expect.fail('expected an error');
+            it('errors on start > end', () => {
+                return currClass.createRecord({start: {pos: 10}, end: {pos: 8}}, GenomicPosition.clsname)
+                    .then((rec) => {
+                        console.log(rec);
+                        expect.fail('expected error');
+                    }, (error) => {
+                        expect(error).to.be.instanceof(AttributeError);
+                    });
+            });
+            it('errors on start >= end', () => {
+                return currClass.createRecord({start: {pos: 10}, end: {pos: 10}}, GenomicPosition.clsname)
+                    .then((rec) => {
+                        console.log(rec);
+                        expect.fail('expected error');
                     }, (error) => {
                         expect(error).to.be.instanceof(AttributeError);
                     });

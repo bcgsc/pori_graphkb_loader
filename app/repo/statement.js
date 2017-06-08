@@ -61,8 +61,11 @@ class AppliesTo extends KBEdge {
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
-
-            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: []})
+            const props = [
+                {name: 'out', type: 'link', mandatory: true, notNull: true, linkedClass: Statement.clsname},
+                {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Context.clsname}
+            ];
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -95,8 +98,11 @@ class AsComparedTo extends KBEdge {
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
-
-            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: []})
+            const props = [
+                {name: 'out', type: 'link', mandatory: true, notNull: true, linkedClass: Statement.clsname},
+                {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Context.clsname}
+            ];
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -132,8 +138,11 @@ class Requires extends KBEdge {
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
-
-            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: []})
+            const props = [
+                {name: 'out', type: 'link', mandatory: true, notNull: true, linkedClass: Statement.clsname},
+                {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Context.clsname}
+            ];
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {

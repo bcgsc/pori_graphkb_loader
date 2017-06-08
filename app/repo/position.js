@@ -1,18 +1,13 @@
 'use strict';
-const {KBVertex, Base, Record, KBEdge} = require('./base');
+const {Base, Record} = require('./base');
 const {Feature} = require('./feature');
 const {AttributeError} = require('./error');
 
-
-/**
- * @class
- * @extends KBVertex
- */
-class Position extends KBVertex {
+class Position extends Base {
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
-            Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: true})
+            Base.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -24,10 +19,11 @@ class Position extends KBVertex {
     }
 
     static compare(curr, other) {
-        if (curr.pos == null || other.pos == null) {
+        if (curr.prefix !== other.prefix) {
+            throw new TypeError(`cannot compare positions using different coordinate systems: ${curr.prefix}, ${other.prefix}`);
+        } else if (curr.pos == null || other.pos == null) {
             throw new TypeError('cannot compare objects where pos is not defined');
-        }
-        if (curr.pos < other.pos) {
+        } else if (curr.pos < other.pos) {
             return -1;
         } else if (curr.pos > other.pos) {
             return 1;
@@ -42,31 +38,55 @@ class Position extends KBVertex {
  * @class
  * @extends KBVertex
  */
-class Range extends KBVertex {
-    validateContent(content, positionClass) {
+class Range extends Base {
+    validateContent(content, positionClassName) {
         if (content.start == undefined || content.end == undefined) {
             throw new AttributeError('both start and end must be specified and not null');
         }
+        let positionClass = this.db.models[positionClassName];
+        if (positionClass.isAbstract) {
+            throw new AttributeError('cannot embed an abstract class');
+        }
         content.start = positionClass.validateContent(content.start);
+        content.start['@class'] = positionClassName;
         content.end = positionClass.validateContent(content.end);
-        if (content.start.uuid == content.end.uuid) {
-            throw new AttributeError(`range start and end cannot point to the same node: ${content.start.uuid}`);
+        content.end['@class'] = positionClassName;
+        try {
+            if (positionClass.constructor.compare(content.start, content.end) >= 0) {
+                throw new AttributeError(`cannot create a range if the start position is not less than the end position`);
+            }
+        } catch (e) {
+            if (! (e instanceof TypeError)) {
+                throw e;
+            }
         }
         return super.validateContent(content);
     }
-
-    createRecord(opt, positionClass) {
+    
+    createRecord(where, positionClassname) {
         return new Promise((resolve, reject) => {
-            const args = this.validateContent(opt, positionClass);
+            const args = this.validateContent(where, positionClassname);
+            this.conn.create(args)
+                .then((result) => {
+                    resolve(new Record(result, this));
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+    /*createRecord(opt, positionClassName) {
+        return new Promise((resolve, reject) => {
+            const args = this.validateContent(opt, positionClassName);
+            const pClass = this.db.models[positionClassName];
             // start the transaction
             var commit = this.db.conn
                 .let('startPos', (tx) => {
                     // create the start position
-                    return tx.create(positionClass.constructor.createType, positionClass.constructor.clsname)
+                    return tx.create(pClass.constructor.createType, pClass.constructor.clsname)
                         .set(args.start);
                 }).let('endPos', (tx) => {
                     // create the end position
-                    return tx.create(positionClass.constructor.createType, positionClass.constructor.clsname)
+                    return tx.create(pClass.constructor.createType, pClass.constructor.clsname)
                         .set(args.end);
                 }).let('range', (tx) => {
                     //connect the nodes
@@ -92,12 +112,12 @@ class Range extends KBVertex {
                     reject(error);
                 });
         });
-    }
+    }*/
 
     static createClass(db, positionClass) {
         const props = [
-            {name: 'start', type: 'link', mandatory: true, notNull: true, linkedClass: Position.clsname},
-            {name: 'end', type: 'link', mandatory: true, notNull: true, linkedClass: Position.clsname}
+            {name: 'start', type: 'embedded', mandatory: true, notNull: true, linkedClass: Position.clsname},
+            {name: 'end', type: 'embedded', mandatory: true, notNull: true, linkedClass: Position.clsname}
         ];
         return new Promise((resolve, reject) => {
             Base.createClass({db, clsname: this.clsname, superClasses: Position.clsname, isAbstract: false, properties: props})
@@ -118,7 +138,7 @@ class Range extends KBVertex {
  * @class
  * @extends KBVertex
  */
-class GenomicPosition extends KBVertex {
+class GenomicPosition extends Base {
 
     static createClass(db) {
         const props = [
@@ -139,13 +159,17 @@ class GenomicPosition extends KBVertex {
     static compare(curr, other) {
         return Position.compare(curr, other);
     }
+
+    static get prefix() {
+        return 'g';
+    }
 }
 
 /**
  * @class
  * @extends KBVertex
  */
-class ExonicPosition extends KBVertex {
+class ExonicPosition extends Base {
 
     static createClass(db) {
         const props = [
@@ -166,13 +190,17 @@ class ExonicPosition extends KBVertex {
     static compare(curr, other) {
         return Position.compare(curr, other);
     }
+
+    static get prefix() {
+        return 'e';
+    }
 }
 
 /**
  * @class
  * @extends KBVertex
  */
-class CodingSequencePosition extends KBVertex {
+class CodingSequencePosition extends Base {
 
     validateContent(content) {
         const args = Object.assign({offset: 0}, content);
@@ -213,14 +241,17 @@ class CodingSequencePosition extends KBVertex {
             return comp;
         }
     }
-
+    
+    static get prefix() {
+        return 'c';
+    }
 }
 
 /**
  * @class
  * @extends KBVertex
  */
-class ProteinPosition extends KBVertex {
+class ProteinPosition extends Base {
 
     validateContent(content) {
         const args = Object.assign({ref_aa: null}, content);
@@ -253,13 +284,17 @@ class ProteinPosition extends KBVertex {
     static compare(curr, other) {
         return Position.compare(curr, other);
     }
+
+    static get prefix() {
+        return 'p';
+    }
 }
 
 /**
  * @class
  * @extends KBVertex
  */
-class CytobandPosition extends KBVertex {
+class CytobandPosition extends Base {
 
     validateContent(content) {
         const args = Object.assign({major_band: null, minor_band: null}, content); // set defaults
@@ -292,7 +327,11 @@ class CytobandPosition extends KBVertex {
     }
     
     static compare(curr, other) {
-        if (curr.arm === other.arm) {
+        if (curr.prefix !== other.prefix) {
+            throw new TypeError(`cannot compare positions using different coordinate systems: ${curr.prefix}, ${other.prefix}`);
+        } else if (curr.arm == null || other.arm == null) {
+            throw new TypeError(`cannot compare positions when the arm is not defined: ${curr.arm}, ${other.arm}`);
+        } else if (curr.arm === other.arm) {
             if (curr.major_band == null || other.major_band == null) {
                 throw new TypeError('cannot compare otherwise equivalent positions when the major_band is not specified');
             } else if (curr.major_band < other.major_band) {
@@ -313,6 +352,10 @@ class CytobandPosition extends KBVertex {
         } else {
             return 1;
         }
+    }
+
+    static get prefix() {
+        return 'y';
     }
 }
 

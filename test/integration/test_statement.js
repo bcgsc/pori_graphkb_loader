@@ -76,20 +76,29 @@ describe('statement module', () => {
                 done(error);
             });
     });
-    describe('createClass', () => {
-        it('Statement', () => {
-            return Statement.createClass(db)
-                .then((cls) => {
-                    // test registration
-                    expect(cls).to.equal(db.models.Statement);
-                    expect(cls).to.equal(db.models.statement);
-                    expect(cls.propertyNames).to.include('uuid', 'created_at', 'deleted_at', 'version', 'type', 'relevance');
-                    expect(cls.isAbstract).to.be.false;
-                    expect(cls.superClasses).to.include('V', KBVertex.clsname);
-                    expect(cls.constructor.clsname).to.equal('statement');
-                });
+    it('Statement.createClass', () => {
+        return Statement.createClass(db)
+            .then((cls) => {
+                // test registration
+                expect(cls).to.equal(db.models.Statement);
+                expect(cls).to.equal(db.models.statement);
+                expect(cls.propertyNames).to.include('uuid', 'created_at', 'deleted_at', 'version', 'type', 'relevance');
+                expect(cls.isAbstract).to.be.false;
+                expect(cls.superClasses).to.include('V', KBVertex.clsname);
+                expect(cls.constructor.clsname).to.equal('statement');
+            });
+    });
+    describe('Statement', () => {
+        beforeEach((done) => {
+            Promise.all([
+                Statement.createClass(db)
+            ]).then(() => {
+                done();
+            }).catch((error) => {
+                done(error);
+            });
         });
-        it('AppliesTo', () => {
+        it('AppliesTo.createClass', () => {
             return AppliesTo.createClass(db)
                 .then((cls) => {
                     // test registration
@@ -101,7 +110,7 @@ describe('statement module', () => {
                     expect(cls.constructor.clsname).to.equal('applies_to');
                 });
         });
-        it('Requires', () => {
+        it('Requires.createClass', () => {
             return Requires.createClass(db)
                 .then((cls) => {
                     // test registration
@@ -113,7 +122,7 @@ describe('statement module', () => {
                     expect(cls.constructor.clsname).to.equal('requires');
                 });
         });
-        it('AsComparedTo', () => {
+        it('AsComparedTo.createClass', () => {
             return AsComparedTo.createClass(db)
                 .then((cls) => {
                     // test registration
@@ -124,17 +133,6 @@ describe('statement module', () => {
                     expect(cls.superClasses).to.include('E', KBEdge.clsname);
                     expect(cls.constructor.clsname).to.equal('as_compared_to');
                 });
-        });
-    });
-    describe('Statement', () => {
-        beforeEach((done) => {
-            Promise.all([
-                Statement.createClass(db)
-            ]).then(() => {
-                done();
-            }).catch((error) => {
-                done(error);
-            });
         });
         describe('createRecord', () => {
             it('errors on incompatible type/relevance vocabulary', () => {
@@ -181,30 +179,32 @@ describe('statement module', () => {
     describe('edges', () => {
         let feat, stmnt, stmnt2, pos;
         beforeEach((done) => {
-            Promise.all([
-                Statement.createClass(db),
-                Feature.createClass(db),
-                AppliesTo.createClass(db),
-                AsComparedTo.createClass(db),
-                Requires.createClass(db),
-                Position.createClass(db)
-            ]).then(() => {
-                return GenomicPosition.createClass(db);
-            }).then(() => {
-                return Promise.all([
-                    db.models.Feature.createRecord({
-                        source: FEATURE_SOURCE.ENSEMBL, biotype: FEATURE_BIOTYPE.GENE, name: 'ENSG001', source_version: 69
-                    }),
-                    db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}),
-                    db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}),
-                    db.models.GenomicPosition.createRecord({pos: 1})
-                ]);
-            }).then((pList) => {
-                [feat, stmnt, stmnt2, pos] = pList;
-                done();
-            }).catch((error) => {
-                done(error);
-            });
+            Statement.createClass(db)
+                .then(() => {
+                    return Promise.all([
+                        Feature.createClass(db),
+                        AppliesTo.createClass(db),
+                        AsComparedTo.createClass(db),
+                        Requires.createClass(db),
+                        Position.createClass(db)
+                    ]);
+                }).then(() => {
+                    return GenomicPosition.createClass(db);
+                }).then(() => {
+                    return Promise.all([
+                        db.models.Feature.createRecord({
+                            source: FEATURE_SOURCE.ENSEMBL, biotype: FEATURE_BIOTYPE.GENE, name: 'ENSG001', source_version: 69
+                        }),
+                        db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}),
+                        db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}),
+                        db.models.GenomicPosition.createRecord({pos: 1})
+                    ]);
+                }).then((pList) => {
+                    [feat, stmnt, stmnt2, pos] = pList;
+                    done();
+                }).catch((error) => {
+                    done(error);
+                });
         });
         describe('AppliesTo.createRecord', () => {
             it('errors on invalid source type', () => {

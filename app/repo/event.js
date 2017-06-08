@@ -2,6 +2,7 @@
 const {Base, KBVertex, KBEdge, Record} = require('./base');
 const Promise = require('bluebird');
 const {Feature} = require('./feature');
+const {Range, Position} = require('./position');
 const {AttributeError, ControlledVocabularyError} = require('./error');
 const _ = require('lodash');
 
@@ -64,7 +65,7 @@ const ZYGOSITY = {
 }
 
 
-class Event extends Base {
+class Event extends KBVertex {
     
     static createClass(db) {
         const props = [
@@ -75,7 +76,7 @@ class Event extends Base {
             {name: 'secondary_feature', type: 'link', linkedClass: Feature.clsname, mandatory: false, notNull: true}
         ];
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: true, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: true, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -108,7 +109,7 @@ class Event extends Base {
 }
 
 
-class CategoryEvent extends Base {
+class CategoryEvent extends KBVertex {
     
     validateContent(content) {
         const args = Event.validateContent(content);
@@ -120,7 +121,7 @@ class CategoryEvent extends Base {
             {name: 'term', type: 'string', mandatory: true, notNull: true}
         ];
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: Event.clsname, isAbstract: false, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: Event.clsname, isAbstract: false, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -167,26 +168,82 @@ class CategoryEvent extends Base {
 }
 
 
-class PositionalEvent extends Base {
+class PositionalEvent extends KBVertex {
     
-    validateContent(content) {
+    validateContent(content, positionClassName) {
         const args = Event.validateContent(content);
-        this.constructor.subtypeValidation(args.prefix, args.subtype);
+        const pClass = this.db.models[positionClassName];
+        const range = this.db.models[Range.clsname];
+        // ensure the subtype is appropriate for this coordinate system
+        this.constructor.subtypeValidation(pClass.constructor.prefix, args.subtype);
+        // validate the start/end positions
+        if (args.start.start !== undefined) {  // start is a range
+            args.start = range.validateContent(args.start);
+        } else {
+            args.start = pClass.validateContent(args.start);
+        }
+        if (args.end != undefined) {
+            if ([EVENT_SUBTYPE.SUB, EVENT_SUBTYPE.FS, EVENT_SUBTYPE.EXT, EVENT_SUBTYPE.SPL].includes(args.subtype)) {
+                throw new AttributeError(`a range is inappropriate for the given subtype: ${args.subtype}`);
+            }
+            if (args.end.start !== undefined) {  // end is a range
+                args.end = range.validateContent(args.end);
+            } else {
+                args.end = pClass.validateContent(args.end);
+            }
+            // compare the positions to ensure that the start <= end position
+            try {
+                const comp = pClass.constructor.compare(args.start.start || args.start, args.end.end || args.end);
+                if (comp >= 0){
+                    throw new AttributeError('start position cannot be greater than end position');
+                }
+            } catch (e) {
+                if (! (e instanceof TypeError)) {
+                    throw e;
+                } else {
+                    console.log(e);
+                }
+            }
+        } else {
+            if (args.subtype == EVENT_SUBTYPE.INS) {
+                throw new AttributeError('insertions must be specified with a range');
+            }
+            delete args.end;
+        }
+        if (args.untemplated_seq != undefined) {
+            if (args.subtype === EVENT_SUBTYPE.SUB && args.untemplated_seq.length !== 1) {
+                throw new AttributeError('substitution untemplated_seq must be a single character');
+            }
+            if (args.subtype == EVENT_SUBTYPE.DEL) {
+                throw new AttributeError('deletions cannot have untemplated sequence');
+            }
+        }
+        if (args.reference_seq != undefined) {
+            if (args.subtype === EVENT_SUBTYPE.SUB && args.reference_seq.length !== 1) {
+                throw new AttributeError('substitution reference_seq must be a single character');
+            }
+            if (args.subtype == EVENT_SUBTYPE.INS) {
+                throw new AttributeError('insertions cannot have reference sequence');
+            }
+        }
+        if (args.terminating_aa != undefined && args.subtype !== EVENT_SUBTYPE.FS) {
+            throw new AttributeError('only frameshift mutations may have terminating_aa specified');
+        }
+
         return super.validateContent(args);
     }
 
     static createClass(db) {
         const props = [
-            {name: 'prefix', type: 'string', mandatory: true, notNull: true},
-            {name: 'start', type: 'link', mandatory: true, notNull: true, linkedClass: Position.clsname},
-            {name: 'end', type: 'link', mandatory: true, notNull: true, linkedClass: Position.clsname},
+            {name: 'start', type: 'embedded', mandatory: true, notNull: true, linkedClass: Position.clsname},
+            {name: 'end', type: 'embedded', mandatory: false, notNull: true, linkedClass: Position.clsname},
             {name: 'untemplated_seq', type: 'string', mandatory: false, notNull: true},
             {name: 'reference_seq', type: 'string', mandatory: false, notNull: true},
             {name: 'subtype', type: 'string', mandatory: true, notNull: true},
-            {name: 'terminating_aa', type: 'int', mandatory: false}
+            {name: 'terminating_aa', type: 'integer', mandatory: false}
         ];
         return new Promise((resolve, reject) => {
-            super.createClass({db, clsname: this.clsname, superClasses: Event.clsname, isAbstract: false, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: Event.clsname, isAbstract: false, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -197,19 +254,36 @@ class PositionalEvent extends Base {
         });
     }
 
-    createRecord(where={}) {
+    createRecord(where={}, positionClassName) {
         return new Promise((resolve, reject) => {
-            const args = this.validateContent(where);
-
+            const args = this.validateContent(where, positionClassName);
+            let pfeature = args.primary_feature.content || args.primary_feature; 
+            let sfeature = null;
+            let pfid = pfeature['@rid'] == null ? null : pfeature['@rid'].toString();
+            let sfid = null;
+            
+            if (args.secondary_feature != null) {
+                sfeature = args.secondary_feature.content || args.secondary_feature;
+                if (sfeature['@rid'] != null) {
+                    sfid = sfeature['@rid'].toString();
+                }
+            }
+            // if selecting the positions fail then create them
             Promise.all([
-                args.start['@rid'] ? Promise.resolve(args.start) : this.selectExactlyOne(args.start),
-                args.end['@rid'] ? Promise.resolve(args.end) : this.selectExactlyOne(args.end),
-                args.primary_feature['@rid'] ? Promise.resolve(args.primary_feature) : this.selectExactlyOne(args.primary_feature),
-                args.secondary_feature == undefined || args.secondary_feature['@rid'] ? Promise.resolve(args.secondary_feature) : this.selectExactlyOne(args.secondary_feature)
+                pfid == null ? this.selectExactlyOne(pfeature) : Promise.resolve({content: pfeature}),
+                sfid == null && sfeature != null ? this.selectExactlyOne(sfeature) : Promise.resolve({content: sfeature})
             ]).then((pList) => {
-                [args.start, args.end, args.primary_feature, args.secondary_feature] = pList;
+                [pfeature, sfeature] = [pList[0].content, pList[1].content];
+                args.primary_feature = pfeature['@rid'].toString();
+                if (sfeature == null) {
+                    delete args.secondary_feature;
+                } else {
+                    args.secondary_feature = sfeature['@rid'].toString();
+                }
                 return this.conn.create(args);
             }).then((rec) => {
+                rec.primary_feature = pfeature;
+                rec.secondary_feature = sfeature;
                 resolve(new Record(rec, this));
             }).catch((error) => {
                 reject(error);
