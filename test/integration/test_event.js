@@ -3,7 +3,7 @@ const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
 const {KBVertex, KBEdge, Base, Record, History} = require('./../../app/repo/base');
-const {CategoryEvent, PositionalEvent, Event, EVENT_TYPE, EVENT_SUBTYPE} = require('./../../app/repo/event');
+const {CategoryEvent, PositionalEvent, Event, EVENT_TYPE, EVENT_SUBTYPE, ZYGOSITY} = require('./../../app/repo/event');
 const {Feature, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
 const {Position, CodingSequencePosition, GenomicPosition, ProteinPosition} = require('./../../app/repo/position');
 const {Context} = require('./../../app/repo/context');
@@ -95,6 +95,22 @@ describe('Event schema tests:', () => {
                     expect(cls.isAbstract).to.be.false;
                     expect(cls.propertyNames).to.include('uuid', 'created_at', 'deleted_at', 'version', 'start', 'end', 'type', 'subtype');
                 });
+        });
+        describe('Event.validateContent', () => {
+            it('errors when germline is true and zygosity=subclonal', () => {
+                expect(() => {
+                    Event.validateContent(
+                        {type: EVENT_TYPE.MUT, germline: true, zygosity: ZYGOSITY.SUB, primary_feature: primary_feature}
+                    );
+                }).to.throw(AttributeError);
+            });
+            it('allows subclonal when the event is not germline', () => {
+                const args = Event.validateContent(
+                    {type: EVENT_TYPE.MUT, germline: false, zygosity: ZYGOSITY.SUB, primary_feature: primary_feature}
+                );
+                expect(args.germline).to.be.false;
+                expect(args).to.not.have.property('uuid');
+            });
         });
     });
 
