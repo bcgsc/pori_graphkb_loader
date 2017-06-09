@@ -527,7 +527,7 @@ class KBEdge extends Base {
         const src = args.out.args || args.out;
         src['@class'] = src['@class'] || KBVertex.clsname;
         tgt['@class'] = tgt['@class'] || KBVertex.clsname;
-        return super.validateargs(args);
+        return super.validateContent(args);
     }
     
     /**
