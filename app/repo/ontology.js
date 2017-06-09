@@ -122,7 +122,7 @@ class OntologySubClassOf extends KBEdge {
 
     validateContent(content, ontology) {
         const args = super.validateContent(content);
-        if (args.in.doid == args.out.doid || args.in.id == args.out.id) {
+        if (args.in.content.doid == args.out.content.doid || args.in.content.id == args.out.content.id) {
             throw new AttributeError('These two nodes are aliases of each other. No other relationship can be defined.');
         }
         args.in.content['@class'] = args.in.content['@class'] != undefined ? args.in.content['@class'] : Ontology.clsname;
@@ -149,7 +149,7 @@ class OntologyRelatedTo extends KBEdge {
 
     validateContent(content, ontology) {
         const args = super.validateContent(content);
-        if (args.in.doid == args.out.doid || args.in.id == args.out.id) {
+        if (args.in.content.doid == args.out.content.doid || args.in.content.id == args.out.content.id) {
             throw new AttributeError('These two nodes are aliases of each other. No other relationship can be defined.');
         }
         args.in.content['@class'] = args.in.content['@class'] != undefined ? args.in.content['@class'] : Ontology.clsname;
@@ -176,7 +176,7 @@ class OntologyAliasOf extends KBEdge {
 
     validateContent(content, ontology) {
         const args = super.validateContent(content);
-        if (args.in.content.doid !== args.out.doid || args.in.content.id !== args.out.id) {
+        if (args.in.content.doid !== args.out.content.doid || args.in.content.id !== args.out.content.id) {
             throw new AttributeError('cannot connect diseases with different DOID');
         } 
         args.in.content['@class'] = args.in.content['@class'] != undefined ? args.in.content['@class'] : Ontology.clsname;
