@@ -1,15 +1,38 @@
 'use strict';
 const {expect} = require('chai');
 const conf = require('./../config/db');
+const {Context} = require('./../../app/repo/context');
 const {connectServer, createDB} = require('./../../app/repo/connect');
 const {Base, History, KBVertex, Record, KBEdge, KBUser, KBRole} = require('./../../app/repo/base');
+const {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDepricatedBy} = require('./../../app/repo/ontology');
+
 const oError = require('./orientdb_errors');
+
+const adminRules = {
+    dummyClass: ['c', 'r', 'u', 'd'],
+    base: ['c', 'r', 'u', 'd']
+    }
 
 // a non-abstract class for testing purposes
 class MockVertexClass extends KBVertex { 
     static createClass(db) {
         return new Promise((resolve, reject) => {
             Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+class MockEdgeClass extends KBEdge { 
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -37,27 +60,31 @@ describe('base module', () => {
             });
     });
     it('KBVertex.createClass', () => {
-        return KBVertex.createClass(db)
-            .then((cls) => {
-                expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version']);
-                expect(cls.constructor.clsname).to.equal('kbvertex');
-                expect(cls.constructor.createType).to.equal('vertex');
+        return KBRole.createClass(db)
+            .then((roleCls) => {
+                return KBUser.createClass(db)
+                    .then((userCls) => {
+                        return KBVertex.createClass(db)
+                            .then((cls) => {
+                                expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version','user']);
+                                expect(cls.constructor.clsname).to.equal('kbvertex');
+                                expect(cls.constructor.createType).to.equal('vertex');
+                            });
+                    });
             });
     });
     it('KBEdge.createClass', () => {
-        return KBEdge.createClass(db)
-            .then((cls) => {
-                expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version']);
-                expect(cls.constructor.clsname).to.equal('kbedge');
-                expect(cls.constructor.createType).to.equal('edge');
-            });
-    });
-
-    it('KBUser.createClass', () => {
-        return KBUser.createClass(db)
-            .then((cls) => {
-                expect(cls.propertyNames).to.have.members(['status' ,'role' ,'username']);
-                expect(cls.constructor.clsname).to.equal('kbuser');
+        return KBRole.createClass(db)
+            .then((roleCls) => {
+                return KBUser.createClass(db)
+                    .then((userCls) => {
+                        return KBEdge.createClass(db)
+                            .then((cls) => {
+                                expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version','user']);
+                                expect(cls.constructor.clsname).to.equal('kbedge');
+                                expect(cls.constructor.createType).to.equal('edge');
+                            });
+                    });
             });
     });
     it('KBRole.createClass', () => {
@@ -67,54 +94,89 @@ describe('base module', () => {
                 expect(cls.constructor.clsname).to.equal('kbrole');
             });
     });
-    it('History.createClass', () => {
-        return KBUser.createClass(db)
-            .then(() => {
-                return History.createClass(db)
-                    .then((cls) => {
-                        expect(cls.propertyNames).to.have.members(['comment','user']);
-                        expect(cls.constructor.clsname).to.equal('history');
-                        expect(cls.constructor.createType).to.equal('edge');
+
+    it('KBUser.createClass', () => {
+        return KBRole.createClass(db)
+            .then((roleCls) => {
+                return KBUser.createClass(db)
+                    .then((userCls) => {
+                        expect(userCls.propertyNames).to.have.members(['status' ,'role' ,'username']);
+                        expect(userCls.constructor.clsname).to.equal('kbuser');
                     });
-                });
-    });    
-    describe('MockVertexClass', () => {
+            });
+    });
+
+    it('History.createClass', () => {
+        return History.createClass(db)
+            .then((cls) => {
+                expect(cls.propertyNames).to.have.members(['comment']);
+                expect(cls.constructor.clsname).to.equal('history');
+                expect(cls.constructor.createType).to.equal('edge');
+            });
+        });
+    describe('Vertex & Edge Classes', () => {
     let mockRecord, kbvertexClass, kbedgeClass, kbuserClass, kbroleClass;
     beforeEach((done) => {
         Promise.all([
-            KBVertex.createClass(db),
-            KBEdge.createClass(db),
             KBRole.createClass(db),
             KBUser.createClass(db)
         ]).then((clsList) => {
-            kbuserClass = clsList[3];
-            kbroleClass = clsList[2];
-                return History.createClass(db)
-                    .then(() => {
-                        return MockVertexClass.createClass(db)
-                            .then(() => {
-                                return db.models.MockVertexClass.createRecord();                
-                                    }).then((record) => {
-                                        mockRecord = record;
-                                        done();
-                                    }).catch((error) => {
-                                        done(error);
-                                    });
-                            });           
-            });
-    });
-        it('KBUser.createRecord', () => {
-            return kbroleClass.createRecord({name: 'admin', mode: 0, rules: [{disease: ['read']}, {ontology: ['write']}]})
+            [kbroleClass, kbuserClass] = clsList;
+            return kbroleClass.createRecord({name: 'admin', mode: 0, rules: adminRules})
                 .then(() => {
-                    return kbuserClass.createRecord({username: 'azadeh', role: 'admin'})
+                    return kbuserClass.createRecord({username: 'admin', role: 'admin'})
                         .then((userRecord) => {
-                            expect(userRecord.content).to.have.property('role');
-                            console.log(userRecord.content.role);
-                        }).catch((error) => {
-                            console.log('error:', error);
+                            Promise.all([
+                                KBVertex.createClass(db),
+                                KBEdge.createClass(db),
+                                History.createClass(db)
+                                ]).then(() => {
+                                    done();
+                                }).catch((error) => {
+                                        done(error);
+                                });
+                                           
+                            });
                         });
-                })
+                });
+    });
+        it('KBVertex.createRecord', () => {
+            return MockVertexClass.createClass(db)
+                .then((mockClass) => {
+                    return mockClass.createRecord({user: 'admin'});                
+                        }).then((mockRecord) => {
+                            expect(mockRecord.content.user.username).to.equal('admin');
+                        }).catch((error) => {
+                            console.log(error);
+                        });
         });
+
+        it('KBEdge.createRecord', () => {
+            let contextClass, ontologyClass, ontologyAliasOfClass, diseaseClass;
+            const entry_disease = {user: 'admin', name: 'name1', doid: 123};
+            const secondEntry_disease = {user: 'admin', name: 'name2', doid: 123};
+            return Promise.all([
+                    Context.createClass(db),
+                    Ontology.createClass(db),
+                    OntologyAliasOf.createClass(db),
+                    Disease.createClass(db),
+                ]).then((clsList) => {
+                    [contextClass, ontologyClass, ontologyAliasOfClass, diseaseClass] = clsList;
+                }).then(() => {
+                    return Promise.all([
+                        diseaseClass.createRecord(entry_disease),
+                        diseaseClass.createRecord(secondEntry_disease)
+                    ]).then((recList) => {
+                        return ontologyAliasOfClass.createRecord({user: 'admin', in: recList[0], out: recList[1]});
+                    }).then((edge) => {
+                        console.log(edge)
+                        //expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+                    }, (error) => {
+                        console.log(error);
+                    });
+                });
+        });
+
         // it('KBVertex.updateRecord (including user in History edge)', () => {
         //     return kbuserClass.createRecord({username: conf.dbUsername, role: 'admin'})
         //         .then((userRecord) => {
@@ -133,6 +195,7 @@ describe('base module', () => {
         // });
     });
 
+
     afterEach((done) => {
         /* disconnect from the database */
         server.drop({name: conf.emptyDbName})
@@ -147,4 +210,4 @@ describe('base module', () => {
                 done(error);
             });
     });
-});
+})
