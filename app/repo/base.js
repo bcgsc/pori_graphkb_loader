@@ -1,5 +1,5 @@
 'use strict';
-const {AttributeError, ControlledVocabularyError, MultipleResultsFoundError, NoResultFoundError} = require('./error');
+const {AttributeError, ControlledVocabularyError, MultipleResultsFoundError, NoResultFoundError, PermissionError, AuthenticationError} = require('./error');
 const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
 const moment = require('moment');
@@ -39,7 +39,6 @@ const getAllProperties = (cls) => {
     });
 };
 
-
 const softGetRID = (record) => {
     if (record['@rid'] !== undefined) {
         return `#${record['@rid'].cluster}:${record['@rid'].position}`;
@@ -47,6 +46,13 @@ const softGetRID = (record) => {
         return record;
     }
 };
+
+const dec2bin = (dec) => {
+    // convert decimal to binary
+    let bin = (dec >>> 0).toString(2);
+    // pad the generated binary result with zeros  
+    return bin.length >= 4 ? bin : new Array(4 - bin.length + 1).join(0) + bin;
+}
 
 class Record {
 
@@ -98,6 +104,36 @@ class Base {
             return false;
         }
     }
+
+    /**
+     * @returns {boolean} if the provided user is permitted to execute the provided db function
+     **/
+    isPermitted(userRecord, dbFunction) {
+        return new Promise((resolve, reject) => {
+            const CRUD = ['delete', 'update', 'read', 'create'];
+            let permissible = false;
+            if (userRecord.content.status === 'ACTIVE') {
+                this.db.conn.record.get(userRecord.content.role.toString())
+                    .then((roleRecord) => {
+                        if (_.has(roleRecord.rules, this.conn.superClass.toString())) {
+                            if (dec2bin(roleRecord.rules[this.conn.superClass.toString()])[_.indexOf(CRUD, dbFunction)] == 1) {
+                                permissible = true;
+                                resolve(permissible)
+                            } else {
+                                resolve(permissible)
+                            }
+                        } else {
+                            resolve(permissible)
+                        }
+                    }).catch((error) => {
+                        throw new NoResultFoundError;
+                });
+            } else {
+                 throw new AuthenticationError(`requested function cannot be executed as the user: ${userRecord.content.username} is suspended`);
+            }
+        }); 
+    }
+    
 
     getAllowedTermsList(propertyName) {
         const terms = [];
@@ -366,7 +402,8 @@ class KBVertex extends Base {
                 {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
                 {name: 'version', type: 'integer', mandatory: true, notNull: true},
                 {name: 'created_at', type: 'long', mandatory: true, notNull: true},
-                {name: 'deleted_at', type: 'long', mandatory: true, notNull: false}
+                {name: 'deleted_at', type: 'long', mandatory: true, notNull: false},
+                {name: 'user', type: 'link', mandatory: true, notNull: true,  linkedClass: KBUser.clsname}
             ];
             const idxs = [
                 {
@@ -395,6 +432,35 @@ class KBVertex extends Base {
         });
     }
 
+    createRecord(opt={}) {
+        return new Promise((resolve, reject) => {
+            const args = this.validateContent(opt);
+            this.db.models.KBUser.selectExactlyOne({username: args.user}).then((userRecord) => {
+                args.user = userRecord.content['@rid'];
+                this.isPermitted(userRecord, 'create').then((permission) => {
+                    if (permission) {
+                        this.conn.create(args).then((record) => {
+                            this.db.conn.record.get(args.user).then((userRecord) => {
+                                record.user = userRecord;
+                                resolve(new Record(record, this));
+                            }).catch((error) => {
+                                reject(error);
+                            });
+                        }).catch((error) => {
+                            reject(error);
+                        });
+                    } else {
+                        reject(new PermissionError("CREATE FUNCTION IS NOT PERMITTED"));    
+                    }
+                }).catch((error) => {
+                    reject(error);
+                });
+            }).catch((error) => {
+                reject(new AuthenticationError(`the provided username (i.e. ${args.user}) does not exist`));
+            });
+        });
+    }
+
     /**
      * update an existing record. This will be based on the uuid or the record and
      * will create a copy of the current record, a history edge, and then will edit the
@@ -410,63 +476,66 @@ class KBVertex extends Base {
                 throw new AttributeError('uuid is a required parameter');
             }    
 
-            // TMP-FIX
-            // Promise.all([
-            //     this.selectExactlyOne({uuid: where.uuid}),
-            //     this.db.models.KBUser.selectExactlyOne({username: this.db.conn.username})
-            // ]).then((recList)=> {
-            //     let [record, userRecord] = recList;
             this.selectExactlyOne({uuid: where.uuid})
                 .then((record) => {
+
                 const required_matches = ['uuid', 'deleted_at','version', 'created_at'];
-                    for (let m of required_matches) {
-                        if (where[m] !== undefined && where[m] !== record.content[m]) {
-                            throw new Error(`Concurrency error. Updating an out-of-date record. Property ${m}: ${where[m]} and ${record.content[m]}`);
-                        }
-                    }                          
-                    const duplicate = {};
-                    const timestamp = moment().valueOf();
-                    const updates = {
-                        version: record.content.version + 1,
-                        created_at: timestamp
-                    };
-                    // create a copy of the current record
-                    for (let key of Object.keys(record.content)) {
-                        if (! key.startsWith('@')) {
-                            duplicate[key] = record.content[key];
-                        }
+                for (let m of required_matches) {
+                    if (where[m] !== undefined && where[m] !== record.content[m]) {
+                        throw new Error(`Concurrency error. Updating an out-of-date record. Property ${m}: ${where[m]} and ${record.content[m]}`);
                     }
-                    for (let key of Object.keys(where)) {
-                        if (! key.startsWith('@') && key !== 'version') {
-                            updates[key] = where[key];
+                }
+                this.db.models.KBUser.selectExactlyOne({username: where.user.username}).then((userRecord) => {
+                    this.isPermitted(userRecord, 'update').then((permission) => {
+                        if (permission) {                          
+                            const duplicate = {};
+                            const timestamp = moment().valueOf();
+                            const updates = {
+                                version: record.content.version + 1,
+                                created_at: timestamp
+                            };
+                            // create a copy of the current record
+                            for (let key of Object.keys(record.content)) {
+                                if (! key.startsWith('@')) {
+                                    duplicate[key] = record.content[key];
+                                }
+                            }
+                            for (let key of Object.keys(where)) {
+                                if (! key.startsWith('@') && key !== 'version') {
+                                    updates[key] = where[key];
+                                }
+                            }
+                            duplicate['deleted_at'] = timestamp; // set the deletion time
+                            // start the transaction
+                            var commit = this.db.conn
+                                .let('updatedRID', (tx) => {
+                                    // update the existing node
+                                    return tx.update(`${record.content['@rid'].toString()}`).set(updates).return('AFTER @rid');
+                                }).let('duplicate', (tx) => {
+                                    //duplicate the old node
+                                    return tx.create(this.constructor.createType, this.constructor.clsname)
+                                        .set(duplicate);
+                                }).let('historyEdge', (tx) => {
+                                    //connect the nodes
+                                    return tx.create(History.createType, History.clsname)
+                                        .from('$updatedRID')
+                                        .to('$duplicate')
+                                }).commit();
+                            commit.return('$updatedRID').one() 
+                                .then((rid) => {
+                                    return this.db.conn.record.get(rid);
+                                }).then((record) => {
+                                    resolve(new Record(record, this));
+                                }).catch((error) => {
+                                    reject(error);
+                                });
+                        } else {
+                            reject(new PermissionError("UPDATE FUNCTION IS NOT PERMITTED"));
                         }
-                    }
-                    duplicate['deleted_at'] = timestamp; // set the deletion time
-                    // start the transaction
-                    var commit = this.db.conn
-                        .let('updatedRID', (tx) => {
-                            // update the existing node
-                            return tx.update(`${record.content['@rid'].toString()}`).set(updates).return('AFTER @rid');
-                        }).let('duplicate', (tx) => {
-                            //duplicate the old node
-                            return tx.create(this.constructor.createType, this.constructor.clsname)
-                                .set(duplicate);
-                        }).let('historyEdge', (tx) => {
-                            //connect the nodes
-                            return tx.create(History.createType, History.clsname)
-                                .from('$updatedRID')
-                                .to('$duplicate')
-                                // TMP-FIX
-                                //.set({user: userRecord.content['@rid'].toString()});
-                        }).commit();
-                    commit.return('$updatedRID').one() 
-                        .then((rid) => {
-                            return this.db.conn.record.get(rid);
-                        }).then((record) => {
-                            resolve(new Record(record, this));
-                        }).catch((error) => {
-                            reject(error);
-                        });
+                    }).catch((error) => {
+                        reject(error);
+                    });
+                });
             }).catch((error) => {
                 reject(error);
             });          
@@ -487,7 +556,8 @@ class KBEdge extends Base {
                 {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
                 {name: 'version', type: 'integer', mandatory: true, notNull: true},
                 {name: 'created_at', type: 'long', mandatory: true, notNull: true},
-                {name: 'deleted_at', type: 'long', mandatory: true, notNull: false}
+                {name: 'deleted_at', type: 'long', mandatory: true, notNull: false},
+                {name: 'user', type: 'link', mandatory: true, notNull: true,  linkedClass: KBUser.clsname}
             ];
             const idxs = [
                 {
@@ -544,7 +614,6 @@ class KBEdge extends Base {
                 this.selectExactlyOne(tgtIn)
             ]).then((recList) => {
                 let [src, tgt] = recList;
-                
                 for (let key of Object.keys(src.content)) {
                     if (srcIn[key] === undefined || key === '@class') {
                         continue;
@@ -555,6 +624,14 @@ class KBEdge extends Base {
                             }
                         } else if (srcIn[key] === src.content[key]) {
                             continue;
+                        } else if (key === 'user') {
+                            if (src.content.user.toString() === srcIn.user['@rid'].toString()) {
+                                continue;
+                            }
+                        } else if (key === 'role') {
+                            if (src.content.role.toString() === srcIn.role['@rid'].toString()) {
+                                continue;
+                            }
                         }
                     }
                     throw new Error(`Record pulled from DB differs from input on attr ${key}: ${src[key]} vs ${srcIn[key]}`);
@@ -569,6 +646,14 @@ class KBEdge extends Base {
                             }
                         } else if (tgtIn[key] === tgt.content[key]) {
                             continue;
+                        } else if (key === 'user') {
+                            if (tgtIn.user['@rid'].toString() === tgt.content.user.toString()) {
+                                continue;
+                            }
+                        } else if (key === 'role') {
+                            if (tgt.content.role.toString() === tgtIn.role['@rid'].toString()) {
+                                continue;
+                            }
                         }
                     }
                     throw new Error(`Record pulled from DB differs from input on attr ${key}: ${tgt[key]} vs ${tgtIn[key]}`);
@@ -576,15 +661,32 @@ class KBEdge extends Base {
                 delete args.in;
                 delete args.out;
                 // now create the edge
-                this.db.conn.create(this.constructor.createType, this.constructor.clsname)
-                    .from(src.content['@rid'].toString()).to(tgt.content['@rid'].toString()).set(args).one()
-                    .then((result) => {
-                        return this.selectExactlyOne(result);
-                    }).then((result) => {
-                        resolve(result);
+                this.db.models.KBUser.selectExactlyOne({username: args.user})
+                .then((userRecord) => {
+                    args.user = userRecord.content['@rid'];
+                    this.isPermitted(userRecord, 'create').then((permission) => {
+                        if (permission) {
+                            this.db.conn.create(this.constructor.createType, this.constructor.clsname)
+                                .from(src.content['@rid'].toString()).to(tgt.content['@rid'].toString()).set(args).one()
+                                .then((record) => {
+                                    this.db.conn.record.get(args.user).then((userRecord) => {
+                                        record.user = userRecord;
+                                        resolve(new Record(record, this));
+                                    }).catch((error) => {
+                                        reject(error);
+                                    });
+                            }).catch((error) => {
+                                reject(error);
+                            });
+                        } else {
+                            reject(new PermissionError("CREATE FUNCTION IS NOT PERMITTED"));    
+                        }
                     }).catch((error) => {
                         reject(error);
                     });
+                }).catch((error) => {
+                    reject(new AuthenticationError(`the provided username (i.e. ${args.user}) does not exist`));
+                });
             }).catch((error) => {
                 reject(error);
             });
@@ -592,6 +694,10 @@ class KBEdge extends Base {
     }
 }
 
+/**
+ * @class
+ * @extends Base
+ */
 class KBUser extends Base {
 
     validateContent(content) {
@@ -606,10 +712,8 @@ class KBUser extends Base {
 
             const props = [
                 {name: 'username', type: 'string', mandatory: true, notNull: false},
-                //{name: 'username', type: 'link', mandatory: true, notNull: true,  linkedClass: 'OUser'}
                 {name: 'status', type: 'string', mandatory: true, notNull: false},
-                {name: 'role', type: 'link', mandatory: true, notNull: true,  linkedClass: 'ORole'} //readOnly: true,
-                // More properties can be added to store metadata in the future 
+                {name: 'role', type: 'link', mandatory: true, notNull: true,  linkedClass: KBRole.clsname} //readOnly: true,
             ];
 
             const idxs = [{
@@ -634,25 +738,19 @@ class KBUser extends Base {
     createRecord(opt) {            
         return new Promise((resolve, reject) => {
             const args = this.validateContent(opt);
-            this.db.conn.select().from(KBRole.clsname).where({name: args.role}).all()
-                .then((roleClassRecList) => {
-                    if (roleClassRecList.length == 0) {
-                        reject(new NoResultFoundError());
-                    } else if ((roleClassRecList.length > 1)) {
-                        reject(new MultipleResultsFoundError());
-                    } else {
-                        args.role = roleClassRecList[0]['@rid'];
-                        return this.conn.create(args).then((userRecord) => {
-                            this.db.conn.record.get(args.role).then((roleRecord) => {
-                                userRecord.role = roleRecord;
-                                resolve(new Record(userRecord, this));
-                            }).catch((error) => {
-                                reject(error);
-                            });
+            this.db.models.KBRole.selectExactlyOne({name: args.role})
+                .then((record) => {
+                    args.role = record.content['@rid'];
+                    return this.conn.create(args).then((userRecord) => {
+                        this.db.conn.record.get(args.role).then((roleRecord) => {
+                            userRecord.role = roleRecord;
+                            resolve(new Record(userRecord, this));
                         }).catch((error) => {
                             reject(error);
                         });
-                    }
+                    }).catch((error) => {
+                        reject(error);
+                    });
                 })
         });
     }
@@ -660,7 +758,7 @@ class KBUser extends Base {
 
 /**
  * @class
- * @extends KBVertex
+ * @extends Base
  */
 class KBRole extends Base {
 
@@ -674,7 +772,7 @@ class KBRole extends Base {
 
             const props = [
                 {name: 'name', type: 'string', mandatory: true, notNull: false},
-                {name: 'rules', type: 'embeddedset', mandatory: true, notNull: false},
+                {name: 'rules', type: 'embedded', mandatory: true, notNull: false},
                 {name: 'mode', type: 'integer', mandatory: true, notNull: false}
             ];
 
@@ -708,8 +806,6 @@ class History extends Base {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true},
-                // TMP-FIX
-                //{name: 'user', type: 'link', mandatory: false, notNull: false, readOnly: true, linkedClass: KBUser.clsname}
             ];
 
             Base.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: false, properties: props})
