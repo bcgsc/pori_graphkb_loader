@@ -1,6 +1,7 @@
 'use strict';
 const {expect} = require('chai');
 const conf = require('./../config/db');
+const {admin, analyst, bioinfo} = require('./../../config/roles');
 const {Context} = require('./../../app/repo/context');
 const {connectServer, createDB} = require('./../../app/repo/connect');
 const {AttributeError, PermissionError, AuthenticationError} = require('./../../app/repo/error');
@@ -8,39 +9,6 @@ const {Base, History, KBVertex, Record, KBEdge, KBUser, KBRole} = require('./../
 const {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDepricatedBy} = require('./../../app/repo/ontology');
 
 const oError = require('./orientdb_errors');
-
-/*
-NONE:   #0000 - 0
-CREATE: #0001 - 1
-READ:   #0010 - 2
-UPDATE: #0100 - 4
-DELETE: #1000 - 8
-ALL:    #1111 - 15
-*/
-
-const adminRules = {
-    base: 15,
-    ontology: 15,
-    context: 15,
-    kbvertex: 15,
-    kbedge: 15
-    }
-
-const analystRules = {
-    base: 15,
-    ontology: 3,
-    context: 3,
-    kbvertex: 15,
-    kbedge: 15
-    } 
-
-const bioinfoRules = {
-    base: 2,
-    ontology: 2,
-    context: 2,
-    kbvertex: 2,
-    kbedge: 2
-    }
 
 // a non-abstract kbvertex class for testing purposes
 class MockVertexClass extends KBVertex { 
@@ -157,9 +125,9 @@ describe('base module', () => {
         ]).then((clsList) => {
             [kbroleClass, kbuserClass] = clsList;
             Promise.all([
-                kbroleClass.createRecord({name: 'admin', mode: 0, rules: adminRules}),
-                kbroleClass.createRecord({name: 'analyst', mode: 0, rules: analystRules}),
-                kbroleClass.createRecord({name: 'bioinfo', mode: 0, rules: bioinfoRules}),
+                kbroleClass.createRecord({name: 'admin', mode: 0, rules: admin}),
+                kbroleClass.createRecord({name: 'analyst', mode: 0, rules: analyst}),
+                kbroleClass.createRecord({name: 'bioinfo', mode: 0, rules: bioinfo}),
                 ]).then(() => {
                     Promise.all([
                         kbuserClass.createRecord({username: 'admin', role: 'admin'}),
