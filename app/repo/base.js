@@ -107,7 +107,7 @@ class Base {
         return new Promise((resolve, reject) => {
             const CRUD = ['delete', 'update', 'read', 'create'];
             let permissible = false;
-            if (userRecord.content.status === 'ACTIVE') {
+            if (userRecord.content.active) {
                 this.db.conn.record.get(userRecord.content.role.toString())
                     .then((roleRecord) => {
                         //check the specific class first
@@ -279,7 +279,6 @@ class Base {
         }
         return new Promise((resolve, reject) => {
             where.deleted_at = null;
-
             this.db.models.KBUser.selectExactlyOne({username: user}).then((userRecord) => {
                 this.isPermitted(userRecord, 'delete').then((permission) => {
                         if (permission) {
@@ -734,7 +733,7 @@ class KBUser extends Base {
 
     validateContent(content) {
         content.role = content.role || {name: 'BINF'};
-        content.status = content.status || 'ACTIVE'; 
+        content.active = content.active || true; 
         const args = super.validateContent(content);
         return args;
     }
@@ -744,7 +743,7 @@ class KBUser extends Base {
 
             const props = [
                 {name: 'username', type: 'string', mandatory: true, notNull: false},
-                {name: 'status', type: 'string', mandatory: true, notNull: false},
+                {name: 'active', type: 'boolean', mandatory: true, notNull: false},
                 {name: 'role', type: 'link', mandatory: true, notNull: true,  linkedClass: KBRole.clsname} //readOnly: true,
             ];
 
