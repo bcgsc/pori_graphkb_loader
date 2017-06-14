@@ -112,7 +112,7 @@ describe('base module', () => {
             .then((roleCls) => {
                 return KBUser.createClass(db)
                     .then((userCls) => {
-                        expect(userCls.propertyNames).to.have.members(['status' ,'role' ,'username']);
+                        expect(userCls.propertyNames).to.have.members(['active' ,'role' ,'username']);
                         expect(userCls.constructor.clsname).to.equal('kbuser');
                     });
             });
@@ -145,7 +145,7 @@ describe('base module', () => {
                         kbuserClass.createRecord({username: 'admin', role: 'admin'}),
                         kbuserClass.createRecord({username: 'Martin', role: 'analyst'}),
                         kbuserClass.createRecord({username: 'Wei', role: 'bioinfo'}),
-                        kbuserClass.createRecord({username: 'Simon', role: 'analyst', status: 'SUSPENDED'})
+                        kbuserClass.createRecord({username: 'Simon', role: 'analyst', active: false})
                         ]).then((userRecList) => {
                             [adminRec, analystRec, bioinfoRec] = userRecList;
                             Promise.all([
