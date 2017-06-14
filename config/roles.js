@@ -7,22 +7,22 @@ DELETE: #1000 - 8
 ALL:    #1111 - 15
 */
 const {PERMISSIONS} = require('./../app/repo/constants');
-const ALL = PERMISSIONS.READ | PERMISSIONS.CREATE | PERMISSIONS.UPDATE | PERMISSIONS.DELETE;
+
 
 const admin = {
-    base: ALL,
-    ontology: ALL,
-    context: ALL,
-    kbvertex: ALL,
-    kbedge: ALL
+    base: PERMISSIONS.ALL,
+    ontology: PERMISSIONS.ALL,
+    context: PERMISSIONS.ALL,
+    kbvertex: PERMISSIONS.ALL,
+    kbedge: PERMISSIONS.ALL
     }
 
 const analyst = {
-    base: ALL,
+    base: PERMISSIONS.ALL,
     ontology: PERMISSIONS.CREATE | PERMISSIONS.READ,
     context: PERMISSIONS.CREATE | PERMISSIONS.READ,
-    kbvertex: ALL,
-    kbedge: ALL
+    kbvertex: PERMISSIONS.ALL,
+    kbedge: PERMISSIONS.ALL
     } 
 
 const bioinfo = {

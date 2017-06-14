@@ -2,7 +2,8 @@
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
-const {Base, History, KBVertex, Record, KBEdge} = require('./../../app/repo/base');
+const {PERMISSIONS} = require('./../../app/repo/constants');
+const {Base, History, KBVertex, Record, KBEdge, KBUser, KBRole} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 
 
@@ -23,15 +24,28 @@ class MockVertexClass extends KBVertex { // simple non-abstract class for tests
 
 
 describe('base module', () => {
-    let db, server;
+    let db, server, user;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
             .then((s) => {
                 server = s;
-                return createDB({server: s, name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+                return createDB({
+                    server: s, 
+                    name: conf.emptyDbName, 
+                    username: conf.dbUsername, 
+                    password: conf.dbPassword,
+                    models: {KBRole}
+                });
             }).then((result) => {
                 db = result;
+                return KBUser.createClass(db);
+            }).then(() => {
+                return db.models.KBRole.createRecord({name: 'admin', rules: {'mock_vertex_class': PERMISSIONS.ALL}});
+            }).then((role) => {
+                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
+            }).then((result) => {
+                user = result;
                 done();
             }).catch((error) => {
                 console.log('error in connecting to the server or creating the database', error);
@@ -41,9 +55,10 @@ describe('base module', () => {
     it('KBVertex.createClass', () => {
         return KBVertex.createClass(db)
             .then((cls) => {
-                expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version']);
+                expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version', 'created_by', 'deleted_by']);
                 expect(cls.constructor.clsname).to.equal('kbvertex');
                 expect(cls.constructor.createType).to.equal('vertex');
+                expect(cls.superClasses).to.eql(['V']);
             });
     });
     it('History.createClass', () => {
@@ -57,9 +72,10 @@ describe('base module', () => {
     it('KBEdge.createClass', () => {
         return KBEdge.createClass(db)
             .then((cls) => {
-                expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version']);
+                expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version', 'created_by', 'deleted_by']);
                 expect(cls.constructor.clsname).to.equal('kbedge');
                 expect(cls.constructor.createType).to.equal('edge');
+                expect(cls.superClasses).to.eql(['E']);
             });
     });
 
@@ -72,7 +88,7 @@ describe('base module', () => {
             ]).then(() => {
                 return MockVertexClass.createClass(db);
             }).then(() => {
-                return db.models.MockVertexClass.createRecord();
+                return db.models.MockVertexClass.createRecord({}, user.content.username);
             }).then((record) => {
                 mockRecord = record;
                 done();
@@ -82,8 +98,7 @@ describe('base module', () => {
         });
         it('properties: retrieve inherited properties');
         it('superClasses: retrieve inherited classes', () => {
-            const supers = db.models.MockVertexClass.superClasses;
-            expect(supers).to.include('kbvertex', 'V');
+            expect(db.models.MockVertexClass.superClasses).to.eql(['kbvertex', 'V']);
         });
         it('isAbstract: status as db class', () => {
             expect(db.models.MockVertexClass.isAbstract).to.be.false;

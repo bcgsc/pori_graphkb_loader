@@ -66,7 +66,7 @@ describe('base module', () => {
                 .then((userCls) => {
                     return userCls.createRecord({username: 'admin', role: 'admin'})
                     .then(() => {
-                    return KBVertex.createClass(db, 'admin')
+                    return KBVertex.createClass(db)
                         .then((cls) => {
                             expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version','created_by', 'deleted_by']);
                             expect(cls.constructor.clsname).to.equal('kbvertex');
@@ -87,7 +87,7 @@ describe('base module', () => {
                 .then((userCls) => {
                     return userCls.createRecord({username: 'admin', role: 'admin'})
                     .then(() => {
-                    return KBEdge.createClass(db, 'admin')
+                    return KBEdge.createClass(db)
                         .then((cls) => {
                             expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version','created_by', 'deleted_by']);
                             expect(cls.constructor.clsname).to.equal('kbedge');
@@ -112,7 +112,7 @@ describe('base module', () => {
             .then((roleCls) => {
                 return KBUser.createClass(db)
                     .then((userCls) => {
-                        expect(userCls.propertyNames).to.have.members(['status' ,'role' ,'username']);
+                        expect(userCls.propertyNames).to.have.members(['active' ,'role' ,'username']);
                         expect(userCls.constructor.clsname).to.equal('kbuser');
                     });
             });
@@ -145,12 +145,12 @@ describe('base module', () => {
                         kbuserClass.createRecord({username: 'admin', role: 'admin'}),
                         kbuserClass.createRecord({username: 'Martin', role: 'analyst'}),
                         kbuserClass.createRecord({username: 'Wei', role: 'bioinfo'}),
-                        kbuserClass.createRecord({username: 'Simon', role: 'analyst', status: 'SUSPENDED'})
+                        kbuserClass.createRecord({username: 'Simon', role: 'analyst', active: false})
                         ]).then((userRecList) => {
                             [adminRec, analystRec, bioinfoRec] = userRecList;
                             Promise.all([
-                                KBVertex.createClass(db, 'admin'),
-                                KBEdge.createClass(db, 'admin'),
+                                KBVertex.createClass(db),
+                                KBEdge.createClass(db),
                                 History.createClass(db)
                                 ]).then(() => {
                                     done();
