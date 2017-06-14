@@ -66,7 +66,7 @@ describe('base module', () => {
                 .then((userCls) => {
                     return userCls.createRecord({username: 'admin', role: 'admin'})
                     .then(() => {
-                    return KBVertex.createClass(db, 'admin')
+                    return KBVertex.createClass(db)
                         .then((cls) => {
                             expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version','created_by', 'deleted_by']);
                             expect(cls.constructor.clsname).to.equal('kbvertex');
@@ -87,7 +87,7 @@ describe('base module', () => {
                 .then((userCls) => {
                     return userCls.createRecord({username: 'admin', role: 'admin'})
                     .then(() => {
-                    return KBEdge.createClass(db, 'admin')
+                    return KBEdge.createClass(db)
                         .then((cls) => {
                             expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version','created_by', 'deleted_by']);
                             expect(cls.constructor.clsname).to.equal('kbedge');
@@ -149,8 +149,8 @@ describe('base module', () => {
                         ]).then((userRecList) => {
                             [adminRec, analystRec, bioinfoRec] = userRecList;
                             Promise.all([
-                                KBVertex.createClass(db, 'admin'),
-                                KBEdge.createClass(db, 'admin'),
+                                KBVertex.createClass(db),
+                                KBEdge.createClass(db),
                                 History.createClass(db)
                                 ]).then(() => {
                                     done();
