@@ -6,29 +6,31 @@ UPDATE: #0100 - 4
 DELETE: #1000 - 8
 ALL:    #1111 - 15
 */
+const {PERMISSIONS} = require('./../app/repo/constants');
+const ALL = PERMISSIONS.READ | PERMISSIONS.CREATE | PERMISSIONS.UPDATE | PERMISSIONS.DELETE;
 
 const admin = {
-    base: 15,
-    ontology: 15,
-    context: 15,
-    kbvertex: 15,
-    kbedge: 15
+    base: ALL,
+    ontology: ALL,
+    context: ALL,
+    kbvertex: ALL,
+    kbedge: ALL
     }
 
 const analyst = {
-    base: 15,
-    ontology: 3,
-    context: 3,
-    kbvertex: 15,
-    kbedge: 15
+    base: ALL,
+    ontology: PERMISSIONS.CREATE | PERMISSIONS.READ,
+    context: PERMISSIONS.CREATE | PERMISSIONS.READ,
+    kbvertex: ALL,
+    kbedge: ALL
     } 
 
 const bioinfo = {
-    base: 2,
-    ontology: 2,
-    context: 2,
-    kbvertex: 2,
-    kbedge: 2
+    base: PERMISSIONS.READ,
+    ontology: PERMISSIONS.READ,
+    context: PERMISSIONS.READ,
+    kbvertex: PERMISSIONS.READ,
+    kbedge: PERMISSIONS.READ
     }
 
 module.exports = {admin, analyst, bioinfo};

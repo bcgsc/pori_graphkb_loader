@@ -4,6 +4,7 @@ const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
 const moment = require('moment');
 const cache = require('./cached/data');
+const {PERMISSIONS} = require('./constants');
 const Promise = require('bluebird');
 
 const errorJSON = function(error) {
@@ -103,22 +104,19 @@ class Base {
     /**
      * @returns {boolean} if the provided user is permitted to execute the provided db function
      **/
-    isPermitted(userRecord, dbFunction) {
+    isPermitted(userRecord, operationPermissions) {
         return new Promise((resolve, reject) => {
-            const CRUD = ['delete', 'update', 'read', 'create'];
-            let permissible = false;
             if (userRecord.content.status === 'ACTIVE') {
                 this.db.conn.record.get(userRecord.content.role.toString())
                     .then((roleRecord) => {
                         if (_.has(roleRecord.rules, this.conn.superClass.toString())) {
-                            if (dec2bin(roleRecord.rules[this.conn.superClass.toString()])[_.indexOf(CRUD, dbFunction)] == 1) {
-                                permissible = true;
-                                resolve(permissible)
+                            if (roleRecord.rules[this.conn.superClass.toString()] & operationPermissions) {
+                                resolve(true);
                             } else {
-                                resolve(permissible)
+                                resolve(false);
                             }
                         } else {
-                            resolve(permissible)
+                            resolve(false);
                         }
                     }).catch((error) => {
                         throw new NoResultFoundError;
@@ -279,11 +277,13 @@ class Base {
             where.deleted_at = null;
 
             this.db.models.KBUser.selectExactlyOne({username: user}).then((userRecord) => {
-                this.isPermitted(userRecord, 'delete').then((permission) => {
+                this.isPermitted(userRecord, PERMISSIONS.DELETE)
+                    .then((permission) => {
                         if (permission) {
                             this.selectExactlyOne(where)
                                 .then((record) => {
                                     record.content.deleted_at = moment().valueOf();
+                                    record.content.deleted_by = userRecord.content['@rid'].toString();
                                     return this.db.conn.record.update(record.content);
                                 }).then((updatedRecord) => {
                                     resolve(new Record(updatedRecord, this));
@@ -291,7 +291,7 @@ class Base {
                                     reject(error);
                                 });
                         } else {
-                            reject(new PermissionError('DELET FUNCTION IS NOT PERMITTED'));
+                            reject(new PermissionError('DELETE FUNCTION IS NOT PERMITTED'));
                         }
                     }).catch((error) => {
                         reject(error);
@@ -459,7 +459,7 @@ class KBVertex extends Base {
             const args = this.validateContent(content);
             this.db.models.KBUser.selectExactlyOne({username: args.created_by}).then((userRecord) => {
                 args.created_by = userRecord.content['@rid'];
-                this.isPermitted(userRecord, 'create').then((permission) => {
+                this.isPermitted(userRecord, PERMISSIONS.CREATE).then((permission) => {
                     if (permission) {
                         this.conn.create(args).then((record) => {
                             this.db.conn.record.get(args.created_by).then((userRecord) => {
@@ -508,13 +508,16 @@ class KBVertex extends Base {
                     }
                 }
                 this.db.models.KBUser.selectExactlyOne({username: user}).then((userRecord) => {
-                    this.isPermitted(userRecord, 'update').then((permission) => {
+                    const userRID = userRecord.content['@rid'].toString();
+                    
+                    this.isPermitted(userRecord, PERMISSIONS.UPDATE).then((permission) => {
                         if (permission) {                          
                             const duplicate = {};
                             const timestamp = moment().valueOf();
                             const updates = {
                                 version: record.content.version + 1,
-                                created_at: timestamp
+                                created_at: timestamp,
+                                created_by: userRID
                             };
                             // create a copy of the current record
                             for (let key of Object.keys(record.content)) {
@@ -528,6 +531,7 @@ class KBVertex extends Base {
                                 }
                             }
                             duplicate['deleted_at'] = timestamp; // set the deletion time
+                            duplicate['deleted_by'] = userRID;
                             
                             // return new Promise((resolve, reject ) => {
                             //     let tmp_rid = userRecord.content['@rid'].toString();
