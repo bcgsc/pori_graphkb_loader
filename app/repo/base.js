@@ -7,6 +7,7 @@ const cache = require('./cached/data');
 const {PERMISSIONS} = require('./constants');
 const Promise = require('bluebird');
 
+
 const errorJSON = function(error) {
     return {type: error.type, message: error.message};
 };
@@ -384,10 +385,26 @@ class Base {
 }
 
 /**
- * creates the abstract super class "versioning" and adds it as the super class for V and E
- *
- * @param {orientjs.Db} db the database instance
- * @returns {Promise} returns a promise which returns nothing on resolve and an error on reject
+ * @swagger
+ * definitions:
+ *   KBVertex:
+ *     type: object
+ *     properties:
+ *       uuid:
+ *         $ref: '#/definitions/uuid'
+ *       created_by:
+ *         $ref: '#/definitions/KBUser'
+ *       deleted_by:
+ *         $ref: '#/definitions/KBUser'
+ *       created_at:
+ *         type: integer
+ *       deleted_at:
+ *         type: integer
+ *       version:
+ *         type: integer
+ *   uuid:
+ *     type: string
+ *     format: 'UUIDv4'
  */
 class KBVertex extends Base {
     
@@ -727,6 +744,18 @@ class KBEdge extends Base {
 /**
  * @class
  * @extends Base
+ *
+ * @swagger
+ * definitions:
+ *  KBUser:
+ *      type: object
+ *      properties:
+ *          active:
+ *              type: boolean
+ *          role:
+ *              type: object
+ *          username:
+ *              type: string
  */
 class KBUser extends Base {
 
