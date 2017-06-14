@@ -525,33 +525,28 @@ class KBVertex extends Base {
                             duplicate['deleted_at'] = timestamp; // set the deletion time
                             duplicate['deleted_by'] = userRID;
                             
-                            const currUserRID = userRecord.content['@rid'].toString();
-                            this.db.conn.record.get(currUserRID).then((currUserRecord) => {
-                                duplicate['deleted_by'] = currUserRecord;
-
-                                // start the transaction
-                                var commit = this.db.conn
-                                    .let('updatedRID', (tx) => {
-                                        // update the existing node
-                                        return tx.update(`${record.content['@rid'].toString()}`).set(updates).return('AFTER @rid');
-                                    }).let('duplicate', (tx) => {
-                                        //duplicate the old node
-                                        return tx.create(this.constructor.createType, this.constructor.clsname)
-                                            .set(duplicate);
-                                    }).let('historyEdge', (tx) => {
-                                        //connect the nodes
-                                        return tx.create(History.createType, History.clsname)
-                                            .from('$updatedRID')
-                                            .to('$duplicate')
-                                    }).commit();
-                                commit.return('$updatedRID').one() 
-                                    .then((rid) => {
-                                        return this.db.conn.record.get(rid);
-                                    }).then((record) => {
-                                        resolve(new Record(record, this));
-                                    }).catch((error) => {
-                                        reject(error);
-                                    });
+                            // start the transaction
+                            var commit = this.db.conn
+                                .let('updatedRID', (tx) => {
+                                    // update the existing node
+                                    return tx.update(`${record.content['@rid'].toString()}`).set(updates).return('AFTER @rid');
+                                }).let('duplicate', (tx) => {
+                                    //duplicate the old node
+                                    return tx.create(this.constructor.createType, this.constructor.clsname)
+                                        .set(duplicate);
+                                }).let('historyEdge', (tx) => {
+                                    //connect the nodes
+                                    return tx.create(History.createType, History.clsname)
+                                        .from('$updatedRID')
+                                        .to('$duplicate')
+                                }).commit();
+                            commit.return('$updatedRID').one() 
+                                .then((rid) => {
+                                    return this.db.conn.record.get(rid);
+                                }).then((record) => {
+                                    resolve(new Record(record, this));
+                                }).catch((error) => {
+                                    reject(error);
                                 });
                         } else {
                             reject(new PermissionError("UPDATE FUNCTION IS NOT PERMITTED"));

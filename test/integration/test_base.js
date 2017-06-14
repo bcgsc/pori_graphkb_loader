@@ -41,7 +41,7 @@ describe('base module', () => {
                 db = result;
                 return KBUser.createClass(db);
             }).then(() => {
-                return db.models.KBRole.createRecord({name: 'admin', rules: {'mock_vertex_class': PERMISSIONS.ALL}});
+                return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL}});
             }).then((role) => {
                 return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
             }).then((result) => {
@@ -121,7 +121,7 @@ describe('base module', () => {
         it('updateRecord', () => {
             const uuid = mockRecord.content.uuid;
             const version = mockRecord.content.version;
-            return db.models.MockVertexClass.updateRecord(mockRecord.content, null, true)
+            return db.models.MockVertexClass.updateRecord(mockRecord.content, user.content.username)
                 .then((record) => {
                     expect(record.content.uuid).to.equal(uuid);
                     expect(record.content.version).to.equal(version + 1);
@@ -130,7 +130,7 @@ describe('base module', () => {
         });
         describe('createRecord', () => {
             it('errors on duplicate uuid + version', () => {
-                return db.models.MockVertexClass.createRecord({uuid: mockRecord.content.uuid, version: mockRecord.content.version})
+                return db.models.MockVertexClass.createRecord({uuid: mockRecord.content.uuid, version: mockRecord.content.version}, user.content.username)
                     .then(() => {
                         expect.fail('violated constraint should have thrown error');
                     }, (error) => {
@@ -138,7 +138,7 @@ describe('base module', () => {
                     });
             });
             it('errors on duplicate uuid + deleted_at', () => {
-                return db.models.MockVertexClass.createRecord({uuid: mockRecord.content.uuid, version: mockRecord.content.version + 1})
+                return db.models.MockVertexClass.createRecord({uuid: mockRecord.content.uuid, version: mockRecord.content.version + 1}, user.content.username)
                     .then(() => {
                         expect.fail('violated constraint should have thrown error');
                     }, (error) => {
