@@ -109,10 +109,11 @@ class Base {
             if (userRecord.content.active) {
                 this.db.conn.record.get(userRecord.content.role.toString())
                     .then((roleRecord) => {
-                        //check the specific class first
-                        //if not in rules, check supers classes 
-                        if (_.has(roleRecord.rules, this.conn.superClass.toString())) {
-                            if (roleRecord.rules[this.conn.superClass.toString()] & operationPermissions) {
+                        let permittedClasses = _.intersection(_.keys(roleRecord.rules), [this.constructor.clsname]);
+                        permittedClasses.push(_.intersection(_.keys(roleRecord.rules), this.superClasses));
+                        permittedClasses = _.flatten(permittedClasses);
+                        if (permittedClasses.lenght !== 0) {
+                            if (roleRecord.rules[permittedClasses[0].toString()] & operationPermissions) {
                                 resolve(true);
                             } else {
                                 resolve(false);
@@ -128,7 +129,6 @@ class Base {
             }
         }); 
     }
-    
 
     getAllowedTermsList(propertyName) {
         const terms = [];
