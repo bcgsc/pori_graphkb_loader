@@ -13,6 +13,7 @@ const admin = {
     base: PERMISSIONS.ALL,
     ontology: PERMISSIONS.ALL,
     context: PERMISSIONS.ALL,
+    disease: PERMISSIONS.ALL,
     kbvertex: PERMISSIONS.ALL,
     kbedge: PERMISSIONS.ALL
     }
