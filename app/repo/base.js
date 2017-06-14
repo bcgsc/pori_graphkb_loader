@@ -116,16 +116,16 @@ class Base {
                             if (roleRecord.rules[permittedClasses[0].toString()] & operationPermissions) {
                                 resolve(true);
                             } else {
-                                resolve(false);
+                                reject(new PermissionError(`insufficient permission to ${operationPermissions} a record`));
                             }
                         } else {
-                            resolve(false);
+                            reject(new PermissionError(`insufficient permission to ${operationPermissions} a record`));
                         }
                     }).catch((error) => {
-                        throw new NoResultFoundError;
+                        reject(new NoResultFoundError);
                 });
             } else {
-                 throw new AuthenticationError(`requested function cannot be executed as the user: ${userRecord.content.username} is suspended`);
+                 reject(new AuthenticationError(`requested function cannot be executed as the user: ${userRecord.content.username} is suspended`));
             }
         }); 
     }
@@ -279,28 +279,22 @@ class Base {
             where.deleted_at = null;
             this.db.models.KBUser.selectExactlyOne({username: user}).then((userRecord) => {
                 this.isPermitted(userRecord, PERMISSIONS.DELETE)
-                    .then((permission) => {
-                        if (permission) {
-                            this.selectExactlyOne(where)
-                                .then((record) => {
-                                    record.content.deleted_at = moment().valueOf();
-                                    record.content.deleted_by = userRecord.content['@rid'].toString();
-                                    return this.db.conn.record.update(record.content);
-                                }).then((updatedRecord) => {
-                                    resolve(new Record(updatedRecord, this));
-                                }).catch((error) => {
-                                    reject(error);
-                                });
-                        } else {
-                            reject(new PermissionError('DELETE FUNCTION IS NOT PERMITTED'));
-                        }
-                    }).catch((error) => {
-                        reject(error);
-                    });
+                    .then(() => {
+                        this.selectExactlyOne(where)
+                            .then((record) => {
+                                record.content.deleted_at = moment().valueOf();
+                                record.content.deleted_by = userRecord.content['@rid'].toString();
+                                return this.db.conn.record.update(record.content);
+                            }).then((updatedRecord) => {
+                                resolve(new Record(updatedRecord, this));
+                            }).catch((error) => {
+                                reject(error);
+                            });
                 }).catch((error) => {
                         reject(error);
                 });           
-        });
+            });
+        });    
     }
 
     
@@ -450,8 +444,8 @@ class KBVertex extends Base {
             const args = this.validateContent(content);
             this.db.models.KBUser.selectExactlyOne({username: args.created_by}).then((userRecord) => {
                 args.created_by = userRecord.content['@rid'];
-                this.isPermitted(userRecord, PERMISSIONS.CREATE).then((permission) => {
-                    if (permission) {
+                this.isPermitted(userRecord, PERMISSIONS.CREATE)
+                    .then(() => {
                         this.conn.create(args).then((record) => {
                             this.db.conn.record.get(args.created_by).then((userRecord) => {
                                 record.created_by = userRecord;
@@ -462,9 +456,7 @@ class KBVertex extends Base {
                         }).catch((error) => {
                             reject(error);
                         });
-                    } else {
-                        reject(new PermissionError('CREATE FUNCTION IS NOT PERMITTED'));    
-                    }
+                    
                 }).catch((error) => {
                     reject(error);
                 });
@@ -501,8 +493,8 @@ class KBVertex extends Base {
                 this.db.models.KBUser.selectExactlyOne({username: user}).then((userRecord) => {
                     const userRID = userRecord.content['@rid'].toString();
                     
-                    this.isPermitted(userRecord, PERMISSIONS.UPDATE).then((permission) => {
-                        if (permission) {                          
+                    this.isPermitted(userRecord, PERMISSIONS.UPDATE)
+                        .then(() => {                          
                             const duplicate = {};
                             const timestamp = moment().valueOf();
                             let updates = {
@@ -548,9 +540,6 @@ class KBVertex extends Base {
                                 }).catch((error) => {
                                     reject(error);
                                 });
-                        } else {
-                            reject(new PermissionError("UPDATE FUNCTION IS NOT PERMITTED"));
-                        }
                     }).catch((error) => {
                         reject(error);
                     });
@@ -694,8 +683,8 @@ class KBEdge extends Base {
                 this.db.models.KBUser.selectExactlyOne({username: args.created_by})
                 .then((userRecord) => {
                     args.created_by = userRecord.content['@rid'];
-                    this.isPermitted(userRecord, 'create').then((permission) => {
-                        if (permission) {
+                    this.isPermitted(userRecord, 'create')
+                        .then(() => {
                             this.db.conn.create(this.constructor.createType, this.constructor.clsname)
                                 .from(src.content['@rid'].toString()).to(tgt.content['@rid'].toString()).set(args).one()
                                 .then((record) => {
@@ -708,9 +697,6 @@ class KBEdge extends Base {
                             }).catch((error) => {
                                 reject(error);
                             });
-                        } else {
-                            reject(new PermissionError("CREATE FUNCTION IS NOT PERMITTED"));    
-                        }
                     }).catch((error) => {
                         reject(error);
                     });
