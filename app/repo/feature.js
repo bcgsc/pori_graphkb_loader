@@ -22,6 +22,23 @@ const FEATURE_SOURCE = {
     GRC: 'genome reference consortium (human)'
 };
 
+/**
+ * @swagger
+ * definitions:
+ *  Feature:
+ *      type: object
+ *      properties:
+ *          name:
+ *              type: string
+ *          biotype:
+ *              type: string
+ *          source:
+ *              type: string
+ *          source_id:
+ *              type: string
+ *          source_version:
+ *              type: integer
+ */
 class Feature extends KBVertex {
 
     validateContent(content) {

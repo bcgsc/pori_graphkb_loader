@@ -35,11 +35,10 @@ describe('base module', () => {
                     name: conf.emptyDbName, 
                     username: conf.dbUsername, 
                     password: conf.dbPassword,
-                    models: {KBRole}
+                    heirarchy: [[KBRole], [KBUser]]
                 });
             }).then((result) => {
                 db = result;
-                return KBUser.createClass(db);
             }).then(() => {
                 return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL}});
             }).then((role) => {
@@ -82,12 +81,10 @@ describe('base module', () => {
     describe('MockVertexClass (instance)', () => {
         let mockRecord;
         beforeEach((done) => {
-            Promise.all([
-                KBVertex.createClass(db),
-                History.createClass(db)
+            db.buildHeirarchy([
+                [KBVertex, History],
+                [MockVertexClass]
             ]).then(() => {
-                return MockVertexClass.createClass(db);
-            }).then(() => {
                 return db.models.MockVertexClass.createRecord({}, user.content.username);
             }).then((record) => {
                 mockRecord = record;

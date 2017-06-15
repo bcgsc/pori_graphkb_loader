@@ -106,25 +106,25 @@ class Base {
      * @returns {boolean} if the provided user is permitted to execute the provided db function
      **/
     isPermitted(userRecord, operationPermissions) {
+        userRecord = userRecord.content || userRecord;
         return new Promise((resolve, reject) => {
-            if (userRecord.content.active) {
-                this.db.conn.record.get(userRecord.content.role.toString())
+            if (userRecord.active) {
+                this.db.conn.record.get(userRecord.role.toString())
                     .then((roleRecord) => {
-                        let permittedClasses = _.intersection(_.keys(roleRecord.rules), [this.constructor.clsname]);
-                        permittedClasses.push(_.intersection(_.keys(roleRecord.rules), this.superClasses));
-                        permittedClasses = _.flatten(permittedClasses);
-                        if (permittedClasses.lenght !== 0) {
-                            if (roleRecord.rules[permittedClasses[0].toString()] & operationPermissions) {
-                                resolve(true);
-                            } else {
-                                reject(new PermissionError(`insufficient permission to ${operationPermissions} a record`));
+                        let clsList = _.concat([this.constructor.clsname], this.superClasses);
+                        for (let cls of clsList) {
+                            if (roleRecord.rules[cls] !== undefined) {
+                                if (roleRecord.rules[cls] & operationPermissions) {
+                                    resolve(true);
+                                } else {
+                                    reject(new PermissionError(`insufficient permissions`));
+                                }
                             }
-                        } else {
-                            reject(new PermissionError(`insufficient permission to ${operationPermissions} a record`));
                         }
+                        reject(new PermissionError(`insufficient permission to ${operationPermissions} a record`));
                     }).catch((error) => {
                         reject(new NoResultFoundError);
-                });
+                    });
             } else {
                  reject(new AuthenticationError(`requested function cannot be executed as the user: ${userRecord.content.username} is suspended`));
             }
@@ -634,18 +634,19 @@ class KBEdge extends Base {
     /**
      *
      */
-    createRecord(data={}, user) {
+    createRecord(data={}, username) {
         return new Promise((resolve, reject) => {
-            const content = Object.assign({created_by: user}, data);
+            const content = Object.assign({created_by: username}, data);
             const args = this.validateContent(content);
             const tgtIn = data.in.content || data.in;
             const srcIn = data.out.content || data.out;
             // select both records from the db
             Promise.all([
                 this.selectExactlyOne(srcIn),
-                this.selectExactlyOne(tgtIn)
+                this.selectExactlyOne(tgtIn),
+                this.selectExactlyOne({'@class': KBUser.clsname, username: username})
             ]).then((recList) => {
-                let [src, tgt] = recList;
+                let [src, tgt, user] = recList;
                 for (let key of Object.keys(src.content)) {
                     if (srcIn[key] === undefined || key === '@class') {
                         continue;
@@ -697,29 +698,20 @@ class KBEdge extends Base {
                 delete args.in;
                 delete args.out;
                 // now create the edge
-                this.db.models.KBUser.selectExactlyOne({username: args.created_by})
-                .then((userRecord) => {
-                    args.created_by = userRecord.content['@rid'];
-                    this.isPermitted(userRecord, 'create')
-                        .then(() => {
-                            this.db.conn.create(this.constructor.createType, this.constructor.clsname)
-                                .from(src.content['@rid'].toString()).to(tgt.content['@rid'].toString()).set(args).one()
-                                .then((record) => {
-                                    this.db.conn.record.get(args.created_by).then((userRecord) => {
-                                        record.created_by = userRecord;
-                                        resolve(new Record(record, this));
-                                    }).catch((error) => {
-                                        reject(error);
-                                    });
+                args.created_by = user.content['@rid'].toString();
+                this.isPermitted(user, PERMISSIONS.CREATE)
+                    .then(() => {
+                        this.db.conn.create(this.constructor.createType, this.constructor.clsname)
+                            .from(src.content['@rid'].toString()).to(tgt.content['@rid'].toString()).set(args).one()
+                            .then((record) => {
+                                record.created_by = user.content;
+                                resolve(new Record(record, this));
                             }).catch((error) => {
                                 reject(error);
                             });
                     }).catch((error) => {
                         reject(error);
                     });
-                }).catch((error) => {
-                    reject(new AuthenticationError(`the provided username (i.e. ${args.created_by}) does not exist`));
-                });
             }).catch((error) => {
                 reject(error);
             });

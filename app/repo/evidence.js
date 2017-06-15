@@ -30,8 +30,21 @@ class Evidence extends KBVertex {
 }
 
 /**
- * @class
- * @extends KBVertex
+ * @swagger
+ * definitions:
+ *  Publication:
+ *      type: object
+ *      properties:
+ *          title:
+ *              type: string
+ *          journal:
+ *              type: object
+ *          year:
+ *              type: integer
+ *          doi:
+ *              type: string
+ *          pubmed:
+ *              type: integer
  */
 class Publication extends KBVertex {
 

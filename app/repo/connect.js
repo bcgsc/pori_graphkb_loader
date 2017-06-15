@@ -45,21 +45,47 @@ class DB {
     get server() {
         return this.conn.server;
     }
+
+    buildModels(models) {
+        return new Promise((resolve, reject) => {
+            Promise.all(Array.from(models, x => x.createClass(this)))
+                .then(() => {
+                    resolve();
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+    buildHeirarchyRecursive(heirarchy, depth) {
+        return new Promise((resolve, reject) => {
+            if (depth >= heirarchy.length) {
+                resolve();
+            } else {
+                this.buildModels(heirarchy[depth])
+                    .then(() => {
+                        return this.buildHeirarchyRecursive(heirarchy, depth + 1);
+                    }).then(() => {
+                        resolve();
+                    }).catch((error) => {
+                        reject(error);
+                    });
+            }
+        });
+    }
+    buildHeirarchy(heirarchy) {
+        return this.buildHeirarchyRecursive(heirarchy, 0);
+    }
 }
 
 const createDB = (opt) => {
     return new Promise((resolve, reject) => {
+        opt.heirarchy = opt.heirarchy || [];
         for (let param of ['server', 'name', 'username', 'password']) {
             if (opt[param] === undefined) {
                 throw new AttributeError(`missing required attribute ${param}`);
             }
         }
-        if (opt.models === undefined) {
-            opt.models = {};
-        }
         const result = new DB(null, opt.name);
-        const modelNames = Object.keys(opt.models);
-        const modelClasses = Array.from(modelNames, x => opt.models[x]);
 
         opt.server.create({name: opt.name, username: opt.username, password: opt.password})
             .then((con) => {
@@ -68,11 +94,8 @@ const createDB = (opt) => {
                 return result.conn.query('alter database custom standardElementConstraints=false');
             }).then(() => {
                 // now initialize all models
-                return Promise.all(Array.from(modelClasses, x => x.createClass(result)));
+                return result.buildHeirarchy(opt.heirarchy);
             }).then((modelsList) => {
-                for (let i = 0; i < modelsList.length; i++) {
-                    result.models[modelNames[i]] = modelsList[i]; 
-                }
                 resolve(result);
             }).catch((error) => {
                 reject(error);

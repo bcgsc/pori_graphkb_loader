@@ -21,7 +21,8 @@
     "jsdoc": "^3.4.3",
     "mocha": "^2.5.3",
     "nodemon": "^1.11.0",
-    "shelljs": "^0.7.7"
+    "shelljs": "^0.7.7",
+    "swagger-jsdoc": "^1.9.4"
   },
   "scripts": {
     "watch": "nodemon app/index.js --use-strict",
@@ -29,6 +30,7 @@
     "integration": "mocha --recursive test/integration --timeout 20000",
     "unit": "mocha --recursive test/unit",
     "test": "mocha --recursive test --timeout 20000",
-    "lint": "eslint -c .eslintrc.json app test"
+    "lint": "eslint -c .eslintrc.json app test",
+    "doc": "swagger-jsdoc -o swagger-spec.json -d doc/swagger-jsdoc-defn.js app/repo/*js app/routes/*js"
   }
 }

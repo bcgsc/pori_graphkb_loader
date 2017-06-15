@@ -2,7 +2,7 @@
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
-const {KBVertex, KBEdge, History} = require('./../../app/repo/base');
+const {KBVertex, KBEdge, History, KBUser, KBRole} = require('./../../app/repo/base');
 const {Vocab} = require('./../../app/repo/vocab');
 const {Feature, FeatureDeprecatedBy, FeatureAliasOf, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
 const cache = require('./../../app/repo/cached/data');
@@ -10,11 +10,12 @@ const {ControlledVocabularyError, AttributeError} = require('./../../app/repo/er
 const {Context} = require('./../../app/repo/context');
 const Promise = require('bluebird');
 const {expectDuplicateKeyError} = require('./orientdb_errors');
+const {PERMISSIONS} = require('./../../app/repo/constants');
 
 
 
 describe('Feature schema tests:', () => {
-    let server, db;
+    let server, db, user;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
@@ -26,11 +27,21 @@ describe('Feature schema tests:', () => {
                     username: conf.dbUsername,
                     password: conf.dbPassword,
                     server: server,
-                    models: {KBVertex, KBEdge, History}
+                    heirarchy: [
+                        [KBRole, History],
+                        [KBUser],
+                        [KBVertex, KBEdge],
+                        [Context]
+                    ]
                 });
             }).then((result) => {
                 db = result;
-                return Context.createClass(db);
+            }).then(() => {
+                return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
+            }).then((role) => {
+                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
+            }).then((result) => {
+                user = result.content;
             }).then(() => {
                 done();
             }).catch((error) => {
@@ -59,12 +70,14 @@ describe('Feature schema tests:', () => {
         });
         it('errors on active name not unique within source/version', () => {
             const entry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: null};
-            return currClass.createRecord(entry)
+            return currClass.createRecord(entry, user.username)
                 .then((record) => {
-                    return currClass.createRecord(entry);
+                    return currClass.createRecord(entry, user.username);
                 }, (error) => {
+                    console.log(error);
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
+                    console.log(record2);
                     expect.fail('expected an error');
                 }).catch((error) => {
                     expectDuplicateKeyError(error);
@@ -73,10 +86,10 @@ describe('Feature schema tests:', () => {
         it('allows name duplicate within a source in different source versions', () => {
             const entry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: null};
             const secondEntry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: 1};
-            return currClass.createRecord(entry)
+            return currClass.createRecord(entry, user.username)
                 .then((record) => {
                     expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
-                    return currClass.createRecord(secondEntry);
+                    return currClass.createRecord(secondEntry, user.username);
                 }, (error) => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
@@ -85,11 +98,11 @@ describe('Feature schema tests:', () => {
         });
         it('allows name duplicate when one node is deleted', () => {
             const entry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: null};
-            return currClass.createRecord(entry)
+            return currClass.createRecord(entry, user.username)
                 .then((record) => {
                     expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
                     record.content.source_version = 1;
-                    return currClass.updateRecord(record.content);
+                    return currClass.updateRecord(record.content, user.username);
                 }, (error) => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
@@ -99,10 +112,10 @@ describe('Feature schema tests:', () => {
         it('allows name duplicates in separate sources', () => {
             const entry = {source: FEATURE_SOURCE.ENSEMBL, biotype: FEATURE_BIOTYPE.GENE, name: 'ENSG001', source_version: null};
             const secondEntry = {source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE, name: 'ENSG001', source_version: null};
-            return currClass.createRecord(entry)
+            return currClass.createRecord(entry, user.username)
                 .then((record) => {
                     expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
-                    return currClass.createRecord(secondEntry);
+                    return currClass.createRecord(secondEntry, user.username);
                 }, (error) => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
@@ -110,7 +123,121 @@ describe('Feature schema tests:', () => {
                 });
         });
     });
+    describe('FeatureDeprecatedBy', () => {
+        beforeEach(function(done) { /* build and connect to the empty database */
+            Feature.createClass(db)
+                .then(() => {
+                    return FeatureDeprecatedBy.createClass(db)
+                }).then(() => {
+                     done();
+                }).catch((error) => {
+                    console.log('error', error);
+                    done(error);
+                });
+        });
 
+        it('errors when deprecating a feature with a different biotype', () => {
+            return Promise.all([
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENST001', biotype: FEATURE_BIOTYPE.TRANSCRIPT, source_version: 11}, user.username)
+            ]).then((recList) => {
+                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user.username);
+            }).then((edge) => {
+                console.log(edge);
+                expect.fail('should not have been able to create the record');
+            }, (error) => {
+                expect(error).to.be.instanceof(AttributeError);
+            });
+        });
+        it('errors when deprecating a feature with a different source', () => {
+            return Promise.all([
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.REFSEQ, name: 'NG_001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user.username)
+            ]).then((recList) => {
+                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user.username);
+            }).then((edge) => {
+                console.log(edge);
+                expect.fail('should not have been able to create the record');
+            }, (error) => {
+                expect(error).to.be.instanceof(AttributeError);
+            });
+        });
+        it('errors when the deprecated version is not lower than the new version', () => {
+            return Promise.all([
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user.username),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG002', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user.username)
+            ]).then((recList) => {
+                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user.username);
+            }).then((edge) => {
+                console.log(edge);
+                expect.fail('should not have been able to create the record');
+            }, (error) => {
+                expect(error).to.be.instanceof(AttributeError);
+            });
+        });
+        it('errors when null version deprecates non-null version', () => {
+            return Promise.all([
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: null}, user.username)
+            ]).then((recList) => {
+                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user.username);
+            }).then((edge) => {
+                console.log(edge);
+                expect.fail('should not have been able to create the record');
+            }, (error) => {
+                expect(error).to.be.instanceof(AttributeError);
+            });
+        });
+         it('allows version higher', () => {
+            return Promise.all([
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user.username)
+            ]).then((recList) => {
+                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user.username);
+            }).then((edge) => {
+                expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out', 'created_by', 'deleted_by');
+            });
+        });
+
+    });
+    describe('FeatureAliasOf', () => {
+        beforeEach(function(done) { /* build and connect to the empty database */
+            Feature.createClass(db)
+                .then(() => {
+                    return FeatureAliasOf.createClass(db)
+                }).then(() => {
+                     done();
+                }).catch((error) => {
+                    console.log('error', error);
+                    done(error);
+                });
+        });
+
+        it('errors when deprecating a feature with a different biotype', () => {
+            return Promise.all([
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENST001', biotype: FEATURE_BIOTYPE.TRANSCRIPT, source_version: 11}, user.username)
+            ]).then((recList) => {
+                return db.models.FeatureAliasOf.createRecord({out: recList[0].content, in: recList[1].content}, user.username);
+            }).then((edge) => {
+                console.log(edge);
+                expect.fail('should not have been able to create the record');
+            }, (error) => {
+                expect(error).to.be.instanceof(AttributeError);
+            });
+        });
+         it('allows between different sources when the biotype is equal', () => {
+            return Promise.all([
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.REFSEQ, name: 'NG_0001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user.username)
+            ]).then((recList) => {
+                return db.models.FeatureAliasOf.createRecord({out: recList[0].content, in: recList[1].content}, user.username);
+            }).then((edge) => {
+                expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
+            });
+        });
+        
+    });
     afterEach((done) => {
         /* disconnect from the database */
         server.drop({name: conf.emptyDbName})
@@ -140,15 +267,16 @@ describe('Feature.validateContent', () => {
                     username: conf.dbUsername,
                     password: conf.dbPassword,
                     server: server,
-                    models: {KBVertex, KBEdge, History}
+                    heirarchy: [
+                        [KBRole, History],
+                        [KBUser],
+                        [KBVertex, KBEdge],
+                        [Context],
+                        [Feature]
+                    ]
                 });
             }).then((result) => {
                 db = result;
-                return Context.createClass(db);
-            }).then(() => {
-                return Feature.createClass(db);
-            }).then((cls) => {
-                currClass = cls;
                 done();
             }).catch((error) => {
                 console.log('error', error);
@@ -159,322 +287,322 @@ describe('Feature.validateContent', () => {
     describe(FEATURE_SOURCE.HGNC, () => {
         let validEntry;
         beforeEach(function(done) {
-            validEntry = {source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE, name: 'KRAS', source_version: 20170101};
+            validEntry = {source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE, name: 'KRAS', source_version: 20170101, created_by: true};
             done();
         });
 
         it('allows valid', () => {
             expect(() => {
-                return currClass.validateContent(validEntry);
+                return db.models.Feature.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
         it('allows source_version to be null', () => {
             validEntry.source_version = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.not.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.not.throw(AttributeError);
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = currClass.validateContent(validEntry)
+            const record = db.models.Feature.validateContent(validEntry)
             expect(record).to.have.property('source_version', null);
         });
         it('errors on invalid biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on null biotype', () => {
             validEntry.biotype = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors if biotype is not defined', () => {
             delete validEntry.biotype;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on invalid name', () => {
             validEntry.name = 'abc';
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
             validEntry.name = '1RAS';
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on null name', () => {
             validEntry.name = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors if name is not defined', () => {
             delete validEntry.name;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
     });
     describe(FEATURE_SOURCE.ENSEMBL, () => {
         let validEntry;
         beforeEach(function(done) {
-            validEntry = {source: FEATURE_SOURCE.ENSEMBL, biotype: FEATURE_BIOTYPE.GENE, name: 'ENSG001', source_version: 69};
+            validEntry = {source: FEATURE_SOURCE.ENSEMBL, biotype: FEATURE_BIOTYPE.GENE, name: 'ENSG001', source_version: 69, created_by: true};
             done();
         });
 
         it('allows valid gene', () => {
             expect(() => {
-                return currClass.validateContent(validEntry);
+                return db.models.Feature.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
         it('allows valid protein', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
             validEntry.name = 'ENSP001';
             expect(() => {
-                return currClass.validateContent(validEntry);
+                return db.models.Feature.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
         it('allows valid transcript', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
             validEntry.name = 'ENST001';
             expect(() => {
-                return currClass.validateContent(validEntry);
+                return db.models.Feature.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
         it('allows valid exon', () => {
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
             validEntry.name = 'ENSE001';
             expect(() => {
-                return currClass.validateContent(validEntry);
+                return db.models.Feature.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
         it('errors on gene name not compatible with transcript biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on gene name not compatible with protein biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on gene name not compatible with exon biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on transcript name not compatible with gene biotype', () => {
             validEntry.name = 'ENST0001';
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on transcript name not compatible with protein biotype', () => {
             validEntry.name = 'ENST0001';
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on transcript name not compatible with exon biotype', () => {
             validEntry.name = 'ENST0001';
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on protein name not compatible with gene biotype', () => {
             validEntry.name = 'ENSP0001';
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on protein name not compatible with transcript biotype', () => {
             validEntry.name = 'ENSP0001';
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on protein name not compatible with exon biotype', () => {
             validEntry.name = 'ENSP0001';
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('allows source_version to be null', () => {
             validEntry.source_version = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.not.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.not.throw(AttributeError);
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = currClass.validateContent(validEntry)
+            const record = db.models.Feature.validateContent(validEntry)
             expect(record).to.have.property('source_version', null);
         });
         it('errors on invalid biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TEMPLATE;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on null biotype', () => {
             validEntry.biotype = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors if biotype is not defined', () => {
             delete validEntry.biotype;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on null name', () => {
             validEntry.name = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors if name is not defined', () => {
             delete validEntry.name;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
     });
     describe(FEATURE_SOURCE.REFSEQ, () => {
         let validEntry;
         beforeEach(function(done) {
-            validEntry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: 1};
+            validEntry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: 1, created_by: true};
             done();
         });
 
         it('allows valid gene', () => {
             expect(() => {
-                return currClass.validateContent(validEntry);
+                return db.models.Feature.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
         it('allows valid protein', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
             validEntry.name = 'NP_001';
             expect(() => {
-                return currClass.validateContent(validEntry);
+                return db.models.Feature.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
         it('allows valid transcript', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
             validEntry.name = 'NM_001';
             expect(() => {
-                return currClass.validateContent(validEntry);
+                return db.models.Feature.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
         it('errors on gene name not compatible with transcript biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TEMPLATE;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on gene name not compatible with protein biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on transcript name not compatible with gene biotype', () => {
             validEntry.name = 'NM_0001';
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on transcript name not compatible with protein biotype', () => {
             validEntry.name = 'NM_0001';
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on protein name not compatible with gene biotype', () => {
             validEntry.name = 'NP_0001';
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on protein name not compatible with transcript biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TEMPLATE;
             validEntry.name = 'NP_0001';
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('allows null source_version', () => {
             validEntry.source_version = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.not.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.not.throw(AttributeError);
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = currClass.validateContent(validEntry)
+            const record = db.models.Feature.validateContent(validEntry)
             expect(record).to.have.property('source_version', null);
         });
         it('errors on template for biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TEMPLATE;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on null biotype', () => {
             validEntry.biotype = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors if biotype is not defined', () => {
             delete validEntry.biotype;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on null name', () => {
             validEntry.name = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors when name is not defined', () => {
             delete validEntry.name;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
     });
     describe(FEATURE_SOURCE.LRG, () => {
         let validEntry;
         beforeEach(function(done) {
-            validEntry = {source: FEATURE_SOURCE.LRG, biotype: FEATURE_BIOTYPE.GENE, name: 'LRG_001', source_version: 1};
+            validEntry = {source: FEATURE_SOURCE.LRG, biotype: FEATURE_BIOTYPE.GENE, name: 'LRG_001', source_version: 1, created_by: true};
             done();
         });
 
         it('allows valid gene', () => {
             expect(() => {
-                return currClass.validateContent(validEntry);
+                return db.models.Feature.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
         it('allows valid protein', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
             validEntry.name = 'LRG_001p2';
             expect(() => {
-                return currClass.validateContent(validEntry);
+                return db.models.Feature.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
         it('allows valid transcript', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
             validEntry.name = 'LRG_001t2';
             expect(() => {
-                return currClass.validateContent(validEntry);
+                return db.models.Feature.validateContent(validEntry);
             }).to.not.throw(AttributeError);
         });
         it('errors on gene name not compatible with transcript biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on gene name not compatible with protein biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on transcript name not compatible with gene biotype', () => {
             validEntry.name = 'LRG_001t2';
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on transcript name not compatible with protein biotype', () => {
             validEntry.name = 'LRG_001t2';
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on protein name not compatible with gene biotype', () => {
             validEntry.name = 'LRG_001p2';
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on protein name not compatible with transcript biotype', () => {
             validEntry.name = 'LRG_001p2';
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('allows null source_version', () => {
             validEntry.source_version = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.not.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.not.throw(AttributeError);
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = currClass.validateContent(validEntry)
+            const record = db.models.Feature.validateContent(validEntry)
             expect(record).to.have.property('source_version', null);
         });
         it('errors on null biotype', () => {
             validEntry.biotype = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors if biotype is not defined', () => {
             delete validEntry.biotype;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on null name', () => {
             validEntry.name = null;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors when name is not defined', () => {
             delete validEntry.name;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
     });
     describe(FEATURE_SOURCE.GRC, () => {
         let validEntry;
         beforeEach(function(done) {
-            validEntry = {source: FEATURE_SOURCE.GRC, biotype: FEATURE_BIOTYPE.TEMPLATE, name: 'chr11', source_version: 19};
+            validEntry = {source: FEATURE_SOURCE.GRC, biotype: FEATURE_BIOTYPE.TEMPLATE, name: 'chr11', source_version: 19, created_by: true};
             done();
         });
         it('allows version', () => {
-            const result = currClass.validateContent(validEntry);
+            const result = db.models.Feature.validateContent(validEntry);
             expect(result).to.have.property('source', FEATURE_SOURCE.GRC);
             expect(result).to.have.property('source_version', 19);
             expect(result).to.have.property('name', 'chr11');
@@ -482,44 +610,44 @@ describe('Feature.validateContent', () => {
         });
         it('allows with chr prefix', () => {
             validEntry.name = 'chr1';
-            const result = currClass.validateContent(validEntry);
+            const result = db.models.Feature.validateContent(validEntry);
             expect(result).to.have.property('name', 'chr1');
         });
         it('allows without chr prefix', () => {
             validEntry.name = 1;
-            const result = currClass.validateContent(validEntry);
+            const result = db.models.Feature.validateContent(validEntry);
             expect(result).to.have.property('name', 1);
         });
         it('allows alternative chromosomes chr1_gl000191_random', () => {
             validEntry.name = 'chr1_gl000191_random';
-            const result = currClass.validateContent(validEntry);
+            const result = db.models.Feature.validateContent(validEntry);
             expect(result).to.have.property('name', 'chr1_gl000191_random');
         });
         it('allows MT', () => {
             validEntry.name = 'MT';
-            const result = currClass.validateContent(validEntry);
+            const result = db.models.Feature.validateContent(validEntry);
             expect(result).to.have.property('name', 'MT');
         });
         it('errors on biotype gene', () => {
             validEntry.biotype = FEATURE_BIOTYPE.GENE;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on biotype transcript', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on biotype protein', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
         it('errors on biotype exon', () => {
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
-            expect(() => { return currClass.validateContent(validEntry); }).to.throw(AttributeError);
+            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
         });
     });
     it('errors on invalid source', () => {
         let entry = {source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE, name: null, source_version: '2017-01-01'};
-        expect(() => { return currClass.validateContent(entry); }).to.throw(AttributeError);
+        expect(() => { return db.models.Feature.validateContent(entry); }).to.throw(AttributeError);
     });
 
     after((done) => {
@@ -539,185 +667,8 @@ describe('Feature.validateContent', () => {
 
 
 // test FeatureDeprecatedBy
-describe('FeatureDeprecatedBy', () => {
-    let server, db, deprecatedByClass, featureClass;
-    beforeEach(function(done) { /* build and connect to the empty database */
-        // set up the database server
-        connectServer(conf)
-            .then((result) => {
-                // create the empty database
-                server = result;
-                return createDB({
-                    name: conf.emptyDbName, 
-                    username: conf.dbUsername,
-                    password: conf.dbPassword,
-                    server: server,
-                    models: {KBVertex, KBEdge, History}
-                });
-            }).then((result) => {
-                db = result;
-                return Context.createClass(db);
-            }).then(() => {
-                return Promise.all([
-                    FeatureDeprecatedBy.createClass(db),
-                    Feature.createClass(db)
-                ]);
-            }).then((clsList) => {
-                [deprecatedByClass, featureClass] = clsList;
-                done();
-            }).catch((error) => {
-                console.log('error', error);
-                done(error);
-            });
-    });
 
-    it('errors when deprecating a feature with a different biotype', () => {
-        return Promise.all([
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}),
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENST001', biotype: FEATURE_BIOTYPE.TRANSCRIPT, source_version: 11})
-        ]).then((recList) => {
-            return deprecatedByClass.createRecord({out: recList[0], in: recList[1]});
-        }).then((edge) => {
-            console.log(edge);
-            expect.fail('should not have been able to create the record');
-        }, (error) => {
-            expect(error).to.be.instanceof(AttributeError);
-        });
-    });
-    it('errors when deprecating a feature with a different source', () => {
-        return Promise.all([
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}),
-            featureClass.createRecord({source: FEATURE_SOURCE.REFSEQ, name: 'NG_001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11})
-        ]).then((recList) => {
-            return deprecatedByClass.createRecord({out: recList[0], in: recList[1]});
-        }).then((edge) => {
-            console.log(edge);
-            expect.fail('should not have been able to create the record');
-        }, (error) => {
-            expect(error).to.be.instanceof(AttributeError);
-        });
-    });
-    it('errors when the deprecated version is not lower than the new version', () => {
-        return Promise.all([
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}),
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG002', biotype: FEATURE_BIOTYPE.GENE, source_version: 11})
-        ]).then((recList) => {
-            return deprecatedByClass.createRecord({out: recList[0], in: recList[1]});
-        }).then((edge) => {
-            console.log(edge);
-            expect.fail('should not have been able to create the record');
-        }, (error) => {
-            expect(error).to.be.instanceof(AttributeError);
-        });
-    });
-    it('errors when null version deprecates non-null version', () => {
-        return Promise.all([
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}),
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: null})
-        ]).then((recList) => {
-            return deprecatedByClass.createRecord({out: recList[0], in: recList[1]});
-        }).then((edge) => {
-            console.log(edge);
-            expect.fail('should not have been able to create the record');
-        }, (error) => {
-            expect(error).to.be.instanceof(AttributeError);
-        });
-    });
-     it('allows version higher', () => {
-        return Promise.all([
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}),
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11})
-        ]).then((recList) => {
-            return deprecatedByClass.createRecord({out: recList[0], in: recList[1]});
-        }).then((edge) => {
-            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
-        });
-    });
-    
-    afterEach((done) => {
-        /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
-            .catch((error) => {
-                console.log('error:', error);
-            }).then(() => {
-                return server.close();
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                done(error);
-            });
-    });
-});
 
 
 // test FeatureAliasOf
-describe('FeatureAliasOf', () => {
-    let server, db, aliasOfClass, featureClass;
-    beforeEach(function(done) { /* build and connect to the empty database */
-        // set up the database server
-        connectServer(conf)
-            .then((result) => {
-                // create the empty database
-                server = result;
-                return createDB({
-                    name: conf.emptyDbName, 
-                    username: conf.dbUsername,
-                    password: conf.dbPassword,
-                    server: server,
-                    models: {KBVertex, KBEdge, History}
-                });
-            }).then((result) => {
-                db = result;
-                return Context.createClass(db);
-            }).then(() => {
-                return Promise.all([
-                    FeatureAliasOf.createClass(db),
-                    Feature.createClass(db)
-                ]);
-            }).then((clsList) => {
-                [aliasOfClass, featureClass] = clsList;
-                done();
-            }).catch((error) => {
-                console.log('error', error);
-                done(error);
-            });
-    });
 
-    it('errors when deprecating a feature with a different biotype', () => {
-        return Promise.all([
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}),
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENST001', biotype: FEATURE_BIOTYPE.TRANSCRIPT, source_version: 11})
-        ]).then((recList) => {
-            return aliasOfClass.createRecord({out: recList[0].content, in: recList[1].content});
-        }).then((edge) => {
-            console.log(edge);
-            expect.fail('should not have been able to create the record');
-        }, (error) => {
-            expect(error).to.be.instanceof(AttributeError);
-        });
-    });
-     it('allows between different sources when the biotype is equal', () => {
-        return Promise.all([
-            featureClass.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}),
-            featureClass.createRecord({source: FEATURE_SOURCE.REFSEQ, name: 'NG_0001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11})
-        ]).then((recList) => {
-            return aliasOfClass.createRecord({out: recList[0].content, in: recList[1].content});
-        }).then((edge) => {
-            expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
-        });
-    });
-    
-    afterEach((done) => {
-        /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
-            .catch((error) => {
-                console.log('error:', error);
-            }).then(() => {
-                return server.close();
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                done(error);
-            });
-    });
-});
