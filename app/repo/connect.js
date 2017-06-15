@@ -2,6 +2,7 @@
 /* establishes a connection with the orientdb server */
 const OrientDB  = require('orientjs');
 const {AttributeError} = require('./error');
+const {createPermissionsClass} = require('./permissions');
 
 /**
  * connects to the server using the config
@@ -92,6 +93,8 @@ const createDB = (opt) => {
                 result.conn = con;
                 // alter db to relax blueprint constraints (otherwise null property value error)
                 return result.conn.query('alter database custom standardElementConstraints=false');
+            }).then(() => {
+                return createPermissionsClass(result);
             }).then(() => {
                 // now initialize all models
                 return result.buildHeirarchy(opt.heirarchy);

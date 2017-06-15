@@ -45,12 +45,6 @@ const softGetRID = (record) => {
     }
 };
 
-const dec2bin = (dec) => {
-    // convert decimal to binary
-    let bin = (dec >>> 0).toString(2);
-    // pad the generated binary result with zeros  
-    return bin.length >= 4 ? bin : new Array(4 - bin.length + 1).join(0) + bin;
-}
 
 class Record {
 
@@ -464,12 +458,8 @@ class KBVertex extends Base {
                 this.isPermitted(userRecord, PERMISSIONS.CREATE)
                     .then(() => {
                         this.conn.create(args).then((record) => {
-                            this.db.conn.record.get(args.created_by).then((userRecord) => {
-                                record.created_by = userRecord;
-                                resolve(new Record(record, this));
-                            }).catch((error) => {
-                                reject(error);
-                            });
+                            record.created_by = userRecord.content;
+                            resolve(new Record(record, this));
                         }).catch((error) => {
                             reject(error);
                         });
@@ -809,7 +799,7 @@ class KBRole extends Base {
 
             const props = [
                 {name: 'name', type: 'string', mandatory: true, notNull: false},
-                {name: 'rules', type: 'embeddedmap', mandatory: true, notNull: false},
+                {name: 'rules', type: 'embedded', mandatory: true, notNull: false, linkedClass: 'permissions'},
                 {name: 'mode', type: 'integer', mandatory: false, notNull: false}
             ];
 
