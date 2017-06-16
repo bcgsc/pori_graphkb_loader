@@ -54,7 +54,7 @@ class Publication extends KBVertex {
         } else if ((content.year < 1000) || (content.year > currYear('yyyy'))) {
             throw new AttributeError('publication year cannot be too old or in the future');
         }
-        content.journal = journalClass.validateContent(content.journal);
+        content.journal = journalClass.validateContent({name: content.journal.name, created_by: content.created_by});
         content.title = content.title.toLowerCase();
         if (content.doi != undefined || content.pmid != undefined) {
             if (content.pmid !== parseInt(content.pmid, 10)) {
@@ -68,30 +68,29 @@ class Publication extends KBVertex {
         return super.validateContent(content);
     }
 
-    createRecord(opt, journalClass) {            
+    createRecord(opt, journalClass, user) {
         return new Promise((resolve, reject) => {
-            const args = this.validateContent(opt, journalClass);
+            const content = Object.assign({created_by: user}, opt);
+            const args = this.validateContent(content, journalClass);
             journalClass.selectExactlyOne({name: args.journal.name})
                 .catch(NoResultFoundError, () => {
-                    return journalClass.createRecord(args.journal);
+                    return journalClass.createRecord({name: args.journal.name}, args.created_by);
                 }).then((journalRecord) => {
-                    args.journal = journalRecord.content['@rid'];
-                    return this.conn.create(args)
-                        .then((record) => {
-                            this.db.conn.record.get(record.journal).then((journalRecord) => {
+                    this.db.models.KBUser.selectExactlyOne({username: args.created_by}).then((userRecord) => {
+                        args.created_by = userRecord.content['@rid'];
+                        args.journal = journalRecord.content['@rid'];
+                        this.conn.create(args)
+                            .then((record) => {
                                 record.journal = journalRecord;
                                 resolve(new Record(record, this));
+                                }).catch((error) => {
+                                    reject(error);
+                                });
                             }).catch((error) => {
-                                reject(error);
+                                reject((error));
                             });
-                        })
-                        .catch((error) => {
-                            reject((error));
                         });
-                }).catch((error) => {
-                    reject(error);
                 });
-        });
     }
 
     static createClass(db){
@@ -130,10 +129,9 @@ class Publication extends KBVertex {
 class Journal extends KBVertex {
 
     validateContent(content) {
-        if (content.name == undefined) {
-            throw new AttributeError('violated null constraint');
+        if (content.name !== undefined) {
+            content.name = content.name.toLowerCase();
         }
-        content.name = content.name.toLowerCase();
         return super.validateContent(content);
     }
 
