@@ -199,7 +199,7 @@ class OntologyAliasOf extends KBEdge {
     }
 }
 
-class OntologyDeprecateddBy extends KBEdge {
+class OntologyDeprecatedBy extends KBEdge {
 
     validateContent(content, ontology) {
         const args = super.validateContent(content);
@@ -224,4 +224,4 @@ class OntologyDeprecateddBy extends KBEdge {
     }
 }
 
-module.exports = {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDeprecateddBy};
+module.exports = {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDeprecatedBy};

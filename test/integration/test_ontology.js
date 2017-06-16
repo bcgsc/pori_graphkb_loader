@@ -10,9 +10,9 @@ const {ControlledVocabularyError, AttributeError} = require('./../../app/repo/er
 const {Context} = require('./../../app/repo/context');
 const Promise = require('bluebird');
 const {expectDuplicateKeyError} = require('./orientdb_errors');
-const {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDepricatedBy} = require('./../../app/repo/ontology');
+const {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDeprecatedBy} = require('./../../app/repo/ontology');
 const {PERMISSIONS} = require('./../../app/repo/constants');
-const oError = require('./orientdb_errors');
+
 
 
 describe('Ontology schema tests:', () => {
@@ -122,8 +122,8 @@ describe('Ontology schema tests:', () => {
                 });
         });
 
-        it('create the "OntologyDepricatedBy" class', () => {
-            return OntologyDepricatedBy.createClass(db)
+        it('create the "OntologyDeprecatedBy" class', () => {
+            return OntologyDeprecatedBy.createClass(db)
                 .then((result) => {
                     expect(result.propertyNames).to.include('uuid', 'created_at', 'deleted_at', 'version');
                     expect(result.isAbstract).to.be.false;
@@ -257,7 +257,7 @@ describe('Ontology schema tests:', () => {
 });
 
 describe('Ontology Edges (Therapy & Disease)', () => {
-    let server, db, user, ontologyClass, ontologyAliasOfClass, ontologySubClassOfClass, ontologyRelatedToClass, ontologyDepricatedByClass, diseaseClass, therapyClass;
+    let server, db, user, ontologyClass, ontologyAliasOfClass, ontologySubClassOfClass, ontologyRelatedToClass, ontologyDeprecatedByClass, diseaseClass, therapyClass;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
@@ -290,11 +290,11 @@ describe('Ontology Edges (Therapy & Disease)', () => {
                     OntologyAliasOf.createClass(db),
                     OntologySubClassOf.createClass(db),
                     OntologyRelatedTo.createClass(db),
-                    OntologyDepricatedBy.createClass(db),
+                    OntologyDeprecatedBy.createClass(db),
                     Disease.createClass(db),
                     Therapy.createClass(db)
                     ]).then((clsList) => {
-                        [ontologyClass, ontologyAliasOfClass, ontologySubClassOfClass, ontologyRelatedToClass, ontologyDepricatedByClass, diseaseClass, therapyClass] = clsList;
+                        [ontologyClass, ontologyAliasOfClass, ontologySubClassOfClass, ontologyRelatedToClass, ontologyDeprecatedByClass, diseaseClass, therapyClass] = clsList;
                         done();
                     });
             }).catch((error) => {
@@ -481,14 +481,14 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         });
     });
 
-        it('allows an OntologyDepricatedBy edge between disease nodes', () => {
+        it('allows an OntologyDeprecatedBy edge between disease nodes', () => {
         const entry_disease = {name: 'name1', doid: 1234};
         const secondEntry_disease = {name: 'name2', doid: 123};
         return Promise.all([
             diseaseClass.createRecord(entry_disease, 'me'),
             diseaseClass.createRecord(secondEntry_disease, 'me')
         ]).then((recList) => {
-            return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]}, 'me');
+            return ontologyDeprecatedByClass.createRecord({in: recList[0], out: recList[1]}, 'me');
         }).then((edge) => {
             expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
@@ -496,14 +496,14 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         });
     });
     
-    it('allows an OntologyDepricatedBy edge between therapy nodes', () => {
+    it('allows an OntologyDeprecatedBy edge between therapy nodes', () => {
         const entry_disease = {name: 'name1', id: 1234};
         const secondEntry_disease = {name: 'name2', id: 123};
         return Promise.all([
             therapyClass.createRecord(entry_disease, 'me'),
             therapyClass.createRecord(secondEntry_disease, 'me')
         ]).then((recList) => {
-            return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]}, 'me');
+            return ontologyDeprecatedByClass.createRecord({in: recList[0], out: recList[1]}, 'me');
         }).then((edge) => {
             expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
@@ -511,14 +511,14 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         });
     });
 
-    it('allows an OntologyDepricatedBy edge between disease nodes with identical doids', () => {
+    it('allows an OntologyDeprecatedBy edge between disease nodes with identical doids', () => {
         const entry_disease = {name: 'name1', doid: 1234};
         const secondEntry_disease = {name: 'name2', doid: 1234};
         return Promise.all([
             diseaseClass.createRecord(entry_disease, 'me'),
             diseaseClass.createRecord(secondEntry_disease, 'me')
         ]).then((recList) => {
-            return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]}, 'me');
+            return ontologyDeprecatedByClass.createRecord({in: recList[0], out: recList[1]}, 'me');
         }).then((edge) => {
             expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {
@@ -526,14 +526,14 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         });
     });
     
-    it('allows an OntologyDepricatedBy edge between therapy nodes with identical ids', () => {
+    it('allows an OntologyDeprecatedBy edge between therapy nodes with identical ids', () => {
         const entry_disease = {name: 'name1', id: 1234};
         const secondEntry_disease = {name: 'name2', id: 1234};
         return Promise.all([
             therapyClass.createRecord(entry_disease, 'me'),
             therapyClass.createRecord(secondEntry_disease, 'me')
         ]).then((recList) => {
-            return ontologyDepricatedByClass.createRecord({in: recList[0], out: recList[1]}, 'me');
+            return ontologyDeprecatedByClass.createRecord({in: recList[0], out: recList[1]}, 'me');
         }).then((edge) => {
             expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
         }, (error) => {

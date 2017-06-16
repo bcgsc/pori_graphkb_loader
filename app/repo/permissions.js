@@ -3,7 +3,7 @@ const {Context} = require('./context');
 const {Feature, FeatureDeprecatedBy, FeatureAliasOf} = require('./feature');
 const {Evidence, Publication, Journal, Study, ClinicalTrial, ExternalSource} = require('./evidence');
 const {CategoryEvent, PositionalEvent, Event} = require('./event');
-const {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDepricatedBy} = require('./ontology');
+const {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDeprecatedBy} = require('./ontology');
 const {Statement, AppliesTo, AsComparedTo, Requires} = require('./statement');
 const {Vocab} = require('./vocab');
 const {PERMISSIONS} = require('./constants');
@@ -36,7 +36,7 @@ const createPermissionsClass = (db) => {
             {min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', mandatory: false, notNull: true, readOnly: false, name: OntologySubClassOf.clsname},
             {min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', mandatory: false, notNull: true, readOnly: false, name: OntologyRelatedTo.clsname},
             {min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', mandatory: false, notNull: true, readOnly: false, name: OntologyAliasOf.clsname},
-            {min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', mandatory: false, notNull: true, readOnly: false, name: OntologyDepricatedBy.clsname},
+            {min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', mandatory: false, notNull: true, readOnly: false, name: OntologyDeprecatedBy.clsname},
             {min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', mandatory: false, notNull: true, readOnly: false, name: Statement.clsname}, 
             {min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', mandatory: false, notNull: true, readOnly: false, name: AppliesTo.clsname},
             {min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', mandatory: false, notNull: true, readOnly: false, name: AsComparedTo.clsname},
