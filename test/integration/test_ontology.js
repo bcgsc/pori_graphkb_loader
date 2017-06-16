@@ -12,7 +12,7 @@ const Promise = require('bluebird');
 const {expectDuplicateKeyError} = require('./orientdb_errors');
 const {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDepricatedBy} = require('./../../app/repo/ontology');
 const {PERMISSIONS} = require('./../../app/repo/constants');
-
+const oError = require('./orientdb_errors');
 
 
 describe('Ontology schema tests:', () => {
