@@ -1,14 +1,19 @@
 'use strict';
+const {Statement, AppliesTo, AsComparedTo, Requires, STATEMENT_TYPE} = require('./../../app/repo/statement');
+const {Review, ReviewAppliesTo} = require('./../../app/repo/review');
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
-const {KBVertex, KBEdge, Base, Record, History, KBUser, KBRole} = require('./../../app/repo/base');
-const {Statement, AppliesTo, AsComparedTo, Requires, STATEMENT_TYPE} = require('./../../app/repo/statement');
-const {Review} = require('./../../app/repo/review');
-const {Context} = require('./../../app/repo/context');
-const {AttributeError} = require('./../../app/repo/error');
+const {KBVertex, KBEdge, History, KBUser, KBRole} = require('./../../app/repo/base');
+const {Vocab} = require('./../../app/repo/vocab');
 const vocab = require('./../../app/repo/cached/data').vocab;
+const {Feature, FeatureDeprecatedBy, FeatureAliasOf, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
+const cache = require('./../../app/repo/cached/data');
+const {ControlledVocabularyError, AttributeError} = require('./../../app/repo/error');
+const {Context} = require('./../../app/repo/context');
 const Promise = require('bluebird');
+const {expectDuplicateKeyError} = require('./orientdb_errors');
+const {PERMISSIONS} = require('./../../app/repo/constants');
 
 const adminRules = {
     base: 15,
@@ -46,130 +51,158 @@ vocab.statement.relevance = [
         }
 ];
 
-describe('Review module', () => {
-    let db, server;
-    let kbvertexClass, kbedgeClass, kbuserClass, kbroleClass;
-    let adminRec, analystRec, bioinfoRec, adminRole, analystRole, bioinfoRole;
-    beforeEach(function(done) { 
+describe('Review schema tests:', () => {
+    let server, db, user, userRec;
+    beforeEach(function(done) { /* build and connect to the empty database */
+        // set up the database server
         connectServer(conf)
-            .then((s) => {
-                server = s;
+            .then((result) => {
+                // create the empty database
+                server = result;
                 return createDB({
-                    server: s, 
                     name: conf.emptyDbName, 
-                    username: conf.dbUsername, 
-                    password: conf.dbPassword}
-                );
+                    username: conf.dbUsername,
+                    password: conf.dbPassword,
+                    server: server,
+                    heirarchy: [
+                        [KBRole, History],
+                        [KBUser],
+                        [KBVertex, KBEdge],
+                        [Context]
+                    ]
+                });
             }).then((result) => {
                 db = result;
-                Promise.all([
-                    KBRole.createClass(db),
-                    KBUser.createClass(db)
-                ]).then((clsList) => {
-                    [kbroleClass, kbuserClass] = clsList;
-                    Promise.all([
-                        kbroleClass.createRecord({name: 'admin', mode: 0, rules: adminRules}),
-                        kbroleClass.createRecord({name: 'analyst', mode: 0, rules: analystRules}),
-                        kbroleClass.createRecord({name: 'bioinfo', mode: 0, rules: bioinfoRules}),
-                    ]).then((roleList) => {
-                        [adminRole, analystRole, bioinfoRole] = roleList;
-                        Promise.all([
-                            kbuserClass.createRecord({username: 'admin', role: 'admin'}),
-                            kbuserClass.createRecord({username: 'Martin', role: 'analyst'}),
-                            kbuserClass.createRecord({username: 'Wei', role: 'bioinfo'}),
-                        ]).then((userRecList) => {
-                            [adminRec, analystRec, bioinfoRec] = userRecList;
-                            Promise.all([
-                                KBVertex.createClass(db),
-                                KBEdge.createClass(db),
-                                History.createClass(db)
-                                ]).then(() => {
-                                    done();
-                                });
-                        });
-                    });
-                });
+            }).then(() => {
+                return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
+            }).then((role) => {
+                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
+            }).then((result) => {
+                userRec = result;
+                user = result.content;
+            }).then(() => {
+                done();
             }).catch((error) => {
-                console.log('error in connecting to the server or creating the database', error);
+                console.log('error', error);
                 done(error);
             });
     });
 
     it('Review.createClass', () => {
-        return Context.createClass(db)
-            .then(() => {
-                return Statement.createClass(db)
-                .then((stCls) => {
-                    return Review.createClass(db)
-                        .then((revCls) => {
-                            expect(revCls).to.equal(db.models.review);
-                            expect(revCls.propertyNames).to.include('uuid', 'created_at', 'deleted_at', 'version', 'type', 'relevance');
-                            expect(revCls.isAbstract).to.be.false;
-                            expect(revCls.superClasses).to.include('E', KBEdge.clsname);
-                            expect(revCls.constructor.clsname).to.equal('review');
-                   });
-                });
+        return Statement.createClass(db)
+            .then((stmntCls) => {
+                return Review.createClass(db)
+                    .then((revCls) => {
+                        expect(revCls).to.equal(db.models.review);
+                        expect(revCls.propertyNames).to.include('uuid', 'created_at', 'deleted_at', 'version');
+                        expect(revCls.isAbstract).to.be.false;
+                        expect(revCls.superClasses).to.include('V', KBVertex.clsname);
+                        expect(revCls.constructor.clsname).to.equal('review');
             });
+        });
+            
     });
-    describe('Review', () => {
+
+    it('ReviewAppliesTo.createClass', () => {
+        return Statement.createClass(db)
+            .then(() => {
+                return Review.createClass(db)
+                    .then(() => {
+                        return ReviewAppliesTo.createClass(db)
+                            .then((atCls) => {
+                                expect(atCls).to.equal(db.models.review_applies_to);
+                                expect(atCls.propertyNames).to.include('uuid', 'created_at', 'deleted_at', 'version');
+                                expect(atCls.isAbstract).to.be.false;
+                                expect(atCls.superClasses).to.include('E', KBEdge.clsname);
+                                expect(atCls.constructor.clsname).to.equal('review_applies_to');
+                            });
+            });
+        });
+            
+    });
+
+    describe('Review Vertex', () => {
         let statementRec;
         beforeEach((done) => {
-            return Context.createClass(db)
-                .then(() => {
-                    return Statement.createClass(db)
-                        .then((stClass) => {
-                            return stClass.createRecord({user: 'Martin', type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'})
-                                .then((stRec) => {
-                                    statementRec = stRec;
-                                    done();
-                                });
-                    }).catch((error) => {
-                        done(error);
-                    });
-                });
+            return Statement.createClass(db)
+                .then((stmntClass) => {
+                    return stmntClass.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, 'me')
+                        .then((stRec) => {
+                            statementRec = stRec;
+                            done();
+                        });
+            }).catch((error) => {
+                done(error);
+            });
         });
         it('Review.createRecord', () => {
             return Review.createClass(db)
                 .then((revCls) => {
-                    return revCls.createRecord({user: 'Martin', out: adminRec, in: statementRec, status: "ACCEPTED"})
+                    return revCls.createRecord({comment: 'test comment',  approved: true}, 'me')
                         .then((revRec) => {
-                            expect(revRec.content).to.include.keys('user', 'status');
+                            expect(revRec.content).to.include.keys('created_by', 'comment', 'approved');
                         }).catch((error) => {
                             console.log(error);
                         });
                 });
         });
 
-        it('Review: errors on invalid source type', () => {
+    describe('ReviewAppliesTo Edge', () => {
+        let statementRecm, revRecord;
+        beforeEach((done) => {
             return Review.createClass(db)
                 .then((revCls) => {
-                    return revCls.createRecord({user: 'Martin', out: bioinfoRole, in: statementRec, status: "ACCEPTED"})
-                        .then(() => {
-                            expect.fail();
+                    revCls.createRecord({comment: 'test comment',  approved: true}, 'me')
+                        .then((revRec) => {
+                            revRecord = revRec;
+                            done();
+                        });
+            }).catch((error) => {
+                done(error);
+            });
+        });
+        it('ReviewAppliesTo.createRecord', () => {
+            return ReviewAppliesTo.createClass(db)
+                .then((revATClass) => {
+                    return revATClass.createRecord({out: revRecord, in: statementRec}, 'me')
+                        .then((revATRec) => {
+                            expect(revATRec.content).to.include.keys('created_by', 'in', 'out');
                         }).catch((error) => {
-                            expect(error).to.be.an.instanceof(AttributeError);
+                            console.log(error);
                         });
                 });
         });
-        it('Review: errors on invalid target type', () => {
-            return Review.createClass(db)
-                .then((revCls) => {
-                    return revCls.createRecord({user: 'Martin', out: adminRec, in: adminRole, status: "ACCEPTED"})
-                        .then(() => {
-                            expect.fail();
-                        }).catch((error) => {
-                            expect(error).to.be.an.instanceof(AttributeError);
-                        });
-                });
-        });
-        it('Review: errors when that source = target', () => {
-            return Review.createClass(db)
-                .then((revCls) => {
-                    return revCls.createRecord({user: 'Martin', out: statementRec, in: statementRec, status: "ACCEPTED"})
-                        .then(() => {
+
+        it('ReviewAppliesTo: errors on invalid source type', () => {
+            return ReviewAppliesTo.createClass(db)
+                .then((revATClass) => {
+                    return revATClass.createRecord({out: revRecord, in: userRec}, 'me')
+                        .then((revATRec) => {
                             expect.fail();
                         }).catch(AttributeError, () => {});
                 });
+        });
+
+        it('ReviewAppliesTo: errors on invalid target type', () => {
+            return ReviewAppliesTo.createClass(db)
+                .then((revATClass) => {
+                    return revATClass.createRecord({out: userRec, in: statementRec}, 'me')
+                        .then((revATRec) => {
+                            expect.fail();
+                        }).catch(AttributeError, () => {});
+                });
+        });
+
+        it('ReviewAppliesTo: errors when that source = target', () => {
+            return ReviewAppliesTo.createClass(db)
+                .then((revATClass) => {
+                    return revATClass.createRecord({out: statementRec, in: statementRec}, 'me')
+                        .then((revATRec) => {
+                            expect.fail();
+                        }).catch(AttributeError, () => {});
+                });
+        });
+
         });
 
 
