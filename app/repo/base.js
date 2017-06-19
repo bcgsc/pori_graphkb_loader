@@ -40,9 +40,11 @@ const getAllProperties = (cls) => {
 
 class Record {
 
-    constructor(content, parentClass) {
+    constructor(content, parentClassName) {
         this.content = content || {};
-        //this.content['@class'] = parentClass;
+        if (parentClassName && ! this.content['@class']) {
+            this.content['@class'] = parentClassName;
+        }
     }
 
     get rid() {
@@ -85,7 +87,6 @@ class Record {
                 delete result[param];
             }
         }
-        console.log('static attributes', result);
         return result;
     }
 }
@@ -153,7 +154,6 @@ class Base {
                         }
                         reject(new PermissionError(`insufficient permission to ${operationPermissions} a record`));
                     }).catch((error) => {
-                        console.log('error', error);
                         reject(new NoResultFoundError(error));
                     });
             } else {
@@ -228,7 +228,7 @@ class Base {
             const args = this.validateContent(where);
             this.conn.create(args)
                 .then((result) => {
-                    resolve(new Record(result));
+                    resolve(new Record(result, this.constructor.clsname));
                 }).catch((error) => {
                     reject(error);
                 });
@@ -278,14 +278,13 @@ class Base {
                 .then((rl) => {
                     const reclist = [];
                     for (let r of rl) {
-                        reclist.push(new Record(r));
+                        reclist.push(new Record(r, clsname));
                     }
                     if (exactlyN !== null) {
                         if (reclist.length == 0) {
                             if (exactlyN === 0) {
                                 resolve([]);
                             } else {
-                                console.log('NoResultFoundError', stat);
                                 reject(new NoResultFoundError(stat));
                             }
                         } else if (exactlyN != reclist.length) {
@@ -322,7 +321,7 @@ class Base {
                     record.content.deleted_by = user.rid;
                     return this.db.conn.record.update(record.content);
                 }).then((updatedRecord) => {
-                    resolve(new Record(updatedRecord));
+                    resolve(new Record(updatedRecord, this.constructor.clsname));
                 }).catch((error) => {
                     reject(error);
                 });
@@ -499,7 +498,7 @@ class KBVertex extends Base {
                 return this.conn.create(args);
             }).then((record) => {
                 record.created_by = user.content;
-                resolve(new Record(record));
+                resolve(new Record(record, this.constructor.clsname));
             }).catch((error) => {
                 reject(error);
             });
@@ -522,7 +521,7 @@ class KBVertex extends Base {
                 throw new AttributeError('uuid is a required attribute');
             }
             let currentRecord;
-            const recordSelect = record.hasRID ? Promise.resolve(record) : this.selectExactlyOne(where);
+            const recordSelect = where['@rid'] ? Promise.resolve(record) : this.selectExactlyOne(where);
             recordSelect
                 .then((record) => {
                     currentRecord = record;
@@ -559,12 +558,11 @@ class KBVertex extends Base {
                                 .to('$duplicate')
                         }).commit();
                     const stat = commit.buildStatement();
-                    console.log(stat);
                     commit.return('$updatedRID').one() 
                         .then((rid) => {
                             return this.db.conn.record.get(rid);
                         }).then((record) => {
-                            resolve(new Record(record));
+                            resolve(new Record(record, this.constructor.clsname));
                         }).catch((error) => {
                             reject(error);
                         });
@@ -714,7 +712,7 @@ class KBEdge extends Base {
                                 record.created_by = user.content;
                                 record.out = src.content;
                                 record.in = tgt.content;
-                                resolve(new Record(record));
+                                resolve(new Record(record, this.constructor.clsname));
                             }).catch((error) => {
                                 reject(error);
                             });
@@ -790,7 +788,7 @@ class KBUser extends Base {
                     return this.conn.create(args).then((userRecord) => {
                         this.db.conn.record.get(args.role).then((roleRecord) => {
                             userRecord.role = roleRecord;
-                            resolve(new Record(userRecord));
+                            resolve(new Record(userRecord, this.constructor.clsname));
                         }).catch((error) => {
                             reject(error);
                         });
