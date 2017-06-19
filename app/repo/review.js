@@ -4,7 +4,27 @@ const {Context} = require('./context');
 const {Statement} = require('./statement')
 const Promise = require('bluebird');
 
-class Review extends KBEdge {
+class Review extends KBVertex {
+    
+    static createClass(db) {
+        const props = [
+            {name: 'comment', type: 'string', mandatory: true, notNull: true},
+            {name: 'approved', type: 'boolean', mandatory: true, notNull: true},
+        ];
+        return new Promise((resolve, reject) => {
+            Base.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+class ReviewAppliesTo extends KBEdge {
 
     validateContent(content) {
         const tgt = content.in.content || content.in;
@@ -15,9 +35,9 @@ class Review extends KBEdge {
             throw new AttributeError(`edge target must be a descendant of statenent. Found '${tgt['@class']}'`);
         }
         if (src['@class'] === undefined) {
-            src['@class'] =  KBUser.clsname;
-        } else if (! this.db.models[src['@class']].isOrHasAncestor(KBUser.clsname)) {
-            throw new AttributeError(`edge source must be a descendant of KBUser. Found: '${src['@class']}'`);
+            src['@class'] =  Review.clsname;
+        } else if (! this.db.models[src['@class']].isOrHasAncestor(Review.clsname)) {
+            throw new AttributeError(`edge source must be a descendant of review. Found: '${src['@class']}'`);
         }
         if (tgt.uuid && src.uuid && tgt.uuid === src.uuid) {
             throw new AttributeError('a statement cannot require itself');
@@ -28,9 +48,8 @@ class Review extends KBEdge {
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
-                {name: 'out', type: 'link', mandatory: true, notNull: true, linkedClass: KBUser.clsname},
+                {name: 'out', type: 'link', mandatory: true, notNull: true, linkedClass: Review.clsname},
                 {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Statement.clsname},
-                {name: 'status',  type: 'string', mandatory: true, notNull: true}
             ];
             Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
                 .then(() => {
@@ -44,4 +63,4 @@ class Review extends KBEdge {
     }
 }
 
-module.exports = {Review};
+module.exports = {Review, ReviewAppliesTo};
