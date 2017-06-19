@@ -1,5 +1,5 @@
 'use strict';
-const {Base, KBVertex, KBEdge, Record} = require('./base');
+const {Base, KBVertex, KBEdge, Record, KBUser} = require('./base');
 const Promise = require('bluebird');
 const {Feature} = require('./feature');
 const {Range, Position} = require('./position');
@@ -136,30 +136,34 @@ class CategoryEvent extends KBVertex {
      * assumes the linked objects already exists. If the linked objects @rid is not given they are selected from the db
      * this will throw an error if the selection is not unique
      */ 
-    createRecord(where={}) {
+    createRecord(where={}, user) {
         return new Promise((resolve, reject) => {
+            where.created_by = true;
             const args = this.validateContent(where);
-            args.primary_feature = args.primary_feature.content || args.primary_feature;
-            if (args.secondary_feature) {
-                args.secondary_feature = args.secondary_feature.content || args.secondary_feature;
-            }
-            let primary_feature, secondary_feature;
+            let pfeature = new Record(args.primary_feature, Feature.clsname); 
+            let sfeature = args.secondary_feature ? new Record(args.secondary_feature, Feature.clsname) : null;
+            const feat = this.db.models.Feature;
+            
+            // if selecting the positions fail then create them
             Promise.all([
-                args.primary_feature['@rid'] ? Promise.resolve(args.primary_feature) : this.selectExactlyOne(args.primary_feature),
-                (args.secondary_feature == undefined || args.secondary_feature['@rid']) ? Promise.resolve(args.secondary_feature) : this.selectExactlyOne(args.secondary_feature)
+                pfeature.hasRID ? Promise.resolve(pfeature) : feat.selectExactlyOne(pfeature.content),
+                sfeature == null || sfeature.hasRID ? Promise.resolve(sfeature) : feat.selectExactlyOne(sfeature.content),
+                user.rid != null ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname})
             ]).then((pList) => {
-                [primary_feature, secondary_feature] = pList;
-                args.primary_feature = primary_feature['@rid'].toString();
-                if (args.secondary_feature) {
-                    args.secondary_feature = secondary_feature['@rid'].toString();
+                [pfeature, sfeature, user] = pList;
+                args.primary_feature = pfeature.rid;
+                if (sfeature == null) {
+                    delete args.secondary_feature;
+                } else {
+                    args.secondary_feature = sfeature.rid;
                 }
+                args.created_by = user.rid;
                 return this.conn.create(args);
             }).then((rec) => {
-                rec.primary_feature = primary_feature.content || primary_feature;
-                if (secondary_feature) {
-                    rec.secondary_feature = secondary_feature.content || secondary_feature;
-                }
-                resolve(new Record(rec, this));
+                rec.primary_feature = pfeature.content;
+                rec.secondary_feature = sfeature ? sfeature.content : sfeature;
+                rec.created_by = user.content;
+                resolve(new Record(rec, this.constructor.clsname));
             }).catch((error) => {
                 reject(error);
             });
@@ -254,37 +258,34 @@ class PositionalEvent extends KBVertex {
         });
     }
 
-    createRecord(where={}, positionClassName) {
+    createRecord(where={}, positionClassName, user) {
         return new Promise((resolve, reject) => {
+            where.created_by = true;
             const args = this.validateContent(where, positionClassName);
-            let pfeature = args.primary_feature.content || args.primary_feature; 
-            let sfeature = null;
-            let pfid = pfeature['@rid'] == null ? null : pfeature['@rid'].toString();
-            let sfid = null;
+            let pfeature = new Record(args.primary_feature, Feature.clsname); 
+            let sfeature = args.secondary_feature ? new Record(args.secondary_feature, Feature.clsname) : null;
+            const feat = this.db.models.Feature;
             
-            if (args.secondary_feature != null) {
-                sfeature = args.secondary_feature.content || args.secondary_feature;
-                if (sfeature['@rid'] != null) {
-                    sfid = sfeature['@rid'].toString();
-                }
-            }
             // if selecting the positions fail then create them
             Promise.all([
-                pfid == null ? this.selectExactlyOne(pfeature) : Promise.resolve({content: pfeature}),
-                sfid == null && sfeature != null ? this.selectExactlyOne(sfeature) : Promise.resolve({content: sfeature})
+                pfeature.hasRID ? Promise.resolve(pfeature) : feat.selectExactlyOne(pfeature.content),
+                sfeature == null || sfeature.hasRID ? Promise.resolve(sfeature) : feat.selectExactlyOne(sfeature.content),
+                user.rid != null ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname})
             ]).then((pList) => {
-                [pfeature, sfeature] = [pList[0].content, pList[1].content];
-                args.primary_feature = pfeature['@rid'].toString();
+                [pfeature, sfeature, user] = pList;
+                args.primary_feature = pfeature.rid;
                 if (sfeature == null) {
                     delete args.secondary_feature;
                 } else {
-                    args.secondary_feature = sfeature['@rid'].toString();
+                    args.secondary_feature = sfeature.rid;
                 }
+                args.created_by = user.rid;
                 return this.conn.create(args);
             }).then((rec) => {
-                rec.primary_feature = pfeature;
-                rec.secondary_feature = sfeature;
-                resolve(new Record(rec, this));
+                rec.primary_feature = pfeature.content;
+                rec.secondary_feature = sfeature ? sfeature.content : sfeature;
+                rec.created_by = user.content;
+                resolve(new Record(rec, this.constructor.clsname));
             }).catch((error) => {
                 reject(error);
             });
