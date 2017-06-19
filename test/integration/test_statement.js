@@ -2,13 +2,14 @@
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
-const {KBVertex, KBEdge, Base, Record, History} = require('./../../app/repo/base');
+const {KBVertex, KBEdge, Base, Record, History, KBRole, KBUser} = require('./../../app/repo/base');
 const {Context} = require('./../../app/repo/context');
 const {Statement, AppliesTo, AsComparedTo, Requires, STATEMENT_TYPE} = require('./../../app/repo/statement');
 const Promise = require('bluebird');
 const {AttributeError, ControlledVocabularyError} = require('./../../app/repo/error');
 const {Feature, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
 const {Position, GenomicPosition} = require('./../../app/repo/position');
+const {PERMISSIONS} = require('./../../app/repo/constants');
 const vocab = require('./../../app/repo/cached/data').vocab;
 
 vocab.statement = {};
@@ -52,7 +53,7 @@ vocab.statement.relevance = [
 ];
 
 describe('statement module', () => {
-    let server, db, primary_feature, secondary_feature;
+    let server, db, user;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
@@ -64,12 +65,21 @@ describe('statement module', () => {
                     username: conf.dbUsername, 
                     password: conf.dbPassword, 
                     server: server,
-                    models: {KBEdge, KBVertex, History}
+                    heirarchy: [
+                        [KBRole, History],
+                        [KBUser],
+                        [KBVertex, KBEdge],
+                        [Context]
+                    ]
                 });
-            }).then((connection) => {
-                db = connection;
-                return Context.createClass(db);
+            }).then((result) => {
+                db = result;
             }).then(() => {
+                return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
+            }).then((role) => {
+                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
+            }).then((result) => {
+                user = result.content.username;
                 done();
             }).catch((error) => {
                 console.log('error', error);
@@ -136,37 +146,37 @@ describe('statement module', () => {
         });
         describe('createRecord', () => {
             it('errors on incompatible type/relevance vocabulary', () => {
-                return db.models.Statement.createRecord({type: STATEMENT_TYPE.BIOLOGICAL, relevance: 'sensitivity'})
+                return db.models.Statement.createRecord({type: STATEMENT_TYPE.BIOLOGICAL, relevance: 'sensitivity'}, user)
                     .then(() => {
                         expect.fail('should have thrown an error');
                     }).catch(ControlledVocabularyError, () => {});
             });
             it('errors on invalid vocabulary for relevance', () => {
-                return db.models.Statement.createRecord({type: STATEMENT_TYPE.BIOLOGICAL, relevance: 'invalid relevance'})
+                return db.models.Statement.createRecord({type: STATEMENT_TYPE.BIOLOGICAL, relevance: 'invalid relevance'}, user)
                     .then(() => {
                         expect.fail('should have thrown an error');
                     }).catch(ControlledVocabularyError, () => {});
             });
             it('errors on invalid type', () => {
-                return db.models.Statement.createRecord({type: 'random type', relevance: 'sensitivity'})
+                return db.models.Statement.createRecord({type: 'random type', relevance: 'sensitivity'}, user)
                     .then(() => {
                         expect.fail('should have thrown an error');
                     }).catch(ControlledVocabularyError, () => {});
             });
             it('errors on type unspecified', () => {
-                return db.models.Statement.createRecord({relevance: 'sensitivity'})
+                return db.models.Statement.createRecord({relevance: 'sensitivity'}, user)
                     .then(() => {
                         expect.fail('should have thrown an error');
                     }).catch(ControlledVocabularyError, () => {});
             });
             it('errors on null type', () => {
-                return db.models.Statement.createRecord({type: null, relevance: 'sensitivity'})
+                return db.models.Statement.createRecord({type: null, relevance: 'sensitivity'}, user)
                     .then(() => {
                         expect.fail('should have thrown an error');
                     }).catch(ControlledVocabularyError, () => {});
             });
             it('allows basic statement', () => {
-                return db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'})
+                return db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, user)
                     .then((record) => {
                         expect(record).to.be.instanceof(Record);
                         expect(record.content).to.have.property('type', STATEMENT_TYPE.THERAPEUTIC);
@@ -194,10 +204,10 @@ describe('statement module', () => {
                     return Promise.all([
                         db.models.Feature.createRecord({
                             source: FEATURE_SOURCE.ENSEMBL, biotype: FEATURE_BIOTYPE.GENE, name: 'ENSG001', source_version: 69
-                        }),
-                        db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}),
-                        db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}),
-                        db.models.GenomicPosition.createRecord({pos: 1})
+                        }, user),
+                        db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, user),
+                        db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, user),
+                        db.models.GenomicPosition.createRecord({pos: 1}, pos)
                     ]);
                 }).then((pList) => {
                     [feat, stmnt, stmnt2, pos] = pList;
@@ -208,25 +218,25 @@ describe('statement module', () => {
         });
         describe('AppliesTo.createRecord', () => {
             it('errors on invalid source type', () => {
-                return db.models.AppliesTo.createRecord({out: feat, in: feat})
+                return db.models.AppliesTo.createRecord({out: feat, in: feat}, user)
                     .then(() => {
                         expect.fail();
                     }).catch(AttributeError, () => {});
             });
             it('errors on invalid target type', () => {
-                return db.models.AppliesTo.createRecord({out: stmnt, in: pos})
+                return db.models.AppliesTo.createRecord({out: stmnt, in: pos}, user)
                     .then(() => {
                         expect.fail();
                     }).catch(AttributeError, () => {});
             });
             it('allows Statement => Feature', () => {
-                return db.models.AppliesTo.createRecord({out: stmnt, in: feat})
+                return db.models.AppliesTo.createRecord({out: stmnt, in: feat}, user)
                     .then((record) => {
                         expect(record).to.be.instanceof(Record);
                     });
             });
             it('errors on statement target type', () => {
-                return db.models.AppliesTo.createRecord({out: stmnt, in: stmnt2})
+                return db.models.AppliesTo.createRecord({out: stmnt, in: stmnt2}, user)
                     .then(() => {
                         expect.fail();
                     }).catch(AttributeError, () => {});
@@ -238,25 +248,25 @@ describe('statement module', () => {
 
         describe('AsComparedTo.createRecord', () => {
             it('errors on invalid source type', () => {
-                return db.models.AsComparedTo.createRecord({out: feat, in: feat})
+                return db.models.AsComparedTo.createRecord({out: feat, in: feat}, user)
                     .then(() => {
                         expect.fail();
                     }).catch(AttributeError, () => {});
             });
             it('errors on invalid target type', () => {
-                return db.models.AsComparedTo.createRecord({out: stmnt, in: pos})
+                return db.models.AsComparedTo.createRecord({out: stmnt, in: pos}, user)
                     .then(() => {
                         expect.fail();
                     }).catch(AttributeError, () => {});
             });
             it('allows Statement => Feature', () => {
-                return db.models.AsComparedTo.createRecord({out: stmnt, in: feat})
+                return db.models.AsComparedTo.createRecord({out: stmnt, in: feat}, user)
                     .then((record) => {
                         expect(record).to.be.instanceof(Record);
                     });
             });
             it('errors on statement target type', () => {
-                return db.models.AsComparedTo.createRecord({out: stmnt, in: stmnt2})
+                return db.models.AsComparedTo.createRecord({out: stmnt, in: stmnt2}, user)
                     .then(() => {
                         expect.fail();
                     }).catch(AttributeError, () => {});
@@ -268,31 +278,31 @@ describe('statement module', () => {
 
         describe('Requires.createRecord', () => {
             it('errors on invalid source type', () => {
-                return db.models.Requires.createRecord({out: pos, in: feat})
+                return db.models.Requires.createRecord({out: pos, in: feat}, user)
                     .then(() => {
                         expect.fail();
                     }).catch(AttributeError, () => {});
             });
             it('errors on invalid target type', () => {
-                return db.models.Requires.createRecord({out: stmnt, in: pos})
+                return db.models.Requires.createRecord({out: stmnt, in: pos}, user)
                     .then(() => {
                         expect.fail();
                     }).catch(AttributeError, () => {});
             });
             it('allows Statement => Feature', () => {
-                return db.models.Requires.createRecord({out: stmnt, in: feat})
+                return db.models.Requires.createRecord({out: stmnt, in: feat}, user)
                     .then((record) => {
                         expect(record).to.be.instanceof(Record);
                     });
             });
             it('errors when that source = target', () => {
-                return db.models.Requires.createRecord({out: stmnt, in: stmnt})
+                return db.models.Requires.createRecord({out: stmnt, in: stmnt}, user)
                     .then(() => {
                         expect.fail();
                     }).catch(AttributeError, () => {});
             });
             it('allows Statement => Statement', () => {
-                return db.models.Requires.createRecord({out: stmnt, in: stmnt2})
+                return db.models.Requires.createRecord({out: stmnt, in: stmnt2}, user)
                     .then((record) => {
                         expect(record).to.be.instanceof(Record);
                     });

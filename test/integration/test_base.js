@@ -118,7 +118,7 @@ describe('base module', () => {
         it('updateRecord', () => {
             const uuid = mockRecord.content.uuid;
             const version = mockRecord.content.version;
-            return db.models.MockVertexClass.updateRecord(mockRecord.content, user.content.username)
+            return db.models.MockVertexClass.updateRecord(mockRecord, user.content.username)
                 .then((record) => {
                     expect(record.content.uuid).to.equal(uuid);
                     expect(record.content.version).to.equal(version + 1);

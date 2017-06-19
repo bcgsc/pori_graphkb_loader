@@ -41,7 +41,7 @@ describe('Feature schema tests:', () => {
             }).then((role) => {
                 return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
             }).then((result) => {
-                user = result.content;
+                user = result;
             }).then(() => {
                 done();
             }).catch((error) => {
@@ -58,11 +58,9 @@ describe('Feature schema tests:', () => {
     });
 
     describe('indices', () => {
-        let currClass;
         beforeEach((done) => {
             Feature.createClass(db)
-                .then((cls) => {
-                    currClass = cls;
+                .then(() => {
                     done();
                 }).catch((error) => {
                     done(error);
@@ -70,9 +68,9 @@ describe('Feature schema tests:', () => {
         });
         it('errors on active name not unique within source/version', () => {
             const entry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: null};
-            return currClass.createRecord(entry, user.username)
+            return db.models.Feature.createRecord(entry, user)
                 .then((record) => {
-                    return currClass.createRecord(entry, user.username);
+                    return db.models.Feature.createRecord(entry, user);
                 }, (error) => {
                     console.log(error);
                     expect.fail('failed on initial record creation');
@@ -86,10 +84,10 @@ describe('Feature schema tests:', () => {
         it('allows name duplicate within a source in different source versions', () => {
             const entry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: null};
             const secondEntry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: 1};
-            return currClass.createRecord(entry, user.username)
+            return db.models.Feature.createRecord(entry, user)
                 .then((record) => {
                     expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
-                    return currClass.createRecord(secondEntry, user.username);
+                    return db.models.Feature.createRecord(secondEntry, user);
                 }, (error) => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
@@ -98,11 +96,11 @@ describe('Feature schema tests:', () => {
         });
         it('allows name duplicate when one node is deleted', () => {
             const entry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: null};
-            return currClass.createRecord(entry, user.username)
+            return db.models.Feature.createRecord(entry, user)
                 .then((record) => {
                     expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
                     record.content.source_version = 1;
-                    return currClass.updateRecord(record.content, user.username);
+                    return db.models.Feature.updateRecord(record, user);
                 }, (error) => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
@@ -112,10 +110,10 @@ describe('Feature schema tests:', () => {
         it('allows name duplicates in separate sources', () => {
             const entry = {source: FEATURE_SOURCE.ENSEMBL, biotype: FEATURE_BIOTYPE.GENE, name: 'ENSG001', source_version: null};
             const secondEntry = {source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE, name: 'ENSG001', source_version: null};
-            return currClass.createRecord(entry, user.username)
+            return db.models.Feature.createRecord(entry, user)
                 .then((record) => {
                     expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
-                    return currClass.createRecord(secondEntry, user.username);
+                    return db.models.Feature.createRecord(secondEntry, user);
                 }, (error) => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
@@ -138,10 +136,10 @@ describe('Feature schema tests:', () => {
 
         it('errors when deprecating a feature with a different biotype', () => {
             return Promise.all([
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENST001', biotype: FEATURE_BIOTYPE.TRANSCRIPT, source_version: 11}, user.username)
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENST001', biotype: FEATURE_BIOTYPE.TRANSCRIPT, source_version: 11}, user)
             ]).then((recList) => {
-                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user.username);
+                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user);
             }).then((edge) => {
                 console.log(edge);
                 expect.fail('should not have been able to create the record');
@@ -151,10 +149,10 @@ describe('Feature schema tests:', () => {
         });
         it('errors when deprecating a feature with a different source', () => {
             return Promise.all([
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.REFSEQ, name: 'NG_001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user.username)
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.REFSEQ, name: 'NG_001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user)
             ]).then((recList) => {
-                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user.username);
+                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user);
             }).then((edge) => {
                 console.log(edge);
                 expect.fail('should not have been able to create the record');
@@ -164,10 +162,10 @@ describe('Feature schema tests:', () => {
         });
         it('errors when the deprecated version is not lower than the new version', () => {
             return Promise.all([
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user.username),
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG002', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user.username)
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG002', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user)
             ]).then((recList) => {
-                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user.username);
+                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user);
             }).then((edge) => {
                 console.log(edge);
                 expect.fail('should not have been able to create the record');
@@ -177,10 +175,10 @@ describe('Feature schema tests:', () => {
         });
         it('errors when null version deprecates non-null version', () => {
             return Promise.all([
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: null}, user.username)
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: null}, user)
             ]).then((recList) => {
-                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user.username);
+                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user);
             }).then((edge) => {
                 console.log(edge);
                 expect.fail('should not have been able to create the record');
@@ -190,10 +188,10 @@ describe('Feature schema tests:', () => {
         });
          it('allows version higher', () => {
             return Promise.all([
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user.username)
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user)
             ]).then((recList) => {
-                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user.username);
+                return db.models.FeatureDeprecatedBy.createRecord({out: recList[0], in: recList[1]}, user);
             }).then((edge) => {
                 expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out', 'created_by', 'deleted_by');
             });
@@ -215,10 +213,10 @@ describe('Feature schema tests:', () => {
 
         it('errors when deprecating a feature with a different biotype', () => {
             return Promise.all([
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENST001', biotype: FEATURE_BIOTYPE.TRANSCRIPT, source_version: 11}, user.username)
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENST001', biotype: FEATURE_BIOTYPE.TRANSCRIPT, source_version: 11}, user)
             ]).then((recList) => {
-                return db.models.FeatureAliasOf.createRecord({out: recList[0].content, in: recList[1].content}, user.username);
+                return db.models.FeatureAliasOf.createRecord({out: recList[0], in: recList[1]}, user);
             }).then((edge) => {
                 console.log(edge);
                 expect.fail('should not have been able to create the record');
@@ -228,10 +226,10 @@ describe('Feature schema tests:', () => {
         });
          it('allows between different sources when the biotype is equal', () => {
             return Promise.all([
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user.username),
-                db.models.Feature.createRecord({source: FEATURE_SOURCE.REFSEQ, name: 'NG_0001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user.username)
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user),
+                db.models.Feature.createRecord({source: FEATURE_SOURCE.REFSEQ, name: 'NG_0001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user)
             ]).then((recList) => {
-                return db.models.FeatureAliasOf.createRecord({out: recList[0].content, in: recList[1].content}, user.username);
+                return db.models.FeatureAliasOf.createRecord({out: recList[0], in: recList[1]}, user);
             }).then((edge) => {
                 expect(edge.content).to.include.keys('uuid', 'version', 'created_at', 'deleted_at', 'in', 'out');
             });

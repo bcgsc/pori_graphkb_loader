@@ -19,15 +19,19 @@ describe('Vocab schema tests:', () => {
         connectServer(conf)
             .then((result) => {
                 // create the empty database
-                return createDB({server: result, name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+                return createDB({
+                    server: result, 
+                    name: conf.emptyDbName, 
+                    username: conf.dbUsername, 
+                    password: conf.dbPassword,
+                    heirarchy: [
+                        [KBRole, History],
+                        [KBUser],
+                        [KBVertex, KBEdge]
+                    ]
+                });
             }).then((result) => {
                 db = result;
-                return Promise.all([
-                    KBVertex.createClass(db),
-                    History.createClass(db),
-                    KBEdge.createClass(db)
-                ]);
-            }).then(() => {
                 done();
             }).catch((error) => {
                 console.log('error', error);
