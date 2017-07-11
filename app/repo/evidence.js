@@ -1,5 +1,5 @@
 'use strict';
-const {Base, KBVertex, Record} = require('./base');
+const {Base, KBVertex, KBEdge, Record, KBUser} = require('./base');
 const {AttributeError, NoResultFoundError} = require('./error');
 const currYear = require('year');
 
@@ -48,13 +48,13 @@ class Evidence extends KBVertex {
  */
 class Publication extends KBVertex {
 
-    validateContent(content, journalClass) {
-        if ([content.title, content.journal, content.year].some(x => x == undefined)) {
+    validateContent(content) {
+        if ([content.title, content.year].some(x => x == undefined)) {
             throw new AttributeError('violated null constraint');
         } else if ((content.year < 1000) || (content.year > currYear('yyyy'))) {
             throw new AttributeError('publication year cannot be too old or in the future');
         }
-        content.journal = journalClass.validateContent({name: content.journal.name, created_by: content.created_by});
+        // content.journal = journalClass.validateContent({name: content.journal.name, created_by: content.created_by});
         content.title = content.title.toLowerCase();
         if (content.doi != undefined || content.pmid != undefined) {
             if (content.pmid !== parseInt(content.pmid, 10)) {
@@ -68,35 +68,38 @@ class Publication extends KBVertex {
         return super.validateContent(content);
     }
 
-    createRecord(opt, journalClass, user) {
+    createRecord(opt={}, user) {
         return new Promise((resolve, reject) => {
-            const content = Object.assign({created_by: user}, opt);
-            const args = this.validateContent(content, journalClass);
-            journalClass.selectExactlyOne({name: args.journal.name})
-                .catch(NoResultFoundError, () => {
-                    return journalClass.createRecord({name: args.journal.name}, args.created_by);
-                }).then((journalRecord) => {
-                    this.db.models.KBUser.selectExactlyOne({username: args.created_by}).then((userRecord) => {
-                        args.created_by = userRecord.content['@rid'];
-                        args.journal = journalRecord.content['@rid'];
-                        this.conn.create(args)
-                            .then((record) => {
-                                record.journal = journalRecord;
-                                resolve(new Record(record, this));
-                                }).catch((error) => {
-                                    reject(error);
-                                });
-                            }).catch((error) => {
-                                reject((error));
-                            });
-                        });
-                });
+            opt.created_by = true;
+            const args = this.validateContent(opt);
+            let journal = args.journal ? new Record(args.journal, Journal.clsname) : null;
+
+            Promise.all([
+                journal == null || journal.hasRID ? Promise.resolve(journal) : this.db.models.Journal.selectExactlyOne(journal.content),
+                user.rid != null ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname})
+            ]).then((pList) => {
+                [journal, user] = pList;
+                if (journal == null) {
+                    delete args.journal;
+                } else {
+                    args.journal = journal.rid;
+                }
+                args.created_by = user.rid;
+                return this.conn.create(args);
+            }).then((rec) => {
+                rec.journal = journal ? journal.content : journal;
+                rec.created_by = user.content;
+                resolve(new Record(rec, this.constructor.clsname));
+            }).catch((error) => {
+                reject(error);
+            });
+        });                    
     }
 
     static createClass(db){
         return new Promise((resolve, reject) => {
             const props = [
-                {name: 'journal', type: 'link', mandatory: true, notNull: true, linkedClass: Evidence.clsname},
+                {name: 'journal', type: 'link', mandatory: false, notNull: true, linkedClass: Journal.clsname},
                 {name: 'year', type: 'integer', mandatory: true, notNull: true},
                 {name: 'title', type: 'string', mandatory: true, notNull: true},
                 {name: 'doi', type: 'string', mandatory: false},
