@@ -43,7 +43,7 @@ describe('Evidence schema tests:', () => {
             }).then((role) => {
                 return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
             }).then((result) => {
-                user = result.content;
+                user = result.content.username;
             }).then(() => {
                 done();
             }).catch((error) => {
@@ -81,14 +81,6 @@ describe('Evidence schema tests:', () => {
                     done(error);
                 });
         });
-        it('create publication class', () => {
-            return Publication.createClass(db)
-                .then((result) => {
-                    expect(result).to.be.an.instanceof(Publication);
-                    expect(result.isAbstract).to.be.false;
-                });
-        });
-
         it('create journal class', () => {
             return Journal.createClass(db)
                 .then((result) => {
@@ -97,6 +89,17 @@ describe('Evidence schema tests:', () => {
                     expect(result.isAbstract).to.be.false;
                 });
         });
+        it('create publication class', () => {
+            return Journal.createClass(db)
+                .then((result) => {
+                    return Publication.createClass(db)
+                        .then((result) => {
+                            expect(result).to.be.an.instanceof(Publication);
+                            expect(result.isAbstract).to.be.false;
+                    });
+                });
+        });
+
         it('create ExternalSource class', () => {
             return ExternalSource.createClass(db)
                 .then((result) => {
@@ -149,32 +152,48 @@ describe('Evidence schema tests:', () => {
                         done(error);
                     });
             });
-            it('test null/undefined error', () => {
-                return pubClass.createRecord({title: 'title', year: 2008}, journalClass, 'me')
+            it('basic publication record', () => {
+                return journalClass.createRecord({name: 'sampleJournalName'}, 'me')
+                    .then((journalRec) =>
+                    {
+                        return pubClass.createRecord({title: 'title', year: 2008, journal: journalRec}, 'me')
+                            .then((result) => {
+                                expect(result.content).to.have.property('journal');
+                            }, (error) => {
+                                console.log(error)
+                            });
+                    });                        
+            });
+            it('basic publication record with no journal', () => {
+                return pubClass.createRecord({title: 'title', year: 2008}, 'me')
                     .then((result) => {
-                        expect.fail('expected error');
+                        expect(result.content).to.have.property('title');
                     }, (error) => {
-                        expect(error).to.be.instanceof(AttributeError);
-                    });
+                        console.log(error)
+                    });                        
             });
             it('allows links from different publications to one journal', () => {
-                return pubClass.createRecord({title: 'title', year: 2008, journal: {name: 'journal'}}, journalClass, 'me')
-                    .then((result) => {
-                        expect(result.content).to.have.property('journal');
-                        return pubClass.createRecord({title: 'title2', year: 2008, journal: {name: 'journal'}}, journalClass, 'me')
-                            .then((result2) => {
-                                expect(result2.content).to.have.property('journal');
-                            })
-                    .then((result) => {
-                        return pubClass.createRecord({title: 'title3', year: 2008, journal: {name: 'journal'}}, journalClass, 'me')
-                            .then((result3) => {
-                                expect(result3.content).to.have.property('journal');
-                            });
-                    })                            
-                });
+                return journalClass.createRecord({name: 'sampleJournalName'}, 'me')
+                    .then((journalRec) =>
+                    {
+                        return pubClass.createRecord({title: 'title', year: 2008, journal: journalRec}, 'me')
+                            .then((result) => {
+                                expect(result.content).to.have.property('journal');
+                                return pubClass.createRecord({title: 'title2', year: 2008, journal: journalRec}, 'me')
+                                    .then((result2) => {
+                                        expect(result2.content).to.have.property('journal');
+                                    })
+                            .then((result) => {
+                                return pubClass.createRecord({title: 'title3', year: 2008, journal: journalRec}, 'me')
+                                    .then((result3) => {
+                                        expect(result3.content).to.have.property('journal');
+                                    });
+                            })                            
+                        });
+                    });
             });
             it('test mandatory props with future publication date', () => {
-                return pubClass.createRecord({title: 'title', year: 2018, journal: {name: 'journal'}}, journalClass, 'me')
+                return pubClass.createRecord({title: 'title', year: 2018}, 'me')
                     .then((result) => {
                         expect.fail('invalid attribute. should have thrown error');
                     }).catch((error) => {
@@ -182,7 +201,7 @@ describe('Evidence schema tests:', () => {
                     });
             });
             it('test wrong pmid value (i.e. string)', () => {
-                return pubClass.createRecord({title: 'title', year: 2016, pmid: '21xd2456', journal: {name: 'journal'}}, journalClass, 'me')
+                return pubClass.createRecord({title: 'title', year: 2016, pmid: '21xd2456'}, 'me')
                     .then((result) => {
                         expect.fail('invalid attribute. should have thrown error');
                     }).catch((error) => {
@@ -190,9 +209,9 @@ describe('Evidence schema tests:', () => {
                     });
             });
             it('errors on creating duplicate active entries', () => {
-                return pubClass.createRecord({title: 'title', year: 2008, journal: {name: 'journal'}}, journalClass, 'me')
+                return pubClass.createRecord({title: 'title', year: 2008}, 'me')
                     .then(() => {
-                        return pubClass.createRecord({title: 'title', year: 2008, journal: {name: 'journal'}}, journalClass, 'me')
+                        return pubClass.createRecord({title: 'title', year: 2008}, 'me')
                     }).then(() => {
                         expect.fail('expected error');                        
                     }).catch((error) => {
@@ -200,43 +219,59 @@ describe('Evidence schema tests:', () => {
                     });
             });
             it('duplicate entries deleted at the same time', () => {
-                return pubClass.createRecord({title: 'title', year: 2008, journal: {name: 'journal'}, deleted_at: 1493760183196}, journalClass, 'me')
-                    .then((result) => {
-                        return pubClass.createRecord({title: 'title', year: 2008, journal: {name: 'journal'}, deleted_at: 1493760183196}, journalClass, 'me');
-                    }).then(() => {
-                        expect.fail('violated unqiue constraint. error expected');             
-                    }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
+                return journalClass.createRecord({name: 'sampleJournalName'}, 'me')
+                    .then((journalRec) =>
+                    {
+                        return pubClass.createRecord({title: 'title', year: 2008, journal: journalRec, deleted_at: 1493760183196}, 'me')
+                            .then((result) => {
+                                return pubClass.createRecord({title: 'title', year: 2008, journal: journalRec, deleted_at: 1493760183196}, 'me');
+                            }).then(() => {
+                                expect.fail('violated unqiue constraint. error expected');             
+                            }).catch((error) => {
+                                return oError.expectDuplicateKeyError(error);
+                            });
                     });
             });
             it('duplicate entries deleted at the same time', () => {
-                return pubClass.createRecord({title: 'title', year: 2008, journal: {name: 'journal'}, deleted_at: 1493760183196}, journalClass, 'me')
-                    .then((result) => {
-                        return pubClass.createRecord({title: 'title', year: 2008, journal: {name: 'journal'}, deleted_at: 1493760183201}, journalClass, 'me');
-                    }).then((result) => {
-                        expect(result.content).to.have.property('year');
-                        expect(result.content).to.have.property('title')             
-                    }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
+                return journalClass.createRecord({name: 'sampleJournalName'}, 'me')
+                    .then((journalRec) =>
+                    {
+                        return pubClass.createRecord({title: 'title', year: 2008, journal: journalRec, deleted_at: 1493760183196}, 'me')
+                            .then((result) => {
+                                return pubClass.createRecord({title: 'title', year: 2008, journal: journalRec, deleted_at: 1493760183201}, 'me');
+                            }).then((result) => {
+                                expect(result.content).to.have.property('year');
+                                expect(result.content).to.have.property('title')             
+                            }).catch((error) => {
+                                return oError.expectDuplicateKeyError(error);
+                            });
                     });
             });
             it('duplicate entries one active and one deleted', () => {
-                return pubClass.createRecord({title: 'title', year: 2008, journal: {name: 'journal'}, deleted_at: 1493760183196}, journalClass, 'me')
-                    .then((result) => {
-                        return pubClass.createRecord({title: 'title', year: 2008, journal: {name: 'journal'}}, journalClass, 'me');
-                    }).then((result) => {
-                        expect(result.content).to.have.property('year');
-                        expect(result.content).to.have.property('title')            
-                    }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
+                return journalClass.createRecord({name: 'sampleJournalName'}, 'me')
+                    .then((journalRec) =>
+                    {
+                        return pubClass.createRecord({title: 'title', year: 2008, journal: journalRec, deleted_at: 1493760183196}, 'me')
+                            .then((result) => {
+                                return pubClass.createRecord({title: 'title', year: 2008, journal: journalRec}, 'me');
+                            }).then((result) => {
+                                expect(result.content).to.have.property('year');
+                                expect(result.content).to.have.property('title')            
+                            }).catch((error) => {
+                                return oError.expectDuplicateKeyError(error);
+                            });
                     });
             });
             it('invalid attribute', () => {
-                return pubClass.createRecord({title: 'title', year: 'year',  journal: {name: 'journal'},  invalid_attribute: 2}, journalClass, 'me')
-                    .then((result) => {
-                        expect.fail('invalid attribute. should have thrown error');
-                    }).catch((error) => {
-                        expect(error).to.be.an.instanceof(AttributeError);
+                return journalClass.createRecord({name: 'sampleJournalName'}, 'me')
+                    .then((journalRec) =>
+                    {
+                        return pubClass.createRecord({title: 'title', year: 'year',  journal: journalRec,  invalid_attribute: 2}, 'me')
+                            .then((result) => {
+                                expect.fail('invalid attribute. should have thrown error');
+                            }).catch((error) => {
+                                expect(error).to.be.an.instanceof(AttributeError);
+                            });
                     });
             });
         });
