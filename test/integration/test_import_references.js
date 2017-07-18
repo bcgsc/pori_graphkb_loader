@@ -221,7 +221,7 @@ describe('Setting up', () => {
                             }
                             case 'g': {
                                 console.log("YES")
-                                console.log("jsonObj[uuid]")
+                                console.log(jsonObj[uuid].event)
                                 posClass = {'@class': GenomicPosition.clsname};
                                 [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass)
                             }
