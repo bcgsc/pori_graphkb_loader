@@ -19,7 +19,8 @@ const FEATURE_SOURCE = {
     ENSEMBL: 'ensembl',
     REFSEQ: 'refseq',
     LRG: 'lrg',
-    GRC: 'genome reference consortium (human)'
+    GRC: 'genome reference consortium (human)',
+    HUGO: 'hugo'
 };
 
 /**
@@ -106,6 +107,11 @@ class Feature extends KBVertex {
                 break;
             case FEATURE_SOURCE.GRC:
                 if (args.biotype !== FEATURE_BIOTYPE.TEMPLATE) {
+                    throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+                }
+                break;
+            case FEATURE_SOURCE.HUGO:
+                if (args.biotype !== FEATURE_BIOTYPE.GENE) {
                     throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
                 }
                 break;
