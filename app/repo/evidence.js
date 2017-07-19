@@ -48,7 +48,8 @@ class Evidence extends KBVertex {
  */
 class Publication extends KBVertex {
 
-    validateContent(content) {
+    validateContent(args) {
+        const content = Object.assign({}, args)
         if ([content.title, content.year].some(x => x == undefined)) {
             throw new AttributeError('violated null constraint');
         } else if ((content.year < 1000) || (content.year > currYear('yyyy'))) {
@@ -69,9 +70,10 @@ class Publication extends KBVertex {
     }
 
     createRecord(opt={}, user) {
+        const content = Object.assign({}, opt)
+        content.created_by = true;
+        const args = this.validateContent(content);
         return new Promise((resolve, reject) => {
-            opt.created_by = true;
-            const args = this.validateContent(opt);
             let journal = args.journal ? new Record(args.journal, Journal.clsname) : null;
 
             Promise.all([
