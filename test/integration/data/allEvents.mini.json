@@ -1,0 +1,244 @@
+{
+	"fb1fdb48-3d4d-47f6-94a0-a2b61d087209": {
+		"statement": {
+			"type": "biological",
+			"relevance": "oncogene"
+		},
+		"disease": {
+			"name": "chronic myeloid leukemia"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "1656220",
+			"title": "axl, a transforming gene isolated from primary human myeloid leukemia cells, encodes a novel receptor tyrosine kinase"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "na",
+			"germline": "",
+			"type": "FANN",
+			"flag": "CategoryEvent",
+			"term": "na",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "AXL"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"70d1b9f7-8ba9-4c4d-905e-78598bd6ce70": {
+		"statement": {
+			"type": "biological",
+			"relevance": "oncogene"
+		},
+		"disease": {
+			"name": "melanoma"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "1656220",
+			"title": "axl, a transforming gene isolated from primary human myeloid leukemia cells, encodes a novel receptor tyrosine kinase"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "na",
+			"germline": "",
+			"type": "FANN",
+			"flag": "CategoryEvent",
+			"term": "na",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "AXL"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"cb895866-bf17-4106-96c8-2834292ab370": {
+		"statement": {
+			"type": "biological",
+			"relevance": "gain-of-function"
+		},
+		"disease": {
+			"name": "prostate cancer"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "2260966",
+			"title": "A mutation in the ligand binding domain of the androgen receptor of human LNCaP cells affects steroid binding characteristics and response to anti-androgens"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "A",
+			"termination_aa": null,
+			"reference_seq": "T",
+			"csys": "p",
+			"start": [
+				{
+					"pos": 878,
+					"ref_aa": "T"
+				},
+				{
+					"pos": 878,
+					"ref_aa": "T"
+				}
+			],
+			"subtype": "substitution",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "AR"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"4c86255e-bd73-4e03-bc85-8ee71e08febf": {
+		"statement": {
+			"type": "biological",
+			"relevance": "gain-of-function"
+		},
+		"disease": {
+			"name": "papillary thyroid carcinoma"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "7565764",
+			"title": "The DNA rearrangement that generates the TRK-T3 oncogene involves a novel gene on chromosome 3 whose product has a potential coiled-coil domain"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "structural variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "e",
+			"start": [
+				{
+					"pos": -1
+				},
+				{
+					"pos": -1
+				}
+			],
+			"end": [
+				{
+					"pos": -1
+				},
+				{
+					"pos": -1
+				}
+			],
+			"subtype": "fusion",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "TFG"
+			},
+			"secondary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "NTRK1"
+			}
+		}
+	},
+	"4a4be105-dfc2-409a-848e-af15b7f7d4eb": {
+		"statement": {
+			"type": "prognostic",
+			"relevance": "unfavourable"
+		},
+		"disease": {
+			"name": "urinary bladder cancer"
+		},
+		"reference": {
+			"type": "pre-clinical",
+			"id_type": "pubmed",
+			"id": "16490597",
+			"title": ""
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "homozygous",
+			"germline": "",
+			"type": "copy number variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "y",
+			"start": [
+				{
+					"arm": "q",
+					"major_band": "15",
+					"minor_band": "0"
+				},
+				{
+					"arm": "q",
+					"major_band": "15",
+					"minor_band": "0"
+				}
+			],
+			"subtype": "homozygous deletion",
+			"primary_feature": {
+				"biotype": "chromosome",
+				"source": "chromosome",
+				"name": "5"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"88e8a6ea-a3f5-4576-9c1f-2c5d9e87403d": {
+		"statement": {
+			"type": "occurrence",
+			"relevance": "observed"
+		},
+		"disease": {
+			"name": "Li-Fraumeni syndrome"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "16494995",
+			"title": "The TP53 mutation, R337H, is associated with Li-Fraumeni and Li-Fraumeni-like syndromes in Brazilian families"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "T",
+			"termination_aa": null,
+			"reference_seq": "G",
+			"csys": "c",
+			"start": [
+				{
+					"pos": 672,
+					"offset": "+1"
+				},
+				{
+					"pos": 672,
+					"offset": "+1"
+				}
+			],
+			"subtype": "substitution",
+			"primary_feature": {
+				"biotype": "cds",
+				"source": "refseq",
+				"name": "NM_000546"
+			},
+			"secondary_feature": {}
+		}
+	}
+}
