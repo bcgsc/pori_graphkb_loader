@@ -52,26 +52,26 @@ function doesAlreadyExist(listOfObjs, otherObj) {
     return flag
 }
 
-function assignPositions(event, posClass) {
+function assignPositions(event) {
     let startObjF, endObjF;
     if (_.isEqual(event.start[0], event.start[1])) {
-        startObjF = Object.assign(event.start[0], posClass);
+        startObjF = Object.assign({}, event.start[0]);
     } else {
         // startObj should be a range
         startObjF = {
-            start: Object.assign(event.end[0], posClass), 
-            end: Object.assign(event.end[1], posClass), 
+            start: Object.assign({}, event.end[0]), 
+            end: Object.assign({}, event.end[1]), 
             '@class': Range.clsname
         }
     }
     if (event.end != undefined) {
         if (_.isEqual(event.end[0], event.end[1])) {
-            endObjF = Object.assign(event.end[0], posClass);    
+            endObjF = Object.assign({}, event.end[0]);    
         } else {
             // endObj should be a range
             endObjF = {
-                start: Object.assign(event.end[0], posClass), 
-                end: Object.assign(event.end[1], posClass), 
+                start: Object.assign({}, event.end[0]), 
+                end: Object.assign({}, event.end[1]), 
                 '@class': Range.clsname
             }
         }
@@ -123,24 +123,6 @@ describe('Setting up', () => {
             });
     });
 
-    // describe('Massive reference import tests', () => {
-    //     let publicationCls, journalCls, externalSourceCls, studyCls, clinicalTrialCls;
-    //     beforeEach(function(done) {
-    //         Promise.all([
-    //                 Publication.createClass(db),
-    //                 Journal.createClass(db),
-    //                 ExternalSource.createClass(db),
-    //                 Study.createClass(db),
-    //                 ClinicalTrial.createClass(db)
-    //             ]).then((clsList) => {
-    //                 [publicationCls, journalCls, externalSourceCls, studyCls, clinicalTrialCls] = clsList;
-    //                 done();
-    //             }).catch((error) => {
-    //                 done(error);
-    //             });
-    //     });
-    // });
-
     it('Massive reference import tests', () => { 
 
         let fs = Promise.promisifyAll(require("fs"));
@@ -166,25 +148,25 @@ describe('Setting up', () => {
                     promises.push(db.models.Disease.createRecord(diseaseObj, user));
                 }
                 //reference
-                // if (jsonObj[uuid].reference.type === 'reported') {
-                //     let pubTitle = jsonObj[uuid].reference.title.length > 0 ? jsonObj[uuid].reference.title : 'UNTITLED';
-                //     let pubTypeObj = jsonObj[uuid].reference.id_type === 'pubmed' ? {pmid: parseInt(jsonObj[uuid].reference.id)} : {doi: (jsonObj[uuid].reference.id).toString()};
-                //     let pubObj = Object.assign({title: pubTitle, year: currYear('yyyy').toString()}, pubTypeObj)
-                //     if (!doesAlreadyExist(references, pubObj)) {
-                //         references.push(pubObj);
-                //         promises.push(db.models.Publication.createRecord(pubObj, user));
-                //     }
-                // }
+                if (jsonObj[uuid].reference.type === 'reported') {
+                    let pubTitle = jsonObj[uuid].reference.title.length > 0 ? jsonObj[uuid].reference.title : 'UNTITLED';
+                    let pubTypeObj = jsonObj[uuid].reference.id_type === 'pubmed' ? {pmid: parseInt(jsonObj[uuid].reference.id)} : {doi: (jsonObj[uuid].reference.id).toString()};
+                    let pubObj = Object.assign({title: pubTitle, year: currYear('yyyy').toString()}, pubTypeObj)
+                    if (!doesAlreadyExist(references, pubObj)) {
+                        references.push(pubObj);
+                        promises.push(db.models.Publication.createRecord(pubObj, user));
+                    }
+                }
 
                 let featurePromises = [];
                 let pFeatureObj, sFeatureObj;
-                pFeatureObj = Object.assign(jsonObj[uuid].event.primary_feature, {source_version: 0})
+                pFeatureObj = Object.assign({}, jsonObj[uuid].event.primary_feature, {source_version: 0})
 
                 if (!doesAlreadyExist(features, pFeatureObj)) {
                     features.push(pFeatureObj);
                     featurePromises.push(db.models.Feature.createRecord(pFeatureObj, user));
                     if (Object.keys(jsonObj[uuid].event.secondary_feature).length != 0) {
-                        sFeatureObj = Object.assign(jsonObj[uuid].event.secondary_feature, {source_version: 0})
+                        sFeatureObj = Object.assign({}, jsonObj[uuid].event.secondary_feature, {source_version: 0})
                         if (!doesAlreadyExist(features, sFeatureObj)) {
                             features.push(sFeatureObj);
                             featurePromises.push(db.models.Feature.createRecord(sFeatureObj, user));
@@ -192,68 +174,78 @@ describe('Setting up', () => {
                     }
                 }
 
-                let pFeatureRec, sFeatureRec;
+                let pFeatureRec, sFeatureRec, eventZygosity;
+                eventZygosity = (jsonObj[uuid].event.zygosity != 'ns') && (jsonObj[uuid].event.zygosity != 'na') ? jsonObj[uuid].event.zygosity : null;
                 Promise.all(featurePromises).then((featureRecs) => {
                     [pFeatureRec, sFeatureRec] = featureRecs;
                     let baseEventObj = {
                         type: jsonObj[uuid].event.type,
-                        zygosity: null,
+                        zygosity: eventZygosity,
                         germline: null,
                         primary_feature: pFeatureRec,
                         secondary_feature: sFeatureRec
                         };
-
                     let startObj, endObj, positionObj, posClass;
                     let eventCategory = jsonObj[uuid].event.flag;
                     if (eventCategory === 'CategoryEvent') {
                         if (jsonObj[uuid].event.type === 'FANN') {
                             //
                         } else {
-                            let categoryEventObj = Object.assign(baseEventObj, {term: jsonObj[uuid].event.term});
+                            let categoryEventObj = Object.assign({}, baseEventObj, {term: jsonObj[uuid].event.term});
                             promises.push(db.models.CategoryEvent.createRecord(categoryEventObj, user));
                         }
                     } else if (eventCategory === 'PositionalEvent') {
                         
+
                         switch(jsonObj[uuid].event.csys) {
                             case 'p': {
-                                posClass = {'@class': ProteinPosition.clsname};
-                                [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass)                              
+                                //posClass = {'@class': ProteinPosition.clsname};
+                                posClass = ProteinPosition.clsname;
+                                [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass);
+                                break;                             
                             }
                             case 'g': {
-                                console.log("YES")
                                 console.log(jsonObj[uuid].event)
-                                posClass = {'@class': GenomicPosition.clsname};
-                                [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass)
+                                //posClass = {'@class': GenomicPosition.clsname};
+                                posClass = GenomicPosition.clsname;
+                                [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass);
+                                break;
                             }
                             case 'c': {
-                                posClass = {'@class': CodingSequencePosition.clsname};
-                                [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass)
+                                //posClass = {'@class': CodingSequencePosition.clsname};
+                                posClass = CodingSequencePosition.clsname;
+                                [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass);
+                                break;
                             }
                             case 'y': {
-                                posClass = {'@class': CytobandPosition.clsname};
-                                [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass)
+                                //posClass = {'@class': CytobandPosition.clsname};
+                                posClass = CytobandPosition.clsname;
+                                [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass);
+                                break;
                             }
                             case 'e': {
-                                posClass = {'@class': ExonicPosition.clsname};
-                                [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass)
+                                //posClass = {'@class': ExonicPosition.clsname};
+                                posClass = ExonicPosition.clsname;
+                                [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass);
+                                break;
                             }
                         }
-
+                        positionObj = endObj != undefined ? {start: startObj, end: endObj} : {start: startObj};
                         let basePositionalObj = {
                             untemplated_seq: jsonObj[uuid].event.untemplated_seq,
                             reference_seq: jsonObj[uuid].event.reference_seq,
                             subtype: jsonObj[uuid].event.subtype,
                             terminating_aa: jsonObj[uuid].event.terminating_aa
                         };
-                        let positionalEventObj = Object.assign(baseEventObj, basePositionalObj, positionObj);
-                        promises.push(db.models.PositionalEvent.createRecord(positionalEventObj, posClass.clsname, user));
+                        let positionalEventObj = Object.assign({}, baseEventObj, basePositionalObj, positionObj);
+                        promises.push(db.models.PositionalEvent.createRecord(positionalEventObj, posClass, user));
                     }
                     return promises;
                 }).then((promises) => {
                     Promise.all(promises)
                     .then((result) => {
-                        //console.log('**********************')
-                        //console.log(result)
+                        console.log('**********************')
+                        console.log(result)
                     }).catch((err) => {
                         console.log(err)
                     });
