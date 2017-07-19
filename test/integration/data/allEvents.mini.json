@@ -247,84 +247,76 @@
 			"secondary_feature": {}
 		}
 	},
-	"d73d41fe-209c-405a-896b-5b988820232d": {
+	"2c15df87-3dda-4d34-9e16-cc1cb591dfa9": {
 		"statement": {
 			"type": "therapeutic",
-			"relevance": "sensitivity"
+			"relevance": "sensitivity",
+			"context": ""
 		},
 		"disease": {
-			"name": "idiopathic hypereosinophilic syndrome"
+			"name": "ovarian cancer"
 		},
 		"reference": {
-			"type": "FDA-approved",
-			"id_type": "pubmed",
-			"id": "16498388",
-			"title": ""
+			"type": "clinical trials",
+			"id_type": "other",
+			"id": "J Clin Oncol 30:2012 (suppl abstr 1009)",
+			"title": "Phase I, open-label study of olaparib plus cisplatin in patients with advanced solid tumors"
 		},
 		"event": {
 			"status": "True",
 			"zygosity": "ns",
 			"germline": "",
-			"type": "structural variant",
-			"flag": "PositionalEvent",
-			"untemplated_seq": "",
-			"termination_aa": null,
-			"reference_seq": "",
-			"csys": "e",
-			"start": [
-				{
-					"pos": 23
-				},
-				{
-					"pos": 23
-				}
-			],
-			"end": [
-				{
-					"pos": 12
-				},
-				{
-					"pos": 12
-				}
-			],
-			"subtype": "fusion",
+			"type": "CNV",
+			"flag": "CategoryEvent",
+			"term": "copy loss",
 			"primary_feature": {
 				"biotype": "gene",
 				"source": "hugo",
-				"name": "KIF5B"
+				"name": "BRCA2"
 			},
-			"secondary_feature": {
-				"biotype": "gene",
-				"source": "hugo",
-				"name": "PDGFRA"
-			}
+			"secondary_feature": {}
 		}
 	},
-	"a62205bd-e135-4e78-ba1a-f3d08c979f32": {
+	"cdd3ed39-5ed8-47e3-ba76-f8447b8c5386": {
 		"statement": {
 			"type": "therapeutic",
-			"relevance": "resistance"
+			"relevance": "resistance",
+			"context": "flutamide"
 		},
 		"disease": {
-			"name": "stomach cancer"
+			"name": "prostate cancer"
 		},
 		"reference": {
-			"type": "pre-clinical",
+			"type": "case report",
 			"id_type": "pubmed",
-			"id": "16644108",
-			"title": "Regulation of MDK expression in human cancer cells modulates sensitivities to various anticancer drugs: MDK overexpression confers to a multi-drug resistance"
+			"id": "2260966",
+			"title": "A mutation in the ligand binding domain of the androgen receptor of human LNCaP cells affects steroid binding characteristics and response to anti-androgens"
 		},
 		"event": {
 			"status": "True",
-			"zygosity": "na",
+			"zygosity": "ns",
 			"germline": "",
-			"type": "ELV-RNA",
-			"flag": "CategoryEvent",
-			"term": "increased expression",
+			"type": "MUT",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "A",
+			"termination_aa": null,
+			"reference_seq": "T",
+			"csys": "p",
+			"start": [
+				{
+					"pos": 878,
+					"ref_aa": "T"
+				},
+				{
+					"pos": 878,
+					"ref_aa": "T"
+				}
+			],
+			"subtype": "missense",
 			"primary_feature": {
 				"biotype": "gene",
 				"source": "hugo",
-				"name": "MDK"
+				"name": "AR"
 			},
 			"secondary_feature": {}
 		}
