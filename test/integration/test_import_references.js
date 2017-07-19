@@ -130,6 +130,7 @@ describe('Setting up', () => {
             let jsonObj = JSON.parse(content);
             let statements = [],
                 diseases = [],
+                therapies = [],
                 events = [],
                 features = [],
                 references = [];
@@ -139,6 +140,7 @@ describe('Setting up', () => {
                 jsonObj[uuid].statement.uuid = uuid;
                 promises.push(db.models.Statement.createRecord(jsonObj[uuid].statement, user));
 
+
                 //disease
                 let diseaseObj = Object.assign(jsonObj[uuid].disease, {doid: 0});
                 if (!doesAlreadyExist(diseases, diseaseObj)) {
@@ -147,6 +149,21 @@ describe('Setting up', () => {
                 } else {
                     promises.push(db.models.Disease.selectExactlyOne(diseaseObj));
                 }
+
+                //therapy
+
+                if (jsonObj[uuid].statement.type == 'therapeutic') && (jsonObj[uuid].statement.context != undefined) {
+                    therapyObj = {name: jsonObj[uuid].statement.context}
+                    if (!doesAlreadyExist(references, pubObj)) {
+                        therapies.push(therapyObj);
+                        promises.push(db.models.Therapy.createRecord(therapyObj, user));
+                    else {
+                        promises.push(db.models.Therapy.selectExactlyOne(therapyObj));
+                    }
+                } else {
+                    promises.push(Promise((resolve, reject) => { resolve(null); }));
+                }
+
                 //reference
                 if (jsonObj[uuid].reference.type === 'reported') {
                     let pubTitle = jsonObj[uuid].reference.title.length > 0 ? jsonObj[uuid].reference.title : 'UNTITLED';

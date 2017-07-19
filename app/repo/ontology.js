@@ -90,7 +90,7 @@ class Therapy extends KBVertex {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'name', type: 'string', mandatory: true, notNull: true},
-                {name: 'id', type: 'integer', mandatory: true, notNull: true},
+                {name: 'id', type: 'integer', mandatory: true, notNull: false},
                 // more properties to be added after an appropriate drug ontology is found 
             ];
 
