@@ -20,7 +20,7 @@ const oError = require('./orientdb_errors');
 const currYear = require('year');
 const _ = require('lodash');
 const {CategoryEvent, PositionalEvent, Event, EVENT_TYPE, EVENT_SUBTYPE, ZYGOSITY} = require('./../../app/repo/event');
-const jsonFile = '/home/azadeh/sandbox/orientdb/kbdev/knowledgebase/test/oldKB/allEvents.mini.json';
+const jsonFile = 'test/integration/data/allEvents.mini.json';
 const {
     Position,
     GenomicPosition,
@@ -136,16 +136,16 @@ describe('Setting up', () => {
             for (let uuid in jsonObj) {
                 let promises = [];
                 //statement
-                let statObj = jsonObj[uuid].statement;
-                if (!doesAlreadyExist(statements, statObj)) {
-                    statements.push(statObj);
-                    promises.push(db.models.Statement.createRecord(statObj, user));
-                }
+                jsonObj[uuid].statement.uuid = uuid;
+                promises.push(db.models.Statement.createRecord(jsonObj[uuid].statement, user));
+
                 //disease
                 let diseaseObj = Object.assign(jsonObj[uuid].disease, {doid: 0});
                 if (!doesAlreadyExist(diseases, diseaseObj)) {
                     diseases.push(diseaseObj);
                     promises.push(db.models.Disease.createRecord(diseaseObj, user));
+                } else {
+                    promises.push(db.models.Disease.selectExactlyOne(diseaseObj));
                 }
                 //reference
                 if (jsonObj[uuid].reference.type === 'reported') {
@@ -155,23 +155,33 @@ describe('Setting up', () => {
                     if (!doesAlreadyExist(references, pubObj)) {
                         references.push(pubObj);
                         promises.push(db.models.Publication.createRecord(pubObj, user));
+                    } else {
+                        promises.push(db.models.Publication.selectExactlyOne(pubObj));
                     }
+                } else {
+                    continue // TODO
                 }
 
                 let featurePromises = [];
-                let pFeatureObj, sFeatureObj;
-                pFeatureObj = Object.assign({}, jsonObj[uuid].event.primary_feature, {source_version: 0})
+                let pFeatureObj = jsonObj[uuid].event.primary_feature;
+                let sFeatureObj = jsonObj[uuid].event.secondary_feature;
 
-                if (!doesAlreadyExist(features, pFeatureObj)) {
+                if (! doesAlreadyExist(features, pFeatureObj)) {
                     features.push(pFeatureObj);
                     featurePromises.push(db.models.Feature.createRecord(pFeatureObj, user));
-                    if (Object.keys(jsonObj[uuid].event.secondary_feature).length != 0) {
-                        sFeatureObj = Object.assign({}, jsonObj[uuid].event.secondary_feature, {source_version: 0})
-                        if (!doesAlreadyExist(features, sFeatureObj)) {
-                            features.push(sFeatureObj);
-                            featurePromises.push(db.models.Feature.createRecord(sFeatureObj, user));
-                        }
+                } else {
+                    promises.push(db.models.Feature.selectExactlyOne(pFeatureObj));
+                }
+
+                if (Object.keys(sFeatureObj).length != 0) {
+                    if (! doesAlreadyExist(features, sFeatureObj)) {
+                        features.push(sFeatureObj);
+                        featurePromises.push(db.models.Feature.createRecord(sFeatureObj, user));
+                    } else {
+                        featurePromises.push(db.models.Feature.selectExactlyOne(sFeatureObj));
                     }
+                } else {
+                    featurePromises.push(Promise((resolve, reject) => { resolve(null); }));
                 }
 
                 let pFeatureRec, sFeatureRec, eventZygosity;
@@ -187,14 +197,8 @@ describe('Setting up', () => {
                         };
                     let startObj, endObj, positionObj, posClass;
                     let eventCategory = jsonObj[uuid].event.flag;
-                    if (eventCategory === 'CategoryEvent') {
-                        if (jsonObj[uuid].event.type === 'FANN') {
-                            //
-                        } else {
-                            let categoryEventObj = Object.assign({}, baseEventObj, {term: jsonObj[uuid].event.term});
-                            promises.push(db.models.CategoryEvent.createRecord(categoryEventObj, user));
-                        }
-                    } else if (eventCategory === 'PositionalEvent') {
+                    
+                    if (eventCategory === 'PositionalEvent') {
                         
 
                         switch(jsonObj[uuid].event.csys) {
@@ -225,30 +229,48 @@ describe('Setting up', () => {
                             }
                             case 'e': {
                                 //posClass = {'@class': ExonicPosition.clsname};
+                                const start = jsonObj[uuid].start;
+                                const end = jsonObj[uuid].end == undefined ? start : jsonObj[uuid].end 
+                                if (start[0] == -1 && start[1] == -1 && end[0] == -1 && end[1] == -1) {
+                                    eventCategory = 'CategoryEvent';
+                                    break;
+                                }
                                 posClass = ExonicPosition.clsname;
                                 [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass);
                                 break;
                             }
                         }
-                        positionObj = endObj != undefined ? {start: startObj, end: endObj} : {start: startObj};
-                        let basePositionalObj = {
-                            untemplated_seq: jsonObj[uuid].event.untemplated_seq,
-                            reference_seq: jsonObj[uuid].event.reference_seq,
-                            subtype: jsonObj[uuid].event.subtype,
-                            terminating_aa: jsonObj[uuid].event.terminating_aa
-                        };
-                        let positionalEventObj = Object.assign({}, baseEventObj, basePositionalObj, positionObj);
-                        promises.push(db.models.PositionalEvent.createRecord(positionalEventObj, posClass, user));
+                        if (eventCategory != 'CategoryEvent') {
+                            positionObj = endObj != undefined ? {start: startObj, end: endObj} : {start: startObj};
+                            let basePositionalObj = {
+                                untemplated_seq: jsonObj[uuid].event.untemplated_seq,
+                                reference_seq: jsonObj[uuid].event.reference_seq,
+                                subtype: jsonObj[uuid].event.subtype,
+                                terminating_aa: jsonObj[uuid].event.terminating_aa
+                            };
+                            let positionalEventObj = Object.assign({}, baseEventObj, basePositionalObj, positionObj);
+                            promises.push(db.models.PositionalEvent.createRecord(positionalEventObj, posClass, user));
+                        }
+                    }
+                    if (eventCategory === 'CategoryEvent') {
+                        if (jsonObj[uuid].event.type === 'FANN') {
+                            //3..............
+                            promises.push(Promise((resolve, reject) => { resolve(null); }));
+                        } else {
+                            let categoryEventObj = Object.assign({}, baseEventObj, {term: jsonObj[uuid].event.term});
+                            promises.push(db.models.CategoryEvent.createRecord(categoryEventObj, user));
+                        }
                     }
                     return promises;
                 }).then((promises) => {
-                    Promise.all(promises)
-                    .then((result) => {
-                        console.log('**********************')
-                        console.log(result)
-                    }).catch((err) => {
-                        console.log(err)
-                    });
+                    return Promise.all(promises);
+                }).then((pList) => {
+                    let [stat, disease, publication, event] = pList;
+                    return Promise.all(edgePromises);
+                }).then((epList) => {
+                    console.log('made all edges');
+                }).catch((err) => {
+                    console.log(err)
                 });
             }
         }).catch(function(e) {

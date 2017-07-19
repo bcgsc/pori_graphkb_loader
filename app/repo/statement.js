@@ -38,6 +38,21 @@ class Statement extends KBVertex {
                 });
         });
     }
+    /**
+     * returns a list of statements that match the input events
+     */ 
+    searchByEvent(eventFilters, basicFilters, user) {
+        // event.primary_feature.name
+        // event.secondary_feature.name
+        // type
+        // relevance
+        let query = `SELECT from ${Event.clsname} LET $feat = `
+            + `(TRAVERSE ${FeatureDeprecatedBy.clsname}, ${FeatureAliasOf.clsname})`
+        // get the features
+        // for all events with features in (subquery)
+        // follow the requires edges
+        // return the statements with a fetch plan
+    }
 }
 
 
@@ -121,12 +136,12 @@ class Requires extends KBEdge {
         const tgt = content.in.content || content.in;
         const src = content.out.content || content.out;
         if (tgt['@class'] === undefined) {
-            tgt['@class'] = Statement.clsname;
+            tgt['@class'] = Context.clsname;
         } else if (! this.db.models[tgt['@class']].isOrHasAncestor(Context.clsname)) {
             throw new AttributeError(`edge target must be a descendant of context. Found '${tgt['@class']}'`);
         }
         if (src['@class'] === undefined) {
-            src['@class'] = Context.clsname;
+            src['@class'] = Statement.clsname;
         } else if (! this.db.models[src['@class']].isOrHasAncestor(Statement.clsname)) {
             throw new AttributeError(`edge source must be a descendant of statement. Found: '${src['@class']}'`);
         }
@@ -155,4 +170,44 @@ class Requires extends KBEdge {
 }
 
 
-module.exports = {Statement, AppliesTo, AsComparedTo, Requires, STATEMENT_TYPE};
+class SupportedBy extends KBEdge {
+
+    validateContent(content) {
+        const tgt = content.in.content || content.in;
+        const src = content.out.content || content.out;
+        if (tgt['@class'] === undefined) {
+            tgt['@class'] = Evidence.clsname;
+        } else if (! this.db.models[tgt['@class']].isOrHasAncestor(Evidence.clsname)) {
+            throw new AttributeError(`edge target must be a descendant of context. Found '${tgt['@class']}'`);
+        }
+        if (src['@class'] === undefined) {
+            src['@class'] = Statement.clsname;
+        } else if (! this.db.models[src['@class']].isOrHasAncestor(Statement.clsname)) {
+            throw new AttributeError(`edge source must be a descendant of statement. Found: '${src['@class']}'`);
+        }
+        if (tgt.uuid && src.uuid && tgt.uuid === src.uuid) {
+            throw new AttributeError('a statement cannot require itself');
+        }
+        return super.validateContent(content);
+    }
+
+    static createClass(db) {
+        return new Promise((resolve, reject) => {
+            const props = [
+                {name: 'out', type: 'link', mandatory: true, notNull: true, linkedClass: Statement.clsname},
+                {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Context.clsname},
+                {name: 'quote', type: 'string', mandatory: false, notNull: true}
+            ];
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
+                .then(() => {
+                    return this.loadClass(db);
+                }).then((cls) => {
+                    resolve(cls);
+                }).catch((error) => {
+                    reject(error);
+                });
+        });
+    }
+}
+
+module.exports = {Statement, AppliesTo, AsComparedTo, Requires, SupportedBy, STATEMENT_TYPE};
