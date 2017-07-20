@@ -71,11 +71,12 @@ class Disease extends KBVertex {
 class Therapy extends KBVertex {
 
     validateContent(content) {
-        if (content.name != undefined) {
+        const args = Object.assign({id: null}, content);
+        if (args.name != undefined) {
             // more verifications to be added after an appropriate drug ontology is found 
-            content.name = content.name.toLowerCase();
+            args.name = args.name.toLowerCase();
         }
-        return super.validateContent(content);
+        return super.validateContent(args);
     }
 
     static createClass(db) {
