@@ -137,10 +137,10 @@ describe('Setting up', () => {
             for (let uuid in jsonObj) {
                 let promises = [];
                 //statement
-                jsonObj[uuid].statement.uuid = uuid;
-                promises.push(db.models.Statement.createRecord(jsonObj[uuid].statement, user));
-
-
+                let statObj = Object.assign({}, jsonObj[uuid].statement);
+                statObj.uuid = uuid;
+                delete statObj['context'];
+                promises.push(db.models.Statement.createRecord(statObj, user));
                 //disease
                 let diseaseObj = Object.assign(jsonObj[uuid].disease, {doid: 0});
                 if (!doesAlreadyExist(diseases, diseaseObj)) {
@@ -149,19 +149,17 @@ describe('Setting up', () => {
                 } else {
                     promises.push(db.models.Disease.selectExactlyOne(diseaseObj));
                 }
-
                 //therapy
-
-                if (jsonObj[uuid].statement.type == 'therapeutic') && (jsonObj[uuid].statement.context != undefined) {
-                    therapyObj = {name: jsonObj[uuid].statement.context}
-                    if (!doesAlreadyExist(references, pubObj)) {
+                if ((jsonObj[uuid].statement.type == 'therapeutic') && (jsonObj[uuid].statement.context != '')) {
+                    let therapyObj = {name: jsonObj[uuid].statement.context, id: null}
+                    if (!doesAlreadyExist(therapies, therapyObj)) {
                         therapies.push(therapyObj);
                         promises.push(db.models.Therapy.createRecord(therapyObj, user));
-                    else {
+                   } else {
                         promises.push(db.models.Therapy.selectExactlyOne(therapyObj));
                     }
                 } else {
-                    promises.push(Promise((resolve, reject) => { resolve(null); }));
+                    promises.push(new Promise((resolve, reject) => { resolve(null); }));
                 }
 
                 //reference
@@ -198,17 +196,18 @@ describe('Setting up', () => {
                         featurePromises.push(db.models.Feature.selectExactlyOne(sFeatureObj));
                     }
                 } else {
-                    featurePromises.push(Promise((resolve, reject) => { resolve(null); }));
+                    featurePromises.push(new Promise((resolve, reject) => { resolve(null); }));
                 }
-
-                let pFeatureRec, sFeatureRec, eventZygosity;
+                
+                let pFeatureRec, sFeatureRec, eventZygosity, eventGermline;
                 eventZygosity = (jsonObj[uuid].event.zygosity != 'ns') && (jsonObj[uuid].event.zygosity != 'na') ? jsonObj[uuid].event.zygosity : null;
+                eventGermline = (jsonObj[uuid].event.zygosity != '') ? true : false;
                 Promise.all(featurePromises).then((featureRecs) => {
                     [pFeatureRec, sFeatureRec] = featureRecs;
                     let baseEventObj = {
                         type: jsonObj[uuid].event.type,
                         zygosity: eventZygosity,
-                        germline: null,
+                        germline: eventGermline,
                         primary_feature: pFeatureRec,
                         secondary_feature: sFeatureRec
                         };
@@ -216,38 +215,31 @@ describe('Setting up', () => {
                     let eventCategory = jsonObj[uuid].event.flag;
                     
                     if (eventCategory === 'PositionalEvent') {
-                        
-
                         switch(jsonObj[uuid].event.csys) {
                             case 'p': {
-                                //posClass = {'@class': ProteinPosition.clsname};
                                 posClass = ProteinPosition.clsname;
                                 [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass);
                                 break;                             
                             }
                             case 'g': {
                                 console.log(jsonObj[uuid].event)
-                                //posClass = {'@class': GenomicPosition.clsname};
                                 posClass = GenomicPosition.clsname;
                                 [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass);
                                 break;
                             }
                             case 'c': {
-                                //posClass = {'@class': CodingSequencePosition.clsname};
                                 posClass = CodingSequencePosition.clsname;
                                 [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass);
                                 break;
                             }
                             case 'y': {
-                                //posClass = {'@class': CytobandPosition.clsname};
                                 posClass = CytobandPosition.clsname;
                                 [startObj, endObj] = assignPositions(jsonObj[uuid].event, posClass);
                                 break;
                             }
                             case 'e': {
-                                //posClass = {'@class': ExonicPosition.clsname};
-                                const start = jsonObj[uuid].start;
-                                const end = jsonObj[uuid].end == undefined ? start : jsonObj[uuid].end 
+                                const start = jsonObj[uuid].event.start;
+                                const end = jsonObj[uuid].event.end == undefined ? start : jsonObj[uuid].event.end 
                                 if (start[0] == -1 && start[1] == -1 && end[0] == -1 && end[1] == -1) {
                                     eventCategory = 'CategoryEvent';
                                     break;
@@ -271,8 +263,7 @@ describe('Setting up', () => {
                     }
                     if (eventCategory === 'CategoryEvent') {
                         if (jsonObj[uuid].event.type === 'FANN') {
-                            //3..............
-                            promises.push(Promise((resolve, reject) => { resolve(null); }));
+                            promises.push(new Promise((resolve, reject) => { resolve(null); }));
                         } else {
                             let categoryEventObj = Object.assign({}, baseEventObj, {term: jsonObj[uuid].event.term});
                             promises.push(db.models.CategoryEvent.createRecord(categoryEventObj, user));
@@ -281,8 +272,12 @@ describe('Setting up', () => {
                     return promises;
                 }).then((promises) => {
                     return Promise.all(promises);
-                }).then((pList) => {
-                    let [stat, disease, publication, event] = pList;
+                }).then((recList) => {
+                    let [statRec, diseaseRec, pubRec, eventRec] = recList;
+                    console.log(statRec)
+                    console.log(diseaseRec)
+                    console.log(pubRec)
+                    console.log(eventRec)
                     return Promise.all(edgePromises);
                 }).then((epList) => {
                     console.log('made all edges');
