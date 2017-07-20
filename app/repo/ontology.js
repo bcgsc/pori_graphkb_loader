@@ -76,7 +76,7 @@ class Disease extends KBVertex {
 class Therapy extends KBVertex {
 
     validateContent(content) {
-        if (content.id != undefined && content.name != undefined) {
+        if (content.name != undefined) {
                 // more verifications to be added after an appropriate drug ontology is found 
                 content.name = content.name.toLowerCase();
         } else {
