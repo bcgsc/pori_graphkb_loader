@@ -1,5 +1,5 @@
 {
-	"30a7fb3e-202d-47df-b97c-c3f1e20396f9": {
+	"f36f18cc-6f1f-41b4-ab7f-e2190cec6002": {
 		"statement": {
 			"type": "biological",
 			"relevance": "oncogene",
@@ -29,7 +29,7 @@
 			"secondary_feature": {}
 		}
 	},
-	"bb309237-0634-4a0a-9144-2e4ccb4ad255": {
+	"f21d78a8-3455-47fc-8b3e-5e9ee57c8261": {
 		"statement": {
 			"type": "biological",
 			"relevance": "oncogene",
@@ -59,20 +59,108 @@
 			"secondary_feature": {}
 		}
 	},
-	"7763a2f5-d15a-43bb-9ff5-93bcee0c8391": {
+	"9e0be3c9-d10a-46bc-a460-4897fe85bbd5": {
 		"statement": {
 			"type": "biological",
-			"relevance": "gain-of-function",
-			"context": "oncogenic fusion"
+			"relevance": "gain",
+			"context": "somatic mutation"
 		},
 		"disease": {
-			"name": "papillary thyroid carcinoma"
+			"name": "prostate cancer"
 		},
 		"reference": {
 			"type": "reported",
 			"id_type": "pubmed",
-			"id": "7565764",
-			"title": "The DNA rearrangement that generates the TRK-T3 oncogene involves a novel gene on chromosome 3 whose product has a potential coiled-coil domain"
+			"id": "2260966",
+			"title": "A mutation in the ligand binding domain of the androgen receptor of human LNCaP cells affects steroid binding characteristics and response to anti-androgens"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "A",
+			"termination_aa": null,
+			"reference_seq": "T",
+			"csys": "p",
+			"start": [
+				{
+					"pos": 878,
+					"ref_aa": "T"
+				},
+				{
+					"pos": 878,
+					"ref_aa": "T"
+				}
+			],
+			"subtype": "substitution",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "AR"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"1da2d91a-c126-455f-a9b3-586778f84ee6": {
+		"statement": {
+			"type": "occurrence",
+			"relevance": "observed",
+			"context": "compound heterozygote"
+		},
+		"disease": {
+			"name": "cholesteryl ester storage disease"
+		},
+		"reference": {
+			"type": "case report",
+			"id_type": "pubmed",
+			"id": "8894696",
+			"title": "Expression of lysosomal acid lipase mutants detected in three patients with cholesteryl ester storage disease"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "heterozygous",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "G",
+			"termination_aa": null,
+			"reference_seq": "A",
+			"csys": "c",
+			"start": [
+				{
+					"pos": 676,
+					"offset": "-2"
+				},
+				{
+					"pos": 676,
+					"offset": "-2"
+				}
+			],
+			"subtype": "",
+			"primary_feature": {
+				"biotype": "transcript",
+				"source": "refseq",
+				"name": "NM_000235"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"767862af-0b7e-4cde-8d22-884a51b9b8a1": {
+		"statement": {
+			"type": "biological",
+			"relevance": "gain",
+			"context": "oncogenic fusion"
+		},
+		"disease": {
+			"name": "acute myeloid leukemia"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "9766650",
+			"title": ""
 		},
 		"event": {
 			"status": "True",
@@ -86,78 +174,34 @@
 			"csys": "e",
 			"start": [
 				{
-					"pos": -1
+					"pos": 12
 				},
 				{
-					"pos": -1
+					"pos": 12
 				}
 			],
 			"end": [
 				{
-					"pos": -1
+					"pos": 2
 				},
 				{
-					"pos": -1
+					"pos": 2
 				}
 			],
 			"subtype": "fusion",
 			"primary_feature": {
 				"biotype": "gene",
 				"source": "hugo",
-				"name": "TFG"
+				"name": "NUP98"
 			},
 			"secondary_feature": {
 				"biotype": "gene",
 				"source": "hugo",
-				"name": "NTRK1"
+				"name": "HOXA13"
 			}
 		}
 	},
-	"6ec4e4e5-0f17-4bdf-a8d1-ecfa2279e0e8": {
-		"statement": {
-			"type": "biological",
-			"relevance": "loss-of-function",
-			"context": "failure to inhibit CDK4/6 + CCND1 activity"
-		},
-		"disease": {
-			"name": "melanoma"
-		},
-		"reference": {
-			"type": "reported",
-			"id_type": "pubmed",
-			"id": "7647780",
-			"title": "Mutations associated with familial melanoma impair p16INK4 function"
-		},
-		"event": {
-			"status": "True",
-			"zygosity": "ns",
-			"germline": "",
-			"type": "mutation",
-			"flag": "PositionalEvent",
-			"untemplated_seq": "L",
-			"termination_aa": null,
-			"reference_seq": "P",
-			"csys": "p",
-			"start": [
-				{
-					"pos": 81,
-					"ref_aa": "P"
-				},
-				{
-					"pos": 81,
-					"ref_aa": "P"
-				}
-			],
-			"subtype": "substitution",
-			"primary_feature": {
-				"biotype": "gene",
-				"source": "hugo",
-				"name": "CDKN2A"
-			},
-			"secondary_feature": {}
-		}
-	},
-	"ef1ddf9d-4bee-4b03-8c82-aab231606188": {
+	"3bddefab-6f77-42a8-ac02-42afe84d473b": {
 		"statement": {
 			"type": "prognostic",
 			"relevance": "unfavourable",
@@ -176,7 +220,7 @@
 			"status": "True",
 			"zygosity": "homozygous",
 			"germline": "",
-			"type": "CNV",
+			"type": "copy number variant",
 			"flag": "PositionalEvent",
 			"untemplated_seq": "",
 			"termination_aa": null,
@@ -197,126 +241,92 @@
 			"subtype": "homozygous deletion",
 			"primary_feature": {
 				"biotype": "template",
-				"source": "chromosome",
+				"source": "genome reference consortium (human)",
 				"name": "5"
 			},
 			"secondary_feature": {}
 		}
 	},
-	"94ba5269-e593-4dbd-bd8f-09b4ec024cc1": {
-		"statement": {
-			"type": "occurrence",
-			"relevance": "observed",
-			"context": "germline mutation"
-		},
-		"disease": {
-			"name": "Li-Fraumeni syndrome"
-		},
-		"reference": {
-			"type": "reported",
-			"id_type": "pubmed",
-			"id": "16494995",
-			"title": "The TP53 mutation, R337H, is associated with Li-Fraumeni and Li-Fraumeni-like syndromes in Brazilian families"
-		},
-		"event": {
-			"status": "True",
-			"zygosity": "ns",
-			"germline": "",
-			"type": "mutation",
-			"flag": "PositionalEvent",
-			"untemplated_seq": "T",
-			"termination_aa": null,
-			"reference_seq": "G",
-			"csys": "c",
-			"start": [
-				{
-					"pos": 672,
-					"offset": "+1"
-				},
-				{
-					"pos": 672,
-					"offset": "+1"
-				}
-			],
-			"subtype": "substitution",
-			"primary_feature": {
-				"biotype": "cds",
-				"source": "refseq",
-				"name": "NM_000546"
-			},
-			"secondary_feature": {}
-		}
-	},
-	"2c15df87-3dda-4d34-9e16-cc1cb591dfa9": {
+	"4b373765-bad5-4ad5-afa1-230a64c9857b": {
 		"statement": {
 			"type": "therapeutic",
 			"relevance": "sensitivity",
-			"context": ""
+			"context": "imatinib"
 		},
 		"disease": {
-			"name": "ovarian cancer"
+			"name": "idiopathic hypereosinophilic syndrome"
 		},
 		"reference": {
-			"type": "clinical trials",
-			"id_type": "other",
-			"id": "J Clin Oncol 30:2012 (suppl abstr 1009)",
-			"title": "Phase I, open-label study of olaparib plus cisplatin in patients with advanced solid tumors"
+			"type": "FDA-approved",
+			"id_type": "pubmed",
+			"id": "16498388",
+			"title": ""
 		},
 		"event": {
 			"status": "True",
 			"zygosity": "ns",
 			"germline": "",
-			"type": "CNV",
-			"flag": "CategoryEvent",
-			"term": "copy loss",
+			"type": "structural variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "e",
+			"start": [
+				{
+					"pos": 23
+				},
+				{
+					"pos": 23
+				}
+			],
+			"end": [
+				{
+					"pos": 12
+				},
+				{
+					"pos": 12
+				}
+			],
+			"subtype": "fusion",
 			"primary_feature": {
 				"biotype": "gene",
 				"source": "hugo",
-				"name": "BRCA2"
+				"name": "KIF5B"
 			},
-			"secondary_feature": {}
+			"secondary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "PDGFRA"
+			}
 		}
 	},
-	"cdd3ed39-5ed8-47e3-ba76-f8447b8c5386": {
+	"90657844-7212-4265-89fc-fc22e65aad08": {
 		"statement": {
 			"type": "therapeutic",
 			"relevance": "resistance",
-			"context": "flutamide"
+			"context": "5-FU;doxorubicin;cisplatin"
 		},
 		"disease": {
-			"name": "prostate cancer"
+			"name": "stomach cancer"
 		},
 		"reference": {
-			"type": "case report",
+			"type": "pre-clinical",
 			"id_type": "pubmed",
-			"id": "2260966",
-			"title": "A mutation in the ligand binding domain of the androgen receptor of human LNCaP cells affects steroid binding characteristics and response to anti-androgens"
+			"id": "16644108",
+			"title": "Regulation of MDK expression in human cancer cells modulates sensitivities to various anticancer drugs: MDK overexpression confers to a multi-drug resistance"
 		},
 		"event": {
 			"status": "True",
-			"zygosity": "ns",
+			"zygosity": "na",
 			"germline": "",
-			"type": "MUT",
-			"flag": "PositionalEvent",
-			"untemplated_seq": "A",
-			"termination_aa": null,
-			"reference_seq": "T",
-			"csys": "p",
-			"start": [
-				{
-					"pos": 878,
-					"ref_aa": "T"
-				},
-				{
-					"pos": 878,
-					"ref_aa": "T"
-				}
-			],
-			"subtype": "missense",
+			"type": "ELV-RNA",
+			"flag": "CategoryEvent",
+			"term": "increased expression",
 			"primary_feature": {
 				"biotype": "gene",
 				"source": "hugo",
-				"name": "AR"
+				"name": "MDK"
 			},
 			"secondary_feature": {}
 		}
