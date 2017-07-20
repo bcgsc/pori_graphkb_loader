@@ -198,7 +198,7 @@ class PositionalEvent extends KBVertex {
             // compare the positions to ensure that the start <= end position
             try {
                 const comp = pClass.constructor.compare(args.start.start || args.start, args.end.end || args.end);
-                if (comp >= 0){
+                if (comp >= 0 && args.secondary_feature == null){
                     throw new AttributeError('start position cannot be greater than end position');
                 }
             } catch (e) {
