@@ -43,13 +43,13 @@ const {
 
 
 function doesAlreadyExist(listOfObjs, otherObj) {
-    let flag = false;
-    listOfObjs.every((obj) => {
-        if(_.isEqual(obj, otherObj)) {
-            return flag = true;
+    console.log('doesAlreadyExist', listOfObjs, otherObj);
+    for (let obj of listOfObjs) {
+        if (_.isEqual(obj, otherObj)) {
+            return true;
         }
-    });
-    return flag
+    }
+    return false;
 }
 
 function assignPositions(event) {
@@ -86,7 +86,25 @@ const statements = [],
     features = [],
     references = [];
 
+
+const selectOrCreate = (clsname, obj, user) => {
+    return new Promise((resolve, reject) => {
+        db.models[clsname].selectExactlyOne(obj)
+            .then((rec) => {
+                resolve(rec);
+            }).catch((err) => {
+                return db.models[clsname].createRecord(obj, user);
+            }).then((rec) => {
+                resolve(rec);
+            }).catch((err) => {
+                reject(err);
+            });
+    });
+};
+
+
 const buildRecord = (oldKbRecord) => {
+    console.log('buildRecord', oldKbRecord);
     return new Promise((resolve, reject) => {
         let promises = [];
         //statement
@@ -94,22 +112,13 @@ const buildRecord = (oldKbRecord) => {
         delete statObj['context'];
         promises.push(db.models.Statement.createRecord(statObj, user));
         //disease
-        let diseaseObj = Object.assign(oldKbRecord.disease, {doid: 0});
-        if (!doesAlreadyExist(diseases, diseaseObj)) {
-            diseases.push(diseaseObj);
-            promises.push(db.models.Disease.createRecord(diseaseObj, user));
-        } else {
-            promises.push(db.models.Disease.selectExactlyOne(diseaseObj));
-        }
+        let diseaseObj = Object.assign(oldKbRecord.disease, {doid: null});
+        diseaseObj.name = diseaseObj.name.toLowerCase();
+        promises.push(selectOrCreate('disease', diseaseObj, user));
         //therapy
         if ((oldKbRecord.statement.type == 'therapeutic') && (oldKbRecord.statement.context != '')) {
-            let therapyObj = {name: oldKbRecord.statement.context, id: null}
-            if (!doesAlreadyExist(therapies, therapyObj)) {
-                therapies.push(therapyObj);
-                promises.push(db.models.Therapy.createRecord(therapyObj, user));
-           } else {
-                promises.push(db.models.Therapy.selectExactlyOne(therapyObj));
-            }
+            let therapyObj = {name: oldKbRecord.statement.context.toLowerCase(), id: null};
+            promises.push(selectOrCreate('therapy', therapyObj, user));
         } else {
             promises.push(new Promise((resolve, reject) => { resolve(null); }));
         }
@@ -118,14 +127,8 @@ const buildRecord = (oldKbRecord) => {
         if (oldKbRecord.reference.type === 'reported') {
             let pubTitle = oldKbRecord.reference.title.length > 0 ? oldKbRecord.reference.title : 'UNTITLED';
             let pubTypeObj = oldKbRecord.reference.id_type === 'pubmed' ? {pmid: parseInt(oldKbRecord.reference.id)} : {doi: (oldKbRecord.reference.id).toString()};
-            let pubObj = Object.assign({title: pubTitle, year: null}, pubTypeObj)
-            if (!doesAlreadyExist(references, pubObj)) {
-                references.push(pubObj);
-                promises.push(db.models.Publication.createRecord(pubObj, user));
-            } else {
-                console.log('pubObj', pubObj);
-                promises.push(db.models.Publication.selectExactlyOne(pubObj));
-            }
+            let pubObj = Object.assign({title: pubTitle, year: null}, pubTypeObj);
+            promises.push(selectOrCreate('publication', pubObj, user));
         } else {
             resolve();
         }
@@ -134,20 +137,10 @@ const buildRecord = (oldKbRecord) => {
         let pFeatureObj = oldKbRecord.event.primary_feature;
         let sFeatureObj = oldKbRecord.event.secondary_feature;
 
-        if (! doesAlreadyExist(features, pFeatureObj)) {
-            features.push(pFeatureObj);
-            featurePromises.push(db.models.Feature.createRecord(pFeatureObj, user));
-        } else {
-            promises.push(db.models.Feature.selectExactlyOne(pFeatureObj));
-        }
+        featurePromises.push(selectOrCreate('feature', pFeatureObj, user));
 
         if (Object.keys(sFeatureObj).length != 0) {
-            if (! doesAlreadyExist(features, sFeatureObj)) {
-                features.push(sFeatureObj);
-                featurePromises.push(db.models.Feature.createRecord(sFeatureObj, user));
-            } else {
-                featurePromises.push(db.models.Feature.selectExactlyOne(sFeatureObj));
-            }
+            featurePromises.push(selectOrCreate('feature', sFeatureObj, user));
         } else {
             featurePromises.push(new Promise((resolve, reject) => { resolve(null); }));
         }
@@ -178,7 +171,6 @@ const buildRecord = (oldKbRecord) => {
                             break;                             
                         }
                         case 'g': {
-                            console.log(oldKbRecord.event)
                             posClass = GenomicPosition.clsname;
                             [startObj, endObj] = assignPositions(oldKbRecord.event, posClass);
                             break;
@@ -225,14 +217,13 @@ const buildRecord = (oldKbRecord) => {
                         promises.push(db.models.CategoryEvent.createRecord(categoryEventObj, user));
                     }
                 }
+                return db.models.Therapy.select();
+            }).then((allTherapies) => {
+                console.log(allTherapies);
                 return Promise.all(promises);
             }).then((pList) => {
                 // list of promises
                 let [statRec, diseaseRec, pubRec, eventRec] = pList;
-                console.log(statRec);
-                console.log(diseaseRec);
-                console.log(pubRec);
-                console.log(eventRec);
                 //return Promise.all(edgePromises);
                 resolve();
             }).catch((err) => {

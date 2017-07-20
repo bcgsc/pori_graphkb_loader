@@ -315,12 +315,14 @@ class PositionalEvent extends KBVertex {
                     Array.prototype.push.apply(validTypes, [
                         EVENT_SUBTYPE.INS, 
                         EVENT_SUBTYPE.SUB, 
-                        EVENT_SUBTYPE.INDEL, 
-                        EVENT_SUBTYPE.LOSS, 
-                        EVENT_SUBTYPE.GAIN
+                        EVENT_SUBTYPE.INDEL 
                     ]);
                 }
                 case 'y': 
+                    Array.prototype.push.apply(validTypes, [
+                        EVENT_SUBTYPE.LOSS, 
+                        EVENT_SUBTYPE.GAIN
+                    ]);
                 case 'e': {
                     break;
                 }

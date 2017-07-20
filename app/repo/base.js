@@ -269,11 +269,15 @@ class Base {
             if (activeOnly) {
                 selectionWhere.deleted_at = null;
             }
-            const query = this.db.conn.select().from(clsname).where(selectionWhere);
+            let query = this.db.conn.select().from(clsname).where(selectionWhere);
+            if (Object.keys(selectionWhere.length == 0)) {
+                query = this.db.conn.select().from(clsname);
+            }
             let stat = query.buildStatement();
             for (let key of Object.keys(query._state.params)) {
                 stat = stat.replace(':' + key, `"${query._state.params[key]}"`);
             }
+            console.log('query:', stat);
             query.all()
                 .then((rl) => {
                     const reclist = [];

@@ -29,16 +29,11 @@ class Ontology extends KBVertex {
 class Disease extends KBVertex {
 
     validateContent(content) {
-        if (content.doid != undefined && content.name != undefined) {
-            if (! content.doid === parseInt(content.doid, 10)) {
-                // if doid is not an integer
-                throw new AttributeError('DOID must be an integer');
-            } else {
-                content.name = content.name.toLowerCase();
-            }
-        } else {
-            throw new AttributeError('violated null constraint');
+        const args = Object.assign({doid: null}, content);
+        if (args.doid != null) {
+            args.doid = parseInt(args.doid);
         }
+        args.name = args.name.toLowerCase();
         return super.validateContent(content);
     }
 
@@ -47,7 +42,7 @@ class Disease extends KBVertex {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'name', type: 'string', mandatory: true, notNull: true},
-                {name: 'doid', type: 'integer', mandatory: true, notNull: true},
+                {name: 'doid', type: 'integer', mandatory: true, notNull: false},
                 {name: 'url', type: 'string', mandatory: false, notNull: false},
                 {name: 'definition', type: 'string', mandatory: false, notNull: false},
                 {name: 'xref', type: 'string', mandatory: false, notNull: false}
@@ -77,10 +72,8 @@ class Therapy extends KBVertex {
 
     validateContent(content) {
         if (content.name != undefined) {
-                // more verifications to be added after an appropriate drug ontology is found 
-                content.name = content.name.toLowerCase();
-        } else {
-            throw new AttributeError('violated null constraint');
+            // more verifications to be added after an appropriate drug ontology is found 
+            content.name = content.name.toLowerCase();
         }
         return super.validateContent(content);
     }
