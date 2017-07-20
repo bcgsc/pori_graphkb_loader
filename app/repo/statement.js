@@ -9,7 +9,8 @@ const STATEMENT_TYPE = {
     BIOLOGICAL: 'biological',
     DIAGNOSTIC: 'diagnostic',
     THERAPEUTIC: 'therapeutic',
-    PROGNOSTIC: 'prognostic'
+    PROGNOSTIC: 'prognostic',
+    OCCURRENCE: 'occurrence'
 }
 
 

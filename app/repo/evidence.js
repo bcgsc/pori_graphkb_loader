@@ -50,9 +50,7 @@ class Publication extends KBVertex {
 
     validateContent(args) {
         const content = Object.assign({}, args)
-        if ([content.title, content.year].some(x => x == undefined)) {
-            throw new AttributeError('violated null constraint');
-        } else if ((content.year < 1000) || (content.year > currYear('yyyy'))) {
+        if (content.year != null && (content.year < 1000) || (content.year > currYear('yyyy'))) {
             throw new AttributeError('publication year cannot be too old or in the future');
         }
         // content.journal = journalClass.validateContent({name: content.journal.name, created_by: content.created_by});
@@ -102,7 +100,7 @@ class Publication extends KBVertex {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'journal', type: 'link', mandatory: false, notNull: true, linkedClass: Journal.clsname},
-                {name: 'year', type: 'integer', mandatory: true, notNull: true},
+                {name: 'year', type: 'integer', mandatory: true, notNull: false},
                 {name: 'title', type: 'string', mandatory: true, notNull: true},
                 {name: 'doi', type: 'string', mandatory: false},
                 {name: 'pmid', type: 'integer', mandatory: false},
