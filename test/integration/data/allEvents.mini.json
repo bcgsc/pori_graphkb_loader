@@ -1,5 +1,5 @@
 {
-	"f36f18cc-6f1f-41b4-ab7f-e2190cec6002": {
+	"ab60969d-4e24-4d4b-ba9f-d20244802551": {
 		"statement": {
 			"type": "biological",
 			"relevance": "oncogene",
@@ -29,7 +29,7 @@
 			"secondary_feature": {}
 		}
 	},
-	"f21d78a8-3455-47fc-8b3e-5e9ee57c8261": {
+	"21a3d63c-9864-455d-b227-1f09713dcdbb": {
 		"statement": {
 			"type": "biological",
 			"relevance": "oncogene",
@@ -59,7 +59,37 @@
 			"secondary_feature": {}
 		}
 	},
-	"9e0be3c9-d10a-46bc-a460-4897fe85bbd5": {
+	"75e6622d-6955-4dfc-968f-218bd10ff2c2": {
+		"statement": {
+			"type": "biological",
+			"relevance": "oncogene",
+			"context": "cancer associated gene"
+		},
+		"disease": {
+			"name": "melanoma"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "1656220",
+			"title": "axl, a transforming gene isolated from primary human myeloid leukemia cells, encodes a novel receptor tyrosine kinase"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "na",
+			"germline": "",
+			"type": "FANN",
+			"flag": "CategoryEvent",
+			"term": "na",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "AXL"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"750fa636-c55a-43e8-aea0-dd4a22191356": {
 		"statement": {
 			"type": "biological",
 			"relevance": "gain",
@@ -94,7 +124,7 @@
 					"ref_aa": "T"
 				}
 			],
-			"subtype": "substitution",
+			"subtype": ">",
 			"primary_feature": {
 				"biotype": "gene",
 				"source": "hugo",
@@ -103,7 +133,7 @@
 			"secondary_feature": {}
 		}
 	},
-	"1da2d91a-c126-455f-a9b3-586778f84ee6": {
+	"1e25fdfa-c418-4a25-9c84-e29e212a13fe": {
 		"statement": {
 			"type": "occurrence",
 			"relevance": "observed",
@@ -138,7 +168,7 @@
 					"offset": "-2"
 				}
 			],
-			"subtype": "",
+			"subtype": ">",
 			"primary_feature": {
 				"biotype": "transcript",
 				"source": "refseq",
@@ -147,7 +177,7 @@
 			"secondary_feature": {}
 		}
 	},
-	"767862af-0b7e-4cde-8d22-884a51b9b8a1": {
+	"be98bd8e-c67c-4365-a51c-10dd150c0833": {
 		"statement": {
 			"type": "biological",
 			"relevance": "gain",
@@ -201,7 +231,7 @@
 			}
 		}
 	},
-	"3bddefab-6f77-42a8-ac02-42afe84d473b": {
+	"89737ff5-6c83-40ed-891f-6383430f70ba": {
 		"statement": {
 			"type": "prognostic",
 			"relevance": "unfavourable",
@@ -238,7 +268,7 @@
 					"minor_band": "0"
 				}
 			],
-			"subtype": "homozygous deletion",
+			"subtype": "copyloss",
 			"primary_feature": {
 				"biotype": "template",
 				"source": "genome reference consortium (human)",
@@ -247,7 +277,7 @@
 			"secondary_feature": {}
 		}
 	},
-	"4b373765-bad5-4ad5-afa1-230a64c9857b": {
+	"e103bbbd-087f-4559-89d2-c2c554228111": {
 		"statement": {
 			"type": "therapeutic",
 			"relevance": "sensitivity",
@@ -301,7 +331,115 @@
 			}
 		}
 	},
-	"90657844-7212-4265-89fc-fc22e65aad08": {
+	"4e9f132e-812b-4668-a3a4-4550c85d1e40": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "sensitivity",
+			"context": "imatinib"
+		},
+		"disease": {
+			"name": "acute myeloid leukemia"
+		},
+		"reference": {
+			"type": "FDA-approved",
+			"id_type": "pubmed",
+			"id": "16498388",
+			"title": ""
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "structural variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "e",
+			"start": [
+				{
+					"pos": 23
+				},
+				{
+					"pos": 23
+				}
+			],
+			"end": [
+				{
+					"pos": 12
+				},
+				{
+					"pos": 12
+				}
+			],
+			"subtype": "fusion",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "KIF5B"
+			},
+			"secondary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "PDGFRA"
+			}
+		}
+	},
+	"d94a2f4a-6a48-41d1-86dc-9f51ea1c4d42": {
+		"statement": {
+			"type": "biological",
+			"relevance": "gain",
+			"context": "oncogenic fusion"
+		},
+		"disease": {
+			"name": "prostate cancer"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "16585160",
+			"title": "TMPRSS2:ETV4 gene fusions define a third molecular subtype of prostate cancer"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "structural variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "e",
+			"start": [
+				{
+					"pos": 1
+				},
+				{
+					"pos": 1
+				}
+			],
+			"end": [
+				{
+					"pos": 4
+				},
+				{
+					"pos": 4
+				}
+			],
+			"subtype": "fusion",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "TMPRSS2"
+			},
+			"secondary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "ETV4"
+			}
+		}
+	},
+	"0bd6e49f-94b2-4f5b-aa16-5c741a01875e": {
 		"statement": {
 			"type": "therapeutic",
 			"relevance": "resistance",
@@ -332,3 +470,4 @@
 		}
 	}
 }
+	
