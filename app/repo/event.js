@@ -54,7 +54,7 @@ const NOTATION_TO_SUBTYPE = new Map([
     ['copyloss', EVENT_SUBTYPE.LOSS],
     ['t', EVENT_SUBTYPE.TRANS],
     ['spl', EVENT_SUBTYPE.SPL],
-    ['fus', EVENT_SUBTYPE.FUSION]
+    ['fusion', EVENT_SUBTYPE.FUSION]
 ]);
 
 
@@ -179,7 +179,7 @@ class PositionalEvent extends KBVertex {
         const pClass = this.db.models[positionClassName];
         const range = this.db.models[Range.clsname];
         // ensure the subtype is appropriate for this coordinate system
-        this.constructor.subtypeValidation(pClass.constructor.prefix, args.subtype);
+        this.constructor.subtypeValidation(pClass.constructor.prefix, NOTATION_TO_SUBTYPE.get(args.subtype));
         // validate the start/end positions
         if (args.start.start !== undefined) {  // start is a range
             args.start = range.validateContent(args.start);
@@ -198,7 +198,7 @@ class PositionalEvent extends KBVertex {
             // compare the positions to ensure that the start <= end position
             try {
                 const comp = pClass.constructor.compare(args.start.start || args.start, args.end.end || args.end);
-                if (comp >= 0){
+                if (comp >= 0 && args.secondary_feature == null){
                     throw new AttributeError('start position cannot be greater than end position');
                 }
             } catch (e) {
