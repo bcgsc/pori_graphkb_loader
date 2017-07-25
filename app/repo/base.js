@@ -259,6 +259,9 @@ class Base {
         return new Promise((resolve, reject) => {
             const clsname = where['@class'] || this.constructor.clsname;
             const selectionWhere = Object.assign({}, where);
+            if (selectionWhere['@type'] !== undefined) {
+                delete selectionWhere['@type'];
+            }
             if (ignoreAtPrefixed) {
                 for (let key of Object.keys(selectionWhere)) {
                     if (key.startsWith('@')) {
@@ -278,8 +281,6 @@ class Base {
                 stat = stat.replace(':' + key, `"${query._state.params[key]}"`);
             }
 
-            console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ where:', selectionWhere);
-            console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ query:', stat);
             query.all()
                 .then((rl) => {
                     const reclist = [];

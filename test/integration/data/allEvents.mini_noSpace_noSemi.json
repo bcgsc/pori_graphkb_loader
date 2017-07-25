@@ -216,7 +216,7 @@
 					"pos": 12
 				}
 			],
-			"subtype": "fus",
+			"subtype": "fusion",
 			"primary_feature": {
 				"biotype": "gene",
 				"source": "hugo",
