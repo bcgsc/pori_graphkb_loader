@@ -270,14 +270,16 @@ class Base {
                 selectionWhere.deleted_at = null;
             }
             let query = this.db.conn.select().from(clsname).where(selectionWhere);
-            if (Object.keys(selectionWhere.length == 0)) {
+            if (Object.keys(selectionWhere).length == 0) {
                 query = this.db.conn.select().from(clsname);
             }
             let stat = query.buildStatement();
             for (let key of Object.keys(query._state.params)) {
                 stat = stat.replace(':' + key, `"${query._state.params[key]}"`);
             }
-            console.log('query:', stat);
+
+            console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ where:', selectionWhere);
+            console.log('~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~ query:', stat);
             query.all()
                 .then((rl) => {
                     const reclist = [];
@@ -292,7 +294,7 @@ class Base {
                                 reject(new NoResultFoundError(stat));
                             }
                         } else if (exactlyN != reclist.length) {
-                            reject(new MultipleResultsFoundError(stat + `returned ${reclist.length} results but expected ${exactlyN} results`));
+                            reject(new MultipleResultsFoundError(stat + ` returned ${reclist.length} results but expected ${exactlyN} results`));
                         } else {
                             resolve(reclist);
                         }

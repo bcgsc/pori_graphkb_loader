@@ -20,7 +20,7 @@ const oError = require('./orientdb_errors');
 const currYear = require('year');
 const _ = require('lodash');
 const {CategoryEvent, PositionalEvent, Event, EVENT_TYPE, EVENT_SUBTYPE, ZYGOSITY} = require('./../../app/repo/event');
-const jsonFile = 'test/integration/data/allEvents.mini.json';
+const jsonFile = 'test/integration/data/allEvents.mini_noSpace_noSemi.json';
 const {
     Position,
     GenomicPosition,
@@ -89,10 +89,12 @@ const statements = [],
 
 const selectOrCreate = (clsname, obj, user) => {
     return new Promise((resolve, reject) => {
+        console.log('**************This is what I want to select ***************',obj, "***************", clsname)
         db.models[clsname].selectExactlyOne(obj)
             .then((rec) => {
                 resolve(rec);
             }).catch((err) => {
+                console.log("============= couldn't find one (maybe found two) OBJ:", obj)
                 return db.models[clsname].createRecord(obj, user);
             }).then((rec) => {
                 resolve(rec);
@@ -107,14 +109,17 @@ const buildRecord = (oldKbRecord) => {
     console.log('buildRecord', oldKbRecord);
     return new Promise((resolve, reject) => {
         let promises = [];
+        
         //statement
         let statObj = Object.assign({}, oldKbRecord.statement);
         delete statObj['context'];
         promises.push(db.models.Statement.createRecord(statObj, user));
+        
         //disease
         let diseaseObj = Object.assign(oldKbRecord.disease, {doid: null});
         diseaseObj.name = diseaseObj.name.toLowerCase();
         promises.push(selectOrCreate('disease', diseaseObj, user));
+        
         //therapy
         if ((oldKbRecord.statement.type == 'therapeutic') && (oldKbRecord.statement.context != '')) {
             let therapyObj = {name: oldKbRecord.statement.context.toLowerCase(), id: null};
@@ -130,7 +135,7 @@ const buildRecord = (oldKbRecord) => {
             let pubObj = Object.assign({title: pubTitle, year: null}, pubTypeObj);
             promises.push(selectOrCreate('publication', pubObj, user));
         } else {
-            resolve();
+            return resolve();
         }
 
         let featurePromises = [];
@@ -138,7 +143,6 @@ const buildRecord = (oldKbRecord) => {
         let sFeatureObj = oldKbRecord.event.secondary_feature;
 
         featurePromises.push(selectOrCreate('feature', pFeatureObj, user));
-
         if (Object.keys(sFeatureObj).length != 0) {
             featurePromises.push(selectOrCreate('feature', sFeatureObj, user));
         } else {
@@ -217,13 +221,13 @@ const buildRecord = (oldKbRecord) => {
                         promises.push(db.models.CategoryEvent.createRecord(categoryEventObj, user));
                     }
                 }
-                return db.models.Therapy.select();
-            }).then((allTherapies) => {
-                console.log(allTherapies);
+            }).then(() => {
                 return Promise.all(promises);
             }).then((pList) => {
                 // list of promises
                 let [statRec, diseaseRec, pubRec, eventRec] = pList;
+                console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                console.log(eventRec)
                 //return Promise.all(edgePromises);
                 resolve();
             }).catch((err) => {
