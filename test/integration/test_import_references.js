@@ -42,15 +42,6 @@ const {
 } = require('./../../app/repo/error');
 
 
-function doesAlreadyExist(listOfObjs, otherObj) {
-    console.log('doesAlreadyExist', listOfObjs, otherObj);
-    for (let obj of listOfObjs) {
-        if (_.isEqual(obj, otherObj)) {
-            return true;
-        }
-    }
-    return false;
-}
 
 function assignPositions(event) {
     let startObjF, endObjF;
@@ -89,12 +80,10 @@ const statements = [],
 
 const selectOrCreate = (clsname, obj, user) => {
     return new Promise((resolve, reject) => {
-        console.log('**************This is what I want to select ***************',obj, "***************", clsname)
         db.models[clsname].selectExactlyOne(obj)
             .then((rec) => {
                 resolve(rec);
             }).catch((err) => {
-                console.log("============= couldn't find one (maybe found two) OBJ:", obj)
                 return db.models[clsname].createRecord(obj, user);
             }).then((rec) => {
                 resolve(rec);
@@ -105,8 +94,43 @@ const selectOrCreate = (clsname, obj, user) => {
 };
 
 
+const buildAppliesToTarget = (context, statement, disease, event, user) => {
+    context = context.trim().toLowerCase();
+    // pull out the applies to object
+    switch(statement.type) {
+        case 'therapeutic':
+            if ( context.includes(' vs ') ) {
+                // AsComparedTo edge
+                const [first, second] = context.split(' vs ');
+                throw new Error('ignoring vs for now');
+            } else {
+                return selectOrCreate('therapy', {name: context}, user);
+            }
+            break;
+        case 'biological':
+            if (statement.relevance.includes('of-function')) {
+                // applies to one of the features..... if two must review manually
+            } else {
+                throw new Error('unhandled case', statment.relevance);
+            }
+            break;
+        case 'diagnostic':
+            // create disease using name as context
+        case 'prognostic':
+            return Promise.resolve(disease);
+            break;
+        case 'occurrence':
+            break;
+        default:
+            throw new Error('unrecognized statement type', statement.type);
+            break;
+    }
+}
+
+
 const buildRecord = (oldKbRecord) => {
-    console.log('buildRecord', oldKbRecord);
+    console.log('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nbuildRecord', oldKbRecord);
+    console.log(oldKbRecord.event)
     return new Promise((resolve, reject) => {
         let promises = [];
         
@@ -116,25 +140,21 @@ const buildRecord = (oldKbRecord) => {
         promises.push(db.models.Statement.createRecord(statObj, user));
         
         //disease
-        let diseaseObj = Object.assign(oldKbRecord.disease, {doid: null});
-        diseaseObj.name = diseaseObj.name.toLowerCase();
-        promises.push(selectOrCreate('disease', diseaseObj, user));
-        
-        //therapy
-        if ((oldKbRecord.statement.type == 'therapeutic') && (oldKbRecord.statement.context != '')) {
-            let therapyObj = {name: oldKbRecord.statement.context.toLowerCase(), id: null};
-            promises.push(selectOrCreate('therapy', therapyObj, user));
+        if (oldKbRecord.disease != null && oldKbRecord.disease.name != null) {
+            let diseaseObj = Object.assign(oldKbRecord.disease, {doid: null});
+            diseaseObj.name = diseaseObj.name.toLowerCase();
+            promises.push(selectOrCreate('disease', diseaseObj, user));
         } else {
-            promises.push(new Promise((resolve, reject) => { resolve(null); }));
+            promises.push(Promise.resolve());
         }
 
         //reference
-        if (oldKbRecord.reference.type === 'reported') {
+        if (oldKbRecord.reference.id_type === 'pubmed') {
             let pubTitle = oldKbRecord.reference.title.length > 0 ? oldKbRecord.reference.title : 'UNTITLED';
-            let pubTypeObj = oldKbRecord.reference.id_type === 'pubmed' ? {pmid: parseInt(oldKbRecord.reference.id)} : {doi: (oldKbRecord.reference.id).toString()};
-            let pubObj = Object.assign({title: pubTitle, year: null}, pubTypeObj);
+            let pubObj = {title: pubTitle, year: null, pmid: parseInt(oldKbRecord.reference.id)};
             promises.push(selectOrCreate('publication', pubObj, user));
         } else {
+            console.log('PREMATURE RESOLVE');
             return resolve();
         }
 
@@ -221,13 +241,13 @@ const buildRecord = (oldKbRecord) => {
                         promises.push(db.models.CategoryEvent.createRecord(categoryEventObj, user));
                     }
                 }
-            }).then(() => {
                 return Promise.all(promises);
             }).then((pList) => {
                 // list of promises
+                console.log(pList);
                 let [statRec, diseaseRec, pubRec, eventRec] = pList;
+                
                 console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
-                console.log(eventRec)
                 //return Promise.all(edgePromises);
                 resolve();
             }).catch((err) => {
@@ -239,15 +259,12 @@ const buildRecord = (oldKbRecord) => {
 
 
 const recurseBuildRecord = (jsonArray, currentPosition=0) => {
-    console.log('recurseBuildRecord', currentPosition);
     return new Promise((resolve, reject) => {
         buildRecord(jsonArray[currentPosition])
             .then((rec) => {
-                console.log(currentPosition, 'rec', rec);
                 if (currentPosition + 1 < jsonArray.length) {
                     return recurseBuildRecord(jsonArray, currentPosition + 1);
                 } else {
-                    console.log('finished looping', jsonArray.length, currentPosition);
                     resolve();
                 }
             }).then(() => { 
@@ -263,8 +280,13 @@ let server, db, user;
 // set up the database server
 connectServer(conf)
     .then((result) => {
-        // create the empty database
         server = result;
+        return server.drop({name: conf.emptyDbName});
+    }).catch((error) => {
+        console.log('caught error', error);
+        return Promise.resolve();
+    }).then(() => {
+        // create the empty database
         return createDB({
             name: conf.emptyDbName, 
             username: conf.dbUsername,
@@ -312,12 +334,7 @@ connectServer(conf)
     }).then(() => {
         console.log('done loading');
         /* disconnect from the database */
-        return db.server.drop({name: conf.emptyDbName});
-    }).catch((error) => {
-        return db.server.drop({name: conf.emptyDbName});
-        console.log('error:', error);
-    }).then(() => {
-        return db.server.close();
+        return server.close();
     }).catch((error) => {
         console.log('error closing the server', error);
     });
