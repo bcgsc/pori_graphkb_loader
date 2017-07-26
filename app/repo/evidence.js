@@ -227,7 +227,7 @@ class ClinicalTrial extends KBVertex {
 
                 {name: 'phase', type: 'integer'},
                 {name: 'trial_id', type: 'string'},
-                {name: 'official_title', type: 'string'},
+                {name: 'official_title', type: 'string', mandatory: true, notNull: true},
                 {name: 'summary', type: 'string'}
             ];
             const idxs = [{
@@ -266,8 +266,8 @@ class ExternalSource extends KBVertex {
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
-                {name: 'title', type: 'string'},
-                {name: 'url', type: 'string', mandatory: true, notNull: true},
+                {name: 'title', type: 'string', mandatory: true, notNull: true},
+                {name: 'url', type: 'string', mandatory: true, notNull: false},
                 {name: 'extraction_date', type: 'string', mandatory: false, notNull: true}
             ];
             const idxs = [{
