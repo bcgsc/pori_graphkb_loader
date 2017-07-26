@@ -142,7 +142,7 @@ class GenomicPosition extends Base {
 
     static createClass(db) {
         const props = [
-            {name: 'pos', type: 'integer', mandatory: true, notNull: true, min: 1}
+            {name: 'pos', type: 'integer', mandatory: true, notNull: false, min: 1}
         ];
         return new Promise((resolve, reject) => {
             Base.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
@@ -173,7 +173,7 @@ class ExonicPosition extends Base {
 
     static createClass(db) {
         const props = [
-            {name: 'pos', type: 'integer', mandatory: true, notNull: true, min: 1}
+            {name: 'pos', type: 'integer', mandatory: true, notNull: false, min: 1}
         ];
         return new Promise((resolve, reject) => {
             Base.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
@@ -209,8 +209,8 @@ class CodingSequencePosition extends Base {
 
     static createClass(db) {
         const props = [
-            {name: 'pos', type: 'integer', mandatory: true, notNull: true,  min: 1},
-            {name: 'offset', type: 'integer', mandatory: true, notNull: true}
+            {name: 'pos', type: 'integer', mandatory: true, notNull: false,  min: 1},
+            {name: 'offset', type: 'integer', mandatory: true, notNull: false}
         ];
         return new Promise((resolve, reject) => {
             Base.createClass({db, clsname: this.clsname, superClasses: Position.clsname, properties: props})
@@ -266,7 +266,7 @@ class ProteinPosition extends Base {
 
     static createClass(db) {
         const props = [
-            {name: 'pos', type: 'integer', mandatory: true, notNull: true,  min: 1},
+            {name: 'pos', type: 'integer', mandatory: true, notNull: false,  min: 1},
             {name: 'ref_aa', type: 'string', mandatory: true, notNull: false}
         ];
         return new Promise((resolve, reject) => {

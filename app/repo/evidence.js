@@ -263,19 +263,12 @@ class ClinicalTrial extends KBVertex {
  */
 class ExternalSource extends KBVertex {
 
-    validateContent(content) {
-        if (content.url == undefined || content.extraction_date == undefined) {
-            throw new AttributeError('violated null constraint');
-        }
-        return super.validateContent(content);
-    }
-
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'title', type: 'string'},
                 {name: 'url', type: 'string', mandatory: true, notNull: true},
-                {name: 'extraction_date', type: 'string', mandatory: true, notNull: true}
+                {name: 'extraction_date', type: 'string', mandatory: false, notNull: true}
             ];
             const idxs = [{
                 name: this.clsname + '.index_url_date',
