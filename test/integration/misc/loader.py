@@ -31,17 +31,7 @@ import doctest
 import re
 from collections import defaultdict
 
-doctest.testmod(kb_tools.error)
-doctest.testmod(kb_tools.util)
-doctest.testmod(kb_tools.feature)
-doctest.testmod(kb_tools.literature)
-doctest.testmod(kb_tools.statement)
-doctest.testmod(kb_tools.position)
-doctest.testmod(kb_tools.coordinate_notation)
-doctest.testmod(kb_tools.event)
-doctest.testmod(kb_tools.review)
-doctest.testmod(kb_tools.entry)
-doctest.testmod(kb_tools.kb_io)
+
 ref_json = []
 
 
@@ -49,283 +39,368 @@ def submit_to_json(ref_json, entry_hash, event):
     uuid_str = str(uuid.uuid4())
     ref_json[uuid_str].append(dict(entry_hash, **event))
 
+
+EVENT_TYPE_MAPPING = {
+    'SV': 'structural variant',
+    'CNV': 'copy number variant',
+    'ELV-RNA': 'RNA expression level variant',
+    'ELV-PROT': 'protein expression level variant',
+    'MUT': 'mutation'
+}
+
+BIOTYPE_MAPPING = {
+    'gene fusion': 'fusion',
+    'chromosome': 'genome reference consortium (human)',
+    'cds': 'transcript'
+}
+
+
+SUBTYPE_MAPPING = {
+    '>': 'substitution',
+    'mis': 'substitution'
+}
+
+
+def convert_position(pos):
+    a = pos.a
+    b = pos.b
+    c = pos.c
+    csys = pos.csys
+    if a is not None and a < 0:
+        a = None
+    if b is not None and b < 0:
+        b = None
+
+    if csys == 'y':
+        return {'@class': 'cytoband_position', 'major_band': a, 'arm': c, 'minor_band': b}
+    elif csys == 'c':
+        if c == '-':
+            b *= -1
+        return {
+            '@class': 'coding_sequence_position',
+            'pos': a,
+            'offset': b
+        }
+    elif csys == 'p':
+        return {
+            '@class': 'protein_position',
+            'pos': a,
+            'ref_aa': c
+        }
+    elif csys == 'g':
+        return {
+            '@class': 'genomic_position',
+            'pos': a
+        }
+    elif csys == 'e':
+        return {
+            '@class': 'exon_position',
+            'pos': a
+        }
+    else:
+        raise NotImplementedError('did not account for csys', csys)
+
+
+def convert_feature(feature):
+    return {
+        '@class': 'feature',
+        'source': feature.type,
+        'source_version': feature.version,
+        'biotype': BIOTYPE_MAPPING.get(feature.subtype, feature.subtype),
+        'name': feature.id
+    }
+
+
+def convert_cv_event(event):
+    return {'@class': 'category_event', 'term': event.cv_notation, 'primary_feature': convert_feature(event.name_feature)}
+
+
+def convert_cn_event(event):
+    json_event = {
+        '@class': 'positional_event',
+        'primary_feature': convert_feature(event.feature_x1),
+        'subtype': SUBTYPE_MAPPING.get(event.type, event.type)
+    }
+    if event.bn:
+        json_event['secondary_feature'] = convert_feature(event.feature_y1)
+    if event.break_x2 is not None and event.break_x2 != event.break_x1:
+        json_event['start'] = {
+            'start': convert_position(event.break_x1),
+            'end': convert_position(event.break_x2),
+            '@class': 'range'
+        }
+    else:
+        json_event['start'] = convert_position(event.break_x1)
+    
+
+    if event.break_y2 is not None and event.break_y2 != event.break_y1:
+        json_event['end'] = {
+            'start': convert_position(event.break_y1),
+            'end': convert_position(event.break_y2),
+            '@class': 'range'
+        }
+    elif event.break_y1 is not None:
+        json_event['end'] = convert_position(event.break_y1)
+    
+    if event.type == 'fs':
+        m = re.search('(\w?)\*?(\d*)', event.alt)
+        if m is not None:
+            json_event['untemplated_seq'] = m.group(1)
+            json_event['termination_aa'] = m.group(2)
+    elif event.alt:
+        json_event['untemplated_seq'] = event.alt
+    
+    if event.ref:
+        json_event['reference_seq'] = event.ref
+
+    return json_event
+
+
+def new_statement(type, relevance):
+    return {
+            '@class': 'statement',
+            'applies_to': [],
+            'requires': [],
+            'as_compared_to': [],
+            'relevance': relevance,
+            'type': type,
+            'supported_by': []
+        }
+
 def main():
-    ref_json = defaultdict(list)
     print('[LOADING] ({0}) the knowledgebase flatfiles'.format(datetime.now()))
     kb = load_kb(
-        'knowledge_base_events.tsv',
+        'mini_knowledge_base_events.tsv',
         'knowledge_base_references.tsv',
         'disease_ontology.tsv'
     )
-    row_count = 0
-    for ekey, entry in list(kb.entries.items())[0:-1]:
-
-        flag = False
-        # initialization
-        entry_hash = {}
-        statement = {}
-        disease = {}
-        event = {}
-        primary_feature = {}
-        secondary_feature = {}
-        reference = {}
-
-        # statement
-        statement['type'] = entry.statement.type
-        statement['relevance'] = entry.statement.relevance
-        if statement['relevance'] == 'gain-of-function':
-            statement['relevance'] = 'gain';
-
-        if (' ' in entry.statement.context) or (';' in entry.statement.context):
-            continue;
-        elif statement['type'] == 'therapeutic':
-                statement['context'] = entry.statement.context
-        else:
-            statement['context'] = entry.statement.context
-        entry_hash['statement'] = statement
-
-
-        #disease
-        if entry.disease != "not specified":
-            disease['name'] = entry.disease
-        else:
-            disease['name'] = None
-        entry_hash['disease'] = disease
-
-        # status
-        event['status'] = str(entry.combination.events[0][1])
-
-        # zygosity
-        event['zygosity'] = str(entry.combination.events[0][2])
-
-        # germline
-        m = re.search('.*\((\w*)\)', entry.combination.events[0][2])
-        if m:
-            event['germline'] = m.group(1)
-        else:
-            event['germline'] = ''
-
-        # reference
-        reference['type'] = entry.evidence
-        reference['id_type'] = entry.literature.type
-        reference['id'] = entry.literature.id
-        reference['title'] = entry.literature.title
-        entry_hash['reference'] = reference
-
-        # event
-        event['type'] = entry.combination.events[0][0].type
-        if event['type'] == 'SV':
-            event['type'] = 'structural variant';
-        elif event['type'] == 'CNV':
-            event['type'] = 'copy number variant';
-        elif event['type'] == 'MUT':
-            event['type'] = 'mutation';
-        combination_event = entry.combination.events[0][0]
-        cv_notation = combination_event.cv_notation
-        cn_notation = combination_event.cn_notation
-        if cv_notation != None:
-            event['flag'] = 'CategoryEvent'
-            event['term'] = cv_notation
-            primary_feature['biotype'] = combination_event.name_feature.subtype
-            if primary_feature['biotype'] == 'gene fusion':
-                primary_feature['biotype'] = 'fusion';
-            elif primary_feature['biotype'] == 'chromosome':
-                primary_feature['biotype'] = 'template';
-            elif primary_feature['biotype'] == 'cds':
-                primary_feature['biotype'] = 'transcript';
-            primary_feature['source'] = combination_event.name_feature.type
-            if primary_feature['source'] == 'chromosome':
-                primary_feature['source'] = 'genome reference consortium (human)'
-            primary_feature['name'] = combination_event.name_feature.id
-            event['primary_feature'] = primary_feature
-            event['secondary_feature'] = secondary_feature
-            uuid_str = str(uuid.uuid4())
-            entry_hash['event'] = event
-            ref_json[uuid_str].append(entry_hash)
-
-        elif cn_notation:
-            event['flag'] = 'PositionalEvent'
-
-            position_x1 = cn_notation.break_x1 or None
-            position_x2 = cn_notation.break_x2 or None
-            position_y1 = cn_notation.break_y1 or None
-            position_y2 = cn_notation.break_y2 or None
-
-            if cn_notation.type == 'fs' or cn_notation.type == 'ext':
-                m = re.search('(\w?)\*?(\d*)', cn_notation.alt)
-                if m is not None:
-                    event['untemplated_seq'] = m.group(1)
-                    event['termination_aa'] = m.group(2)
+    new_entries = []
+    unresolved = 0
+    manual_intervention_req = 0
+    nonsensical_entries = 0
+    TS = set()
+    ONC = set()
+    for ekey, entry in list(kb.entries.items()):
+        if len(entry.combination.events) != 1:
+            continue
+        ev = entry.combination.events[0][0]
+        if ev.type != 'FANN':
+            continue
+        feat = ev.name_feature.id
+        if entry.statement.type == 'biological':
+            if entry.statement.relevance in ['oncogene', 'putative oncogene']:
+                ONC.add(feat)
+            elif entry.statement.relevance in ['tumour suppressor', 'putative tumour suppressor']:
+                TS.add(feat)
+    both = ONC & TS
+    ONC = ONC - both
+    TS = ONC - both
+        
+    for ekey, entry in list(kb.entries.items()):
+        try:
+            events = []
+            for event, presence_flag, zygosity in entry.combination.events:
+                germline = False
+                zygosity = zygosity.lower()
+                if '(germline)' in zygosity:
+                    germline = True
+                    zygosity = re.sub('\s*(germline)\s*$', '', zygosity)
+                if zygosity in ['ns', 'na']:
+                    zygosity = None
+                
+                if event.type == 'FANN':
+                    events.append(convert_feature(event.name_feature))
+                    continue
+                event_json = {
+                    'type': EVENT_TYPE_MAPPING[event.type],
+                    'zygosity': zygosity,
+                    'germline': germline
+                }
+                if event.cn_notation:
+                    event_json.update(convert_cn_event(event.cn_notation))
                 else:
-                    event['untemplated_seq'] = None
-                    event['termination_aa'] = None
+                    event_json.update(convert_cv_event(event))
+                events.append(event_json)
+            
+            #disease
+            diseases = []
+            if entry.disease != "not specified":
+                for dname in entry.disease.split(';'):
+                    diseases.append({'@class': 'disease', 'name': dname.strip().lower()})
             else:
-                event['untemplated_seq'] = cn_notation.alt
-                event['termination_aa'] = None
-
-            event['reference_seq'] = cn_notation.ref
-            event['csys'] = cn_notation.csys
-
-            position = {}
-            if event['csys'] == 'c':
-                if position_x1.c is None and position_x1.b is None:
-                    px1c = px1b = 0
+                diseases = [None]
+            # publication
+            if entry.literature.type == 'pubmed':
+                pub = {
+                    'pmid': entry.literature.id,
+                    'title': entry.literature.title,
+                    '@class': 'publication'
+                }
+            elif re.match('^(.*\.(ca|com|org|edu)|http.*)$', entry.literature.id) or \
+                    'cancer.sanger.ac.uk/cosmic' == entry.literature.id:
+                pub = {
+                    'url': entry.literature.id,
+                    'title': entry.literature.title,
+                    '@class': 'external_source'
+                }
+            elif entry.literature.id in ['ampliseq panel V2', 'IBM']:
+                pub = {
+                    'url': None,
+                    'title': entry.literature.id.lower(),
+                    '@class': 'external_source'
+                }
+            elif entry.literature.title.lower() in ['oncopanel', 'pog - unpublished', 'pog', 'captur']:
+                name = entry.literature.title.lower()
+                if name == 'pog - unpublished':
+                    name = 'pog'
+                pub = {
+                    'official_title': name,
+                    '@class': 'clinical_trial'
+                }
+            elif entry.literature.id.lower() in ['oncopanel', 'pog - unpublished', 'pog', 'captur', 'bcgsc - pog']:
+                name = entry.literature.id.lower()
+                if name in ['pog - unpublished', 'pog', 'bcgsc - pog']:
+                    name = 'pog'
+                pub = {
+                    'official_title': name,
+                    '@class': 'clinical_trial'
+                }
+            elif entry.literature.type in ['', 'other'] and re.match('^\d+$', entry.literature.id):
+                pub = {
+                    'pmid': entry.literature.id,
+                    'title': entry.literature.title,
+                    '@class': 'publication'
+                }
+            elif entry.literature.id == 'not specified':
+                pub = None
+            else:
+                print('warning: unsupported lit type', repr(entry.literature.type), repr(entry.literature.id))
+                unresolved += 1
+                continue
+            
+            context = [c.strip().lower() for c in entry.statement.context.split(';')]
+            for context, disease in itertools.product(context, diseases):
+                relevance = entry.statement.relevance
+                if relevance == 'inconclusive' or ('uncertain functional effect' in context and relevance == 'not determined'):
+                    relevance = 'inconclusive functional effect'
+                elif relevance == 'not specified' and context == 'cancer associated gene':
+                    relevance = 'associated-with'
+                stat = new_statement(entry.statement.type, relevance)
+                if pub:
+                    stat['supported_by'].append(pub)
+                
+                if entry.statement.type in ['diagnostic', 'occurrence'] or relevance in ['pathogenic', 'recurrent']:
+                    if disease is None and entry.statement.type == 'diagnostic':
+                        if entry.evidence == 'clinical-test' or entry.literature.id == 'ampliseq panel V2':
+                            stat['applies_to'].extend(events)
+                            new_entries.append(stat)
+                            continue
+                        print('warning: cant resolve entry without disease', entry)
+                        nonsensical_entries += 1
+                        continue
+                    stat['applies_to'].append(disease)
                 else:
-                    px1c = str(position_x1.c)
-                    px1b = str(position_x1.b)
-                if position_x2 is not None:
-                    if position_x2.c is None and position_x2.b is None:
-                        px2c = px2b = 0
+                    if disease is not None:
+                        stat['requires'].append(disease)
+                    
+                    if entry.statement.type == 'biological':
+                        if any([
+                            any([x + 'oncogene' == relevance for x in ['', 'likely ', 'putative ']]),
+                            any([x + 'tumour suppressor' == relevance for x in ['', 'likely ', 'putative ']]),
+                            'haploinsufficient' == relevance,
+                            'cancer associated gene' == relevance,
+                            'associated-with' == relevance and context == 'cancer associated gene'
+                        ]):
+                            if len(events) != 1:
+                                print('unexpected. gene annotations should only have one event')
+                                nonsensical_entries += 1
+                                continue
+                            stat['applies_to'].extend(events)
+                            new_entries.append(stat)
+                            continue
+                        elif any([
+                            'function' in relevance,
+                            'dominant' in relevance,
+                            relevance in ['likely oncogenic', 'oncogenic']
+                        ]):
+                            if len(events) != 1:
+                                unresolved += 1
+                                print('warning complex: functional statement with more than one event')
+                                continue
+                            if 'secondary_feature' in events[0]:
+                                f1 = events[0]['primary_feature']['name']
+                                f2 = events[0]['secondary_feature']['name']
+                                if f1 == f2:
+                                    stat['applies_to'].append(events[0]['primary_feature'])
+                                else:
+                                    stat['applies_to'].append(events[0]['primary_feature'])
+                                    stat['applies_to'].append(events[0]['secondary_feature'])
+                            else:
+                                stat['applies_to'].append(events[0]['primary_feature'])
+                        elif relevance in ['not determined', 'not specified', 'inconclusive']:
+                            print(entry)
+                            unresolved += 1
+                            continue
+                        elif 'fusion' in relevance:
+                            if len(events) != 1:
+                                manual_intervention_req += 1
+                                print('MANUAL', relevance, entry)
+                                continue
+                            f1 = events[0]['primary_feature']['name']
+                            f2 = events[0]['secondary_feature']['name']
+                            if f1 == f2:
+                                stat['applies_to'].append(events[0]['primary_feature'])
+                            else:
+                                stat['applies_to'].append(events[0]['primary_feature'])
+                                stat['applies_to'].append(events[0]['secondary_feature'])
+                        elif relevance in ['recurrent', 'test target', 'mutation hotspot']:
+                            stat['applies_to'].extend(events)
+                            new_entries.append(stat)
+                            continue
+                        elif 'pathway' in relevance:
+                            stat['applies_to'].append({'@class': 'target', 'name': context, 'type': 'pathway'})
+                        elif relevance == 'cooperative-events':
+                            feat = events[0]['primary_feature']
+                            flag = False
+                            for ev in events:
+                                if 'secondary_feature' in ev or ev['primary_feature']['name'] != feat['name']:
+                                    flag = True
+                                    break
+                            if flag:
+                                manual_intervention_req += 1
+                                print('MANUAL', relevance, events)
+                                continue
+                            stat['applies_to'].append(feat)
+                        elif relevance == 'associated-with':
+                            if context == 'cancer associated gene':
+                                stat['applies_to']
+                            stat['applies_to'].append({'@class': 'target', 'name': context, 'type': 'phenotype'})
+                    elif entry.statement.type == 'therapeutic':
+                        for tname in re.split('\s*\+\s*', context):
+                            stat['applies_to'].append({'@class': 'therapy', 'name': tname})
+                    elif entry.statement.type == 'prognostic':
+                        pass
                     else:
-                        px2c = str(position_x2.c)
-                        px2b = str(position_x2.b)
-                if position_y1 is not None:
-                    if position_y1.c is None and position_y1.b is None:
-                        py1c = py1b = 0
-                    else:
-                        py1c = str(position_y1.c)
-                        py1b = str(position_y1.b)
-                if position_y2 is not None:
-                    if position_y2.c is None and position_y2.b is None:
-                        py2c = py2b = 0
-                    else:
-                        py2c = str(position_y2.c)
-                        py2b = str(position_y2.b)
-
-                if position_x1 is not None and position_x2 is not None:
-                    event['start'] = [{'pos': position_x1.a, 'offset': px1c + px1b},
-                                      {'pos': position_x2.a, 'offset': px2c + px2b}]
-                elif position_x1:
-                    event['start'] = {'pos': position_x1.a, 'offset': px1c + px1b}
-
-                if position_y1 is not None and position_y2 is not None:
-                    event['end'] = [{'pos': position_y1.a, 'offset': py1c + py1b},
-                                      {'pos': position_y2.a, 'offset': py2c + py2b}]
-                elif position_y1:
-                    event['end'] = {'pos': position_y1.a, 'offset': py1c + py1b}
-            elif event['csys'] == 'p':
-                if position_x1 is not None and position_x2 is not None:
-                    event['start'] = [{'pos': position_x1.a, 'ref_aa': position_x1.c},
-                                      {'pos': position_x2.a, 'ref_aa': position_x2.c}]
-                elif position_x1:
-                    event['start'] = {'pos': position_x1.a, 'ref_aa': position_x1.c}
-
-                if position_y1 is not None and position_y2 is not None:
-                    event['end'] = [{'pos': position_y1.a, 'ref_aa': position_y1.c},
-                                      {'pos': position_y2.a, 'ref_aa': position_y2.c}]
-                elif position_y1:
-                    event['end'] = {'pos': position_y1.a, 'ref_aa': position_y1.c}
-            elif event['csys'] == 'y':
-                if position_x1 is not None and position_x2 is not None:
-                    event['start'] = [{'arm': position_x1.c, 'major_band': str(position_x1.a), 'minor_band': str(position_x1.b)},
-                                      {'arm': position_x2.c, 'major_band': str(position_x2.a), 'minor_band': str(position_x2.b)}]
-                elif position_x1:
-                    event['start'] = {'arm': position_x1.c, 'major_band': str(position_x1.a), 'minor_band': str(position_x1.b)}
-
-                if position_y1 is not None and position_y2 is not None:
-                    event['end'] = [{'arm': position_y1.c, 'major_band': str(position_y1.a), 'minor_band': str(position_y1.b)},
-                                      {'arm': position_y2.c, 'major_band': str(position_y2.a), 'minor_band': str(position_y2.b)}]
-                elif position_y1:
-                    event['end'] = {'arm': position_y1.c, 'major_band': str(position_y1.a), 'minor_band': str(position_y1.b)}
-            elif event['csys'] == 'g' or event['csys'] == 'e':
-                if position_x1 is not None and position_x2 is not None:
-                    event['start'] = [{'pos': position_x1.a}, {'pos':position_x2.a}]
-                elif position_x1:
-                    event['start'] = {'pos': position_x1.a}
-
-                if position_y1 is not None and position_y2 is not None:
-                    event['end'] = [{'pos': position_y1.a}, {'pos':position_y2.a}]
-                elif position_y1:
-                    event['end'] = {'pos': position_y1.a}
-
-            event['subtype'] = combination_event.cn_notation.type
-            if  event['subtype'] == 'mis':
-                event['subtype'] = '>';
-            elif event['subtype'] == 'fusion':
-                event['subtype'] = 'fus';
-
-            event['primary_feature'] = {}
-            event['secondary_feature'] = {}
-
-            if cn_notation.bn:
-                # breakpoint_event
-                for xy_feature in zip(cn_notation.xfeatures, cn_notation.yfeatures):
-                    primary_feature = {}
-                    secondary_feature = {}
-                    if len(xy_feature) > 0:
-                        primary_feature['biotype'] = xy_feature[0].subtype
-                        if primary_feature['biotype'] == 'gene fusion':
-                            primary_feature['biotype'] = 'fusion';
-                        elif primary_feature['biotype'] == 'chromosome':
-                            primary_feature['biotype'] = 'template';
-                        elif primary_feature['biotype'] == 'cds':
-                            primary_feature['biotype'] = 'transcript';
-                        primary_feature['source'] = xy_feature[0].type
-                        if primary_feature['source'] == 'chromosome':
-                            primary_feature['source'] = 'genome reference consortium (human)'
-                        primary_feature['name'] = xy_feature[0].id
-                        secondary_feature['biotype'] = xy_feature[1].subtype
-                        if secondary_feature['biotype'] == 'gene fusion':
-                            secondary_feature['biotype'] = 'fusion';
-                        elif secondary_feature['biotype'] == 'chromosome':
-                            secondary_feature['biotype'] = 'template';
-                        elif secondary_feature['biotype'] == 'cds':
-                            secondary_feature['biotype'] = 'transcript';
-                        secondary_feature['source'] = xy_feature[1].type
-                        if secondary_feature['source'] == 'chromosome':
-                            secondary_feature['source'] = 'genome reference consortium (human)'
-                        secondary_feature['name'] = xy_feature[1].id
-                    else:
-                        x1_feature = cn_notation.xfeatures[0]
-                        primary_feature['biotype'] = x1_feature.subtype
-                        if primary_feature['biotype'] == 'gene fusion':
-                            primary_feature['biotype'] = 'fusion';
-                        elif primary_feature['biotype'] == 'chromosome':
-                            primary_feature['biotype'] = 'template';
-                        elif primary_feature['biotype'] == 'cds':
-                            primary_feature['biotype'] = 'transcript';
-                        primary_feature['source'] = x1_feature.type
-                        if primary_feature['source'] == 'chromosome':
-                            primary_feature['source'] = 'genome reference consortium (human)'
-                        primary_feature['name'] = x1_feature.id
-                    event['primary_feature'] = primary_feature
-                    event['secondary_feature'] = secondary_feature
-                    uuid_str = str(uuid.uuid4())
-                    entry_hash['event'] = event
-                    ref_json[uuid_str].append(entry_hash)
-
-            else:
-                # continues_event
-                features = cn_notation.xfeatures + cn_notation.yfeatures
-                for feature in features:
-                    primary_feature = {}
-                    primary_feature['biotype'] = feature.subtype
-                    if primary_feature['biotype'] == 'gene fusion':
-                        primary_feature['biotype'] = 'fusion';
-                    elif primary_feature['biotype'] == 'chromosome':
-                        primary_feature['biotype'] = 'template';
-                    elif primary_feature['biotype'] == 'cds':
-                        primary_feature['biotype'] = 'transcript';
-                    primary_feature['source'] = feature.type
-                    if primary_feature['source'] == 'chromosome':
-                        primary_feature['source'] = 'genome reference consortium (human)'
-                    primary_feature['name'] = feature.id
-                    event['primary_feature'] = primary_feature
-                    uuid_str = str(uuid.uuid4())
-                    entry_hash['event'] = event
-                    ref_json[uuid_str].append(entry_hash)
-
-    uniq_items = {}
-    for key, value in ref_json.items():
-        if value not in uniq_items.values():
-            holder = {}
-            for sub_dict in value:
-                holder.update(sub_dict)
-            uniq_items[key] = holder
-
-
-    json_str = json.dumps(uniq_items)
-    print(str(json_str))
+                        raise NotImplementedError('logic not defined for', entry.statement.type)
+                stat['requires'].extend(events)
+                if len(stat['applies_to']) < 1 and entry.statement.type != 'prognostic':
+                    raise NotImplementedError('not handling applies_to', entry, stat, context, diseases)
+                new_entries.append(stat)
+        except Exception as err:
+            if isinstance(err, NotImplementedError):
+                raise err
+            print('*********** warning: skipping problem entry', repr(err), entry)
+            print()
+    print(
+        'unresolved:', unresolved, 
+        'manual intervention required:', manual_intervention_req, 
+        'nonsensical:', nonsensical_entries,  
+        'parsed:', len(new_entries)
+    )
+    json_str = json.dumps({'entries': new_entries})
+    with open('new_entries.json', 'w') as fh:
+        print('writing: new_entries.json')
+        fh.write(json_str)
 
 
 if __name__ == "__main__":
