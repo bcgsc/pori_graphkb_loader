@@ -26,7 +26,7 @@ const EVENT_SUBTYPE = {
     GAIN: 'gain', 
     LOSS: 'loss', 
     TRANS: 'translocation', 
-    ITRANS: 'inverted_translocation', 
+    ITRANS: 'inverted translocation', 
     EXT: 'extension', 
     FS: 'frameshift',
     FUSION: 'fusion',
@@ -180,7 +180,8 @@ class PositionalEvent extends KBVertex {
         const pClass = this.db.models[positionClassName];
         const range = this.db.models[Range.clsname];
         // ensure the subtype is appropriate for this coordinate system
-        this.constructor.subtypeValidation(pClass.constructor.prefix, NOTATION_TO_SUBTYPE.get(args.subtype));
+        console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>',positionClassName)
+        this.constructor.subtypeValidation(pClass.constructor.prefix, args.subtype);
         // validate the start/end positions
         if (args.start.start !== undefined) {  // start is a range
             args.start = range.validateContent(args.start);
