@@ -72,6 +72,7 @@ class Event extends KBVertex {
             {name: 'zygosity', type: 'string', mandatory: true, notNull: false},
             {name: 'germline', type: 'boolean', mandatory: true, notNull: false},
             {name: 'type', type: 'string', mandatory: true, notNull: true},
+            {name: 'absence_of', type: 'boolean', mandatory: true, notNull: true},
             {name: 'primary_feature', type: 'link', linkedClass: Feature.clsname, mandatory: true, notNull: true},
             {name: 'secondary_feature', type: 'link', linkedClass: Feature.clsname, mandatory: false, notNull: true}
         ];
