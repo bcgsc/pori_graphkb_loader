@@ -77,6 +77,49 @@ const statements = [],
     features = [],
     references = [];
 
+const promisifyFeatures = (obj, user) => {
+    return new Promise((resolve, reject) => {
+        let featurePromises = [];
+        let pFeatureObj = _.omit(obj['primary_feature'], '@class');
+        let sFeatureObj = _.omit(obj['secondary_feature'], '@class');
+        featurePromises.push(selectOrCreate(Feature.clsname, pFeatureObj, user));
+        if (Object.keys(sFeatureObj).length != 0) {
+            featurePromises.push(selectOrCreate(Feature.clsname, sFeatureObj, user));
+        } else {
+            featurePromises.push(new Promise((resolve, reject) => { resolve(null); }));
+        }
+
+        Promise.all(featurePromises)
+            .then((recList) => {
+                resolve(recList);
+            }).catch((err) => {
+                reject(err);
+            });
+    });    
+}
+
+
+const createEvents = (type, obj, user) => {
+    return new Promise((resolve, reject) => {
+        if (type === 'category_event') {
+            let pFeatureRec, sFeatureRec;
+            Promise.all(promisifyFeatures(obj, user))
+            .then((featureList) => {
+                [pFeatureRec, sFeatureRec] = featureList;
+                let catEventObj = _.omit(obj, ['@class', 'primary_feature', 'secondary_feature']);
+                catEventObj['primary_feature'] = pFeatureRec;
+                if (sFeatureRec != null) {
+                   catEventObj['secondary_feature'] = sFeatureRec;
+                }
+                resolve(db.models.CategoryEvent.createRecord(catEventObj, user));
+            }).catch((err) => {
+                reject(err);
+            });
+        } else if (type === 'positional_event'){
+
+        }
+    });    
+}
 
 const selectOrCreate = (clsname, obj, user, blackList) => {
     //console.log('>>>>>>>>>>>> OBJ >>>>>>>>>>>>>', obj);
@@ -119,35 +162,28 @@ const buildRecord = (oldKbRecord) => {
         _.forEach(bigList, (item) => {
             switch(item['@class']) {
                 case 'disease':
-                    let diseaseObj = Object.assign({}, {name: item.name, doid: null});
-                    promises.push(selectOrCreate(Disease.clsname , diseaseObj, user));
+                    //let diseaseObj = Object.assign({}, {name: item.name, doid: null});
+                    //promises.push(selectOrCreate(Disease.clsname , diseaseObj, user));
                     break;
+                
                 case 'therapy':
-                    promises.push(selectOrCreate(Therapy.clsname , _.omit(item,  '@class'), user));
+                    //promises.push(selectOrCreate(Therapy.clsname , _.omit(item,  '@class'), user));
                     break;
+
                 case 'feature':
-                    promises.push(selectOrCreate(Feature.clsname , _.omit(item,  '@class'), user));
+                    //promises.push(selectOrCreate(Feature.clsname , _.omit(item,  '@class'), user));
                     break;
+
                 case 'positional_event':
-                    break;
                 case 'category_event':
+                    promises.push(createEvents(item['@class'], item, user));                
                     break;
+
                 default:
                     throw new Error('unrecognized vertex:', item['@class']);
                     break;
             }
         });
-
-        // //features
-        // let featurePromises = [];
-
-        // featurePromises.push(selectOrCreate('feature', pFeatureObj, user));
-        // if (Object.keys(sFeatureObj).length != 0) {
-        //     featurePromises.push(selectOrCreate('feature', sFeatureObj, user));
-        // } else {
-        //     featurePromises.push(new Promise((resolve, reject) => { resolve(null); }));
-        // }
-
 
         return Promise.all(promises)
             .then((pList) => {
