@@ -3,6 +3,7 @@ const {Base, KBVertex, KBEdge, Record, KBUser} = require('./base');
 const Promise = require('bluebird');
 const {Feature} = require('./feature');
 const {Range, Position} = require('./position');
+const {Context} = require('./context');
 const {AttributeError, ControlledVocabularyError} = require('./error');
 const _ = require('lodash');
 
@@ -77,7 +78,7 @@ class Event extends KBVertex {
             {name: 'secondary_feature', type: 'link', linkedClass: Feature.clsname, mandatory: false, notNull: true}
         ];
         return new Promise((resolve, reject) => {
-            Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: true, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: Context.clsname, isAbstract: true, properties: props})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
