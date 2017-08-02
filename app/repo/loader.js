@@ -98,26 +98,34 @@ const promisifyFeatures = (obj, user) => {
     });    
 }
 
-
 const createEvents = (type, obj, user) => {
     return new Promise((resolve, reject) => {
-        if (type === 'category_event') {
-            let pFeatureRec, sFeatureRec;
-            Promise.all(promisifyFeatures(obj, user))
-            .then((featureList) => {
-                [pFeatureRec, sFeatureRec] = featureList;
-                let catEventObj = _.omit(obj, ['@class', 'primary_feature', 'secondary_feature']);
-                catEventObj['primary_feature'] = pFeatureRec;
-                if (sFeatureRec != null) {
-                   catEventObj['secondary_feature'] = sFeatureRec;
-                }
-                resolve(db.models.CategoryEvent.createRecord(catEventObj, user));
-            }).catch((err) => {
-                reject(err);
-            });
-        } else if (type === 'positional_event'){
 
-        }
+        let pFeatureRec, sFeatureRec;
+        Promise.all(promisifyFeatures(obj, user))
+        .then((featureList) => {
+            [pFeatureRec, sFeatureRec] = featureList;
+            let eventObj = _.omit(obj, ['@class', 'primary_feature', 'secondary_feature']);
+            eventObj['primary_feature'] = pFeatureRec;
+            if (sFeatureRec != null) {
+               eventObj['secondary_feature'] = sFeatureRec;
+            }
+            // categoricalEvent
+            if (type === 'category_event') {
+                resolve(db.models.CategoryEvent.createRecord(eventObj, user));
+            // PositionalEvent
+            } else if (type === 'positional_event') {
+                let posClass = eventObj.start['@class'];
+                delete eventObj.start['@class'];
+                if (_.includes(eventObj, 'end')) {
+                    delete eventObj.end['@class'];
+                }
+                //console.log('>>>>>>>>>>>>>>>>>>',eventObj);
+                resolve(db.models.PositionalEvent.createRecord(eventObj, posClass, user)); 
+            }
+        }).catch((err) => {
+            reject(err);
+        });
     });    
 }
 
