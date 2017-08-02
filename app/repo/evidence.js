@@ -2,6 +2,8 @@
 const {Base, KBVertex, KBEdge, Record, KBUser} = require('./base');
 const {AttributeError, NoResultFoundError} = require('./error');
 const currYear = require('year');
+const _ = require('lodash');
+
 
 /**
 *
@@ -53,12 +55,12 @@ class Publication extends KBVertex {
         if (content.year != null && (content.year < 1000) || (content.year > currYear('yyyy'))) {
             throw new AttributeError('publication year cannot be too old or in the future');
         }
-        // content.journal = journalClass.validateContent({name: content.journal.name, created_by: content.created_by});
+        //content.journal = journalClass.validateContent({name: content.journal.name, created_by: content.created_by});
         content.title = content.title.toLowerCase();
         if (content.doi != undefined || content.pmid != undefined) {
             if (content.pmid !== parseInt(content.pmid, 10)) {
                 // if pmid is not an integer
-                throw new AttributeError('PMID must be an integer');
+                content.pmid = parseInt(content.pmid)
             } else { 
                 content.doi = content.doi != undefined ? content.doi.toLowerCase() : undefined;
             }
@@ -72,10 +74,9 @@ class Publication extends KBVertex {
         content.created_by = true;
         const args = this.validateContent(content);
         return new Promise((resolve, reject) => {
-            let journal = args.journal ? new Record(args.journal, Journal.clsname) : null;
-
+            let journal = args.journal ? new Record({name: args.journal}, Journal.clsname) : null;
             Promise.all([
-                journal == null || journal.hasRID ? Promise.resolve(journal) : this.db.models.Journal.selectExactlyOne(journal.content),
+                journal == null || journal.hasRID ? Promise.resolve(journal) : this.selectOrCreate(Journal.clsname,_.omit(journal.content, '@class'), user),
                 user.rid != null ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname})
             ]).then((pList) => {
                 [journal, user] = pList;

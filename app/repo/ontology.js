@@ -29,7 +29,7 @@ class Ontology extends KBVertex {
 class Disease extends KBVertex {
 
     validateContent(content) {
-        const args = Object.assign({doid: null}, content);
+        const args = Object.assign({}, content);
         if (args.doid != null) {
             args.doid = parseInt(args.doid);
         }

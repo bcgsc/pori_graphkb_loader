@@ -174,6 +174,20 @@ class Base {
         return terms;
     }
 
+    selectOrCreate(clsname, obj, user) {
+        return new Promise((resolve, reject) => {
+            this.db.models[clsname].selectExactlyOne(obj)
+                .then((rec) => {
+                    resolve(rec);
+                }).catch((err) => {
+                    return this.db.models[clsname].createRecord(obj, user);
+                }).then((rec) => {
+                    resolve(rec);
+                }).catch((err) => {
+                    reject(err);
+                });
+        });
+    };
 
     validateContent(content) {
         const args = {};
