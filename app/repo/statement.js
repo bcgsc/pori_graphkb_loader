@@ -1,6 +1,7 @@
 const {Base, KBVertex, KBEdge, Record} = require('./base');
 const {AttributeError, NoResultFoundError, ControlledVocabularyError} = require('./error');
 const {Context} = require('./context');
+const {Evidence} = require('./evidence');
 const _ = require('lodash');
 const Promise = require('bluebird');
 
