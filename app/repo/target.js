@@ -18,7 +18,7 @@ class Target extends KBVertex {
                 properties: ['name' ,'deleted_at'],
                 'class':  this.clsname
             }];
-        
+
         return new Promise((resolve, reject) => {
             Base.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props})
                 .then(() => {
@@ -31,3 +31,5 @@ class Target extends KBVertex {
         });
     }
 }
+
+module.exports = {Target};
