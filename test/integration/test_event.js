@@ -264,6 +264,13 @@ describe('Event schema tests:', () => {
                 expect(rec.content).to.have.property('reference_seq', 'A');
             });
         });
+        it('allows collection_method', () => {
+            return db.models.PositionalEvent.createRecord({
+                start: {pos: 2}, collection_method: 'mass spec', primary_feature: primary_feature, type: EVENT_TYPE.MUT,  absence_of: true, subtype: EVENT_SUBTYPE.DEL, reference_seq: 'A'
+            }, GenomicPosition.clsname, user).then((rec) => {
+                expect(rec.content).to.have.property('reference_seq', 'A');
+            });
+        });
         it('allows untemplated_seq and reference_seq for indel', () => {
             return db.models.PositionalEvent.createRecord({
                 start: {pos: 2}, primary_feature: primary_feature, 
@@ -371,6 +378,19 @@ describe('Event schema tests:', () => {
             return db.models.CategoryEvent.createRecord({
                 term: 'not specified', 
                 type: EVENT_TYPE.CNV, 
+                zygosity: null,  absence_of: true,
+                primary_feature: primary_feature
+            }, user).then((record) => {
+                expect(record).to.be.instanceof(Record);
+                expect(record.content).to.have.property('zygosity', null);
+                expect(record.content).to.have.property('germline', null);
+            });
+        });
+        it('allows collection_method', () => {
+            return db.models.CategoryEvent.createRecord({
+                term: 'not specified', 
+                type: EVENT_TYPE.CNV,
+                collection_method: 'mass spec', 
                 zygosity: null,  absence_of: true,
                 primary_feature: primary_feature
             }, user).then((record) => {
