@@ -74,6 +74,7 @@ class Event extends KBVertex {
             {name: 'germline', type: 'boolean', mandatory: true, notNull: false},
             {name: 'type', type: 'string', mandatory: true, notNull: true},
             {name: 'absence_of', type: 'boolean', mandatory: true, notNull: true},
+            {name: 'collection_method', type: 'string', mandatory: false},
             {name: 'primary_feature', type: 'link', linkedClass: Feature.clsname, mandatory: true, notNull: true},
             {name: 'secondary_feature', type: 'link', linkedClass: Feature.clsname, mandatory: false, notNull: true}
         ];
@@ -206,8 +207,6 @@ class PositionalEvent extends KBVertex {
             } catch (e) {
                 if (! (e instanceof TypeError)) {
                     throw e;
-                } else {
-                    console.log(e);
                 }
             }
         } else {
