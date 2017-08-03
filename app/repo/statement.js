@@ -197,7 +197,7 @@ class SupportedBy extends KBEdge {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'out', type: 'link', mandatory: true, notNull: true, linkedClass: Statement.clsname},
-                {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Context.clsname},
+                {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Evidence.clsname},
                 {name: 'quote', type: 'string', mandatory: false, notNull: true}
             ];
             Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
