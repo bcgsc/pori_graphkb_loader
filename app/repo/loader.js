@@ -12,7 +12,7 @@ const {Feature, FeatureDeprecatedBy, FeatureAliasOf, FEATURE_SOURCE, FEATURE_BIO
 const cache = require('./cached/data');
 const {Context} = require('./context');
 const Promise = require('bluebird');
-const {Statement, AppliesTo, AsComparedTo, Requires, STATEMENT_TYPE} = require('./statement');
+const {Statement, AppliesTo, AsComparedTo, Requires, SupportedBy, STATEMENT_TYPE} = require('./statement');
 const {expectDuplicateKeyError} = require('../../test/integration/orientdb_errors');
 const {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDepricatedBy} = require('./ontology');
 const {PERMISSIONS} = require('./constants');
@@ -40,42 +40,6 @@ const {
     PermissionError, 
     AuthenticationError
 } = require('./../../app/repo/error');
-
-
-
-function assignPositions(event) {
-    let startObjF, endObjF;
-    if (_.isEqual(event.start[0], event.start[1])) {
-        startObjF = Object.assign({}, event.start[0]);
-    } else {
-        // startObj should be a range
-        startObjF = {
-            start: Object.assign({}, event.end[0]), 
-            end: Object.assign({}, event.end[1]), 
-            '@class': Range.clsname
-        }
-    }
-    if (event.end != undefined) {
-        if (_.isEqual(event.end[0], event.end[1])) {
-            endObjF = Object.assign({}, event.end[0]);    
-        } else {
-            // endObj should be a range
-            endObjF = {
-                start: Object.assign({}, event.end[0]), 
-                end: Object.assign({}, event.end[1]), 
-                '@class': Range.clsname
-            }
-        }
-    }
-    return [startObjF, endObjF];
-}
-
-const statements = [],
-    diseases = [],
-    therapies = [],
-    events = [],
-    features = [],
-    references = [];
 
 const promisifyFeatures = (obj, user) => {
     return new Promise((resolve, reject) => {
@@ -120,7 +84,6 @@ const createEvents = (type, obj, user) => {
                 if (_.includes(eventObj, 'end')) {
                     delete eventObj.end['@class'];
                 }
-                //console.log('>>>>>>>>>>>>>>>>>>',eventObj);
                 resolve(db.models.PositionalEvent.createRecord(eventObj, posClass, user)); 
             }
         }).catch((err) => {
@@ -128,6 +91,67 @@ const createEvents = (type, obj, user) => {
         });
     });    
 }
+
+const traverseEdgeType = (targetList, user) => {
+    return new Promise((resolve, reject) => {
+        let targetPromises = [];
+        _.forEach(targetList, (item) => {
+            switch(item['@class']) {
+                case 'disease':
+                    let diseaseObj = Object.assign({}, {name: item.name, doid: null});
+                    targetPromises.push(selectOrCreate(Disease.clsname , diseaseObj, user));
+                    break;
+                case 'therapy':
+                    targetPromises.push(selectOrCreate(Therapy.clsname , _.omit(item,  '@class'), user));
+                    break;
+                case 'feature':
+                    targetPromises.push(selectOrCreate(Feature.clsname , _.omit(item,  '@class'), user));
+                    break;
+                case 'positional_event':
+                case 'category_event':
+                    targetPromises.push(createEvents(item['@class'], item, user));                
+                    break;
+                case 'publication':
+                    let evidenceObj = _.omit(item, '@class');
+                    evidenceObj['journal'] = evidenceObj['journal'].toLowerCase();
+                    evidenceObj['title'] = evidenceObj['title'].toLowerCase();
+                    evidenceObj.pmid = parseInt(evidenceObj.pmid);
+                    targetPromises.push(selectOrCreate(item['@class'], evidenceObj, user, 'journal'));
+                    break;
+                default:
+                    throw new Error('unrecognized vertex:', item['@class']);
+                    break;
+            }
+        });
+
+        Promise.all(targetPromises)
+            .then((pList) => {
+                resolve(pList);
+            }).catch((err) => {
+                reject(err);
+            });
+    });
+};
+
+const createEdge = (edgeType, targetList, source, user) => {
+    return new Promise((resolve, reject) => {
+        let edgePromises = [];
+        return Promise.all(traverseEdgeType(targetList, user))
+            .then((targetRecList) => {
+                    _.forEach(targetRecList, (target) => {
+                        edgePromises.push(db.models[edgeType].createRecord({out: source, in: target}, user));
+                    });
+                    Promise.all(edgePromises).then((pList) => {
+                        resolve(pList);
+                    }).catch((err) => {
+                        reject(err)
+                    });
+            }).catch((err) => {
+                reject(err)
+            });
+    });
+};
+
 
 const selectOrCreate = (clsname, obj, user, blackList) => {
     //console.log('>>>>>>>>>>>> OBJ >>>>>>>>>>>>>', obj);
@@ -148,60 +172,34 @@ const selectOrCreate = (clsname, obj, user, blackList) => {
     });
 };
 
+
 const buildRecord = (oldKbRecord) => {
     return new Promise((resolve, reject) => {
-        let promises = [];       
+        let targetPromises = [];       
         
-        /*//statement
+        //statement
         let statObj = Object.assign({}, {relevance: oldKbRecord.relevance, type: oldKbRecord.type});
-        promises.push(db.models.Statement.createRecord(statObj, user));
+        db.models.Statement.createRecord(statObj, user)
+        .then((statRec) => {
+            createEdge('requires', oldKbRecord['requires'], statRec, user)
+            .then(() => {
+                //targetPromises.push(createEdge('requires', oldKbRecord['requires'], statRec, user));
+                targetPromises.push(createEdge('as_compared_to', oldKbRecord['as_compared_to'], statRec, user));
+                targetPromises.push(createEdge('supported_by', oldKbRecord['supported_by'], statRec, user));
+                targetPromises.push(createEdge('applies_to', oldKbRecord['applies_to'], statRec, user));
 
-        //evidence
-        oldKbRecord.supported_by.forEach((supItem) => {
-            let evidenceObj = _.omit(supItem, '@class');
-            evidenceObj['journal'] = evidenceObj['journal'].toLowerCase();
-            evidenceObj['title'] = evidenceObj['title'].toLowerCase();
-            evidenceObj.pmid = parseInt(evidenceObj.pmid);
-            promises.push(selectOrCreate(supItem['@class'], evidenceObj, user, 'journal'));
-        });*/
-
-        let bigList = _.concat(oldKbRecord['applies_to'], oldKbRecord['requires'], oldKbRecord['as_compared_to']);
-
-        _.forEach(bigList, (item) => {
-            switch(item['@class']) {
-                case 'disease':
-                    //let diseaseObj = Object.assign({}, {name: item.name, doid: null});
-                    //promises.push(selectOrCreate(Disease.clsname , diseaseObj, user));
-                    break;
-                
-                case 'therapy':
-                    //promises.push(selectOrCreate(Therapy.clsname , _.omit(item,  '@class'), user));
-                    break;
-
-                case 'feature':
-                    //promises.push(selectOrCreate(Feature.clsname , _.omit(item,  '@class'), user));
-                    break;
-
-                case 'positional_event':
-                case 'category_event':
-                    promises.push(createEvents(item['@class'], item, user));                
-                    break;
-
-                default:
-                    throw new Error('unrecognized vertex:', item['@class']);
-                    break;
-            }
-        });
-
-        return Promise.all(promises)
-            .then((pList) => {
-                    console.log(pList)
-                    console.log('----------------')
+                Promise.all(targetPromises).then((edges) => {
+                    console.log(edges)
+                    console.log('--------------')
                 }).catch((err) => {
-                    reject(err)
-                }).then(() => {
-                    resolve();
+                    reject(err);
                 });
+            }).catch((err) => {
+                reject(err);
+            }).then(() => {
+                resolve();
+            });
+        });
     });
 };
 
@@ -246,10 +244,11 @@ connectServer(conf)
                 [Context],
                 [Evidence, Ontology, Statement, Position, Feature],
                 [   
-                    Disease, Therapy, Requires, Range, GenomicPosition, 
+                    Disease, Therapy, Range, GenomicPosition, 
                     ProteinPosition, CodingSequencePosition, CytobandPosition, 
                     ExonicPosition, Event, Publication, Journal, 
-                    ExternalSource, Study, ClinicalTrial
+                    ExternalSource, Study, ClinicalTrial, AppliesTo,
+                    Requires, SupportedBy,
                 ],
                 [PositionalEvent, CategoryEvent]
             ]
