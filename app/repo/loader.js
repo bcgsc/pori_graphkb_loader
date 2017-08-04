@@ -8,6 +8,7 @@ const conf = require('./../../test/config/db');
 const {connectServer, createDB} = require('./connect');
 const {KBVertex, KBEdge, History, KBUser, KBRole} = require('./base');
 const {Vocab} = require('./vocab');
+const {Target} = require('./target');
 const {Feature, FeatureDeprecatedBy, FeatureAliasOf, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
 const cache = require('./cached/data');
 const {Context} = require('./context');
@@ -19,6 +20,8 @@ const {PERMISSIONS} = require('./constants');
 const oError = require('../../test/integration/orientdb_errors');
 const currYear = require('year');
 const _ = require('lodash');
+const Queue = require('promise-queue')
+Queue.configure(require('bluebird').Promise);
 const {CategoryEvent, PositionalEvent, Event, EVENT_TYPE, EVENT_SUBTYPE, ZYGOSITY} = require('./event');
 const jsonFile = 'test/integration/data/new_entries.mini.json';
 const {
@@ -81,7 +84,7 @@ const createEvents = (type, obj, user) => {
             } else if (type === 'positional_event') {
                 let posClass = eventObj.start['@class'];
                 delete eventObj.start['@class'];
-                if (_.includes(eventObj, 'end')) {
+                if (_.includes(_.keys(eventObj), 'end')) {
                     delete eventObj.end['@class'];
                 }
                 resolve(db.models.PositionalEvent.createRecord(eventObj, posClass, user)); 
@@ -96,31 +99,27 @@ const traverseEdgeType = (targetList, user) => {
     return new Promise((resolve, reject) => {
         let targetPromises = [];
         _.forEach(targetList, (item) => {
-            switch(item['@class']) {
-                case 'disease':
-                    let diseaseObj = Object.assign({}, {name: item.name, doid: null});
-                    targetPromises.push(selectOrCreate(Disease.clsname , diseaseObj, user));
-                    break;
-                case 'therapy':
-                    targetPromises.push(selectOrCreate(Therapy.clsname , _.omit(item,  '@class'), user));
-                    break;
-                case 'feature':
-                    targetPromises.push(selectOrCreate(Feature.clsname , _.omit(item,  '@class'), user));
-                    break;
-                case 'positional_event':
-                case 'category_event':
-                    targetPromises.push(createEvents(item['@class'], item, user));                
-                    break;
-                case 'publication':
-                    let evidenceObj = _.omit(item, '@class');
-                    evidenceObj['journal'] = evidenceObj['journal'].toLowerCase();
-                    evidenceObj['title'] = evidenceObj['title'].toLowerCase();
-                    evidenceObj.pmid = parseInt(evidenceObj.pmid);
-                    targetPromises.push(selectOrCreate(item['@class'], evidenceObj, user, 'journal'));
-                    break;
-                default:
-                    throw new Error('unrecognized vertex:', item['@class']);
-                    break;
+            if (item !=  null) {
+                switch(item['@class']) {
+                    case 'disease':
+                        let diseaseObj = Object.assign({}, {name: item.name, doid: null});
+                        targetPromises.push(selectOrCreate(Disease.clsname , diseaseObj, user));
+                        break;
+                    case 'positional_event':
+                    case 'category_event':
+                        targetPromises.push(createEvents(item['@class'], item, user));                
+                        break;
+                    case 'publication':
+                        let evidenceObj = _.omit(item, '@class');
+                        evidenceObj['journal'] = evidenceObj['journal'].toLowerCase();
+                        evidenceObj['title'] = evidenceObj['title'].toLowerCase();
+                        evidenceObj.pmid = parseInt(evidenceObj.pmid);
+                        targetPromises.push(selectOrCreate(item['@class'], evidenceObj, user, 'journal'));
+                        break;
+                    default:
+                        targetPromises.push(selectOrCreate(item['@class'] , _.omit(item,  '@class'), user));
+                        break;
+                }
             }
         });
 
@@ -174,31 +173,26 @@ const selectOrCreate = (clsname, obj, user, blackList) => {
 
 
 const buildRecord = (oldKbRecord) => {
-    return new Promise((resolve, reject) => {
-        let targetPromises = [];       
-        
-        //statement
+    return new Promise((resolve, reject) => {       
         let statObj = Object.assign({}, {relevance: oldKbRecord.relevance, type: oldKbRecord.type});
         db.models.Statement.createRecord(statObj, user)
         .then((statRec) => {
+            let targetPromises = [];
             createEdge('requires', oldKbRecord['requires'], statRec, user)
             .then(() => {
-                //targetPromises.push(createEdge('requires', oldKbRecord['requires'], statRec, user));
-                targetPromises.push(createEdge('as_compared_to', oldKbRecord['as_compared_to'], statRec, user));
                 targetPromises.push(createEdge('supported_by', oldKbRecord['supported_by'], statRec, user));
+                targetPromises.push(createEdge('as_compared_to', oldKbRecord['as_compared_to'], statRec, user));    
                 targetPromises.push(createEdge('applies_to', oldKbRecord['applies_to'], statRec, user));
-
                 Promise.all(targetPromises).then((edges) => {
-                    console.log(edges)
-                    console.log('--------------')
+                    resolve();
                 }).catch((err) => {
                     reject(err);
                 });
             }).catch((err) => {
                 reject(err);
-            }).then(() => {
-                resolve();
-            });
+            });           
+        }).catch((err) => {
+            reject(err);
         });
     });
 };
@@ -218,6 +212,8 @@ const recurseBuildRecord = (jsonArray, currentPosition=0) => {
             }).catch((err) => {
                 reject(err);
             });
+
+
     });
 };
 
@@ -244,7 +240,7 @@ connectServer(conf)
                 [Context],
                 [Evidence, Ontology, Statement, Position, Feature],
                 [   
-                    Disease, Therapy, Range, GenomicPosition, 
+                    Disease, Therapy, Target, Range, GenomicPosition, 
                     ProteinPosition, CodingSequencePosition, CytobandPosition, 
                     ExonicPosition, Event, Publication, Journal, 
                     ExternalSource, Study, ClinicalTrial, AppliesTo,
