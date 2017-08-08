@@ -1,0 +1,44 @@
+{
+	"entries": [
+		 
+		{
+			"@class": "statement",
+			"applies_to": [
+				{
+					"@class": "disease",
+					"name": "acute myeloid leukemia"
+				}
+			],
+			"requires": [
+				{
+					"type": "copy number variant",
+					"zygosity": null,
+					"germline": false,
+					"absence_of": false,
+					"@class": "category_event",
+					"term": "copy loss",
+					"primary_feature": {
+						"@class": "feature",
+						"source": "hugo",
+						"source_version": null,
+						"biotype": "gene",
+						"name": "ASXL1"
+					}
+				}
+			],
+			"as_compared_to": [],
+			"relevance": "diagnostic",
+			"type": "diagnostic",
+			"supported_by": [
+				{
+					"pmid": "25412851",
+					"title": "next generation sequencing of acute myeloid leukemia identifies the significance of tp53 u2af1 asxl1 and tet2 mutations",
+					"@class": "publication",
+					"year": 2015,
+					"journal": "Modern pathology : an official journal of the United States and Canadian Academy of Pathology, Inc"
+				}
+			],
+			"excludes": []
+		}
+	]
+}
