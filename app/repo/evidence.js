@@ -74,7 +74,7 @@ class Publication extends KBVertex {
         content.created_by = true;
         const args = this.validateContent(content);
         return new Promise((resolve, reject) => {
-            let journal = args.journal ? new Record({name: args.journal}, Journal.clsname) : null;
+            let journal = args.journal ? new Record(args.journal, Journal.clsname) : null;
             Promise.all([
                 journal == null || journal.hasRID ? Promise.resolve(journal) : this.selectOrCreate(Journal.clsname,_.omit(journal.content, '@class'), user),
                 user.rid != null ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname})
@@ -131,7 +131,6 @@ class Publication extends KBVertex {
  * @extends KBVertex
  */
 class Journal extends KBVertex {
-
     validateContent(content) {
         if (content.name !== undefined) {
             content.name = content.name.toLowerCase();
