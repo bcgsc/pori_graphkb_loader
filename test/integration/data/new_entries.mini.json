@@ -39,6 +39,56 @@
 				}
 			],
 			"excludes": []
+		},
+		{
+			"@class": "statement",
+			"applies_to": [
+				{
+					"@class": "therapy",
+					"name": "ponatinib"
+				}
+			],
+			"requires": [
+				{
+					"@class": "disease",
+					"name": "gastrointestinal stromal tumor"
+				},
+				{
+					"type": "mutation",
+					"zygosity": null,
+					"germline": false,
+					"absence_of": false,
+					"@class": "positional_event",
+					"primary_feature": {
+						"@class": "feature",
+						"source": "hugo",
+						"source_version": null,
+						"biotype": "gene",
+						"name": "KIT"
+					},
+					"subtype": "substitution",
+					"start": {
+						"@class": "protein_position",
+						"pos": 654,
+						"ref_aa": "V"
+					},
+					"untemplated_seq": "A",
+					"reference_seq": "V"
+				}
+			],
+			"as_compared_to": [],
+			"relevance": "sensitivity",
+			"type": "therapeutic",
+			"supported_by": [
+				{
+					"pmid": "25239608",
+					"title": "ponatinib inhibits polyclonal drug resistant kit oncoproteins and shows therapeutic potential in heavily pretreated gastrointestinal stromal tumor gist patients",
+					"@class": "publication",
+					"year": 2014,
+					"journal": "Clinical cancer research : an official journal of the American Association for Cancer Research"
+				}
+			],
+			"excludes": []
 		}
 	]
 }

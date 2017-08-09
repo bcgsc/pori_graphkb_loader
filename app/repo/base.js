@@ -279,13 +279,15 @@ class Base {
                 delete selectionWhere['@type'];
             }
             for (let key of Object.keys(selectionWhere)) {
-                if (ignoreAtPrefixed && key.startsWith('@')) {
+                if (key.startsWith('in_') || key.startsWith('out_')) {
                     delete selectionWhere[key];
-                } else if (selectionWhere[key] !== null && typeof selectionWhere[key] === 'object') {
+                } else if (ignoreAtPrefixed && key.startsWith('@')) {
+                    delete selectionWhere[key];
+                } else if (! key.startsWith('@') && selectionWhere[key] !== null && typeof selectionWhere[key] === 'object') {
                     // nested object as selection parameter
                     if (selectionWhere[key]['@rid'] !== undefined) {
                         selectionWhere[key] = selectionWhere[key]['@rid'];
-                    } else if (selectionWhere[key]['@class'] !== undefined) {
+                    } else {
                         for (let subkey of Object.keys(selectionWhere[key])) {
                             if (subkey !== '@type') {
                                 let newKey = key + '.' + subkey;
