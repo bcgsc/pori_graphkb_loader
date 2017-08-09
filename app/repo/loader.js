@@ -42,6 +42,24 @@ const {
     AuthenticationError
 } = require('./../../app/repo/error');
 
+const selectOrCreate = (clsname, obj, user, blackList) => {
+    //console.log('>>>>>>>>>>>> OBJ >>>>>>>>>>>>>', obj);
+    return new Promise((resolve, reject) => {
+        db.models[clsname].selectExactlyOne(_.omit(obj, blackList))
+            .then((rec) => {
+                //console.log('>>>>>>>>>>>> SELECT REC >>>>>>>>>>>>>', rec);
+                resolve(rec);
+            }).catch((err) => {
+                //console.log('>>>>>>>>>>>> SELECT ERR >>>>>>>>>>>>>', err);
+                return db.models[clsname].createRecord(obj, user);
+            }).then((rec) => {
+                //console.log('>>>>>>>>>>>> CREATE REC >>>>>>>>>>>>>', rec);
+                resolve(rec);
+            }).catch((err) => {
+                reject(err);
+            });
+    });
+};
 
 const promisifyFeatures = (obj, user) => {
     return new Promise((resolve, reject) => {
@@ -108,7 +126,7 @@ const createItem = (item, user) => {
                     break;
                 case 'publication':
                     let evidenceObj = _.omit(item, '@class');
-                    evidenceObj['journal'] = evidenceObj['journal'].toLowerCase();
+                    evidenceObj['journal'] = {name: evidenceObj['journal'].toLowerCase()};
                     evidenceObj['title'] = evidenceObj['title'].toLowerCase();
                     evidenceObj.pmid = parseInt(evidenceObj.pmid);
                     resolve(selectOrCreate(item['@class'], evidenceObj, user, 'journal'));
@@ -128,14 +146,14 @@ const traverseEdgeType = (targetList, user, currPos=0) => {
     return new Promise((resolve, reject) => {
         let targetPromises = [];
         createItem(targetList[currPos], user)
-        .then(() => {
+        .then((rec) => {
             if (currPos + 1 < targetList.length) {
                 return traverseEdgeType(targetList, user, currPos + 1)
             } else {
-                resolve();
+                resolve(rec);
             }
-        }).then(() => { 
-            resolve(); 
+        }).then((rec) => { 
+            resolve(rec); 
         }).catch((err) => {
             reject(err);
         });
@@ -147,7 +165,8 @@ const createEdge = (edgeType, targetList, source, user) => {
         let edgePromises = [];
         traverseEdgeType(targetList, user)
             .then((targetRecList) => {
-                    _.forEach(targetList, (target) => {
+                    _.forEach(targetRecList, (target) => {
+                        //console.log('>>>>>>>>>>>>> TARGET >>>>>>>>>>>>>>>>', target)
                         edgePromises.push(db.models[edgeType].createRecord({out: source, in: target}, user));
                     });
                     // console.log(targetList)
@@ -155,37 +174,16 @@ const createEdge = (edgeType, targetList, source, user) => {
                     // _.forEach(targetRecList, (target) => {
                     //     edgePromises.push(db.models[edgeType].createRecord({out: source, in: target}, user));
                     // });
-                    // Promise.all(edgePromises).then((pList) => {
-                    //     resolve(pList);
-                    // }).catch((err) => {
-                    //     reject(err)
-                    // });
+                    Promise.all(edgePromises).then((pList) => {
+                        resolve(pList);
+                    }).catch((err) => {
+                        reject(err)
+                    });
             }).catch((err) => {
                 reject(err)
             });
     });
 };
-
-
-const selectOrCreate = (clsname, obj, user, blackList) => {
-    //console.log('>>>>>>>>>>>> OBJ >>>>>>>>>>>>>', obj);
-    return new Promise((resolve, reject) => {
-        db.models[clsname].selectExactlyOne(_.omit(obj, blackList))
-            .then((rec) => {
-                //console.log('>>>>>>>>>>>> SELECT REC >>>>>>>>>>>>>', rec);
-                resolve(rec);
-            }).catch((err) => {
-                //console.log('>>>>>>>>>>>> SELECT ERR >>>>>>>>>>>>>', err);
-                return db.models[clsname].createRecord(obj, user);
-            }).then((rec) => {
-                //console.log('>>>>>>>>>>>> CREATE REC >>>>>>>>>>>>>', rec);
-                resolve(rec);
-            }).catch((err) => {
-                reject(err);
-            });
-    });
-};
-
 
 const buildRecord = (oldKbRecord,pqueue) => {
     //pqueue.add(() => {
