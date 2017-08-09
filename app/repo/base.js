@@ -6,7 +6,9 @@ const moment = require('moment');
 const cache = require('./cached/data');
 const {PERMISSIONS} = require('./constants');
 const Promise = require('bluebird');
-
+const stringify = (s) => {
+    return JSON.stringify(s, null, 4);
+}
 
 const errorJSON = function(error) {
     return {type: error.type, message: error.message};
@@ -268,7 +270,7 @@ class Base {
         });
     }
 
-    select(where={}, activeOnly=false, exactlyN=null, ignoreAtPrefixed=false) {
+    select(where={}, activeOnly=false, exactlyN=null, ignoreAtPrefixed=false, fetchPlan={'*': 1}) {
         where = where.content || where;
         return new Promise((resolve, reject) => {
             const clsname = where['@class'] || this.constructor.clsname;
@@ -276,9 +278,20 @@ class Base {
             if (selectionWhere['@type'] !== undefined) {
                 delete selectionWhere['@type'];
             }
-            if (ignoreAtPrefixed) {
-                for (let key of Object.keys(selectionWhere)) {
-                    if (key.startsWith('@')) {
+            for (let key of Object.keys(selectionWhere)) {
+                if (ignoreAtPrefixed && key.startsWith('@')) {
+                    delete selectionWhere[key];
+                } else if (selectionWhere[key] !== null && typeof selectionWhere[key] === 'object') {
+                    // nested object as selection parameter
+                    if (selectionWhere[key]['@rid'] !== undefined) {
+                        selectionWhere[key] = selectionWhere[key]['@rid'];
+                    } else if (selectionWhere[key]['@class'] !== undefined) {
+                        for (let subkey of Object.keys(selectionWhere[key])) {
+                            if (subkey !== '@type') {
+                                let newKey = key + '.' + subkey;
+                                selectionWhere[newKey] = selectionWhere[key][subkey];
+                            }
+                        }
                         delete selectionWhere[key];
                     }
                 }
@@ -295,7 +308,7 @@ class Base {
                 stat = stat.replace(':' + key, `"${query._state.params[key]}"`);
             }
 
-            query.all()
+            query.fetch(fetchPlan).all()
                 .then((rl) => {
                     const reclist = [];
                     for (let r of rl) {
@@ -673,6 +686,7 @@ class KBEdge extends Base {
                 user.hasRID ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname})
             ]).then((recList) => {
                 let [src, tgt, user] = recList;
+                /*
                 for (let key of Object.keys(src.content)) {
                     if (srcIn[key] === undefined || key === '@class') {
                         continue;
@@ -697,30 +711,30 @@ class KBEdge extends Base {
                             }
                         } 
                     }
-                    throw new Error(`Record pulled from DB differs from input on attr ${key}: ${src[key]} vs ${srcIn[key]}`);
+                    throw new Error(`src Record pulled from DB differs from input on attr ${key}: ` + 
+                        `got ${stringify(src.content[key])} but expected ${stringify(srcIn[key])}`);
                 }
                 for (let key of Object.keys(tgt.content)) {
                     if (tgtIn[key] === undefined || key === '@class') {
                         continue;
-                    } else {
-                        if (key === '@rid') {
-                            if (tgtIn[key].toString() === tgt.content[key].toString()) {
-                                continue;
-                            }
-                        } else if (tgtIn[key] === tgt.content[key]) {
+                    } else if (key === '@rid') {
+                        if (tgtIn[key].toString() === tgt.content[key].toString()) {
                             continue;
-                        } else if (key === 'created_by') {
-                            if (tgtIn.created_by['@rid'].toString() === tgt.content.created_by.toString()) {
-                                continue;
-                            }
-                        } else if (key === 'role') {
-                            if (tgt.content.role.toString() === tgtIn.role['@rid'].toString()) {
-                                continue;
-                            }
+                        }
+                    } else if (tgtIn[key] === tgt.content[key]) {
+                        continue;
+                    } else if (key === 'created_by') {
+                        if (tgtIn.created_by['@rid'].toString() === tgt.content.created_by.toString()) {
+                            continue;
+                        }
+                    } else if (key === 'role') {
+                        if (tgt.content.role.toString() === tgtIn.role['@rid'].toString()) {
+                            continue;
                         }
                     }
-                    throw new Error(`Record pulled from DB differs from input on attr ${key}: ${tgt[key]} vs ${tgtIn[key]}`);
-                }
+                    throw new Error(`tgt Record pulled from DB differs from input on attr ${key}: ` +
+                        `${stringify(tgt.content[key])} vs ${stringify(tgtIn[key])}`);
+                }*/
                 delete args.in;
                 delete args.out;
                 // now create the edge

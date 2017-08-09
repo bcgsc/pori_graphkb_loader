@@ -5,32 +5,13 @@ import os
 import json
 import uuid
 from datetime import datetime
-from sqlalchemy import create_engine
-from sqlalchemy.orm.session import sessionmaker
+import requests
 
 path = os.path.dirname(os.path.realpath(__file__))
 
 sys.path.insert(0, path)
 
-import kb_tools
 from kb_tools.kb_io import load_kb
-from kb_tools.event import Event
-from kb_tools.feature import Feature
-from kb_tools.coordinate_notation import VariantNotation
-from kb_tools.statement import *
-from kb_tools import TSV
-from kb_tools.util import ReMatch
-from kb_tools.util import PATTERNS as pt
-from kb_tools.util import MATCH_TYPE as mt
-from kb_tools.disease import Disease
-from kb_tools.literature import Literature
-from kb_tools.position import Position
-import pdb
-
-import doctest
-import re
-from collections import defaultdict
-
 
 ref_json = []
 
@@ -131,7 +112,6 @@ def convert_cn_event(event):
         }
     else:
         json_event['start'] = convert_position(event.break_x1)
-    
 
     if event.break_y2 is not None and event.break_y2 != event.break_y1:
         json_event['end'] = {
@@ -141,7 +121,7 @@ def convert_cn_event(event):
         }
     elif event.break_y1 is not None:
         json_event['end'] = convert_position(event.break_y1)
-    
+
     if event.type == 'fs':
         m = re.search('(\w?)\*?(\d*)', event.alt)
         if m is not None:
@@ -149,23 +129,62 @@ def convert_cn_event(event):
             json_event['termination_aa'] = m.group(2)
     elif event.alt:
         json_event['untemplated_seq'] = event.alt
-    
+
     if event.ref:
         json_event['reference_seq'] = event.ref
 
     return json_event
 
 
+def strip_title(title):
+    title = title.lower()
+    title = re.sub('-', ' ', title)
+    title = re.sub('[^\w\s]', '', title)
+    title = re.sub('^(a|the) ', '', title)
+    return title.strip()
+
+
+PMID_CACHE = {}
+
+
+def supplement_pmid(pmid, title):
+    title = strip_title(title)
+    url = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&id={}&retmode=json'.format(pmid)
+    if pmid in PMID_CACHE:
+        resp = PMID_CACHE[pmid]
+    else:
+        resp = requests.get(url).json()['result'][pmid]
+        PMID_CACHE[pmid] = resp
+
+    year_match = re.match('^([12][0-9][0-9][0-9]).*', resp['pubdate'])
+    journal_match = re.match('^(.*)(\([^\)]+\))?$', resp['fulljournalname'])
+
+    pub = {
+        'title': strip_title(resp['title']),
+        'year': int(year_match.group(1)),
+        'journal': journal_match.group(1)
+    }
+    if title and title != pub['title']:
+        if re.sub('\s', '', title) != re.sub('\s', '', pub['title']):
+            print('\nwarning: titles differ', pmid)
+            print('expct:', repr(title))
+            print('found:', repr(pub['title']))
+            print()
+    return pub
+
+
 def new_statement(type, relevance):
     return {
-            '@class': 'statement',
-            'applies_to': [],
-            'requires': [],
-            'as_compared_to': [],
-            'relevance': relevance,
-            'type': type,
-            'supported_by': []
-        }
+        '@class': 'statement',
+        'applies_to': [],
+        'requires': [],
+        'as_compared_to': [],
+        'relevance': relevance,
+        'type': type,
+        'supported_by': [],
+        'excludes': []
+    }
+
 
 def main():
     print('[LOADING] ({0}) the knowledgebase flatfiles'.format(datetime.now()))
@@ -195,7 +214,7 @@ def main():
     both = ONC & TS
     ONC = ONC - both
     TS = ONC - both
-        
+
     for ekey, entry in list(kb.entries.items()):
         try:
             events = []
@@ -207,22 +226,23 @@ def main():
                     zygosity = re.sub('\s*(germline)\s*$', '', zygosity)
                 if zygosity in ['ns', 'na']:
                     zygosity = None
-                
+
                 if event.type == 'FANN':
                     events.append(convert_feature(event.name_feature))
                     continue
                 event_json = {
                     'type': EVENT_TYPE_MAPPING[event.type],
                     'zygosity': zygosity,
-                    'germline': germline
+                    'germline': germline,
+                    'absence_of': not presence_flag
                 }
                 if event.cn_notation:
                     event_json.update(convert_cn_event(event.cn_notation))
                 else:
                     event_json.update(convert_cv_event(event))
                 events.append(event_json)
-            
-            #disease
+
+            # disease
             diseases = []
             if entry.disease != "not specified":
                 for dname in entry.disease.split(';'):
@@ -236,6 +256,7 @@ def main():
                     'title': entry.literature.title,
                     '@class': 'publication'
                 }
+                pub.update(supplement_pmid(entry.literature.id, entry.literature.title))
             elif re.match('^(.*\.(ca|com|org|edu)|http.*)$', entry.literature.id) or \
                     'cancer.sanger.ac.uk/cosmic' == entry.literature.id:
                 pub = {
@@ -277,7 +298,7 @@ def main():
                 print('warning: unsupported lit type', repr(entry.literature.type), repr(entry.literature.id))
                 unresolved += 1
                 continue
-            
+
             context = [c.strip().lower() for c in entry.statement.context.split(';')]
             for context, disease in itertools.product(context, diseases):
                 relevance = entry.statement.relevance
@@ -288,7 +309,7 @@ def main():
                 stat = new_statement(entry.statement.type, relevance)
                 if pub:
                     stat['supported_by'].append(pub)
-                
+
                 if entry.statement.type in ['diagnostic', 'occurrence'] or relevance in ['pathogenic', 'recurrent']:
                     if disease is None and entry.statement.type == 'diagnostic':
                         if entry.evidence == 'clinical-test' or entry.literature.id == 'ampliseq panel V2':
@@ -302,7 +323,7 @@ def main():
                 else:
                     if disease is not None:
                         stat['requires'].append(disease)
-                    
+
                     if entry.statement.type == 'biological':
                         if any([
                             any([x + 'oncogene' == relevance for x in ['', 'likely ', 'putative ']]),
@@ -392,9 +413,9 @@ def main():
             print('*********** warning: skipping problem entry', repr(err), entry)
             print()
     print(
-        'unresolved:', unresolved, 
-        'manual intervention required:', manual_intervention_req, 
-        'nonsensical:', nonsensical_entries,  
+        'unresolved:', unresolved,
+        'manual intervention required:', manual_intervention_req,
+        'nonsensical:', nonsensical_entries,
         'parsed:', len(new_entries)
     )
     json_str = json.dumps({'entries': new_entries})
@@ -405,4 +426,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

@@ -20,9 +20,6 @@ const {PERMISSIONS} = require('./constants');
 const oError = require('../../test/integration/orientdb_errors');
 const currYear = require('year');
 const _ = require('lodash');
-const Queue = require('promise-queue')
-const PQueue = require('p-queue');
-Queue.configure(require('bluebird').Promise);
 const {CategoryEvent, PositionalEvent, Event, EVENT_TYPE, EVENT_SUBTYPE, ZYGOSITY} = require('./event');
 const jsonFile = 'test/integration/data/new_entries.mini.json';
 const {
