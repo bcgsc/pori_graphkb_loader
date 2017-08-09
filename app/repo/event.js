@@ -182,10 +182,11 @@ class PositionalEvent extends KBVertex {
         const pClass = this.db.models[positionClassName];
         const range = this.db.models[Range.clsname];
         // ensure the subtype is appropriate for this coordinate system
+        // console.log('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>', pClass.constructor.prefix)
         this.constructor.subtypeValidation(pClass.constructor.prefix, args.subtype);
         // validate the start/end positions
         if (args.start.start !== undefined) {  // start is a range
-            args.start = range.validateContent(args.start);
+            args.start = range.validateContent(args.start, positionClassName)
         } else {
             args.start = pClass.validateContent(args.start);
         }
