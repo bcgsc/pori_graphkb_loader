@@ -245,7 +245,7 @@ class PositionalEvent extends KBVertex {
             {name: 'untemplated_seq', type: 'string', mandatory: false, notNull: true},
             {name: 'reference_seq', type: 'string', mandatory: false, notNull: true},
             {name: 'subtype', type: 'string', mandatory: true, notNull: true},
-            {name: 'terminating_aa', type: 'integer', mandatory: false}
+            {name: 'termination_aa', type: 'integer', mandatory: false}
         ];
         return new Promise((resolve, reject) => {
             Base.createClass({db, clsname: this.clsname, superClasses: Event.clsname, isAbstract: false, properties: props})
