@@ -40,6 +40,25 @@ const getAllProperties = (cls) => {
 };
 
 
+function makeNewKey(selectionWhere, key) {
+    // nested object as selection parameter
+    if (selectionWhere[key]['@rid'] !== undefined) {
+        selectionWhere[key] = selectionWhere[key]['@rid'];
+    } else {   
+        for (let subkey of Object.keys(selectionWhere[key])) {
+            if (subkey !== '@type') {
+                let newKey = key + '.' + subkey;
+                if (! newKey.startsWith('@') && selectionWhere[newKey] !== null && typeof selectionWhere[newKey] === 'object') {
+                    selectionWhere[newKey] = selectionWhere[key][subkey];    
+                }
+            }
+        }
+        delete selectionWhere[key];
+    }
+
+    return selectionWhere;
+};
+
 class Record {
 
     constructor(content, parentClassName) {
@@ -274,7 +293,7 @@ class Base {
         where = where.content || where;
         return new Promise((resolve, reject) => {
             const clsname = where['@class'] || this.constructor.clsname;
-            const selectionWhere = Object.assign({}, where);
+            let selectionWhere = Object.assign({}, where);
             if (selectionWhere['@type'] !== undefined) {
                 delete selectionWhere['@type'];
             }
@@ -285,17 +304,7 @@ class Base {
                     delete selectionWhere[key];
                 } else if (! key.startsWith('@') && selectionWhere[key] !== null && typeof selectionWhere[key] === 'object') {
                     // nested object as selection parameter
-                    if (selectionWhere[key]['@rid'] !== undefined) {
-                        selectionWhere[key] = selectionWhere[key]['@rid'];
-                    } else {
-                        for (let subkey of Object.keys(selectionWhere[key])) {
-                            if (subkey !== '@type') {
-                                let newKey = key + '.' + subkey;
-                                selectionWhere[newKey] = selectionWhere[key][subkey];
-                            }
-                        }
-                        delete selectionWhere[key];
-                    }
+                    selectionWhere = makeNewKey(selectionWhere, key);
                 }
             }
             if (activeOnly) {
