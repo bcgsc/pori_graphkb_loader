@@ -31,14 +31,19 @@ EVENT_TYPE_MAPPING = {
 
 BIOTYPE_MAPPING = {
     'gene fusion': 'fusion',
-    'chromosome': 'genome reference consortium (human)',
+    'chromosome': 'template',
     'cds': 'transcript'
 }
 
 
 SUBTYPE_MAPPING = {
     '>': 'substitution',
-    'mis': 'substitution'
+    'mis': 'substitution',
+    'del': 'deletion'
+}
+
+SOURCE_MAPPING = {
+    'chromosome': 'genome reference consortium (human)'
 }
 
 
@@ -85,7 +90,7 @@ def convert_position(pos):
 def convert_feature(feature):
     return {
         '@class': 'feature',
-        'source': feature.type,
+        'source': SOURCE_MAPPING.get(feature.type, feature.type),
         'source_version': feature.version,
         'biotype': BIOTYPE_MAPPING.get(feature.subtype, feature.subtype),
         'name': feature.id
@@ -181,8 +186,7 @@ def new_statement(type, relevance):
         'as_compared_to': [],
         'relevance': relevance,
         'type': type,
-        'supported_by': [],
-        'excludes': []
+        'supported_by': []
     }
 
 
