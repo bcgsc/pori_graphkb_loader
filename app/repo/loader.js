@@ -98,8 +98,17 @@ const createEvents = (type, obj, user) => {
                 resolve(db.models.CategoryEvent.createRecord(eventObj, user));
             // PositionalEvent
             } else if (type === 'positional_event') {
-                let posClass = eventObj.start['@class'];
-                delete eventObj.start['@class'];
+
+                let posClass = []
+                if (_.includes(_.keys(eventObj.start), 'start')) {
+                    posClass = eventObj.start.start['@class'];
+                    delete eventObj.start.start['@class'];
+                    delete eventObj.start.end['@class'];
+                    delete eventObj.start['@class'];
+                } else {
+                    posClass = eventObj.start['@class'];
+                    delete eventObj.start['@class'];
+                }
                 if (_.includes(_.keys(eventObj), 'end')) {
                     delete eventObj.end['@class'];
                 }                          
