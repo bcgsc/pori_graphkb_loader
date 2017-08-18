@@ -289,6 +289,7 @@ def main():
     nonsensical_entries = 0
     TS = set()
     ONC = set()
+    therapy_relations = []
     for ekey, entry in list(kb.entries.items()):
         if len(entry.combination.events) != 1:
             continue
@@ -304,7 +305,7 @@ def main():
     both = ONC & TS
     ONC = ONC - both
     TS = ONC - both
-
+    
     for ekey, entry in list(kb.entries.items()):
         try:
             events = []
@@ -438,8 +439,7 @@ def main():
                                 stat['applies_to']
                             stat['applies_to'].append({'@class': 'target', 'name': context, 'type': 'phenotype'})
                     elif entry.statement.type == 'therapeutic':
-                        for tname in re.split('\s*\+\s*', context):
-                            stat['applies_to'].append({'@class': 'therapy', 'name': tname})
+                        stat['applies_to'].append({'@class': 'therapy', 'name': context})
                     elif entry.statement.type == 'prognostic':
                         pass
                     else:
