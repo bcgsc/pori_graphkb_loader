@@ -14,6 +14,36 @@ const errorJSON = function(error) {
     return {type: error.type, message: error.message};
 };
 
+
+const isObject = (obj) => {
+    if (obj !== null && typeof obj === 'object') {
+        return true;
+    } else {
+        return false;
+    }
+};
+
+
+/**
+ * get the value of a key in an object. If maxDepth is > 0 will check nested object to a given level of nesting
+ */ 
+const getAttribute = (obj, attr, maxDepth=0) => {
+    for (let key of Object.keys(obj)) {
+        if (key == attr) {
+            return obj[key];
+        }
+        if (isObject(obj[key])) {
+            if (maxDepth > 0) {
+                let result = getAttribute(obj[key], attr, maxDepth - 1);
+                if (result != null) {
+                    return result;
+                }
+            }
+        }
+    }
+    return null;
+};
+
 /**
  * @returns {Promise} if resolved, returns {orientjs.Property[]} array of properties from the current class and inherited classes
  * otherwise returns an {Error}
@@ -39,25 +69,6 @@ const getAllProperties = (cls) => {
     });
 };
 
-
-function makeNewKey(selectionWhere, key) {
-    // nested object as selection parameter
-    if (selectionWhere[key]['@rid'] !== undefined) {
-        selectionWhere[key] = selectionWhere[key]['@rid'];
-    } else {   
-        for (let subkey of Object.keys(selectionWhere[key])) {
-            if (subkey !== '@type') {
-                let newKey = key + '.' + subkey;
-                if (! newKey.startsWith('@') && selectionWhere[newKey] !== null && typeof selectionWhere[newKey] === 'object') {
-                    selectionWhere[newKey] = selectionWhere[key][subkey];    
-                }
-            }
-        }
-        delete selectionWhere[key];
-    }
-
-    return selectionWhere;
-};
 
 class Record {
 
@@ -195,17 +206,30 @@ class Base {
         return terms;
     }
 
-    selectOrCreate(clsname, obj, user) {
+    selectOrCreate(obj, user, retry=true, retryTimeOut=10) {
         return new Promise((resolve, reject) => {
-            this.db.models[clsname].selectExactlyOne(obj)
+            this.selectExactlyOne(obj)
                 .then((rec) => {
                     resolve(rec);
                 }).catch((err) => {
-                    return this.db.models[clsname].createRecord(obj, user);
+                    return this.createRecord(obj, user);
                 }).then((rec) => {
                     resolve(rec);
                 }).catch((err) => {
-                    reject(err);
+                    if (retry && err.type === 'com.orientechnologies.orient.core.storage.ORecordDuplicatedException') {
+                        this.selectExactlyOne(obj).delay(retryTimeOut)
+                            .then((rec) => {
+                                resolve(rec);
+                            }, (err) => {
+                                console.log('ERROR in selectOrCreate', obj);
+                                console.log(err);
+                                reject(err);
+                            });
+                    } else {
+                        console.log('ERROR in selectOrCreate', obj);
+                        console.log(err);
+                        reject(err);
+                    }
                 });
         });
     };
@@ -217,10 +241,12 @@ class Base {
                 delete content[key];
                 continue;
             }
-            if (this.constructor.createType == 'edge' && (key == 'in' || key == 'out')) {
+            if (key.startsWith('@')) {
+                continue;
+            } else if (this.constructor.createType == 'edge' && (key == 'in' || key == 'out')) {
                 // ignore edges reserved properties
             } else if (! _.includes(this.propertyNames, key)) {
-                throw new AttributeError(`invalid attribute ${key}`);
+                throw new AttributeError(`invalid attribute ${key} from object ${JSON.stringify(content)}`);
             }
             let value = content[key];
             const allowedValues = [];
@@ -238,7 +264,12 @@ class Base {
         for (let prop of this.properties) {
             if (prop.mandatory) {
                 if (args[prop.name] === undefined) {
-                    throw new AttributeError(`mandatory property ${prop.name} was not specified`);
+                    if (! prop.notNull) {
+                        // if not given but can be null, default to null
+                        args[prop.name] = null;
+                    } else {
+                        throw new AttributeError(`mandatory property ${prop.name} was not specified`);
+                    }
                 }
             }
             if (args[prop.name] !== undefined) {
@@ -269,7 +300,46 @@ class Base {
                 });
         });
     }
-    
+    /**
+     * recursive function which builds a selection query that accesses parameters from nested objects
+     * @example
+     *     >>> record = {
+     *     >>>     'name': 'bob', 
+     *     >>>     'parent': {'@rid': '#1:3', 'name': 'susan'}, 
+     *     >>>     'partner': {'name': 'george'}
+     *     >>> };
+     *     >>> Base.parseSelectWhere(record);
+     *     {'name': 'bob', 'parent': '#1:3', 'partner.name': 'george'}
+     */
+    static parseSelectWhere(record) {
+        // nested object as selection parameter
+        const where = {};
+        record = record.content || record;
+        
+        if (isObject(record)) {
+            for (let key of Object.keys(record)) {
+                if (key.startsWith('in_') || key.startsWith('out_') || key == '@type') {
+                    continue; // ignore edge bags and record type
+                } else if (key == '@rid') {
+                    where[key] = record[key].toString();
+                } else if (isObject(record[key])) {
+                    if (record[key]['@rid'] !== undefined) {
+                        where[key] = record[key]['@rid'];
+                    } else {
+                        for (let [subkey, value] of _.entries(this.parseSelectWhere(record[key]))) {  // recurse
+                            where[key + '.' + subkey] = value;
+                        }
+                    }
+                } else {
+                    where[key] = record[key];
+                }
+            }
+        } else {
+            throw new Error('cannot call parseSelectWhere not on an object');
+        }
+        return where;
+    } 
+
     /**
      * select from the current class given the where filters
      *
@@ -293,20 +363,7 @@ class Base {
         where = where.content || where;
         return new Promise((resolve, reject) => {
             const clsname = where['@class'] || this.constructor.clsname;
-            let selectionWhere = Object.assign({}, where);
-            if (selectionWhere['@type'] !== undefined) {
-                delete selectionWhere['@type'];
-            }
-            for (let key of Object.keys(selectionWhere)) {
-                if (key.startsWith('in_') || key.startsWith('out_')) {
-                    delete selectionWhere[key];
-                } else if (ignoreAtPrefixed && key.startsWith('@')) {
-                    delete selectionWhere[key];
-                } else if (! key.startsWith('@') && selectionWhere[key] !== null && typeof selectionWhere[key] === 'object') {
-                    // nested object as selection parameter
-                    selectionWhere = makeNewKey(selectionWhere, key);
-                }
-            }
+            const selectionWhere = this.constructor.parseSelectWhere(where);
             if (activeOnly) {
                 selectionWhere.deleted_at = null;
             }
@@ -316,7 +373,11 @@ class Base {
             }
             let stat = query.buildStatement();
             for (let key of Object.keys(query._state.params)) {
-                stat = stat.replace(':' + key, `"${query._state.params[key]}"`);
+                let value = query._state.params[key];
+                if (typeof value === 'string') {
+                    value = `'${value}'`;
+                }
+                stat = stat.replace(':' + key, `${value}`);
             }
 
             query.fetch(fetchPlan).all()
@@ -534,6 +595,11 @@ class KBVertex extends Base {
         return new Promise((resolve, reject) => {
             const content = Object.assign({created_by: true}, opt);
             const args = this.validateContent(content);
+            for (let key of Object.keys(args)) {
+                if (key.startsWith('@')) {
+                    delete args[key];
+                }
+            }
             const userSelect = user.hasRID ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname});
             userSelect.then((userRecord) => {
                 user = userRecord;
@@ -624,11 +690,6 @@ class KBEdge extends Base {
         return 'edge';
     }
 
-    validateContent(content) {
-        content.deleted_by = content.deleted_by || null;
-        return super.validateContent(content);
-    } 
-
     static createClass(db, user) {
         return new Promise((resolve, reject) => {
             const props = [
@@ -674,8 +735,8 @@ class KBEdge extends Base {
             deleted_at: null
         }, content);
         args.deleted_by = args.deleted_by || null;
-        const tgt = args.in.args || args.in;
-        const src = args.out.args || args.out;
+        const tgt = args.in.content || args.in;
+        const src = args.out.content || args.out;
         src['@class'] = src['@class'] || KBVertex.clsname;
         tgt['@class'] = tgt['@class'] || KBVertex.clsname;
         return super.validateContent(args);
@@ -697,55 +758,6 @@ class KBEdge extends Base {
                 user.hasRID ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname})
             ]).then((recList) => {
                 let [src, tgt, user] = recList;
-                /*
-                for (let key of Object.keys(src.content)) {
-                    if (srcIn[key] === undefined || key === '@class') {
-                        continue;
-                    } else {
-                        if (key === '@rid') {
-                            if (srcIn[key].toString() === src.content[key].toString()) {
-                                continue;
-                            }
-                        } else if (srcIn[key] === src.content[key]) {
-                            continue;
-                        } else if (key === 'created_by') {
-                            if (src.content.created_by.toString() === srcIn.created_by['@rid'].toString()) {
-                                continue;
-                            }
-                        } else if (key === 'deleted_by') {
-                            if (src.content.role.toString() === srcIn.role['@rid'].toString()) {
-                                continue;
-                            }
-                        } else if (key === 'role') {
-                            if (src.content.role.toString() === srcIn.role['@rid'].toString()) {
-                                continue;
-                            }
-                        } 
-                    }
-                    throw new Error(`src Record pulled from DB differs from input on attr ${key}: ` + 
-                        `got ${stringify(src.content[key])} but expected ${stringify(srcIn[key])}`);
-                }
-                for (let key of Object.keys(tgt.content)) {
-                    if (tgtIn[key] === undefined || key === '@class') {
-                        continue;
-                    } else if (key === '@rid') {
-                        if (tgtIn[key].toString() === tgt.content[key].toString()) {
-                            continue;
-                        }
-                    } else if (tgtIn[key] === tgt.content[key]) {
-                        continue;
-                    } else if (key === 'created_by') {
-                        if (tgtIn.created_by['@rid'].toString() === tgt.content.created_by.toString()) {
-                            continue;
-                        }
-                    } else if (key === 'role') {
-                        if (tgt.content.role.toString() === tgtIn.role['@rid'].toString()) {
-                            continue;
-                        }
-                    }
-                    throw new Error(`tgt Record pulled from DB differs from input on attr ${key}: ` +
-                        `${stringify(tgt.content[key])} vs ${stringify(tgtIn[key])}`);
-                }*/
                 delete args.in;
                 delete args.out;
                 // now create the edge
@@ -910,4 +922,4 @@ class History extends Base {
     }
 }
 
-module.exports = {Base, History, KBVertex, KBEdge, Record, errorJSON, KBUser, KBRole};
+module.exports = {Base, History, KBVertex, KBEdge, Record, errorJSON, KBUser, KBRole, isObject, getAttribute};

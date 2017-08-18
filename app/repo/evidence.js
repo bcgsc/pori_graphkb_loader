@@ -51,16 +51,15 @@ class Evidence extends KBVertex {
 class Publication extends KBVertex {
 
     validateContent(args) {
-        const content = Object.assign({}, args)
+        const content = Object.assign({}, args);
         if (content.year != null && (content.year < 1000) || (content.year > currYear('yyyy'))) {
             throw new AttributeError('publication year cannot be too old or in the future');
         }
-        //content.journal = journalClass.validateContent({name: content.journal.name, created_by: content.created_by});
         content.title = content.title.toLowerCase();
         if (content.doi != undefined || content.pmid != undefined) {
             if (content.pmid !== parseInt(content.pmid, 10)) {
                 // if pmid is not an integer
-                content.pmid = parseInt(content.pmid)
+                content.pmid = parseInt(content.pmid);
             } else { 
                 content.doi = content.doi != undefined ? content.doi.toLowerCase() : undefined;
             }
@@ -70,13 +69,20 @@ class Publication extends KBVertex {
     }
 
     createRecord(opt={}, user) {
-        const content = Object.assign({}, opt)
-        content.created_by = true;
-        const args = this.validateContent(content);
         return new Promise((resolve, reject) => {
-            let journal = args.journal ? new Record(args.journal, Journal.clsname) : null;
+            const content = Object.assign({}, opt)
+            content.created_by = true;
+            const args = this.validateContent(content);
+            let selectJournal = true;
+            if (args.journal === null || args.journal.rid !== undefined) {
+                selectJournal = false;
+            } else if (args.journal.startsWith('#')) {
+                selectJournal = false;
+                args.journal = new Record({'@rid': args.journal}, 'journal');
+            }
+            let journal;
             Promise.all([
-                journal == null || journal.hasRID ? Promise.resolve(journal) : this.selectOrCreate(Journal.clsname,_.omit(journal.content, '@class'), user),
+                selectJournal ? this.db.models.Journal.selectOrCreate(args.journal, user) : Promise.resolve(args.journal),
                 user.rid != null ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname})
             ]).then((pList) => {
                 [journal, user] = pList;
@@ -88,13 +94,13 @@ class Publication extends KBVertex {
                 args.created_by = user.rid;
                 return this.conn.create(args);
             }).then((rec) => {
-                rec.journal = journal ? journal.content : journal;
-                rec.created_by = user.content;
+                rec.journal = journal === null ? null : journal.content;
+                rec.user = user.content;
                 resolve(new Record(rec, this.constructor.clsname));
             }).catch((error) => {
                 reject(error);
             });
-        });                    
+        });
     }
 
     static createClass(db){
@@ -170,22 +176,22 @@ class Journal extends KBVertex {
 class Study extends KBVertex {
 
     validateContent(content) {
-        if (content.title == undefined || content.year == undefined) {
-            throw new AttributeError('violated null constraint');
-        } else if ((content.year < 1000) || (content.year > currYear('yyyy'))) {
+        const args = Object.assign({year: null}, content);
+        if ((args.year < 1000) || (args.year > currYear('yyyy'))) {
             throw new AttributeError('study year cannot be in the future');
+        } else if (! args.title && args.url) {
+            args.title = args.url;
         }
 
-        // TODO: Validate year
-        content.title = content.title.toLowerCase();
-        return super.validateContent(content);
+        args.title = args.title.toLowerCase();
+        return super.validateContent(args);
     }
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'title', type: 'string', mandatory: true, notNull: true},
-                {name: 'year', type: 'integer', mandatory: true, notNull: true},
+                {name: 'year', type: 'integer', mandatory: true, notNull: false},
                 {name: 'sample_population', type: 'string'},
                 {name: 'sample_population_size', type: 'integer'},
                 {name: 'method', type: 'string'},
@@ -194,7 +200,7 @@ class Study extends KBVertex {
             const idxs = [{
                 name: this.clsname + '.index_ty',
                 type: 'unique',
-                metadata: {ignoreNullValues: false},
+                metadata: {ignoreNullValues: true},
                 properties: ['deleted_at', 'title', 'year'],
                 'class':  this.clsname
             }];
@@ -216,31 +222,27 @@ class Study extends KBVertex {
  * @extends KBVertex
  */
 class ClinicalTrial extends KBVertex {
-
-    validateContent(content) {
-        return super.validateContent(content);
-    }
+    
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
-
+                {name: 'official_title', type: 'string', notNull: true},
                 {name: 'phase', type: 'integer'},
                 {name: 'trial_id', type: 'string'},
-                {name: 'official_title', type: 'string', mandatory: true, notNull: true},
                 {name: 'summary', type: 'string'}
             ];
             const idxs = [{
                 name: this.clsname + '.index_trial_id',
                 type: 'unique',
-                metadata: {ignoreNullValues: false},
+                metadata: {ignoreNullValues: true},
                 properties: ['deleted_at','trial_id'],
                 'class':  this.clsname
             },
             {
                 name: this.clsname + '.index_official_title',
                 type: 'unique',
-                metadata: {ignoreNullValues: false},
+                metadata: {ignoreNullValues: true},
                 properties: ['deleted_at','official_title'],
                 'class':  this.clsname
             }];

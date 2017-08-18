@@ -1,5 +1,5 @@
 'use strict';
-const {Base, KBVertex, KBEdge, Record, KBUser} = require('./base');
+const {Base, KBVertex, KBEdge, Record, KBUser, getAttribute} = require('./base');
 const Promise = require('bluebird');
 const {Feature} = require('./feature');
 const {Range, Position} = require('./position');
@@ -35,7 +35,7 @@ const EVENT_SUBTYPE = {
     ME: 'methylation',
     AC: 'acetylation',
     UB: 'ubiquitination',
-    SPL: 'splice-site mutation'
+    SPL: 'splice-site'
 }
 
 
@@ -259,14 +259,20 @@ class PositionalEvent extends KBVertex {
         });
     }
 
-    createRecord(where={}, positionClassName, user) {
+
+    createRecord(where={}, user, positionClassName) {
+        if (positionClassName == null) {
+            positionClassName = getAttribute({'start': where.start, 'end': where.end}, '@class', 4);
+        }
         return new Promise((resolve, reject) => {
+            if (positionClassName == null) {
+                throw new Error('positionClassName was not given and could not be parsed');
+            }
             where.created_by = true;
             const args = this.validateContent(where, positionClassName);
             let pfeature = new Record(args.primary_feature, Feature.clsname); 
             let sfeature = args.secondary_feature ? new Record(args.secondary_feature, Feature.clsname) : null;
             const feat = this.db.models.Feature;
-            
             // if selecting the positions fail then create them
             Promise.all([
                 pfeature.hasRID ? Promise.resolve(pfeature) : feat.selectExactlyOne(pfeature.content),
