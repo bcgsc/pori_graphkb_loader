@@ -171,10 +171,10 @@ class FeatureDeprecatedBy extends KBEdge {
                 throw new AttributeError(`edge endpoint must be a descendant of ${Feature.clsname}. Found '${node['@class']}'`);
             }
         }
-        if (src.biotype != tgt.biotype) {
+        if (src.biotype !== tgt.biotype) {
             throw new AttributeError('cannot alias between features with unequal biotype');
         }
-        if (src.source != tgt.source) {
+        if (src.source !== tgt.source) {
             throw new AttributeError('cannot alias between features with unequal source');
         }
         if (src.source_version !== null && src.source_version >= tgt.source_version) {
@@ -218,7 +218,7 @@ class FeatureAliasOf extends KBEdge {
                 throw new AttributeError(`edge endpoint must be a descendant of ${Feature.clsname}. Found '${node['@class']}'`);
             }
         }
-        if (src.biotype != tgt.biotype) {
+        if (src.biotype !== tgt.biotype) {
             throw new AttributeError('cannot alias between features with unequal biotype');
         }
         return super.validateContent(content);

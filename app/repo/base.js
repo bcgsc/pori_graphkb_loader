@@ -241,7 +241,10 @@ class Base {
                 delete content[key];
                 continue;
             }
-            if (key.startsWith('@')) {
+            if (key === '@class') {
+                args[key] = content[key];
+                continue;
+            } else if (key.startsWith('@')) {
                 continue;
             } else if (this.constructor.createType == 'edge' && (key == 'in' || key == 'out')) {
                 // ignore edges reserved properties
