@@ -94,7 +94,7 @@ class Event extends KBVertex {
      * checks validation that is shared between the two event classes and is not db dependant
      */
     static validateContent(content) {
-        const args = Object.assign({germline: null, zygosity: null}, content); 
+        const args = Object.assign({germline: null, zygosity: null, absence_of: false}, content); 
         if (! _.values(EVENT_TYPE).includes(args.type)) {
             throw new ControlledVocabularyError(`invalid/unsupported event type '${args.type}' expected one of ${_.values(EVENT_TYPE)}`);
         }
@@ -231,8 +231,8 @@ class PositionalEvent extends KBVertex {
                 throw new AttributeError('insertions cannot have reference sequence');
             }
         }
-        if (args.terminating_aa != undefined && args.subtype !== EVENT_SUBTYPE.FS) {
-            throw new AttributeError('only frameshift mutations may have terminating_aa specified');
+        if (args.termination_aa != undefined && args.subtype !== EVENT_SUBTYPE.FS) {
+            throw new AttributeError('only frameshift mutations may have termination_aa specified');
         }
 
         return super.validateContent(args);

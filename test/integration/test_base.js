@@ -5,6 +5,7 @@ const {connectServer, createDB} = require('./../../app/repo/connect');
 const {PERMISSIONS} = require('./../../app/repo/constants');
 const {Base, History, KBVertex, Record, KBEdge, KBUser, KBRole} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
+const Promise = require('bluebird');
 
 
 class MockVertexClass extends KBVertex { // simple non-abstract class for tests
@@ -30,8 +31,16 @@ describe('base module', () => {
         connectServer(conf)
             .then((s) => {
                 server = s;
+                return server.exists({name: conf.emptyDbName});
+            }).then((exists) => {
+                if (exists) {
+                    return server.drop({name: conf.emptyDbName});
+                } else {
+                    return Promise.resolve();
+                }
+            }).then(() => {
                 return createDB({
-                    server: s, 
+                    server: server, 
                     name: conf.emptyDbName, 
                     username: conf.dbUsername, 
                     password: conf.dbPassword,
@@ -50,6 +59,7 @@ describe('base module', () => {
                 console.log('error in connecting to the server or creating the database', error);
                 done(error);
             });
+            
     });
     it('KBVertex.createClass', () => {
         return KBVertex.createClass(db)

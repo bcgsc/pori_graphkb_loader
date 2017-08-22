@@ -3,6 +3,8 @@
 const OrientDB  = require('orientjs');
 const {AttributeError} = require('./error');
 const {createPermissionsClass} = require('./permissions');
+const Promise = require('bluebird');
+
 
 /**
  * connects to the server using the config

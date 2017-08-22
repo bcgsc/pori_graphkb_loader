@@ -74,45 +74,6 @@ class Range extends Base {
                 });
         });
     }
-    /*createRecord(opt, positionClassName) {
-        return new Promise((resolve, reject) => {
-            const args = this.validateContent(opt, positionClassName);
-            const pClass = this.db.models[positionClassName];
-            // start the transaction
-            var commit = this.db.conn
-                .let('startPos', (tx) => {
-                    // create the start position
-                    return tx.create(pClass.constructor.createType, pClass.constructor.clsname)
-                        .set(args.start);
-                }).let('endPos', (tx) => {
-                    // create the end position
-                    return tx.create(pClass.constructor.createType, pClass.constructor.clsname)
-                        .set(args.end);
-                }).let('range', (tx) => {
-                    //connect the nodes
-                    const sub = Object.assign({}, args);
-                    delete sub.end;
-                    delete sub.start;
-                    return tx.create(this.constructor.createType, this.constructor.clsname).set(sub).set('start = $startPos, end = $endPos');
-                }).commit();
-            //console.log("Statement: " + commit.buildStatement());
-            commit.return('$range').one()
-                .then((record) => {
-                    Promise.all([
-                        this.db.conn.record.get(record.start),
-                        this.db.conn.record.get(record.end)
-                    ]).then((positions) => {
-                        record.start = positions[0];
-                        record.end = positions[1];
-                        resolve(new Record(record, this));
-                    }).catch((error) => {
-                        reject(error);
-                    });
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
-    }*/
 
     static createClass(db, positionClass) {
         const props = [
