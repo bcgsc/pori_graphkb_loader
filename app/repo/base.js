@@ -246,7 +246,7 @@ class Base {
                 continue;
             } else if (key.startsWith('@')) {
                 continue;
-            } else if (this.constructor.createType == 'edge' && (key == 'in' || key == 'out')) {
+            } else if (this.constructor.createType === 'edge' && (key === 'in' || key === 'out')) {
                 // ignore edges reserved properties
             } else if (! _.includes(this.propertyNames, key)) {
                 throw new AttributeError(`invalid attribute ${key} from object ${JSON.stringify(content)}`);
@@ -279,7 +279,7 @@ class Base {
                 if (prop.notNull && args[prop.name] === null) {
                     throw new AttributeError(`violated notNull constraint of ${prop.name} property`);
                 }
-                if (prop.min != undefined && args[prop.name] != null && args[prop.name] < prop.min) {
+                if (prop.min && args[prop.name] != null && args[prop.name] < prop.min) {
                     throw new AttributeError(`${args[prop.name]} is below the allowed minimum: ${prop.min}`);
                 }
             }
@@ -321,9 +321,9 @@ class Base {
         
         if (isObject(record)) {
             for (let key of Object.keys(record)) {
-                if (key.startsWith('in_') || key.startsWith('out_') || key == '@type') {
+                if (key.startsWith('in_') || key.startsWith('out_') || key === '@type') {
                     continue; // ignore edge bags and record type
-                } else if (key == '@rid') {
+                } else if (key === '@rid') {
                     where[key] = record[key].toString();
                 } else if (isObject(record[key])) {
                     if (record[key]['@rid'] !== undefined) {
@@ -390,13 +390,13 @@ class Base {
                         reclist.push(new Record(r, clsname));
                     }
                     if (exactlyN !== null) {
-                        if (reclist.length == 0) {
+                        if (reclist.length === 0) {
                             if (exactlyN === 0) {
                                 resolve([]);
                             } else {
                                 reject(new NoResultFoundError(stat));
                             }
-                        } else if (exactlyN != reclist.length) {
+                        } else if (exactlyN !== reclist.length) {
                             reject(new MultipleResultsFoundError(stat + ` returned ${reclist.length} results but expected ${exactlyN} results`));
                         } else {
                             resolve(reclist);
