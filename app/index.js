@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 // required packages
 const express = require('express');
@@ -12,7 +12,7 @@ const repo = connect(conf).then().catch((error) => {
 });
 
 // set up middleware parser to deal with jsons
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({extended: true}));
 app.use(bodyParser.json());
 const port = process.env.PORT || 8080;
 
@@ -28,7 +28,7 @@ routes(router, repo); // second arg here is the DB
 
 // last catch any errors for undefined routes
 // all actual routes should be defined above
-app.use((req, res, next) => {
+app.use((req, res) => {
     res.status(404);
     res.send({error: 'Not Found'});
 });

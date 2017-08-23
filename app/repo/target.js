@@ -12,12 +12,12 @@ class Target extends KBVertex {
         ];
 
         const idxs = [{
-                name: this.clsname + '.index_name',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: ['name' ,'deleted_at'],
-                'class':  this.clsname
-            }];
+            name: this.clsname + '.index_name',
+            type: 'unique',
+            metadata: {ignoreNullValues: false},
+            properties: ['name' ,'deleted_at'],
+            'class':  this.clsname
+        }];
 
         return new Promise((resolve, reject) => {
             Base.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props})

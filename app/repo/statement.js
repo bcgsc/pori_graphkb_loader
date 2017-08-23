@@ -12,7 +12,7 @@ const STATEMENT_TYPE = {
     THERAPEUTIC: 'therapeutic',
     PROGNOSTIC: 'prognostic',
     OCCURRENCE: 'occurrence'
-}
+};
 
 
 class Statement extends KBVertex {
@@ -49,7 +49,7 @@ class Statement extends KBVertex {
         // type
         // relevance
         let query = `SELECT from ${Event.clsname} LET $feat = `
-            + `(TRAVERSE ${FeatureDeprecatedBy.clsname}, ${FeatureAliasOf.clsname})`
+            + `(TRAVERSE ${FeatureDeprecatedBy.clsname}, ${FeatureAliasOf.clsname})`;
         // get the features
         // for all events with features in (subquery)
         // follow the requires edges

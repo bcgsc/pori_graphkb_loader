@@ -1,11 +1,11 @@
-"use strict";
+'use strict';
 const {expect} = require('chai');
-const {DependencyError, AttributeError, ParsingError} = require('./../../../app/repo/error');
+const {ParsingError} = require('./../../../app/repo/error');
 const {
     parse,
     parseHistoneVariant
 } = require('./../../../app/parser/variant');
-const {EVENT_SUBTYPE, EVENT_TYPE} = require('./../../../app/repo/event');
+const {EVENT_SUBTYPE} = require('./../../../app/repo/event');
 
 
 describe('parse', () => {
@@ -104,7 +104,7 @@ describe('parse', () => {
             expect(result.break1.start.pos).to.equal(1);
             expect(result.break1.end.pos).to.equal(3);
             expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.reference_seq).to.equal('TAA')
+            expect(result.reference_seq).to.equal('TAA');
             expect(result.untemplated_seq).to.equal('ACG');
         });
         it('indel ref specified', () => {
@@ -113,7 +113,7 @@ describe('parse', () => {
             expect(result.break1.pos).to.equal(10);
             expect(result.break2).to.be.undefined;
             expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.reference_seq).to.equal('T')
+            expect(result.reference_seq).to.equal('T');
             expect(result.untemplated_seq).to.be.undefined;
         });
         it('indel alt specified', () => {
@@ -122,7 +122,7 @@ describe('parse', () => {
             expect(result.break1.pos).to.equal(10);
             expect(result.break2).to.be.undefined;
             expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.untemplated_seq).to.equal('ACC')
+            expect(result.untemplated_seq).to.equal('ACC');
             expect(result.reference_seq).to.be.undefined;
         });
     });
@@ -226,7 +226,7 @@ describe('parse', () => {
             expect(result.break1.start.pos).to.equal(1);
             expect(result.break1.end.pos).to.equal(3);
             expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.reference_seq).to.equal('TAA')
+            expect(result.reference_seq).to.equal('TAA');
             expect(result.untemplated_seq).to.equal('ACG');
         });
         it('indel ref specified', () => {
@@ -235,7 +235,7 @@ describe('parse', () => {
             expect(result.break1.pos).to.equal(10);
             expect(result.break2).to.be.undefined;
             expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.reference_seq).to.equal('T')
+            expect(result.reference_seq).to.equal('T');
             expect(result.untemplated_seq).to.be.undefined;
         });
         it('indel alt specified', () => {
@@ -244,7 +244,7 @@ describe('parse', () => {
             expect(result.break1.pos).to.equal(10);
             expect(result.break2).to.be.undefined;
             expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.untemplated_seq).to.equal('ACC')
+            expect(result.untemplated_seq).to.equal('ACC');
             expect(result.reference_seq).to.be.undefined;
         });
     });
@@ -299,7 +299,7 @@ describe('parse', () => {
             expect(result.break1.pos).to.equal(10);
             expect(result.break2).to.be.undefined;
             expect(result.type).to.equal(EVENT_SUBTYPE.FS);
-            expect(result.untemplated_seq).to.equal('K')
+            expect(result.untemplated_seq).to.equal('K');
             expect(result.reference_seq).to.be.undefined;
         });
         it('frameshift alt specified and truncation point', () => {
@@ -308,7 +308,7 @@ describe('parse', () => {
             expect(result.break1.pos).to.equal(10);
             expect(result.break2).to.be.undefined;
             expect(result.type).to.equal(EVENT_SUBTYPE.FS);
-            expect(result.untemplated_seq).to.equal('K')
+            expect(result.untemplated_seq).to.equal('K');
             expect(result.reference_seq).to.be.undefined;
             expect(result.truncation).to.equal(10);
         });
@@ -438,7 +438,7 @@ describe('parse', () => {
     describe('cds variants', () => {});
     describe('exon variants', () => {
         it('single gene fusion', () => {
-            const result = parse('e.fus(GENE1)(1,3)');
+            const result = parse('e.fusion(GENE1)(1,3)');
             expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
             expect(result.feature1).to.have.property('name', 'GENE1');
             expect(result.feature2).to.have.property('name', 'GENE1');
@@ -446,7 +446,7 @@ describe('parse', () => {
             expect(result.break2).to.eql({pos: 3, prefix: 'e'});
         });
         it('two gene fusion', () => {
-            const result = parse('e.fus(GENE1,GENE2)(1,2)');
+            const result = parse('e.fusion(GENE1,GENE2)(1,2)');
             expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
             expect(result.feature1).to.have.property('name', 'GENE1');
             expect(result.feature2).to.have.property('name', 'GENE2');
@@ -504,7 +504,7 @@ describe('parse', () => {
     });
     describe('protein variants', () => {
         it('allows single gene fusion', () => {
-            const result = parse('p.fus(GENE1)(R12,K15)');
+            const result = parse('p.fusion(GENE1)(R12,K15)');
             expect(result.feature1).to.have.property('name', 'GENE1');
             expect(result.feature2).to.have.property('name', 'GENE1');
             expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
@@ -512,7 +512,7 @@ describe('parse', () => {
             expect(result.break2).to.eql({ref_aa: 'K', pos: 15, prefix: 'p'});
         });
         it('allows two gene fusion', () => {
-            const result = parse('p.fus(GENE1,GENE2)(R12,K15)');
+            const result = parse('p.fusion(GENE1,GENE2)(R12,K15)');
             expect(result.feature1).to.have.property('name', 'GENE1');
             expect(result.feature2).to.have.property('name', 'GENE2');
             expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
@@ -558,7 +558,7 @@ describe('parse', () => {
     });
     describe('cytoband variants', () => {
         it('allows single gene fusion', () => {
-            const result = parse('y.fus(chr1)(p12.1,q11)');
+            const result = parse('y.fusion(chr1)(p12.1,q11)');
             expect(result.feature1).to.have.property('name', 'chr1');
             expect(result.feature2).to.have.property('name', 'chr1');
             expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
@@ -566,7 +566,7 @@ describe('parse', () => {
             expect(result.break2).to.eql({arm: 'q', major_band: 11, minor_band: null, prefix: 'y'});
         });
         it('allows two gene fusion', () => {
-            const result = parse('y.fus(chr1,chr2)(p12.1,q11)');
+            const result = parse('y.fusion(chr1,chr2)(p12.1,q11)');
             expect(result.feature1).to.have.property('name', 'chr1');
             expect(result.feature2).to.have.property('name', 'chr2');
             expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);

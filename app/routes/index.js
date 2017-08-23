@@ -126,7 +126,7 @@ const add_routes = (router, repo) => {
             console.log('GET /publication/:id', req.params);
             repo.model.publication.get_by_id(req.params.id)
                 .then((result) => {
-                    res.send(result)
+                    res.send(result);
                 }).catch((error) => {
                     console.log(error);
                     res.json(errorJSON(error));

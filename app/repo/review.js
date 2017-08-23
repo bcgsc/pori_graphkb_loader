@@ -1,7 +1,7 @@
 const {Base, KBVertex, KBEdge, Record, KBUser} = require('./base');
 const {AttributeError, NoResultFoundError, ControlledVocabularyError} = require('./error');
 const {Context} = require('./context');
-const {Statement} = require('./statement')
+const {Statement} = require('./statement');
 const Promise = require('bluebird');
 
 class Review extends KBVertex {

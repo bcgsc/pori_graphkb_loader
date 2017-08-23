@@ -13,7 +13,7 @@ const {AttributeError, ControlledVocabularyError} = require('./../../app/repo/er
 const {PERMISSIONS} = require('./../../app/repo/constants');
 
 
-cache.vocab[Event.clsname] = { 'term': [
+cache.vocab[Event.clsname] = {'term': [
     {
         term: 'gain',
         definition: '',
@@ -347,7 +347,7 @@ describe('Event schema tests:', () => {
             Event.createClass(db)
                 .then((event) => {
                     db.models.Event = event;
-                    return CategoryEvent.createClass(db)
+                    return CategoryEvent.createClass(db);
                 }).then((ce) => {
                     db.models.CategoryEvent = ce;
                     done();

@@ -36,4 +36,4 @@ const relevance = [
         class: Statement.clsname,
         property: 'relevance'
     }
-]
+];

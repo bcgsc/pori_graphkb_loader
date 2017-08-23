@@ -125,9 +125,9 @@ describe('Feature schema tests:', () => {
         beforeEach(function(done) { /* build and connect to the empty database */
             Feature.createClass(db)
                 .then(() => {
-                    return FeatureDeprecatedBy.createClass(db)
+                    return FeatureDeprecatedBy.createClass(db);
                 }).then(() => {
-                     done();
+                    done();
                 }).catch((error) => {
                     console.log('error', error);
                     done(error);
@@ -186,7 +186,7 @@ describe('Feature schema tests:', () => {
                 expect(error).to.be.instanceof(AttributeError);
             });
         });
-         it('allows version higher', () => {
+        it('allows version higher', () => {
             return Promise.all([
                 db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user),
                 db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user)
@@ -202,9 +202,9 @@ describe('Feature schema tests:', () => {
         beforeEach(function(done) { /* build and connect to the empty database */
             Feature.createClass(db)
                 .then(() => {
-                    return FeatureAliasOf.createClass(db)
+                    return FeatureAliasOf.createClass(db);
                 }).then(() => {
-                     done();
+                    done();
                 }).catch((error) => {
                     console.log('error', error);
                     done(error);
@@ -224,7 +224,7 @@ describe('Feature schema tests:', () => {
                 expect(error).to.be.instanceof(AttributeError);
             });
         });
-         it('allows between different sources when the biotype is equal', () => {
+        it('allows between different sources when the biotype is equal', () => {
             return Promise.all([
                 db.models.Feature.createRecord({source: FEATURE_SOURCE.ENSEMBL, name: 'ENSG001', biotype: FEATURE_BIOTYPE.GENE, source_version: 10}, user),
                 db.models.Feature.createRecord({source: FEATURE_SOURCE.REFSEQ, name: 'NG_0001', biotype: FEATURE_BIOTYPE.GENE, source_version: 11}, user)
@@ -300,7 +300,7 @@ describe('Feature.validateContent', () => {
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = db.models.Feature.validateContent(validEntry)
+            const record = db.models.Feature.validateContent(validEntry);
             expect(record).to.have.property('source_version', null);
         });
         it('errors on invalid biotype', () => {
@@ -409,7 +409,7 @@ describe('Feature.validateContent', () => {
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = db.models.Feature.validateContent(validEntry)
+            const record = db.models.Feature.validateContent(validEntry);
             expect(record).to.have.property('source_version', null);
         });
         it('errors on invalid biotype', () => {
@@ -491,7 +491,7 @@ describe('Feature.validateContent', () => {
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = db.models.Feature.validateContent(validEntry)
+            const record = db.models.Feature.validateContent(validEntry);
             expect(record).to.have.property('source_version', null);
         });
         it('errors on template for biotype', () => {
@@ -573,7 +573,7 @@ describe('Feature.validateContent', () => {
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = db.models.Feature.validateContent(validEntry)
+            const record = db.models.Feature.validateContent(validEntry);
             expect(record).to.have.property('source_version', null);
         });
         it('errors on null biotype', () => {

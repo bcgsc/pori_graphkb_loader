@@ -56,6 +56,6 @@ const createPermissionsClass = (db) => {
                 reject(error);
             });
     });
-}
+};
 
 module.exports = {createPermissionsClass};

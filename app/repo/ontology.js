@@ -127,7 +127,7 @@ class OntologySubClassOf extends KBEdge {
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
-            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: [] })
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: []})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -154,7 +154,7 @@ class OntologyRelatedTo extends KBEdge {
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
-            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: [] })
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: []})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -181,7 +181,7 @@ class OntologyAliasOf extends KBEdge {
 
     static createClass(db) {
         return new Promise((resolve, reject) => {
-            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: [] })
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: []})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
@@ -206,7 +206,7 @@ class OntologyDeprecatedBy extends KBEdge {
     static createClass(db) {
         return new Promise((resolve, reject) => {
 
-            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: [] })
+            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: []})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {

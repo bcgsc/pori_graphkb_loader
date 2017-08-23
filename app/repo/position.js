@@ -53,7 +53,7 @@ class Range extends Base {
         content.end['@class'] = positionClassName;
         try {
             if (positionClass.constructor.compare(content.start, content.end) >= 0) {
-                throw new AttributeError(`cannot create a range if the start position is not less than the end position`);
+                throw new AttributeError('cannot create a range if the start position is not less than the end position');
             }
         } catch (e) {
             if (! (e instanceof TypeError)) {
@@ -300,7 +300,7 @@ class CytobandPosition extends Base {
             } else if (curr.major_band > other.major_band) {
                 return 1;
             } else if (curr.minor_band == null || other.minor_band == null) {
-                throw new TypeError('cannot compare otherwise equivalent positions when the minor_band is not specified')
+                throw new TypeError('cannot compare otherwise equivalent positions when the minor_band is not specified');
             } else if (curr.minor_band < other.minor_band) {
                 return -1;
             } else if (curr.minor_band > other.minor_band) {

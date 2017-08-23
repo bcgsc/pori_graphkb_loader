@@ -1,3 +1,4 @@
+'use strict';
 const {ParsingError} = require('./../repo/error');
 
 
@@ -47,9 +48,8 @@ const parsePosition = (prefix, string) => {
         }
         default: {
             throw new ParsingError(`Prefix not recognized: ${prefix} from ${string}`);
-            break;
         }
     }
-}
+};
 
 module.exports = {parsePosition};

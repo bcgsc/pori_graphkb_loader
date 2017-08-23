@@ -80,39 +80,39 @@ class Vocab extends KBVertex {
                 }
             }
             this.selectExactlyOne({
-                    'class': where.class,
-                    property: where.property,
-                    term: where.term,
-                    deleted_at: null,
-                    conditional: where.conditional || null
-                }).then((record) => {
-                    if (record.content.definition === where.definition) {
-                        resolve(record);
-                    } else {
-                        record.content.definition = where.definition;
-                        return this.updateRecord(record.content);
-                    }
-                }).then((record) => {
+                'class': where.class,
+                property: where.property,
+                term: where.term,
+                deleted_at: null,
+                conditional: where.conditional || null
+            }).then((record) => {
+                if (record.content.definition === where.definition) {
                     resolve(record);
-                }).catch((error) => {
-                    reject(error);
-                });
+                } else {
+                    record.content.definition = where.definition;
+                    return this.updateRecord(record.content);
+                }
+            }).then((record) => {
+                resolve(record);
+            }).catch((error) => {
+                reject(error);
+            });
         });
     }
 
     addTermIfNotExists(term) {
         return new Promise((resolve, reject) => {
             this.selectExactlyOne({
-                    'class': term.class, property: term.property, term: term.term, deleted_at: null, conditional: term.conditional || null
-                }).catch(NoResultFoundError, () => {
-                    return this.createRecord({
-                        'class': term.class, property: term.property, term: term.term, definition: term.definition, conditional: term.conditional || null
-                    });
-                }).then((record) => {
-                    resolve(record);
-                }).catch((error) => {
-                    reject(error);
+                'class': term.class, property: term.property, term: term.term, deleted_at: null, conditional: term.conditional || null
+            }).catch(NoResultFoundError, () => {
+                return this.createRecord({
+                    'class': term.class, property: term.property, term: term.term, definition: term.definition, conditional: term.conditional || null
                 });
+            }).then((record) => {
+                resolve(record);
+            }).catch((error) => {
+                reject(error);
+            });
         }); 
     }
     
@@ -145,12 +145,12 @@ const cacheIndexOf = (record) => {
             }
         }
     } catch (e) {
-        if (! e instanceof TypeError) {
+        if (!(e instanceof TypeError)) {
             throw e;
         }
     }
     return indexOf;
-}
+};
 
 
 const upsertCache = (record) => {
@@ -166,7 +166,7 @@ const upsertCache = (record) => {
     } else {
         vocab[record.class][record.property][indexOf] = record;
     }
-}
+};
 
 
 const removeFromCache = (record) => {
@@ -174,7 +174,7 @@ const removeFromCache = (record) => {
     if (indexOf >= 0) {
         cache.vocab[record.class][record.property].splice(indexOf, 1);
     }
-}
+};
 
 
 const fetchValues = (dbconn) => {
@@ -197,7 +197,7 @@ const fetchValues = (dbconn) => {
                 reject(error);
             });
     });
-}
+};
 
 
 module.exports = {Vocab, fetchValues};

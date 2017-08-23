@@ -21,7 +21,7 @@ const adminRules = {
     context: 15,
     kbvertex: 15,
     kbedge: 15
-    }
+};
 
 const analystRules = {
     base: 15,
@@ -29,7 +29,7 @@ const analystRules = {
     context: 3,
     kbvertex: 15,
     kbedge: 15
-    } 
+}; 
 
 const bioinfoRules = {
     base: 2,
@@ -37,18 +37,18 @@ const bioinfoRules = {
     context: 2,
     kbvertex: 2,
     kbedge: 2
-    }
+};
 
 vocab.statement = {};
 
 vocab.statement.relevance = [
-        {
+    {
         term: 'sensitivity',
         definition: '',
         conditional: STATEMENT_TYPE.THERAPEUTIC,
         class: Statement.clsname,
         property: 'relevance'
-        }
+    }
 ];
 
 describe('Review schema tests:', () => {
@@ -98,8 +98,8 @@ describe('Review schema tests:', () => {
                         expect(revCls.isAbstract).to.be.false;
                         expect(revCls.superClasses).to.include('V', KBVertex.clsname);
                         expect(revCls.constructor.clsname).to.equal('review');
+                    });
             });
-        });
             
     });
 
@@ -116,8 +116,8 @@ describe('Review schema tests:', () => {
                                 expect(atCls.superClasses).to.include('E', KBEdge.clsname);
                                 expect(atCls.constructor.clsname).to.equal('review_applies_to');
                             });
+                    });
             });
-        });
             
     });
 
@@ -131,9 +131,9 @@ describe('Review schema tests:', () => {
                             statementRec = stRec;
                             done();
                         });
-            }).catch((error) => {
-                done(error);
-            });
+                }).catch((error) => {
+                    done(error);
+                });
         });
         it('Review.createRecord', () => {
             return Review.createClass(db)
@@ -147,22 +147,22 @@ describe('Review schema tests:', () => {
                 });
         });
 
-    describe('ReviewAppliesTo Edge', () => {
-        let statementRecm, revRecord;
-        beforeEach((done) => {
-            return Review.createClass(db)
+        describe('ReviewAppliesTo Edge', () => {
+            let statementRecm, revRecord;
+            beforeEach((done) => {
+                return Review.createClass(db)
                 .then((revCls) => {
                     revCls.createRecord({comment: 'test comment',  approved: true}, 'me')
                         .then((revRec) => {
                             revRecord = revRec;
                             done();
                         });
-            }).catch((error) => {
-                done(error);
+                }).catch((error) => {
+                    done(error);
+                });
             });
-        });
-        it('ReviewAppliesTo.createRecord', () => {
-            return ReviewAppliesTo.createClass(db)
+            it('ReviewAppliesTo.createRecord', () => {
+                return ReviewAppliesTo.createClass(db)
                 .then((revATClass) => {
                     return revATClass.createRecord({out: revRecord, in: statementRec}, 'me')
                         .then((revATRec) => {
@@ -171,37 +171,37 @@ describe('Review schema tests:', () => {
                             console.log(error);
                         });
                 });
-        });
+            });
 
-        it('ReviewAppliesTo: errors on invalid source type', () => {
-            return ReviewAppliesTo.createClass(db)
+            it('ReviewAppliesTo: errors on invalid source type', () => {
+                return ReviewAppliesTo.createClass(db)
                 .then((revATClass) => {
                     return revATClass.createRecord({out: revRecord, in: userRec}, 'me')
                         .then((revATRec) => {
                             expect.fail();
                         }).catch(AttributeError, () => {});
                 });
-        });
+            });
 
-        it('ReviewAppliesTo: errors on invalid target type', () => {
-            return ReviewAppliesTo.createClass(db)
+            it('ReviewAppliesTo: errors on invalid target type', () => {
+                return ReviewAppliesTo.createClass(db)
                 .then((revATClass) => {
                     return revATClass.createRecord({out: userRec, in: statementRec}, 'me')
                         .then((revATRec) => {
                             expect.fail();
                         }).catch(AttributeError, () => {});
                 });
-        });
+            });
 
-        it('ReviewAppliesTo: errors when that source = target', () => {
-            return ReviewAppliesTo.createClass(db)
+            it('ReviewAppliesTo: errors when that source = target', () => {
+                return ReviewAppliesTo.createClass(db)
                 .then((revATClass) => {
                     return revATClass.createRecord({out: statementRec, in: statementRec}, 'me')
                         .then((revATRec) => {
                             expect.fail();
                         }).catch(AttributeError, () => {});
                 });
-        });
+            });
 
         });
 

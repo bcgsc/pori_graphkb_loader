@@ -48,75 +48,75 @@ class Feature extends KBVertex {
         let namePattern = /\S+/;
 
         switch (args.source) {
-            case FEATURE_SOURCE.HGNC:
-                namePattern = /^[A-Z]([A-Z]|-|\d|orf)*$/;
-                if (args.biotype !== FEATURE_BIOTYPE.GENE) {
-                    throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
-                }
+        case FEATURE_SOURCE.HGNC:
+            namePattern = /^[A-Z]([A-Z]|-|\d|orf)*$/;
+            if (args.biotype !== FEATURE_BIOTYPE.GENE) {
+                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+            }
+            break;
+        case FEATURE_SOURCE.ENSEMBL:
+            switch (args.biotype) {
+            case FEATURE_BIOTYPE.PROTEIN:
+                namePattern = /^ENSP\d+$/;
                 break;
-            case FEATURE_SOURCE.ENSEMBL:
-                switch (args.biotype) {
-                    case FEATURE_BIOTYPE.PROTEIN:
-                        namePattern = /^ENSP\d+$/;
-                        break;
-                    case FEATURE_BIOTYPE.TRANSCRIPT:
-                        namePattern = /^ENST\d+$/;
-                        break;
-                    case FEATURE_BIOTYPE.GENE:
-                        namePattern = /^ENSG\d+$/;
-                        break;
-                    case FEATURE_BIOTYPE.EXON:
-                        namePattern = /^ENSE\d+$/;
-                        break;
-                    default:
-                        throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
-                }
+            case FEATURE_BIOTYPE.TRANSCRIPT:
+                namePattern = /^ENST\d+$/;
                 break;
-            case FEATURE_SOURCE.REFSEQ:
-                switch (args.biotype) {
-                    case FEATURE_BIOTYPE.PROTEIN:
-                        namePattern = /^NP_\d+$/;
-                        break;
-                    case FEATURE_BIOTYPE.TRANSCRIPT:
-                        namePattern = /^NM_\d+$/;
-                        break;
-                    case FEATURE_BIOTYPE.GENE:
-                        namePattern = /^NG_\d+$/;
-                        break;
-                    case FEATURE_BIOTYPE.TEMPLATE:
-                        namePattern = /^NC_\d+$/;
-                        break;
-                    default:
-                        throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
-                }
+            case FEATURE_BIOTYPE.GENE:
+                namePattern = /^ENSG\d+$/;
                 break;
-            case FEATURE_SOURCE.LRG:
-                switch (args.biotype) {
-                    case FEATURE_BIOTYPE.PROTEIN:
-                        namePattern = /^LRG_\d+p\d+$/;
-                        break;
-                    case FEATURE_BIOTYPE.TRANSCRIPT:
-                        namePattern = /^LRG_\d+t\d+$/;
-                        break;
-                    case FEATURE_BIOTYPE.GENE:
-                        namePattern = /^LRG_\d+$/;
-                        break;
-                    default:
-                        throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
-                }
-                break;
-            case FEATURE_SOURCE.GRC:
-                if (args.biotype !== FEATURE_BIOTYPE.TEMPLATE) {
-                    throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
-                }
-                break;
-            case FEATURE_SOURCE.HUGO:
-                if (args.biotype !== FEATURE_BIOTYPE.GENE) {
-                    throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
-                }
+            case FEATURE_BIOTYPE.EXON:
+                namePattern = /^ENSE\d+$/;
                 break;
             default:
-                throw new AttributeError(`unexpected feature source ${args.source} is not configured for validation`);
+                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+            }
+            break;
+        case FEATURE_SOURCE.REFSEQ:
+            switch (args.biotype) {
+            case FEATURE_BIOTYPE.PROTEIN:
+                namePattern = /^NP_\d+$/;
+                break;
+            case FEATURE_BIOTYPE.TRANSCRIPT:
+                namePattern = /^NM_\d+$/;
+                break;
+            case FEATURE_BIOTYPE.GENE:
+                namePattern = /^NG_\d+$/;
+                break;
+            case FEATURE_BIOTYPE.TEMPLATE:
+                namePattern = /^NC_\d+$/;
+                break;
+            default:
+                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+            }
+            break;
+        case FEATURE_SOURCE.LRG:
+            switch (args.biotype) {
+            case FEATURE_BIOTYPE.PROTEIN:
+                namePattern = /^LRG_\d+p\d+$/;
+                break;
+            case FEATURE_BIOTYPE.TRANSCRIPT:
+                namePattern = /^LRG_\d+t\d+$/;
+                break;
+            case FEATURE_BIOTYPE.GENE:
+                namePattern = /^LRG_\d+$/;
+                break;
+            default:
+                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+            }
+            break;
+        case FEATURE_SOURCE.GRC:
+            if (args.biotype !== FEATURE_BIOTYPE.TEMPLATE) {
+                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+            }
+            break;
+        case FEATURE_SOURCE.HUGO:
+            if (args.biotype !== FEATURE_BIOTYPE.GENE) {
+                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+            }
+            break;
+        default:
+            throw new AttributeError(`unexpected feature source ${args.source} is not configured for validation`);
         }
         if (namePattern.exec(args.name) === null) {
             throw new AttributeError(`feature name '${args.name}' did not match the expected pattern '${namePattern}'`);

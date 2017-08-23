@@ -1,8 +1,8 @@
-"use strict";
+'use strict';
 const {expect} = require('chai');
-const {DependencyError, AttributeError, ParsingError} = require('./../../../app/repo/error');
+const {ParsingError} = require('./../../../app/repo/error');
 const {parseFeature} = require('./../../../app/parser/feature');
-const {Feature, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../../app/repo/feature');
+const {FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../../app/repo/feature');
 
 
 describe('parseFeature', () => {

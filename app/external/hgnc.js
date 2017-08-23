@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 const request = require('request-promise');
 const {FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../repo/feature');
 
@@ -16,7 +16,7 @@ const checkForSymbolUpdate = (currentRecord) => {
             .then((resp) => {
                 console.log(resp);
                 if (resp.docs.length === 0) {
-                    return request({uri: `http://rest.genenames.org/symbol/${currentRecord.name}`, headers: {Accept: 'application/json'}})
+                    return request({uri: `http://rest.genenames.org/symbol/${currentRecord.name}`, headers: {Accept: 'application/json'}});
                 } else if (resp.docs.length > 1) {
                     throw new Error(`symbol ${currentRecord.name} is not specific`);
                 } else {
@@ -48,10 +48,10 @@ const checkForSymbolUpdate = (currentRecord) => {
             });
     });
     
-}
+};
 
 const updateAllHugoFeatures = (db) => {
-
+    // TODO
 }; 
 
 module.exports = {checkForSymbolUpdate};

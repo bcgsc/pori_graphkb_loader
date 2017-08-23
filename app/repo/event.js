@@ -36,7 +36,7 @@ const EVENT_SUBTYPE = {
     AC: 'acetylation',
     UB: 'ubiquitination',
     SPL: 'splice-site'
-}
+};
 
 
 const NOTATION_TO_SUBTYPE = new Map([
@@ -63,7 +63,7 @@ const ZYGOSITY = {
     HET: 'heterozygous',
     HOM: 'homozygous',
     SUB: 'subclonal'
-}
+};
 
 
 class Event extends KBVertex {
@@ -185,7 +185,7 @@ class PositionalEvent extends KBVertex {
         this.constructor.subtypeValidation(pClass.constructor.prefix, args.subtype);
         // validate the start/end positions
         if (args.start.start !== undefined) {  // start is a range
-            args.start = range.validateContent(args.start, positionClassName)
+            args.start = range.validateContent(args.start, positionClassName);
         } else {
             args.start = pClass.validateContent(args.start);
         }

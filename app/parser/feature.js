@@ -1,4 +1,4 @@
-const nRegex = require("named-js-regexp");
+'use strict';
 const {ParsingError} = require('./../repo/error');
 const {FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../repo/feature');
 
@@ -48,7 +48,6 @@ const parseFeature = (string) => {
         };
     } else if (match = /^LRG_\d+(.+)?$/.exec(string)) {
         // refseq features
-        let version = null;
         const result = {
             name: string,
             source_version: null,

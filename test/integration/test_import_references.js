@@ -53,7 +53,7 @@ function assignPositions(event) {
             start: Object.assign({}, event.end[0]), 
             end: Object.assign({}, event.end[1]), 
             '@class': Range.clsname
-        }
+        };
     }
     if (event.end != undefined) {
         if (_.isEqual(event.end[0], event.end[1])) {
@@ -64,7 +64,7 @@ function assignPositions(event) {
                 start: Object.assign({}, event.end[0]), 
                 end: Object.assign({}, event.end[1]), 
                 '@class': Range.clsname
-            }
+            };
         }
     }
     return [startObjF, endObjF];
@@ -98,39 +98,39 @@ const buildAppliesToTarget = (context, statement, disease, event, user) => {
     context = context.trim().toLowerCase();
     // pull out the applies to object
     switch(statement.type) {
-        case 'therapeutic':
-            if ( context.includes(' vs ') ) {
+    case 'therapeutic':
+        if (context.includes(' vs ')) {
                 // AsComparedTo edge
-                const [first, second] = context.split(' vs ');
-                throw new Error('ignoring vs for now');
-            } else {
-                return selectOrCreate('therapy', {name: context}, user);
-            }
-            break;
-        case 'biological':
-            if (statement.relevance.includes('of-function')) {
+            const [first, second] = context.split(' vs ');
+            throw new Error('ignoring vs for now');
+        } else {
+            return selectOrCreate('therapy', {name: context}, user);
+        }
+        break;
+    case 'biological':
+        if (statement.relevance.includes('of-function')) {
                 // applies to one of the features..... if two must review manually
-            } else {
-                throw new Error('unhandled case', statment.relevance);
-            }
-            break;
-        case 'diagnostic':
+        } else {
+            throw new Error('unhandled case', statment.relevance);
+        }
+        break;
+    case 'diagnostic':
             // create disease using name as context
-        case 'prognostic':
-            return Promise.resolve(disease);
-            break;
-        case 'occurrence':
-            break;
-        default:
-            throw new Error('unrecognized statement type', statement.type);
-            break;
+    case 'prognostic':
+        return Promise.resolve(disease);
+        break;
+    case 'occurrence':
+        break;
+    default:
+        throw new Error('unrecognized statement type', statement.type);
+        break;
     }
-}
+};
 
 
 const buildRecord = (oldKbRecord) => {
     console.log('+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++\nbuildRecord', oldKbRecord);
-    console.log(oldKbRecord.event)
+    console.log(oldKbRecord.event);
     return new Promise((resolve, reject) => {
         let promises = [];
         
@@ -180,7 +180,7 @@ const buildRecord = (oldKbRecord) => {
                     zygosity: eventZygosity,
                     germline: eventGermline,
                     primary_feature: pFeatureRec
-                    };
+                };
                 if (sFeatureRec != null) {
                     baseEventObj.secondary_feature = sFeatureRec;
                 }
@@ -189,37 +189,37 @@ const buildRecord = (oldKbRecord) => {
                 
                 if (eventCategory === 'PositionalEvent') {
                     switch(oldKbRecord.event.csys) {
-                        case 'p': {
-                            posClass = ProteinPosition.clsname;
-                            [startObj, endObj] = assignPositions(oldKbRecord.event, posClass);
-                            break;                             
-                        }
-                        case 'g': {
-                            posClass = GenomicPosition.clsname;
-                            [startObj, endObj] = assignPositions(oldKbRecord.event, posClass);
+                    case 'p': {
+                        posClass = ProteinPosition.clsname;
+                        [startObj, endObj] = assignPositions(oldKbRecord.event, posClass);
+                        break;                             
+                    }
+                    case 'g': {
+                        posClass = GenomicPosition.clsname;
+                        [startObj, endObj] = assignPositions(oldKbRecord.event, posClass);
+                        break;
+                    }
+                    case 'c': {
+                        posClass = CodingSequencePosition.clsname;
+                        [startObj, endObj] = assignPositions(oldKbRecord.event, posClass);
+                        break;
+                    }
+                    case 'y': {
+                        posClass = CytobandPosition.clsname;
+                        [startObj, endObj] = assignPositions(oldKbRecord.event, posClass);
+                        break;
+                    }
+                    case 'e': {
+                        const start = oldKbRecord.event.start;
+                        const end = oldKbRecord.event.end == undefined ? start : oldKbRecord.event.end; 
+                        if (start[0] == -1 && start[1] == -1 && end[0] == -1 && end[1] == -1) {
+                            eventCategory = 'CategoryEvent';
                             break;
                         }
-                        case 'c': {
-                            posClass = CodingSequencePosition.clsname;
-                            [startObj, endObj] = assignPositions(oldKbRecord.event, posClass);
-                            break;
-                        }
-                        case 'y': {
-                            posClass = CytobandPosition.clsname;
-                            [startObj, endObj] = assignPositions(oldKbRecord.event, posClass);
-                            break;
-                        }
-                        case 'e': {
-                            const start = oldKbRecord.event.start;
-                            const end = oldKbRecord.event.end == undefined ? start : oldKbRecord.event.end 
-                            if (start[0] == -1 && start[1] == -1 && end[0] == -1 && end[1] == -1) {
-                                eventCategory = 'CategoryEvent';
-                                break;
-                            }
-                            posClass = ExonicPosition.clsname;
-                            [startObj, endObj] = assignPositions(oldKbRecord.event, posClass);
-                            break;
-                        }
+                        posClass = ExonicPosition.clsname;
+                        [startObj, endObj] = assignPositions(oldKbRecord.event, posClass);
+                        break;
+                    }
                     }
                     if (eventCategory != 'CategoryEvent') {
                         positionObj = endObj != undefined ? {start: startObj, end: endObj} : {start: startObj};
@@ -247,7 +247,7 @@ const buildRecord = (oldKbRecord) => {
                 console.log(pList);
                 let [statRec, diseaseRec, pubRec, eventRec] = pList;
                 
-                console.log("++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++")
+                console.log('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++');
                 //return Promise.all(edgePromises);
                 resolve();
             }).catch((err) => {
@@ -318,8 +318,8 @@ connectServer(conf)
     }).then(() => {
         // start loading
         return new Promise((resolve, reject) => {
-            let fs = Promise.promisifyAll(require("fs"));
-            fs.readFileAsync(jsonFile, "utf8").then(function(content) {
+            let fs = Promise.promisifyAll(require('fs'));
+            fs.readFileAsync(jsonFile, 'utf8').then(function(content) {
                 let jsonObj = JSON.parse(content);
                 jsonObj = _.values(jsonObj);
                 console.log('loading', jsonObj.length, 'records');

@@ -1,13 +1,13 @@
-"use strict";
-const nRegex = require("named-js-regexp");
+'use strict';
+const nRegex = require('named-js-regexp');
 const {ParsingError} = require('./../repo/error');
-const {PositionalEvent, EVENT_SUBTYPE, NOTATION_TO_SUBTYPE} = require('./../repo/event');
+const {PositionalEvent, NOTATION_TO_SUBTYPE} = require('./../repo/event');
 const {parsePosition} = require('./position');
 const {parseFeature} = require('./feature');
 
 
 const parseContinuous  = (prefix, string) => {
-    const p = '([A-Z0-9\\*\\?\\+\\-]*[0-9\\?]|[pq][0-9\\.\?]*)'
+    const p = '([A-Z0-9\\*\\?\\+\\-]*[0-9\\?]|[pq][0-9\\.\?]*)';
     let regex = nRegex(
         `^(?<break1>${p}|(\\(${p}_${p}\\)))`
         + `(_(?<break2>${p}|(\\(${p}_${p}\\))))?`
@@ -64,10 +64,6 @@ const parseContinuous  = (prefix, string) => {
         throw new ParsingError(`Did not recognize type: ${string}`);
     }
     
-
-    let validTypes = [];
-
-    
     return result;
 };
 
@@ -78,34 +74,34 @@ const parseHistoneVariant = (string) => {
      * function to parse histone modification variant notation
      * @type {string} input string
      */
-     const r = nRegex(
-         '^(?<histone>H[0-9A-Z-]+)'
-         + '(\\.(?<subtype>[A-Z0-9]))?'
-         + '(?<aa>K|Lys|Arg|R|Ser|S)'
-         + '(?<pos>[0-9]+)'
-         + '(?<modification>me|ac|ub)'
-         + '(?<count>[1-9][0-9]*|\\?)?$'
-     );
-     const match = r.exec(string);
+    const r = nRegex(
+        '^(?<histone>H[0-9A-Z-]+)'
+        + '(\\.(?<subtype>[A-Z0-9]))?'
+        + '(?<aa>K|Lys|Arg|R|Ser|S)'
+        + '(?<pos>[0-9]+)'
+        + '(?<modification>me|ac|ub)'
+        + '(?<count>[1-9][0-9]*|\\?)?$'
+    );
+    const match = r.exec(string);
 
-     if (match === null) {
-         throw new ParsingError(`input string did not match expected pattern: ${string}`);
-     }
-     const count = parseInt(match.group('count'));
+    if (match === null) {
+        throw new ParsingError(`input string did not match expected pattern: ${string}`);
+    }
+    const count = parseInt(match.group('count'));
 
-     return {
-         histone: match.group('histone'),
-         subtype: match.group('subtype'),
-         protein_position: {
-             ref_aa: match.group('aa'),
-             pos: parseInt(match.group('pos')),
-             prefix: 'p'
-         },
-         modification: {
-             type: match.group('modification'),
-             count: count == undefined ? undefined : count
-         }
-     };
+    return {
+        histone: match.group('histone'),
+        subtype: match.group('subtype'),
+        protein_position: {
+            ref_aa: match.group('aa'),
+            pos: parseInt(match.group('pos')),
+            prefix: 'p'
+        },
+        modification: {
+            type: match.group('modification'),
+            count: count == undefined ? undefined : count
+        }
+    };
 };
 
 /**
@@ -147,7 +143,7 @@ const parseDiscontinuous = (prefix, string) => {
 
 const parse = (string) => {
     if (string.length < 3) {
-        throw new AttributeError(`Too short. Must be a minimum of three characters: ${string}`);
+        throw new ParsingError(`Too short. Must be a minimum of three characters: ${string}`);
     }
     const prefix = string[0];
     const expectedPrefix = ['g', 'c', 'e', 'y', 'p'];
@@ -176,6 +172,6 @@ const parse = (string) => {
         throw new ParsingError(e.message);
     }
     return result;
-}
+};
 
 module.exports = {parsePosition, parseHistoneVariant, parse};

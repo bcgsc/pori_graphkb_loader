@@ -1,7 +1,5 @@
 'use strict';
 const {expect} = require('chai');
-const conf = require('./../config/db');
-const {AttributeError} = require('./../../app/repo/error');
 const {Base, isObject, getAttribute} = require('./../../app/repo/base');
 
 

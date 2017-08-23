@@ -1,12 +1,7 @@
 'use strict';
 const {expect} = require('chai');
-const conf = require('./../config/db');
-const {AttributeError} = require('./../../app/repo/error');
 const {
     Position,
-    GenomicPosition,
-    ExonicPosition,
-    ProteinPosition,
     CodingSequencePosition,
     CytobandPosition
 } = require('./../../app/repo/position');
@@ -30,7 +25,7 @@ describe('Position.compare', () => {
     });
     it('allows prefix to be null', () => {
         expect(() => {
-            Position.compare({pos: 1}, {pos: 1})
+            Position.compare({pos: 1}, {pos: 1});
         }).to.not.throw(TypeError);
     });
     it('returns -1 when curr < pos', () => {
@@ -52,7 +47,7 @@ describe('CodingSequencePosition.compare', () => {
     });
     it('allows the offset to be undefined if the positions are not equal', () => {
         expect(CodingSequencePosition.compare({pos: 1, offset: null}, {pos: 2, offset: -1})).to.equal(-1);
-    })
+    });
     it('returns -1 when the curr.pos < other.pos', () => {
         expect(CodingSequencePosition.compare({pos: 1, offset: 1}, {pos: 2, offset: -1})).to.equal(-1);
     });

@@ -2,7 +2,6 @@
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
-const {AttributeError} = require('./../../app/repo/error');
 const {History, KBVertex, KBEdge, Record, KBRole, KBUser} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 const {fetchValues, Vocab} = require('./../../app/repo/vocab');
@@ -95,7 +94,7 @@ describe('Vocab schema tests:', () => {
                     return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein', conditional: 'other'});
                 }, (error) => {
                     expect.fail('creating the initial record failed', error);
-                }).then((record) => {
+                }).then(() => {
                     expect(cache.vocab.feature.biotype.length).to.equal(2);
                 });
         });
@@ -168,7 +167,7 @@ describe('Vocab schema tests:', () => {
 
         it('create record updates cache', () => {
             return vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein'})
-                .then((first)  => {
+                .then(()  => {
                     expect(cache.vocab.feature).to.be.instanceof(Object);
                 });
         });

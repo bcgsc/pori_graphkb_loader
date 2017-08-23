@@ -3,7 +3,6 @@ const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
 const {AttributeError} = require('./../../app/repo/error');
-const {History, KBVertex, KBEdge} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 
 
@@ -207,7 +206,7 @@ describe('Position schema tests:', () => {
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
-                         expect(error).to.be.instanceof(AttributeError);
+                        expect(error).to.be.instanceof(AttributeError);
                     });
             });
             it('errors on pos null', () => {
@@ -386,7 +385,7 @@ describe('Position schema tests:', () => {
         });
 
         describe('range.createRecord', () => {
-            let currClass, cdsClass;
+            let currClass;
             beforeEach(function(done) {
                 Promise.all([
                     Range.createClass(db),

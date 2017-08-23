@@ -6,9 +6,7 @@ const moment = require('moment');
 const cache = require('./cached/data');
 const {PERMISSIONS} = require('./constants');
 const Promise = require('bluebird');
-const stringify = (s) => {
-    return JSON.stringify(s, null, 4);
-}
+
 
 const errorJSON = function(error) {
     return {type: error.type, message: error.message};
@@ -180,7 +178,7 @@ class Base {
                                 if (roleRecord.rules[cls] & operationPermissions) {
                                     resolve(true);
                                 } else {
-                                    reject(new PermissionError(`insufficient permissions`));
+                                    reject(new PermissionError('insufficient permissions'));
                                 }
                             }
                         }
@@ -189,7 +187,7 @@ class Base {
                         reject(new NoResultFoundError(error));
                     });
             } else {
-                 reject(new AuthenticationError(`requested function cannot be executed as the user: ${userRecord.username} is suspended`));
+                reject(new AuthenticationError(`requested function cannot be executed as the user: ${userRecord.username} is suspended`));
             }
         }); 
     }
@@ -211,7 +209,7 @@ class Base {
             this.selectExactlyOne(obj)
                 .then((rec) => {
                     resolve(rec);
-                }).catch((err) => {
+                }).catch(() => {
                     return this.createRecord(obj, user);
                 }).then((rec) => {
                     resolve(rec);
@@ -232,7 +230,7 @@ class Base {
                     }
                 });
         });
-    };
+    }
 
     validateContent(content) {
         const args = {};
@@ -556,7 +554,7 @@ class KBVertex extends Base {
         return 'vertex';
     }
 
-    static createClass(db, user) {
+    static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
@@ -651,8 +649,8 @@ class KBVertex extends Base {
                     duplicate.deleted_by = currentUser.rid;
                     duplicate.uuid = currentRecord.content.uuid;
 
-                    updates.version += 1
-                    updates.created_at = timestamp
+                    updates.version += 1;
+                    updates.created_at = timestamp;
                     updates.created_by = currentUser.rid;
                     updates.deleted_by = null;
                     
@@ -669,9 +667,9 @@ class KBVertex extends Base {
                             //connect the nodes
                             return tx.create(History.createType, History.clsname)
                                 .from('$updatedRID')
-                                .to('$duplicate')
+                                .to('$duplicate');
                         }).commit();
-                    const stat = commit.buildStatement();
+                    // const stat = commit.buildStatement();
                     commit.return('$updatedRID').one() 
                         .then((rid) => {
                             return this.db.conn.record.get(rid);
@@ -693,7 +691,7 @@ class KBEdge extends Base {
         return 'edge';
     }
 
-    static createClass(db, user) {
+    static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
                 {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
@@ -856,7 +854,7 @@ class KBUser extends Base {
                     }).catch((error) => {
                         reject(error);
                     });
-                })
+                });
         });
     }
 }

@@ -70,7 +70,7 @@ class Publication extends KBVertex {
 
     createRecord(opt={}, user) {
         return new Promise((resolve, reject) => {
-            const content = Object.assign({}, opt)
+            const content = Object.assign({}, opt);
             content.created_by = true;
             const args = this.validateContent(content);
             let selectJournal = true;

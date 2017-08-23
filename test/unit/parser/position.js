@@ -1,6 +1,6 @@
-"use strict";
+'use strict';
 const {expect} = require('chai');
-const {DependencyError, AttributeError, ParsingError} = require('./../../../app/repo/error');
+const {ParsingError} = require('./../../../app/repo/error');
 const {parsePosition} = require('./../../../app/parser/position');
 
 

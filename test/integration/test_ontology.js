@@ -55,7 +55,7 @@ describe('Ontology schema tests:', () => {
         return Ontology.createClass(db)
             .then((result) => {
                 expect(result).to.be.an.instanceof(Ontology);
-                expect(result.propertyNames).to.include('uuid', 'version', 'created_at', 'deleted_at')
+                expect(result.propertyNames).to.include('uuid', 'version', 'created_at', 'deleted_at');
                 expect(result.isAbstract).to.be.true;
             });
     });
@@ -293,10 +293,10 @@ describe('Ontology Edges (Therapy & Disease)', () => {
                     OntologyDeprecatedBy.createClass(db),
                     Disease.createClass(db),
                     Therapy.createClass(db)
-                    ]).then((clsList) => {
-                        [ontologyClass, ontologyAliasOfClass, ontologySubClassOfClass, ontologyRelatedToClass, ontologyDeprecatedByClass, diseaseClass, therapyClass] = clsList;
-                        done();
-                    });
+                ]).then((clsList) => {
+                    [ontologyClass, ontologyAliasOfClass, ontologySubClassOfClass, ontologyRelatedToClass, ontologyDeprecatedByClass, diseaseClass, therapyClass] = clsList;
+                    done();
+                });
             }).catch((error) => {
                 console.log('error', error);
                 done(error);
@@ -481,7 +481,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
         });
     });
 
-        it('allows an OntologyDeprecatedBy edge between disease nodes', () => {
+    it('allows an OntologyDeprecatedBy edge between disease nodes', () => {
         const entry_disease = {name: 'name1', doid: 1234};
         const secondEntry_disease = {name: 'name2', doid: 123};
         return Promise.all([
