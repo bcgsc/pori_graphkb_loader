@@ -117,6 +117,9 @@ class Record {
                 delete result[param];
             }
         }
+        if (result['@type']) {
+            delete result['@type'];
+        }
         return result;
     }
 }
@@ -629,14 +632,11 @@ class KBVertex extends Base {
         return new Promise((resolve, reject) => {
             // get the record from the db
             let where = record.staticAttributes();
-            if (where.uuid == null) {
-                throw new AttributeError('uuid is a required attribute');
-            }
             let currentRecord;
-            const recordSelect = where['@rid'] ? Promise.resolve(record) : this.selectExactlyOne(where);
+            const recordSelect = where['@rid'] ? this.db.getRecord(where['@rid']) : this.selectExactlyOne(where);
             recordSelect
-                .then((record) => {
-                    currentRecord = record;
+                .then((selectedRecord) => {
+                    currentRecord = selectedRecord;
                     return currentUser.hasRID ? Promise.resolve(currentUser) : this.selectExactlyOne({username: currentUser, '@class': KBUser.clsname});
                 }).then((userRecord) => {
                     currentUser = userRecord;

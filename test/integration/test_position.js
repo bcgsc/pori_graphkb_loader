@@ -83,20 +83,16 @@ describe('Position schema tests:', () => {
                         done(error);
                     });
             });
-            it('errors on mandatory pos not given', () => {
+            it('pos defaults to null', () => {
                 return currClass.createRecord()
-                    .then(() => {
-                        expect.fail('error was expected');
-                    }, (error) => {
-                        expect(error).to.be.instanceof(AttributeError);
+                    .then((record) => {
+                        expect(record.content.pos).is.null;
                     });
             });
-            it('errors on pos null', () => {
+            it('allows pos to be null', () => {
                 return currClass.createRecord({pos: null})
-                    .then(() => {
-                        expect.fail('error was expected');
-                    }, (error) => {
-                        expect(error).to.be.instanceof(AttributeError);
+                    .then((record) => {
+                        expect(record.content.pos).is.null;
                     });
             });
             it('errors on pos below minimum', () => {
@@ -134,20 +130,16 @@ describe('Position schema tests:', () => {
                         done(error);
                     });
             });
-            it('errors on mandatory pos not given', () => {
-                return currClass.createRecord({ref_aa: null})
-                    .then(() => {
-                        expect.fail('error was expected');
-                    }, (error) => {
-                        expect(error).to.be.instanceof(AttributeError);
+            it('pos defaults to null', () => {
+                return currClass.createRecord()
+                    .then((record) => {
+                        expect(record.content.pos).is.null;
                     });
             });
-            it('errors on pos null', () => {
-                return currClass.createRecord({pos: null, ref_aa: null})
-                    .then(() => {
-                        expect.fail('error was expected');
-                    }, (error) => {
-                        expect(error).to.be.instanceof(AttributeError);
+            it('allows pos to be null', () => {
+                return currClass.createRecord({pos: null})
+                    .then((record) => {
+                        expect(record.content.pos).is.null;
                     });
             });
             it('errors on ref_aa too long', () => {
@@ -201,20 +193,16 @@ describe('Position schema tests:', () => {
                         done(error);
                     });
             });
-            it('errors on mandatory pos not given', () => {
+            it('pos defaults to null', () => {
                 return currClass.createRecord()
-                    .then(() => {
-                        expect.fail('error was expected');
-                    }, (error) => {
-                        expect(error).to.be.instanceof(AttributeError);
+                    .then((record) => {
+                        expect(record.content.pos).is.null;
                     });
             });
-            it('errors on pos null', () => {
+            it('allows pos null', () => {
                 return currClass.createRecord({pos: null})
-                    .then(() => {
-                        expect.fail('error was expected');
-                    }, (error) => {
-                        expect(error).to.be.instanceof(AttributeError);
+                    .then((record) => {
+                        expect(record.content.pos).is.null;
                     });
             });
             it('errors on pos below min', () => {
@@ -252,20 +240,18 @@ describe('Position schema tests:', () => {
                         done(error);
                     });
             });
-            it('errors on mandatory pos not given', () => {
+            it('pos default to null', () => {
                 return currClass.createRecord()
-                    .then(() => {
-                        expect.fail('error was expected');
-                    }, (error) => {
-                        expect(error).to.be.instanceof(AttributeError);
+                    .then((record) => {
+                        expect(record.content.pos).is.null;
+                        expect(record.content.offset).to.equal(0);
                     });
             });
-            it('errors on pos null', () => {
-                return currClass.createRecord({pos: null})
-                    .then(() => {
-                        expect.fail('error was expected');
-                    }, (error) => {
-                        expect(error).to.be.instanceof(AttributeError);
+            it('allows input pos as null', () => {
+                return currClass.createRecord({pos: null, offset: null})
+                    .then((record) => {
+                        expect(record.content.pos).is.null;
+                        expect(record.content.offset).is.null;
                     });
             });
             it('allows offset to default to 0', () => {
@@ -289,12 +275,11 @@ describe('Position schema tests:', () => {
                         expect(record.content.offset).to.equal(2);
                     });
             });
-            it('errors on offset null', () => {
+            it('allows offset to be null', () => {
                 return currClass.createRecord({pos: 1, offset: null})
-                    .then(() => {
-                        expect.fail('error was expected');
-                    }, (error) => {
-                        expect(error).to.be.instanceof(AttributeError);
+                    .then((record) => {
+                        expect(record.content.pos).to.equal(1);
+                        expect(record.content.offset).is.null;
                     });
             });
             it('errors on pos below min', () => {
@@ -393,7 +378,7 @@ describe('Position schema tests:', () => {
                     GenomicPosition.createClass(db),
                     ProteinPosition.createClass(db)
                 ]).then((plist) => {
-                    [currClass, cdsClass] = plist;
+                    currClass = plist[0];
                     done();
                 }).catch((error) => {
                     done(error);

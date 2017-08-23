@@ -1,5 +1,5 @@
 const {Base, KBVertex} = require('./base');
-const {NoResultFoundError} = require('./error');
+const {NoResultFoundError, AttributeError} = require('./error');
 const cache = require('./cached/data');
 const Promise = require('bluebird');
 
@@ -48,9 +48,9 @@ class Vocab extends KBVertex {
         });
     }
 
-    createRecord(where={}) {
+    createRecord(where={}, user) {
         return new Promise((resolve, reject) => {
-            super.createRecord(where)
+            super.createRecord(where, user)
                 .then((record) => {
                     upsertCache(record.content);
                     resolve(record);
@@ -60,9 +60,9 @@ class Vocab extends KBVertex {
         });
     }
 
-    deleteRecord(where={}) {
+    deleteRecord(where={}, user) {
         return new Promise((resolve, reject) => {
-            super.deleteRecord(where)
+            super.deleteRecord(where, user)
                 .then((record) => {
                     removeFromCache(record.content);
                     resolve(record);
@@ -72,7 +72,7 @@ class Vocab extends KBVertex {
         });
     }
     
-    updateDefinition(where) {
+    updateDefinition(where, user) {
         return new Promise((resolve, reject) => {
             for (let req of ['class', 'property', 'term']) {
                 if (where[req] == undefined) {
@@ -86,11 +86,11 @@ class Vocab extends KBVertex {
                 deleted_at: null,
                 conditional: where.conditional || null
             }).then((record) => {
-                if (record.content.definition === where.definition) {
+                if (! where.definition || record.content.definition === where.definition) {
                     resolve(record);
                 } else {
                     record.content.definition = where.definition;
-                    return this.updateRecord(record.content);
+                    return this.updateRecord(record, user);
                 }
             }).then((record) => {
                 resolve(record);
@@ -100,14 +100,14 @@ class Vocab extends KBVertex {
         });
     }
 
-    addTermIfNotExists(term) {
+    addTermIfNotExists(term, user) {
         return new Promise((resolve, reject) => {
             this.selectExactlyOne({
                 'class': term.class, property: term.property, term: term.term, deleted_at: null, conditional: term.conditional || null
             }).catch(NoResultFoundError, () => {
                 return this.createRecord({
                     'class': term.class, property: term.property, term: term.term, definition: term.definition, conditional: term.conditional || null
-                });
+                }, user);
             }).then((record) => {
                 resolve(record);
             }).catch((error) => {
@@ -119,9 +119,9 @@ class Vocab extends KBVertex {
     /**
      * adds new terminology if they do not already exist. Ignores existing terminology
      */
-    createRecords(records) {
+    createRecords(records, user) {
         return Promise.all(Array.from(records, x => { 
-            return this.addTermIfNotExists(x); 
+            return this.addTermIfNotExists(x, user); 
         }));
     }
 }

@@ -2,7 +2,6 @@
 const {Base, KBVertex, KBEdge} = require('./base');
 const {AttributeError} = require('./error');
 const {Context} = require('./context');
-const vocab = require('./cached/data').vocab;
 const Promise = require('bluebird');
 
 const FEATURE_BIOTYPE = {

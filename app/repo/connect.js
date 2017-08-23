@@ -4,6 +4,35 @@ const OrientDB  = require('orientjs');
 const {AttributeError} = require('./error');
 const {createPermissionsClass} = require('./permissions');
 const Promise = require('bluebird');
+// model DB classes
+const {KBVertex, KBEdge, KBUser, KBRole, History, Record} = require('./base.js');
+const {Context} = require('./context.js');
+const {Event, PositionalEvent, CategoryEvent} = require('./event.js');
+const {Evidence, Publication, Study, Journal, ClinicalTrial, ExternalSource} = require('./evidence.js');
+const {Feature, FeatureDeprecatedBy, FeatureAliasOf} = require('./feature');
+const {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDeprecatedBy} = require('./ontology.js');
+const {Position, Range, GenomicPosition, ExonicPosition, CodingSequencePosition, ProteinPosition, CytobandPosition} = require('./position.js');
+const {Review, ReviewAppliesTo} = require('./review.js');
+const {Statement, AppliesTo, AsComparedTo, Requires, SupportedBy} = require('./statement.js');
+const {Target} = require('./target.js');
+const {Vocab} = require('./vocab.js');
+
+
+const defaultHeirarchy = [
+    [KBVertex, KBEdge, KBUser, KBRole, History],
+    [Position, Context, Evidence, Vocab],
+    [
+        Range, GenomicPosition, ExonicPosition, CodingSequencePosition, ProteinPosition, CytobandPosition,
+        Ontology, Feature, Statement, Study, Journal, ExternalSource, Event, Target
+    ],
+    [
+        ClinicalTrial, Publication, 
+        Review, AppliesTo, AsComparedTo, Requires, SupportedBy, 
+        Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, OntologyAliasOf, OntologyDeprecatedBy,
+        PositionalEvent, CategoryEvent,
+        FeatureDeprecatedBy, FeatureAliasOf
+    ]
+];
 
 
 /**
@@ -59,6 +88,18 @@ class DB {
                 });
         });
     }
+
+    getRecord(rid) {
+        return new Promise((resolve, reject) => {
+            this.conn.record.get(rid)
+                .then((rec) => {
+                    resolve(new Record(rec));
+                }).catch((err) => {
+                    reject(err);
+                });
+        });
+    }
+
     buildHeirarchyRecursive(heirarchy, depth) {
         return new Promise((resolve, reject) => {
             if (depth >= heirarchy.length) {
@@ -100,7 +141,7 @@ const createDB = (opt) => {
             }).then(() => {
                 // now initialize all models
                 return result.buildHeirarchy(opt.heirarchy);
-            }).then((modelsList) => {
+            }).then(() => {
                 resolve(result);
             }).catch((error) => {
                 reject(error);

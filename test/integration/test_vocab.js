@@ -8,11 +8,12 @@ const {fetchValues, Vocab} = require('./../../app/repo/vocab');
 const cache = require('./../../app/repo/cached/data');
 const data = require('./data.json');
 const Promise = require('bluebird');
-
+const {PERMISSIONS} = require('./../../app/repo/constants');
 
 
 describe('Vocab schema tests:', () => {
     let db;
+    let user = 'me';
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
@@ -31,6 +32,10 @@ describe('Vocab schema tests:', () => {
                 });
             }).then((result) => {
                 db = result;
+                return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL}});
+            }).then((role) => {
+                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
+            }).then(() => {
                 done();
             }).catch((error) => {
                 console.log('error', error);
@@ -59,7 +64,7 @@ describe('Vocab schema tests:', () => {
                 });
         });
         it('allows createRecords to create multiple records', () => {
-            return vocabInstance.createRecords(data.vocab)
+            return vocabInstance.createRecords(data.vocab, user)
                 .then(() => {
                     expect(cache.vocab).to.have.property('feature');
                     expect(cache.vocab.feature).to.have.property('biotype');
@@ -67,9 +72,9 @@ describe('Vocab schema tests:', () => {
                 });
         });
         it('allows createRecords to create multiple records when some already exist', () => {
-            return vocabInstance.createRecords(data.vocab)
+            return vocabInstance.createRecords(data.vocab, user)
                 .then(() => {
-                    return vocabInstance.createRecords(data.vocab);
+                    return vocabInstance.createRecords(data.vocab, user);
                 }).then(() => {
                     expect(cache.vocab).to.have.property('feature');
                     expect(cache.vocab.feature).to.have.property('biotype');
@@ -77,9 +82,9 @@ describe('Vocab schema tests:', () => {
                 });
         });
         it('errors createRecord on duplicate within category', () => {
-            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
+            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'}, user)
                 .then(()  => {
-                    return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'});
+                    return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'}, user);
                 }, (error) => {
                     expect.fail('creating the initial record failed', error);
                 }).then(() => {
@@ -89,9 +94,9 @@ describe('Vocab schema tests:', () => {
                 });
         });
         it('allows duplicate within category if conditional is specified', () => {
-            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
+            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'}, user)
                 .then(()  => {
-                    return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein', conditional: 'other'});
+                    return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein', conditional: 'other'}, user);
                 }, (error) => {
                     expect.fail('creating the initial record failed', error);
                 }).then(() => {
@@ -99,7 +104,7 @@ describe('Vocab schema tests:', () => {
                 });
         });
         it('allows updateRecord', () => {
-            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
+            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'}, user)
                 .then((record)  => {
                     expect(record).to.be.an.instanceof(Record);
                     expect(record.content).to.have.property('class', 'feature');
@@ -107,7 +112,7 @@ describe('Vocab schema tests:', () => {
                     expect(record.content).to.have.property('term', 'protein');
                     expect(record.content).to.have.property('version', 0);
                     record.content.definition = 'this is a defn';
-                    return vocabInstance.updateRecord(record.content);
+                    return vocabInstance.updateRecord(record, user);
                 }, (error) => {
                     console.log(error);
                     expect.fail('creating the initial record failed', error);
@@ -120,14 +125,14 @@ describe('Vocab schema tests:', () => {
                 });
         });
         it('allows updateDefinition to update record definition', () => {
-            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
+            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'}, user)
                 .then((record)  => {
                     expect(record.content).to.have.property('class', 'feature');
                     expect(record.content).to.have.property('property', 'biotype');
                     expect(record.content).to.have.property('term', 'protein');
                     expect(record.content).to.have.property('version', 0);
                     record.content.definition = 'this is a defn';
-                    return vocabInstance.updateDefinition(record.content);
+                    return vocabInstance.updateDefinition(record.content, user);
                 }, (error) => {
                     expect.fail('creating the initial record failed', error);
                 }).then((updated) => {
@@ -139,12 +144,12 @@ describe('Vocab schema tests:', () => {
                 });
         });
         it('create record: allows different terms within same class & property', () => {
-            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'})
+            return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'}, user)
                 .then((first)  => {
                     expect(first.content).to.have.property('class', 'feature');
                     expect(first.content).to.have.property('property', 'biotype');
                     expect(first.content).to.have.property('term', 'protein');
-                    return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'gene'});
+                    return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'gene'}, user);
                 }).then((second) => {
                     expect(second.content).to.have.property('class', 'feature');
                     expect(second.content).to.have.property('property', 'biotype');
@@ -152,12 +157,12 @@ describe('Vocab schema tests:', () => {
                 });
         });
         it('create record: allows duplicate terms when property is different', () => {
-            return vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein'})
+            return vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein'}, user)
                 .then((first)  => {
                     expect(first.content).to.have.property('class', 'feature');
                     expect(first.content).to.have.property('property', 'name');
                     expect(first.content).to.have.property('term', 'protein');
-                    return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'});
+                    return vocabInstance.createRecord({class: 'feature', property: 'biotype', term: 'protein'}, user);
                 }).then((second) => {
                     expect(second.content).to.have.property('class', 'feature');
                     expect(second.content).to.have.property('property', 'biotype');
@@ -166,16 +171,16 @@ describe('Vocab schema tests:', () => {
         });
 
         it('create record updates cache', () => {
-            return vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein'})
+            return vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein'}, user)
                 .then(()  => {
                     expect(cache.vocab.feature).to.be.instanceof(Object);
                 });
         });
         it('pull table into json', () => {
             return Promise.all([
-                vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein', definition: ''}),
-                vocabInstance.createRecord({class: 'feature', property: 'name', term: 'gene'}),
-                vocabInstance.createRecord({class: 'other', property: 'name', term: 'protein'})
+                vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein', definition: ''}, user),
+                vocabInstance.createRecord({class: 'feature', property: 'name', term: 'gene'}, user),
+                vocabInstance.createRecord({class: 'other', property: 'name', term: 'protein'}, user)
             ]).then(() => {
                 return fetchValues(db);
             }).then((localCache) => {
@@ -189,12 +194,13 @@ describe('Vocab schema tests:', () => {
         });
         it('cache: delete something', () => {
             return Promise.all([
-                vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein', definition: ''}),
-            ]).then(() => {
+                vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein', definition: ''}, user),
+            ]).then((rec) => {
+                console.log('initial record', rec);
                 expect(cache.vocab).to.have.property('feature');
                 expect(cache.vocab.feature).to.have.property('name');
                 expect(cache.vocab.feature.name.length).to.equal(1);
-                return vocabInstance.deleteRecord({class: 'feature', property: 'name', term: 'protein'});
+                return vocabInstance.deleteRecord({class: 'feature', property: 'name', term: 'protein'}, user);
             }).then(() => {
                 expect(cache.vocab).to.have.property('feature');
                 expect(cache.vocab.feature).to.have.property('name');

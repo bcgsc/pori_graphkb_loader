@@ -1,5 +1,5 @@
 'use strict';
-const {Base, KBVertex, KBEdge, Record, KBUser, getAttribute} = require('./base');
+const {Base, KBVertex, Record, KBUser, getAttribute} = require('./base');
 const Promise = require('bluebird');
 const {Feature} = require('./feature');
 const {Range, Position} = require('./position');
@@ -307,7 +307,7 @@ class PositionalEvent extends KBVertex {
         const validTypes = [];
         if (continuous) {
             switch(prefix) {
-                case 'p': {
+                case 'p': 
                     Array.prototype.push.apply(validTypes, [
                         EVENT_SUBTYPE.FS, 
                         EVENT_SUBTYPE.EXT, 
@@ -316,26 +316,29 @@ class PositionalEvent extends KBVertex {
                         EVENT_SUBTYPE.UB,
                         EVENT_SUBTYPE.SPL
                     ]);
-                }
+                    // fall through
+                
                 case 'g':
-                case 'c': {
+                    // fall through
+                case 'c': 
                     Array.prototype.push.apply(validTypes, [
                         EVENT_SUBTYPE.INS, 
                         EVENT_SUBTYPE.SUB, 
                         EVENT_SUBTYPE.INDEL 
                     ]);
-                }
+                    // fall through
                 case 'y': 
                     Array.prototype.push.apply(validTypes, [
                         EVENT_SUBTYPE.LOSS, 
                         EVENT_SUBTYPE.GAIN
                     ]);
-                case 'e': {
+                    // fall through
+                case 'e': 
                     break;
-                }
-                default: {
+                
+                default: 
                     throw new AttributeError(`invalid/unsupported prefix '${prefix}'`);
-                }
+                
             }
         }
         Array.prototype.push.apply(validTypes, [
