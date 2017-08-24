@@ -411,25 +411,25 @@ class Base {
         });
     }
 
-    deleteRecord(record, user) {
+    deleteRecord(currRecord, user) {
         return new Promise((resolve, reject) => {
-            const where = record.dbJSON || record;
-            where.deleted_at = null;
             const userSelect = user.hasRID ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname});
             userSelect
                 .then((userRecord) => {
                     user = userRecord;
                     return this.isPermitted(user, PERMISSIONS.DELETE);
                 }).then(() => {
-                    if (where['@rid']) { // don't select if we already have the rid
-                        return Promise.resolve({content: where});
+                    if (currRecord.rid) { // don't select if we already have the rid
+                        return Promise.resolve(currRecord);
                     } else {
-                        return this.selectExactlyOne(where);
+                        return this.selectExactlyOne(currRecord);
                     }
                 }).then((record) => {
-                    record.content.deleted_at = moment().valueOf();
-                    record.content.deleted_by = user.rid;
-                    return this.db.conn.record.update(record.content);
+                    const update = {};
+                    update.deleted_at = moment().valueOf();
+                    update.deleted_by = user.rid;
+                    const sa = record.staticAttributes();
+                    return this.db.conn.update(record.rid).set(update).where(sa).return('AFTER').one();
                 }).then((updatedRecord) => {
                     resolve(new Record(updatedRecord, this.constructor.clsname));
                 }).catch((error) => {

@@ -12,13 +12,14 @@ const {PERMISSIONS} = require('./../../app/repo/constants');
 
 
 describe('Vocab schema tests:', () => {
-    let db;
+    let db, server;
     let user = 'me';
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
             .then((result) => {
                 // create the empty database
+                server = result;
                 return createDB({
                     server: result, 
                     name: conf.emptyDbName, 
@@ -196,7 +197,6 @@ describe('Vocab schema tests:', () => {
             return Promise.all([
                 vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein', definition: ''}, user),
             ]).then((rec) => {
-                console.log('initial record', rec);
                 expect(cache.vocab).to.have.property('feature');
                 expect(cache.vocab.feature).to.have.property('name');
                 expect(cache.vocab.feature.name.length).to.equal(1);
@@ -211,11 +211,11 @@ describe('Vocab schema tests:', () => {
 
     afterEach((done) => {
         /* disconnect from the database */
-        db.server.drop({name: conf.emptyDbName})
+        server.drop({name: conf.emptyDbName})
             .catch((error) => {
                 console.log('error:', error);
             }).then(() => {
-                return db.server.close();
+                return server.close();
             }).then(() => {
                 done();
             }).catch((error) => {
