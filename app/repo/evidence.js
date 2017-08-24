@@ -1,9 +1,7 @@
 'use strict';
-const {Base, KBVertex, KBEdge, Record, KBUser} = require('./base');
-const {AttributeError, NoResultFoundError} = require('./error');
+const {Base, KBVertex, Record, KBUser} = require('./base');
+const {AttributeError} = require('./error');
 const currYear = require('year');
-const _ = require('lodash');
-
 
 /**
 *
@@ -223,7 +221,6 @@ class Study extends KBVertex {
  */
 class ClinicalTrial extends KBVertex {
     
-
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [

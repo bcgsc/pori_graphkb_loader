@@ -3,10 +3,7 @@ const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
 const {KBVertex, KBEdge, History, KBUser, KBRole} = require('./../../app/repo/base');
-const {Vocab} = require('./../../app/repo/vocab');
-const {Feature, FeatureDeprecatedBy, FeatureAliasOf, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
-const cache = require('./../../app/repo/cached/data');
-const {ControlledVocabularyError, AttributeError} = require('./../../app/repo/error');
+const {AttributeError} = require('./../../app/repo/error');
 const {Context} = require('./../../app/repo/context');
 const Promise = require('bluebird');
 const {expectDuplicateKeyError} = require('./orientdb_errors');
@@ -14,9 +11,8 @@ const {Ontology, Disease, Therapy, OntologySubClassOf, OntologyRelatedTo, Ontolo
 const {PERMISSIONS} = require('./../../app/repo/constants');
 
 
-
 describe('Ontology schema tests:', () => {
-    let server, db, user;
+    let server, db;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
@@ -39,10 +35,8 @@ describe('Ontology schema tests:', () => {
                 db = result;
             }).then(() => {
                 return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
-            }).then((role) => {
+            }).then(() => {
                 return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
-            }).then((result) => {
-                user = result.content;
             }).then(() => {
                 done();
             }).catch((error) => {
@@ -59,16 +53,12 @@ describe('Ontology schema tests:', () => {
                 expect(result.isAbstract).to.be.true;
             });
     });
-    it('create an ontology record (should fail)', () => {
-        return Ontology.createClass(db)
-            .catch((error) => {
-                throw new DependencyError(error.message);
-            }).then((result) => {
-                return result.createRecord(); // test creating a record?
-            }).then((result) => {
-                expect.fail('violated constraint should have thrown error');
-            }, (error) => {
-                return oError.expectAbstractClassError(error);
+    it('errors adding a record to the abstract ontology class', () => {
+        Ontology.createClass(db)
+            .then(() => {
+                expect.fail('expected an error');
+            }).catch((error) => {
+                console.log(error);
             });
     });
 
@@ -145,11 +135,11 @@ describe('Ontology schema tests:', () => {
             it('errors on disease active name not unique', () => {
                 const entry = {name: 'name', doid: 123};
                 return currClass.createRecord(entry, 'me')
-                    .then((record) => {
+                    .then(() => {
                         return currClass.createRecord(entry, 'me');
-                    }, (error) => {
+                    }, () => {
                         expect.fail('failed on initial record creation');
-                    }).then((record2) => {
+                    }).then(() => {
                         expect.fail('expected an error');
                     }).catch((error) => {
                         expectDuplicateKeyError(error);
@@ -163,21 +153,21 @@ describe('Ontology schema tests:', () => {
                     .then((record) => {
                         expect(record.content).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
                         return currClass.createRecord(secondEntry, 'me');
-                    }, (error) => {
+                    }, () => {
                         expect.fail('failed on initial record creation');
                     }).then((record2) => {
                         expect(record2.content).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
                     });
             });
 
-            it('allows name duplicates when one node is deleted', () => {
+            it('allows name duplicates when one node is modified', () => {
                 const entry = {name: 'name1', doid: 123};
                 return currClass.createRecord(entry, 'me')
                     .then((record) => {
                         expect(record.content).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
                         record.content.doid = 1234;
                         return currClass.updateRecord(record.content, 'me');
-                    }, (error) => {
+                    }, () => {
                         expect.fail('failed on initial record creation');
                     }).then((record2) => {
                         expect(record2.content).to.include.keys('name', 'doid', 'uuid', 'deleted_at', 'created_at');
@@ -200,11 +190,11 @@ describe('Ontology schema tests:', () => {
             it('errors on therapy active name not unique', () => {
                 const entry = {name: 'name', id: 123};
                 return currClass.createRecord(entry, 'me')
-                    .then((record) => {
+                    .then(() => {
                         return currClass.createRecord(entry, 'me');
-                    }, (error) => {
+                    }, () => {
                         expect.fail('failed on initial record creation');
-                    }).then((record2) => {
+                    }).then(() => {
                         expect.fail('expected an error');
                     }).catch((error) => {
                         expectDuplicateKeyError(error);
@@ -218,21 +208,21 @@ describe('Ontology schema tests:', () => {
                     .then((record) => {
                         expect(record.content).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
                         return currClass.createRecord(secondEntry, 'me');
-                    }, (error) => {
+                    }, () => {
                         expect.fail('failed on initial record creation');
                     }).then((record2) => {
                         expect(record2.content).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
                     });
             });
 
-            it('allows therapy name duplicates when one node is deleted', () => {
+            it('allows therapy name duplicates when one node is modified', () => {
                 const entry = {name: 'name1', id: 123};
                 return currClass.createRecord(entry, 'me')
                     .then((record) => {
                         expect(record.content).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
                         record.content.doid = 1234;
                         return currClass.updateRecord(record.content, 'me');
-                    }, (error) => {
+                    }, () => {
                         expect.fail('failed on initial record creation');
                     }).then((record2) => {
                         expect(record2.content).to.include.keys('name', 'id', 'uuid', 'deleted_at', 'created_at');
@@ -257,7 +247,7 @@ describe('Ontology schema tests:', () => {
 });
 
 describe('Ontology Edges (Therapy & Disease)', () => {
-    let server, db, user, ontologyClass, ontologyAliasOfClass, ontologySubClassOfClass, ontologyRelatedToClass, ontologyDeprecatedByClass, diseaseClass, therapyClass;
+    let server, db, ontologyAliasOfClass, ontologySubClassOfClass, ontologyRelatedToClass, ontologyDeprecatedByClass, diseaseClass, therapyClass;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
@@ -280,22 +270,22 @@ describe('Ontology Edges (Therapy & Disease)', () => {
                 db = result;
             }).then(() => {
                 return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
-            }).then((role) => {
-                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
-            }).then((result) => {
-                user = result.content;
             }).then(() => {
-                return Promise.all([                    
-                    Ontology.createClass(db),
-                    OntologyAliasOf.createClass(db),
-                    OntologySubClassOf.createClass(db),
-                    OntologyRelatedTo.createClass(db),
-                    OntologyDeprecatedBy.createClass(db),
-                    Disease.createClass(db),
-                    Therapy.createClass(db)
-                ]).then((clsList) => {
-                    [ontologyClass, ontologyAliasOfClass, ontologySubClassOfClass, ontologyRelatedToClass, ontologyDeprecatedByClass, diseaseClass, therapyClass] = clsList;
-                    done();
+                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
+            }).then(() => {
+                return Ontology.createClass(db)
+                .then(() => {
+                    return Promise.all([                    
+                        OntologyAliasOf.createClass(db),
+                        OntologySubClassOf.createClass(db),
+                        OntologyRelatedTo.createClass(db),
+                        OntologyDeprecatedBy.createClass(db),
+                        Disease.createClass(db),
+                        Therapy.createClass(db)
+                    ]).then((clsList) => {
+                        [ontologyAliasOfClass, ontologySubClassOfClass, ontologyRelatedToClass, ontologyDeprecatedByClass, diseaseClass, therapyClass] = clsList;
+                        done();
+                    });
                 });
             }).catch((error) => {
                 console.log('error', error);
@@ -339,7 +329,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
             diseaseClass.createRecord(secondEntry_therapy, 'me')
         ]).then((recList) => {
             return ontologyAliasOfClass.createRecord({in: recList[0], out: recList[1]}, 'me');
-        }).then((edge) => {
+        }).then(() => {
             expect.fail('should not have been able to create the record');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
@@ -354,7 +344,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
             therapyClass.createRecord(secondEntry_therapy, 'me')
         ]).then((recList) => {
             return ontologyAliasOfClass.createRecord({in: recList[0], out: recList[1]}, 'me');
-        }).then((edge) => {
+        }).then(() => {
             expect.fail('should not have been able to create the record');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
@@ -399,7 +389,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
             diseaseClass.createRecord(secondEntry_disease, 'me')
         ]).then((recList) => {
             return ontologySubClassOfClass.createRecord({in: recList[0], out: recList[1]}, 'me');
-        }).then((edge) => {
+        }).then(() => {
             expect.fail('should not have been able to create the record');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
@@ -414,7 +404,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
             therapyClass.createRecord(secondEntry_disease, 'me')
         ]).then((recList) => {
             return ontologySubClassOfClass.createRecord({in: recList[0], out: recList[1]}, 'me');
-        }).then((edge) => {
+        }).then(() => {
             expect.fail('should not have been able to create the record');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
@@ -459,7 +449,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
             diseaseClass.createRecord(secondEntry_disease, 'me')
         ]).then((recList) => {
             return ontologyRelatedToClass.createRecord({in: recList[0], out: recList[1]}, 'me');
-        }).then((edge) => {
+        }).then(() => {
             expect.fail('should not have been able to create the record');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
@@ -474,7 +464,7 @@ describe('Ontology Edges (Therapy & Disease)', () => {
             therapyClass.createRecord(secondEntry_disease, 'me')
         ]).then((recList) => {
             return ontologyRelatedToClass.createRecord({in: recList[0], out: recList[1]}, 'me');
-        }).then((edge) => {
+        }).then(() => {
             expect.fail('should not have been able to create the record');
         }, (error) => {
             expect(error).to.be.instanceof(AttributeError);
