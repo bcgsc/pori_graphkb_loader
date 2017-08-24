@@ -15,30 +15,6 @@ const Promise = require('bluebird');
 const {expectDuplicateKeyError} = require('./orientdb_errors');
 const {PERMISSIONS} = require('./../../app/repo/constants');
 
-const adminRules = {
-    base: 15,
-    ontology: 15,
-    context: 15,
-    kbvertex: 15,
-    kbedge: 15
-};
-
-const analystRules = {
-    base: 15,
-    ontology: 3,
-    context: 3,
-    kbvertex: 15,
-    kbedge: 15
-}; 
-
-const bioinfoRules = {
-    base: 2,
-    ontology: 2,
-    context: 2,
-    kbvertex: 2,
-    kbedge: 2
-};
-
 vocab.statement = {};
 
 vocab.statement.relevance = [

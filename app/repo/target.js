@@ -1,5 +1,4 @@
-const {Base, KBVertex, KBEdge, Record, KBUser} = require('./base');
-const {AttributeError, NoResultFoundError, ControlledVocabularyError} = require('./error');
+const {Base, KBVertex} = require('./base');
 const {Context} = require('./context');
 const Promise = require('bluebird');
 
@@ -20,7 +19,7 @@ class Target extends KBVertex {
         }];
 
         return new Promise((resolve, reject) => {
-            Base.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props})
+            Base.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
                 }).then((cls) => {
