@@ -174,4 +174,4 @@ const parse = (string) => {
     return result;
 };
 
-module.exports = {parsePosition, parseHistoneVariant, parse};
+module.exports = {parsePosition, parseHistoneVariant, parse, parseContinuous};

@@ -51,7 +51,7 @@ const {
     PermissionError, 
     AuthenticationError
 } = require('./../app/repo/error');
-
+const TEST_DB_NAME = 'load_testing';
 
 const createNode = (item, user) => {
     return new Promise((resolve, reject) => {
@@ -213,14 +213,14 @@ let server, db, user;
 connectServer(conf)
     .then((result) => {
         server = result;
-        return server.drop({name: conf.emptyDbName});
+        return server.drop({name: TEST_DB_NAME});
     }).catch((error) => {
         console.log('caught error', error);
         return Promise.resolve();
     }).then(() => {
         // create the empty database
         return createDB({
-            name: conf.emptyDbName, 
+            name: TEST_DB_NAME, 
             username: conf.dbUsername,
             password: conf.dbPassword,
             server: server,

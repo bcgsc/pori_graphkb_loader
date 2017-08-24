@@ -3,7 +3,8 @@ const {expect} = require('chai');
 const {ParsingError} = require('./../../../app/repo/error');
 const {
     parse,
-    parseHistoneVariant
+    parseHistoneVariant,
+    parseContinuous
 } = require('./../../../app/parser/variant');
 const {EVENT_SUBTYPE} = require('./../../../app/repo/event');
 
@@ -124,6 +125,9 @@ describe('parse', () => {
             expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
             expect(result.untemplated_seq).to.equal('ACC');
             expect(result.reference_seq).to.be.undefined;
+        });
+        it('errors on protein style missense', () => {
+            expect(() => { parseContinuous('g', '15T'); }).to.throw(ParsingError);
         });
     });
     describe('cds variant:', () => {
@@ -350,6 +354,14 @@ describe('parse', () => {
             expect(result.reference_seq).to.be.undefined;
             expect(result.truncation).to.be.undefined;
         });
+        it('missense mutation', () => {
+            const result = parse('p.F12G');
+            expect(result.prefix).to.equal('p');
+            expect(result.type).to.equal(EVENT_SUBTYPE.SUB);
+        });
+        it('errors on genomic style missense', () => {
+            expect(() => { parseContinuous('p', 'G12G>T'); }).to.throw(ParsingError);
+        });
     });
     describe('cytoband variants', () => {
         it('errors because cytoband variant cannot have ins type', () => {
@@ -432,10 +444,15 @@ describe('parse', () => {
 
 
 describe('parse', () => {
-    describe('DNA variants', () => {
-
+    it('error on short string', () => {
+        expect(() => { parse(''); }).to.throw(ParsingError);
     });
-    describe('cds variants', () => {});
+    it('errors on bad prefix', () => {
+        expect(() => { parse('f.G12D'); }).to.throw(ParsingError);
+    });
+    it('errors on missing . delimiter after prefix', () => {
+        expect(() => { parse('pG12D'); }).to.throw(ParsingError);
+    });
     describe('exon variants', () => {
         it('single gene fusion', () => {
             const result = parse('e.fusion(GENE1)(1,3)');

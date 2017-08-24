@@ -1,4 +1,5 @@
 'use strict';
+const data = require('./../../app/repo/cached/data');
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
@@ -10,47 +11,8 @@ const {AttributeError, ControlledVocabularyError} = require('./../../app/repo/er
 const {Feature, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
 const {Position, GenomicPosition} = require('./../../app/repo/position');
 const {PERMISSIONS} = require('./../../app/repo/constants');
-const vocab = require('./../../app/repo/cached/data').vocab;
 
-vocab.statement = {};
 
-vocab.statement.relevance = [
-    {
-        term: 'haploinsufficient',
-        definition: '',
-        conditional: STATEMENT_TYPE.BIOLOGICAL,
-        class: Statement.clsname,
-        property: 'relevance'
-    },
-    {
-        term: 'gain of function',
-        definition: '',
-        conditional: STATEMENT_TYPE.BIOLOGICAL,
-        class: Statement.clsname,
-        property: 'relevance'
-    },
-    {
-        term: 'loss of function',
-        definition: '',
-        conditional: STATEMENT_TYPE.BIOLOGICAL,
-        class: Statement.clsname,
-        property: 'relevance'
-    },
-    {
-        term: 'switch of function',
-        definition: '',
-        conditional: STATEMENT_TYPE.BIOLOGICAL,
-        class: Statement.clsname,
-        property: 'relevance'
-    },
-    {
-        term: 'sensitivity',
-        definition: '',
-        conditional: STATEMENT_TYPE.THERAPEUTIC,
-        class: Statement.clsname,
-        property: 'relevance'
-    }
-];
 
 describe('statement module', () => {
     let server, db, user;
@@ -80,6 +42,45 @@ describe('statement module', () => {
                 return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
             }).then((result) => {
                 user = result.content.username;
+                // dummy cache data
+                data.vocab.statement = {};
+                data.vocab.statement.relevance = [
+                    {
+                        term: 'haploinsufficient',
+                        definition: '',
+                        conditional: STATEMENT_TYPE.BIOLOGICAL,
+                        class: Statement.clsname,
+                        property: 'relevance'
+                    },
+                    {
+                        term: 'gain of function',
+                        definition: '',
+                        conditional: STATEMENT_TYPE.BIOLOGICAL,
+                        class: Statement.clsname,
+                        property: 'relevance'
+                    },
+                    {
+                        term: 'loss of function',
+                        definition: '',
+                        conditional: STATEMENT_TYPE.BIOLOGICAL,
+                        class: Statement.clsname,
+                        property: 'relevance'
+                    },
+                    {
+                        term: 'switch of function',
+                        definition: '',
+                        conditional: STATEMENT_TYPE.BIOLOGICAL,
+                        class: Statement.clsname,
+                        property: 'relevance'
+                    },
+                    {
+                        term: 'sensitivity',
+                        definition: '',
+                        conditional: STATEMENT_TYPE.THERAPEUTIC,
+                        class: Statement.clsname,
+                        property: 'relevance'
+                    }
+                ];
                 done();
             }).catch((error) => {
                 console.log('error', error);
