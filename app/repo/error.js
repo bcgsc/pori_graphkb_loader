@@ -14,25 +14,25 @@ class ErrorMixin extends Error {
 }
 
 
-class AttributeError extends ErrorMixin {};
+class AttributeError extends ErrorMixin {}
 
 
-class ParsingError extends ErrorMixin {};
+class ParsingError extends ErrorMixin {}
 
 
-class ControlledVocabularyError extends ErrorMixin {}; 
+class ControlledVocabularyError extends ErrorMixin {}
 
 
-class NoResultFoundError extends ErrorMixin {};
+class NoResultFoundError extends ErrorMixin {}
 
 
-class PermissionError extends ErrorMixin {};
+class PermissionError extends ErrorMixin {}
 
 
-class AuthenticationError extends ErrorMixin {};
+class AuthenticationError extends ErrorMixin {}
 
 
-class MultipleResultsFoundError extends ErrorMixin {};
+class MultipleResultsFoundError extends ErrorMixin {}
 
 
 module.exports = {
