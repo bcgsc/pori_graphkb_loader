@@ -1,6 +1,6 @@
 'use strict';
 
-const {Base, KBVertex, KBEdge, Record} = require('./base');
+const {Base, KBVertex, KBEdge} = require('./base');
 const {AttributeError} = require('./error');
 const {Context} = require('./context');
 const Promise = require('bluebird');
@@ -114,7 +114,7 @@ class Therapy extends KBVertex {
 
 class OntologySubClassOf extends KBEdge {
 
-    validateContent(content, ontology) {
+    validateContent(content) {
         const args = super.validateContent(content);
         if (args.in.content.doid == args.out.content.doid || args.in.content.id == args.out.content.id) {
             throw new AttributeError('These two nodes are aliases of each other. No other relationship can be defined.');
@@ -141,7 +141,7 @@ class OntologySubClassOf extends KBEdge {
 
 class OntologyRelatedTo extends KBEdge {
 
-    validateContent(content, ontology) {
+    validateContent(content) {
         const args = super.validateContent(content);
         if (args.in.content.doid == args.out.content.doid || args.in.content.id == args.out.content.id) {
             throw new AttributeError('These two nodes are aliases of each other. No other relationship can be defined.');
@@ -168,7 +168,7 @@ class OntologyRelatedTo extends KBEdge {
 
 class OntologyAliasOf extends KBEdge {
 
-    validateContent(content, ontology) {
+    validateContent(content) {
         const args = super.validateContent(content);
         if (args.in.content.doid !== args.out.content.doid || args.in.content.id !== args.out.content.id) {
             throw new AttributeError('cannot connect diseases with different DOID');
@@ -195,7 +195,7 @@ class OntologyAliasOf extends KBEdge {
 
 class OntologyDeprecatedBy extends KBEdge {
 
-    validateContent(content, ontology) {
+    validateContent(content) {
         const args = super.validateContent(content);
         args.in.content['@class'] = args.in.content['@class'] != undefined ? args.in.content['@class'] : Ontology.clsname;
         args.out.content['@class'] = args.out.content['@class'] != undefined ? args.out.content['@class'] : Ontology.clsname;
