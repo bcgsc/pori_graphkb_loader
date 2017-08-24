@@ -6,10 +6,9 @@ const bodyParser = require('body-parser');
 const conf = require('./../config/db'); // get the database connection configuration
 const routes = require('./routes');
 const app = express();
-const connect = require('./db/connect');
-const repo = connect(conf).then().catch((error) => {
-    console.log('error in connection', error);
-});
+const {connectServer, connectDB} = require('./repo/connect');
+let server, repo, appServer;
+
 
 // set up middleware parser to deal with jsons
 app.use(bodyParser.urlencoded({extended: true}));
@@ -24,32 +23,39 @@ router.use((req, res, next) => {
     next();
 });
 
-routes(router, repo); // second arg here is the DB
+connectServer(conf)
+    .then((result) => {
+        server = result;
+        return connectDB({name: conf.dbName, password: conf.dbPassword, username: conf.dbUsername, server: server});
+    }).then((db) => {
+        repo = db;
+        // start up the server
+        routes(router, repo); // second arg here is the DB
+        
+        // last catch any errors for undefined routes
+        // all actual routes should be defined above
+        app.use((req, res) => {
+            res.status(404);
+            res.send({error: 'Not Found'});
+        });
 
-// last catch any errors for undefined routes
-// all actual routes should be defined above
-app.use((req, res) => {
-    res.status(404);
-    res.send({error: 'Not Found'});
-});
+        appServer = app.listen(port, () => {
+            console.log('server started on port: ' + port);
+        });
+    }).catch((error) => {
+        console.log('error in connection', error);
+    });
 
-// start the server
 
-const appServer = app.listen(port, () => {
-    console.log('server started on port: ' + port);
-});
+
+
 
 // cleanup
 const cleanup = (msg='') => {
     console.log('cleaning up', msg);
     appServer.close();
-    repo.db.close()
-    .then(() => {
-        repo.server.close();
-        process.exit();
-    }).catch(err => {
-        console.log('error in closing the db/server', err);
-    });
+    server.close();
+    process.exit();
 };
 process.on('SIGINT', cleanup);
 process.on('uncaughtException', cleanup);

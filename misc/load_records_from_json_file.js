@@ -3,7 +3,7 @@
 const {Evidence, Publication, Journal, Study, ClinicalTrial, ExternalSource} = require('./../app/repo/evidence');
 const {Review, ReviewAppliesTo} = require('./../app/repo/review');
 const conf = require('./../test/config/db');
-const {connectServer, createDB} = require('./../app/repo/connect');
+const {connectServer, createDB, defaultHeirarchy} = require('./../app/repo/connect');
 const {KBVertex, KBEdge, History, KBUser, KBRole} = require('./../app/repo/base');
 const {Vocab} = require('./../app/repo/vocab');
 const {Target} = require('./../app/repo/target');
@@ -224,21 +224,7 @@ connectServer(conf)
             username: conf.dbUsername,
             password: conf.dbPassword,
             server: server,
-            heirarchy: [
-                [KBRole, History],
-                [KBUser],
-                [KBVertex, KBEdge],
-                [Context],
-                [Evidence, Ontology, Statement, Position, Feature],
-                [   
-                    Disease, Therapy, Target, Range, GenomicPosition, 
-                    ProteinPosition, CodingSequencePosition, CytobandPosition, 
-                    ExonicPosition, Event, Publication, Journal, 
-                    ExternalSource, Study, ClinicalTrial, AppliesTo,
-                    Requires, SupportedBy,
-                ],
-                [PositionalEvent, CategoryEvent]
-            ]
+            heirarchy: defaultHeirarchy
         });
     }).then((result) => {
         db = result;

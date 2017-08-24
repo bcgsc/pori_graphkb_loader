@@ -122,6 +122,15 @@ class Record {
         }
         return result;
     }
+    toJSON() {
+        const json = {};
+        for (let key of Object.keys(this.content)) {
+            if (! key.startsWith('in_') && ! key.startsWith('out_')) {
+                json[key] = this.content[key];
+            }
+        }
+        return json;
+    }
 }
 
 /**
