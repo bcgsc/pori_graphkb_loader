@@ -89,27 +89,6 @@ describe('Review schema tests:', () => {
             });
     });
 
-    it('Creating a target record with name and type but with wrong value for name', () => {
-        return Target.createClass(db)
-            .then((targCls) => {
-                return targCls.createRecord({name: 123, type: 'type'}, 'me')
-                    .then((targRec) => {
-                        expect.fail();
-                    }).catch(AttributeError, () => {});
-            });
-    });
-
-    it('Creating a target record with name and type but with wrong value for type', () => {
-        return Target.createClass(db)
-            .then((targCls) => {
-                return targCls.createRecord({name: 'name', type: true}, 'me')
-                    .then((targRec) => {
-                        console.log(targRec)
-                        expect.fail();
-                    }).catch(AttributeError, () => {});
-            });
-    });
-
     it('Creating target records with duplicate names', () => {
         return Target.createClass(db)
             .then((targCls) => {
