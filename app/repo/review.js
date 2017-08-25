@@ -1,5 +1,5 @@
-const {Base, KBVertex, KBEdge, Record, KBUser} = require('./base');
-const {AttributeError, NoResultFoundError, ControlledVocabularyError} = require('./error');
+const {Base, KBVertex, KBEdge} = require('./base');
+const {AttributeError} = require('./error');
 const {Context} = require('./context');
 const {Statement} = require('./statement');
 const Promise = require('bluebird');
