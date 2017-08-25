@@ -1,18 +1,13 @@
 'use strict';
-const {Statement, AppliesTo, AsComparedTo, Requires, STATEMENT_TYPE} = require('./../../app/repo/statement');
+const {Statement, STATEMENT_TYPE} = require('./../../app/repo/statement');
 const {Review, ReviewAppliesTo} = require('./../../app/repo/review');
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
 const {KBVertex, KBEdge, History, KBUser, KBRole} = require('./../../app/repo/base');
-const {Vocab} = require('./../../app/repo/vocab');
 const vocab = require('./../../app/repo/cached/data').vocab;
-const {Feature, FeatureDeprecatedBy, FeatureAliasOf, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
-const cache = require('./../../app/repo/cached/data');
-const {ControlledVocabularyError, AttributeError} = require('./../../app/repo/error');
+const {AttributeError} = require('./../../app/repo/error');
 const {Context} = require('./../../app/repo/context');
-const Promise = require('bluebird');
-const {expectDuplicateKeyError} = require('./orientdb_errors');
 const {PERMISSIONS} = require('./../../app/repo/constants');
 
 vocab.statement = {};
@@ -28,7 +23,7 @@ vocab.statement.relevance = [
 ];
 
 describe('Review schema tests:', () => {
-    let server, db, user, userRec;
+    let server, db, userRec;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
@@ -51,11 +46,10 @@ describe('Review schema tests:', () => {
                 db = result;
             }).then(() => {
                 return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
-            }).then((role) => {
+            }).then(() => {
                 return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
             }).then((result) => {
                 userRec = result;
-                user = result.content;
             }).then(() => {
                 done();
             }).catch((error) => {
@@ -66,7 +60,7 @@ describe('Review schema tests:', () => {
 
     it('Review.createClass', () => {
         return Statement.createClass(db)
-            .then((stmntCls) => {
+            .then(() => {
                 return Review.createClass(db)
                     .then((revCls) => {
                         expect(revCls).to.equal(db.models.review);
@@ -124,7 +118,7 @@ describe('Review schema tests:', () => {
         });
 
         describe('ReviewAppliesTo Edge', () => {
-            let statementRecm, revRecord;
+            let revRecord;
             beforeEach((done) => {
                 return Review.createClass(db)
                 .then((revCls) => {
@@ -153,7 +147,7 @@ describe('Review schema tests:', () => {
                 return ReviewAppliesTo.createClass(db)
                 .then((revATClass) => {
                     return revATClass.createRecord({out: revRecord, in: userRec}, 'me')
-                        .then((revATRec) => {
+                        .then(() => {
                             expect.fail();
                         }).catch(AttributeError, () => {});
                 });
@@ -163,7 +157,7 @@ describe('Review schema tests:', () => {
                 return ReviewAppliesTo.createClass(db)
                 .then((revATClass) => {
                     return revATClass.createRecord({out: userRec, in: statementRec}, 'me')
-                        .then((revATRec) => {
+                        .then(() => {
                             expect.fail();
                         }).catch(AttributeError, () => {});
                 });
@@ -173,7 +167,7 @@ describe('Review schema tests:', () => {
                 return ReviewAppliesTo.createClass(db)
                 .then((revATClass) => {
                     return revATClass.createRecord({out: statementRec, in: statementRec}, 'me')
-                        .then((revATRec) => {
+                        .then(() => {
                             expect.fail();
                         }).catch(AttributeError, () => {});
                 });
