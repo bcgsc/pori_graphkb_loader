@@ -3,7 +3,7 @@ const data = require('./../../app/repo/cached/data');
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
-const {KBVertex, KBEdge, Base, Record, History, KBRole, KBUser} = require('./../../app/repo/base');
+const {KBVertex, KBEdge, Record, History, KBRole, KBUser} = require('./../../app/repo/base');
 const {Context} = require('./../../app/repo/context');
 const {Statement, AppliesTo, AsComparedTo, Requires, STATEMENT_TYPE} = require('./../../app/repo/statement');
 const Promise = require('bluebird');
@@ -38,7 +38,7 @@ describe('statement module', () => {
                 db = result;
             }).then(() => {
                 return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
-            }).then((role) => {
+            }).then(() => {
                 return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
             }).then((result) => {
                 user = result.content.username;

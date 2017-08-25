@@ -3,7 +3,7 @@ const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
 const {PERMISSIONS} = require('./../../app/repo/constants');
-const {Base, History, KBVertex, Record, KBEdge, KBUser, KBRole} = require('./../../app/repo/base');
+const {Base, History, KBVertex, KBEdge, KBUser, KBRole} = require('./../../app/repo/base');
 const oError = require('./orientdb_errors');
 const Promise = require('bluebird');
 
@@ -50,7 +50,7 @@ describe('base module', () => {
                 db = result;
             }).then(() => {
                 return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL}});
-            }).then((role) => {
+            }).then(() => {
                 return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
             }).then((result) => {
                 user = result;

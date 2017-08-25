@@ -2,7 +2,7 @@
 const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
-const {KBVertex, KBEdge, Base, Record, History, KBRole, KBUser} = require('./../../app/repo/base');
+const {KBVertex, KBEdge, Record, History, KBRole, KBUser} = require('./../../app/repo/base');
 const {CategoryEvent, PositionalEvent, Event, EVENT_TYPE, EVENT_SUBTYPE, ZYGOSITY} = require('./../../app/repo/event');
 const {Feature, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
 const {Position, CodingSequencePosition, GenomicPosition, ProteinPosition} = require('./../../app/repo/position');
@@ -32,7 +32,7 @@ cache.vocab[Event.clsname] = {'term': [
 
 
 describe('Event schema tests:', () => {
-    let server, db, primary_feature, secondary_feature, user;
+    let server, db, primary_feature, user;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
@@ -63,7 +63,7 @@ describe('Event schema tests:', () => {
                 db = result;
             }).then(() => {
                 return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL}});
-            }).then((role) => {
+            }).then(() => {
                 return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
             }).then((result) => {
                 user = result.content.username;

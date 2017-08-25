@@ -34,7 +34,7 @@ describe('Vocab schema tests:', () => {
             }).then((result) => {
                 db = result;
                 return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL}});
-            }).then((role) => {
+            }).then(() => {
                 return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
             }).then(() => {
                 done();
@@ -196,7 +196,7 @@ describe('Vocab schema tests:', () => {
         it('cache: delete something', () => {
             return Promise.all([
                 vocabInstance.createRecord({class: 'feature', property: 'name', term: 'protein', definition: ''}, user),
-            ]).then((rec) => {
+            ]).then(() => {
                 expect(cache.vocab).to.have.property('feature');
                 expect(cache.vocab.feature).to.have.property('name');
                 expect(cache.vocab.feature.name.length).to.equal(1);
