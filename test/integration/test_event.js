@@ -135,7 +135,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on same start/end positions', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 1}, end: {pos: 1},  absence_of: true, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INS
+                start: {pos: 1}, end: {pos: 1}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INS
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -143,7 +143,7 @@ describe('Event schema tests:', () => {
         });
         it('errors when event start > end position', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, end: {pos: 1}, absence_of: true, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INS
+                start: {pos: 2}, end: {pos: 1}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INS
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -151,7 +151,7 @@ describe('Event schema tests:', () => {
         });
         it('errors when end is undefined and subtype is insertion', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature, absence_of: true, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INS
+                start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INS
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -159,7 +159,7 @@ describe('Event schema tests:', () => {
         });
         it('allows end to be undefined', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature, absence_of: true, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.DUP
+                start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.DUP
             }, user, GenomicPosition.clsname).then((rec) => {
                 expect(rec).to.not.have.property('end');
                 expect(rec).to.not.have.property('secondary_feature');
@@ -167,7 +167,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on start undefined', () => {
             return db.models.PositionalEvent.createRecord({
-                end: {pos: 2}, primary_feature: primary_feature, absence_of: true, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.DUP
+                end: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.DUP
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -175,7 +175,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on start null', () => {
             return db.models.PositionalEvent.createRecord({
-                start: null, end: {pos: 2},  absence_of: true, absence_of: true, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.DUP
+                start: null, end: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.DUP
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -183,7 +183,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on invalid event subtype', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature, absence_of: true, type: EVENT_TYPE.MUT, subtype: 'invalid'
+                start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: 'invalid'
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -191,7 +191,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on null subtype', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature, absence_of: true, type: EVENT_TYPE.MUT, subtype: null
+                start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: null
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -199,7 +199,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on subtype undefined', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature, absence_of: true, type: EVENT_TYPE.MUT
+                start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -207,7 +207,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on null untemplated_seq', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature, absence_of: true, type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.INDEL, untemplated_seq: null
+                start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.INDEL, untemplated_seq: null
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -215,7 +215,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on null reference_seq', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature, absence_of: true, type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.INDEL, reference_seq: null
+                start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.INDEL, reference_seq: null
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -223,7 +223,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on primary_feature undefined', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, type: EVENT_TYPE.MUT,  absence_of: true, subtype: EVENT_TYPE.INDEL
+                start: {pos: 2}, type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.INDEL
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -231,7 +231,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on untemplated_seq for subtype=deletion', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature,  absence_of: true,
+                start: {pos: 2}, primary_feature: primary_feature,
                 type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.DEL, untemplated_seq: 'A'
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
@@ -241,7 +241,7 @@ describe('Event schema tests:', () => {
         it('errors on reference_seq for subtype=insertion', () => {
             return db.models.PositionalEvent.createRecord({
                 start: {pos: 2}, end: {pos: 3}, 
-                primary_feature: primary_feature,  absence_of: true, 
+                primary_feature: primary_feature, 
                 type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INS, reference_seq: 'A'
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
@@ -250,7 +250,7 @@ describe('Event schema tests:', () => {
         });
         it('allows untemplated_seq for insertion', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, end: {pos: 3}, primary_feature: primary_feature, absence_of: true,
+                start: {pos: 2}, end: {pos: 3}, primary_feature: primary_feature,
                 type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INS, untemplated_seq: 'A'
             }, user, GenomicPosition.clsname).then((rec) => {
                 expect(rec.content).to.have.property('untemplated_seq', 'A');
@@ -258,14 +258,14 @@ describe('Event schema tests:', () => {
         });
         it('allows reference_seq for deletion', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT,  absence_of: true, subtype: EVENT_SUBTYPE.DEL, reference_seq: 'A'
+                start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.DEL, reference_seq: 'A'
             }, user, GenomicPosition.clsname).then((rec) => {
                 expect(rec.content).to.have.property('reference_seq', 'A');
             });
         });
         it('allows collection_method', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, collection_method: 'mass spec', primary_feature: primary_feature, type: EVENT_TYPE.MUT,  absence_of: true, subtype: EVENT_SUBTYPE.DEL, reference_seq: 'A'
+                start: {pos: 2}, collection_method: 'mass spec', primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.DEL, reference_seq: 'A'
             }, user, GenomicPosition.clsname).then((rec) => {
                 expect(rec.content).to.have.property('reference_seq', 'A');
             });
@@ -273,7 +273,7 @@ describe('Event schema tests:', () => {
         it('allows untemplated_seq and reference_seq for indel', () => {
             return db.models.PositionalEvent.createRecord({
                 start: {pos: 2}, primary_feature: primary_feature, 
-                type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INDEL,  absence_of: true, reference_seq: 'A', untemplated_seq: 'CC'
+                type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INDEL, reference_seq: 'A', untemplated_seq: 'CC'
             }, user, GenomicPosition.clsname).then((rec) => {
                 expect(rec.content).to.have.property('untemplated_seq', 'CC');
                 expect(rec.content).to.have.property('reference_seq', 'A');
@@ -281,7 +281,7 @@ describe('Event schema tests:', () => {
         });
         it('allows untemplated_seq and reference_seq for sub', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature,  absence_of: true,
+                start: {pos: 2}, primary_feature: primary_feature,
                 type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.SUB, reference_seq: 'A', untemplated_seq: 'C'
             }, user, GenomicPosition.clsname).then((rec) => {
                 expect(rec.content).to.have.property('untemplated_seq', 'C');
@@ -290,7 +290,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on substitution where reference_seq is not length 1', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature, absence_of: true, type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.SUB, reference_seq: 'AA'
+                start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.SUB, reference_seq: 'AA'
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -298,7 +298,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on substitution where untemplated_seq is not length 1', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature,  absence_of: true, type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.SUB, untemplated_seq: 'AA'
+                start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.SUB, untemplated_seq: 'AA'
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
                 expect.fail();
@@ -306,7 +306,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on substitution where untemplated_seq = reference_seq if not protein', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature,  absence_of: true,
+                start: {pos: 2}, primary_feature: primary_feature,
                 type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.SUB, untemplated_seq: 'A', reference_seq: 'A'
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
@@ -315,7 +315,7 @@ describe('Event schema tests:', () => {
         });
         it('errors on indel where the length of untemplated_seq and reference_seq is 1', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature,  absence_of: true,
+                start: {pos: 2}, primary_feature: primary_feature,
                 type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.SUB, untemplated_seq: 'A', reference_seq: 'A'
             }, user, GenomicPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
@@ -324,7 +324,7 @@ describe('Event schema tests:', () => {
         });
         it('errors if termination_aa is specified and the subtype is not frameshift', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature,  absence_of: true,
+                start: {pos: 2}, primary_feature: primary_feature,
                 type: EVENT_TYPE.MUT, subtype: EVENT_TYPE.SUB, untemplated_seq: 'A', reference_seq: 'A', termination_aa: 1
             }, user, ProteinPosition.clsname).then((rec) => {
                 console.log('should have failed:', rec.content);
@@ -333,7 +333,7 @@ describe('Event schema tests:', () => {
         });
         it('allows termination_aa to be specified for frameshifts', () => {
             return db.models.PositionalEvent.createRecord({
-                start: {pos: 2}, primary_feature: primary_feature,  absence_of: true,
+                start: {pos: 2}, primary_feature: primary_feature,
                 type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.FS, reference_seq: 'A', untemplated_seq: 'C', termination_aa: 110
             }, user, ProteinPosition.clsname).then((rec) => {
                 expect(rec.content).to.have.property('untemplated_seq', 'C');
@@ -366,7 +366,7 @@ describe('Event schema tests:', () => {
                 term: 'gain', 
                 type: EVENT_TYPE.CNV, 
                 zygosity: null, 
-                primary_feature: primary_feature, absence_of: true,
+                primary_feature: primary_feature,
             }, user).then((record) => {
                 expect(record).to.be.instanceof(Record);
                 expect(record.content).to.have.property('zygosity', null);
@@ -377,7 +377,7 @@ describe('Event schema tests:', () => {
             return db.models.CategoryEvent.createRecord({
                 term: 'not specified', 
                 type: EVENT_TYPE.CNV, 
-                zygosity: null,  absence_of: true,
+                zygosity: null,
                 primary_feature: primary_feature
             }, user).then((record) => {
                 expect(record).to.be.instanceof(Record);
@@ -390,7 +390,7 @@ describe('Event schema tests:', () => {
                 term: 'not specified', 
                 type: EVENT_TYPE.CNV,
                 collection_method: 'mass spec', 
-                zygosity: null,  absence_of: true,
+                zygosity: null,
                 primary_feature: primary_feature
             }, user).then((record) => {
                 expect(record).to.be.instanceof(Record);
@@ -399,25 +399,25 @@ describe('Event schema tests:', () => {
             });
         });
         it('errors when a term is not specified', () => {
-            return db.models.CategoryEvent.createRecord({type: EVENT_TYPE.RNA,  absence_of: true, primary_feature: primary_feature}, user)
+            return db.models.CategoryEvent.createRecord({type: EVENT_TYPE.RNA, primary_feature: primary_feature}, user)
                 .then(() => {
                     expect.fail('expected error');
                 }).catch(AttributeError, () => {});
         });
         it('errors on null term', () => {
-            return db.models.CategoryEvent.createRecord({type: EVENT_TYPE.RNA, term: null,  absence_of: true, primary_feature: primary_feature}, user)
+            return db.models.CategoryEvent.createRecord({type: EVENT_TYPE.RNA, term: null, primary_feature: primary_feature}, user)
                 .then(() => {
                     expect.fail('expected error');
                 }).catch(ControlledVocabularyError, () => {});
         });
         it('errors on invalid zygosity', () => {
-            return db.models.CategoryEvent.createRecord({term: 'not specified', type: EVENT_TYPE.RNA, zygosity: 'invalid',  absence_of: true, primary_feature: primary_feature}, user)
+            return db.models.CategoryEvent.createRecord({term: 'not specified', type: EVENT_TYPE.RNA, zygosity: 'invalid', primary_feature: primary_feature}, user)
                 .then(() => {
                     expect.fail('expected error');
                 }).catch(ControlledVocabularyError, () => {});
         });
         it('allows null (not specified) zygosity', () => {
-            return db.models.CategoryEvent.createRecord({term: 'not specified', type: EVENT_TYPE.RNA, zygosity: null, absence_of: true, primary_feature: primary_feature}, user)
+            return db.models.CategoryEvent.createRecord({term: 'not specified', type: EVENT_TYPE.RNA, zygosity: null, primary_feature: primary_feature}, user)
                 .then((record) => {
                     expect(record).to.be.instanceof(Record);
                     expect(record.content).to.have.property('zygosity', null);
@@ -425,7 +425,7 @@ describe('Event schema tests:', () => {
                 });
         });
         it('defaults no zygosity to null and germline to null', () => {
-            return db.models.CategoryEvent.createRecord({term: 'not specified', type: EVENT_TYPE.RNA,  absence_of: true, absence_of: true, primary_feature: primary_feature}, user)
+            return db.models.CategoryEvent.createRecord({term: 'not specified', type: EVENT_TYPE.RNA, primary_feature: primary_feature}, user)
                 .then((record) => {
                     expect(record).to.be.instanceof(Record);
                     expect(record.content).to.have.property('term', 'not specified');
@@ -435,19 +435,19 @@ describe('Event schema tests:', () => {
                 });
         });
         it('errors on invalid event type', () => {
-            return db.models.CategoryEvent.createRecord({term: 'not specified', type: 'invalid',  absence_of: true, primary_feature: primary_feature}, user)
+            return db.models.CategoryEvent.createRecord({term: 'not specified', type: 'invalid', primary_feature: primary_feature}, user)
                 .then(() => {
                     expect.fail('expected error');
                 }).catch(ControlledVocabularyError, () => {});
         });
         it('errors on no event type', () => {
-            return db.models.CategoryEvent.createRecord({term: 'not specified',  absence_of: true, primary_feature: primary_feature}, user)
+            return db.models.CategoryEvent.createRecord({term: 'not specified', primary_feature: primary_feature}, user)
                 .then(() => {
                     expect.fail('expected error');
                 }).catch(ControlledVocabularyError, () => {});
         });
         it('errors on null event type', () => {
-            return db.models.CategoryEvent.createRecord({term: 'not specified', type: null, absence_of: true, primary_feature: primary_feature}, user)
+            return db.models.CategoryEvent.createRecord({term: 'not specified', type: null, primary_feature: primary_feature}, user)
                 .then(() => {
                     expect.fail('expected error');
                 }).catch(ControlledVocabularyError, () => {});
@@ -459,7 +459,7 @@ describe('Event schema tests:', () => {
                 }).catch(AttributeError, () => {});
         });
         it('errors on null primary_feature', () => {
-            return db.models.CategoryEvent.createRecord({term: 'not specified', type: EVENT_TYPE.RNA,  absence_of: true, primary_feature: null}, user)
+            return db.models.CategoryEvent.createRecord({term: 'not specified', type: EVENT_TYPE.RNA, primary_feature: null}, user)
                 .then(() => {
                     expect.fail('expected error');
                 }).catch(AttributeError, () => {});

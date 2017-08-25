@@ -7,7 +7,7 @@ const conf = {
     host: process.env.KB_DB_HOST || 'localhost' ,
     dbPassword: process.env.KB_DB_PASS || 'admin',
     dbUsername: process.env.KB_DB_USER || 'admin',
-    dbName: process.env.KB_DB_NAME || 'test'
+    dbName: process.env.KB_DB_NAME || 'load_testing'
 };
 
 module.exports = conf

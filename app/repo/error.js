@@ -1,30 +1,40 @@
 'use strict';
 
-const errorJSON = function(error) {
-    return {type: error.type, message: error.message};
-};
 
-class AttributeError extends Error {}
-
-
-class ParsingError extends Error {}
-
-
-class ControlledVocabularyError extends Error {} 
-
-
-class NoResultFoundError extends Error {}
+class ErrorMixin extends Error {
+    constructor(message) {
+        super(message);
+        this.message = message;
+        this.stack = (new Error()).stack;
+        this.name = this.constructor.name;
+    }
+    toJSON() {
+        return {message: this.message, name: this.name, stack: this.stack};
+    }
+}
 
 
-class PermissionError extends Error {}
+class AttributeError extends ErrorMixin {}
 
 
-class AuthenticationError extends Error {}
+class ParsingError extends ErrorMixin {}
 
 
-class MultipleResultsFoundError extends Error {}
+class ControlledVocabularyError extends ErrorMixin {}
+
+
+class NoResultFoundError extends ErrorMixin {}
+
+
+class PermissionError extends ErrorMixin {}
+
+
+class AuthenticationError extends ErrorMixin {}
+
+
+class MultipleResultsFoundError extends ErrorMixin {}
 
 
 module.exports = {
-    AttributeError, errorJSON, ParsingError, ControlledVocabularyError, NoResultFoundError, MultipleResultsFoundError, PermissionError, AuthenticationError
+    ErrorMixin, AttributeError, ParsingError, ControlledVocabularyError, NoResultFoundError, MultipleResultsFoundError, PermissionError, AuthenticationError
 };

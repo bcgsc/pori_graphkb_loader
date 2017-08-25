@@ -1,4 +1,24 @@
-const {errorJSON} = require('./../db/error');
+const jc = require('json-cycle');
+const {ErrorMixin} = require('./../repo/error.js');
+
+
+class QueryParameterError extends ErrorMixin {};
+
+
+const validateQueryParams = (inputParams, allowedParams, allowNone=false) => {
+    return new Promise((resolve, reject) => {
+        if (Object.keys(inputParams).length == 0 && ! allowNone) {
+            throw new QueryParameterError('no parameters were specified');
+        } else {
+            for (let key of Object.keys(inputParams)) {
+                if (allowedParams.indexOf(key) < 0) {
+                    throw new QueryParameterError(`invalid parameter '${key}' is not allowed. Allow parameters include: ${allowedParams}`);
+                }
+            }
+        }
+        resolve();
+    });
+};
 
 const add_routes = (router, repo) => {
     // Other route groups could go here, in the future
@@ -79,16 +99,6 @@ const add_routes = (router, repo) => {
 	 *      '403':
 	 *        description: access denied
      */ 
-    router.route('/publication')
-        .get((req, res, next) => {
-            console.log('GET /publication', req.query);
-            repo.model.publication.get(req.query)
-                .then((result) => {
-                    res.json(result);
-                }).catch((err) => {
-                    res.json(errorJSON(err));
-                });
-        });
     /**
      * @swagger
      * /publication/{uuid}:
@@ -121,17 +131,6 @@ const add_routes = (router, repo) => {
      *         '403':
      *           description: access denied
      */
-    router.route('/publication/:id')
-        .get((req, res, next) => {
-            console.log('GET /publication/:id', req.params);
-            repo.model.publication.get_by_id(req.params.id)
-                .then((result) => {
-                    res.send(result);
-                }).catch((error) => {
-                    console.log(error);
-                    res.json(errorJSON(error));
-                });
-        });
     /**
      * @swagger
      * /feature:
@@ -181,6 +180,20 @@ const add_routes = (router, repo) => {
      *         '403':
      *           description: access denied
      */
+    router.route('/feature')
+        .get((req, res, next) => {
+            console.log('GET /feature', req.query);
+            validateQueryParams(req.query, ['source', 'name', 'biotype'])
+                .then(() => {
+                    return repo.models.feature.select(req.query)
+                }).then((result) => {
+                    console.log('query returned', result.length, 'results');
+                    res.json(jc.decycle(result));
+                }).catch((error) => {
+                    console.log('error:', error.name, error.message);
+                    res.json(error);
+                });
+        });
     /**
      * @swagger
      * /feature/{uuid}:
@@ -232,6 +245,18 @@ const add_routes = (router, repo) => {
      *         '403':
      *           description: access denied
      */
+    router.route('/feature/:id')
+        .get((req, res, next) => {
+            console.log('GET /feature/:id', req.params);
+            repo.models.feature.selectExactlyOne({uuid: req.params.id, deleted_at: null})
+                .then((result) => {
+                    console.log('result', result);
+                    res.json(jc.decycle(result.content));
+                }).catch((error) => {
+                    console.log('error:', error.name, error.message);
+                    res.json(error);
+                });
+        });
     /**
      * @swagger
      * /disease:

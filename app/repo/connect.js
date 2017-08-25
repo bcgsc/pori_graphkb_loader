@@ -19,7 +19,9 @@ const {Vocab} = require('./vocab.js');
 
 
 const defaultHeirarchy = [
-    [KBVertex, KBEdge, KBUser, KBRole, History],
+    [KBRole, History],
+    [KBUser],
+    [KBVertex, KBEdge],
     [Position, Context, Evidence, Vocab],
     [
         Range, GenomicPosition, ExonicPosition, CodingSequencePosition, ProteinPosition, CytobandPosition,
@@ -78,9 +80,9 @@ class DB {
         return this.conn.server;
     }
 
-    buildModels(models) {
+    buildModels(models, create) {
         return new Promise((resolve, reject) => {
-            Promise.all(Array.from(models, x => x.createClass(this)))
+            Promise.all(Array.from(models, x => create ? x.createClass(this) : x.loadClass(this)))
                 .then(() => {
                     resolve();
                 }).catch((error) => {
@@ -100,14 +102,14 @@ class DB {
         });
     }
 
-    buildHeirarchyRecursive(heirarchy, depth) {
+    buildHeirarchyRecursive(heirarchy, depth, create=true) {
         return new Promise((resolve, reject) => {
             if (depth >= heirarchy.length) {
                 resolve();
             } else {
-                this.buildModels(heirarchy[depth])
+                this.buildModels(heirarchy[depth], create)
                     .then(() => {
-                        return this.buildHeirarchyRecursive(heirarchy, depth + 1);
+                        return this.buildHeirarchyRecursive(heirarchy, depth + 1, create);
                     }).then(() => {
                         resolve();
                     }).catch((error) => {
@@ -116,8 +118,12 @@ class DB {
             }
         });
     }
-    buildHeirarchy(heirarchy) {
-        return this.buildHeirarchyRecursive(heirarchy, 0);
+    buildHeirarchy(heirarchy, create=true) {
+        return this.buildHeirarchyRecursive(heirarchy, 0, create);
+    }
+
+    loadModels() {
+        return this.buildHeirarchyRecursive(defaultHeirarchy, 0, false);
     }
 }
 
@@ -149,4 +155,24 @@ const createDB = (opt) => {
     });
 };
 
-module.exports = {connectServer, createDB};
+
+const connectDB = (opt) => {
+    return new Promise((resolve, reject) => {
+        for (let param of ['server', 'name', 'username', 'password']) {
+            if (opt[param] === undefined) {
+                throw new AttributeError(`missing required attribute ${param}`);
+            }
+        }
+        const result = new DB(null, opt.name);
+
+        result.conn = opt.server.use({name: opt.name, username: opt.username, password: opt.password});
+        result.loadModels()
+            .then(() => {
+                resolve(result);
+            }).catch((error) => {
+                reject(error);
+            });
+    });
+};
+
+module.exports = {connectServer, createDB, connectDB, defaultHeirarchy};
