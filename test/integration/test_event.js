@@ -32,7 +32,7 @@ cache.vocab[Event.clsname] = {'term': [
 
 
 describe('Event schema tests:', () => {
-    let server, db, primary_feature, user;
+    let server, db, primary_feature, secondary_feature, user;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
