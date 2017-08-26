@@ -72,7 +72,9 @@ class Publication extends KBVertex {
             content.created_by = true;
             const args = this.validateContent(content);
             let selectJournal = true;
-            if (args.journal === null || args.journal.rid !== undefined) {
+            if (args.journal == undefined) {
+                selectJournal = false;
+            } else if (args.journal.rid !== undefined) {
                 selectJournal = false;
             } else if (args.journal.startsWith('#')) {
                 selectJournal = false;
@@ -92,7 +94,7 @@ class Publication extends KBVertex {
                 args.created_by = user.rid;
                 return this.conn.create(args);
             }).then((rec) => {
-                rec.journal = journal === null ? null : journal.content;
+                rec.journal = journal == undefined ? null : journal.content;
                 rec.user = user.content;
                 resolve(new Record(rec, this.constructor.clsname));
             }).catch((error) => {
