@@ -177,9 +177,16 @@ class Study extends KBVertex {
 
     validateContent(content) {
         const args = Object.assign({year: null}, content);
-        if ((args.year < 1000) || (args.year > currYear('yyyy'))) {
-            throw new AttributeError('study year cannot be in the future');
-        } else if (! args.title && args.url) {
+
+        if (args.year != null) {
+            if ((args.year < 1000) || (args.year > currYear('yyyy'))) {
+                throw new AttributeError('study year cannot be in the future');
+            } 
+        }
+            
+        if (args.title == undefined && args.url == undefined) {
+            throw new AttributeError('no title is provided');
+        } else if (args.title == undefined && args.url != undefined) {
             args.title = args.url;
         }
 
