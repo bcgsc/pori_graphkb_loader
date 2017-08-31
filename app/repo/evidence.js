@@ -233,22 +233,16 @@ class ClinicalTrial extends KBVertex {
     validateContent(content) {
         const args = Object.assign(content);
 
-        if (args.official_title == undefined || args.trial_id == undefined) {
-                throw new AttributeError('mandatory property was not specified');
-        }
-            
-        if (args.official_title == undefined && args.trial_id != undefined) {
-            args.official_title = args.trial_id;
+        if (args.title == undefined && args.trial_id != undefined) {
+            args.title = args.trial_id;
         }
 
-        args.official_title = args.official_title.toLowerCase();
         return super.validateContent(args);
     }
     
     static createClass(db) {
         return new Promise((resolve, reject) => {
             const props = [
-                {name: 'official_title', type: 'string', notNull: true},
                 {name: 'phase', type: 'integer'},
                 {name: 'trial_id', type: 'string'},
                 {name: 'summary', type: 'string'}
@@ -258,13 +252,6 @@ class ClinicalTrial extends KBVertex {
                 type: 'unique',
                 metadata: {ignoreNullValues: true},
                 properties: ['deleted_at','trial_id'],
-                'class':  this.clsname
-            },
-            {
-                name: this.clsname + '.index_official_title',
-                type: 'unique',
-                metadata: {ignoreNullValues: true},
-                properties: ['deleted_at','official_title'],
                 'class':  this.clsname
             }];
             Base.createClass({db, clsname: this.clsname, superClasses: Study.clsname, properties: props, isAbstract: false, indices: idxs})
@@ -294,10 +281,10 @@ class ExternalSource extends KBVertex {
                 {name: 'extraction_date', type: 'string', mandatory: false, notNull: true}
             ];
             const idxs = [{
-                name: this.clsname + '.index_url_date',
+                name: this.clsname + '.index_title',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['deleted_at', 'url', 'extraction_date'],
+                properties: ['title', 'deleted_at'],
                 'class':  this.clsname
             }];
             Base.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})
