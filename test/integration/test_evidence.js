@@ -9,7 +9,8 @@ const {AttributeError, DependencyError} = require('./../../app/repo/error');
 const {Context} = require('./../../app/repo/context');
 const Promise = require('bluebird');
 const {PERMISSIONS} = require('./../../app/repo/constants');
-const oError = require('./orientdb_errors');
+const {expectDuplicateKeyError} = require('./orientdb_errors');
+
 
 describe('Evidence schema tests:', () => {
     let server, db;
@@ -52,16 +53,13 @@ describe('Evidence schema tests:', () => {
                 expect(result.isAbstract).to.be.true;
             });
     });
-    it('create an evidence record (should error)', () => {
-        return Evidence.createClass(db)
-            .catch((error) => {
-                throw new DependencyError(error.message);
-            }).then((result) => {
-                return result.createRecord({}, 'me');
-            }).then(() => {
-                expect.fail('violated constraint should have thrown error');
-            }, (error) => {
-                return oError.expectAbstractClassError(error);
+
+    it('errors adding a record to the abstract evidence class', () => {
+        Evidence.createClass(db)
+            .then(() => {
+                expect.fail('expected an error');
+            }).catch((error) => {
+                console.log(error);
             });
     });
     
@@ -158,6 +156,8 @@ describe('Evidence schema tests:', () => {
                 return pubClass.createRecord({title: 'title', year: 2008}, 'me')
                     .then((result) => {
                         expect(result.content).to.have.property('title');
+                    }).catch((err) => {
+                        console.log(err)
                     });                        
             });
             it('allows links from different publications to one journal', () => {
@@ -187,14 +187,6 @@ describe('Evidence schema tests:', () => {
                         expect(error).to.be.an.instanceof(AttributeError);
                     });
             });
-            it('test wrong pmid value (i.e. string)', () => {
-                return pubClass.createRecord({title: 'title', year: 2016, pmid: '21xd2456'}, 'me')
-                    .then(() => {
-                        expect.fail('invalid attribute. should have thrown error');
-                    }).catch((error) => {
-                        expect(error).to.be.an.instanceof(AttributeError);
-                    });
-            });
             it('errors on creating duplicate active entries', () => {
                 return pubClass.createRecord({title: 'title', year: 2008}, 'me')
                     .then(() => {
@@ -202,7 +194,7 @@ describe('Evidence schema tests:', () => {
                     }).then(() => {
                         expect.fail('expected error');                        
                     }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
+                        return expectDuplicateKeyError(error);
                     });
             });
             it('duplicate entries deleted at the same time', () => {
@@ -214,7 +206,7 @@ describe('Evidence schema tests:', () => {
                             }).then(() => {
                                 expect.fail('violated unqiue constraint. error expected');             
                             }).catch((error) => {
-                                return oError.expectDuplicateKeyError(error);
+                                return expectDuplicateKeyError(error);
                             });
                     });
             });
@@ -228,7 +220,7 @@ describe('Evidence schema tests:', () => {
                                 expect(result.content).to.have.property('year');
                                 expect(result.content).to.have.property('title');             
                             }).catch((error) => {
-                                return oError.expectDuplicateKeyError(error);
+                                return expectDuplicateKeyError(error);
                             });
                     });
             });
@@ -242,7 +234,7 @@ describe('Evidence schema tests:', () => {
                                 expect(result.content).to.have.property('year');
                                 expect(result.content).to.have.property('title');            
                             }).catch((error) => {
-                                return oError.expectDuplicateKeyError(error);
+                                return expectDuplicateKeyError(error);
                             });
                     });
             });
@@ -257,7 +249,7 @@ describe('Evidence schema tests:', () => {
                             });
                     });
             });
-        });
+         });
         
         describe('study constraints', () => {
             let currClass = null;
@@ -282,22 +274,12 @@ describe('Evidence schema tests:', () => {
                         expect(record.content).not.to.have.property('url'); 
                     });
             });
-            it('null for mandatory porps error', () => {
-                return currClass.createRecord({title: 'title'}, 'me')
+            it('null for mandatory porps (i.e. title) error', () => {
+                return currClass.createRecord({year: 2010}, 'me')
                     .then(() => {
                         expect.fail('violated null constraint. expected error');
                     }).catch((error) => {
                         expect(error).to.be.instanceof(AttributeError);
-                    });
-            });
-            it('duplicate active entries', () => {
-                return currClass.createRecord({title: 'title', year: 2008}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({title: 'title', year: 2008}, 'me');
-                    }).then(() => {
-                        expect.fail('expected error');                        
-                    }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
                     });
             });
             it('duplicate entries deleted at the same time', () => {
@@ -307,7 +289,7 @@ describe('Evidence schema tests:', () => {
                     }).then(() => {
                         expect.fail('expected error');                        
                     }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
+                        return expectDuplicateKeyError(error);
                     });
             });
             it('duplicate entries deleted at different times', () => {
@@ -318,7 +300,7 @@ describe('Evidence schema tests:', () => {
                         expect(result.content).to.have.property('title');
                         expect(result.content).to.have.property('year');                       
                     }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
+                        return expectDuplicateKeyError(error);
                     });
             });
             it('duplicate entries one deleted and one active', () => {
@@ -329,7 +311,7 @@ describe('Evidence schema tests:', () => {
                         expect(result.content).to.have.property('title');
                         expect(result.content).to.have.property('year');                       
                     }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
+                        return expectDuplicateKeyError(error);
                     });
             });
             it('future study', () => {
@@ -348,241 +330,271 @@ describe('Evidence schema tests:', () => {
                         expect(error).to.be.an.instanceof(AttributeError);
                     });
             });
-
-            describe('clinicalTrial constraints', () => {
-                let mockClass = null;
-                beforeEach(function(done) {
-                    ClinicalTrial.createClass(db)
-                        .then((clinicalClass) => {
-                            mockClass = clinicalClass;
-                            done();
-                        }).catch((clinicalError) => {
-                            done(clinicalError);
-                        });
-                });
-                it('test mandatory props', () => {
-                    return mockClass.createRecord({title: 'title', year: 2008}, 'me')
-                        .then((clinicalRecord) => {
-                            expect(clinicalRecord.content).to.have.property('title');
-                            expect(clinicalRecord.content).to.have.property('year');
-                            // should not have
-                            expect(clinicalRecord.content).not.to.have.property('phase');
-                            expect(clinicalRecord.content).not.to.have.property('trial_id');
-                            expect(clinicalRecord.content).not.to.have.property('official_title');
-                            expect(clinicalRecord.content).not.to.have.property('summary'); 
-                        });
-                });
-                it('null for mandatory porps error', () => {
-                    return currClass.createRecord({title: 'title'}, 'me')
-                    .then(() => {
-                        expect.fail('violated null constraint. expected error');
-                    }).catch((error) => {
-                        expect(error).to.be.instanceof(AttributeError);
-                    });
-                });
-                it('duplicate props except for phase for active rows', () => {
-                    return mockClass.createRecord({title: 'title', year: 2008, phase: 2, trial_id: 'trial_id', official_title: 'official_title'}, 'me')
-                        .then(() => {
-                            return mockClass.createRecord({title: 'title', year: 2008, phase: 3, trial_id: 'trial_id', official_title: 'official_title'}, 'me');
-                        }).then(() => {
-                            expect.fail('expected error');                        
-                        }).catch((clinicalError) => {
-                            return oError.expectDuplicateKeyError(clinicalError);
-                        });
-                });
-                it('duplicate entries for active rows', () => {
-                    return mockClass.createRecord({title: 'title', year: 2008, phase: 2, trial_id: 'trial_id', official_title: 'official_title'}, 'me')
-                        .then(() => {
-                            return mockClass.createRecord({title: 'title', year: 2008, phase: 2, trial_id: 'trial_id', official_title: 'official_title'}, 'me');
-                        }).then(() => {
-                            expect.fail('expected error');                        
-                        }).catch((clinicalError) => {
-                            return oError.expectDuplicateKeyError(clinicalError);
-                        });
-                });
-                it('duplicate entries for rows deleted at the same time', () => {
-                    return mockClass.createRecord({title: 'title', year: 2008, phase: 2, trial_id: 'trial_id', official_title: 'official_title', deleted_at: 1493760183196}, 'me')
-                        .then(() => {
-                            return mockClass.createRecord({title: 'title', year: 2008, phase: 2, trial_id: 'trial_id', official_title: 'official_title', deleted_at: 1493760183196}, 'me');
-                        }).then(() => {
-                            expect.fail('expected error');                        
-                        }).catch((clinicalError) => {
-                            return oError.expectDuplicateKeyError(clinicalError);
-                        });
-                });
-                it('duplicate entries for rows deleted at different times', () => {
-                    return mockClass.createRecord({title: 'title', year: 2008, phase: 2, trial_id: 'trial_id', official_title: 'official_title', deleted_at: 1493760183196}, 'me')
-                        .then(() => {
-                            return mockClass.createRecord({title: 'title', year: 2008, phase: 2, trial_id: 'trial_id', official_title: 'official_title', deleted_at: 1493760183198}, 'me');
-                        }).then((clinicalResult) => {
-                            expect(clinicalResult.content).to.have.property('title');                       
-                        }).catch((clinicalError) => {
-                            return oError.expectDuplicateKeyError(clinicalError);
-                        });
-                });
-                it('invalid attribute', () => {
-                    return mockClass.createRecord({title: 'title', year: 2008, invalid_attribute: 2}, 'me')
-                        .then(() => {
-                            expect.fail('invalid attribute. error is expected');
-                        }).catch((clinicalError) => {
-                            expect(clinicalError).to.be.an.instanceof(AttributeError);
-                        });
-                });
-            });
-
         });
 
-        describe('journal constraints', () => {
-            let currClass = null;
-            beforeEach(function(done) {
-                Journal.createClass(db)
-                    .then((esClass) => {
-                        currClass = esClass;
-                        done();
-                    }).catch((error) => {
-                        done(error);
-                    });
-            });
-            it('test mandatory props', () => {
-                return currClass.createRecord({name: 'name'}, 'me')
-                    .then((record) => {
-                        expect(record.content).to.have.property('uuid');
-                        expect(record.content).to.have.property('version');
-                        expect(record.content).to.have.property('created_at');
-                        expect(record.content).to.have.property('deleted_at');
-                        expect(record.content).to.have.property('name');
-                    });
-            });
-            it('null for mandatory porps error', () => {
-                return currClass.createRecord({}, 'me')
-                .then(() => {
-                    expect.fail('violated null constraint. expected error');
-                }).catch((error) => {
-                    expect(error).to.be.instanceof(AttributeError);
-                });
-            });
-            it('duplicate active entries', () => {
-                return currClass.createRecord({name: 'Nature'}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({name: 'naturE'}, 'me');
-                    }).then(() => {
-                        expect.fail('violated unique constraint. expected error');                        
-                    }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
-                    });
-            });
-            it('duplicate entries deleted at the same time', () => {
-                return currClass.createRecord({name: 'Nature', deleted_at: 1493760183196}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({name: 'naturE', deleted_at: 1493760183196}, 'me');
-                    }).then(() => {
-                        expect.fail('violated unique constraint. expected error');                        
-                    }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
-                    });
-            });
-            it('duplicate entries deleted at different times', () => {
-                return currClass.createRecord({name: 'Nature', deleted_at: 1493760183196}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({name: 'naturE', deleted_at: 1493760183198}, 'me');
-                    }).then((result) => {
-                        expect(result.content).to.have.property('name');                        
-                    }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
-                    });
-            });
-            it('duplicate entries one active and one deleted', () => {
-                return currClass.createRecord({name: 'Nature'}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({name: 'naturE', deleted_at: 1493760183196}, 'me');
-                    }).then((result) => {
-                        expect(result.content).to.have.property('name');                        
-                    }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
-                    });
-            });
-            it('invalid attribute', () => {
-                return currClass.createRecord({name: 'name', invalid_attribute: 2}, 'me')
-                    .then(() => {
-                        expect.fail('invalid attribute. error is expected');
-                    }).catch((error) => {
-                        expect(error).to.be.an.instanceof(AttributeError);
-                    });
-            });
-        });
+            // Take this one step back and add study class before adding a clinical Trial class
 
-        describe('externalSources constraints', () => {
-            let currClass = null;
+        describe('clinicalTrial constraints', () => {
+            let mockClass = null;
             beforeEach(function(done) {
-                ExternalSource.createClass(db)
-                    .then((esClass) => {
-                        currClass = esClass;
-                        done();
-                    }).catch((error) => {
-                        done(error);
-                    });
+                 Study.createClass(db)
+                    .then((studyClass) => {
+                        ClinicalTrial.createClass(db)
+                            .then((clinicalClass) => {
+                                mockClass = clinicalClass;
+                                done();
+                            }).catch((clinicalError) => {
+                                done(clinicalError);
+                            });
+                        });
             });
             it('test mandatory props', () => {
-                return currClass.createRecord({url: 'url', extraction_date: moment().unix()}, 'me')
-                    .then((record) => {
-                        expect(record.content).to.have.property('uuid');
-                        expect(record.content).to.have.property('version');
-                        expect(record.content).to.have.property('created_at');
-                        expect(record.content).to.have.property('deleted_at');
-                        expect(record.content).to.have.property('url');
-                        expect(record.content).to.have.property('extraction_date');
+                return mockClass.createRecord({official_title: 'title', trial_id: 'trial_id', title: 'title', year: 2008}, 'me')
+                    .then((clinicalRecord) => {
+                        expect(clinicalRecord.content).to.have.property('official_title');
+                        expect(clinicalRecord.content).to.have.property('trial_id');
+                        expect(clinicalRecord.content).to.have.property('title');
+                        expect(clinicalRecord.content).to.have.property('year');
                         // should not have
-                        expect(record).to.not.have.property('title');
+                        expect(clinicalRecord.content).not.to.have.property('phase');
+                        expect(clinicalRecord.content).not.to.have.property('summary'); 
                     });
             });
-            it('null for mandatory porps error', () => {
-                return currClass.createRecord({url: 'url'}, 'me')
+
+            it('errors when one or more mandatory porps are not provided', () => {
+                return mockClass.createRecord({title: 'title', year: 2008, phase: 1}, 'me')
                 .then(() => {
                     expect.fail('violated null constraint. expected error');
                 }).catch((error) => {
                     expect(error).to.be.instanceof(AttributeError);
                 });
             });
-            it('duplicate entries for active records', () => {
-                return currClass.createRecord({url: 'url', extraction_date: 'extraction_date'}, 'me')
+
+            it('errors when trial_id is not provided', () => {
+                return mockClass.createRecord({title: 'title', year: 2008, phase: 1, official_title: 'title'}, 'me')
+                .then(() => {
+                    expect.fail('violated null constraint. expected error');
+                }).catch((error) => {
+                    expect(error).to.be.instanceof(AttributeError);
+                });
+            });
+
+            it('allows trial_id to be used when official title is not provided', () => {
+                return mockClass.createRecord({title: 'title', year: 2008, phase: 1, trial_id: 'trial_id'}, 'me')
+                .then(() => {
+                    expect.fail('violated null constraint. expected error');
+                }).catch((error) => {
+                    expect(error).to.be.instanceof(AttributeError);
+                });
+            });
+
+            it('errors on duplicate active rows', () => {
+                const trial_entry = {official_title: 'title', phase: 1, trial_id: 'trial_id', title: 'title', year: 2008, deleted_at: 1493760183196}                    
+                return mockClass.createRecord(trial_entry, 'me')
                     .then(() => {
-                        return currClass.createRecord({url: 'url', extraction_date: 'extraction_date'}, 'me');
-                    }).then(() => {
-                        expect.fail('violated unique constraint. expected error');
+                        return mockClass.createRecord(trial_entry, 'me')
+                        }).then(() => {
+                            expect.fail('expected an error');
+                        }).catch((error) => {
+                            expectDuplicateKeyError(error);
+                        });
+            });
+
+            it('duplicate active trials in different phases', () => {
+                const first_trial_entry = {official_title: 'title', phase: 1, trial_id: 'trial_id', title: 'title', year: 2008}
+                const second_trial_entry = {official_title: 'title', phase: 2, trial_id: 'trial_id', title: 'title', year: 2008}
+                return mockClass.createRecord(first_trial_entry, 'me')
+                    .then(() => {
+                        return mockClass.createRecord(second_trial_entry, 'me');
+                    }, (clinicalRecord) => {
+                        expect.fail('expected an error');
                     }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
+                        expectDuplicateKeyError(error);
                     });
             });
+
             it('duplicate entries for rows deleted at the same time', () => {
-                return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', deleted_at: 1493760183196}, 'me')
+                return mockClass.createRecord({official_title: 'title', phase: 2, trial_id: 'trial_id', deleted_at: 1493760183196, title: 'title', year: 2008}, 'me')
                     .then(() => {
-                        return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', deleted_at: 1493760183196}, 'me');
+                        return mockClass.createRecord({official_title: 'title', phase: 2, trial_id: 'trial_id', deleted_at: 1493760183196, title: 'title', year: 2008}, 'me');
                     }).then(() => {
-                        expect.fail('violated unique constraint. expected error');                        
-                    }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
+                        expect.fail('expected error');                        
+                    }).catch((clinicalError) => {
+                        return expectDuplicateKeyError(clinicalError);
                     });
             });
-            it('duplicate entries for deleted rows', () => {
-                return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', deleted_at: 1493760183196}, 'me')
+            it('duplicate entries for rows deleted at different times', () => {
+                return mockClass.createRecord({official_title: 'title', phase: 2, trial_id: 'trial_id', deleted_at: 1493760183196, title: 'title', year: 2008}, 'me')
                     .then(() => {
-                        return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', deleted_at: 1493760183198}, 'me');
-                    }).then((result) => {
-                        expect(result.content).to.have.property('url');
-                        expect(result.content).to.have.property('extraction_date');                        
-                    }).catch((error) => {
-                        return oError.expectDuplicateKeyError(error);
+                        return mockClass.createRecord({official_title: 'title', phase: 2, trial_id: 'trial_id', deleted_at: 1493760183198, title: 'title', year: 2008}, 'me');
+                    }).then((clinicalResult) => {
+                        expect(clinicalResult.content).to.have.property('official_title');                       
+                    }).catch((clinicalError) => {
+                        return expectDuplicateKeyError(clinicalError);
                     });
             });
             it('invalid attribute', () => {
-                return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', invalid_attribute: 2}, 'me')
+                return mockClass.createRecord({official_title: 'title', invalid_attribute: 2, title: 'title', year: 2008}, 'me')
                     .then(() => {
                         expect.fail('invalid attribute. error is expected');
-                    }).catch((error) => {
-                        expect(error).to.be.an.instanceof(AttributeError);
+                    }).catch((clinicalError) => {
+                        expect(clinicalError).to.be.an.instanceof(AttributeError);
                     });
             });
         });
+
+
+        // describe('journal constraints', () => {
+        //     let currClass = null;
+        //     beforeEach(function(done) {
+        //         Journal.createClass(db)
+        //             .then((esClass) => {
+        //                 currClass = esClass;
+        //                 done();
+        //             }).catch((error) => {
+        //                 done(error);
+        //             });
+        //     });
+        //     it('test mandatory props', () => {
+        //         return currClass.createRecord({name: 'name'}, 'me')
+        //             .then((record) => {
+        //                 expect(record.content).to.have.property('uuid');
+        //                 expect(record.content).to.have.property('version');
+        //                 expect(record.content).to.have.property('created_at');
+        //                 expect(record.content).to.have.property('deleted_at');
+        //                 expect(record.content).to.have.property('name');
+        //             });
+        //     });
+        //     it('null for mandatory porps error', () => {
+        //         return currClass.createRecord({}, 'me')
+        //         .then(() => {
+        //             expect.fail('violated null constraint. expected error');
+        //         }).catch((error) => {
+        //             expect(error).to.be.instanceof(AttributeError);
+        //         });
+        //     });
+        //     it('duplicate active entries', () => {
+        //         return currClass.createRecord({name: 'Nature'}, 'me')
+        //             .then(() => {
+        //                 return currClass.createRecord({name: 'naturE'}, 'me');
+        //             }).then(() => {
+        //                 expect.fail('violated unique constraint. expected error');                        
+        //             }).catch((error) => {
+        //                 return expectDuplicateKeyError(error);
+        //             });
+        //     });
+        //     it('duplicate entries deleted at the same time', () => {
+        //         return currClass.createRecord({name: 'Nature', deleted_at: 1493760183196}, 'me')
+        //             .then(() => {
+        //                 return currClass.createRecord({name: 'naturE', deleted_at: 1493760183196}, 'me');
+        //             }).then(() => {
+        //                 expect.fail('violated unique constraint. expected error');                        
+        //             }).catch((error) => {
+        //                 return expectDuplicateKeyError(error);
+        //             });
+        //     });
+        //     it('duplicate entries deleted at different times', () => {
+        //         return currClass.createRecord({name: 'Nature', deleted_at: 1493760183196}, 'me')
+        //             .then(() => {
+        //                 return currClass.createRecord({name: 'naturE', deleted_at: 1493760183198}, 'me');
+        //             }).then((result) => {
+        //                 expect(result.content).to.have.property('name');                        
+        //             }).catch((error) => {
+        //                 return expectDuplicateKeyError(error);
+        //             });
+        //     });
+        //     it('duplicate entries one active and one deleted', () => {
+        //         return currClass.createRecord({name: 'Nature'}, 'me')
+        //             .then(() => {
+        //                 return currClass.createRecord({name: 'naturE', deleted_at: 1493760183196}, 'me');
+        //             }).then((result) => {
+        //                 expect(result.content).to.have.property('name');                        
+        //             }).catch((error) => {
+        //                 return expectDuplicateKeyError(error);
+        //             });
+        //     });
+        //     it('invalid attribute', () => {
+        //         return currClass.createRecord({name: 'name', invalid_attribute: 2}, 'me')
+        //             .then(() => {
+        //                 expect.fail('invalid attribute. error is expected');
+        //             }).catch((error) => {
+        //                 expect(error).to.be.an.instanceof(AttributeError);
+        //             });
+        //     });
+        // });
+
+        // describe('externalSources constraints', () => {
+        //     let currClass = null;
+        //     beforeEach(function(done) {
+        //         ExternalSource.createClass(db)
+        //             .then((esClass) => {
+        //                 currClass = esClass;
+        //                 done();
+        //             }).catch((error) => {
+        //                 done(error);
+        //             });
+        //     });
+        //     it('test mandatory props', () => {
+        //         return currClass.createRecord({url: 'url', extraction_date: moment().unix()}, 'me')
+        //             .then((record) => {
+        //                 expect(record.content).to.have.property('uuid');
+        //                 expect(record.content).to.have.property('version');
+        //                 expect(record.content).to.have.property('created_at');
+        //                 expect(record.content).to.have.property('deleted_at');
+        //                 expect(record.content).to.have.property('url');
+        //                 expect(record.content).to.have.property('extraction_date');
+        //                 // should not have
+        //                 expect(record).to.not.have.property('title');
+        //             });
+        //     });
+        //     it('null for mandatory porps error', () => {
+        //         return currClass.createRecord({url: 'url'}, 'me')
+        //         .then(() => {
+        //             expect.fail('violated null constraint. expected error');
+        //         }).catch((error) => {
+        //             expect(error).to.be.instanceof(AttributeError);
+        //         });
+        //     });
+        //     it('duplicate entries for active records', () => {
+        //         return currClass.createRecord({url: 'url', extraction_date: 'extraction_date'}, 'me')
+        //             .then(() => {
+        //                 return currClass.createRecord({url: 'url', extraction_date: 'extraction_date'}, 'me');
+        //             }).then(() => {
+        //                 expect.fail('violated unique constraint. expected error');
+        //             }).catch((error) => {
+        //                 return expectDuplicateKeyError(error);
+        //             });
+        //     });
+        //     it('duplicate entries for rows deleted at the same time', () => {
+        //         return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', deleted_at: 1493760183196}, 'me')
+        //             .then(() => {
+        //                 return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', deleted_at: 1493760183196}, 'me');
+        //             }).then(() => {
+        //                 expect.fail('violated unique constraint. expected error');                        
+        //             }).catch((error) => {
+        //                 return expectDuplicateKeyError(error);
+        //             });
+        //     });
+        //     it('duplicate entries for deleted rows', () => {
+        //         return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', deleted_at: 1493760183196}, 'me')
+        //             .then(() => {
+        //                 return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', deleted_at: 1493760183198}, 'me');
+        //             }).then((result) => {
+        //                 expect(result.content).to.have.property('url');
+        //                 expect(result.content).to.have.property('extraction_date');                        
+        //             }).catch((error) => {
+        //                 return expectDuplicateKeyError(error);
+        //             });
+        //     });
+        //     it('invalid attribute', () => {
+        //         return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', invalid_attribute: 2}, 'me')
+        //             .then(() => {
+        //                 expect.fail('invalid attribute. error is expected');
+        //             }).catch((error) => {
+        //                 expect(error).to.be.an.instanceof(AttributeError);
+        //             });
+        //     });
+        // });
 
     });
 

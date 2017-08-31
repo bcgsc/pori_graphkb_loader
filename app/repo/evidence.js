@@ -229,6 +229,21 @@ class Study extends KBVertex {
  * @extends KBVertex
  */
 class ClinicalTrial extends KBVertex {
+
+    validateContent(content) {
+        const args = Object.assign(content);
+
+        if (args.official_title == undefined || args.trial_id == undefined) {
+                throw new AttributeError('mandatory property was not specified');
+        }
+            
+        if (args.official_title == undefined && args.trial_id != undefined) {
+            args.official_title = args.trial_id;
+        }
+
+        args.official_title = args.official_title.toLowerCase();
+        return super.validateContent(args);
+    }
     
     static createClass(db) {
         return new Promise((resolve, reject) => {
