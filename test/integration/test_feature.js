@@ -3,10 +3,8 @@ const {expect} = require('chai');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
 const {KBVertex, KBEdge, History, KBUser, KBRole} = require('./../../app/repo/base');
-const {Vocab} = require('./../../app/repo/vocab');
 const {Feature, FeatureDeprecatedBy, FeatureAliasOf, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
-const cache = require('./../../app/repo/cached/data');
-const {ControlledVocabularyError, AttributeError} = require('./../../app/repo/error');
+const {AttributeError} = require('./../../app/repo/error');
 const {Context} = require('./../../app/repo/context');
 const Promise = require('bluebird');
 const {expectDuplicateKeyError} = require('./orientdb_errors');
@@ -38,7 +36,7 @@ describe('Feature schema tests:', () => {
                 db = result;
             }).then(() => {
                 return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
-            }).then((role) => {
+            }).then(() => {
                 return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
             }).then((result) => {
                 user = result;
@@ -69,7 +67,7 @@ describe('Feature schema tests:', () => {
         it('errors on active name not unique within source/version', () => {
             const entry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: null};
             return db.models.Feature.createRecord(entry, user)
-                .then((record) => {
+                .then(() => {
                     return db.models.Feature.createRecord(entry, user);
                 }, (error) => {
                     console.log(error);
@@ -88,7 +86,7 @@ describe('Feature schema tests:', () => {
                 .then((record) => {
                     expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
                     return db.models.Feature.createRecord(secondEntry, user);
-                }, (error) => {
+                }, () => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
                     expect(record2.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
@@ -101,7 +99,7 @@ describe('Feature schema tests:', () => {
                     expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
                     record.content.source_version = 1;
                     return db.models.Feature.updateRecord(record, user);
-                }, (error) => {
+                }, () => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
                     expect(record2.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
@@ -114,7 +112,7 @@ describe('Feature schema tests:', () => {
                 .then((record) => {
                     expect(record.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
                     return db.models.Feature.createRecord(secondEntry, user);
-                }, (error) => {
+                }, () => {
                     expect.fail('failed on initial record creation');
                 }).then((record2) => {
                     expect(record2.content).to.include.keys('source', 'biotype', 'source_version', 'name', 'uuid', 'deleted_at', 'created_at');
@@ -253,7 +251,7 @@ describe('Feature schema tests:', () => {
 
 
 describe('Feature.validateContent', () => {
-    let server, db, currClass;
+    let server, db;
     before(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
