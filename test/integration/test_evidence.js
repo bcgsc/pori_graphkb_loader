@@ -1,11 +1,10 @@
 'use strict';
 const {expect} = require('chai');
 const {Evidence, Publication, Journal, Study, ClinicalTrial, ExternalSource} = require('./../../app/repo/evidence');
-const moment = require('moment');
 const conf = require('./../config/db');
 const {connectServer, createDB} = require('./../../app/repo/connect');
 const {KBVertex, KBEdge, History, KBUser, KBRole} = require('./../../app/repo/base');
-const {AttributeError, DependencyError} = require('./../../app/repo/error');
+const {AttributeError} = require('./../../app/repo/error');
 const {Context} = require('./../../app/repo/context');
 const Promise = require('bluebird');
 const {PERMISSIONS} = require('./../../app/repo/constants');
@@ -157,7 +156,7 @@ describe('Evidence schema tests:', () => {
                     .then((result) => {
                         expect(result.content).to.have.property('title');
                     }).catch((err) => {
-                        console.log(err)
+                        console.log(err);
                     });                        
             });
             it('allows links from different publications to one journal', () => {
@@ -249,7 +248,7 @@ describe('Evidence schema tests:', () => {
                             });
                     });
             });
-         });
+        });
         
         describe('study constraints', () => {
             let currClass = null;
@@ -337,8 +336,8 @@ describe('Evidence schema tests:', () => {
         describe('clinicalTrial constraints', () => {
             let mockClass = null;
             beforeEach(function(done) {
-                 Study.createClass(db)
-                    .then((studyClass) => {
+                Study.createClass(db)
+                    .then(() => {
                         ClinicalTrial.createClass(db)
                             .then((clinicalClass) => {
                                 mockClass = clinicalClass;
@@ -346,7 +345,7 @@ describe('Evidence schema tests:', () => {
                             }).catch((clinicalError) => {
                                 done(clinicalError);
                             });
-                        });
+                    });
             });
             it('test mandatory props', () => {
                 return mockClass.createRecord({title: 'title', year: 2008}, 'me')
@@ -378,7 +377,7 @@ describe('Evidence schema tests:', () => {
             });
 
             it('errors on duplicate active trials', () => {
-                const trial_entry = {phase: 1, trial_id: 'trial_id', title: 'title', year: 2008}
+                const trial_entry = {phase: 1, trial_id: 'trial_id', title: 'title', year: 2008};
                 return mockClass.createRecord(trial_entry, 'me')
                     .then(() => {
                         return mockClass.createRecord(trial_entry, 'me');
@@ -390,8 +389,8 @@ describe('Evidence schema tests:', () => {
             });
 
             it('errors on duplicate active trials in different phases', () => {
-                const first_trial_entry = {phase: 1, trial_id: 'trial_id', title: 'title', year: 2008}
-                const second_trial_entry = {phase: 2, trial_id: 'trial_id', title: 'title', year: 2008}
+                const first_trial_entry = {phase: 1, trial_id: 'trial_id', title: 'title', year: 2008};
+                const second_trial_entry = {phase: 2, trial_id: 'trial_id', title: 'title', year: 2008};
                 return mockClass.createRecord(first_trial_entry, 'me')
                     .then(() => {
                         return mockClass.createRecord(second_trial_entry, 'me');
