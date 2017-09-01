@@ -32,7 +32,7 @@ cache.vocab[Event.clsname] = {'term': [
 
 
 describe('Event schema tests:', () => {
-    let server, db, primary_feature, secondary_feature, user;
+    let server, db, primary_feature, user;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
@@ -72,7 +72,7 @@ describe('Event schema tests:', () => {
                     db.models.Feature.createRecord({name: 'HUGO2', source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE}, user)
                 ]);
             }).then((pList) => {
-                [primary_feature, secondary_feature] = pList;
+                [primary_feature] = pList;
                 done();
             }).catch((error) => {
                 console.log('error', error);
