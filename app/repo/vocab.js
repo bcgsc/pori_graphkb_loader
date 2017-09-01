@@ -164,7 +164,7 @@ const upsertCache = (record) => {
     if (indexOf < 0) {
         cache.vocab[record.class][record.property].push(record);
     } else {
-        vocab[record.class][record.property][indexOf] = record;
+        cache.vocab[record.class][record.property][indexOf] = record;
     }
 };
 
