@@ -26,7 +26,7 @@ class MockVertexClass extends KBVertex { // simple non-abstract class for tests
 
 describe('base module', () => {
     let db, server, user;
-    beforeEach(function(done) { /* build and connect to the empty database */
+    beforeEach((done) => { /* build and connect to the empty database */
         // set up the database server
         connectServer(conf)
             .then((s) => {

@@ -47,24 +47,37 @@ const getAttribute = (obj, attr, maxDepth=0) => {
  * otherwise returns an {Error}
  */
 const getAllProperties = (cls) => {
-    return new Promise((resolve, reject) => {
-        let result = {properties: cls.properties, superClasses: []};
-        if (cls.superClass !== null) {
-            result.superClasses.push(cls.superClass);
-            cls.db.class.get(cls.superClass)
-                .then((superClass) => {
-                    return getAllProperties(superClass);
-                }).then((props) => {
-                    result.properties = _.concat(result.properties, props.properties);
-                    result.superClasses = _.concat(result.superClasses, props.superClasses);
-                    resolve(result);
-                }).catch((error) => {
-                    reject(error);
-                });
-        } else {
-            resolve(result);
+    let result = {properties: cls.properties, superClasses: []};
+    if (cls.superClass !== null) {
+        result.superClasses.push(cls.superClass);
+        return cls.db.class.get(cls.superClass)
+            .then((superClass) => {
+                return getAllProperties(superClass);
+            }).then((props) => {
+                result.properties = _.concat(result.properties, props.properties);
+                result.superClasses = _.concat(result.superClasses, props.superClasses);
+                return result;
+            });
+    } else {
+        return Promise.resolve(result);
+    }
+};
+
+const regexCleanKeys = (obj, patterns) => {
+    const newObj = {};
+    for (let key of Object.keys(obj)) {
+        let excludeFlag = false;
+        for (let patt of patterns) {
+            if (patt.exec(key)) {
+                excludeFlag = true;
+                break;
+            }
         }
-    });
+        if (! excludeFlag) {
+            newObj[key] = obj[key];
+        }
+    }
+    return newObj;
 };
 
 
@@ -122,10 +135,22 @@ class Record {
         }
         return result;
     }
+    
     toJSON() {
         const json = {};
         for (let key of Object.keys(this.content)) {
-            if (! key.startsWith('in_') && ! key.startsWith('out_')) {
+            if (key.startsWith('out_')) {
+                let arr = [];
+                for (let item of this.content[key].all()) {
+                    arr.push(regexCleanKeys(item.in, [/^_/, /^(out|in)_/]));
+                }
+                json[key] = arr;
+            } else if (key.startsWith('in_')) {
+                for (let item of this.content[key].all()) {
+                    arr.push(regexCleanKeys(item.out, [/^_/, /^(out|in)_/]));
+                }
+                json[key] = arr;
+            } else {
                 json[key] = this.content[key];
             }
         }
@@ -179,29 +204,25 @@ class Base {
      **/
     isPermitted(userRecord, operationPermissions) {
         userRecord = userRecord.content || userRecord;
-        return new Promise((resolve, reject) => {
-            if (userRecord.active) {
-                const roleSelect = userRecord.role.rules ? Promise.resolve(userRecord.role) : this.db.conn.record.get(userRecord.role.toString());
-                roleSelect
-                    .then((roleRecord) => {
-                        let clsList = _.concat([this.constructor.clsname], this.superClasses);
-                        for (let cls of clsList) {
-                            if (roleRecord.rules[cls] !== undefined) {
-                                if (roleRecord.rules[cls] & operationPermissions) {
-                                    resolve(true);
-                                } else {
-                                    reject(new PermissionError('insufficient permissions'));
-                                }
+        if (userRecord.active) {
+            const roleSelect = userRecord.role.rules ? Promise.resolve(userRecord.role) : this.db.conn.record.get(userRecord.role.toString());
+            return roleSelect
+                .then((roleRecord) => {
+                    let clsList = _.concat([this.constructor.clsname], this.superClasses);
+                    for (let cls of clsList) {
+                        if (roleRecord.rules[cls] !== undefined) {
+                            if (roleRecord.rules[cls] & operationPermissions) {
+                                return true;
+                            } else {
+                                throw new PermissionError('insufficient permissions');
                             }
                         }
-                        reject(new PermissionError(`insufficient permission to ${operationPermissions} a record`));
-                    }).catch((error) => {
-                        reject(new NoResultFoundError(error));
-                    });
-            } else {
-                reject(new AuthenticationError(`requested function cannot be executed as the user: ${userRecord.username} is suspended`));
-            }
-        }); 
+                    }
+                    throw new PermissionError(`insufficient permission to ${operationPermissions} a record`);
+                });
+        } else {
+            return Promise.reject(new AuthenticationError(`requested function cannot be executed as the user: ${userRecord.username} is suspended`));
+        }
     }
 
     getAllowedTermsList(propertyName) {
@@ -217,31 +238,21 @@ class Base {
     }
 
     selectOrCreate(obj, user, retry=true, retryTimeOut=10) {
-        return new Promise((resolve, reject) => {
-            this.selectExactlyOne(obj)
-                .then((rec) => {
-                    resolve(rec);
-                }).catch(() => {
-                    return this.createRecord(obj, user);
-                }).then((rec) => {
-                    resolve(rec);
-                }).catch((err) => {
-                    if (retry && err.type === 'com.orientechnologies.orient.core.storage.ORecordDuplicatedException') {
-                        this.selectExactlyOne(obj).delay(retryTimeOut)
-                            .then((rec) => {
-                                resolve(rec);
-                            }, (err) => {
-                                console.log('ERROR in selectOrCreate', obj);
-                                console.log(err);
-                                reject(err);
-                            });
-                    } else {
-                        console.log('ERROR in selectOrCreate', obj);
-                        console.log(err);
-                        reject(err);
-                    }
-                });
-        });
+        return this.selectExactlyOne(obj)
+            .catch(() => {
+                return this.createRecord(obj, user);
+            }).then((rec) => {
+                return rec;
+            }).catch((err) => {
+                if (retry && err.type === 'com.orientechnologies.orient.core.storage.ORecordDuplicatedException') {
+                    return this.selectExactlyOne(obj).delay(retryTimeOut)
+                        .then((rec) => {
+                            return rec;
+                        });
+                } else {
+                    throw err;
+                }
+            });
     }
 
     validateContent(content) {
@@ -259,7 +270,7 @@ class Base {
             } else if (this.constructor.createType === 'edge' && (key === 'in' || key === 'out')) {
                 // ignore edges reserved properties
             } else if (! _.includes(this.propertyNames, key)) {
-                throw new AttributeError(`invalid attribute ${key} from object ${JSON.stringify(content)}`);
+                return Promise.reject(new AttributeError(`invalid attribute ${key} from object ${JSON.stringify(content)}`));
             }
             let value = content[key];
             const allowedValues = [];
@@ -269,8 +280,7 @@ class Base {
                 }
             }
             if (allowedValues.length > 0 && ! allowedValues.includes(value)) {
-                throw new ControlledVocabularyError(
-                    `'${value}' is not an allowed term for ${this.constructor.clsname}:${key}(type=${content.type}). Valid terms include: ${allowedValues.toString()}`);
+                return Promise.reject(new ControlledVocabularyError(`'${value}' is not an allowed term for ${this.constructor.clsname}:${key}(type=${content.type}). Valid terms include: ${allowedValues.toString()}`));
             }
             args[key] = content[key]; // overrides the defaults if given
         }
@@ -281,20 +291,20 @@ class Base {
                         // if not given but can be null, default to null
                         args[prop.name] = null;
                     } else {
-                        throw new AttributeError(`mandatory property ${prop.name} was not specified`);
+                        return Promise.reject(new AttributeError(`mandatory property ${prop.name} was not specified`));
                     }
                 }
             }
             if (args[prop.name] !== undefined) {
                 if (prop.notNull && args[prop.name] === null) {
-                    throw new AttributeError(`violated notNull constraint of ${prop.name} property`);
+                    return Promise.reject(new AttributeError(`violated notNull constraint of ${prop.name} property`));
                 }
                 if (prop.min && args[prop.name] != null && args[prop.name] < prop.min) {
-                    throw new AttributeError(`${args[prop.name]} is below the allowed minimum: ${prop.min}`);
+                    return Promise.reject(new AttributeError(`${args[prop.name]} is below the allowed minimum: ${prop.min}`));
                 }
             }
         }
-        return args;
+        return Promise.resolve(args);
     }
 
     /**
@@ -303,15 +313,12 @@ class Base {
      * @return {Promise}  if resolved returns ? otherwise returns the db error
      */
     createRecord(where={}) {
-        return new Promise((resolve, reject) => {
-            const args = this.validateContent(where);
-            this.conn.create(args)
-                .then((result) => {
-                    resolve(new Record(result, this.constructor.clsname));
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return this.validateContent(where)
+            .then((args) => {
+                return this.conn.create(args);
+            }).then((result) => {
+                return new Record(result, this.constructor.clsname);
+            });
     }
     /**
      * recursive function which builds a selection query that accesses parameters from nested objects
@@ -362,89 +369,89 @@ class Base {
      * @returns {Promise}
      */
     selectExactlyOne(where={}) {
-        return new Promise((resolve, reject) => {
-            this.select(where, false, 1, false)
-                .then((recList) => {
-                    resolve(recList[0]);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return this.select(where, false, 1, false)
+            .then((recList) => {
+                return recList[0];
+            });
     }
 
     select(where={}, activeOnly=false, exactlyN=null, ignoreAtPrefixed=false, fetchPlan={'*': 1}) {
         where = where.content || where;
-        return new Promise((resolve, reject) => {
-            const clsname = where['@class'] || this.constructor.clsname;
-            const selectionWhere = this.constructor.parseSelectWhere(where);
-            if (activeOnly) {
-                selectionWhere.deleted_at = null;
+        const clsname = where['@class'] || this.constructor.clsname;
+        let selectionWhere;
+        try {
+            selectionWhere = this.constructor.parseSelectWhere(where);
+        } catch (error) {
+            return Promise.reject(error);
+        }
+        if (activeOnly) {
+            selectionWhere.deleted_at = null;
+        }
+        let query = this.db.conn.select().from(clsname).where(selectionWhere);
+        if (Object.keys(selectionWhere).length == 0) {
+            query = this.db.conn.select().from(clsname);
+        }
+        let stat = query.buildStatement();
+        for (let key of Object.keys(query._state.params)) {
+            let value = query._state.params[key];
+            if (typeof value === 'string') {
+                value = `'${value}'`;
             }
-            let query = this.db.conn.select().from(clsname).where(selectionWhere);
-            if (Object.keys(selectionWhere).length == 0) {
-                query = this.db.conn.select().from(clsname);
-            }
-            let stat = query.buildStatement();
-            for (let key of Object.keys(query._state.params)) {
-                let value = query._state.params[key];
-                if (typeof value === 'string') {
-                    value = `'${value}'`;
-                }
-                stat = stat.replace(':' + key, `${value}`);
-            }
+            stat = stat.replace(':' + key, `${value}`);
+        }
 
-            query.fetch(fetchPlan).all()
-                .then((rl) => {
-                    const reclist = [];
-                    for (let r of rl) {
-                        reclist.push(new Record(r, clsname));
-                    }
-                    if (exactlyN !== null) {
-                        if (reclist.length === 0) {
-                            if (exactlyN === 0) {
-                                resolve([]);
-                            } else {
-                                reject(new NoResultFoundError(stat));
-                            }
-                        } else if (exactlyN !== reclist.length) {
-                            reject(new MultipleResultsFoundError(stat + ` returned ${reclist.length} results but expected ${exactlyN} results`));
+        return query.fetch(fetchPlan).all()
+            .then((rl) => {
+                const reclist = [];
+                for (let r of rl) {
+                    reclist.push(new Record(r, clsname));
+                }
+                if (exactlyN !== null) {
+                    if (reclist.length === 0) {
+                        if (exactlyN === 0) {
+                            return [];
                         } else {
-                            resolve(reclist);
+                            throw new NoResultFoundError(`query returned an empty list: ${stat}`);
                         }
+                    } else if (exactlyN !== reclist.length) {
+                        throw new MultipleResultsFoundError(`query returned unexpected number of results. Found ${reclist.length} results but expected ${exactlyN} results: ${stat}`);
                     } else {
-                        resolve(reclist);
+                        return reclist;
                     }
-                }, (error) => {
-                    reject(error);
-                });
-        });
+                } else {
+                    return reclist;
+                }
+            });
+        
     }
 
     deleteRecord(currRecord, user) {
-        return new Promise((resolve, reject) => {
-            const userSelect = user.hasRID ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname});
-            userSelect
-                .then((userRecord) => {
-                    user = userRecord;
-                    return this.isPermitted(user, PERMISSIONS.DELETE);
-                }).then(() => {
-                    if (currRecord.rid) { // don't select if we already have the rid
-                        return Promise.resolve(currRecord);
-                    } else {
-                        return this.selectExactlyOne(currRecord);
-                    }
-                }).then((record) => {
-                    const update = {};
-                    update.deleted_at = moment().valueOf();
-                    update.deleted_by = user.rid;
-                    const sa = record.staticAttributes();
-                    return this.db.conn.update(record.rid).set(update).where(sa).return('AFTER').one();
-                }).then((updatedRecord) => {
-                    resolve(new Record(updatedRecord, this.constructor.clsname));
-                }).catch((error) => {
-                    reject(error);
-                });
-        });    
+        const userSelect = user.hasRID ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname});
+        let toDeleteSelect;
+        return userSelect
+            .then((userRecord) => {
+                user = userRecord;
+                return this.isPermitted(user, PERMISSIONS.DELETE);
+            }).then(() => {
+                if (currRecord.rid) { // don't select if we already have the rid
+                    return Promise.resolve(currRecord);
+                } else {
+                    return this.selectExactlyOne(currRecord);
+                }
+            }).then((record) => {
+                const update = {};
+                update.deleted_at = moment().valueOf();
+                update.deleted_by = user.rid;
+                toDeleteSelect = record.staticAttributes();
+                toDeleteSelect.deleted_at = null;
+                toDeleteSelect.deleted_by = null;
+                return this.db.conn.update(record.rid).set(update).where(toDeleteSelect).return('AFTER').one();
+            }).then((updatedRecord) => {
+                if (updatedRecord === undefined) {
+                    throw new NoResultFoundError(`Could not update record. Record not found:  ${toDeleteSelect}`);
+                }
+                return new Record(updatedRecord, this.constructor.clsname);
+            });    
     }
 
     
@@ -464,22 +471,16 @@ class Base {
      * @returns {Promise} a new class instance or an error
      */
     static loadClass(db) {
-        return new Promise((resolve, reject) => {
-            db.conn.class.get(this.clsname)
-                .then((cls) => {
-                    getAllProperties(cls)
-                        .then((result) => {
-                            let c = new this(db, cls, result.properties, result.superClasses);
-                            db.models[this.name] = c;
-                            db.models[this.clsname] = c;
-                            resolve(c);
-                        }).catch((error) => {
-                            reject(error);
-                        });
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return db.conn.class.get(this.clsname)
+            .then((cls) => {
+                return getAllProperties(cls)
+                    .then((result) => {
+                        let c = new this(db, cls, result.properties, result.superClasses);
+                        db.models[this.name] = c;
+                        db.models[this.clsname] = c;
+                        return c;
+                    });
+            });
     }
     /**
      * create a new class in the database
@@ -496,34 +497,26 @@ class Base {
      */
     static createClass(opt) {
         // extend versioning if not versioning
-        return new Promise((resolve, reject) => {
-            // preliminary error checking and defaults
-            opt.properties = opt.properties || [];
-            opt.indices = opt.indices || [];
-            opt.isAbstract = opt.isAbstract || false;
+        // preliminary error checking and defaults
+        opt.properties = opt.properties || [];
+        opt.indices = opt.indices || [];
+        opt.isAbstract = opt.isAbstract || false;
 
-            if (opt.clsname === undefined || opt.superClasses === undefined || opt.db === undefined) {
-                reject(new AttributeError(
-                    `required attribute was not defined: clsname=${opt.clsname}, superClasses=${opt.superClasses}, db=${opt.db}`));
-            } else {
-                opt.db.conn.class.create(opt.clsname, opt.superClasses, null, opt.isAbstract) // create the class first
-                    .then((cls) => {
-                        // add the properties
-                        Promise.all(Array.from(opt.properties, (prop) => cls.property.create(prop)))
-                            .then(() => {
-                                // create the indices
-                                return Promise.all(Array.from(opt.indices, (i) => opt.db.conn.index.create(i)));
-                            }).then(() => {
-                                resolve();
-                            }).catch((error) => {
-                                reject(error);
-                            });
+        if (opt.clsname === undefined || opt.superClasses === undefined || opt.db === undefined) {
+            return Promise.reject(new AttributeError(
+                `required attribute was not defined: clsname=${opt.clsname}, superClasses=${opt.superClasses}, db=${opt.db}`));
+        } else {
+            return opt.db.conn.class.create(opt.clsname, opt.superClasses, null, opt.isAbstract) // create the class first
+                .then((cls) => {
+                    // add the properties
+                    return Promise.all(Array.from(opt.properties, (prop) => cls.property.create(prop)))
+                        .then(() => {
+                            // create the indices
+                            return Promise.all(Array.from(opt.indices, (i) => opt.db.conn.index.create(i)));
+                        });
 
-                    }).catch((error) => {
-                        reject(error);
-                    });
-            }
-        });
+                });
+        }
     }
 }
 
@@ -567,66 +560,58 @@ class KBVertex extends Base {
     }
 
     static createClass(db) {
-        return new Promise((resolve, reject) => {
-            const props = [
-                {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
-                {name: 'version', type: 'integer', mandatory: true, notNull: true},
-                {name: 'created_at', type: 'long', mandatory: true, notNull: true},
-                {name: 'deleted_at', type: 'long', mandatory: true, notNull: false},
-                {name: 'created_by', type: 'link', mandatory: true, notNull: true,  linkedClass: KBUser.clsname},
-                {name: 'deleted_by', type: 'link', mandatory: true, notNull: false,  linkedClass: KBUser.clsname}
-            ];
-            const idxs = [
-                {
-                    name: `${this.clsname}_version`,
-                    type: 'unique',
-                    properties: ['uuid', 'version'],
-                    'class':  this.clsname
-                },
-                {
-                    name: `${this.clsname}_single_null_deleted_at`,
-                    type: 'unique',
-                    metadata: {ignoreNullValues: false},
-                    properties: ['uuid', 'deleted_at'],
-                    'class':  this.clsname
-                }
-            ];
+        const props = [
+            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+            {name: 'version', type: 'integer', mandatory: true, notNull: true},
+            {name: 'created_at', type: 'long', mandatory: true, notNull: true},
+            {name: 'deleted_at', type: 'long', mandatory: true, notNull: false},
+            {name: 'created_by', type: 'link', mandatory: true, notNull: true,  linkedClass: KBUser.clsname},
+            {name: 'deleted_by', type: 'link', mandatory: true, notNull: false,  linkedClass: KBUser.clsname}
+        ];
+        const idxs = [
+            {
+                name: `${this.clsname}_version`,
+                type: 'unique',
+                properties: ['uuid', 'version'],
+                'class':  this.clsname
+            },
+            {
+                name: `${this.clsname}_single_null_deleted_at`,
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['uuid', 'deleted_at'],
+                'class':  this.clsname
+            }
+        ];
 
-            
-            Base.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true, properties: props, indices: idxs})
+        return Base.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: true, properties: props, indices: idxs})
                 .then(() => {
                     return this.loadClass(db);
-                }).then((cls) => {
-                    resolve(cls);
-                }).catch((error) => {
-                    reject(error);
                 });
-        });
     }
 
     createRecord(opt={}, user) {
-        return new Promise((resolve, reject) => {
-            const content = Object.assign({created_by: true}, opt);
-            const args = this.validateContent(content);
-            for (let key of Object.keys(args)) {
-                if (key.startsWith('@')) {
-                    delete args[key];
+        const content = Object.assign({created_by: true}, opt);
+        return this.validateContent(content)
+            .then((args) => {
+                for (let key of Object.keys(args)) {
+                    if (key.startsWith('@')) {
+                        delete args[key];
+                    }
                 }
-            }
-            const userSelect = user.hasRID ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname});
-            userSelect.then((userRecord) => {
-                user = userRecord;
-                args.created_by = user.rid;
-                return this.isPermitted(user, PERMISSIONS.CREATE);
-            }).then(() => {
-                return this.conn.create(args);
-            }).then((record) => {
-                record.created_by = user.content;
-                resolve(new Record(record, this.constructor.clsname));
-            }).catch((error) => {
-                reject(error);
+                const userSelect = user.hasRID ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname});
+                return userSelect.then((userRecord) => {
+                        user = userRecord;
+                        args.created_by = user.rid;
+                        return this.isPermitted(user, PERMISSIONS.CREATE);
+                    }).then(() => {
+                        // use db.create vs conn.create b/c it is compatible across node 6.10 and node 8.6
+                        return this.conn.db.create(this.constructor.createType, this.constructor.clsname).set(args).one();
+                    }).then((record) => {
+                        record.created_by = user.content;
+                        return new Record(record, this.constructor.clsname);
+                    });
             });
-        });
     }
 
     /**
@@ -638,59 +623,53 @@ class KBVertex extends Base {
      * @return {Promise}  if resolved returns ? otherwise returns the db error
      */
     updateRecord(record, currentUser) {
-        return new Promise((resolve, reject) => {
-            // get the record from the db
-            let where = record.staticAttributes();
-            let currentRecord;
-            const recordSelect = where['@rid'] ? this.db.getRecord(where['@rid']) : this.selectExactlyOne(where);
-            recordSelect
-                .then((selectedRecord) => {
-                    currentRecord = selectedRecord;
-                    return currentUser.hasRID ? Promise.resolve(currentUser) : this.selectExactlyOne({username: currentUser, '@class': KBUser.clsname});
-                }).then((userRecord) => {
-                    currentUser = userRecord;
-                    return this.isPermitted(currentUser, PERMISSIONS.UPDATE);
-                }).then(() => {                          
-                    const duplicate = currentRecord.mutableAttributes();
-                    const timestamp = moment().valueOf();
-                    let updates = record.mutableAttributes();
-                    duplicate.deleted_at = timestamp; // set the deletion time
-                    duplicate.deleted_by = currentUser.rid;
-                    duplicate.uuid = currentRecord.content.uuid;
+       // get the record from the db
+       let where = record.staticAttributes();
+       let currentRecord;
+       const recordSelect = where['@rid'] ? this.db.getRecord(where['@rid']) : this.selectExactlyOne(where);
+       return recordSelect
+            .then((selectedRecord) => {
+                currentRecord = selectedRecord;
+                return currentUser.hasRID ? Promise.resolve(currentUser) : this.selectExactlyOne({username: currentUser, '@class': KBUser.clsname});
+            }).then((userRecord) => {
+                currentUser = userRecord;
+                return this.isPermitted(currentUser, PERMISSIONS.UPDATE);
+            }).then(() => {                          
+                const duplicate = currentRecord.mutableAttributes();
+                const timestamp = moment().valueOf();
+                let updates = record.mutableAttributes();
+                duplicate.deleted_at = timestamp; // set the deletion time
+                duplicate.deleted_by = currentUser.rid;
+                duplicate.uuid = currentRecord.content.uuid;
 
-                    updates.version += 1;
-                    updates.created_at = timestamp;
-                    updates.created_by = currentUser.rid;
-                    updates.deleted_by = null;
-                    
-                    // start the transaction
-                    var commit = this.db.conn
-                        .let('updatedRID', (tx) => {
-                            // update the existing node
-                            return tx.update(`${currentRecord.rid}`).set(updates).return('AFTER @rid').where(currentRecord.staticAttributes());
-                        }).let('duplicate', (tx) => {
-                            //duplicate the old node
-                            return tx.create(this.constructor.createType, this.constructor.clsname)
-                                .set(duplicate);
-                        }).let('historyEdge', (tx) => {
-                            //connect the nodes
-                            return tx.create(History.createType, History.clsname)
-                                .from('$updatedRID')
-                                .to('$duplicate');
-                        }).commit();
-                    // const stat = commit.buildStatement();
-                    commit.return('$updatedRID').one() 
-                        .then((rid) => {
-                            return this.db.conn.record.get(rid);
-                        }).then((record) => {
-                            resolve(new Record(record, this.constructor.clsname));
-                        }).catch((error) => {
-                            reject(error);
-                        });
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+                updates.version += 1;
+                updates.created_at = timestamp;
+                updates.created_by = currentUser.rid;
+                updates.deleted_by = null;
+                
+                // start the transaction
+                var commit = this.db.conn
+                    .let('updatedRID', (tx) => {
+                        // update the existing node
+                        return tx.update(`${currentRecord.rid}`).set(updates).return('AFTER @rid').where(currentRecord.staticAttributes());
+                    }).let('duplicate', (tx) => {
+                        //duplicate the old node
+                        return tx.create(this.constructor.createType, this.constructor.clsname)
+                            .set(duplicate);
+                    }).let('historyEdge', (tx) => {
+                        //connect the nodes
+                        return tx.create(History.createType, History.clsname)
+                            .from('$updatedRID')
+                            .to('$duplicate');
+                    }).commit();
+                // const stat = commit.buildStatement();
+                return commit.return('$updatedRID').one() 
+                    .then((rid) => {
+                        return this.db.conn.record.get(rid);
+                    }).then((record) => {
+                        return new Record(record, this.constructor.clsname);
+                    });
+            });
     }
 }
 
@@ -701,40 +680,34 @@ class KBEdge extends Base {
     }
 
     static createClass(db) {
-        return new Promise((resolve, reject) => {
-            const props = [
-                {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
-                {name: 'version', type: 'integer', mandatory: true, notNull: true},
-                {name: 'created_at', type: 'long', mandatory: true, notNull: true},
-                {name: 'deleted_at', type: 'long', mandatory: true, notNull: false},
-                {name: 'created_by', type: 'link', mandatory: true, notNull: true,  linkedClass: KBUser.clsname},
-                {name: 'deleted_by', type: 'link', mandatory: true, notNull: false,  linkedClass: KBUser.clsname}
-            ];
-            const idxs = [
-                {
-                    name: `${this.clsname}_version`,
-                    type: 'unique',
-                    properties: ['uuid', 'version'],
-                    'class':  this.clsname
-                },
-                {
-                    name: `${this.clsname}_single_null_deleted_at`,
-                    type: 'unique',
-                    metadata: {ignoreNullValues: false},
-                    properties: ['uuid', 'deleted_at'],
-                    'class':  this.clsname
-                }
-            ];
+        const props = [
+            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+            {name: 'version', type: 'integer', mandatory: true, notNull: true},
+            {name: 'created_at', type: 'long', mandatory: true, notNull: true},
+            {name: 'deleted_at', type: 'long', mandatory: true, notNull: false},
+            {name: 'created_by', type: 'link', mandatory: true, notNull: true,  linkedClass: KBUser.clsname},
+            {name: 'deleted_by', type: 'link', mandatory: true, notNull: false,  linkedClass: KBUser.clsname}
+        ];
+        const idxs = [
+            {
+                name: `${this.clsname}_version`,
+                type: 'unique',
+                properties: ['uuid', 'version'],
+                'class':  this.clsname
+            },
+            {
+                name: `${this.clsname}_single_null_deleted_at`,
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['uuid', 'deleted_at'],
+                'class':  this.clsname
+            }
+        ];
 
-            Base.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: true, properties: props, indices: idxs})
-                .then(() => {
-                    return this.loadClass(db);
-                }).then((cls) => {
-                    resolve(cls);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return Base.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: true, properties: props, indices: idxs})
+            .then(() => {
+                return this.loadClass(db);
+            });
     }
 
     validateContent(content) {
@@ -749,6 +722,9 @@ class KBEdge extends Base {
         const src = args.out.content || args.out;
         src['@class'] = src['@class'] || KBVertex.clsname;
         tgt['@class'] = tgt['@class'] || KBVertex.clsname;
+        if (src.uuid && src.uuid === tgt.uuid) {
+            return Promise.reject(new AttributeError('These two nodes are the same (same uuid). No other relationship can be defined.'));
+        }
         return super.validateContent(args);
     }
     
@@ -756,41 +732,36 @@ class KBEdge extends Base {
      *
      */
     createRecord(data={}, user) {
-        return new Promise((resolve, reject) => {
-            const content = Object.assign({created_by: true}, data);
-            const args = this.validateContent(content);
-            const tgtIn = data.in;
-            const srcIn = data.out;
-            // select both records from the db
-            Promise.all([
-                srcIn.hasRID ? Promise.resolve(srcIn) : this.selectExactlyOne(srcIn),
-                tgtIn.hasRID ? Promise.resolve(tgtIn) : this.selectExactlyOne(tgtIn),
-                user.hasRID ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname})
-            ]).then((recList) => {
-                let [src, tgt, user] = recList;
-                delete args.in;
-                delete args.out;
-                // now create the edge
-                args.created_by = user.rid;
-                this.isPermitted(user, PERMISSIONS.CREATE)
-                    .then(() => {
-                        this.db.conn.create(this.constructor.createType, this.constructor.clsname)
-                            .from(src.rid).to(tgt.rid).set(args).one()
-                            .then((record) => {
-                                record.created_by = user.content;
-                                record.out = src.content;
-                                record.in = tgt.content;
-                                resolve(new Record(record, this.constructor.clsname));
-                            }).catch((error) => {
-                                reject(error);
-                            });
-                    }).catch((error) => {
-                        reject(error);
-                    });
-            }).catch((error) => {
-                reject(error);
+        const content = Object.assign({created_by: true}, data);
+        const tgtIn = data.in;
+        const srcIn = data.out;
+        // select both records from the db
+        return this.validateContent(content)
+            .then((args) => {
+                return Promise.all([
+                    srcIn.hasRID ? Promise.resolve(srcIn) : this.selectExactlyOne(srcIn),
+                    tgtIn.hasRID ? Promise.resolve(tgtIn) : this.selectExactlyOne(tgtIn),
+                    user.hasRID ? Promise.resolve(user) : this.selectExactlyOne({username: user, '@class': KBUser.clsname})
+                ]).then((recList) => {
+                    let [src, tgt, user] = recList;
+                    delete args.in;
+                    delete args.out;
+                    // now create the edge
+                    args.created_by = user.rid;
+                    return this.isPermitted(user, PERMISSIONS.CREATE)
+                        .then(() => {
+                            return this.db.conn.create(this.constructor.createType, this.constructor.clsname)
+                                .from(src.rid).to(tgt.rid).set(args).one()
+                                .then((record) => {
+                                    record.created_by = user.content;
+                                    record.out = src.content;
+                                    record.in = tgt.content;
+                                    return new Record(record, this.constructor.clsname);
+                                });
+                        });
+                });
             });
-        });
+        
     }
 }
 
@@ -820,51 +791,42 @@ class KBUser extends Base {
     }
 
     static createClass(db) {
-        return new Promise((resolve, reject) => {
+        const props = [
+            {name: 'username', type: 'string', mandatory: true, notNull: false},
+            {name: 'active', type: 'boolean', mandatory: true, notNull: false},
+            {name: 'role', type: 'link', mandatory: true, notNull: true,  linkedClass: KBRole.clsname} //readOnly: true,
+        ];
 
-            const props = [
-                {name: 'username', type: 'string', mandatory: true, notNull: false},
-                {name: 'active', type: 'boolean', mandatory: true, notNull: false},
-                {name: 'role', type: 'link', mandatory: true, notNull: true,  linkedClass: KBRole.clsname} //readOnly: true,
-            ];
+        const idxs = [{
+            name: this.clsname + '.index_username',
+            type: 'unique',
+            metadata: {ignoreNullValues: false},
+            properties: ['username'],
+            'class':  this.clsname
+        }];
 
-            const idxs = [{
-                name: this.clsname + '.index_username',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: ['username'],
-                'class':  this.clsname
-            }];
-
-            Base.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: false, properties: props, indices: idxs})
-                .then(() => {
-                    return this.loadClass(db);
-                }).then((cls) => {
-                    resolve(cls);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return Base.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: false, properties: props, indices: idxs})
+            .then(() => {
+                return this.loadClass(db);
+            });
+        
     }
 
     createRecord(opt) {     
-        return new Promise((resolve, reject) => {
-            const args = this.validateContent(opt);
-            this.db.models.KBRole.selectExactlyOne({name: args.role})
-                .then((record) => {
-                    args.role = record.content['@rid'];
-                    return this.conn.create(args).then((userRecord) => {
-                        this.db.conn.record.get(args.role).then((roleRecord) => {
-                            userRecord.role = roleRecord;
-                            resolve(new Record(userRecord, this.constructor.clsname));
-                        }).catch((error) => {
-                            reject(error);
-                        });
-                    }).catch((error) => {
-                        reject(error);
+        return this.validateContent(opt)
+            .then((args) => {
+                return this.db.models.KBRole.selectExactlyOne({name: args.role})
+                    .then((record) => {
+                        args.role = record.content['@rid'];
+                        return this.conn.create(args);
+                    }).then((userRecord) => {
+                        return this.db.conn.record.get(args.role)
+                            .then((roleRecord) => {
+                                userRecord.role = roleRecord;
+                                return new Record(userRecord, this.constructor.clsname);
+                            });
                     });
-                });
-        });
+            });
     }
 }
 
@@ -874,37 +836,26 @@ class KBUser extends Base {
  */
 class KBRole extends Base {
 
-    validateContent(content) {
-        const args = super.validateContent(content);
-        return args;
-    }
-
     static createClass(db) {
-        return new Promise((resolve, reject) => {
+        const props = [
+            {name: 'name', type: 'string', mandatory: true, notNull: false},
+            {name: 'rules', type: 'embedded', mandatory: true, notNull: false, linkedClass: 'permissions'},
+            {name: 'mode', type: 'integer', mandatory: false, notNull: false}
+        ];
 
-            const props = [
-                {name: 'name', type: 'string', mandatory: true, notNull: false},
-                {name: 'rules', type: 'embedded', mandatory: true, notNull: false, linkedClass: 'permissions'},
-                {name: 'mode', type: 'integer', mandatory: false, notNull: false}
-            ];
+        const idxs = [{
+            name: this.clsname + '.index_name',
+            type: 'unique',
+            metadata: {ignoreNullValues: false},
+            properties: ['name'],
+            'class':  this.clsname
+        }];
 
-            const idxs = [{
-                name: this.clsname + '.index_name',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: ['name'],
-                'class':  this.clsname
-            }];
-
-            Base.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: false, properties: props, indices: idxs})
-                .then(() => {
-                    return this.loadClass(db);
-                }).then((cls) => {
-                    resolve(cls);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return Base.createClass({db, clsname: this.clsname, superClasses: 'V', isAbstract: false, properties: props, indices: idxs})
+            .then(() => {
+                return this.loadClass(db);
+            });
+        
     }
 }
 
@@ -915,20 +866,15 @@ class History extends Base {
     }
 
     static createClass(db) {
-        return new Promise((resolve, reject) => {
-            const props = [
-                {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true},
-            ];
+        const props = [
+            {name: 'comment', type: 'string', mandatory: false, notNull: true, readOnly: true},
+        ];
 
-            Base.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: false, properties: props})
-                .then(() => {
-                    return this.loadClass(db);
-                }).then((cls) => {
-                    resolve(cls);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return Base.createClass({db, clsname: this.clsname, superClasses: 'E', isAbstract: false, properties: props})
+            .then(() => {
+                return this.loadClass(db);
+            });
+        
     }
 }
 

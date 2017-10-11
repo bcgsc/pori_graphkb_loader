@@ -61,7 +61,7 @@ describe('Position schema tests:', () => {
                 .then(() => {
                     expect.fail('expected error');
                 }, (error) => {
-                    oError.expectAbstractClassError(error);
+                    expect(error).to.have.property('name', 'OrientDB.OperationError');
                 });
         });
         it('create genomic subclass', () => {
@@ -313,7 +313,7 @@ describe('Position schema tests:', () => {
             });
             it('errors on arm null', () => {
                 return currClass.createRecord({arm: null})
-                    .then(() => {
+                    .then((record) => {
                         expect.fail('expected error');
                     }, (error) => {
                         expect(error).to.be.instanceof(AttributeError);

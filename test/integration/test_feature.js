@@ -13,6 +13,15 @@ const {expectDuplicateKeyError} = require('./orientdb_errors');
 const {PERMISSIONS} = require('./../../app/repo/constants');
 
 
+const expectPromiseFail = (promise, errorClass) => {
+    return promise
+        .then((result) => {
+            expect.fail('expected error');
+        }).catch((err) => {
+            expect(err).to.be.instanceof(errorClass);
+        });
+};
+
 
 describe('Feature schema tests:', () => {
     let server, db, user;
@@ -290,44 +299,44 @@ describe('Feature.validateContent', () => {
         });
 
         it('allows valid', () => {
-            expect(() => {
-                return db.models.Feature.validateContent(validEntry);
-            }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('allows source_version to be null', () => {
             validEntry.source_version = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = db.models.Feature.validateContent(validEntry);
-            expect(record).to.have.property('source_version', null);
+            return db.models.Feature.validateContent(validEntry)
+                .then((result) => {
+                    expect(result).to.have.property('source_version', null);
+                });
         });
         it('errors on invalid biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on null biotype', () => {
             validEntry.biotype = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors if biotype is not defined', () => {
             delete validEntry.biotype;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on invalid name', () => {
             validEntry.name = 'abc';
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
             validEntry.name = '1RAS';
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on null name', () => {
             validEntry.name = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors if name is not defined', () => {
             delete validEntry.name;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
     });
     describe(FEATURE_SOURCE.ENSEMBL, () => {
@@ -338,99 +347,93 @@ describe('Feature.validateContent', () => {
         });
 
         it('allows valid gene', () => {
-            expect(() => {
-                return db.models.Feature.validateContent(validEntry);
-            }).to.not.throw(AttributeError);
+           return db.models.Feature.validateContent(validEntry);
         });
         it('allows valid protein', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
             validEntry.name = 'ENSP001';
-            expect(() => {
-                return db.models.Feature.validateContent(validEntry);
-            }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('allows valid transcript', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
             validEntry.name = 'ENST001';
-            expect(() => {
-                return db.models.Feature.validateContent(validEntry);
-            }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);;
         });
         it('allows valid exon', () => {
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
             validEntry.name = 'ENSE001';
-            expect(() => {
-                return db.models.Feature.validateContent(validEntry);
-            }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('errors on gene name not compatible with transcript biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on gene name not compatible with protein biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on gene name not compatible with exon biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with gene biotype', () => {
             validEntry.name = 'ENST0001';
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with protein biotype', () => {
             validEntry.name = 'ENST0001';
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with exon biotype', () => {
             validEntry.name = 'ENST0001';
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with gene biotype', () => {
             validEntry.name = 'ENSP0001';
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with transcript biotype', () => {
             validEntry.name = 'ENSP0001';
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with exon biotype', () => {
             validEntry.name = 'ENSP0001';
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('allows source_version to be null', () => {
             validEntry.source_version = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = db.models.Feature.validateContent(validEntry);
-            expect(record).to.have.property('source_version', null);
+            return db.models.Feature.validateContent(validEntry)
+                .then((result) => {
+                    expect(result).to.have.property('source_version', null);
+                });
         });
         it('errors on invalid biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TEMPLATE;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on null biotype', () => {
             validEntry.biotype = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors if biotype is not defined', () => {
             delete validEntry.biotype;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on null name', () => {
             validEntry.name = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors if name is not defined', () => {
             delete validEntry.name;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
     });
     describe(FEATURE_SOURCE.REFSEQ, () => {
@@ -441,78 +444,74 @@ describe('Feature.validateContent', () => {
         });
 
         it('allows valid gene', () => {
-            expect(() => {
-                return db.models.Feature.validateContent(validEntry);
-            }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('allows valid protein', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
             validEntry.name = 'NP_001';
-            expect(() => {
-                return db.models.Feature.validateContent(validEntry);
-            }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('allows valid transcript', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
             validEntry.name = 'NM_001';
-            expect(() => {
-                return db.models.Feature.validateContent(validEntry);
-            }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('errors on gene name not compatible with transcript biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TEMPLATE;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on gene name not compatible with protein biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with gene biotype', () => {
             validEntry.name = 'NM_0001';
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with protein biotype', () => {
             validEntry.name = 'NM_0001';
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with gene biotype', () => {
             validEntry.name = 'NP_0001';
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with transcript biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TEMPLATE;
             validEntry.name = 'NP_0001';
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('allows null source_version', () => {
             validEntry.source_version = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = db.models.Feature.validateContent(validEntry);
-            expect(record).to.have.property('source_version', null);
+            return db.models.Feature.validateContent(validEntry)
+                .then((result) => {
+                    expect(result).to.have.property('source_version', null);
+                });
         });
         it('errors on template for biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TEMPLATE;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on null biotype', () => {
             validEntry.biotype = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors if biotype is not defined', () => {
             delete validEntry.biotype;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on null name', () => {
             validEntry.name = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors when name is not defined', () => {
             delete validEntry.name;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
     });
     describe(FEATURE_SOURCE.LRG, () => {
@@ -523,74 +522,70 @@ describe('Feature.validateContent', () => {
         });
 
         it('allows valid gene', () => {
-            expect(() => {
-                return db.models.Feature.validateContent(validEntry);
-            }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('allows valid protein', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
             validEntry.name = 'LRG_001p2';
-            expect(() => {
-                return db.models.Feature.validateContent(validEntry);
-            }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('allows valid transcript', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
             validEntry.name = 'LRG_001t2';
-            expect(() => {
-                return db.models.Feature.validateContent(validEntry);
-            }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('errors on gene name not compatible with transcript biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on gene name not compatible with protein biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with gene biotype', () => {
             validEntry.name = 'LRG_001t2';
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with protein biotype', () => {
             validEntry.name = 'LRG_001t2';
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with gene biotype', () => {
             validEntry.name = 'LRG_001p2';
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with transcript biotype', () => {
             validEntry.name = 'LRG_001p2';
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('allows null source_version', () => {
             validEntry.source_version = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.not.throw(AttributeError);
+            return db.models.Feature.validateContent(validEntry);
         });
         it('source_version defaults to null', () => {
             delete validEntry.source_version;
-            const record = db.models.Feature.validateContent(validEntry);
-            expect(record).to.have.property('source_version', null);
+            return db.models.Feature.validateContent(validEntry)
+                .then((result) => {
+                    expect(result).to.have.property('source_version', null);
+                });
         });
         it('errors on null biotype', () => {
             validEntry.biotype = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors if biotype is not defined', () => {
             delete validEntry.biotype;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on null name', () => {
             validEntry.name = null;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors when name is not defined', () => {
             delete validEntry.name;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
     });
     describe(FEATURE_SOURCE.GRC, () => {
@@ -600,52 +595,62 @@ describe('Feature.validateContent', () => {
             done();
         });
         it('allows version', () => {
-            const result = db.models.Feature.validateContent(validEntry);
-            expect(result).to.have.property('source', FEATURE_SOURCE.GRC);
-            expect(result).to.have.property('source_version', 19);
-            expect(result).to.have.property('name', 'chr11');
-            expect(result).to.have.property('biotype', FEATURE_BIOTYPE.TEMPLATE);
+            return db.models.Feature.validateContent(validEntry)
+                .then((result) => {
+                    expect(result).to.have.property('source', FEATURE_SOURCE.GRC);
+                    expect(result).to.have.property('source_version', 19);
+                    expect(result).to.have.property('name', 'chr11');
+                    expect(result).to.have.property('biotype', FEATURE_BIOTYPE.TEMPLATE);
+                });
         });
         it('allows with chr prefix', () => {
             validEntry.name = 'chr1';
-            const result = db.models.Feature.validateContent(validEntry);
-            expect(result).to.have.property('name', 'chr1');
+            return db.models.Feature.validateContent(validEntry)
+                .then((result) => {
+                    expect(result).to.have.property('name', 'chr1');
+                });
         });
         it('allows without chr prefix', () => {
             validEntry.name = 1;
-            const result = db.models.Feature.validateContent(validEntry);
-            expect(result).to.have.property('name', 1);
+            return db.models.Feature.validateContent(validEntry)
+                .then((result) => {
+                    expect(result).to.have.property('name', 1);
+                });
         });
         it('allows alternative chromosomes chr1_gl000191_random', () => {
             validEntry.name = 'chr1_gl000191_random';
-            const result = db.models.Feature.validateContent(validEntry);
-            expect(result).to.have.property('name', 'chr1_gl000191_random');
+            return db.models.Feature.validateContent(validEntry)
+                .then((result) => {
+                    expect(result).to.have.property('name', 'chr1_gl000191_random');
+                });
         });
         it('allows MT', () => {
             validEntry.name = 'MT';
-            const result = db.models.Feature.validateContent(validEntry);
-            expect(result).to.have.property('name', 'MT');
+            return db.models.Feature.validateContent(validEntry)
+                .then((result) => {
+                    expect(result).to.have.property('name', 'MT');
+                });
         });
         it('errors on biotype gene', () => {
             validEntry.biotype = FEATURE_BIOTYPE.GENE;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on biotype transcript', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on biotype protein', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on biotype exon', () => {
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
-            expect(() => { return db.models.Feature.validateContent(validEntry); }).to.throw(AttributeError);
+            expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
     });
     it('errors on invalid source', () => {
-        let entry = {source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE, name: null, source_version: '2017-01-01'};
-        expect(() => { return db.models.Feature.validateContent(entry); }).to.throw(AttributeError);
+        let validEntry = {source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE, name: null, source_version: '2017-01-01'};
+        expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
     });
 
     after((done) => {

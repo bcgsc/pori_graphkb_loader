@@ -8,7 +8,7 @@ const {Context} = require('./../../app/repo/context');
 const {expectDuplicateKeyError} = require('./orientdb_errors');
 const {PERMISSIONS} = require('./../../app/repo/constants');
 
-describe('Review schema tests:', () => {
+describe('Target schema tests:', () => {
     let server, db;
     beforeEach(function(done) { /* build and connect to the empty database */
         // set up the database server

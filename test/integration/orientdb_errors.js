@@ -8,7 +8,6 @@ const expectDuplicateKeyError = (error) => {
 };
 
 const expectAbstractClassError = (error) => {
-    expect(error.message).to.include('abstract class');
     expect(error.type).to.equal('com.orientechnologies.orient.core.exception.OSchemaException');
     expect(error.name).to.equal('OrientDB.RequestError');
 };

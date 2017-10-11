@@ -50,7 +50,7 @@ class Feature extends KBVertex {
         case FEATURE_SOURCE.HGNC:
             namePattern = /^[A-Z]([A-Z]|-|\d|orf)*$/;
             if (args.biotype !== FEATURE_BIOTYPE.GENE) {
-                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+                return Promise.reject(new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`));
             }
             break;
         case FEATURE_SOURCE.ENSEMBL:
@@ -68,7 +68,7 @@ class Feature extends KBVertex {
                 namePattern = /^ENSE\d+$/;
                 break;
             default:
-                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+                return Promise.reject(new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`));
             }
             break;
         case FEATURE_SOURCE.REFSEQ:
@@ -86,7 +86,7 @@ class Feature extends KBVertex {
                 namePattern = /^NC_\d+$/;
                 break;
             default:
-                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+                return Promise.reject(new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`));
             }
             break;
         case FEATURE_SOURCE.LRG:
@@ -101,24 +101,24 @@ class Feature extends KBVertex {
                 namePattern = /^LRG_\d+$/;
                 break;
             default:
-                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+                return Promise.reject(new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`));
             }
             break;
         case FEATURE_SOURCE.GRC:
             if (args.biotype !== FEATURE_BIOTYPE.TEMPLATE) {
-                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+                return Promise.reject(new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`));
             }
             break;
         case FEATURE_SOURCE.HUGO:
             if (args.biotype !== FEATURE_BIOTYPE.GENE) {
-                throw new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`);
+                return Promise.reject(new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`));
             }
             break;
         default:
-            throw new AttributeError(`unexpected feature source ${args.source} is not configured for validation`);
+            return Promise.reject(new AttributeError(`unexpected feature source ${args.source} is not configured for validation`));
         }
         if (namePattern.exec(args.name) === null) {
-            throw new AttributeError(`feature name '${args.name}' did not match the expected pattern '${namePattern}'`);
+            return Promise.reject(new AttributeError(`feature name '${args.name}' did not match the expected pattern '${namePattern}'`));
         }
         return super.validateContent(args);
     }
@@ -142,16 +142,10 @@ class Feature extends KBVertex {
             }
         ];
 
-        return new Promise((resolve, reject) => {
-            Base.createClass({db, clsname: this.clsname, superClasses: Context.clsname, isAbstract: false, properties: props, indices: idxs})
-                .then(() => {
-                    return this.loadClass(db);
-                }).then((cls) => {
-                    resolve(cls);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return Base.createClass({db, clsname: this.clsname, superClasses: Context.clsname, isAbstract: false, properties: props, indices: idxs})
+            .then(() => {
+                return this.loadClass(db);
+            });
     }
 }
 
@@ -167,17 +161,17 @@ class FeatureDeprecatedBy extends KBEdge {
             if (node['@class'] === undefined) {
                 node['@class'] = Feature.clsname;
             } else if (node['@class'] !== Feature.clsname && ! this.db.models[node['@class']].superClasses.includes(Feature.clsname)) {
-                throw new AttributeError(`edge endpoint must be a descendant of ${Feature.clsname}. Found '${node['@class']}'`);
+                return Promise.reject(new AttributeError(`edge endpoint must be a descendant of ${Feature.clsname}. Found '${node['@class']}'`));
             }
         }
         if (src.biotype !== tgt.biotype) {
-            throw new AttributeError('cannot alias between features with unequal biotype');
+            return Promise.reject(new AttributeError('cannot alias between features with unequal biotype'));
         }
         if (src.source !== tgt.source) {
-            throw new AttributeError('cannot alias between features with unequal source');
+            return Promise.reject(new AttributeError('cannot alias between features with unequal source'));
         }
         if (src.source_version !== null && src.source_version >= tgt.source_version) {
-            throw new AttributeError('source_version must increase in order to deprecate a feature node');
+            return Promise.reject(new AttributeError('source_version must increase in order to deprecate a feature node'));
         }
         return super.validateContent(content);
     }
@@ -189,17 +183,10 @@ class FeatureDeprecatedBy extends KBEdge {
             {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Feature.clsname},
         ];
 
-        return new Promise((resolve, reject) => {
-
-            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
-                .then(() => {
-                    return this.loadClass(db);
-                }).then((cls) => {
-                    resolve(cls);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
+            .then(() => {
+                return this.loadClass(db);
+            });
     }
 
 }
@@ -214,30 +201,25 @@ class FeatureAliasOf extends KBEdge {
             if (node['@class'] === undefined) {
                 node['@class'] = Feature.clsname;
             } else if (node['@class'] !== Feature.clsname && ! this.db.models[node['@class']].superClasses.includes(Feature.clsname)) {
-                throw new AttributeError(`edge endpoint must be a descendant of ${Feature.clsname}. Found '${node['@class']}'`);
+                return Promise.reject(new AttributeError(`edge endpoint must be a descendant of ${Feature.clsname}. Found '${node['@class']}'`));
             }
         }
         if (src.biotype !== tgt.biotype) {
-            throw new AttributeError('cannot alias between features with unequal biotype');
+            return Promise.reject(new AttributeError('cannot alias between features with unequal biotype'));
         }
         return super.validateContent(content);
     }
 
     static createClass(db) {
-        return new Promise((resolve, reject) => {
-            const props = [
-                {name: 'out', type: 'link', mandatory: true, notNull: true, linkedClass: Feature.clsname},
-                {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Feature.clsname},
-            ];
-            Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
-                .then(() => {
-                    return this.loadClass(db);
-                }).then((cls) => {
-                    resolve(cls);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        const props = [
+            {name: 'out', type: 'link', mandatory: true, notNull: true, linkedClass: Feature.clsname},
+            {name: 'in', type: 'link', mandatory: true, notNull: true, linkedClass: Feature.clsname},
+        ];
+        return Base.createClass({db, clsname: this.clsname, superClasses: KBEdge.clsname, isAbstract: false, properties: props})
+            .then(() => {
+                return this.loadClass(db);
+            });
+        
     }
 }
 

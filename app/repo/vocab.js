@@ -32,8 +32,7 @@ class Vocab extends KBVertex {
                 'class':  this.clsname
             }
         ];
-        return new Promise((resolve, reject) => {
-            Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: false, properties: props, indices: idxs})
+        return Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname, isAbstract: false, properties: props, indices: idxs})
                 .then(() => {
                     return Promise.all([
                         this.loadClass(db),
@@ -41,45 +40,33 @@ class Vocab extends KBVertex {
                     ]);
                 }).then((plist) => {
                     cache.vocab = plist[1];
-                    resolve(plist[0]);
-                }).catch((error) => {
-                    reject(error);
+                    return plist[0];
                 });
-        });
     }
 
     createRecord(where={}, user) {
-        return new Promise((resolve, reject) => {
-            super.createRecord(where, user)
-                .then((record) => {
-                    upsertCache(record.content);
-                    resolve(record);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return super.createRecord(where, user)
+            .then((record) => {
+                upsertCache(record.content);
+                return record;
+            });
     }
 
     deleteRecord(where={}, user) {
-        return new Promise((resolve, reject) => {
-            super.deleteRecord(where, user)
-                .then((record) => {
-                    removeFromCache(record.content);
-                    resolve(record);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return super.deleteRecord(where, user)
+            .then((record) => {
+                removeFromCache(record.content);
+                return record;
+            });
     }
     
     updateDefinition(where, user) {
-        return new Promise((resolve, reject) => {
-            for (let req of ['class', 'property', 'term']) {
-                if (where[req] == undefined) {
-                    throw new AttributeError(`required attribute '${req}'is missing`);
-                }
+        for (let req of ['class', 'property', 'term']) {
+            if (where[req] == undefined) {
+                return Promise.reject(new AttributeError(`required attribute '${req}'is missing`));
             }
-            this.selectExactlyOne({
+        }
+        return this.selectExactlyOne({
                 'class': where.class,
                 property: where.property,
                 term: where.term,
@@ -87,33 +74,22 @@ class Vocab extends KBVertex {
                 conditional: where.conditional || null
             }).then((record) => {
                 if (! where.definition || record.content.definition === where.definition) {
-                    resolve(record);
+                    return record;
                 } else {
                     record.content.definition = where.definition;
                     return this.updateRecord(record, user);
                 }
-            }).then((record) => {
-                resolve(record);
-            }).catch((error) => {
-                reject(error);
             });
-        });
     }
 
     addTermIfNotExists(term, user) {
-        return new Promise((resolve, reject) => {
-            this.selectExactlyOne({
+        return this.selectExactlyOne({
                 'class': term.class, property: term.property, term: term.term, deleted_at: null, conditional: term.conditional || null
             }).catch(NoResultFoundError, () => {
                 return this.createRecord({
                     'class': term.class, property: term.property, term: term.term, definition: term.definition, conditional: term.conditional || null
                 }, user);
-            }).then((record) => {
-                resolve(record);
-            }).catch((error) => {
-                reject(error);
             });
-        }); 
     }
     
     /**
@@ -179,10 +155,9 @@ const removeFromCache = (record) => {
 
 const fetchValues = (dbconn) => {
     // pull the table from the db
-    return new Promise((resolve, reject) => {
-        const local = {};
-        dbconn.conn.select().from(Vocab.clsname).where({deleted_at: null}).all()  // all active records
+    return dbconn.conn.select().from(Vocab.clsname).where({deleted_at: null}).all()  // all active records
             .then((records) => {
+                const local = {};
                 for (let r of records) {
                     if (local[r.class] == undefined) {
                         local[r.class] = {};
@@ -192,11 +167,8 @@ const fetchValues = (dbconn) => {
                     }
                     local[r.class][r.property].push(r);
                 }
-                resolve(local);
-            }, (error) => {
-                reject(error);
+                return local;
             });
-    });
 };
 
 
