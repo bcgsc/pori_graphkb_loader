@@ -94,13 +94,12 @@ describe('Review schema tests:', () => {
     describe('Review Vertex', () => {
         let statementRec;
         beforeEach((done) => {
-            return Statement.createClass(db)
+            Statement.createClass(db)
                 .then((stmntClass) => {
-                    return stmntClass.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, 'me')
-                        .then((stRec) => {
-                            statementRec = stRec;
-                            done();
-                        });
+                    return stmntClass.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, 'me');
+                }).then((stRec) => {
+                    statementRec = stRec;
+                    done();
                 }).catch((error) => {
                     done(error);
                 });
@@ -120,16 +119,15 @@ describe('Review schema tests:', () => {
         describe('ReviewAppliesTo Edge', () => {
             let revRecord;
             beforeEach((done) => {
-                return Review.createClass(db)
-                .then((revCls) => {
-                    revCls.createRecord({comment: 'test comment',  approved: true}, 'me')
-                        .then((revRec) => {
-                            revRecord = revRec;
-                            done();
-                        });
-                }).catch((error) => {
-                    done(error);
-                });
+                Review.createClass(db)
+                    .then((revCls) => {
+                        return revCls.createRecord({comment: 'test comment',  approved: true}, 'me');
+                    }).then((revRec) => {
+                        revRecord = revRec;
+                        done();
+                    }).catch((error) => {
+                        done(error);
+                    });
             });
             it('ReviewAppliesTo.createRecord', () => {
                 return ReviewAppliesTo.createClass(db)

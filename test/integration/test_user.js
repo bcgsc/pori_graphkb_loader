@@ -26,7 +26,7 @@ class MockVertexClass extends KBVertex {
 }
 
 
-describe('base module', () => {
+describe('KBUser & KBRole', () => {
     let db, server;
     beforeEach(function(done) { 
         connectServer(conf)
@@ -39,47 +39,6 @@ describe('base module', () => {
             }).catch((error) => {
                 console.log('error in connecting to the server or creating the database', error);
                 done(error);
-            });
-    });
-    it('KBVertex.createClass', () => {
-        return KBRole.createClass(db)
-            .then((roleCls) => {
-                return roleCls.createRecord({name: 'admin', mode: 0, rules: admin})
-             .then(() => {
-                 return KBUser.createClass(db)
-                .then((userCls) => {
-                    return userCls.createRecord({username: 'admin', role: 'admin'})
-                    .then(() => {
-                        return KBVertex.createClass(db)
-                        .then((cls) => {
-                            expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version','created_by', 'deleted_by']);
-                            expect(cls.constructor.clsname).to.equal('kbvertex');
-                            expect(cls.constructor.createType).to.equal('vertex');
-                        });
-                    });
-                });
-             });
-            });
-    });
-
-    it('KBEdge.createClass', () => {
-        return KBRole.createClass(db)
-            .then((roleCls) => {
-                return roleCls.createRecord({name: 'admin', mode: 0, rules: admin})
-             .then(() => {
-                 return KBUser.createClass(db)
-                .then((userCls) => {
-                    return userCls.createRecord({username: 'admin', role: 'admin'})
-                    .then(() => {
-                        return KBEdge.createClass(db)
-                        .then((cls) => {
-                            expect(cls.propertyNames).to.have.members(['uuid', 'created_at', 'deleted_at', 'version','created_by', 'deleted_by']);
-                            expect(cls.constructor.clsname).to.equal('kbedge');
-                            expect(cls.constructor.createType).to.equal('edge');
-                        });
-                    });
-                });
-             });
             });
     });
 
@@ -102,16 +61,7 @@ describe('base module', () => {
             });
     });
 
-    it('History.createClass', () => {
-        return History.createClass(db)
-            .then((cls) => {
-                expect(cls.propertyNames).to.have.members(['comment']);
-                expect(cls.constructor.clsname).to.equal('history');
-                expect(cls.constructor.createType).to.equal('edge');
-            });
-    });
-
-    describe('KBVertex & KBEdge Classes', () => {
+    describe('instance tests', () => {
         let kbuserClass, kbroleClass;
         beforeEach((done) => {
             Promise.all([
@@ -169,7 +119,7 @@ describe('base module', () => {
                                 const uuid = diseaseRec.content.uuid;
                                 const version = diseaseRec.content.version;
                                 diseaseRec.content.name = 'updatedName';
-                                return diseaseClass.updateRecord(diseaseRec.content, 'admin')
+                                return diseaseClass.updateRecord(diseaseRec, 'admin')
                                     .then((updatedRec) => {
                                         expect(updatedRec.content.uuid).to.equal(uuid);
                                         expect(updatedRec.content.version).to.equal(version + 1);
@@ -188,26 +138,28 @@ describe('base module', () => {
                     return Promise.all([
                         Ontology.createClass(db),
                         Disease.createClass(db),
-                    ]).then((clsList) => {
-                        diseaseClass = clsList[1];
-                        return diseaseClass.createRecord(disease, 'admin')
-                            .then((diseaseRec) => {
-                                const uuid = diseaseRec.content.uuid;
-                                const version = diseaseRec.content.version;
-                                diseaseRec.content.name = 'updatedName';
-                                return diseaseClass.updateRecord(diseaseRec.content, 'admin')
-                                    .then((updatedRec) => {
-                                        expect(updatedRec.content.uuid).to.equal(uuid);
-                                        expect(updatedRec.content.version).to.equal(version + 1);
-                                        expect(updatedRec.content).to.include.keys('created_by');
-                                    });
-                            }).then(() => {
-                                return diseaseClass.deleteRecord(disease, 'admin')
-                                    .then(() => {
-                                        expect.fail('NoResultFoundError');
-                                    }).catch(NoResultFoundError, () => {});
-                            });
-                    });
+                    ]);
+                }).then(([ontologyClass, diseaseClass]) => {
+                    let uuid, version;
+                    return diseaseClass.createRecord(disease, 'admin')
+                        .then((diseaseRec) => {
+                            uuid = diseaseRec.content.uuid;
+                            version = diseaseRec.content.version;
+                            diseaseRec.content.name = 'updatedName';
+                            return diseaseClass.updateRecord(diseaseRec, 'admin');
+                        }).then((updatedRec) => {
+                            expect(updatedRec.content.uuid).to.equal(uuid);
+                            expect(updatedRec.content.version).to.equal(version + 1);
+                            expect(updatedRec.content).to.include.keys('created_by');
+                            return diseaseClass.deleteRecord(disease, 'admin');
+                        }).then((record) => {
+                            console.log('found: ', record);
+                            expect.fail('expected NoResultFoundError');
+                        }).catch((error) => {
+                            if (! (error instanceof NoResultFoundError)) {
+                                throw error;
+                            }
+                        });
                 });
         });
 
@@ -276,7 +228,7 @@ describe('base module', () => {
                         const uuid = diseaseRec.content.uuid;
                         const version = diseaseRec.content.version;
                         diseaseRec.content.name = 'updatedName';
-                        return diseaseClass.updateRecord(diseaseRec.content, 'Wei')
+                        return diseaseClass.updateRecord(diseaseRec, 'Wei')
                             .then((updatedRec) => {
                                 expect(updatedRec.content.uuid).to.equal(uuid);
                                 expect(updatedRec.content.version).to.equal(version + 1);
@@ -338,7 +290,7 @@ describe('base module', () => {
                             const uuid = diseaseRec.content.uuid;
                             const version = diseaseRec.content.version;
                             diseaseRec.content.name = 'updatedName';
-                            return diseaseClass.updateRecord(diseaseRec.content, 'Martin')
+                            return diseaseClass.updateRecord(diseaseRec, 'Martin')
                                 .then((updatedRec) => {
                                     expect(updatedRec.content.uuid).to.equal(uuid);
                                     expect(updatedRec.content.version).to.equal(version + 1);

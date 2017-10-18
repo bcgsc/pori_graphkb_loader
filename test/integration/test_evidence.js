@@ -121,7 +121,7 @@ describe('Evidence schema tests:', () => {
                 return ClinicalTrial.createClass(db)
                     .then((result) => {
                         expect(result).to.be.an.instanceof(ClinicalTrial);
-                        expect(result.propertyNames).to.include('sample_population','phase', 'trial_id', 'official_title', 'summary','version','created_at','deleted_at');
+                        expect(result.propertyNames).to.include('sample_population','phase', 'trial_id', 'summary','version','created_at','deleted_at');
                         expect(result.isAbstract).to.be.false;
                         expect(result.conn.superClass).to.equal('study');
                     });
@@ -348,8 +348,9 @@ describe('Evidence schema tests:', () => {
                     });
             });
             it('test mandatory props', () => {
-                return mockClass.createRecord({title: 'title', year: 2008}, 'me')
+                return mockClass.createRecord({trial_id: 'trial_id', title: 'title', year: 2008}, 'me')
                     .then((clinicalRecord) => {
+                        expect(clinicalRecord.content).to.have.property('trial_id');
                         expect(clinicalRecord.content).to.have.property('title');
                         expect(clinicalRecord.content).to.have.property('year');
                         // should not have
@@ -358,7 +359,7 @@ describe('Evidence schema tests:', () => {
                     });
             });
 
-            it('errors when one or more mandatory porps are not provided', () => {
+            it('errors when one or more mandatory props are not provided', () => {
                 return mockClass.createRecord({year: 2008, phase: 1}, 'me')
                 .then(() => {
                     expect.fail('violated null constraint. expected error');
@@ -380,17 +381,17 @@ describe('Evidence schema tests:', () => {
                 const trial_entry = {phase: 1, trial_id: 'trial_id', title: 'title', year: 2008};
                 return mockClass.createRecord(trial_entry, 'me')
                     .then(() => {
-                        return mockClass.createRecord(trial_entry, 'me');
-                    }, () => {
+                        return mockClass.createRecord(trial_entry, 'me')
+                    }).then(() => {
                         expect.fail('expected an error');
                     }).catch((error) => {
                         expectDuplicateKeyError(error);
                     });
             });
 
-            it('errors on duplicate active trials in different phases', () => {
-                const first_trial_entry = {phase: 1, trial_id: 'trial_id', title: 'title', year: 2008};
-                const second_trial_entry = {phase: 2, trial_id: 'trial_id', title: 'title', year: 2008};
+            it('duplicate active trials in different phases', () => {
+                const first_trial_entry = {phase: 1, trial_id: 'trial_id', title: 'title', year: 2008}
+                const second_trial_entry = {phase: 2, trial_id: 'trial_id', title: 'title', year: 2008}
                 return mockClass.createRecord(first_trial_entry, 'me')
                     .then(() => {
                         return mockClass.createRecord(second_trial_entry, 'me');
@@ -416,7 +417,7 @@ describe('Evidence schema tests:', () => {
                     .then(() => {
                         return mockClass.createRecord({phase: 2, trial_id: 'trial_id', deleted_at: 1493760183198, title: 'title', year: 2008}, 'me');
                     }).then((clinicalResult) => {
-                        expect(clinicalResult.content).to.have.property('title');                       
+                        expect(clinicalResult.content).to.have.property('trial_id');                       
                     }).catch((clinicalError) => {
                         return expectDuplicateKeyError(clinicalError);
                     });
@@ -430,166 +431,6 @@ describe('Evidence schema tests:', () => {
                     });
             });
         });
-
-        describe('journal constraints', () => {
-            let currClass = null;
-            beforeEach(function(done) {
-                Journal.createClass(db)
-                    .then((esClass) => {
-                        currClass = esClass;
-                        done();
-                    }).catch((error) => {
-                        done(error);
-                    });
-            });
-            it('test mandatory props', () => {
-                return currClass.createRecord({name: 'name'}, 'me')
-                    .then((record) => {
-                        expect(record.content).to.have.property('uuid');
-                        expect(record.content).to.have.property('version');
-                        expect(record.content).to.have.property('created_at');
-                        expect(record.content).to.have.property('deleted_at');
-                        expect(record.content).to.have.property('name');
-                    });
-            });
-            it('null for mandatory porps error', () => {
-                return currClass.createRecord({}, 'me')
-                .then(() => {
-                    expect.fail('violated null constraint. expected error');
-                }).catch((error) => {
-                    expect(error).to.be.instanceof(AttributeError);
-                });
-            });
-            it('duplicate active entries', () => {
-                return currClass.createRecord({name: 'Nature'}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({name: 'naturE'}, 'me');
-                    }).then(() => {
-                        expect.fail('violated unique constraint. expected error');                        
-                    }).catch((error) => {
-                        return expectDuplicateKeyError(error);
-                    });
-            });
-            it('duplicate entries deleted at the same time', () => {
-                return currClass.createRecord({name: 'Nature', deleted_at: 1493760183196}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({name: 'naturE', deleted_at: 1493760183196}, 'me');
-                    }).then(() => {
-                        expect.fail('violated unique constraint. expected error');                        
-                    }).catch((error) => {
-                        return expectDuplicateKeyError(error);
-                    });
-            });
-            it('duplicate entries deleted at different times', () => {
-                return currClass.createRecord({name: 'Nature', deleted_at: 1493760183196}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({name: 'naturE', deleted_at: 1493760183198}, 'me');
-                    }).then((result) => {
-                        expect(result.content).to.have.property('name');                        
-                    }).catch((error) => {
-                        return expectDuplicateKeyError(error);
-                    });
-            });
-            it('duplicate entries one active and one deleted', () => {
-                return currClass.createRecord({name: 'Nature'}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({name: 'naturE', deleted_at: 1493760183196}, 'me');
-                    }).then((result) => {
-                        expect(result.content).to.have.property('name');                        
-                    }).catch((error) => {
-                        return expectDuplicateKeyError(error);
-                    });
-            });
-            it('invalid attribute', () => {
-                return currClass.createRecord({name: 'name', invalid_attribute: 2}, 'me')
-                    .then(() => {
-                        expect.fail('invalid attribute. error is expected');
-                    }).catch((error) => {
-                        expect(error).to.be.an.instanceof(AttributeError);
-                    });
-            });
-        });
-
-        describe('externalSources constraints', () => {
-            let currClass = null;
-            beforeEach(function(done) {
-                ExternalSource.createClass(db)
-                    .then((esClass) => {
-                        currClass = esClass;
-                        done();
-                    }).catch((error) => {
-                        done(error);
-                    });
-            });
-            it('test mandatory props', () => {
-                return currClass.createRecord({url: 'url', title: 'title'}, 'me')
-                    .then((record) => {
-                        expect(record.content).to.have.property('uuid');
-                        expect(record.content).to.have.property('version');
-                        expect(record.content).to.have.property('created_at');
-                        expect(record.content).to.have.property('deleted_at');
-                        expect(record.content).to.have.property('title');
-                        expect(record.content).to.have.property('url');
-                        // should not have
-                        expect(record.content).to.not.have.property('extraction_date');
-                    });
-            });
-            it('errors when mandatory porp: title is not provided', () => {
-                return currClass.createRecord({url: 'url'}, 'me')
-                .then(() => {
-                    expect.fail('violated null constraint. expected error');
-                }).catch((error) => {
-                    expect(error).to.be.instanceof(AttributeError);
-                });
-            });
-            it('allows when mandatory porp: url is not provided', () => {
-                return currClass.createRecord({title: 'title'}, 'me')
-                .then((result) => {
-                    expect(result.content).to.have.property('title');
-                }).catch((error) => {
-                    expect(error).to.be.instanceof(AttributeError);
-                });
-            });
-            it('duplicate entries for active records', () => {
-                return currClass.createRecord({url: 'url', title:'title'}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({url: 'url', title:'title'}, 'me');
-                    }).then(() => {
-                        expect.fail('violated unique constraint. expected error');
-                    }).catch((error) => {
-                        return expectDuplicateKeyError(error);
-                    });
-            });
-            it('duplicate entries for rows deleted at the same time', () => {
-                return currClass.createRecord({url: 'url', title:'title', deleted_at: 1493760183196}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({url: 'url', title:'title', deleted_at: 1493760183196}, 'me');
-                    }).then(() => {
-                        expect.fail('violated unique constraint. expected error');                        
-                    }).catch((error) => {
-                        return expectDuplicateKeyError(error);
-                    });
-            });
-            it('duplicate entries for deleted rows', () => {
-                return currClass.createRecord({url: 'url', title:'title', deleted_at: 1493760183196}, 'me')
-                    .then(() => {
-                        return currClass.createRecord({url: 'url', title:'title', deleted_at: 1493760183198}, 'me');
-                    }).then((result) => {
-                        expect(result.content).to.have.property('url');                 
-                    }).catch((error) => {
-                        return expectDuplicateKeyError(error);
-                    });
-            });
-            it('invalid attribute', () => {
-                return currClass.createRecord({url: 'url', extraction_date: 'extraction_date', invalid_attribute: 2}, 'me')
-                    .then(() => {
-                        expect.fail('invalid attribute. error is expected');
-                    }).catch((error) => {
-                        expect(error).to.be.an.instanceof(AttributeError);
-                    });
-            });
-        });
-
     });
 
     afterEach((done) => {

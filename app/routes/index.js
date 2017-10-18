@@ -1,5 +1,5 @@
 const jc = require('json-cycle');
-const {ErrorMixin} = require('./../repo/error.js');
+const {ErrorMixin, NoResultFoundError} = require('./../repo/error.js');
 
 
 class QueryParameterError extends ErrorMixin {};
@@ -185,7 +185,7 @@ const add_routes = (router, repo) => {
             console.log('GET /feature', req.query);
             validateQueryParams(req.query, ['source', 'name', 'biotype'])
                 .then(() => {
-                    return repo.models.feature.select(req.query)
+                    return repo.models.feature.select(req.query);
                 }).then((result) => {
                     console.log('query returned', result.length, 'results');
                     res.json(jc.decycle(result));
@@ -250,7 +250,7 @@ const add_routes = (router, repo) => {
             console.log('GET /feature/:id', req.params);
             repo.models.feature.selectExactlyOne({uuid: req.params.id, deleted_at: null})
                 .then((result) => {
-                    console.log('result', result);
+                    console.log('query returned', result.rid);
                     res.json(jc.decycle(result.content));
                 }).catch((error) => {
                     console.log('error:', error.name, error.message);
@@ -382,6 +382,44 @@ const add_routes = (router, repo) => {
      *         '403':
      *           description: access denied
      */
+    
+    router.route('/statement/:id')
+        .get((req, res, next) => {
+            console.log('GET /statement/:id', req.params);
+            repo.models.statement.selectExactlyOne({uuid: req.params.id, deleted_at: null})
+                .then((result) => {
+                    console.log('query returned', result.rid);
+                    res.json(jc.decycle(result.content));
+                }).catch((error) => {
+                    console.log('error:', error.name, error.message);
+                    if (error instanceof NoResultFoundError) {
+                        res.status(404).json(error);
+                    } else {
+                        res.status(500).json(error);
+                    }
+                });
+        });
+    router.route('/statement')
+        .get((req, res, next) => {
+            console.log('GET /statement', req.query);
+            validateQueryParams(req.query, ['relevance'])
+                .then(() => {
+                    // activeOnly=false, exactlyN=null, ignoreAtPrefixed=false, fetchPlan={'*': 1}
+                    return repo.models.statement.select(req.query, true, null, false, {'out_*': 3});
+                }).then((result) => {
+                    console.log('query returned', result.length, 'results');
+                    res.json(jc.decycle(result));
+                }).catch((error) => {
+                    console.log('error:', error.name, error.message);
+                    res.status(400).json(error);
+                });
+        });
+
+    // add the match endpoint
+    router.route('/match')
+        .post((req, res, next) => {
+        
+        });
 };
 
 module.exports = add_routes;

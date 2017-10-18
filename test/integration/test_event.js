@@ -13,6 +13,16 @@ const {AttributeError, ControlledVocabularyError} = require('./../../app/repo/er
 const {PERMISSIONS} = require('./../../app/repo/constants');
 
 
+const expectPromiseFail = (promise, errorClass) => {
+    return promise
+        .then((result) => {
+            expect.fail('expected error');
+        }).catch((err) => {
+            expect(err).to.be.instanceof(errorClass);
+        });
+};
+
+
 cache.vocab[Event.clsname] = {'term': [
     {
         term: 'gain',
@@ -106,18 +116,16 @@ describe('Event schema tests:', () => {
         });
         describe('Event.validateContent', () => {
             it('errors when germline is true and zygosity=subclonal', () => {
-                expect(() => {
-                    Event.validateContent(
+                expectPromiseFail(Event.validateContent(
                         {type: EVENT_TYPE.MUT, germline: true, zygosity: ZYGOSITY.SUB, primary_feature: primary_feature}
-                    );
-                }).to.throw(AttributeError);
+                    ), AttributeError);
             });
             it('allows subclonal when the event is not germline', () => {
-                const args = Event.validateContent(
-                    {type: EVENT_TYPE.MUT, germline: false, zygosity: ZYGOSITY.SUB, primary_feature: primary_feature}
-                );
-                expect(args.germline).to.be.false;
-                expect(args).to.not.have.property('uuid');
+                return Event.validateContent({type: EVENT_TYPE.MUT, germline: false, zygosity: ZYGOSITY.SUB, primary_feature: primary_feature})
+                    .then((args) => {
+                        expect(args.germline).to.be.false;
+                        expect(args).to.not.have.property('uuid');
+                    });
             });
         });
     });

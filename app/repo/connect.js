@@ -43,28 +43,23 @@ const defaultHeirarchy = [
  * attribute error on reject which happens if a required parameter was not given
  */
 const connectServer = (opt) => {
-    return new Promise((resolve, reject) => {
-        for (let param of ['host', 'port', 'serverUsername', 'serverPassword']) {
-            if (opt[param] === undefined) {
-                throw new AttributeError(`missing required attribute ${param}`);
-            }
+    for (let param of ['host', 'port', 'serverUsername', 'serverPassword']) {
+        if (opt[param] === undefined) {
+            return Promise.reject(new AttributeError(`missing required attribute ${param}`));
         }
-        const serverConf = {
-            host: opt.host,
-            HTTPport: opt.port,
-            username: opt.serverUsername,
-            password: opt.serverPassword
-        };
-        // set up the database server
-        const server = OrientDB(serverConf);
-        server.list()
-            .then(() => {
-                resolve(server);
-            }).catch((error) => {
-                console.log('error listing databases:', error);
-                reject(error);
-            });
-    });
+    }
+    const serverConf = {
+        host: opt.host,
+        HTTPport: opt.port,
+        username: opt.serverUsername,
+        password: opt.serverPassword
+    };
+    // set up the database server
+    const server = OrientDB(serverConf);
+    return server.list()
+        .then(() => {
+            return server;
+        });
 };
 
 
@@ -81,42 +76,26 @@ class DB {
     }
 
     buildModels(models, create) {
-        return new Promise((resolve, reject) => {
-            Promise.all(Array.from(models, x => create ? x.createClass(this) : x.loadClass(this)))
-                .then(() => {
-                    resolve();
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return Promise.all(Array.from(models, x => create ? x.createClass(this) : x.loadClass(this)));
     }
 
     getRecord(rid) {
-        return new Promise((resolve, reject) => {
-            this.conn.record.get(rid)
-                .then((rec) => {
-                    resolve(new Record(rec));
-                }).catch((err) => {
-                    reject(err);
-                });
-        });
+        return this.conn.record.get(rid)
+            .then((rec) => {
+                return new Record(rec);
+            });
     }
 
     buildHeirarchyRecursive(heirarchy, depth, create=true) {
-        return new Promise((resolve, reject) => {
-            if (depth >= heirarchy.length) {
-                resolve();
-            } else {
-                this.buildModels(heirarchy[depth], create)
-                    .then(() => {
-                        return this.buildHeirarchyRecursive(heirarchy, depth + 1, create);
-                    }).then(() => {
-                        resolve();
-                    }).catch((error) => {
-                        reject(error);
-                    });
-            }
-        });
+        if (depth >= heirarchy.length) {
+            return Promise.resolve();
+        } else {
+            return this.buildModels(heirarchy[depth], create)
+                .then(() => {
+                    return this.buildHeirarchyRecursive(heirarchy, depth + 1, create);
+                });
+        }
+        
     }
     buildHeirarchy(heirarchy, create=true) {
         return this.buildHeirarchyRecursive(heirarchy, 0, create);
@@ -128,51 +107,43 @@ class DB {
 }
 
 const createDB = (opt) => {
-    return new Promise((resolve, reject) => {
-        opt.heirarchy = opt.heirarchy || [];
-        for (let param of ['server', 'name', 'username', 'password']) {
-            if (opt[param] === undefined) {
-                throw new AttributeError(`missing required attribute ${param}`);
-            }
+    opt.heirarchy = opt.heirarchy || [];
+    for (let param of ['server', 'name', 'username', 'password']) {
+        if (opt[param] === undefined) {
+            return Promise.reject(new AttributeError(`missing required attribute ${param}`));
         }
-        const result = new DB(null, opt.name);
+    }
+    const result = new DB(null, opt.name);
 
-        opt.server.create({name: opt.name, username: opt.username, password: opt.password})
-            .then((con) => {
-                result.conn = con;
-                // alter db to relax blueprint constraints (otherwise null property value error)
-                return result.conn.query('alter database custom standardElementConstraints=false');
-            }).then(() => {
-                return createPermissionsClass(result);
-            }).then(() => {
-                // now initialize all models
-                return result.buildHeirarchy(opt.heirarchy);
-            }).then(() => {
-                resolve(result);
-            }).catch((error) => {
-                reject(error);
-            });
-    });
+    return opt.server.create({name: opt.name, username: opt.username, password: opt.password})
+        .then((con) => {
+            result.conn = con;
+            // alter db to relax blueprint constraints (otherwise null property value error)
+            return result.conn.query('alter database custom standardElementConstraints=false');
+        }).then(() => {
+            return createPermissionsClass(result);
+        }).then(() => {
+            // now initialize all models
+            return result.buildHeirarchy(opt.heirarchy);
+        }).then(() => {
+            return result;
+        });
 };
 
 
 const connectDB = (opt) => {
-    return new Promise((resolve, reject) => {
-        for (let param of ['server', 'name', 'username', 'password']) {
-            if (opt[param] === undefined) {
-                throw new AttributeError(`missing required attribute ${param}`);
-            }
+    for (let param of ['server', 'name', 'username', 'password']) {
+        if (opt[param] === undefined) {
+            return Promise.reject(new AttributeError(`missing required attribute ${param}`));
         }
-        const result = new DB(null, opt.name);
+    }
+    const result = new DB(null, opt.name);
 
-        result.conn = opt.server.use({name: opt.name, username: opt.username, password: opt.password});
-        result.loadModels()
-            .then(() => {
-                resolve(result);
-            }).catch((error) => {
-                reject(error);
-            });
-    });
+    result.conn = opt.server.use({name: opt.name, username: opt.username, password: opt.password});
+    return result.loadModels()
+        .then(() => {
+            return result;
+        });
 };
 
 module.exports = {connectServer, createDB, connectDB, defaultHeirarchy};

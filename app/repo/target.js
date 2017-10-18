@@ -18,16 +18,10 @@ class Target extends KBVertex {
             'class':  this.clsname
         }];
 
-        return new Promise((resolve, reject) => {
-            Base.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props, indices: idxs})
-                .then(() => {
-                    return this.loadClass(db);
-                }).then((cls) => {
-                    resolve(cls);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return Base.createClass({db, clsname: this.clsname, superClasses: Context.clsname, properties: props, indices: idxs})
+            .then(() => {
+                return this.loadClass(db);
+            });
     }
 }
 
