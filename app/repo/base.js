@@ -24,7 +24,7 @@ const isObject = (obj) => {
 
 /**
  * get the value of a key in an object. If maxDepth is > 0 will check nested object to a given level of nesting
- */ 
+ */
 const getAttribute = (obj, attr, maxDepth=0) => {
     for (let key of Object.keys(obj)) {
         if (key == attr) {
@@ -135,7 +135,7 @@ class Record {
         }
         return result;
     }
-    
+
     toJSON() {
         const json = {};
         for (let key of Object.keys(this.content)) {
@@ -146,6 +146,7 @@ class Record {
                 }
                 json[key] = arr;
             } else if (key.startsWith('in_')) {
+                let arr = [];
                 for (let item of this.content[key].all()) {
                     arr.push(regexCleanKeys(item.out, [/^_/, /^(out|in)_/]));
                 }
@@ -324,8 +325,8 @@ class Base {
      * recursive function which builds a selection query that accesses parameters from nested objects
      * @example
      *     >>> record = {
-     *     >>>     'name': 'bob', 
-     *     >>>     'parent': {'@rid': '#1:3', 'name': 'susan'}, 
+     *     >>>     'name': 'bob',
+     *     >>>     'parent': {'@rid': '#1:3', 'name': 'susan'},
      *     >>>     'partner': {'name': 'george'}
      *     >>> };
      *     >>> Base.parseSelectWhere(record);
@@ -335,7 +336,7 @@ class Base {
         // nested object as selection parameter
         const where = {};
         record = record.content || record;
-        
+
         if (isObject(record)) {
             for (let key of Object.keys(record)) {
                 if (key.startsWith('in_') || key.startsWith('out_') || key === '@type') {
@@ -358,7 +359,7 @@ class Base {
             throw new Error('cannot call parseSelectWhere not on an object');
         }
         return where;
-    } 
+    }
 
     /**
      * select from the current class given the where filters
@@ -422,7 +423,7 @@ class Base {
                     return reclist;
                 }
             });
-        
+
     }
 
     deleteRecord(currRecord, user) {
@@ -451,10 +452,10 @@ class Base {
                     throw new NoResultFoundError(`Could not update record. Record not found:  ${toDeleteSelect}`);
                 }
                 return new Record(updatedRecord, this.constructor.clsname);
-            });    
+            });
     }
 
-    
+
     /**
      * the name of the class
      * @type {string}
@@ -543,7 +544,7 @@ class Base {
  *     format: 'UUIDv4'
  */
 class KBVertex extends Base {
-    
+
     validateContent(content) {
         const args = Object.assign({ // default arguments
             uuid : uuidV4(),
@@ -634,7 +635,7 @@ class KBVertex extends Base {
             }).then((userRecord) => {
                 currentUser = userRecord;
                 return this.isPermitted(currentUser, PERMISSIONS.UPDATE);
-            }).then(() => {                          
+            }).then(() => {
                 const duplicate = currentRecord.mutableAttributes();
                 const timestamp = moment().valueOf();
                 let updates = record.mutableAttributes();
@@ -646,7 +647,7 @@ class KBVertex extends Base {
                 updates.created_at = timestamp;
                 updates.created_by = currentUser.rid;
                 updates.deleted_by = null;
-                
+
                 // start the transaction
                 var commit = this.db.conn
                     .let('updatedRID', (tx) => {
@@ -663,7 +664,7 @@ class KBVertex extends Base {
                             .to('$duplicate');
                     }).commit();
                 // const stat = commit.buildStatement();
-                return commit.return('$updatedRID').one() 
+                return commit.return('$updatedRID').one()
                     .then((rid) => {
                         return this.db.conn.record.get(rid);
                     }).then((record) => {
@@ -727,7 +728,7 @@ class KBEdge extends Base {
         }
         return super.validateContent(args);
     }
-    
+
     /**
      *
      */
@@ -761,7 +762,7 @@ class KBEdge extends Base {
                         });
                 });
             });
-        
+
     }
 }
 
@@ -785,7 +786,7 @@ class KBUser extends Base {
 
     validateContent(content) {
         content.role = content.role || {name: 'BINF'};
-        content.active = content.active || true; 
+        content.active = content.active || true;
         const args = super.validateContent(content);
         return args;
     }
@@ -809,10 +810,10 @@ class KBUser extends Base {
             .then(() => {
                 return this.loadClass(db);
             });
-        
+
     }
 
-    createRecord(opt) {     
+    createRecord(opt) {
         return this.validateContent(opt)
             .then((args) => {
                 return this.db.models.KBRole.selectExactlyOne({name: args.role})
@@ -855,7 +856,7 @@ class KBRole extends Base {
             .then(() => {
                 return this.loadClass(db);
             });
-        
+
     }
 }
 
@@ -874,7 +875,7 @@ class History extends Base {
             .then(() => {
                 return this.loadClass(db);
             });
-        
+
     }
 }
 
