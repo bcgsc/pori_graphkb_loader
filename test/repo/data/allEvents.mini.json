@@ -1,0 +1,473 @@
+{
+	"ab60969d-4e24-4d4b-ba9f-d20244802551": {
+		"statement": {
+			"type": "biological",
+			"relevance": "oncogene",
+			"context": "cancer associated gene"
+		},
+		"disease": {
+			"name": "chronic myeloid leukemia"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "1656220",
+			"title": "axl, a transforming gene isolated from primary human myeloid leukemia cells, encodes a novel receptor tyrosine kinase"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "na",
+			"germline": "",
+			"type": "FANN",
+			"flag": "CategoryEvent",
+			"term": "na",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "AXL"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"21a3d63c-9864-455d-b227-1f09713dcdbb": {
+		"statement": {
+			"type": "biological",
+			"relevance": "oncogene",
+			"context": "cancer associated gene"
+		},
+		"disease": {
+			"name": "colorectal cancer"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "1656220",
+			"title": "axl, a transforming gene isolated from primary human myeloid leukemia cells, encodes a novel receptor tyrosine kinase"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "na",
+			"germline": "",
+			"type": "FANN",
+			"flag": "CategoryEvent",
+			"term": "na",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "AXL"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"75e6622d-6955-4dfc-968f-218bd10ff2c2": {
+		"statement": {
+			"type": "biological",
+			"relevance": "oncogene",
+			"context": "cancer associated gene"
+		},
+		"disease": {
+			"name": "melanoma"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "1656220",
+			"title": "axl, a transforming gene isolated from primary human myeloid leukemia cells, encodes a novel receptor tyrosine kinase"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "na",
+			"germline": "",
+			"type": "FANN",
+			"flag": "CategoryEvent",
+			"term": "na",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "AXL"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"750fa636-c55a-43e8-aea0-dd4a22191356": {
+		"statement": {
+			"type": "biological",
+			"relevance": "gain",
+			"context": "somatic mutation"
+		},
+		"disease": {
+			"name": "prostate cancer"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "2260966",
+			"title": "A mutation in the ligand binding domain of the androgen receptor of human LNCaP cells affects steroid binding characteristics and response to anti-androgens"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "A",
+			"termination_aa": null,
+			"reference_seq": "T",
+			"csys": "p",
+			"start": [
+				{
+					"pos": 878,
+					"ref_aa": "T"
+				},
+				{
+					"pos": 878,
+					"ref_aa": "T"
+				}
+			],
+			"subtype": ">",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "AR"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"1e25fdfa-c418-4a25-9c84-e29e212a13fe": {
+		"statement": {
+			"type": "occurrence",
+			"relevance": "observed",
+			"context": "compound heterozygote"
+		},
+		"disease": {
+			"name": "cholesteryl ester storage disease"
+		},
+		"reference": {
+			"type": "case report",
+			"id_type": "pubmed",
+			"id": "8894696",
+			"title": "Expression of lysosomal acid lipase mutants detected in three patients with cholesteryl ester storage disease"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "heterozygous",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "G",
+			"termination_aa": null,
+			"reference_seq": "A",
+			"csys": "c",
+			"start": [
+				{
+					"pos": 676,
+					"offset": "-2"
+				},
+				{
+					"pos": 676,
+					"offset": "-2"
+				}
+			],
+			"subtype": ">",
+			"primary_feature": {
+				"biotype": "transcript",
+				"source": "refseq",
+				"name": "NM_000235"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"be98bd8e-c67c-4365-a51c-10dd150c0833": {
+		"statement": {
+			"type": "biological",
+			"relevance": "gain",
+			"context": "oncogenic fusion"
+		},
+		"disease": {
+			"name": "acute myeloid leukemia"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "9766650",
+			"title": ""
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "structural variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "e",
+			"start": [
+				{
+					"pos": 12
+				},
+				{
+					"pos": 12
+				}
+			],
+			"end": [
+				{
+					"pos": 2
+				},
+				{
+					"pos": 2
+				}
+			],
+			"subtype": "fusion",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "NUP98"
+			},
+			"secondary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "HOXA13"
+			}
+		}
+	},
+	"89737ff5-6c83-40ed-891f-6383430f70ba": {
+		"statement": {
+			"type": "prognostic",
+			"relevance": "unfavourable",
+			"context": "bladder;breast;colorectal;glioblastoma;head & neck squamous-cell carcinoma;renal-cell carcinoma;acute myeloid leukaemia;lung adenocarcinoma;lung squamous-cell carcinoma;ovarian;endometrial"
+		},
+		"disease": {
+			"name": "urinary bladder cancer"
+		},
+		"reference": {
+			"type": "pre-clinical",
+			"id_type": "pubmed",
+			"id": "16490597",
+			"title": ""
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "homozygous",
+			"germline": "",
+			"type": "copy number variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "y",
+			"start": [
+				{
+					"arm": "q",
+					"major_band": "15",
+					"minor_band": "0"
+				},
+				{
+					"arm": "q",
+					"major_band": "15",
+					"minor_band": "0"
+				}
+			],
+			"subtype": "copyloss",
+			"primary_feature": {
+				"biotype": "template",
+				"source": "genome reference consortium (human)",
+				"name": "5"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"e103bbbd-087f-4559-89d2-c2c554228111": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "sensitivity",
+			"context": "imatinib"
+		},
+		"disease": {
+			"name": "idiopathic hypereosinophilic syndrome"
+		},
+		"reference": {
+			"type": "FDA-approved",
+			"id_type": "pubmed",
+			"id": "16498388",
+			"title": ""
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "structural variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "e",
+			"start": [
+				{
+					"pos": 23
+				},
+				{
+					"pos": 23
+				}
+			],
+			"end": [
+				{
+					"pos": 12
+				},
+				{
+					"pos": 12
+				}
+			],
+			"subtype": "fusion",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "KIF5B"
+			},
+			"secondary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "PDGFRA"
+			}
+		}
+	},
+	"4e9f132e-812b-4668-a3a4-4550c85d1e40": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "sensitivity",
+			"context": "imatinib"
+		},
+		"disease": {
+			"name": "acute myeloid leukemia"
+		},
+		"reference": {
+			"type": "FDA-approved",
+			"id_type": "pubmed",
+			"id": "16498388",
+			"title": ""
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "structural variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "e",
+			"start": [
+				{
+					"pos": 23
+				},
+				{
+					"pos": 23
+				}
+			],
+			"end": [
+				{
+					"pos": 12
+				},
+				{
+					"pos": 12
+				}
+			],
+			"subtype": "fusion",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "KIF5B"
+			},
+			"secondary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "PDGFRA"
+			}
+		}
+	},
+	"d94a2f4a-6a48-41d1-86dc-9f51ea1c4d42": {
+		"statement": {
+			"type": "biological",
+			"relevance": "gain",
+			"context": "oncogenic fusion"
+		},
+		"disease": {
+			"name": "prostate cancer"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "16585160",
+			"title": "TMPRSS2:ETV4 gene fusions define a third molecular subtype of prostate cancer"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "structural variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "e",
+			"start": [
+				{
+					"pos": 1
+				},
+				{
+					"pos": 1
+				}
+			],
+			"end": [
+				{
+					"pos": 4
+				},
+				{
+					"pos": 4
+				}
+			],
+			"subtype": "fusion",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "TMPRSS2"
+			},
+			"secondary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "ETV4"
+			}
+		}
+	},
+	"0bd6e49f-94b2-4f5b-aa16-5c741a01875e": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "resistance",
+			"context": "5-FU;doxorubicin;cisplatin"
+		},
+		"disease": {
+			"name": "stomach cancer"
+		},
+		"reference": {
+			"type": "pre-clinical",
+			"id_type": "pubmed",
+			"id": "16644108",
+			"title": "Regulation of MDK expression in human cancer cells modulates sensitivities to various anticancer drugs: MDK overexpression confers to a multi-drug resistance"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "na",
+			"germline": "",
+			"type": "ELV-RNA",
+			"flag": "CategoryEvent",
+			"term": "increased expression",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "MDK"
+			},
+			"secondary_feature": {}
+		}
+	}
+}
+	
