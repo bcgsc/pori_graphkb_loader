@@ -187,15 +187,13 @@ const add_routes = (router, repo) => {
             try {
                 await validateQueryParams(req.query, ['source', 'name', 'biotype']);
             } catch (err) {
-                res.status(HTTP_STATUS.BAD_REQUEST);
-                res.json(err);
+                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
             }
             try {
                 const result = await repo.models.feature.select(req.query);
                 res.json(jc.decycle(result));
             } catch (err) {
-                res.status(HTTP_STATUS.SERVER_ERROR);
-                res.json(err);
+                res.status(HTTP_STATUS.SERVER_ERROR).json(err);
             }
         });
     /**
@@ -252,20 +250,17 @@ const add_routes = (router, repo) => {
     router.route('/feature/:id')
         .get(async (req, res, next) => {
             if (! uuidValidate(req.params.id)) {
-                res.status(HTTP_STATUS.BAD_REQUEST);
-                res.json({message: HTTP_STATUS.getStatusText(HTTP_STATUS.BAD_REQUEST)});
+                res.status(HTTP_STATUS.BAD_REQUEST).json({message: HTTP_STATUS.getStatusText(HTTP_STATUS.BAD_REQUEST)});
             }
             try {
                 const result = await repo.models.feature.selectExactlyOne({uuid: req.params.id, deleted_at: null});
-                res.status(HTTP_STATUS.OK);
                 res.json(jc.decycle(result.content));
             } catch (err) {
                 if (err instanceof NoResultFoundError) {
-                    res.status(HTTP_STATUS.NOT_FOUND);
+                    res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 } else {
-                    res.status(HTTP_STATUS.SERVER_ERROR);
+                    res.status(HTTP_STATUS.SERVER_ERROR).json(err);
                 }
-                res.json(err);
             }
         });
     /**
