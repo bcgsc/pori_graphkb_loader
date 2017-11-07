@@ -1,0 +1,10 @@
+{
+    "vocab": [
+        {"class": "feature", "property": "biotype", "term": "gene"},
+        {"class": "feature", "property": "biotype", "term": "protein"},
+        {"class": "feature", "property": "biotype", "term": "exon"},
+        {"class": "feature", "property": "biotype", "term": "domain"},
+        {"class": "feature", "property": "biotype", "term": "transcript"},
+        {"class": "feature", "property": "biotype", "term": "template"}
+    ]
+}

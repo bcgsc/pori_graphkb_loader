@@ -1,0 +1,475 @@
+{
+	"e9316b0c-4b82-44f1-a433-0fed4fa24abb": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "resistance",
+			"context": "flutamide"
+		},
+		"disease": {
+			"name": "prostate cancer"
+		},
+		"reference": {
+			"type": "case report",
+			"id_type": "pubmed",
+			"id": "2260966",
+			"title": "A mutation in the ligand binding domain of the androgen receptor of human LNCaP cells affects steroid binding characteristics and response to anti-androgens"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "A",
+			"termination_aa": null,
+			"reference_seq": "T",
+			"csys": "p",
+			"start": [
+				{
+					"pos": 878,
+					"ref_aa": "T"
+				},
+				{
+					"pos": 878,
+					"ref_aa": "T"
+				}
+			],
+			"subtype": ">",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "AR"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"3bc1d2c5-81e4-48ff-816e-b05f37a88690": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "resistance",
+			"context": "anti-estrogens"
+		},
+		"disease": {
+			"name": "breast cancer"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "24185510",
+			"title": "Activating ESR1 mutations in hormone-resistant metastatic breast cancer"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "X",
+			"termination_aa": null,
+			"reference_seq": "D",
+			"csys": "p",
+			"start": [
+				{
+					"pos": 538,
+					"ref_aa": "D"
+				},
+				{
+					"pos": 538,
+					"ref_aa": "D"
+				}
+			],
+			"subtype": ">",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "ESR1"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"c2a4a497-323e-4b99-9578-96cbd79253d9": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "resistance",
+			"context": "anti-estrogens"
+		},
+		"disease": {
+			"name": "breast cancer"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "24398047",
+			"title": "Emergence of constitutively active estrogen receptor-α mutations in pretreated advanced estrogen receptor-positive breast cancer"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "X",
+			"termination_aa": null,
+			"reference_seq": "D",
+			"csys": "p",
+			"start": [
+				{
+					"pos": 538,
+					"ref_aa": "D"
+				},
+				{
+					"pos": 538,
+					"ref_aa": "D"
+				}
+			],
+			"subtype": ">",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "ESR1"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"49808bc5-2fb6-4e2a-a87e-6e770ccb4c4f": {
+		"statement": {
+			"type": "occurrence",
+			"relevance": "observed",
+			"context": "recurrent"
+		},
+		"disease": {
+			"name": "Li-Fraumeni syndrome"
+		},
+		"reference": {
+			"type": "reported",
+			"id_type": "pubmed",
+			"id": "12610779",
+			"title": "Germline p53 mutations in a cohort with childhood sarcoma: sex differences in cancer risk"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "A",
+			"termination_aa": null,
+			"reference_seq": "G",
+			"csys": "c",
+			"start": [
+				{
+					"pos": 994,
+					"offset": "-1"
+				},
+				{
+					"pos": 994,
+					"offset": "-1"
+				}
+			],
+			"subtype": ">",
+			"primary_feature": {
+				"biotype": "transcript",
+				"source": "refseq",
+				"name": "NM_000546"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"342e7d7b-c468-465b-9c0e-7a5388cf0059": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "sensitivity",
+			"context": "imatinib"
+		},
+		"disease": {
+			"name": "idiopathic hypereosinophilic syndrome"
+		},
+		"reference": {
+			"type": "FDA-approved",
+			"id_type": "pubmed",
+			"id": "12660384",
+			"title": ""
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "structural variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "e",
+			"start": [
+				{
+					"pos": 10
+				},
+				{
+					"pos": 10
+				}
+			],
+			"end": [
+				{
+					"pos": 12
+				},
+				{
+					"pos": 12
+				}
+			],
+			"subtype": "fusion",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "FIP1L1"
+			},
+			"secondary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "PDGFRA"
+			}
+		}
+	},
+	"4dfe1aee-b6b3-4cc0-b172-77d753e3e29d": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "targetable",
+			"context": "ibrutinib"
+		},
+		"disease": {
+			"name": "chronic lymphocytic leukemia"
+		},
+		"reference": {
+			"type": "FDA-approved",
+			"id_type": "other",
+			"id": "http://www.fda.gov/Drugs/InformationOnDrugs/ApprovedDrugs/ucm279174.htm",
+			"title": "FDA"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "structural variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "y",
+			"start": [
+				{
+					"arm": "p",
+					"major_band": "-1",
+					"minor_band": "0"
+				},
+				{
+					"arm": "p",
+					"major_band": "-1",
+					"minor_band": "0"
+				}
+			],
+			"end": [
+				{
+					"arm": "p",
+					"major_band": "-1",
+					"minor_band": "0"
+				},
+				{
+					"arm": "p",
+					"major_band": "-1",
+					"minor_band": "0"
+				}
+			],
+			"subtype": "del",
+			"primary_feature": {
+				"biotype": "template",
+				"source": "genome reference consortium (human)",
+				"name": "17"
+			},
+			"secondary_feature": {
+				"biotype": "template",
+				"source": "genome reference consortium (human)",
+				"name": "17"
+			}
+		}
+	},
+	"d8a6ac55-8d86-4c8b-9880-eedd7e8d2d7e": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "targetable",
+			"context": "venetoclax"
+		},
+		"disease": {
+			"name": "chronic lymphocytic leukemia"
+		},
+		"reference": {
+			"type": "FDA-approved",
+			"id_type": "other",
+			"id": "http://www.fda.gov/Drugs/InformationOnDrugs/ApprovedDrugs/ucm279174.htm",
+			"title": "FDA"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "structural variant",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "",
+			"termination_aa": null,
+			"reference_seq": "",
+			"csys": "y",
+			"start": [
+				{
+					"arm": "p",
+					"major_band": "-1",
+					"minor_band": "0"
+				},
+				{
+					"arm": "p",
+					"major_band": "-1",
+					"minor_band": "0"
+				}
+			],
+			"end": [
+				{
+					"arm": "p",
+					"major_band": "-1",
+					"minor_band": "0"
+				},
+				{
+					"arm": "p",
+					"major_band": "-1",
+					"minor_band": "0"
+				}
+			],
+			"subtype": "del",
+			"primary_feature": {
+				"biotype": "template",
+				"source": "genome reference consortium (human)",
+				"name": "17"
+			},
+			"secondary_feature": {
+				"biotype": "template",
+				"source": "genome reference consortium (human)",
+				"name": "17"
+			}
+		}
+	},
+	"1313bd36-c020-47ae-b5d1-9c211987e7ce": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "targetable",
+			"context": "osimertinib"
+		},
+		"disease": {
+			"name": "non-small cell lung carcinoma"
+		},
+		"reference": {
+			"type": "FDA-approved",
+			"id_type": "other",
+			"id": "http://www.fda.gov/Drugs/InformationOnDrugs/ApprovedDrugs/ucm472565.htm",
+			"title": "FDA"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "M",
+			"termination_aa": null,
+			"reference_seq": "T",
+			"csys": "p",
+			"start": [
+				{
+					"pos": 790,
+					"ref_aa": "T"
+				},
+				{
+					"pos": 790,
+					"ref_aa": "T"
+				}
+			],
+			"subtype": ">",
+			"primary_feature": {
+				"biotype": "transcript",
+				"source": "refseq",
+				"name": "NM_005228"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"5d71082b-a6b2-4768-a672-7e00e0e5f4d9": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "targetable",
+			"context": "osimertinib"
+		},
+		"disease": {
+			"name": "non-small cell lung carcinoma"
+		},
+		"reference": {
+			"type": "FDA-approved",
+			"id_type": "other",
+			"id": "http://www.fda.gov/Drugs/InformationOnDrugs/ApprovedDrugs/ucm472565.htm",
+			"title": "FDA"
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "mutation",
+			"flag": "PositionalEvent",
+			"untemplated_seq": "M",
+			"termination_aa": null,
+			"reference_seq": "T",
+			"csys": "p",
+			"start": [
+				{
+					"pos": 790,
+					"ref_aa": "T"
+				},
+				{
+					"pos": 790,
+					"ref_aa": "T"
+				}
+			],
+			"subtype": ">",
+			"primary_feature": {
+				"biotype": "transcript",
+				"source": "refseq",
+				"name": "NM_005228"
+			},
+			"secondary_feature": {}
+		}
+	},
+	"8034ec25-aa2c-4d6f-98ab-f5936cba646e": {
+		"statement": {
+			"type": "therapeutic",
+			"relevance": "inferred sensitivity",
+			"context": "idelalisib"
+		},
+		"disease": {
+			"name": null
+		},
+		"reference": {
+			"type": "pre-clinical",
+			"id_type": "other",
+			"id": "IBM",
+			"title": ""
+		},
+		"event": {
+			"status": "True",
+			"zygosity": "ns",
+			"germline": "",
+			"type": "mutation",
+			"flag": "CategoryEvent",
+			"term": "not specified",
+			"primary_feature": {
+				"biotype": "gene",
+				"source": "hugo",
+				"name": "NF1"
+			},
+			"secondary_feature": {}
+		}
+	}
+}
+	

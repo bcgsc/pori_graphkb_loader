@@ -5,57 +5,47 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const conf = require('./../config/db'); // get the database connection configuration
 const routes = require('./routes');
-const app = express();
 const {connectServer, connectDB} = require('./repo/connect');
-let server, repo, appServer;
 
-
-// set up middleware parser to deal with jsons
-app.use(bodyParser.urlencoded({extended: true}));
-app.use(bodyParser.json());
-const port = process.env.PORT || 8080;
-
-// set up the routes
-const router = express.Router();
-app.use('/api', router);
-router.use((req, res, next) => {
-    console.log('processing api request');
-    next();
-});
-
-connectServer(conf)
-    .then((result) => {
-        server = result;
-        return connectDB({name: conf.dbName, password: conf.dbPassword, username: conf.dbUsername, server: server});
-    }).then((db) => {
-        repo = db;
-        // start up the server
-        routes(router, repo); // second arg here is the DB
-        
-        // last catch any errors for undefined routes
-        // all actual routes should be defined above
-        app.use((req, res) => {
-            res.status(404);
-            res.send({error: 'Not Found'});
-        });
-
-        appServer = app.listen(port, () => {
-            console.log('server started on port: ' + port);
-        });
-    }).catch((error) => {
-        console.log('error in connection', error);
+const listen = async (port) => {
+    const app = express();
+    const {connectServer, connectDB} = require('./repo/connect');
+    
+    // set up middleware parser to deal with jsons
+    app.use(bodyParser.urlencoded({extended: true}));
+    app.use(bodyParser.json());
+    
+    // set up the routes
+    const router = express.Router();
+    app.use('/api', router);
+    router.use((req, res, next) => {
+        console.log('(HTTP request)', req.method, req.url);
+        next();
     });
-
-
-
-
-
-// cleanup
-const cleanup = (msg='') => {
-    console.log('cleaning up', msg);
-    appServer.close();
-    server.close();
-    process.exit();
+    // connect to the database
+    const dbServer = await connectServer(conf);
+    const dbConn = await connectDB({name: conf.dbName, password: conf.dbPassword, username: conf.dbUsername, server: dbServer});
+    // add the db connection reference to the routes
+    routes(router, dbConn);
+    // last catch any errors for undefined routes. all actual routes should be defined above
+    app.use((req, res) => {
+        res.status(404);
+        res.send({error: 'Not Found'});
+    });
+    
+    const appServer = await app.listen(port);
+    console.log('started application server at:', appServer.address().port)
+    // cleanup
+    const cleanup = (msg='') => {
+        console.log('cleaning up', msg);
+        appServer.close();
+        dbServer.close();
+        process.exit();
+    };
+    process.on('SIGINT', cleanup);
+    process.on('uncaughtException', cleanup);
+    return app;
 };
-process.on('SIGINT', cleanup);
-process.on('uncaughtException', cleanup);
+
+
+module.exports = listen(process.env.PORT || 8080);

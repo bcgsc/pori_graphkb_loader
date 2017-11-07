@@ -1,5 +1,7 @@
 const jc = require('json-cycle');
 const {ErrorMixin, NoResultFoundError} = require('./../repo/error.js');
+const HTTP_STATUS = require('http-status-codes');
+var uuidValidate = require('uuid-validate');
 
 
 class QueryParameterError extends ErrorMixin {};
@@ -42,7 +44,7 @@ const add_routes = (router, repo) => {
      *         - in: query
      *           name: followDepreceatedFeatures
      *           type: boolean
-     *           description: will check the depreceated features and not just name matches
+     *           description: will check the deprecated features and not just name matches
      *           default: false
      *         - in: query
      *           name: followAliasOfFeatures
@@ -181,18 +183,18 @@ const add_routes = (router, repo) => {
      *           description: access denied
      */
     router.route('/feature')
-        .get((req, res, next) => {
-            console.log('GET /feature', req.query);
-            validateQueryParams(req.query, ['source', 'name', 'biotype'])
-                .then(() => {
-                    return repo.models.feature.select(req.query);
-                }).then((result) => {
-                    console.log('query returned', result.length, 'results');
-                    res.json(jc.decycle(result));
-                }).catch((error) => {
-                    console.log('error:', error.name, error.message);
-                    res.json(error);
-                });
+        .get(async (req, res, next) => {
+            try {
+                await validateQueryParams(req.query, ['source', 'name', 'biotype']);
+            } catch (err) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+            }
+            try {
+                const result = await repo.models.feature.select(req.query);
+                res.json(jc.decycle(result));
+            } catch (err) {
+                res.status(HTTP_STATUS.SERVER_ERROR).json(err);
+            }
         });
     /**
      * @swagger
@@ -246,16 +248,20 @@ const add_routes = (router, repo) => {
      *           description: access denied
      */
     router.route('/feature/:id')
-        .get((req, res, next) => {
-            console.log('GET /feature/:id', req.params);
-            repo.models.feature.selectExactlyOne({uuid: req.params.id, deleted_at: null})
-                .then((result) => {
-                    console.log('query returned', result.rid);
-                    res.json(jc.decycle(result.content));
-                }).catch((error) => {
-                    console.log('error:', error.name, error.message);
-                    res.json(error);
-                });
+        .get(async (req, res, next) => {
+            if (! uuidValidate(req.params.id)) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json({message: HTTP_STATUS.getStatusText(HTTP_STATUS.BAD_REQUEST)});
+            }
+            try {
+                const result = await repo.models.feature.selectExactlyOne({uuid: req.params.id, deleted_at: null});
+                res.json(jc.decycle(result.content));
+            } catch (err) {
+                if (err instanceof NoResultFoundError) {
+                    res.status(HTTP_STATUS.NOT_FOUND).json(err);
+                } else {
+                    res.status(HTTP_STATUS.SERVER_ERROR).json(err);
+                }
+            }
         });
     /**
      * @swagger
