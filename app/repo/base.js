@@ -280,6 +280,9 @@ class Base {
                     allowedValues.push(term.term);
                 }
             }
+            if (key !== 'uuid' && (typeof content[key] === 'string' || content[key] instanceof String)) {
+                content[key] = content[key].toLowerCase();
+            }
             if (allowedValues.length > 0 && ! allowedValues.includes(value)) {
                 return Promise.reject(new ControlledVocabularyError(`'${value}' is not an allowed term for ${this.constructor.clsname}:${key}(type=${content.type}). Valid terms include: ${allowedValues.toString()}`));
             }
@@ -332,7 +335,7 @@ class Base {
      *     >>> Base.parseSelectWhere(record);
      *     {'name': 'bob', 'parent': '#1:3', 'partner.name': 'george'}
      */
-    static parseSelectWhere(record) {
+    parseSelectWhere(record) {
         // nested object as selection parameter
         const where = {};
         record = record.content || record;
@@ -351,6 +354,8 @@ class Base {
                             where[key + '.' + subkey] = value;
                         }
                     }
+                } else if (key !== 'uuid' && (typeof record[key] === 'string' || record[key] instanceof String)) {
+                    where[key] = record[key].toLowerCase();
                 } else {
                     where[key] = record[key];
                 }
@@ -381,7 +386,7 @@ class Base {
         const clsname = where['@class'] || this.constructor.clsname;
         let selectionWhere;
         try {
-            selectionWhere = this.constructor.parseSelectWhere(where);
+            selectionWhere = this.parseSelectWhere(where);
         } catch (error) {
             return Promise.reject(error);
         }
@@ -592,6 +597,9 @@ class KBVertex extends Base {
     }
 
     createRecord(opt={}, user) {
+        if (user == undefined) {
+            return Promise.reject(new AttributeError('expected a user'));
+        }
         const content = Object.assign({created_by: true}, opt);
         return this.validateContent(content)
             .then((args) => {

@@ -1,45 +1,16 @@
 'use strict';
 const {Target} = require('./../../app/repo/target');
 const {expect} = require('chai');
-const conf = require('./../config/db');
-const {connectServer, createDB} = require('./../../app/repo/connect');
-const {KBVertex, KBEdge, History, KBUser, KBRole} = require('./../../app/repo/base');
 const {Context} = require('./../../app/repo/context');
 const {expectDuplicateKeyError} = require('./orientdb_errors');
-const {PERMISSIONS} = require('./../../app/repo/constants');
+const {setUpEmptyDB, tearDownEmptyDB} = require('./util');
+
 
 describe('Target schema tests:', () => {
     let server, db;
-    beforeEach(function(done) { /* build and connect to the empty database */
-        // set up the database server
-        connectServer(conf)
-            .then((result) => {
-                // create the empty database
-                server = result;
-                return createDB({
-                    name: conf.emptyDbName, 
-                    username: conf.dbUsername,
-                    password: conf.dbPassword,
-                    server: server,
-                    heirarchy: [
-                        [KBRole, History],
-                        [KBUser],
-                        [KBVertex, KBEdge],
-                        [Context]
-                    ]
-                });
-            }).then((result) => {
-                db = result;
-            }).then(() => {
-                return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
-            }).then(() => {
-                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                console.log('error', error);
-                done(error);
-            });
+    beforeEach(async () => { 
+        ({server, db, user} = await setUpEmptyDB());
+        await Context.createClass(db);
     });
 
     it('Target.createClass', () => {
@@ -93,17 +64,7 @@ describe('Target schema tests:', () => {
             });
     });
 
-    afterEach((done) => {
-        /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
-            .catch((error) => {
-                console.log('error:', error);
-            }).then(() => {
-                return server.close();
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                done(error);
-            });
+    afterEach(async () => {
+        tearDownEmptyDB(server);    
     });
 });

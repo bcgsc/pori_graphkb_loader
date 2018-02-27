@@ -3,3 +3,6 @@
 /.orientdb_history
 /dist
 *png
+*gz
+*zip
+*tar

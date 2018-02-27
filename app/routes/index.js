@@ -1,5 +1,5 @@
 const jc = require('json-cycle');
-const {ErrorMixin, NoResultFoundError} = require('./../repo/error.js');
+const {ErrorMixin, NoResultFoundError, AttributeError} = require('./../repo/error.js');
 const HTTP_STATUS = require('http-status-codes');
 var uuidValidate = require('uuid-validate');
 
@@ -8,22 +8,70 @@ class QueryParameterError extends ErrorMixin {};
 
 
 const validateQueryParams = (inputParams, allowedParams, allowNone=false) => {
-    return new Promise((resolve, reject) => {
-        if (Object.keys(inputParams).length == 0 && ! allowNone) {
-            throw new QueryParameterError('no parameters were specified');
-        } else {
-            for (let key of Object.keys(inputParams)) {
-                if (allowedParams.indexOf(key) < 0) {
-                    throw new QueryParameterError(`invalid parameter '${key}' is not allowed. Allow parameters include: ${allowedParams}`);
+    if (Object.keys(inputParams).length == 0 && ! allowNone) {
+        return Promise.reject(new QueryParameterError('no parameters were specified'));
+    } else {
+        for (let key of Object.keys(inputParams)) {
+            if (allowedParams.indexOf(key) < 0) {
+                return Promise.reject(new QueryParameterError(`invalid parameter '${key}' is not allowed. Allow parameters include: ${allowedParams}`));
+            }
+        }
+    }
+    return Promise.resolve(true);
+};
+
+
+const resource = (classname, params) => {
+    return {
+        get: async (req, res, next) => {
+            try {
+                await validateQueryParams(req.query, params);
+            } catch (err) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                return;
+            }
+            try {
+                const result = await repo.models[classname].select(req.query);
+                res.json(jc.decycle(result));
+            } catch (err) {
+                res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+            }
+        },
+        post: async (req, res, next) => {
+            try {
+                const user = req.body.user;
+                delete req.body.user;
+                const result = await repo.models[classname].createRecord(req.body, user);
+                res.json(jc.decycle(result));
+            } catch (err) {
+                console.log('err', err);
+                if (err instanceof AttributeError) {
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } else {
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
         }
-        resolve();
-    });
-};
+    }
+}
+
 
 const add_routes = (router, repo) => {
     // Other route groups could go here, in the future
+    const matching = async (req, res, next) => {
+        /* builds the query for matching to the database */
+        try {
+            const result = await repo.models.statement.search(req.body);
+            console.log('\t', 'query result size:', result.length)
+            res.json(jc.decycle(result));
+        } catch(err) {
+            if (err instanceof AttributeError) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+            } else {
+                res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+            }
+        }
+    };
     console.log('add_routes');
     router.route('/')
         .get((req, res, next) => {
@@ -182,20 +230,7 @@ const add_routes = (router, repo) => {
      *         '403':
      *           description: access denied
      */
-    router.route('/feature')
-        .get(async (req, res, next) => {
-            try {
-                await validateQueryParams(req.query, ['source', 'name', 'biotype']);
-            } catch (err) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-            }
-            try {
-                const result = await repo.models.feature.select(req.query);
-                res.json(jc.decycle(result));
-            } catch (err) {
-                res.status(HTTP_STATUS.SERVER_ERROR).json(err);
-            }
-        });
+    router.route('/feature') = resource('feature', ['source', 'name', 'biotype']);
     /**
      * @swagger
      * /feature/{uuid}:
@@ -251,6 +286,7 @@ const add_routes = (router, repo) => {
         .get(async (req, res, next) => {
             if (! uuidValidate(req.params.id)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: HTTP_STATUS.getStatusText(HTTP_STATUS.BAD_REQUEST)});
+                return;
             }
             try {
                 const result = await repo.models.feature.selectExactlyOne({uuid: req.params.id, deleted_at: null});
@@ -259,7 +295,7 @@ const add_routes = (router, repo) => {
                 if (err instanceof NoResultFoundError) {
                     res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 } else {
-                    res.status(HTTP_STATUS.SERVER_ERROR).json(err);
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
         });
@@ -295,6 +331,36 @@ const add_routes = (router, repo) => {
      *         '403':
      *           description: access denied
      */
+    router.route('/disease')
+        .get(async (req, res, next) => {
+            try {
+                await validateQueryParams(req.query, ['name']);
+            } catch (err) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                return;
+            }
+            try {
+                const result = await repo.models.disease.select(req.query);
+                res.json(jc.decycle(result));
+            } catch (err) {
+                res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+            }
+        }).post(async (req, res, next) => {
+            try {
+                const user = req.body.user;
+                delete req.body.user;
+                const result = await repo.models.disease.createRecord(req.body, user);
+                res.json(jc.decycle(result));
+            } catch (err) {
+                console.log('err', err);
+                if (err instanceof AttributeError) {
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } else {
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                }
+            }
+        });
+
     /**
      * @swagger
      * /disease/{uuid}:
@@ -388,7 +454,36 @@ const add_routes = (router, repo) => {
      *         '403':
      *           description: access denied
      */
-    
+    router.route('/therapy')
+        .get(async (req, res, next) => {
+            try {
+                await validateQueryParams(req.query, ['name']);
+            } catch (err) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                return;
+            }
+            try {
+                const result = await repo.models.feature.select(req.query);
+                res.json(jc.decycle(result));
+            } catch (err) {
+                res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+            }
+        }).post(async (req, res, next) => {
+            try {
+                const user = req.body.user;
+                delete req.body.user;
+                const result = await repo.models.feature.createRecord(req.body, user);
+                res.json(jc.decycle(result));
+            } catch (err) {
+                console.log('err', err);
+                if (err instanceof AttributeError) {
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } else {
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                }
+            }
+        });
+
     router.route('/statement/:id')
         .get((req, res, next) => {
             console.log('GET /statement/:id', req.params);
@@ -420,12 +515,10 @@ const add_routes = (router, repo) => {
                     res.status(400).json(error);
                 });
         });
-
-    // add the match endpoint
-    router.route('/match')
-        .post((req, res, next) => {
-        
-        });
+    
+    // allow events in the body?
+    router.route('/matching')
+        .post(matching);
 };
 
 module.exports = add_routes;

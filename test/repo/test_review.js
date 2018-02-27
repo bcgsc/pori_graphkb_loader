@@ -2,13 +2,10 @@
 const {Statement, STATEMENT_TYPE} = require('./../../app/repo/statement');
 const {Review, ReviewAppliesTo} = require('./../../app/repo/review');
 const {expect} = require('chai');
-const conf = require('./../config/db');
-const {connectServer, createDB} = require('./../../app/repo/connect');
-const {KBVertex, KBEdge, History, KBUser, KBRole} = require('./../../app/repo/base');
 const vocab = require('./../../app/repo/cached/data').vocab;
 const {AttributeError} = require('./../../app/repo/error');
 const {Context} = require('./../../app/repo/context');
-const {PERMISSIONS} = require('./../../app/repo/constants');
+const {setUpEmptyDB, tearDownEmptyDB} = require('./util');
 
 vocab.statement = {};
 
@@ -23,39 +20,10 @@ vocab.statement.relevance = [
 ];
 
 describe('Review schema tests:', () => {
-    let server, db, userRec;
-    beforeEach(function(done) { /* build and connect to the empty database */
-        // set up the database server
-        connectServer(conf)
-            .then((result) => {
-                // create the empty database
-                server = result;
-                return createDB({
-                    name: conf.emptyDbName, 
-                    username: conf.dbUsername,
-                    password: conf.dbPassword,
-                    server: server,
-                    heirarchy: [
-                        [KBRole, History],
-                        [KBUser],
-                        [KBVertex, KBEdge],
-                        [Context]
-                    ]
-                });
-            }).then((result) => {
-                db = result;
-            }).then(() => {
-                return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
-            }).then(() => {
-                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
-            }).then((result) => {
-                userRec = result;
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                console.log('error', error);
-                done(error);
-            });
+    let server, db, user;
+    beforeEach(async () => { 
+        ({server, db, user} = await setUpEmptyDB());
+        await Context.createClass(db);
     });
 
     it('Review.createClass', () => {
@@ -93,16 +61,9 @@ describe('Review schema tests:', () => {
 
     describe('Review Vertex', () => {
         let statementRec;
-        beforeEach((done) => {
-            Statement.createClass(db)
-                .then((stmntClass) => {
-                    return stmntClass.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, 'me');
-                }).then((stRec) => {
-                    statementRec = stRec;
-                    done();
-                }).catch((error) => {
-                    done(error);
-                });
+        beforeEach(async () => {
+            await Statement.createClass(db);
+            statementRec = await db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, 'me');
         });
         it('Review.createRecord', () => {
             return Review.createClass(db)
@@ -118,16 +79,9 @@ describe('Review schema tests:', () => {
 
         describe('ReviewAppliesTo Edge', () => {
             let revRecord;
-            beforeEach((done) => {
-                Review.createClass(db)
-                    .then((revCls) => {
-                        return revCls.createRecord({comment: 'test comment',  approved: true}, 'me');
-                    }).then((revRec) => {
-                        revRecord = revRec;
-                        done();
-                    }).catch((error) => {
-                        done(error);
-                    });
+            beforeEach(async () => {
+                await Review.createClass(db);
+                revRecord = await db.models.Review.createRecord({comment: 'test comment',  approved: true}, 'me');
             });
             it('ReviewAppliesTo.createRecord', () => {
                 return ReviewAppliesTo.createClass(db)
@@ -144,7 +98,7 @@ describe('Review schema tests:', () => {
             it('ReviewAppliesTo: errors on invalid source type', () => {
                 return ReviewAppliesTo.createClass(db)
                 .then((revATClass) => {
-                    return revATClass.createRecord({out: revRecord, in: userRec}, 'me')
+                    return revATClass.createRecord({out: revRecord, in: user}, 'me')
                         .then(() => {
                             expect.fail();
                         }).catch(AttributeError, () => {});
@@ -154,7 +108,7 @@ describe('Review schema tests:', () => {
             it('ReviewAppliesTo: errors on invalid target type', () => {
                 return ReviewAppliesTo.createClass(db)
                 .then((revATClass) => {
-                    return revATClass.createRecord({out: userRec, in: statementRec}, 'me')
+                    return revATClass.createRecord({out: user, in: statementRec}, 'me')
                         .then(() => {
                             expect.fail();
                         }).catch(AttributeError, () => {});
@@ -176,17 +130,7 @@ describe('Review schema tests:', () => {
 
     });
     
-    afterEach((done) => {
-        /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
-            .catch((error) => {
-                console.log('error:', error);
-            }).then(() => {
-                return server.close();
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                done(error);
-            });
+    afterEach(async () => {
+        tearDownEmptyDB(server);
     });
 });

@@ -35,19 +35,81 @@ class Statement extends KBVertex {
             });
     }
     /**
-     * returns a list of statements that match the input events
+     * method searches statements based on related events and evidence
      */ 
-    searchByEvent(eventFilters, basicFilters, user) {
-        // event.primary_feature.name
-        // event.secondary_feature.name
-        // type
-        // relevance
-        let query = `SELECT from ${Event.clsname} LET $feat = `
-            + `(TRAVERSE ${FeatureDeprecatedBy.clsname}, ${FeatureAliasOf.clsname})`;
-        // get the features
-        // for all events with features in (subquery)
-        // follow the requires edges
-        // return the statements with a fetch plan
+    async search(inputParams) {
+        const where = [];
+        const params = {};
+        // select statements where s.requires.event.primary_feature.name = primary_feature_name
+        for (let queryKey of Object.keys(inputParams)) {
+            let target;
+            const value = inputParams[queryKey];
+            let comparisonOperator = value instanceof Array ? 'in' : '='; 
+            switch (queryKey) {
+                case 'primary_feature':
+                    target = `out('requires').primary_feature.name.toLowerCase()`;
+                    break;
+                case 'secondary_feature':
+                    target = `out('requires').secondary_feature.name.toLowerCase()`;
+                    break;
+                case 'event_type':
+                    target = `out('requires').type`;
+                    break;
+                case 'event_absence_of':
+                    target = `out('requires').absence_of`;
+                    break;
+                case 'zygosity':
+                    target = `out('requires').zygosity`;
+                    break;
+                case 'event_subtype':
+                    target = `out('requires').subtype`;
+                    break;
+                case 'statement_type':
+                    target = `type`;
+                    break;
+                case 'germline':
+                    target = `out('requires').germline`;
+                    break;
+                case 'relevance':
+                    target = `relevance`;
+                    break;
+                case 'event_term':
+                    target = `out('requires').term`;
+                    break;
+                case 'evidence_class':
+                    target = `out('supported_by').@class`
+                    break;
+                case 'disease':
+                    target = `out('requires').name`;
+                    break;
+                case 'min_evidence_count':
+                    comparisonOperator = '>='
+                    target = `out('supported_by').size()`;
+                    break;
+                default:
+                    return Promise.reject(new AttributeError(`Invalid input query parameter: ${queryKey}`));
+            }
+            if (value instanceof Array) {
+                for (let index in value) {
+                    try {
+                        value[index] = value[index].toLowerCase();
+                    } catch (err) {}
+                }
+            } else {
+                try {
+                    value = value.toLowerCase();
+                } catch (err) {}
+            }
+            params[queryKey] = value;
+            where.push(`${target} ${comparisonOperator} :${queryKey}`);
+        }
+        const sql = `select from statement where ${where.join(' and ')}`;
+        console.log('\t', sql);
+        console.log('\t', params);
+        return await this.db.conn.query(sql,{
+            params: params,
+            fetchPlan: 'out_requires.in:0 out_requires.in.primary_feature:0 out_requires.in.secondary_feature:0 out_applies_to.in:0 out_supported_by.in:0'
+        });
     }
 }
 

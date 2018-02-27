@@ -6,6 +6,8 @@ import json
 import uuid
 from datetime import datetime
 import requests
+import random
+import distance
 
 path = os.path.dirname(os.path.realpath(__file__))
 
@@ -120,6 +122,13 @@ def convert_source(lit_type, ext_id, title):
         ext_id = ext_id.lower()
     if title:
         title = title.lower()
+    pmc_to_pubmed = {
+        'pmc4109288': '22608338',
+        'pmc2360702': '16953237'
+    }
+    if ext_id in pmc_to_pubmed:
+        ext_id = pmc_to_pubmed[ext_id]
+        lit_type = 'pubmed'
 
     if re.match('^\d+$', ext_id):
         lit_type = 'pubmed'
@@ -151,7 +160,7 @@ def convert_source(lit_type, ext_id, title):
     elif title == 'ampliseq panel v2':
         return {'@class': 'external_source', 'title': 'ampliseq panel v2'}
     else:
-        url = re.sub('^https?://(www\.)?', '', ext_id)
+        url = re.sub('^(https?://)?(www\.)?', '', ext_id)
         result = {'@class': 'external_source', 'url': url}
         if not url:
             raise UserWarning('(convert_source) external source has no url', lit_type, ext_id, title)
@@ -177,7 +186,7 @@ def convert_source(lit_type, ext_id, title):
         if len(title_matches) > 1:
             raise UserWarning('(convert_source) too many matches, could not resolve external source type', url, title_matches)
         elif len(title_matches) == 0:
-            raise UserWarning('(convert_source) could not match url to title', url)
+            raise UserWarning('(convert_source) could not match url to title: url {}; ext_id {}; lit_type {}; title {}'.format(url, ext_id, lit_type, title))
         result['title'] = title_matches[0]
         return result
 
@@ -231,6 +240,7 @@ def strip_title(title):
     title = re.sub('-', ' ', title)
     title = re.sub('[^\w\s]', '', title)
     title = re.sub('^(a|the) ', '', title)
+    title = re.sub('\s+', ' ', title)
     return title.strip()
 
 
@@ -252,11 +262,14 @@ def supplement_pmid(pmid, title):
     pub = {
         'title': strip_title(resp['title']),
         'year': int(year_match.group(1)),
-        'journal': journal_match.group(1)
+        'journal': journal_match.group(1).lower()
     }
-    if title and title != pub['title']:
-        if re.sub('\s', '', title) != re.sub('\s', '', pub['title']):
-            raise UserWarning('titles differ', pmid, repr(title), repr(pub['title']))
+    if title.endswith(pub['journal']):
+        title = title[:len(pub['journal']) * -1 + 1]
+
+    # compute the title similarity
+    if title and (distance.nlevenshtein(title, pub['title']) > 0.1 and title not in pub['title']):
+        raise UserWarning('titles differ', pmid, repr(title), repr(pub['title']), distance.nlevenshtein(title, pub['title']))
     return pub
 
 
@@ -305,7 +318,7 @@ def main():
     both = ONC & TS
     ONC = ONC - both
     TS = ONC - both
-    
+
     for ekey, entry in list(kb.entries.items()):
         try:
             events = []
@@ -462,11 +475,14 @@ def main():
         'nonsensical:', nonsensical_entries,
         'parsed:', len(new_entries)
     )
-    json_str = json.dumps({'entries': new_entries})
     with open('new_entries.json', 'w') as fh:
         print('writing: new_entries.json')
-        fh.write(json_str)
-
+        fh.write(json.dumps({'entries': new_entries}))
+    with open('sample_entries.json', 'w') as fh:
+        print('writing: sample_entries.json')
+        # randomly select x entries
+        sample = [new_entries[i] for i in random.sample(range(len(new_entries)), 1000)]
+        fh.write(json.dumps({'entries': sample}))
     #with open('pmid_cache.json', 'w') as fh:
     #    print('writing: pmid_cache.json')
     #    fh.write(json.dumps(PMID_CACHE))

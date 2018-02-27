@@ -12,7 +12,7 @@ const EVENT_TYPE = {
     STV: 'structural variant',
     CNV: 'copy number variant',
     MUT: 'mutation',
-    RNA: 'RNA expression level variant',
+    RNA: 'rna expression level variant',
     PROT: 'protein expression level variant',
     EPI: 'epigenetic variant'
 };

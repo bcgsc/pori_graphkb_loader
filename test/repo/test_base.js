@@ -1,6 +1,6 @@
 'use strict';
 const {expect} = require('chai');
-const conf = require('./../config/db');
+const conf = require('./../config/empty');
 const {connectServer, createDB} = require('./../../app/repo/connect');
 const {PERMISSIONS} = require('./../../app/repo/constants');
 const {Base, History, KBVertex, KBEdge, KBUser, KBRole} = require('./../../app/repo/base');
@@ -10,56 +10,32 @@ const Promise = require('bluebird');
 
 class MockVertexClass extends KBVertex { // simple non-abstract class for tests
     static createClass(db) {
-        return new Promise((resolve, reject) => {
-            Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname})
-                .then(() => {
-                    return this.loadClass(db);
-                }).then((cls) => {
-                    resolve(cls);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname})
+            .then(() => {
+                return this.loadClass(db);
+            });
     }
 }
 
 
 describe('base module', () => {
     let db, server, user;
-    beforeEach((done) => { /* build and connect to the empty database */
+    beforeEach(async () => { /* build and connect to the empty database */
         // set up the database server
-        connectServer(conf)
-            .then((s) => {
-                server = s;
-                return server.exists({name: conf.emptyDbName});
-            }).then((exists) => {
-                if (exists) {
-                    return server.drop({name: conf.emptyDbName});
-                } else {
-                    return Promise.resolve();
-                }
-            }).then(() => {
-                return createDB({
-                    server: server, 
-                    name: conf.emptyDbName, 
-                    username: conf.dbUsername, 
-                    password: conf.dbPassword,
-                    heirarchy: [[KBRole], [KBUser]]
-                });
-            }).then((result) => {
-                db = result;
-            }).then(() => {
-                return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL}});
-            }).then(() => {
-                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
-            }).then((result) => {
-                user = result;
-                done();
-            }).catch((error) => {
-                console.log('error in connecting to the server or creating the database', error);
-                done(error);
-            });
-            
+        server = await connectServer(conf.server);
+        const exists = await server.exists({name: conf.db.name});
+        if (exists) {
+            await server.exists({name: conf.db.name});
+        }
+        db = await createDB({
+            server: server, 
+            name: conf.db.name, 
+            user: conf.db.user, 
+            pass: conf.db.pass,
+            heirarchy: [[KBRole], [KBUser]]
+        });
+        await db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL}});
+        user = await db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
     });
     it('KBVertex.createClass', () => {
         return KBVertex.createClass(db)
@@ -90,18 +66,12 @@ describe('base module', () => {
 
     describe('MockVertexClass (instance)', () => {
         let mockRecord;
-        beforeEach((done) => {
-            db.buildHeirarchy([
+        beforeEach(async () => {
+            await db.buildHeirarchy([
                 [KBVertex, History],
                 [MockVertexClass]
-            ]).then(() => {
-                return db.models.MockVertexClass.createRecord({}, user.content.username);
-            }).then((record) => {
-                mockRecord = record;
-                done();
-            }).catch((error) => {
-                done(error);
-            });
+            ])
+            mockRecord = await db.models.MockVertexClass.createRecord({}, user.content.username);
         });
         it('properties: retrieve inherited properties');
         it('superClasses: retrieve inherited classes', () => {
@@ -154,19 +124,10 @@ describe('base module', () => {
             });
         });
     });
-    afterEach((done) => {
+    afterEach(async () => {
         /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
-            .catch((error) => {
-                console.log('error:', error);
-            }).then(() => {
-                return server.close();
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                console.log('error closing the server', error);
-                done(error);
-            });
+        await server.drop({name: conf.db.name});
+        await server.close();
     });
 });
 
