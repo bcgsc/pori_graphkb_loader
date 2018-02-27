@@ -27,9 +27,8 @@
     "swagger-jsdoc": "^1.9.4"
   },
   "scripts": {
-    "watch": "nodemon app/index.js --use-strict",
-    "schema": "nodemon app/db/create_schema.js",
-    "integration": "nyc --reporter=html --reporter=text mocha --recursive test/integration --timeout 20000",
+    "watch": "nodemon server.js --use-strict",
+    "dbtest": "nyc --reporter=html --reporter=text mocha --recursive test/repo --timeout 20000",
     "unit": "nyc --reporter=html --reporter=text mocha --recursive test/unit",
     "test": "nyc --reporter=html --reporter=text mocha --recursive test --timeout 20000",
     "lint": "eslint -c .eslintrc.json app test",

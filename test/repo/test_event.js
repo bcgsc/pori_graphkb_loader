@@ -1,16 +1,13 @@
 'use strict';
 const {expect} = require('chai');
-const conf = require('./../config/db');
-const {connectServer, createDB} = require('./../../app/repo/connect');
-const {KBVertex, KBEdge, Record, History, KBRole, KBUser} = require('./../../app/repo/base');
 const {CategoryEvent, PositionalEvent, Event, EVENT_TYPE, EVENT_SUBTYPE, ZYGOSITY} = require('./../../app/repo/event');
 const {Feature, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
-const {Position, CodingSequencePosition, GenomicPosition, ProteinPosition} = require('./../../app/repo/position');
 const {Context} = require('./../../app/repo/context');
+const {Position, CodingSequencePosition, GenomicPosition, ProteinPosition} = require('./../../app/repo/position');
 const cache = require('./../../app/repo/cached/data');
-const Promise = require('bluebird');
 const {AttributeError, ControlledVocabularyError} = require('./../../app/repo/error');
-const {PERMISSIONS} = require('./../../app/repo/constants');
+const {setUpEmptyDB, tearDownEmptyDB} = require('./util');
+const {Record} = require('./../../app/repo/base');
 
 
 const expectPromiseFail = (promise, errorClass) => {
@@ -42,64 +39,23 @@ cache.vocab[Event.clsname] = {'term': [
 
 
 describe('Event schema tests:', () => {
-    let server, db, primary_feature, user;
-    beforeEach(function(done) { /* build and connect to the empty database */
-        // set up the database server
-        connectServer(conf)
-            .then((s) => {
-                server = s;
-                return server.exists({name: conf.emptyDbName});
-            }).then((exists) => {
-                if (exists) {
-                    return server.drop({name: conf.emptyDbName});
-                } else {
-                    return Promise.resolve();
-                }
-            }).then(() => {
-                return createDB({
-                    name: conf.emptyDbName, 
-                    username: conf.dbUsername, 
-                    password: conf.dbPassword, 
-                    server: server,
-                    heirarchy: [
-                        [KBRole, History],
-                        [KBUser],
-                        [KBVertex, KBEdge],
-                        [Context, Position],
-                        [Feature, GenomicPosition, CodingSequencePosition, ProteinPosition]
-                    ]
-                });
-            }).then((result) => {
-                db = result;
-            }).then(() => {
-                return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL}});
-            }).then(() => {
-                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
-            }).then((result) => {
-                user = result.content.username;
-                return Promise.all([
-                    db.models.Feature.createRecord({name: 'HUGO1', source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE}, user),
-                    db.models.Feature.createRecord({name: 'HUGO2', source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE}, user)
-                ]);
-            }).then((pList) => {
-                [primary_feature] = pList;
-                done();
-            }).catch((error) => {
-                console.log('error', error);
-                done(error);
-            });
+    let server, db, primary_feature, user='me';
+    beforeEach(async () => { 
+        ({server, db} = await setUpEmptyDB());
+        await Context.createClass(db);
+        await Position.createClass(db);
+        await Promise.all(Array.from([Feature, GenomicPosition, CodingSequencePosition, ProteinPosition], x => x.createClass(db)));
+        [primary_feature] = await Promise.all([
+                db.models.Feature.createRecord({name: 'HUGO1', source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE}, user),
+                db.models.Feature.createRecord({name: 'HUGO2', source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE}, user)
+            ]);
     });
     
     it('create the event abstract class');
     it('errors adding a record to the abstract event class');
     describe('createClass', () => {
-        beforeEach((done) => {
-            Event.createClass(db)
-                .then(() => {
-                    done();
-                }).catch((error) => {
-                    done(error);
-                });
+        beforeEach(async () => {
+            await Event.createClass(db);
         });
         it('CategoryEvent', () => {
             return CategoryEvent.createClass(db)
@@ -131,15 +87,9 @@ describe('Event schema tests:', () => {
     });
 
     describe('PositionalEvent.createRecord', () => {
-        beforeEach((done) => {
-            Event.createClass(db)
-                .then(() => {
-                    return PositionalEvent.createClass(db);
-                }).then(() => {
-                    done();
-                }).catch((error) => {
-                    done(error);
-                });
+        beforeEach(async () => {
+            await Event.createClass(db);
+            await PositionalEvent.createClass(db);
         });
         it('errors on same start/end positions', () => {
             return db.models.PositionalEvent.createRecord({
@@ -261,21 +211,21 @@ describe('Event schema tests:', () => {
                 start: {pos: 2}, end: {pos: 3}, primary_feature: primary_feature,
                 type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INS, untemplated_seq: 'A'
             }, user, GenomicPosition.clsname).then((rec) => {
-                expect(rec.content).to.have.property('untemplated_seq', 'A');
+                expect(rec.content).to.have.property('untemplated_seq', 'a');
             });
         });
         it('allows reference_seq for deletion', () => {
             return db.models.PositionalEvent.createRecord({
                 start: {pos: 2}, primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.DEL, reference_seq: 'A'
             }, user, GenomicPosition.clsname).then((rec) => {
-                expect(rec.content).to.have.property('reference_seq', 'A');
+                expect(rec.content).to.have.property('reference_seq', 'a');
             });
         });
         it('allows collection_method', () => {
             return db.models.PositionalEvent.createRecord({
                 start: {pos: 2}, collection_method: 'mass spec', primary_feature: primary_feature, type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.DEL, reference_seq: 'A'
             }, user, GenomicPosition.clsname).then((rec) => {
-                expect(rec.content).to.have.property('reference_seq', 'A');
+                expect(rec.content).to.have.property('reference_seq', 'a');
             });
         });
         it('allows untemplated_seq and reference_seq for indel', () => {
@@ -283,8 +233,8 @@ describe('Event schema tests:', () => {
                 start: {pos: 2}, primary_feature: primary_feature, 
                 type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.INDEL, reference_seq: 'A', untemplated_seq: 'CC'
             }, user, GenomicPosition.clsname).then((rec) => {
-                expect(rec.content).to.have.property('untemplated_seq', 'CC');
-                expect(rec.content).to.have.property('reference_seq', 'A');
+                expect(rec.content).to.have.property('untemplated_seq', 'cc');
+                expect(rec.content).to.have.property('reference_seq', 'a');
             });
         });
         it('allows untemplated_seq and reference_seq for sub', () => {
@@ -292,8 +242,8 @@ describe('Event schema tests:', () => {
                 start: {pos: 2}, primary_feature: primary_feature,
                 type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.SUB, reference_seq: 'A', untemplated_seq: 'C'
             }, user, GenomicPosition.clsname).then((rec) => {
-                expect(rec.content).to.have.property('untemplated_seq', 'C');
-                expect(rec.content).to.have.property('reference_seq', 'A');
+                expect(rec.content).to.have.property('untemplated_seq', 'c');
+                expect(rec.content).to.have.property('reference_seq', 'a');
             });
         });
         it('errors on substitution where reference_seq is not length 1', () => {
@@ -344,24 +294,16 @@ describe('Event schema tests:', () => {
                 start: {pos: 2}, primary_feature: primary_feature,
                 type: EVENT_TYPE.MUT, subtype: EVENT_SUBTYPE.FS, reference_seq: 'A', untemplated_seq: 'C', termination_aa: 110
             }, user, ProteinPosition.clsname).then((rec) => {
-                expect(rec.content).to.have.property('untemplated_seq', 'C');
-                expect(rec.content).to.have.property('reference_seq', 'A');
+                expect(rec.content).to.have.property('untemplated_seq', 'c');
+                expect(rec.content).to.have.property('reference_seq', 'a');
             });
         });
     });
     
     describe('CategoryEvent.createRecord', () => {
-        beforeEach((done) => {
-            Event.createClass(db)
-                .then((event) => {
-                    db.models.Event = event;
-                    return CategoryEvent.createClass(db);
-                }).then((ce) => {
-                    db.models.CategoryEvent = ce;
-                    done();
-                }).catch((error) => {
-                    done(error);
-                });
+        beforeEach(async () => {
+            db.models.Event = await Event.createClass(db);
+            db.models.CategoryEvent = await CategoryEvent.createClass(db);
         });
         it('errors on invalid term for any event type', () => {
             return db.models.CategoryEvent.createRecord({type: EVENT_TYPE.RNA, primary_feature: primary_feature, term: 'gain'}, user)
@@ -474,17 +416,8 @@ describe('Event schema tests:', () => {
         });
     });
 
-    afterEach((done) => {
+    afterEach(async () => {
         /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
-            .catch((error) => {
-                console.log('error:', error);
-            }).then(() => {
-                return server.close();
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                done(error);
-            });
+        await tearDownEmptyDB(server); 
     });
 });

@@ -1,10 +1,8 @@
 'use strict';
 const {expect} = require('chai');
-const conf = require('./../config/db');
-const {connectServer, createDB} = require('./../../app/repo/connect');
 const {AttributeError} = require('./../../app/repo/error');
 const oError = require('./orientdb_errors');
-
+const {setUpEmptyDB, tearDownEmptyDB} = require('./util');
 
 const {
     Position,
@@ -19,24 +17,8 @@ const {
 
 describe('Position schema tests:', () => {
     let server, db;
-    beforeEach(function(done) { /* build and connect to the empty database */
-        connectServer(conf)
-            .then((result) => {
-                // create the empty database
-                server = result;
-                return createDB({
-                    name: conf.emptyDbName, 
-                    username: conf.dbUsername, 
-                    password: conf.dbPassword, 
-                    server: server
-                });
-            }).then((connection) => {
-                db = connection;
-                done();
-            }).catch((error) => {
-                console.log('error', error);
-                done(error);
-            });
+    beforeEach(async () => { 
+        ({server, db, user} = await setUpEmptyDB());
     });
     it('test create position class', () => {
         return Position.createClass(db)
@@ -46,18 +28,11 @@ describe('Position schema tests:', () => {
     });
 
     describe('position subclasses', () => {
-        let posClass;
-        beforeEach(function(done) {
-            Position.createClass(db)
-                .then((result) => {
-                    posClass = result;
-                    done();
-                }).catch((error) => {
-                    done(error);
-                });
+        beforeEach(async () => {
+            await Position.createClass(db);
         });
         it('test position class abstract error', () => {
-            return posClass.createRecord()
+            return db.models.Position.createRecord()
                 .then(() => {
                     expect.fail('expected error');
                 }, (error) => {
@@ -73,30 +48,23 @@ describe('Position schema tests:', () => {
         });
 
         describe('genomic', () => {
-            let currClass;
-            beforeEach(function(done) {
-                GenomicPosition.createClass(db)
-                    .then((result) => {
-                        currClass = result;
-                        done();
-                    }).catch((error) => {
-                        done(error);
-                    });
+            beforeEach(async function() {
+                await GenomicPosition.createClass(db);
             });
             it('pos defaults to null', () => {
-                return currClass.createRecord()
+                return db.models.GenomicPosition.createRecord()
                     .then((record) => {
                         expect(record.content.pos).is.null;
                     });
             });
             it('allows pos to be null', () => {
-                return currClass.createRecord({pos: null})
+                return db.models.GenomicPosition.createRecord({pos: null})
                     .then((record) => {
                         expect(record.content.pos).is.null;
                     });
             });
             it('errors on pos below minimum', () => {
-                return currClass.createRecord({pos: 0})
+                return db.models.GenomicPosition.createRecord({pos: 0})
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
@@ -104,7 +72,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('allows pos at min', () => {
-                return currClass.createRecord({pos: 1})
+                return db.models.GenomicPosition.createRecord({pos: 1})
                     .then((record) => {
                         expect(record.content).to.have.property('pos', 1);
                     });
@@ -120,30 +88,23 @@ describe('Position schema tests:', () => {
         });
 
         describe('protein', () => {
-            let currClass;
-            beforeEach(function(done) {
-                ProteinPosition.createClass(db)
-                    .then((result) => {
-                        currClass = result;
-                        done();
-                    }).catch((error) => {
-                        done(error);
-                    });
+            beforeEach(async () => {
+                await ProteinPosition.createClass(db);
             });
             it('pos defaults to null', () => {
-                return currClass.createRecord()
+                return db.models.ProteinPosition.createRecord()
                     .then((record) => {
                         expect(record.content.pos).is.null;
                     });
             });
             it('allows pos to be null', () => {
-                return currClass.createRecord({pos: null})
+                return db.models.ProteinPosition.createRecord({pos: null})
                     .then((record) => {
                         expect(record.content.pos).is.null;
                     });
             });
             it('errors on ref_aa too long', () => {
-                return currClass.createRecord({pos: 1, ref_aa: 'DD'})
+                return db.models.ProteinPosition.createRecord({pos: 1, ref_aa: 'DD'})
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
@@ -151,7 +112,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('errors on ref_aa empty string', () => {
-                return currClass.createRecord({pos: 1, ref_aa: ''})
+                return db.models.ProteinPosition.createRecord({pos: 1, ref_aa: ''})
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
@@ -159,17 +120,17 @@ describe('Position schema tests:', () => {
                     });
             });
             it('allows ref_aa default null', () => {
-                return currClass.createRecord({pos: 1})
+                return db.models.ProteinPosition.createRecord({pos: 1})
                     .then((record) => {
                         expect(record.content.ref_aa).to.be.null;
                         expect(record.content.pos).to.equal(1);
                     });
             });
             it('allows pos at min', () => {
-                return currClass.createRecord({pos: 1, ref_aa: 'X'})
+                return db.models.ProteinPosition.createRecord({pos: 1, ref_aa: 'X'})
                     .then((record) => {
                         expect(record.content.pos).to.equal(1);
-                        expect(record.content.ref_aa).to.equal('X');
+                        expect(record.content.ref_aa).to.equal('x');
                     });
             });
         });
@@ -183,30 +144,23 @@ describe('Position schema tests:', () => {
         });
 
         describe('exonic', () => {
-            let currClass;
-            beforeEach(function(done) {
-                ExonicPosition.createClass(db)
-                    .then((result) => {
-                        currClass = result;
-                        done();
-                    }).catch((error) => {
-                        done(error);
-                    });
+            beforeEach(async () => {
+                await ExonicPosition.createClass(db);
             });
             it('pos defaults to null', () => {
-                return currClass.createRecord()
+                return db.models.ExonicPosition.createRecord()
                     .then((record) => {
                         expect(record.content.pos).is.null;
                     });
             });
             it('allows pos null', () => {
-                return currClass.createRecord({pos: null})
+                return db.models.ExonicPosition.createRecord({pos: null})
                     .then((record) => {
                         expect(record.content.pos).is.null;
                     });
             });
             it('errors on pos below min', () => {
-                return currClass.createRecord({pos: 0})
+                return db.models.ExonicPosition.createRecord({pos: 0})
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
@@ -214,7 +168,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('allows pos at min', () => {
-                return currClass.createRecord({pos: 1})
+                return db.models.ExonicPosition.createRecord({pos: 1})
                     .then((record) => {
                         expect(record.content).to.have.property('pos', 1);
                     });
@@ -230,60 +184,53 @@ describe('Position schema tests:', () => {
         });
 
         describe('cds', () => {
-            let currClass;
-            beforeEach(function(done) {
-                CodingSequencePosition.createClass(db)
-                    .then((result) => {
-                        currClass = result;
-                        done();
-                    }).catch((error) => {
-                        done(error);
-                    });
+            beforeEach(async () => {
+                await CodingSequencePosition.createClass(db);
             });
             it('pos default to null', () => {
-                return currClass.createRecord()
+                return db.models.CodingSequencePosition.createRecord()
                     .then((record) => {
                         expect(record.content.pos).is.null;
                         expect(record.content.offset).to.equal(0);
                     });
             });
             it('allows input pos as null', () => {
-                return currClass.createRecord({pos: null, offset: null})
+                return db.models.CodingSequencePosition.createRecord({pos: null, offset: null})
                     .then((record) => {
                         expect(record.content.pos).is.null;
                         expect(record.content.offset).is.null;
                     });
             });
             it('allows offset to default to 0', () => {
-                return currClass.createRecord({pos: 1})
+                return db.models.CodingSequencePosition.createRecord({pos: 1})
                     .then((record) => {
                         expect(record.content.pos).to.equal(1);
                         expect(record.content.offset).to.equal(0);
                     });
             });
             it('allows offset to be negative', () => {
-                return currClass.createRecord({pos: 1, offset: -2})
+                return db.models.CodingSequencePosition.createRecord({pos: 1, offset: -2})
                     .then((record) => {
                         expect(record.content.pos).to.equal(1);
                         expect(record.content.offset).to.equal(-2);
                     });
             });
             it('allows offset to be positive', () => {
-                return currClass.createRecord({pos: 1, offset: 2})
+                return db.models.CodingSequencePosition.createRecord({pos: 1, offset: 2})
                     .then((record) => {
                         expect(record.content.pos).to.equal(1);
                         expect(record.content.offset).to.equal(2);
                     });
             });
             it('allows offset to be null', () => {
-                return currClass.createRecord({pos: 1, offset: null})
+                return db.models.CodingSequencePosition.createRecord({pos: 1, offset: null})
                     .then((record) => {
                         expect(record.content.pos).to.equal(1);
                         expect(record.content.offset).is.null;
                     });
             });
             it('errors on pos below min', () => {
-                return currClass.createRecord({pos: 0})
+                return db.models.CodingSequencePosition.createRecord({pos: 0})
                     .then(() => {
                         expect.fail('error was expected');
                     }, (error) => {
@@ -301,18 +248,11 @@ describe('Position schema tests:', () => {
         });
 
         describe('cytoband', () => {
-            let currClass;
-            beforeEach(function(done) {
-                CytobandPosition.createClass(db)
-                    .then((result) => {
-                        currClass = result;
-                        done();
-                    }).catch((error) => {
-                        done(error);
-                    });
+            beforeEach(async () => {
+                await CytobandPosition.createClass(db);
             });
             it('errors on arm null', () => {
-                return currClass.createRecord({arm: null})
+                return db.models.CytobandPosition.createRecord({arm: null})
                     .then((record) => {
                         expect.fail('expected error');
                     }, (error) => {
@@ -320,7 +260,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('errors on mandatory arm not given', () => {
-                return currClass.createRecord()
+                return db.models.CytobandPosition.createRecord()
                     .then(() => {
                         expect.fail('expected error');
                     }, (error) => {
@@ -328,7 +268,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('errors on arm not p/q', () => {
-                return currClass.createRecord({arm: 'k'})
+                return db.models.CytobandPosition.createRecord({arm: 'k'})
                     .then(() => {
                         expect.fail('expected error');
                     }, (error) => {
@@ -336,7 +276,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('allows arm p to force lower case', () => {
-                return currClass.createRecord({arm: 'P'})
+                return db.models.CytobandPosition.createRecord({arm: 'P'})
                     .then((record) => {
                         expect(record.content.arm).to.equal('p');
                         expect(record.content.major_band).to.be.null;
@@ -344,7 +284,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('allows arm q to force lower case', () => {
-                return currClass.createRecord({arm: 'Q'})
+                return db.models.CytobandPosition.createRecord({arm: 'Q'})
                     .then((record) => {
                         expect(record.content.arm).to.equal('q');
                         expect(record.content.major_band).to.be.null;
@@ -352,7 +292,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('errors on minor_band not null when major band null', () => {
-                return currClass.createRecord({arm: 'p', minor_band: 1})
+                return db.models.CytobandPosition.createRecord({arm: 'p', minor_band: 1})
                     .then(() => {
                         expect.fail('expected error');
                     }, (error) => {
@@ -370,22 +310,16 @@ describe('Position schema tests:', () => {
         });
 
         describe('range.createRecord', () => {
-            let currClass;
-            beforeEach(function(done) {
-                Promise.all([
+            beforeEach(async () => {
+                await Promise.all([
                     Range.createClass(db),
                     CodingSequencePosition.createClass(db),
                     GenomicPosition.createClass(db),
                     ProteinPosition.createClass(db)
-                ]).then((plist) => {
-                    currClass = plist[0];
-                    done();
-                }).catch((error) => {
-                    done(error);
-                });
+                ]);
             });
             it('start null/undefined error', () => {
-                return currClass.createRecord({end: {pos: 1}}, GenomicPosition.clsname)
+                return db.models.Range.createRecord({end: {pos: 1}}, GenomicPosition.clsname)
                     .then(() => {
                         expect.fail('expected error');
                     }, (error) => {
@@ -393,7 +327,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('end null/undefined error', () => {
-                return currClass.createRecord({start: {pos: 1}}, GenomicPosition.clsname)
+                return db.models.Range.createRecord({start: {pos: 1}}, GenomicPosition.clsname)
                     .then(() => {
                         expect.fail('expected error');
                     }, (error) => {
@@ -402,7 +336,7 @@ describe('Position schema tests:', () => {
             });
 
             it('create range', () => {
-                return currClass.createRecord({start: {pos: 1}, end: {pos: 2}}, GenomicPosition.clsname)
+                return db.models.Range.createRecord({start: {pos: 1}, end: {pos: 2}}, GenomicPosition.clsname)
                     .then((record) => {
                         expect(record.content).to.include.keys('start', 'end');
                         expect(record.content.start).to.have.property('pos', 1);
@@ -412,7 +346,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('errors on start > end', () => {
-                return currClass.createRecord({start: {pos: 10}, end: {pos: 8}}, GenomicPosition.clsname)
+                return db.models.Range.createRecord({start: {pos: 10}, end: {pos: 8}}, GenomicPosition.clsname)
                     .then((rec) => {
                         console.log(rec);
                         expect.fail('expected error');
@@ -421,7 +355,7 @@ describe('Position schema tests:', () => {
                     });
             });
             it('errors on start >= end', () => {
-                return currClass.createRecord({start: {pos: 10}, end: {pos: 10}}, GenomicPosition.clsname)
+                return db.models.Range.createRecord({start: {pos: 10}, end: {pos: 10}}, GenomicPosition.clsname)
                     .then((rec) => {
                         console.log(rec);
                         expect.fail('expected error');
@@ -432,17 +366,7 @@ describe('Position schema tests:', () => {
         });
     });
 
-    afterEach((done) => {
-        /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
-            .catch((error) => {
-                console.log('error:', error);
-            }).then(() => {
-                return server.close();
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                done(error);
-            });
+    afterEach(async () => {
+        tearDownEmptyDB(server);
     });
 });

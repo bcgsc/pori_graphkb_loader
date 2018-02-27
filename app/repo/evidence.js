@@ -248,10 +248,10 @@ class ExternalSource extends KBVertex {
             {name: 'extraction_date', type: 'string', mandatory: false, notNull: true}
         ];
         const idxs = [{
-            name: this.clsname + '.index_title',
+            name: this.clsname + '.index_title_url',
             type: 'unique',
             metadata: {ignoreNullValues: false},
-            properties: ['title', 'deleted_at'],
+            properties: ['title', 'deleted_at', 'url'],
             'class':  this.clsname
         }];
         return Base.createClass({db, clsname: this.clsname, superClasses: Evidence.clsname, properties: props, isAbstract: false, indices: idxs})

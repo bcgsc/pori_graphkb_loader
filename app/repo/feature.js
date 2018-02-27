@@ -45,10 +45,14 @@ class Feature extends KBVertex {
 
         const args = Object.assign({source_version: null}, content);
         let namePattern = /\S+/;
+        if (! args.name) {
+            return Promise.reject(new AttributeError(`feature name '${args.name}' did not match the expected pattern ${namePattern}`));
+        }
+        args.name = args.name.toLowerCase();
 
         switch (args.source) {
         case FEATURE_SOURCE.HGNC:
-            namePattern = /^[A-Z]([A-Z]|-|\d|orf)*$/;
+            namePattern = /^[a-z]([a-z]|-|\d)*$/;
             if (args.biotype !== FEATURE_BIOTYPE.GENE) {
                 return Promise.reject(new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`));
             }
@@ -56,16 +60,16 @@ class Feature extends KBVertex {
         case FEATURE_SOURCE.ENSEMBL:
             switch (args.biotype) {
             case FEATURE_BIOTYPE.PROTEIN:
-                namePattern = /^ENSP\d+$/;
+                namePattern = /^ensp\d+$/;
                 break;
             case FEATURE_BIOTYPE.TRANSCRIPT:
-                namePattern = /^ENST\d+$/;
+                namePattern = /^enst\d+$/;
                 break;
             case FEATURE_BIOTYPE.GENE:
-                namePattern = /^ENSG\d+$/;
+                namePattern = /^ensg\d+$/;
                 break;
             case FEATURE_BIOTYPE.EXON:
-                namePattern = /^ENSE\d+$/;
+                namePattern = /^ense\d+$/;
                 break;
             default:
                 return Promise.reject(new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`));
@@ -74,16 +78,16 @@ class Feature extends KBVertex {
         case FEATURE_SOURCE.REFSEQ:
             switch (args.biotype) {
             case FEATURE_BIOTYPE.PROTEIN:
-                namePattern = /^NP_\d+$/;
+                namePattern = /^np_\d+$/;
                 break;
             case FEATURE_BIOTYPE.TRANSCRIPT:
-                namePattern = /^NM_\d+$/;
+                namePattern = /^nm_\d+$/;
                 break;
             case FEATURE_BIOTYPE.GENE:
-                namePattern = /^NG_\d+$/;
+                namePattern = /^ng_\d+$/;
                 break;
             case FEATURE_BIOTYPE.TEMPLATE:
-                namePattern = /^NC_\d+$/;
+                namePattern = /^nc_\d+$/;
                 break;
             default:
                 return Promise.reject(new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`));
@@ -92,13 +96,13 @@ class Feature extends KBVertex {
         case FEATURE_SOURCE.LRG:
             switch (args.biotype) {
             case FEATURE_BIOTYPE.PROTEIN:
-                namePattern = /^LRG_\d+p\d+$/;
+                namePattern = /^lrg_\d+p\d+$/;
                 break;
             case FEATURE_BIOTYPE.TRANSCRIPT:
-                namePattern = /^LRG_\d+t\d+$/;
+                namePattern = /^lrg_\d+t\d+$/;
                 break;
             case FEATURE_BIOTYPE.GENE:
-                namePattern = /^LRG_\d+$/;
+                namePattern = /^lrg_\d+$/;
                 break;
             default:
                 return Promise.reject(new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`));
@@ -113,12 +117,13 @@ class Feature extends KBVertex {
             if (args.biotype !== FEATURE_BIOTYPE.GENE) {
                 return Promise.reject(new AttributeError(`${args.source} type found unsupported biotype ${args.biotype}`));
             }
+            namePattern = /^[a-z][a-z0-9-]*$/;
             break;
         default:
             return Promise.reject(new AttributeError(`unexpected feature source ${args.source} is not configured for validation`));
         }
         if (namePattern.exec(args.name) === null) {
-            return Promise.reject(new AttributeError(`feature name '${args.name}' did not match the expected pattern '${namePattern}'`));
+            return Promise.reject(new AttributeError(`feature name '${args.name}' did not match the expected pattern ${namePattern}`));
         }
         return super.validateContent(args);
     }

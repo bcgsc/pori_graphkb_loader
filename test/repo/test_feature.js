@@ -1,20 +1,17 @@
 'use strict';
 const {expect} = require('chai');
-const conf = require('./../config/db');
-const {connectServer, createDB} = require('./../../app/repo/connect');
-const {KBVertex, KBEdge, History, KBUser, KBRole} = require('./../../app/repo/base');
 const {Feature, FeatureDeprecatedBy, FeatureAliasOf, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
 const {AttributeError} = require('./../../app/repo/error');
 const {Context} = require('./../../app/repo/context');
 const Promise = require('bluebird');
 const {expectDuplicateKeyError} = require('./orientdb_errors');
-const {PERMISSIONS} = require('./../../app/repo/constants');
+const {setUpEmptyDB, tearDownEmptyDB} = require('./util');
 
 
 const expectPromiseFail = (promise, errorClass) => {
     return promise
         .then((result) => {
-            expect.fail('expected error');
+            throw new Error('expected error');
         }).catch((err) => {
             expect(err).to.be.instanceof(errorClass);
         });
@@ -23,55 +20,21 @@ const expectPromiseFail = (promise, errorClass) => {
 
 describe('Feature schema tests:', () => {
     let server, db, user;
-    beforeEach(function(done) { /* build and connect to the empty database */
-        // set up the database server
-        connectServer(conf)
-            .then((result) => {
-                // create the empty database
-                server = result;
-                return createDB({
-                    name: conf.emptyDbName, 
-                    username: conf.dbUsername,
-                    password: conf.dbPassword,
-                    server: server,
-                    heirarchy: [
-                        [KBRole, History],
-                        [KBUser],
-                        [KBVertex, KBEdge],
-                        [Context]
-                    ]
-                });
-            }).then((result) => {
-                db = result;
-            }).then(() => {
-                return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
-            }).then(() => {
-                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
-            }).then((result) => {
-                user = result;
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                console.log('error', error);
-                done(error);
-            });
+    beforeEach(async () => { 
+        ({server, db, user} = await setUpEmptyDB());
+        await Context.createClass(db);
     });
 
     it('create the feature class', () => {
-        Feature.createClass(db)
+        return Feature.createClass(db)
             .then((cls) => {
                 expect(cls.propertyNames).to.include('name', 'biotype', 'uuid', 'version', 'source', 'source_version', 'created_at', 'deleted_at');
             });
     });
 
     describe('indices', () => {
-        beforeEach((done) => {
-            Feature.createClass(db)
-                .then(() => {
-                    done();
-                }).catch((error) => {
-                    done(error);
-                });
+        beforeEach(async () => {
+            await Feature.createClass(db);
         });
         it('errors on active name not unique within source/version', () => {
             const entry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: null};
@@ -129,16 +92,9 @@ describe('Feature schema tests:', () => {
         });
     });
     describe('FeatureDeprecatedBy', () => {
-        beforeEach(function(done) { /* build and connect to the empty database */
-            Feature.createClass(db)
-                .then(() => {
-                    return FeatureDeprecatedBy.createClass(db);
-                }).then(() => {
-                    done();
-                }).catch((error) => {
-                    console.log('error', error);
-                    done(error);
-                });
+        beforeEach(async () => {
+            await Feature.createClass(db);
+            await FeatureDeprecatedBy.createClass(db);
         });
 
         it('errors when deprecating a feature with a different biotype', () => {
@@ -206,16 +162,9 @@ describe('Feature schema tests:', () => {
 
     });
     describe('FeatureAliasOf', () => {
-        beforeEach(function(done) { /* build and connect to the empty database */
-            Feature.createClass(db)
-                .then(() => {
-                    return FeatureAliasOf.createClass(db);
-                }).then(() => {
-                    done();
-                }).catch((error) => {
-                    console.log('error', error);
-                    done(error);
-                });
+        beforeEach(async () => { /* build and connect to the empty database */
+            await Feature.createClass(db)
+            await FeatureAliasOf.createClass(db);
         });
 
         it('errors when deprecating a feature with a different biotype', () => {
@@ -243,57 +192,24 @@ describe('Feature schema tests:', () => {
         });
         
     });
-    afterEach((done) => {
-        /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
-            .catch((error) => {
-                console.log('error:', error);
-            }).then(() => {
-                return server.close();
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                done(error);
-            });
+    afterEach(async () => {
+        await tearDownEmptyDB(server);
     });
 });
 
 
 describe('Feature.validateContent', () => {
-    let server, db;
-    before(function(done) { /* build and connect to the empty database */
-        // set up the database server
-        connectServer(conf)
-            .then((result) => {
-                // create the empty database
-                server = result;
-                return createDB({
-                    name: conf.emptyDbName, 
-                    username: conf.dbUsername,
-                    password: conf.dbPassword,
-                    server: server,
-                    heirarchy: [
-                        [KBRole, History],
-                        [KBUser],
-                        [KBVertex, KBEdge],
-                        [Context],
-                        [Feature]
-                    ]
-                });
-            }).then((result) => {
-                db = result;
-                done();
-            }).catch((error) => {
-                console.log('error', error);
-                done(error);
-            });
+    let server, db, user;
+    beforeEach(async () => { 
+        ({server, db, user} = await setUpEmptyDB());
+        await Context.createClass(db);
+        await Feature.createClass(db);
     });
 
     describe(FEATURE_SOURCE.HGNC, () => {
         let validEntry;
-        beforeEach(function(done) {
+        beforeEach(() => {
             validEntry = {source: FEATURE_SOURCE.HGNC, biotype: FEATURE_BIOTYPE.GENE, name: 'KRAS', source_version: 20170101, created_by: true};
-            done();
         });
 
         it('allows valid', () => {
@@ -340,7 +256,7 @@ describe('Feature.validateContent', () => {
     describe(FEATURE_SOURCE.ENSEMBL, () => {
         let validEntry;
         beforeEach(function(done) {
-            validEntry = {source: FEATURE_SOURCE.ENSEMBL, biotype: FEATURE_BIOTYPE.GENE, name: 'ENSG001', source_version: 69, created_by: true};
+            validEntry = {source: FEATURE_SOURCE.ENSEMBL, biotype: FEATURE_BIOTYPE.GENE, name: 'ensg001', source_version: 69, created_by: true};
             done();
         });
 
@@ -349,17 +265,17 @@ describe('Feature.validateContent', () => {
         });
         it('allows valid protein', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            validEntry.name = 'ENSP001';
+            validEntry.name = 'ensp001';
             return db.models.Feature.validateContent(validEntry);
         });
         it('allows valid transcript', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            validEntry.name = 'ENST001';
+            validEntry.name = 'enst001';
             return db.models.Feature.validateContent(validEntry);;
         });
         it('allows valid exon', () => {
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
-            validEntry.name = 'ENSE001';
+            validEntry.name = 'ense001';
             return db.models.Feature.validateContent(validEntry);
         });
         it('errors on gene name not compatible with transcript biotype', () => {
@@ -375,30 +291,30 @@ describe('Feature.validateContent', () => {
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with gene biotype', () => {
-            validEntry.name = 'ENST0001';
+            validEntry.name = 'enst0001';
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with protein biotype', () => {
-            validEntry.name = 'ENST0001';
+            validEntry.name = 'enst0001';
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with exon biotype', () => {
-            validEntry.name = 'ENST0001';
+            validEntry.name = 'enst0001';
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with gene biotype', () => {
-            validEntry.name = 'ENSP0001';
+            validEntry.name = 'ensp0001';
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with transcript biotype', () => {
-            validEntry.name = 'ENSP0001';
+            validEntry.name = 'ensp0001';
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with exon biotype', () => {
-            validEntry.name = 'ENSP0001';
+            validEntry.name = 'ensp0001';
             validEntry.biotype = FEATURE_BIOTYPE.EXON;
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
@@ -437,7 +353,7 @@ describe('Feature.validateContent', () => {
     describe(FEATURE_SOURCE.REFSEQ, () => {
         let validEntry;
         beforeEach(function(done) {
-            validEntry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'NG_001', source_version: 1, created_by: true};
+            validEntry = {source: FEATURE_SOURCE.REFSEQ, biotype: FEATURE_BIOTYPE.GENE, name: 'ng_001', source_version: 1, created_by: true};
             done();
         });
 
@@ -446,12 +362,12 @@ describe('Feature.validateContent', () => {
         });
         it('allows valid protein', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            validEntry.name = 'NP_001';
+            validEntry.name = 'np_001';
             return db.models.Feature.validateContent(validEntry);
         });
         it('allows valid transcript', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            validEntry.name = 'NM_001';
+            validEntry.name = 'nm_001';
             return db.models.Feature.validateContent(validEntry);
         });
         it('errors on gene name not compatible with transcript biotype', () => {
@@ -463,21 +379,21 @@ describe('Feature.validateContent', () => {
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with gene biotype', () => {
-            validEntry.name = 'NM_0001';
+            validEntry.name = 'nm_0001';
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with protein biotype', () => {
-            validEntry.name = 'NM_0001';
+            validEntry.name = 'nm_0001';
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with gene biotype', () => {
-            validEntry.name = 'NP_0001';
+            validEntry.name = 'np_0001';
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with transcript biotype', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TEMPLATE;
-            validEntry.name = 'NP_0001';
+            validEntry.name = 'np_0001';
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('allows null source_version', () => {
@@ -524,12 +440,12 @@ describe('Feature.validateContent', () => {
         });
         it('allows valid protein', () => {
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
-            validEntry.name = 'LRG_001p2';
+            validEntry.name = 'lrg_001p2';
             return db.models.Feature.validateContent(validEntry);
         });
         it('allows valid transcript', () => {
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
-            validEntry.name = 'LRG_001t2';
+            validEntry.name = 'lrg_001t2';
             return db.models.Feature.validateContent(validEntry);
         });
         it('errors on gene name not compatible with transcript biotype', () => {
@@ -541,20 +457,20 @@ describe('Feature.validateContent', () => {
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with gene biotype', () => {
-            validEntry.name = 'LRG_001t2';
+            validEntry.name = 'lrg_001t2';
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on transcript name not compatible with protein biotype', () => {
-            validEntry.name = 'LRG_001t2';
+            validEntry.name = 'lrg_001t2';
             validEntry.biotype = FEATURE_BIOTYPE.PROTEIN;
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with gene biotype', () => {
-            validEntry.name = 'LRG_001p2';
+            validEntry.name = 'lrg_001p2';
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
         it('errors on protein name not compatible with transcript biotype', () => {
-            validEntry.name = 'LRG_001p2';
+            validEntry.name = 'lrg_001p2';
             validEntry.biotype = FEATURE_BIOTYPE.TRANSCRIPT;
             expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
         });
@@ -626,7 +542,7 @@ describe('Feature.validateContent', () => {
             validEntry.name = 'MT';
             return db.models.Feature.validateContent(validEntry)
                 .then((result) => {
-                    expect(result).to.have.property('name', 'MT');
+                    expect(result).to.have.property('name', 'mt');
                 });
         });
         it('errors on biotype gene', () => {
@@ -651,25 +567,7 @@ describe('Feature.validateContent', () => {
         expectPromiseFail(db.models.Feature.validateContent(validEntry), AttributeError);
     });
 
-    after((done) => {
-        /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
-            .catch((error) => {
-                console.log('error:', error);
-            }).then(() => {
-                return server.close();
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                done(error);
-            });
+    after(async () => {
+        await tearDownEmptyDB(server);
     });
 });
-
-
-// test FeatureDeprecatedBy
-
-
-
-// test FeatureAliasOf
-

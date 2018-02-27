@@ -1,6 +1,6 @@
 'use strict';
 const {expect} = require('chai');
-const conf = require('./../config/db');
+const conf = require('./../config/empty');
 const {admin, analyst, bioinfo} = require('./../../config/roles');
 const {Context} = require('./../../app/repo/context');
 const {connectServer, createDB} = require('./../../app/repo/connect');
@@ -12,16 +12,10 @@ const {Ontology, Disease, OntologyAliasOf} = require('./../../app/repo/ontology'
 // a non-abstract kbvertex class for testing purposes
 class MockVertexClass extends KBVertex { 
     static createClass(db) {
-        return new Promise((resolve, reject) => {
-            Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname})
-                .then(() => {
-                    return this.loadClass(db);
-                }).then((cls) => {
-                    resolve(cls);
-                }).catch((error) => {
-                    reject(error);
-                });
-        });
+        return Base.createClass({db, clsname: this.clsname, superClasses: KBVertex.clsname})
+            .then(() => {
+                return this.loadClass(db);
+            });
     }
 }
 
@@ -29,10 +23,10 @@ class MockVertexClass extends KBVertex {
 describe('KBUser & KBRole', () => {
     let db, server;
     beforeEach(function(done) { 
-        connectServer(conf)
+        connectServer(conf.server)
             .then((s) => {
                 server = s;
-                return createDB({server: s, name: conf.emptyDbName, username: conf.dbUsername, password: conf.dbPassword});
+                return createDB(Object.assign({server: s}, conf.db));
             }).then((result) => {
                 db = result;
                 done();
@@ -63,35 +57,27 @@ describe('KBUser & KBRole', () => {
 
     describe('instance tests', () => {
         let kbuserClass, kbroleClass;
-        beforeEach((done) => {
-            Promise.all([
+        beforeEach(async () => {
+            [kbroleClass, kbuserClass] = await Promise.all([
                 KBRole.createClass(db),
                 KBUser.createClass(db)
-            ]).then((clsList) => {
-                [kbroleClass, kbuserClass] = clsList;
-                Promise.all([
-                    kbroleClass.createRecord({name: 'admin', mode: 0, rules: admin}),
-                    kbroleClass.createRecord({name: 'analyst', mode: 0, rules: analyst}),
-                    kbroleClass.createRecord({name: 'bioinfo', mode: 0, rules: bioinfo}),
-                ]).then(() => {
-                    Promise.all([
-                        kbuserClass.createRecord({username: 'admin', role: 'admin'}),
-                        kbuserClass.createRecord({username: 'Martin', role: 'analyst'}),
-                        kbuserClass.createRecord({username: 'Wei', role: 'bioinfo'}),
-                        kbuserClass.createRecord({username: 'Simon', role: 'analyst', active: false})
-                    ]).then(() => {
-                        Promise.all([
-                            KBVertex.createClass(db),
-                            KBEdge.createClass(db),
-                            History.createClass(db)
-                        ]).then(() => {
-                            done();
-                        }).catch((error) => {
-                            done(error);
-                        });
-                    });
-                });
-            });
+            ]);
+            await Promise.all([
+                kbroleClass.createRecord({name: 'admin', mode: 0, rules: admin}),
+                kbroleClass.createRecord({name: 'analyst', mode: 0, rules: analyst}),
+                kbroleClass.createRecord({name: 'bioinfo', mode: 0, rules: bioinfo}),
+            ]);
+            await Promise.all([
+                kbuserClass.createRecord({username: 'admin', role: 'admin'}),
+                kbuserClass.createRecord({username: 'Martin', role: 'analyst'}),
+                kbuserClass.createRecord({username: 'Wei', role: 'bioinfo'}),
+                kbuserClass.createRecord({username: 'Simon', role: 'analyst', active: false})
+            ]);
+            await Promise.all([
+                KBVertex.createClass(db),
+                KBEdge.createClass(db),
+                History.createClass(db)
+            ]);
         });
         it('KBVertex.createRecord', () => {
             return MockVertexClass.createClass(db)
@@ -104,34 +90,24 @@ describe('KBUser & KBRole', () => {
                 });
         });
 
-        it('KBVertex.updateRecord (Ontology)', () => {
-            let diseaseClass;
+        it('KBVertex.updateRecord (Ontology)', async () => {
             const disease = {name: 'name1', doid: 123};
-            return Context.createClass(db)
-                .then(() => {
-                    return Promise.all([
-                        Ontology.createClass(db),
-                        Disease.createClass(db),
-                    ]).then((clsList) => {
-                        diseaseClass = clsList[1];
-                        return diseaseClass.createRecord(disease, 'admin')
-                            .then((diseaseRec) => {
-                                const uuid = diseaseRec.content.uuid;
-                                const version = diseaseRec.content.version;
-                                diseaseRec.content.name = 'updatedName';
-                                return diseaseClass.updateRecord(diseaseRec, 'admin')
-                                    .then((updatedRec) => {
-                                        expect(updatedRec.content.uuid).to.equal(uuid);
-                                        expect(updatedRec.content.version).to.equal(version + 1);
-                                        expect(updatedRec.content).to.include.keys('created_by');
-                                    });
-                            });
-                    });
-                });
+            await Context.createClass(db)
+            await Promise.all([
+                Ontology.createClass(db),
+                Disease.createClass(db),
+            ]);
+            const diseaseRec = db.models.Disease.createRecord(disease, 'admin');
+            const uuid = diseaseRec.content.uuid;
+            const version = diseaseRec.content.version;
+            diseaseRec.content.name = 'updatedName';
+            const updatedRec = await db.models.Disease.updateRecord(diseaseRec, 'admin')
+            expect(updatedRec.content.uuid).to.equal(uuid);
+            expect(updatedRec.content.version).to.equal(version + 1);
+            expect(updatedRec.content).to.include.keys('created_by');
         });
 
         it('KBVertex.deleteRecord (Ontology updated record)', () => {
-            let diseaseClass;
             const disease = {name: 'name1', doid: 123};
             return Context.createClass(db)
                 .then(() => {
@@ -139,19 +115,19 @@ describe('KBUser & KBRole', () => {
                         Ontology.createClass(db),
                         Disease.createClass(db),
                     ]);
-                }).then(([ontologyClass, diseaseClass]) => {
+                }).then(([ontologyClass, db.models.Disease]) => {
                     let uuid, version;
-                    return diseaseClass.createRecord(disease, 'admin')
+                    return db.models.Disease.createRecord(disease, 'admin')
                         .then((diseaseRec) => {
                             uuid = diseaseRec.content.uuid;
                             version = diseaseRec.content.version;
                             diseaseRec.content.name = 'updatedName';
-                            return diseaseClass.updateRecord(diseaseRec, 'admin');
+                            return db.models.Disease.updateRecord(diseaseRec, 'admin');
                         }).then((updatedRec) => {
                             expect(updatedRec.content.uuid).to.equal(uuid);
                             expect(updatedRec.content.version).to.equal(version + 1);
                             expect(updatedRec.content).to.include.keys('created_by');
-                            return diseaseClass.deleteRecord(disease, 'admin');
+                            return db.models.Disease.deleteRecord(disease, 'admin');
                         }).then((record) => {
                             console.log('found: ', record);
                             expect.fail('expected NoResultFoundError');
@@ -165,7 +141,6 @@ describe('KBUser & KBRole', () => {
 
 
         it('KBEdge.createRecord (Ontology)', () => {
-            let ontologyAliasOfClass, diseaseClass;
             const entry_disease = {name: 'name1', doid: 123};
             const secondEntry_disease = {name: 'name2', doid: 123};
             return Promise.all([
@@ -174,13 +149,13 @@ describe('KBUser & KBRole', () => {
                 OntologyAliasOf.createClass(db),
                 Disease.createClass(db),
             ]).then((clsList) => {
-                diseaseClass = clsList[3];
-                ontologyAliasOfClass = clsList[2];
+                db.models.Disease = clsList[3];
+                db.models.OntologyAliasOf = clsList[2];
                 return Promise.all([
-                    diseaseClass.createRecord(entry_disease, 'admin'),
-                    diseaseClass.createRecord(secondEntry_disease, 'admin')
+                    db.models.Disease.createRecord(entry_disease, 'admin'),
+                    db.models.Disease.createRecord(secondEntry_disease, 'admin')
                 ]).then((recList) => {
-                    return ontologyAliasOfClass.createRecord({in: recList[0], out: recList[1]}, 'admin');
+                    return db.models.OntologyAliasOf.createRecord({in: recList[0], out: recList[1]}, 'admin');
                 }).then((edge) => {
                     expect(edge.content.created_by).to.include.keys('username', 'role');
                 }, (error) => {
@@ -215,20 +190,19 @@ describe('KBUser & KBRole', () => {
         });
 
         it('KBVertex.updateRecord (Ontology) (insufficient permissions)', () => {
-            let diseaseClass;
             const disease = {name: 'name1', doid: 123};
             return Promise.all([
                 Context.createClass(db),
                 Ontology.createClass(db),
                 Disease.createClass(db),
             ]).then((clsList) => {
-                diseaseClass = clsList[2];
-                return diseaseClass.createRecord(disease, 'Wei')
+                db.models.Disease = clsList[2];
+                return db.models.Disease.createRecord(disease, 'Wei')
                     .then((diseaseRec) => {
                         const uuid = diseaseRec.content.uuid;
                         const version = diseaseRec.content.version;
                         diseaseRec.content.name = 'updatedName';
-                        return diseaseClass.updateRecord(diseaseRec, 'Wei')
+                        return db.models.Disease.updateRecord(diseaseRec, 'Wei')
                             .then((updatedRec) => {
                                 expect(updatedRec.content.uuid).to.equal(uuid);
                                 expect(updatedRec.content.version).to.equal(version + 1);
@@ -243,7 +217,6 @@ describe('KBUser & KBRole', () => {
         });
 
         it('KBEdge.createRecord (Ontology) (insufficient permissions)', () => {
-            let ontologyAliasOfClass, diseaseClass;
             const entry_disease = {name: 'name1', doid: 123};
             const secondEntry_disease = {name: 'name2', doid: 123};
             return Promise.all([
@@ -252,13 +225,13 @@ describe('KBUser & KBRole', () => {
                 OntologyAliasOf.createClass(db),
                 Disease.createClass(db),
             ]).then((clsList) => {
-                diseaseClass = clsList[3];
-                ontologyAliasOfClass = clsList[2];
+                db.models.Disease = clsList[3];
+                db.models.OntologyAliasOf = clsList[2];
                 return Promise.all([
-                    diseaseClass.createRecord(entry_disease, 'Wei'),
-                    diseaseClass.createRecord(secondEntry_disease, 'Wei')
+                    db.models.Disease.createRecord(entry_disease, 'Wei'),
+                    db.models.Disease.createRecord(secondEntry_disease, 'Wei')
                 ]).then((recList) => {
-                    return ontologyAliasOfClass.createRecord({in: recList[0], out: recList[1]}, 'admin');
+                    return db.models.OntologyAliasOf.createRecord({in: recList[0], out: recList[1]}, 'admin');
                 }).then((edge) => {
                     expect(edge.content.created_by).to.include.keys('username', 'role');
                 }).catch((error) => {
@@ -277,20 +250,19 @@ describe('KBUser & KBRole', () => {
         });
 
         it('KBVertex.updateRecord (Ontology) (Analyst with no ontology access)', () => {
-            let diseaseClass;
             const disease = {name: 'name1', doid: 123};
             return Promise.all([
                 Context.createClass(db),
                 Ontology.createClass(db),
                 Disease.createClass(db),
             ]).then((clsList) => {
-                diseaseClass = clsList[2];
-                return diseaseClass.createRecord(disease, 'Martin')
+                db.models.Disease = clsList[2];
+                return db.models.Disease.createRecord(disease, 'Martin')
                         .then((diseaseRec) => {
                             const uuid = diseaseRec.content.uuid;
                             const version = diseaseRec.content.version;
                             diseaseRec.content.name = 'updatedName';
-                            return diseaseClass.updateRecord(diseaseRec, 'Martin')
+                            return db.models.Disease.updateRecord(diseaseRec, 'Martin')
                                 .then((updatedRec) => {
                                     expect(updatedRec.content.uuid).to.equal(uuid);
                                     expect(updatedRec.content.version).to.equal(version + 1);
@@ -303,7 +275,6 @@ describe('KBUser & KBRole', () => {
         });
 
         it('KBEdge.createRecord (ontology) (Analyst with no ontology access)', () => {
-            let ontologyAliasOfClass, diseaseClass;
             const entry_disease = {name: 'name1', doid: 123};
             const secondEntry_disease = {name: 'name2', doid: 123};
             return Promise.all([
@@ -312,13 +283,11 @@ describe('KBUser & KBRole', () => {
                 OntologyAliasOf.createClass(db),
                 Disease.createClass(db),
             ]).then((clsList) => {
-                diseaseClass = clsList[3];
-                ontologyAliasOfClass = clsList[2];
                 return Promise.all([
-                    diseaseClass.createRecord(entry_disease,'Martin'),
-                    diseaseClass.createRecord(secondEntry_disease, 'Martin')
+                    db.models.Disease.createRecord(entry_disease,'Martin'),
+                    db.models.Disease.createRecord(secondEntry_disease, 'Martin')
                 ]).then((recList) => {
-                    return ontologyAliasOfClass.createRecord({in: recList[0], out: recList[1]}, 'admin');
+                    return db.models.OntologyAliasOf.createRecord({in: recList[0], out: recList[1]}, 'admin');
                 }).then((edge) => {
                     expect(edge.content.created_by).to.include.keys('username', 'role');
                 }).catch((error) => {
@@ -343,7 +312,7 @@ describe('KBUser & KBRole', () => {
 
     afterEach((done) => {
         /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
+        server.drop({name: conf.db.name})
             .catch((error) => {
                 console.log('error:', error);
             }).then(() => {

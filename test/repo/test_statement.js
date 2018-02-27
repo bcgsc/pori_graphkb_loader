@@ -1,92 +1,61 @@
 'use strict';
 const data = require('./../../app/repo/cached/data');
 const {expect} = require('chai');
-const conf = require('./../config/db');
-const {connectServer, createDB} = require('./../../app/repo/connect');
-const {KBVertex, KBEdge, Record, History, KBRole, KBUser} = require('./../../app/repo/base');
 const {Context} = require('./../../app/repo/context');
 const {Statement, AppliesTo, AsComparedTo, Requires, STATEMENT_TYPE} = require('./../../app/repo/statement');
-const Promise = require('bluebird');
 const {AttributeError, ControlledVocabularyError} = require('./../../app/repo/error');
 const {Feature, FEATURE_SOURCE, FEATURE_BIOTYPE} = require('./../../app/repo/feature');
 const {Position, GenomicPosition} = require('./../../app/repo/position');
-const {PERMISSIONS} = require('./../../app/repo/constants');
+const {setUpEmptyDB, tearDownEmptyDB} = require('./util');
 
 
 
 describe('statement module', () => {
-    let server, db, user;
-    beforeEach(function(done) { /* build and connect to the empty database */
-        // set up the database server
-        connectServer(conf)
-            .then((result) => {
-                // create the empty database
-                server = result;
-                return createDB({
-                    name: conf.emptyDbName, 
-                    username: conf.dbUsername, 
-                    password: conf.dbPassword, 
-                    server: server,
-                    heirarchy: [
-                        [KBRole, History],
-                        [KBUser],
-                        [KBVertex, KBEdge],
-                        [Context]
-                    ]
-                });
-            }).then((result) => {
-                db = result;
-            }).then(() => {
-                return db.models.KBRole.createRecord({name: 'admin', rules: {'kbvertex': PERMISSIONS.ALL, 'kbedge': PERMISSIONS.ALL}});
-            }).then(() => {
-                return db.models.KBUser.createRecord({username: 'me', active: true, role: 'admin'});
-            }).then((result) => {
-                user = result.content.username;
-                // dummy cache data
-                data.vocab.statement = {};
-                data.vocab.statement.relevance = [
-                    {
-                        term: 'haploinsufficient',
-                        definition: '',
-                        conditional: STATEMENT_TYPE.BIOLOGICAL,
-                        class: Statement.clsname,
-                        property: 'relevance'
-                    },
-                    {
-                        term: 'gain of function',
-                        definition: '',
-                        conditional: STATEMENT_TYPE.BIOLOGICAL,
-                        class: Statement.clsname,
-                        property: 'relevance'
-                    },
-                    {
-                        term: 'loss of function',
-                        definition: '',
-                        conditional: STATEMENT_TYPE.BIOLOGICAL,
-                        class: Statement.clsname,
-                        property: 'relevance'
-                    },
-                    {
-                        term: 'switch of function',
-                        definition: '',
-                        conditional: STATEMENT_TYPE.BIOLOGICAL,
-                        class: Statement.clsname,
-                        property: 'relevance'
-                    },
-                    {
-                        term: 'sensitivity',
-                        definition: '',
-                        conditional: STATEMENT_TYPE.THERAPEUTIC,
-                        class: Statement.clsname,
-                        property: 'relevance'
-                    }
-                ];
-                done();
-            }).catch((error) => {
-                console.log('error', error);
-                done(error);
-            });
+    let server, db, user='me';
+    beforeEach(async () => { 
+        ({server, db, user} = await setUpEmptyDB());
+        await Context.createClass(db);
+        // dummy cache data
+        data.vocab.statement = {};
+        data.vocab.statement.relevance = [
+            {
+                term: 'haploinsufficient',
+                definition: '',
+                conditional: STATEMENT_TYPE.BIOLOGICAL,
+                class: Statement.clsname,
+                property: 'relevance'
+            },
+            {
+                term: 'gain of function',
+                definition: '',
+                conditional: STATEMENT_TYPE.BIOLOGICAL,
+                class: Statement.clsname,
+                property: 'relevance'
+            },
+            {
+                term: 'loss of function',
+                definition: '',
+                conditional: STATEMENT_TYPE.BIOLOGICAL,
+                class: Statement.clsname,
+                property: 'relevance'
+            },
+            {
+                term: 'switch of function',
+                definition: '',
+                conditional: STATEMENT_TYPE.BIOLOGICAL,
+                class: Statement.clsname,
+                property: 'relevance'
+            },
+            {
+                term: 'sensitivity',
+                definition: '',
+                conditional: STATEMENT_TYPE.THERAPEUTIC,
+                class: Statement.clsname,
+                property: 'relevance'
+            }
+        ];
     });
+
     it('Statement.createClass', () => {
         return Statement.createClass(db)
             .then((cls) => {
@@ -100,14 +69,8 @@ describe('statement module', () => {
             });
     });
     describe('Statement', () => {
-        beforeEach((done) => {
-            Promise.all([
-                Statement.createClass(db)
-            ]).then(() => {
-                done();
-            }).catch((error) => {
-                done(error);
-            });
+        beforeEach(async () => {
+            await Statement.createClass(db);
         });
         it('AppliesTo.createClass', () => {
             return AppliesTo.createClass(db)
@@ -189,40 +152,38 @@ describe('statement module', () => {
 
     describe('edges', () => {
         let feat, stmnt, stmnt2, pos;
-        beforeEach((done) => {
-            Statement.createClass(db)
-                .then(() => {
-                    return Promise.all([
-                        Feature.createClass(db),
-                        AppliesTo.createClass(db),
-                        AsComparedTo.createClass(db),
-                        Requires.createClass(db),
-                        Position.createClass(db)
-                    ]);
-                }).then(() => {
-                    return GenomicPosition.createClass(db);
-                }).then(() => {
-                    return Promise.all([
-                        db.models.Feature.createRecord({
-                            source: FEATURE_SOURCE.ENSEMBL, biotype: FEATURE_BIOTYPE.GENE, name: 'ENSG001', source_version: 69
-                        }, user),
-                        db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, user),
-                        db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, user),
-                        db.models.GenomicPosition.createRecord({pos: 1}, pos)
-                    ]);
-                }).then((pList) => {
-                    [feat, stmnt, stmnt2, pos] = pList;
-                    done();
-                }).catch((error) => {
-                    done(error);
-                });
+        beforeEach(async () => {
+            await Statement.createClass(db);
+            await Promise.all([
+                Feature.createClass(db),
+                AppliesTo.createClass(db),
+                AsComparedTo.createClass(db),
+                Requires.createClass(db),
+                Position.createClass(db)
+            ]);
+            await GenomicPosition.createClass(db);
+            const pList = await Promise.all([
+                    db.models.Feature.createRecord({
+                        source: FEATURE_SOURCE.ENSEMBL, biotype: FEATURE_BIOTYPE.GENE, name: 'ensg001', source_version: 69
+                    }, user),
+                    db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, user),
+                    db.models.Statement.createRecord({type: STATEMENT_TYPE.THERAPEUTIC, relevance: 'sensitivity'}, user),
+                    db.models.GenomicPosition.createRecord({pos: 1}, pos)
+                ]);
+            [feat, stmnt, stmnt2, pos] = pList;
         });
         describe('AppliesTo.createRecord', () => {
-            it('errors on invalid source type', () => {
-                return db.models.AppliesTo.createRecord({out: feat, in: feat}, user)
-                    .then(() => {
-                        expect.fail();
-                    }).catch(AttributeError, () => {});
+            
+            it('errors on invalid source type', async () => {
+                try {
+                    await db.models.AppliesTo.createRecord({out: feat, in: feat}, user);
+                } catch (err) {
+                    if (! err instanceof AttributeError) {
+                        throw err;
+                    }
+                    return;
+                }
+                expect.fail()
             });
             it('errors on invalid target type', () => {
                 return db.models.AppliesTo.createRecord({out: stmnt, in: pos}, user)
@@ -314,17 +275,7 @@ describe('statement module', () => {
         });
     });
     
-    afterEach((done) => {
-        /* disconnect from the database */
-        server.drop({name: conf.emptyDbName})
-            .catch((error) => {
-                console.log('error:', error);
-            }).then(() => {
-                return server.close();
-            }).then(() => {
-                done();
-            }).catch((error) => {
-                done(error);
-            });
+    afterEach(async () => {
+        tearDownEmptyDB(server);    
     });
 });

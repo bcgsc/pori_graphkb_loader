@@ -30,35 +30,36 @@ describe('isObject', () => {
 
 
 describe('parseSelectWhere', () => {
+    const base = new Base();
     it('error if not object', () => {
-        expect(() => { Base.parseSelectWhere(1); }).to.throw(Error);
+        expect(() => { base.parseSelectWhere(1); }).to.throw(Error);
     });
     it('ok for simple non-nested case', () => {
         const obj = {'name': 'bob', 'age': 22};
-        expect(Base.parseSelectWhere(obj)).to.eql(obj);
+        expect(base.parseSelectWhere(obj)).to.eql(obj);
     });
     it('ok for 1 level of nesting', () => {
         const obj = {'name': 'bob', 'parent': {'name': 'kate'}};
         const result = {'name': 'bob', 'parent.name': 'kate'};
-        expect(Base.parseSelectWhere(obj)).to.eql(result);
+        expect(base.parseSelectWhere(obj)).to.eql(result);
     });
     it('ok for 2 levels of nesting', () => {
         const obj = {'name': 'bob', 'parent': {'name': 'kate', 'parent': {'name': 'george'}}};
         const result = {'name': 'bob', 'parent.name': 'kate', 'parent.parent.name': 'george'};
-        expect(Base.parseSelectWhere(obj)).to.eql(result);
+        expect(base.parseSelectWhere(obj)).to.eql(result);
     });
     it('drops @type attributes from select clause', () => {
         const obj = {'name': 'bob', 'age': 22, '@type': 'd', '@class': 'person'};
         const result = {'name': 'bob', 'age': 22, '@class': 'person'};
-        expect(Base.parseSelectWhere(obj)).to.eql(result);
+        expect(base.parseSelectWhere(obj)).to.eql(result);
     });
     it('replaces nested objects with @rid if provided', () => {
         const obj = {'name': 'bob', 'parent': {'name': 'kate', '@rid': '#1:3', 'parent': {'name': 'george'}}};
         const result = {'name': 'bob', 'parent': '#1:3'};
-        expect(Base.parseSelectWhere(obj)).to.eql(result);
+        expect(base.parseSelectWhere(obj)).to.eql(result);
     });
     it('ok for empty input', () => {
-        expect(Base.parseSelectWhere({})).to.eql({});
+        expect(base.parseSelectWhere({})).to.eql({});
     });
 });
 
