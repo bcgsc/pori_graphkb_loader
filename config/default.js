@@ -9,7 +9,7 @@ const server = {
 }
 
 const db = {
-    name: process.env.DATABASE || 'load_testing',
+    name: process.env.DATABASE || 'test_sample',
     pass: process.env.DATABASE_PASS || 'admin',
     user: process.env.DATABASE_USER || 'admin',
     host: server.host,

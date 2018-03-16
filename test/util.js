@@ -1,6 +1,7 @@
 'use strict';
 const OrientDB  = require('orientjs');
 const {createSchema, loadSchema} = require('./../app/repo/schema');
+const {createUser} = require('./../app/repo/base');
 const {PERMISSIONS} = require('./../app/repo/constants');
 const emptyConf = require('./config/empty');
 const sampleConf = require('./config/sample');
@@ -36,12 +37,12 @@ const setUpEmptyDB = async (verbose=false) => {
         console.log('create the schema');
     }
     await createSchema(db, verbose);
+    const schema = await loadSchema(db, verbose);
     // create the admin user
-    const user = await db.insert().into('User').set({name: 'admin', permissions: {'V': PERMISSIONS.ALL, 'E': PERMISSIONS.ALL, 'User': PERMISSIONS.ALL}}).one();
+    const user = await createUser(db, {model: schema.User, userName: 'admin', groupNames: ['admin']});
     if (verbose) {
         console.log('created the user:', user);
     }
-    const schema = await loadSchema(db, verbose);
     return {server, db, schema};
 };
 

@@ -17,7 +17,7 @@ const createFunction = async (db, func) => {
 const createRepoFunctions = async (db) => {
     // getters for unique
     const repoFunctions = [];
-    for (let table of ['Feature', 'Disease', 'Therapy', 'Pathway', 'MutationSignature', 'User']) {
+    for (let table of ['Feature', 'Disease', 'Therapy', 'Pathway', 'MutationSignature', 'User', 'UserGroup']) {
         repoFunctions.push({name: `getUniq${table}ByName`, params: ['name'], idempotent: true, language: 'javascript', code: `
 var selection = orient.getDatabase().query("select * from ${table} where name = ? and deletedAt is null", [name]);
 if (selection.length === 1) {

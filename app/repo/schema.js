@@ -1,8 +1,11 @@
+const {types}  = require('orientjs');
+const uuidV4 = require('uuid/v4');
+
 const {PERMISSIONS} = require('./constants');
 const {createRepoFunctions} = require('./functions');
-const {castUUID} = require('./util');
-const {types}  = require('orientjs');
+const {castUUID, timeStampNow} = require('./util');
 const cache = require('./cache');
+const {select} = require('./base');
 
 
 class ClassModel {
@@ -65,6 +68,15 @@ class ClassModel {
         return defaults;
     }
 
+    toJSON() {
+        return {
+            required: this._required,
+            optional: this._optional,
+            inherits: this.inherits,
+            edgeRestrictions: this._edgeRestrictions
+        }
+    }
+
     static parseOClass(oclass) {
         const required = [];
         const optional = [];
@@ -83,6 +95,11 @@ class ClassModel {
                 cast[prop.name] = (x) => parseInt(x, 10);
             } else if (types[prop.type] === 'String') {
                 cast[prop.name] = (x) => x.toLowerCase();
+            }
+            if (prop.name === 'uuid') {
+                defaults.uuid = uuidV4;
+            } else if (prop.name === 'createdAt') {
+                defaults.createdAt = timeStampNow; 
             }
         }
         return new this({
@@ -128,11 +145,12 @@ class ClassModel {
             }
         }
         // check any controlled vocabulary
-        if (cache.vocabularyByClass[this.name]) {
+        const name = this.name.toLowerCase();
+        if (cache.vocabulary[name]) {
             for (let attr of Object.keys(formattedRecord)) {
-                if (cache.vocabularyByClass[this.name][attr]) {
+                if (cache.vocabulary[name][attr]) {
                     let accepted = false;
-                    for (let term of cache.vocabularyByClass[this.name][attr]) {
+                    for (let term of cache.vocabulary[name][attr]) {
                         if (term.term === formattedRecord[attr]) {
                             accepted = true;
                         }
@@ -178,12 +196,37 @@ const createSchema = async (db, verbose=false) => {
     const Permissions = await db.class.create('Permissions', null, null, false); // (name, extends, clusters, abstract)
     // create the user class
     await createClassModel(db, {
+        name: 'UserGroup',
+        properties: [
+            {name: 'name', type: 'string', mandatory: true, notNull: true},
+            {name: 'permissions', type: 'embedded', linkedClass: 'Permissions'}
+        ],
+        indices: [
+            {
+                name: `ActiveUserGroup`,
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['name'],
+                'class':  'UserGroup'
+            }
+        ]
+    });
+    const defaultGroups = [
+        {name: 'admin', permissions: {V: PERMISSIONS.ALL, E: PERMISSIONS.ALL, User: PERMISSIONS.ALL, UserGroup: PERMISSIONS.ALL}},
+        {name: 'readOnly', permissions: {V: PERMISSIONS.READ, E: PERMISSIONS.READ, User: PERMISSIONS.READ, UserGroup: PERMISSIONS.READ}}
+    ];
+    const groups = await Promise.all(Array.from(defaultGroups, x => db.insert().into('UserGroup').set(x).one() ));
+    cache.userGroups = {}
+    for (let group of groups) {
+        cache.userGroups[group.name] = group;
+    }
+    await createClassModel(db, {
         name: 'User',
         properties: [
             {name: 'name', type: 'string', mandatory: true, notNull: true},
-            {name: 'permissions', type: 'embedded', linkedClass: 'Permissions'},
-            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, default: db.rawExpression('uuid()')},
-            {name: 'createdAt', type: 'long', mandatory: true, notNull: true, default: db.rawExpression('sysdate().asLong()')},
+            {name: 'groups', type: 'linkset', linkedClass: 'UserGroup'},
+            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+            {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
             {name: 'deletedAt', type: 'long'},
             {name: 'history', type: 'link', notNull: true}
         ],
@@ -200,8 +243,8 @@ const createSchema = async (db, verbose=false) => {
     // modify the existing vertex and edge classes to add the minimum required attributes for tracking etc
     const V = await db.class.get('V');
     await createProperties(V, [
-        {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, default: db.rawExpression('uuid()')},
-        {name: 'createdAt', type: 'long', mandatory: true, notNull: true, default: db.rawExpression('sysdate().asLong()')},
+        {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+        {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
         {name: 'deletedAt', type: 'long'},
         {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User'},
         {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true},
@@ -209,13 +252,23 @@ const createSchema = async (db, verbose=false) => {
     ]);
     const E = await db.class.get('E');
     await createProperties(E, [
-        {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, default: db.rawExpression('uuid()')},
-        {name: 'createdAt', type: 'long', mandatory: true, notNull: true, default: db.rawExpression('sysdate().asLong()')},
+        {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+        {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
         {name: 'deletedAt', type: 'long'},
         {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User'},
         {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true},
         {name: 'history', type: 'link', notNull: true}
     ]);
+
+    for (let cls of ['E', 'V', 'User']) {
+        await db.index.create({
+            name: `Active${cls}Id`,
+            type: 'unique',
+            metadata: {ignoreNullValues: false},
+            properties: ['uuid', 'deletedAt'],
+            'class':  cls
+        });
+    }
     
     // now create the custom data related classes
     await db.class.create('Feature', null, null, true);  // purely for selection purposes
@@ -224,9 +277,9 @@ const createSchema = async (db, verbose=false) => {
         name: 'Ontology',
         inherits: 'V,Biomarker',
         properties: [
-            {name: 'source', type: 'string', mandatory: true},
+            {name: 'source', type: 'string', mandatory: true, type: 'string'},
             {name: 'sourceVersion', type: 'string'},
-            {name: 'name', type: 'string', mandatory: true, notNull: true},
+            {name: 'name', type: 'string', mandatory: true, notNull: true, type: 'string'},
             {name: 'nameVersion', type: 'string'}
         ],
         indices: [
@@ -235,7 +288,7 @@ const createSchema = async (db, verbose=false) => {
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
                 properties: ['source', 'sourceVersion', 'name', 'deletedAt', 'nameVersion'],
-                'class':  'Ontology'
+                class:  'Ontology'
             }
         ],
         isAbstract: true
@@ -330,7 +383,8 @@ const createSchema = async (db, verbose=false) => {
         name: 'CategoryVariant',
         inherits: 'Variant',
         properties: [
-            {name: 'value', mandatory: true, notNull: true}
+            {name: 'value', type: 'string', mandatory: true, notNull: true},
+            {name: 'method', type: 'string'}
         ]
     });
     // create the evidence classes
@@ -425,14 +479,16 @@ const createSchema = async (db, verbose=false) => {
                 {name: 'class', type: 'string', mandatory: true, notNull: true},
                 {name: 'property', type: 'string', mandatory: true, notNull: true},
                 {name: 'term', type: 'string', mandatory: true, notNull: true},
-                {name: 'definition', type: 'string'}
+                {name: 'definition', type: 'string'},
+                {name: 'conditionalProperty', type: 'string'},
+                {name: 'conditionalValue', type: 'string'}
             ],
             indices: [
                 {
                     name: `ActiveTerm`,
                     type: 'unique',
                     metadata: {ignoreNullValues: false},
-                    properties: ['deletedAt', 'class', 'property', 'term'],
+                    properties: ['deletedAt', 'class', 'property', 'term', 'conditionalProperty', 'conditionalValue'],
                     class:  'Vocabulary'
                 }
             ]
@@ -470,6 +526,7 @@ const createSchema = async (db, verbose=false) => {
         'SupportedBy',
         'Therapy', 
         'User',
+        'UserGroup',
         'V',
         'Variant'
     ]) {
@@ -496,7 +553,7 @@ const loadSchema = async (db, verbose=false) => {
     const inheritanceMap = {};
 
     for (let cls of classes) {
-        if (/^O[A-Z]/.exec(cls.name)) {  // orientdb builtin classes
+        if (/^(O[A-Z]|_)/.exec(cls.name)) {  // orientdb builtin classes
             continue;
         }
         const model = ClassModel.parseOClass(cls);
@@ -585,7 +642,12 @@ const loadSchema = async (db, verbose=false) => {
             console.log(`loaded class: ${cls.name} [${cls.inherits}]`);
         }
     }
-
+    // load the vocabulary
+    const rows = await select(db, {from: 'Vocabulary'});
+    if (verbose) {
+        console.log(`loaded ${rows.length} vocabulary terms`);
+    }
+    cache.loadVocabulary(rows);
     return schema;
 };
 

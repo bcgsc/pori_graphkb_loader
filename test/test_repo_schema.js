@@ -10,10 +10,10 @@ describe('schema', () => {
     let server, db, schema, adminUser;
     before(async () => {
         ({server, db, schema} = await setUpEmptyDB(false));
-        adminUser = await db.select().from('User').where({name: 'admin'}).all();
+        adminUser = await select(db, {from: 'User', where: {name: 'admin'}, exactlyN: 1});
         expect(adminUser).to.have.property('length', 1);
         adminUser = adminUser[0];
-        //console.log('adminUser', adminUser);
+        console.log('adminUser', adminUser);
         
     });
     it('error on create record without sufficient permissions', async () => {
