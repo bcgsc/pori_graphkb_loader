@@ -1,7 +1,5 @@
 const HTTP_STATUS = require('http-status-codes');
 const jwt = require('jsonwebtoken');
-const fs = require('fs');
-const NodeRAS = require('node-rsa');
 
 const keys = {};
 const TOKEN_TIMEOUT = 120;
@@ -16,7 +14,7 @@ const checkToken = async (req, res, next) => {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json({message: 'did not find authorized token', type: 'PermissionError'});
     }
     try {
-        const decoded = jwt.verify(token, keys.key);
+        const decoded = jwt.verify(token, keys.private);
         req.user = decoded.user;
     } catch (err) {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json({message: 'bad token', type: 'PermissionError'});
@@ -25,18 +23,7 @@ const checkToken = async (req, res, next) => {
 };
 
 const generateToken = async (user, expires) => {
-    return await jwt.sign(user, keys.key, {expiresIn: expires || TOKEN_TIMEOUT});
-};
-
-
-const readKey = async (keyfile) => {
-    try {
-        const data = fs.readFileSync(keyfile);
-    } catch (err) {
-        console.err(`Error in reading the private key file for setting up tokens: ${keyfile}`);
-        throw err;
-    }
-    
+    return await jwt.sign(user, keys.private, {expiresIn: expires || TOKEN_TIMEOUT});
 };
 
 module.exports = {generateToken, checkToken, keys};
