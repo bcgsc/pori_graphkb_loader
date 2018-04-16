@@ -42,30 +42,8 @@ const validateParams = async (opt) => {
  * example:
  *      router.route('/feature') = resource({model: <ClassModel>, db: <OrientDB conn>, reqQueryParams: ['source', 'name', 'biotype']});
  */
-const resource = async (opt) => {
-    const {router, route, model, db} = opt;
-    const optQueryParams = opt.optQueryParams || [];
-    const reqQueryParams = opt.reqQueryParams || [];
-
-    return {
-        get: async (req, res, next) => {
-            try {
-                validateParams({params: Object.keys(req.query), required: reqQueryParams, optional: optQueryParams});
-            } catch (err) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                return;
-            }
-            try {
-                const result = await select(db, {from: model.name, where: req.query});
-                res.json(jc.decycle(result));
-            } catch (err) {
-                res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
-            }
-        }
-    };
-}
 const add_resource_routes = (opt) => {
-    const {router, route, model, db} = opt;
+    const {router, route, model, db, cacheUpdate} = opt;
     const optQueryParams = opt.optQueryParams || [];
     const reqQueryParams = opt.reqQueryParams || [];
     
@@ -81,7 +59,7 @@ const add_resource_routes = (opt) => {
                 const result = await select(db, {from: model.name, where: req.query});
                 res.json(jc.decycle(result));
             } catch (err) {
-                res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
             }
         });
     router.post(route, 
@@ -93,12 +71,15 @@ const add_resource_routes = (opt) => {
             try {
                 const user = req.user;
                 const result = await create(db, {model: model, content: req.body, user: user});
+                if (cacheUpdate !== undefined) {
+                    await cacheUpdate(db);
+                }
                 res.json(jc.decycle(result));
             } catch (err) {
                 if (err instanceof AttributeError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json({message: err.message, type: err.name});
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(errorToJSON(err));
                 } else {
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({message: err.message, type: err.name});
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
                 }
             }
         }
@@ -112,6 +93,9 @@ const add_resource_routes = (opt) => {
             try {
                 const user = req.user;
                 const result = await update(db, {model: model, content: req.body.content, where: req.body.where, user: user});
+                if (cacheUpdate !== undefined) {
+                    await cacheUpdate(db);
+                }
                 res.json(jc.decycle(result));
             } catch (err) {
                 if (err instanceof AttributeError || err instanceof NoResultFoundError || err instanceof MultipleResultsFoundError) {
@@ -131,6 +115,9 @@ const add_resource_routes = (opt) => {
             try {
                 const user = req.user;
                 const result = await remove(db, {model: model, where: req.body.where, user: user});
+                if (cacheUpdate !== undefined) {
+                    await cacheUpdate(db);
+                }
                 res.json(jc.decycle(result));
             } catch (err) {
                 if (err instanceof AttributeError || err instanceof NoResultFoundError || err instanceof MultipleResultsFoundError) {

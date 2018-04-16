@@ -3,6 +3,7 @@ const _ = require('lodash');
 const HTTP_STATUS = require('http-status-codes');
 
 const {add_resource_routes} = require('./util');
+const {cacheVocabulary} = require('./../repo/base');
 const auth = require('./../middleware/auth');
 
 
@@ -37,7 +38,8 @@ const add_routes = (opt) => {
         route: '/vocabulary',
         model: schema.Vocabulary, 
         db: db, 
-        optQueryParams: vocabOpt
+        optQueryParams: vocabOpt,
+        cacheUpdate: cacheVocabulary 
     });
     // ontology routes
     // event routes

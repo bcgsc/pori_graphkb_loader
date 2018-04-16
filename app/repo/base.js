@@ -34,10 +34,46 @@ const createUser = async (db, opt) => {
         .set(record)
         .one();
     const user = await select(db, {where: {name: userName}, from: model.name, exactlyN: 1});
-    // await db.select().from('User').where({name: userName, deletedAt: null}).fetch({groups: 1}).one();
-    console.log('selected user', user);
     return user;
 }
+
+
+const populateCache = async (db) => {
+    // load the user groups
+    const groups = await select(db, {from: 'UserGroup'});
+    for (let group of groups) {
+        cache.userGroups[group.name] = group;
+    }
+    // load the individual users
+    const users = await select(db, {from: 'User'});
+    for (let user of users) {
+        cache.users[user.name] = user;
+    }
+    // load the vocabulary
+    await cacheVocabulary(db);
+}
+
+const cacheVocabulary = async (db) => {
+    // load the vocabulary
+    if (process.env.VERBOSE == '1') {
+        console.log('updating the vocabulary cache');
+    }
+    const rows = await select(db, {from: 'Vocabulary'});
+    // reformats the rows to fit with the cache expected structure
+    cache.vocabulary = {};  // remove old vocabulary
+    for (let row of rows) {
+        if (cache.vocabulary[row.class] === undefined) {
+            cache.vocabulary[row.class] = {};
+        }
+        if (cache.vocabulary[row.class][row.property] === undefined) {
+            cache.vocabulary[row.class][row.property] = [];
+        }
+        cache.vocabulary[row.class][row.property].push(row);
+    }
+    if (process.env.VERBOSE == '1') {
+        console.log(cache.vocabulary);
+    }
+};
 
 /*
  * create a record
@@ -120,11 +156,10 @@ const remove = async (db, opt) => {
         }).let('updated', (tx) => {
             return tx.select().from('$updatedRID').fetch({history: 10});
         }).commit();
-    const stat = commit.buildStatement();
     try {
         return await commit.return('$updated').one();
     } catch (err) {
-        err.sql = stat;
+        err.sql = commit.buildStatement();
         throw err;
     }
 };
@@ -136,7 +171,7 @@ const remove = async (db, opt) => {
  */
 const update = async (db, opt) => {
     const {content, model, user, where} = opt;
-    const verbose = opt.verbose || (process.env.VERBOSE == '0' ? false : true);
+    const verbose = opt.verbose || (process.env.VERBOSE == '1' ? true : false);
     const original = (await select(db, {from: model.name, where: where, exactlyN: 1}))[0];
     const originalWhere = Object.assign(model.formatRecord(original, true, false));
     delete originalWhere.createdBy;
@@ -168,61 +203,15 @@ const update = async (db, opt) => {
         }).let('updated', (tx) => {
             return tx.select().from('$updatedRID').fetch({history: 10});
         }).commit();
-    const stat = commit.buildStatement();
     if (verbose) {
-        console.log(`update: ${stat}`);
+        console.log(`update: ${commit.buildStatement()}`);
     }
     try {
         return await commit.return('$updated').one();
     } catch (err) {
-        err.sql = stat;
+        err.sql = commit.buildStatement();
         throw err;
     }
-
 };
 
-/* return recordSelect
-            .then((selectedRecord) => {
-                currentRecord = selectedRecord;
-                return currentUser.hasRID ? Promise.resolve(currentUser) : this.selectExactlyOne({username: currentUser, '@class': KBUser.clsname});
-            }).then((userRecord) => {
-                currentUser = userRecord;
-                return this.isPermitted(currentUser, PERMISSIONS.UPDATE);
-            }).then(() => {
-                const duplicate = currentRecord.mutableAttributes();
-                const timestamp = moment().valueOf();
-                let updates = record.mutableAttributes();
-                duplicate.deleted_at = timestamp; // set the deletion time
-                duplicate.deleted_by = currentUser.rid;
-                duplicate.uuid = currentRecord.content.uuid;
-
-                updates.version += 1;
-                updates.created_at = timestamp;
-                updates.created_by = currentUser.rid;
-                updates.deleted_by = null;
-
-                // start the transaction
-                var commit = this.db.conn
-                    .let('updatedRID', (tx) => {
-                        // update the existing node
-                        return tx.update(`${currentRecord.rid}`).set(updates).return('AFTER @rid').where(currentRecord.staticAttributes());
-                    }).let('duplicate', (tx) => {
-                        //duplicate the old node
-                        return tx.create(this.constructor.createType, this.constructor.clsname)
-                            .set(duplicate);
-                    }).let('historyEdge', (tx) => {
-                        //connect the nodes
-                        return tx.create(History.createType, History.clsname)
-                            .from('$updatedRID')
-                            .to('$duplicate');
-                    }).commit();
-                // const stat = commit.buildStatement();
-                return commit.return('$updatedRID').one()
-                    .then((rid) => {
-                        return this.db.conn.record.get(rid);
-                    }).then((record) => {
-                        return new Record(record, this.constructor.clsname);
-                    });
-            });
-*/
-module.exports = {select, create, update, remove, checkAccess, createUser};
+module.exports = {select, create, update, remove, checkAccess, createUser, populateCache, cacheVocabulary};

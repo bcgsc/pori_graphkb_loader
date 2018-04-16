@@ -5,7 +5,7 @@ const {PERMISSIONS} = require('./constants');
 const {createRepoFunctions} = require('./functions');
 const {castUUID, timeStampNow} = require('./util');
 const cache = require('./cache');
-const {select} = require('./base');
+const {select, populateCache} = require('./base');
 
 
 class ClassModel {
@@ -643,11 +643,7 @@ const loadSchema = async (db, verbose=false) => {
         }
     }
     // load the vocabulary
-    const rows = await select(db, {from: 'Vocabulary'});
-    if (verbose) {
-        console.log(`loaded ${rows.length} vocabulary terms`);
-    }
-    cache.loadVocabulary(rows);
+    await populateCache(db);
     return schema;
 };
 

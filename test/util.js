@@ -1,7 +1,7 @@
 'use strict';
 const OrientDB  = require('orientjs');
 const {createSchema, loadSchema} = require('./../app/repo/schema');
-const {createUser} = require('./../app/repo/base');
+const {createUser, populateCache} = require('./../app/repo/base');
 const {PERMISSIONS} = require('./../app/repo/constants');
 const emptyConf = require('./config/empty');
 const sampleConf = require('./config/sample');

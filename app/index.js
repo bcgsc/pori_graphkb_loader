@@ -7,6 +7,7 @@ const defaultConf = require('./../config/default'); // get the database connecti
 const add_routes = require('./routes');
 const OrientDB  = require('orientjs');
 const {loadSchema} = require('./repo/schema');
+const {populateCache} = require('./repo/base');
 const https = require('https');
 const selfsigned = require('selfsigned');
 const auth = require('./middleware/auth');
