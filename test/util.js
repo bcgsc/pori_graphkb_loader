@@ -77,7 +77,12 @@ const setUpSampleDB = async (verbose=false) => {
     db = await server.create({name: sampleConf.db.name, username: sampleConf.db.user, password: sampleConf.db.pass});
     await db.query('alter database custom standardElementConstraints=false');
     //await db.query(`import database ${sampleConf.db.export} -preserveClusterIDs=TRUE`);
-    const code = await shell.exec('$ORIENTDB_HOME/bin/console.sh "CONNECT remote:/home/creisle/applications/orientdb-community-2.2.17/databases/test_sample admin admin; SELECT FROM V; import database /home/creisle/git/knowledgebase/test/config/../data/sample_db.gz -preserveClusterIDs=TRUE"', {silent:true}).code;
+    const command = `\$ORIENTDB_HOME/bin/console.sh "CONNECT remote:/home/creisle/applications/orientdb-community-2.2.17/databases/test_sample admin admin; SELECT FROM V; import database ${sampleConf.db.export} -preserveClusterIDs=TRUE"`;
+    if (verbose) {
+        console.log('executing shell command');
+        console.log(command);
+    }
+    const code = await shell.exec(command, {silent:true}).code;
     if (code !== 0) {
         throw new Error(`exit code ${code}, expected 0`);
     }

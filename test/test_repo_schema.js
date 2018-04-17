@@ -16,15 +16,6 @@ describe('schema', () => {
         console.log('adminUser', adminUser);
         
     });
-    it('error on create record without sufficient permissions', async () => {
-        try {
-            const record = await create(db, {user: {permissions: {V: PERMISSIONS.READ}}, model: {name: 'name', inherits: ['V']}});
-        } catch(err) {
-            expect(err.message).to.contain('insufficient permission');
-            return;
-        }
-        expect.fail();
-    });
     describe('disease', () => {
         
         it('error on source not specified', async () => {

@@ -9,15 +9,12 @@ const {setUpSampleDB, tearDownSampleDB} = require('./util');
 describe('sample', () => {
     let server, db, schema, adminUser;
     before(async () => {
-        ({server, db, schema} = await setUpSampleDB(false));
+        ({server, db, schema} = await setUpSampleDB(true));
         adminUser = await db.select().from('User').where({name: 'admin'}).all();
         expect(adminUser).to.have.property('length', 1);
         adminUser = adminUser[0];
     });
-    it('select disease cancer', async () => {
-        //const disease = await select({from: 'Disease', where: {'name': 'cancer'}});
-        //expect(disease).to.have.property('name', 'cancer');
-    });
+    it('select disease cancer');
     after(async () => {
         await tearDownSampleDB(server);
     });

@@ -140,7 +140,7 @@ describe('ClassModel', () => {
                  defaults: {req2: () => 1, opt2: () => 2},
                  cast: {req1: (x) => x.toLowerCase() }
              });
-            cache.vocabularyByClass = {example: {
+            cache.vocabulary = {example: {
                 req1: [{class: 'example', name: 'req1', term: 'term1'}, {class: 'example', name: 'req1', term: 2}]
             }};
         });

@@ -1,13 +1,10 @@
-const jc = require('json-cycle');
 const _ = require('lodash');
-const HTTP_STATUS = require('http-status-codes');
 
-const {add_resource_routes} = require('./util');
+const {addResourceRoutes, addResourceByIdRoutes} = require('./util');
 const {cacheVocabulary} = require('./../repo/base');
-const auth = require('./../middleware/auth');
 
 
-const add_routes = (opt) => {
+const addRoutes = (opt) => {
     const {router, schema, db, verbose} = opt;
     // main route (useful to be able to ping)
     router.route('/')
@@ -19,32 +16,32 @@ const add_routes = (opt) => {
         .get((req, res, next) => {
             res.json(schema);
         });
-    // create a token
-    router.route('/token')
-        .get((req, res, next) => {
-            // validate user first
-            const token = auth.generateToken({name: 'admin'})      
-            res.send(token);
-        });
-    // get a particular user
-    router.route('/user')
-        .get(async (req, res, next) => {
-            res.send({message: 'you passed auth'});
-        });
+    const users = {
+        router: router,
+        route: '/users',
+        model: schema.User,
+        db: db,
+        optQueryParams: ['name']
+    };
+    addResourceRoutes(users);
+    addResourceByIdRoutes(users);
+
     // vocabulary routes
     const vocabOpt = _.concat(schema.Vocabulary._required, schema.Vocabulary._optional);
-    add_resource_routes({
+    const vocab = {
         router: router,
         route: '/vocabulary',
         model: schema.Vocabulary, 
         db: db, 
         optQueryParams: vocabOpt,
         cacheUpdate: cacheVocabulary 
-    });
+    };
+    addResourceRoutes(vocab);
+    addResourceByIdRoutes(vocab);
     // ontology routes
     // event routes
     // evidence routes
     // matching/statement routes
 };
 
-module.exports = add_routes;
+module.exports = addRoutes;

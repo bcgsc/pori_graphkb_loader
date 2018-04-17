@@ -1,6 +1,6 @@
 let ORIENTDB_HOME = process.env.ORIENTDB_HOME;
 
-let sampleDbName = 'test_sample';
+let dbName = 'test_sample';
 
 const server = {
     pass: process.env.DATABASE_SERVER_PASS || 'root',
@@ -10,8 +10,8 @@ const server = {
 }
 
 const db = {
-    name: sampleDbName,
-    url: `plocal:${ORIENTDB_HOME}/databases/${sampleDbName}`,
+    name: dbName,
+    url: `plocal:${ORIENTDB_HOME}/databases/${dbName}`,
     pass: process.env.DATABASE_PASS || 'admin',
     user: process.env.DATABASE_USER || 'admin',
     host: server.host,
@@ -19,4 +19,4 @@ const db = {
     export: `${__dirname}/../data/sample_db.gz` 
 }
 
-module.exports = {server, db, app: {port: process.env.PORT || 8080}};
+module.exports = {server, db, app: {port: process.env.PORT || 8080}, private_key: 'id_rsa'};

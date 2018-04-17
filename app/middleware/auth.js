@@ -19,6 +19,8 @@ const checkToken = async (req, res, next) => {
     } catch (err) {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json({message: 'bad token', type: 'PermissionError'});
     }
+    // TODO: verify the user against the gsc ACL
+    // TODO: then verify the user against the kb list of users
     next();
 };
 

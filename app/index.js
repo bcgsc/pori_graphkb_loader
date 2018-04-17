@@ -4,13 +4,13 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const defaultConf = require('./../config/default'); // get the database connection configuration
-const add_routes = require('./routes');
+const addRoutes = require('./routes');
 const OrientDB  = require('orientjs');
 const {loadSchema} = require('./repo/schema');
 const {populateCache} = require('./repo/base');
 const https = require('https');
-const selfsigned = require('selfsigned');
 const auth = require('./middleware/auth');
+const fs = require('fs');
 
 
 let orientServer, dbServer, appServer;
@@ -62,12 +62,11 @@ const listen = async (conf={app: {}}, verbose=false) => {
     orientServer = server;
     dbServer = db;
     // create the authentication certificate for managing tokens
-    if (! auth.keys.key ) {
-        const keys = await selfsigned.generate();
-        auth.keys.key = keys.private;
+    if (! auth.keys.private ) {
+        auth.keys.private = fs.readFileSync(conf.private_key);
     }
     // add the db connection reference to the routes
-    add_routes({router, db, schema});
+    addRoutes({router, db, schema});
     // last catch any errors for undefined routes. all actual routes should be defined above
     app.use((req, res) => {
         res.status(404);
