@@ -17,4 +17,4 @@ Guidelines for Contributors
 4. JS code should be written with ES6 syntax (where possible) see https://github.com/lukehoban/es6features
 
 
-![Schema Design](./docs/schema.svg)
+![Schema Design](./doc/schema.svg)
