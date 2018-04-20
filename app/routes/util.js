@@ -1,6 +1,7 @@
 const HTTP_STATUS = require('http-status-codes');
 var uuidValidate = require('uuid-validate');
 const jc = require('json-cycle');
+const _ = require('lodash');
 
 const {ErrorMixin, AttributeError, NoResultFoundError, MultipleResultsFoundError} = require('./../repo/error');
 const {select, create, update, remove} = require('./../repo/base');
@@ -70,8 +71,8 @@ const addResourceByIdRoutes = (opt) => {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid uuid: ${req.params.id}`});
                 return;
             }
-            if (req.query) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type'});
+            if (! _.isEmpty(req.query)) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
                 return;
             }
             try {
@@ -100,7 +101,7 @@ const addResourceByIdRoutes = (opt) => {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid uuid: ${req.params.id}`});
                 return;
             }
-            if (req.query) {
+            if (! _.isEmpty(req.query)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type'});
                 return;
             }
@@ -151,8 +152,8 @@ const addResourceRoutes = (opt) => {
         });
     router.post(route, 
         async (req, res, next) => {
-            if (req.query) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type'});
+            if (! _.isEmpty(req.query)) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
                 return;
             }
             try {
@@ -172,7 +173,7 @@ const addResourceRoutes = (opt) => {
     );
     router.delete(route,
         async (req, res, next) => {
-            if (req.query) {
+            if (! _.isEmpty(req.query)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type'});
                 return;
             }

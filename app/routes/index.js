@@ -38,6 +38,17 @@ const addRoutes = (opt) => {
     };
     addResourceRoutes(vocab);
     addResourceByIdRoutes(vocab);
+
+    // disease routes
+    const disease = {
+        router: router,
+        route: '/diseases',
+        model: schema.Disease,
+        db: db,
+        optQueryParams: _.concat(schema.Disease._required, schema.Disease._optional)
+    }
+    addResourceRoutes(disease);
+    addResourceByIdRoutes(disease);
     // ontology routes
     // event routes
     // evidence routes

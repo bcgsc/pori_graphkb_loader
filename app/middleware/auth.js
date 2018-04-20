@@ -17,7 +17,7 @@ const checkToken = async (req, res, next) => {
         const decoded = jwt.verify(token, keys.private);
         req.user = decoded.user;
     } catch (err) {
-        return res.status(HTTP_STATUS.UNAUTHORIZED).json({message: 'bad token', type: 'PermissionError'});
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
     }
     // TODO: verify the user against the gsc ACL
     // TODO: then verify the user against the kb list of users

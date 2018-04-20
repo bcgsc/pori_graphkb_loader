@@ -360,7 +360,6 @@ const createSchema = async (db, verbose=false) => {
         name: 'Variant',
         inherits: 'V,Biomarker',
         properties: [
-            {name: 'feature', mandatory: true, type: 'link', linkedClass: 'Feature', notNull: true},
             {name: 'type', mandatory: true, type: 'string', notNull: true},
             {name: 'subtype', type: 'string'},
         ],
@@ -370,7 +369,8 @@ const createSchema = async (db, verbose=false) => {
         name: 'PositionalVariant',
         inherits: 'Variant',
         properties: [
-            {name: 'feature2', type: 'link', linkedClass: 'Feature', notNull: true},
+            {name: 'reference', mandatory: true, type: 'link', linkedClass: 'Feature', notNull: true},
+            {name: 'reference2', type: 'link', linkedClass: 'Feature', notNull: true},
             {name: 'break1_start', type: 'embedded', linkedClass: 'Position'},
             {name: 'break1_end', type: 'embedded', linkedClass: 'Position'},
             {name: 'break2_start', type: 'embedded', linkedClass: 'Position'},
@@ -383,6 +383,8 @@ const createSchema = async (db, verbose=false) => {
         name: 'CategoryVariant',
         inherits: 'Variant',
         properties: [
+            {name: 'reference', mandatory: true, type: 'link', linkedClass: 'Ontology', notNull: true},
+            {name: 'reference2', type: 'link', linkedClass: 'Ontology', notNull: true},
             {name: 'value', type: 'string', mandatory: true, notNull: true},
             {name: 'method', type: 'string'}
         ]
