@@ -1,6 +1,7 @@
 const hgnc = require('./../../hgnc_complete_set');
 const _ = require('lodash');
 const request = require('request-promise');
+const PromisePool = require('es6-promise-pool');
 
 /* example record
 { gene_family: [ 'Immunoglobulin like domain containing' ],
@@ -33,6 +34,86 @@ const request = require('request-promise');
 */
 
 
+const addRecords = function* (arr, token) {
+    for (let i=0; i < arr.length; i++) {
+        yield addRecord(arr[i], token)
+    }
+}
+
+const addRecord = async (record, token) => {
+    if (record.status.toLowerCase() === 'entry withdrawn') {
+        return;
+    }
+    let gene = {
+        source: 'hgnc',
+        nameVersion: record.date_modified,
+        sourceId: record.hgnc_id,
+        name: record.symbol,
+        fullName: record.name,
+        biotype: 'gene'
+    };
+
+    // add the record to the kb
+    let opt = {
+        method: 'POST',
+        uri: 'http://localhost:8080/api/features',
+        body: gene,
+        headers: {
+            Authorization: token
+        },
+        json: true
+    };
+    try {
+        gene = await request(opt);
+        process.stdout.write('.');
+    } catch (err) {
+        if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
+            // already exists, try relating it
+            process.stdout.write('*');
+            gene = await getFeatureByName(gene.name, token);
+        } else {
+            console.log(err.error);
+            console.log(opt);
+            throw err;
+        }
+    }
+
+    // now try adding the relationships to other gene types
+    if (! record.ensembl_gene_id) {
+        return;
+    }
+    let body; 
+    try {
+        const ensg = await getFeatureByName(record.ensembl_gene_id, token);
+        if (! ensg) {
+            return;
+        }
+        body = {out: gene['@rid'], in: ensg['@rid']};
+        const newRecord = await request({
+            method: 'POST',
+            uri: 'http://localhost:8080/api/aliasof',
+            body: body,
+            headers: {
+                Authorization: token
+            },
+            json: true
+        });
+        process.stdout.write('-');
+    } catch (err) {
+        if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
+            process.stdout.write('=');
+        } else {
+            console.error(err.message);
+            console.error(body);
+            console.error(genes[gene.name]);
+            console.error(genes[record.ensembl_gene_id]);
+            console.log(record);
+            throw err;
+        }
+    }
+};
+
+
 const getFeatureByName = async (name, token) => {
     let opt = {
         method: 'GET',
@@ -54,91 +135,9 @@ const getFeatureByName = async (name, token) => {
 }
 
 const uploadHugoGenes = async (token) => {
-    const genes = {};
-    const aliasOf = [];
-    const deprecatedBy = [];
-    for (let record of hgnc.response.docs) {
-        if (record.status.toLowerCase() === 'entry withdrawn') {
-            continue;
-        }
-        const gene = {
-            source: 'hgnc',
-            nameVersion: record.date_modified,
-            sourceId: record.hgnc_id,
-            name: record.symbol,
-            fullName: record.name,
-            biotype: 'gene'
-        };
-        if (genes[gene.name] !== undefined) {
-            console.error(record);
-            console.error(gene)
-            console.error(genes[gene.name]);
-            break;
-        }
-
-        // add the record to the kb
-        let opt = {
-            method: 'POST',
-            uri: 'http://localhost:8080/api/features',
-            body: gene,
-            headers: {
-                Authorization: token
-            },
-            json: true
-        };
-        try {
-            const newRecord = await request(opt);
-            genes[gene.name] = newRecord;
-            process.stdout.write('.');
-        } catch (err) {
-            if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
-                // already exists, try relating it
-                process.stdout.write('*');
-                const result = await getFeatureByName(gene.name, token);
-                genes[gene.name] = result;
-            } else {
-                console.log(err.error);
-                console.log(opt);
-                break;
-            }
-        }
-
-        // now try adding the relationships to other gene types
-        if (! record.ensembl_gene_id) {
-            continue;
-        }
-        let body; 
-        try {
-            if (genes[record.ensembl_gene_id] === undefined) {
-                genes[record.ensembl_gene_id] = await getFeatureByName(record.ensembl_gene_id, token);
-                if (! genes[record.ensembl_gene_id]) {
-                    continue;
-                }
-            }
-            body = {out: genes[gene.name]['@rid'], in: genes[record.ensembl_gene_id]['@rid']};
-            const newRecord = await request({
-                method: 'POST',
-                uri: 'http://localhost:8080/api/aliasof',
-                body: body,
-                headers: {
-                    Authorization: token
-                },
-                json: true
-            });
-            process.stdout.write('-');
-        } catch (err) {
-            if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
-                process.stdout.write('=');
-            } else {
-                console.error(err.message);
-                console.error(body);
-                console.error(genes[gene.name]);
-                console.error(genes[record.ensembl_gene_id]);
-                console.log(record);
-                throw err;
-            }
-        }
-    }
+    const iter = addRecords(hgnc.response.docs, token);
+    const pool = new PromisePool(iter, 100);
+    await pool.start();
 }
 
 module.exports = { uploadHugoGenes };

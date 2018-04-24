@@ -43,7 +43,7 @@ const setUpEmptyDB = async (verbose=false) => {
     if (verbose) {
         console.log('created the user:', user);
     }
-    return {server, db, schema};
+    return {server, db, schema, admin: user};
 };
 
 
