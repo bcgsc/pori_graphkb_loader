@@ -277,7 +277,7 @@ const createSchema = async (db, verbose=false) => {
 
     for (let cls of ['E', 'V', 'User']) {
         await db.index.create({
-            name: `Active${cls}Id`,
+            name: `${cls}.activeId`,
             type: 'unique',
             metadata: {ignoreNullValues: false},
             properties: ['uuid', 'deletedAt'],
@@ -307,11 +307,17 @@ const createSchema = async (db, verbose=false) => {
         ],
         indices: [
             {
-                name: `ActiveOntology`,
+                name: `Ontology.active`,
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
                 properties: ['source', 'sourceVersion', 'name', 'deletedAt', 'nameVersion'],
                 class:  'Ontology'
+            },
+            {
+                name: 'Ontology.name',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                properties: ['name'],
+                class: 'Ontology'
             }
         ],
         isAbstract: true
@@ -338,11 +344,17 @@ const createSchema = async (db, verbose=false) => {
         ],
         indices: [
             {
-                name: `ActiveDependantFeature`,
+                name: `DependantFeature.active`,
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
                 properties: ['source', 'sourceVersion', 'name', 'deletedAt', 'nameVersion', 'dependency'],
                 class: 'DependantFeature'
+            },
+            {
+                name: 'DependantFeature.name',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                properties: ['name'],
+                class: 'Ontology'
             }
         ]
     });
@@ -513,7 +525,7 @@ const createSchema = async (db, verbose=false) => {
             ],
             indices: [
                 {
-                    name: `ActiveTerm`,
+                    name: `Vocabulary.activeTerm`,
                     type: 'unique',
                     metadata: {ignoreNullValues: false},
                     properties: ['deletedAt', 'class', 'property', 'term', 'conditionalProperty', 'conditionalValue'],
@@ -536,7 +548,7 @@ const createSchema = async (db, verbose=false) => {
             ],
             indices: [
                 {
-                    name: `${name}RestrictMulti`,
+                    name: `${name}.restrictMulti`,
                     type: 'unique',
                     metadata: {ignoreNullValues: false},
                     properties: ['deletedAt', 'in', 'out'],
