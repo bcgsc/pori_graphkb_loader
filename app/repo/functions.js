@@ -19,7 +19,7 @@ const createRepoFunctions = async (db) => {
     const repoFunctions = [];
     for (let table of ['Feature', 'Disease', 'Therapy', 'Pathway', 'MutationSignature', 'User', 'UserGroup']) {
         repoFunctions.push({name: `getUniq${table}ByName`, params: ['name'], idempotent: true, language: 'javascript', code: `
-var selection = orient.getDatabase().query("select * from ${table} where name = ? and deletedAt is null", [name]);
+var selection = orient.getDatabase().query("select * from ${table} where name = ? and deletedAt is null", [name.toLowerCase()]);
 if (selection.length === 1) {
   return selection;
 } else {

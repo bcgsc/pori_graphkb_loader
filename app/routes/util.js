@@ -55,7 +55,7 @@ const addResourceByIdRoutes = (opt) => {
             }
             const where = Object.assign({}, req.query, {uuid: req.params.id, deletedAt: null});
             try {
-                const result = await select(db, {from: model.name, where: where, exactlyN: 1});
+                const result = await select(db, {model: model, where: where, exactlyN: 1});
                 res.json(jc.decycle(result));
             } catch (err) {
                 if (err instanceof NoResultFoundError) {
@@ -144,7 +144,7 @@ const addResourceRoutes = (opt) => {
                 return;
             }
             try {
-                const result = await select(db, {from: model.name, where: req.query});
+                const result = await select(db, {model: model, where: req.query});
                 res.json(jc.decycle(result));
             } catch (err) {
                 res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
@@ -192,6 +192,7 @@ const addResourceRoutes = (opt) => {
             }
         }
     );
+    addResourceByIdRoutes(opt);
 };
 
 
@@ -204,4 +205,4 @@ const errorToJSON = (err) => {
 };
 
 
-module.exports = {validateParams, addResourceRoutes, addResourceByIdRoutes, InputValidationError};
+module.exports = {validateParams, addResourceRoutes, InputValidationError};

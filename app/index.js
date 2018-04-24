@@ -51,7 +51,16 @@ const connectDB = async (conf, verbose=true) => {
         server.close();
         throw err;
     }
-    const schema = await loadSchema(db, verbose);
+    let schema;
+    try {
+        schema = await loadSchema(db, verbose);
+    } catch (err) {
+        server.close();
+        throw err;
+    }
+    if (verbose) {
+        console.log('loaded the schema');
+    }
     // create the admin user
     return {server, db, schema};
 };

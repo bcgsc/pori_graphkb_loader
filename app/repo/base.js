@@ -29,36 +29,36 @@ const createUser = async (db, opt) => {
         name: userName, 
         groups: Array.from(groupNames, x => cache.userGroups[x]['@rid']), 
         deletedAt: null
-    }, false, true);
+    }, {dropExtra: false, addDefaults: true});
     await db.insert().into(model.name)
         .set(record)
         .one();
-    const user = await select(db, {where: {name: userName}, from: model.name, exactlyN: 1});
+    const user = await select(db, {where: {name: userName}, model: model, exactlyN: 1});
     return user;
 }
 
 
-const populateCache = async (db) => {
+const populateCache = async (db, schema) => {
     // load the user groups
-    const groups = await select(db, {from: 'UserGroup'});
+    const groups = await select(db, {model: schema.UserGroup});
     for (let group of groups) {
         cache.userGroups[group.name] = group;
     }
     // load the individual users
-    const users = await select(db, {from: 'User'});
+    const users = await select(db, {model: schema.User});
     for (let user of users) {
         cache.users[user.name] = user;
     }
     // load the vocabulary
-    await cacheVocabulary(db);
+    await cacheVocabulary(db, schema.Vocabulary);
 }
 
-const cacheVocabulary = async (db) => {
+const cacheVocabulary = async (db, model) => {
     // load the vocabulary
     if (process.env.VERBOSE == '1') {
         console.log('updating the vocabulary cache');
     }
-    const rows = await select(db, {from: 'Vocabulary'});
+    const rows = await select(db, {model: model});
     // reformats the rows to fit with the cache expected structure
     cache.vocabulary = {};  // remove old vocabulary
     for (let row of rows) {
@@ -80,10 +80,25 @@ const cacheVocabulary = async (db) => {
  */
 const create = async (db, opt) => {
     const {content, model, user} = opt;
+    if (model.isEdge) {
+        return await createEdge(db, opt);
+    }
     content.createdBy = user['@rid']; 
-    const record = model.formatRecord(content, false, true);
+    const record = model.formatRecord(content, {dropExtra: false, addDefaults: true});
     return await db.insert().into(model.name).set(record).one();
 };
+
+
+const createEdge = async (db, opt) => {
+    const {content, model, user} = opt;
+    content.createdBy = user['@rid']; 
+    const record = model.formatRecord(content, {dropExtra: false, addDefaults: true});
+    const from = record.out;
+    const to = record.in;
+    delete record.out;
+    delete record.in;
+    return await db.create('EDGE', model.name).from(from).to(to).set(record).one();
+}
 
 
 const getStatement = (query) => {
@@ -100,34 +115,38 @@ const getStatement = (query) => {
 
 
 const select = async (db, opt) => {
-    const activeOnly = opt.activeOnly === undefined ? true : opt.activeOnly;
-    const exactlyN = opt.exactlyN === undefined ? null : opt.exactlyN;
-    const fetchPlan = opt.fetchPlan || {'*': 1};
-    const debug = opt.debug === undefined ? false : opt.debug;
-    const params = Object.assign({}, opt.where);
-    if (activeOnly) {
+    // set the default options
+    opt = Object.assign({
+        activeOnly: true, 
+        exactlyN: null, 
+        fetchPlan: {'*': 1}, 
+        debug: false,
+        where: {}
+    }, opt);
+    const params = opt.model.formatRecord(opt.where, {addDefaults: false, dropExtra: false, ignoreMissing: true});
+    if (opt.activeOnly) {
         params.deletedAt = null;
     }
-    let query = db.select().from(opt.from).where(params);
+    let query = db.select().from(opt.model.name).where(params);
     if (Object.keys(params).length == 0) {
-        query = db.select().from(opt.from);
+        query = db.select().from(opt.model.name);
     }
     
-    if (debug) {
+    if (opt.debug) {
         console.log('select query statement:', getStatement(query));
     }
-    const recordList  = await query.fetch(fetchPlan).all();
-    if (exactlyN !== null) {
+    const recordList  = await query.fetch(opt.fetchPlan).all();
+    if (opt.exactlyN !== null) {
         if (recordList.length === 0) {
-            if (exactlyN === 0) {
+            if (opt.exactlyN === 0) {
                 return [];
             } else {
                 throw new NoResultFoundError(`query returned an empty list: ${getStatement(query)}`);
             }
-        } else if (exactlyN !== recordList.length) {
+        } else if (opt.exactlyN !== recordList.length) {
             throw new MultipleResultsFoundError(
                 `query returned unexpected number of results. Found ${recordList.length} results `
-                `but expected ${exactlyN} results: ${getStatement(query)}`
+                `but expected ${opt.exactlyN} results: ${getStatement(query)}`
             );
         } else {
             return recordList;
@@ -140,7 +159,7 @@ const select = async (db, opt) => {
 const remove = async (db, opt) => {
     const {model, user, where} = opt;
     if (where['@rid'] === undefined) {
-        const rec = (await select(db, {from: model.name, where: where, exactlyN: 1}))[0];
+        const rec = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
         where['@rid'] = rec['@rid'];
         where['createdAt'] = rec['createdAt'];
     }
@@ -172,8 +191,8 @@ const remove = async (db, opt) => {
 const update = async (db, opt) => {
     const {content, model, user, where} = opt;
     const verbose = opt.verbose || (process.env.VERBOSE == '1' ? true : false);
-    const original = (await select(db, {from: model.name, where: where, exactlyN: 1}))[0];
-    const originalWhere = Object.assign(model.formatRecord(original, true, false));
+    const original = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
+    const originalWhere = Object.assign(model.formatRecord(original, {dropExtra: true, addDefaults: false}));
     delete originalWhere.createdBy;
     delete originalWhere.history;
     const copy = Object.assign({}, originalWhere, {deletedAt: timeStampNow()});

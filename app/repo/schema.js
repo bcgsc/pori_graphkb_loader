@@ -112,10 +112,21 @@ class ClassModel {
         });
     }
 
-    formatRecord(record, dropExtra=true, addDefaults=false) {
-        const formattedRecord = Object.assign({}, dropExtra ? {} : record);
+    formatRecord(record, opt) {
+        // add default options
+        opt = Object.assign({
+            dropExtra: true, 
+            addDefaults: false, 
+            ignoreMissing: false
+        }, opt);
+        const formattedRecord = Object.assign({}, opt.dropExtra ? {} : record);
+        // if this is an edge class, check the to and from attributes
+        if (this.isEdge) {
+            formattedRecord.out = record.out;
+            formattedRecord.in = record.in;
+        }
         // add any defaults that were not otherwise given
-        if (addDefaults) {
+        if (opt.addDefaults) {
             for (let attr of Object.keys(this.defaults)) {
                 if (record[attr] === undefined) {
                     formattedRecord[attr] = this.defaults[attr]();
@@ -124,10 +135,13 @@ class ClassModel {
         }
         // check that the required attributes are there
         for (let attr of this.required) {
+            if (record[attr] === undefined && opt.ignoreMissing) {
+                continue;
+            }
             if (record[attr] !== undefined) {
                 formattedRecord[attr] = record[attr];
             }
-            if (formattedRecord[attr] === undefined) {
+            if (formattedRecord[attr] === undefined && ! opt.ignoreMissing) {
                 throw Error(`missing required attribute ${attr}`);
             }
             formattedRecord[attr] = formattedRecord[attr];
@@ -161,6 +175,7 @@ class ClassModel {
                 }
             }
         }
+        
         return formattedRecord;
     }
 }
@@ -269,18 +284,26 @@ const createSchema = async (db, verbose=false) => {
             'class':  cls
         });
     }
-    
+    if (verbose) {
+        console.log(`defined schema for the major base classes`);
+    }
     // now create the custom data related classes
     await db.class.create('Feature', null, null, true);  // purely for selection purposes
     await db.class.create('Biomarker', null, null, true);  // purely for selection purposes
+    if (verbose) {
+        console.log(`defining schema for Ontology class`);
+    }
     await createClassModel(db, {
         name: 'Ontology',
         inherits: 'V,Biomarker',
         properties: [
             {name: 'source', type: 'string', mandatory: true, type: 'string'},
             {name: 'sourceVersion', type: 'string'},
+            {name: 'sourceId', type: 'string'},
             {name: 'name', type: 'string', mandatory: true, notNull: true, type: 'string'},
-            {name: 'nameVersion', type: 'string'}
+            {name: 'nameVersion', type: 'string'},
+            {name: 'description', type: 'string'},
+            {name: 'longName', type: 'string'}
         ],
         indices: [
             {
@@ -293,6 +316,9 @@ const createSchema = async (db, verbose=false) => {
         ],
         isAbstract: true
     });
+    if (verbose) {
+        console.log(`defining schema for Ontology subclasses`);
+    }
     await Promise.all(Array.from(['MutationSignature', 'Therapy', 'Disease', 'Pathway'], (name) => {
         db.class.create(name, 'Ontology', null, false);
     }));
@@ -498,7 +524,26 @@ const createSchema = async (db, verbose=false) => {
     ]);
     // create all the edge classes
     await Promise.all(Array.from(['Infers', 'ElementOf', 'SubClassOf', 'DeprecatedBy', 'AliasOf', 'SupportedBy', 'Implies', 'Cites'], (name) => {
-        db.class.create(name, 'E', null, false);
+        if (verbose) {
+            console.log(`defining schema for class: ${name}`);
+        }
+        createClassModel(db, {
+            name: name,
+            inherits: 'E',
+            properties: [
+                {name: 'in', type: 'link'},
+                {name: 'out', type: 'link'}
+            ],
+            indices: [
+                {
+                    name: `${name}RestrictMulti`,
+                    type: 'unique',
+                    metadata: {ignoreNullValues: false},
+                    properties: ['deletedAt', 'in', 'out'],
+                    class: name
+                }
+            ]
+        });
     }));
     
     const properties = [];
@@ -644,8 +689,12 @@ const loadSchema = async (db, verbose=false) => {
             console.log(`loaded class: ${cls.name} [${cls.inherits}]`);
         }
     }
+    if (verbose) {
+        console.log('populating the cache');
+    }
     // load the vocabulary
-    await populateCache(db);
+    await populateCache(db, schema);
+    db.models = schema;
     return schema;
 };
 
