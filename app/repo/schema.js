@@ -354,7 +354,7 @@ const createSchema = async (db, verbose=false) => {
                 name: 'DependantFeature.name',
                 type: 'NOTUNIQUE_HASH_INDEX',
                 properties: ['name'],
-                class: 'Ontology'
+                class: 'DependantFeature'
             }
         ]
     });
