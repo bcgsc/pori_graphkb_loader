@@ -67,6 +67,7 @@ END_MESSAGE
     my $resp = $ua->request($req);
     my $message = $resp->decoded_content;
     if ($resp->is_success) {
+        print "-";
         return $message;
     } else {
         if (index($message, "Cannot index record") == -1) {
@@ -149,7 +150,6 @@ END_MESSAGE
             my $ensg = getFeatureByName($name);
             if (defined $hugo && defined $ensg) {
                 createAliasEdge($ensg->{'@rid'}, $hugo->{'@rid'});
-                print "-";
             }
         }
     }
