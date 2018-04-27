@@ -1,12 +1,65 @@
 'use strict';
 const nRegex = require('named-js-regexp');
 const {ParsingError} = require('./../repo/error');
-const {PositionalEvent, NOTATION_TO_SUBTYPE} = require('./../repo/event');
 const {parsePosition} = require('./position');
-const {parseFeature} = require('./feature');
+
+const EVENT_SUBTYPE = {
+    INS: 'insertion', 
+    DEL: 'deletion', 
+    SUB: 'substitution', 
+    INV: 'inversion', 
+    INDEL: 'indel', 
+    GAIN: 'gain', 
+    LOSS: 'loss', 
+    TRANS: 'translocation', 
+    ITRANS: 'inverted translocation', 
+    EXT: 'extension', 
+    FS: 'frameshift',
+    FUSION: 'fusion',
+    DUP: 'duplication',
+    ME: 'methylation',
+    AC: 'acetylation',
+    UB: 'ubiquitination',
+    SPL: 'splice-site'
+};
 
 
-const parseContinuous  = (prefix, string) => {
+const NOTATION_TO_SUBTYPE = new Map([
+    ['ub', EVENT_SUBTYPE.UB],
+    ['me', EVENT_SUBTYPE.ME],
+    ['ac', EVENT_SUBTYPE.AC],
+    ['fs', EVENT_SUBTYPE.FS],
+    ['>', EVENT_SUBTYPE.SUB],
+    ['delins', EVENT_SUBTYPE.INDEL],
+    ['inv', EVENT_SUBTYPE.INV],
+    ['ext', EVENT_SUBTYPE.EXT],
+    ['del', EVENT_SUBTYPE.DEL],
+    ['dup', EVENT_SUBTYPE.DUP],
+    ['ins', EVENT_SUBTYPE.INS],
+    ['copygain', EVENT_SUBTYPE.GAIN],
+    ['copyloss', EVENT_SUBTYPE.LOSS],
+    ['t', EVENT_SUBTYPE.TRANS],
+    ['spl', EVENT_SUBTYPE.SPL],
+    ['fusion', EVENT_SUBTYPE.FUSION]
+]);
+
+
+const getPrefix = (string) => {
+    const prefix = string[0];
+    const expectedPrefix = ['g', 'c', 'e', 'y', 'p'];
+    if (! expectedPrefix.includes(prefix)) {
+        throw new ParsingError(`'${prefix}' is not an accepted prefix. Expected: ${expectedPrefix}`);
+    }
+    if (string[1] != '.') {
+        throw new ParsingError(`Missing '.' separator after prefix: ${string}`);
+    }
+    return prefix;
+};
+
+
+const parseContinuous  = (string) => {
+    const prefix = getPrefix(string);
+    string = string.slice(prefix.length + 1);
     const p = '([A-Z0-9\\*\\?\\+\\-]*[0-9\\?]|[pq][0-9\\.\?]*)';
     let regex = nRegex(
         `^(?<break1>${p}|(\\(${p}_${p}\\)))`
@@ -17,51 +70,64 @@ const parseContinuous  = (prefix, string) => {
     if (match === null) {
         throw new ParsingError(`Input string did not match the expected pattern: ${string}`);
     }
-    const result = {break1: null, break2: null, prefix};
+    const result = {break1Repr: `${prefix}.${string}`};
     let m;
     if (m = /\(([^_]+)_([^_]+)\)/.exec(match.group('break1'))) {
-        result.break1 = {start: parsePosition(prefix, m[1]), end: parsePosition(prefix, m[2])};
+        result.break1Start = parsePosition(prefix, m[1])
+        result.break1End =  parsePosition(prefix, m[2]);
     } else {
-        result.break1 = parsePosition(prefix, match.group('break1'));
+        result.break1Start = parsePosition(prefix, match.group('break1'));
     }
-    if (match.group('break2') === undefined) {
-        result.break2 = undefined;
-    } else if (m = /\(([^_]+)_([^_]+)\)/.exec(match.group('break2'))) {
-        result.break2 = {start: parsePosition(prefix, m[1]), end: parsePosition(prefix, m[2])};
-    } else {
-        result.break2 = parsePosition(prefix, match.group('break2'));
+    if (match.group('break2') !== undefined) {
+        if (m = /\(([^_]+)_([^_]+)\)/.exec(match.group('break2'))) {
+            result.break2Start = parsePosition(prefix, m[1]);
+            result.break2End = parsePosition(prefix, m[2]);
+        } else {
+            result.break2Start = parsePosition(prefix, match.group('break2'));
+        }
     }
 
     const tail = match.group('tail');
-    if (match = /^del([A-Z\?\*]+)?ins([A-Z\?\*]+)?$/.exec(tail)) {  // indel
+    if (match = /^del([A-Z\?\*]+)?ins([A-Z\?\*]+|\d+)?$/.exec(tail)) {  // indel
         result.type = 'delins';
-        result.reference_seq = match[1];
-        result.untemplated_seq = match[2];
-    } else if (match = /^(del|inv|ins|dup)([A-Z\?\*]+)?$/.exec(tail)) {  // deletion
+        result.refSeq = match[1];
+        if (parseInt(match[2])) {
+            result.untemplatedSeqSize = parseInt(match[2]);
+        } else if (match[2]) {
+            result.untemplatedSeq = match[2];
+            if (match[2] !== '?') {
+                result.untemplatedSeqSize = result.untemplatedSeq.length;
+            }
+        }
+    } else if (match = /^(del|inv|ins|dup)([A-Z\?\*]+|\d+)?$/.exec(tail)) {  // deletion
         result.type = match[1];
-        result.reference_seq = match[2];
+        if (/^[A-Z]+/.exec(match[2])) {
+            result.refSeq = match[2];
+        }
     } else if (match = /^[A-Z\?\*]$/.exec(tail)) {
         if (prefix !== 'p') {
             throw new ParsingError('only protein notation does not use ">" for a substitution');
         }
         result.type = '>';
-        result.untemplated_seq = tail;
+        result.untemplatedSeq = tail;
     } else if (match = /^([A-Z\?])>([A-Z\?])$/.exec(tail)) {
         if (prefix === 'p') {
             throw new ParsingError('protein notation does not use ">" for a substitution');
         }
         result.type = '>';
-        result.reference_seq = match[1];
-        result.untemplated_seq = match[2];
+        result.refSeq = match[1];
+        result.untemplatedSeq = match[2];
     } else if (match = /^([A-Z]?)?fs(\*(\d+))?$/.exec(tail)) {
         if (prefix !== 'p') {
             throw new ParsingError('only protein notation can notate frameshift variants');
         }
         result.type = 'fs';
-        result.untemplated_seq = match[1];
+        result.untemplatedSeq = match[1];
         result.truncation = match[3] === undefined ? undefined : parseInt(match[3]);
+    } else if (tail == 'spl'){
+        result.type = 'spl';
     } else {
-        throw new ParsingError(`Did not recognize type: ${string}`);
+        throw new ParsingError(`Did not recognize type: ${tail}`);
     }
     
     return result;
@@ -104,22 +170,11 @@ const parseHistoneVariant = (string) => {
     };
 };
 
-/**
- * parses discontinuous variants. These variants are expected to be in the form of
- * <type>(<feature 1>,<feature 2>)(<position 1>,<position 2>)
- *
- * @param  {string} prefix denotes the position type
- * @param  {string} string the input string to be parsed
- * @return {[type]}        [description]
- */
-const parseDiscontinuous = (prefix, string) => {
-    const exp = '<type>(<5\' feature>,<3\' feature>)(<position 1>,<position 2>)';
+
+const parseDiscontinuous = (string) => {
+    const exp = '<type>(<position 1>,<position 2>)';
     const regex = nRegex(
         '(?<type>[^\\)\\(]*)'
-        + '\\('
-        + '(?<feature1>[^,]+)'
-        + '(,(?<feature2>[^,]+))?'
-        + '\\)'
         + '\\('
         + '(?<position1>[^,]+)'
         + ','
@@ -131,13 +186,23 @@ const parseDiscontinuous = (prefix, string) => {
         throw new ParsingError(`input string: ${string} did not match the expected pattern: ${exp}`);
     }
     match = match.groups();
-    return {
-        type: match.type,
-        break1: parsePosition(prefix, match.position1),
-        break2: parsePosition(prefix, match.position2),
-        feature1: parseFeature(match.feature1),
-        feature2: match.feature2 == undefined ? parseFeature(match.feature1) : parseFeature(match.feature2)
-    };
+
+    const prefix1 = getPrefix(match.position1);
+    const pos1 = match.position1.slice(prefix1.length + 1);
+
+    const result = {type: match.type};
+    result.break1Start = parsePosition(prefix1, pos1);
+    result.break1Repr = `${prefix1}.${match.position1}`;
+    
+    if (match.position2) {
+        const prefix2 = getPrefix(match.position2);
+        const pos2 = match.position2.slice(prefix2.length + 1);
+        if (pos2 !== '?' && pos2 !== 'na') {
+            result.break2Start = parsePosition(prefix2, pos2);
+            result.break2Repr = `${prefix2}.${pos2}`;
+        }
+    }
+    return result;
 };
 
 
@@ -145,33 +210,21 @@ const parse = (string) => {
     if (string.length < 3) {
         throw new ParsingError(`Too short. Must be a minimum of three characters: ${string}`);
     }
-    const prefix = string[0];
-    const expectedPrefix = ['g', 'c', 'e', 'y', 'p'];
-    if (! expectedPrefix.includes(prefix)) {
-        throw new ParsingError(`'${prefix}' is not an accepted prefix. Expected: ${expectedPrefix}`);
-    }
-    if (string[1] != '.') {
-        throw new ParsingError(`Missing '.' separator after prefix: ${string}`);
-    }
-    string = string.slice(2);
     let result;
-    let continuous = true;
     try {
-        result = parseContinuous(prefix, string);
-    } catch(ParsingError) {
-        continuous = false;
-        result = parseDiscontinuous(prefix, string);
+        result = parseContinuous(string);
+    } catch (err) {
+        if (string.includes(')')) {
+            result = parseDiscontinuous(string);
+        } else {
+            throw err;
+        }
     }
     if (! NOTATION_TO_SUBTYPE.has(result.type)) {
         throw new ParsingError(`unsupported event type: ${result.type}`);
     }
     result.type = NOTATION_TO_SUBTYPE.get(result.type);
-    try {
-        PositionalEvent.subtypeValidation(prefix, result.type, continuous);
-    } catch(e) {
-        throw new ParsingError(e.message);
-    }
     return result;
 };
 
-module.exports = {parsePosition, parseHistoneVariant, parse, parseContinuous};
+module.exports = {parsePosition, parse, NOTATION_TO_SUBTYPE};

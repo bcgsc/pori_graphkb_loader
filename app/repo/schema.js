@@ -117,14 +117,26 @@ class ClassModel {
         opt = Object.assign({
             dropExtra: true, 
             addDefaults: false, 
-            ignoreMissing: false
+            ignoreMissing: false,
+            ignoreExtra: false
         }, opt);
         const formattedRecord = Object.assign({}, opt.dropExtra ? {} : record);
+        const reqAttr = this.required;
+        const optAttr = this.optional;
+
+        if (! opt.ignoreExtra) {
+            for (let attr of Object.keys(record)) {
+                if (! reqAttr.includes(attr) && ! optAttr.includes(attr)) {
+                    throw new Error(`unexpected attribute: ${attr}`);
+                }
+            }
+        }
         // if this is an edge class, check the to and from attributes
         if (this.isEdge) {
             formattedRecord.out = record.out;
             formattedRecord.in = record.in;
         }
+
         // add any defaults that were not otherwise given
         if (opt.addDefaults) {
             for (let attr of Object.keys(this.defaults)) {
@@ -134,7 +146,7 @@ class ClassModel {
             }
         }
         // check that the required attributes are there
-        for (let attr of this.required) {
+        for (let attr of reqAttr) {
             if (record[attr] === undefined && opt.ignoreMissing) {
                 continue;
             }
@@ -147,14 +159,14 @@ class ClassModel {
             formattedRecord[attr] = formattedRecord[attr];
         }
         // add any optional attributes that were specified
-        for (let attr of this.optional) {
+        for (let attr of optAttr) {
             if (record[attr] !== undefined) {
                 formattedRecord[attr] = record[attr];
             }
         }
         // try the casting
         for (let attr of Object.keys(this.cast)) {
-            if (formattedRecord[attr] !== undefined) {
+            if (formattedRecord[attr] != undefined) {
                 formattedRecord[attr] = this.cast[attr](formattedRecord[attr]);
             }
         }
@@ -288,7 +300,15 @@ const createSchema = async (db, verbose=false) => {
         console.log(`defined schema for the major base classes`);
     }
     // now create the custom data related classes
-    await db.class.create('Feature', null, null, true);  // purely for selection purposes
+    await createClassModel(db, {
+        name: 'Feature',
+        isAbstract: true,
+        properties: [
+            {name: 'start', type: 'integer'},
+            {name: 'end', type: 'integer'},
+            {name: 'biotype', type: 'string', mandatory: true, notNull: true}
+        ]
+    });
     await db.class.create('Biomarker', null, null, true);  // purely for selection purposes
     if (verbose) {
         console.log(`defining schema for Ontology class`);
@@ -310,7 +330,7 @@ const createSchema = async (db, verbose=false) => {
                 name: `Ontology.active`,
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['source', 'sourceVersion', 'name', 'deletedAt', 'nameVersion'],
+                properties: ['source', 'sourceVersion', 'sourceId', 'name', 'deletedAt', 'nameVersion'],
                 class:  'Ontology'
             },
             {
@@ -338,8 +358,11 @@ const createSchema = async (db, verbose=false) => {
         properties: [
             {name: 'source', type: 'string'},
             {name: 'sourceVersion', type: 'string'},
+            {name: 'sourceId', type: 'string'},
             {name: 'name', type: 'string', mandatory: true, notNull: true},
             {name: 'nameVersion', type: 'string'},
+            {name: 'description', type: 'string'},
+            {name: 'longName', type: 'string'},
             {name: 'dependency', type: 'link', linkedClass: 'IndependantFeature', notNull: true}
         ],
         indices: [
@@ -400,6 +423,8 @@ const createSchema = async (db, verbose=false) => {
         properties: [
             {name: 'type', mandatory: true, type: 'string', notNull: true},
             {name: 'subtype', type: 'string'},
+            {name: 'zygosity', type: 'string'},
+            {name: 'germline', type: 'boolean'}
         ],
         isAbstract: true
     });
@@ -409,12 +434,37 @@ const createSchema = async (db, verbose=false) => {
         properties: [
             {name: 'reference', mandatory: true, type: 'link', linkedClass: 'Feature', notNull: true},
             {name: 'reference2', type: 'link', linkedClass: 'Feature', notNull: true},
-            {name: 'break1_start', type: 'embedded', linkedClass: 'Position'},
-            {name: 'break1_end', type: 'embedded', linkedClass: 'Position'},
-            {name: 'break2_start', type: 'embedded', linkedClass: 'Position'},
-            {name: 'break2_end', type: 'embedded', linkedClass: 'Position'},
-            {name: 'ref', type: 'string'},
-            {name: 'alt', type: 'string'}  // untemplated sequence
+            {name: 'break1Start', type: 'embedded', linkedClass: 'Position'},
+            {name: 'break1End', type: 'embedded', linkedClass: 'Position'},
+            {name: 'break1Repr', type: 'string'},
+            {name: 'break2Start', type: 'embedded', linkedClass: 'Position'},
+            {name: 'break2End', type: 'embedded', linkedClass: 'Position'},
+            {name: 'break2Repr', type: 'string'},
+            {name: 'refSeq', type: 'string'},
+            {name: 'untemplatedSeq', type: 'string'},
+            {name: 'untemplatedSeqSize', type: 'integer'}  // for when we know the number of bases inserted but not what they are
+        ],
+        indices: [
+            {
+                name: 'PositionalVariant.active',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: [
+                    'break1Repr', 
+                    'break2Repr',
+                    'deletedAt', 
+                    'germline',
+                    'refSeq',
+                    'reference', 
+                    'reference2', 
+                    'subtype',
+                    'type',
+                    'untemplatedSeq',
+                    'untemplatedSeqSize',
+                    'zygosity'
+                ],
+                class: 'PositionalVariant'
+            }
         ]
     });
     await createClassModel(db, {
@@ -425,6 +475,25 @@ const createSchema = async (db, verbose=false) => {
             {name: 'reference2', type: 'link', linkedClass: 'Ontology', notNull: true},
             {name: 'value', type: 'string', mandatory: true, notNull: true},
             {name: 'method', type: 'string'}
+        ],
+        indices: [
+            {
+                name: 'CategoryVariant.active',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: [
+                    'deletedAt', 
+                    'germline',
+                    'method',
+                    'reference', 
+                    'reference2', 
+                    'subtype',
+                    'type',
+                    'value', 
+                    'zygosity'
+                ],
+                class: 'CategoryVariant'
+            }
         ]
     });
     // create the evidence classes
@@ -451,7 +520,7 @@ const createSchema = async (db, verbose=false) => {
             ],
             indices: [
                 {
-                    name: 'ActiveTitle',
+                    name: 'Publication.activeTitle',
                     type: 'unique',
                     metadata: {ignoreNullValues: false},
                     properties: ['deletedAt', 'title', 'year'],
@@ -474,7 +543,7 @@ const createSchema = async (db, verbose=false) => {
             ],
             indices: [
                 {
-                    name: 'ActiveName',
+                    name: 'ClinicalTrial.activeName',
                     type: 'unique',
                     metadata: {ignoreNullValues: false},
                     properties: ['deletedAt', 'name'],
@@ -491,7 +560,7 @@ const createSchema = async (db, verbose=false) => {
             ],
             indices: [
                 {
-                    name: 'ActiveSource',
+                    name: 'ExternalSource.activeSource',
                     type: 'unique',
                     metadata: {ignoreNullValues: false},
                     properties: ['deletedAt', 'name', 'version'],

@@ -37,16 +37,18 @@ main();
 sub getFeatureByName
 {
     my ($name) = @_;
-    my $req = HTTP::Request->new(GET => "$server_endpoint/features?name=$name&deletedAt=");
+    my $uri = "$server_endpoint/independantfeatures?name=$name&deletedAt=null";
+    my $req = HTTP::Request->new(GET => $uri);
     $req->header('content-type' => 'application/json');
     $req->header('Authorization' => $token);
     my $resp = $ua->request($req);
+    my $content = $resp->decoded_content;
     if ($resp->is_success) {
-        my $message = parse_json($resp->decoded_content);
+        my $message = parse_json($content);
         return $message->[0];
     } else {
-        print "ERROR: $resp";
-        exit 1;
+        print "failed request: $content from $uri\n";
+        return undef;
     }
 }
 
@@ -74,11 +76,46 @@ END_MESSAGE
             print "HTTP POST error code: ", $resp->code, "\n";
             print "HTTP POST error message: ", $resp->message, "\n";
             print "$message";
-            last;
+            return;
         } else {
             print "=";
         }
     }
+}
+
+
+sub createHugoGene
+{
+    my ($name) = @_;
+    my $req = HTTP::Request->new(POST => "$server_endpoint/independantfeatures");
+    $req->header('content-type' => 'application/json');
+    $req->header('Authorization' => $token);
+    my $content = <<"END_MESSAGE";
+{
+    "name": "$name", 
+    "source": "hgnc",
+    "biotype": "gene"
+}
+END_MESSAGE
+    $req->content($content);
+    my $resp = $ua->request($req);
+    $content = $resp->decoded_content;
+    if ($resp->is_success) {
+        print "H";
+        my $json = parse_json($content);
+        return $json;
+    } else {
+        print "ERROR: $content\n";
+        return undef;
+    }
+}
+
+
+sub print_hash 
+{
+    my ($h) = @_;
+    print "$h\n";
+    print "\t$_: $h->{$_}\n" for (keys %$h);
 }
 
 
@@ -108,12 +145,19 @@ sub main
     while ( my $gene = shift @glist )
     {
         my $name = $gene->stable_id();
-        my $req = HTTP::Request->new(POST => "$server_endpoint/features");
+        my $req = HTTP::Request->new(POST => "$server_endpoint/independantfeatures");
         $req->header('content-type' => 'application/json');
         $req->header('Authorization' => $token);
         my $start = $gene->start();
         my $end = $gene->end();
         my $strand = $gene->strand();
+        my $description = $gene->description();
+        if (! defined $description) {
+            $description = ""
+        } else {
+            $description =~ s/\s*\[.*$//;
+            $description = ",\n    \"longName\": \"$description\"\n";
+        }
         my $content = <<"END_MESSAGE";
 {
     "name": "$name", 
@@ -121,7 +165,7 @@ sub main
     "sourceVersion": "$sourceVersion",
     "start": "$start",
     "end": "$end",
-    "strand": "$strand"
+    "biotype": "gene"$description
 }
 END_MESSAGE
         $req->content($content);
@@ -135,7 +179,7 @@ END_MESSAGE
             if (index($temp, "Cannot index record") == -1) {
                 print "HTTP POST error code: ", $resp->code, "\n";
                 print "HTTP POST error message: ", $resp->message, "\n";
-            
+                print "$req\n"; 
                 print "$temp";
                 last;
             } else {
@@ -147,8 +191,11 @@ END_MESSAGE
             my $hugoname = $gene->external_name();
             # get the hugo gene from the db
             my $hugo = getFeatureByName($hugoname);
+            if (! defined $hugo) {
+                next;
+            }
             my $ensg = getFeatureByName($name);
-            if (defined $hugo && defined $ensg) {
+            if (defined $ensg && defined $hugo) {
                 createAliasEdge($ensg->{'@rid'}, $hugo->{'@rid'});
             }
         }

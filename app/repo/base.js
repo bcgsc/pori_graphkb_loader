@@ -83,8 +83,9 @@ const create = async (db, opt) => {
     if (model.isEdge) {
         return await createEdge(db, opt);
     }
-    content.createdBy = user['@rid']; 
-    const record = model.formatRecord(content, {dropExtra: false, addDefaults: true});
+    const record = model.formatRecord(
+        Object.assign({}, content, {user: user['@rid']}), 
+        {dropExtra: false, addDefaults: true});
     return await db.insert().into(model.name).set(record).one();
 };
 

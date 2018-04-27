@@ -2,6 +2,9 @@ const _ = require('lodash');
 
 const {addResourceRoutes} = require('./util');
 const {cacheVocabulary} = require('./../repo/base');
+const {addStatement} = require('./statement');
+const {addVariantRoutes} = require('./variant');
+const {addParserRoutes} = require('./parser');
 
 
 const addRoutes = (opt) => {
@@ -18,7 +21,6 @@ const addRoutes = (opt) => {
         });
     addResourceRoutes({
         router: router,
-        route: '/users',
         model: schema.User,
         db: db,
         optQueryParams: ['name']
@@ -30,38 +32,67 @@ const addRoutes = (opt) => {
         route: '/vocabulary',
         model: schema.Vocabulary, 
         db: db, 
-        optQueryParams: _.concat(schema.Vocabulary._required, schema.Vocabulary._optional),
         cacheUpdate: cacheVocabulary 
     });
 
     // disease routes
     addResourceRoutes({
         router: router,
-        route: '/diseases',
         model: schema.Disease,
-        db: db,
-        optQueryParams: _.concat(schema.Disease._required, schema.Disease._optional)
+        db: db
     });
     
     addResourceRoutes({
         router: router,
-        route: '/features',
         model: schema.IndependantFeature,
-        db: db,
-        optQueryParams: _.concat(schema.IndependantFeature._required, schema.IndependantFeature._optional)
+        db: db
     });
 
     addResourceRoutes({
         router: router,
-        route: '/aliasof',
         model: schema.AliasOf,
         db: db,
         optQueryParams: ['to', 'from']
     });
-    // ontology routes
-    // event routes
-    // evidence routes
-    // matching/statement routes
+    
+    addResourceRoutes({
+        router: router,
+        model: schema.DeprecatedBy,
+        db: db,
+        optQueryParams: ['to', 'from']
+    });
+    
+    addResourceRoutes({
+        router: router,
+        model: schema.Publication,
+        db: db
+    });
+
+    addResourceRoutes({
+        router: router,
+        model: schema.CategoryVariant,
+        db: db
+    });
+    
+    addResourceRoutes({
+        router: router,
+        model: schema.PositionalVariant,
+        db: db
+    });
+
+    addStatement({
+        router: router,
+        schema: schema,
+        db: db
+    });
+
+    addVariantRoutes({
+        router: router,
+        schema: schema,
+        db: db
+    });
+
+    addParserRoutes(router);
 };
 
 module.exports = addRoutes;

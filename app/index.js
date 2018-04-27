@@ -10,6 +10,7 @@ const {loadSchema} = require('./repo/schema');
 const {populateCache} = require('./repo/base');
 const https = require('https');
 const auth = require('./middleware/auth');
+const {parseNullQueryParams} = require('./middleware');
 const fs = require('fs');
 
 
@@ -27,7 +28,8 @@ router.use((req, res, next) => {
     console.log(`[${req.method}] ${req.url}`);
     next();
 });
-router.use(auth.checkToken)
+router.use(auth.checkToken);
+router.use(parseNullQueryParams);
 
 
 const connectDB = async (conf, verbose=true) => {

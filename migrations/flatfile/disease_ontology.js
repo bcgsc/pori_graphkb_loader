@@ -3,7 +3,7 @@ const _ = require('lodash');
 const request = require('request-promise');
 
 
-const uploadDiseaseOntology = async () => {
+const uploadDiseaseOntology = async (PERM_TOKEN) => {
     const parseDoid = (ident) => {
         return `DOID:${ident.match(/\/DOID_\d+$/)[0].split('_')[1]}`;
     }
@@ -58,20 +58,17 @@ const uploadDiseaseOntology = async () => {
                 source: node.source
             },
             headers: {
-                Authorization: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7Im5hbWUiOiJhZG1pbiIsIkByaWQiOiIjNDE6MCJ9LCJpYXQiOjE1MjQxODIwMTcsImV4cCI6MTUyNDE4NTYxN30.lJrmBnmpTwbFg675r6lRBUiBZmJh8zuS-NHItS5JHtk'
+                Authorization: PERM_TOKEN
             },
             json: true
         };
         try {
             const newRecord = await request(opt);
+            process.stdout.write('.');
         } catch (err) {
             if (! err.error.message.startsWith('Cannot index')) {
                 console.log(err.error);
                 console.log(opt);
-                opt.method = 'GET'
-                opt.qs = opt.body;
-                delete opt.body
-                const result = await(request(opt));
             }
         }
         
@@ -108,7 +105,7 @@ const uploadDiseaseOntology = async () => {
                     source: node.source
                 },
                 headers: {
-                    Authorization: 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7Im5hbWUiOiJhZG1pbiIsIkByaWQiOiIjNDE6MCJ9LCJpYXQiOjE1MjQxODIwMTcsImV4cCI6MTUyNDE4NTYxN30.lJrmBnmpTwbFg675r6lRBUiBZmJh8zuS-NHItS5JHtk'
+                    Authorization: PERM_TOKEN
                 },
                 json: true
             };

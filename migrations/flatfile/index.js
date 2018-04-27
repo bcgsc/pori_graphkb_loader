@@ -8,6 +8,7 @@ const fs = require('fs');
 const { uploadDiseaseOntology } = require('./disease_ontology');
 //const ensHg19 = require('./../ensembl69_hg19_annotations');
 const { uploadHugoGenes } = require('./hgnc');
+const { uploadKbFlatFile } = require('./kb');
 const _ = require('lodash');
 const request = require('request-promise');
 
@@ -72,6 +73,19 @@ for (let opt of optionDefinitions) {
     }
 }
 
+const upload = async (opt={hugo: true, do: true}) => {
+    if (opt.do) {
+        await uploadDiseaseOntology(PERM_TOKEN);
+    }
+    if (opt.hugo) {
+        await uploadHugoGenes(PERM_TOKEN);
+    }
+    if (options['reference-flatfile']) {
+        await uploadKbFlatFile(options['reference-flatfile'], PERM_TOKEN);
+    }
+}
 
-//uploadDiseaseOntology();
-uploadHugoGenes(PERM_TOKEN);
+upload({hugo: true, do: false});
+
+
+
