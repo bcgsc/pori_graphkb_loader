@@ -20,7 +20,7 @@ class ClassModel {
         this._edgeRestrictions = opt.edgeRestrictions || null;
         this.isAbstract = opt.isAbstract;
     }
-    
+
     get isEdge() {
         return this._edgeRestrictions === null ? false : true;
     }
@@ -59,7 +59,7 @@ class ClassModel {
         }
         return cast;
     }
-    
+
     get defaults() {
         let defaults = Object.assign({}, this._defaults);
         for (let parent of this._inherits) {
@@ -99,7 +99,7 @@ class ClassModel {
             if (prop.name === 'uuid') {
                 defaults.uuid = uuidV4;
             } else if (prop.name === 'createdAt') {
-                defaults.createdAt = timeStampNow; 
+                defaults.createdAt = timeStampNow;
             }
         }
         return new this({
@@ -115,8 +115,8 @@ class ClassModel {
     formatRecord(record, opt) {
         // add default options
         opt = Object.assign({
-            dropExtra: true, 
-            addDefaults: false, 
+            dropExtra: true,
+            addDefaults: false,
             ignoreMissing: false,
             ignoreExtra: false
         }, opt);
@@ -187,7 +187,7 @@ class ClassModel {
                 }
             }
         }
-        
+
         return formattedRecord;
     }
 }
@@ -204,7 +204,7 @@ const createClassModel = async (db, model) => {
     if (model.name === undefined) {
         throw new Error(`required attribute was not defined: clsname=${model.name}`);
     }
-    
+
     const cls = await db.class.create(model.name, model.inherits, null, model.isAbstract); // create the class first
     await Promise.all(Array.from(model.properties, (prop) => cls.property.create(prop)));
     await Promise.all(Array.from(model.indices, (i) => db.index.create(i)));
@@ -450,13 +450,13 @@ const createSchema = async (db, verbose=false) => {
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
                 properties: [
-                    'break1Repr', 
+                    'break1Repr',
                     'break2Repr',
-                    'deletedAt', 
+                    'deletedAt',
                     'germline',
                     'refSeq',
-                    'reference', 
-                    'reference2', 
+                    'reference',
+                    'reference2',
                     'subtype',
                     'type',
                     'untemplatedSeq',
@@ -482,14 +482,14 @@ const createSchema = async (db, verbose=false) => {
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
                 properties: [
-                    'deletedAt', 
+                    'deletedAt',
                     'germline',
                     'method',
-                    'reference', 
-                    'reference2', 
+                    'reference',
+                    'reference2',
                     'subtype',
                     'type',
-                    'value', 
+                    'value',
                     'zygosity'
                 ],
                 class: 'CategoryVariant'
@@ -626,33 +626,33 @@ const createSchema = async (db, verbose=false) => {
             ]
         });
     }));
-    
+
     const properties = [];
     for (let name of [
         'AliasOf',
         'Biomarker',
         'CategoryVariant',
         'Cites',
-        'ClinicalTrial', 
+        'ClinicalTrial',
         'DependantFeature',
         'DeprecatedBy',
-        'Disease', 
+        'Disease',
         'E',
-        'ElementOf', 
-        'ExternalSource', 
+        'ElementOf',
+        'ExternalSource',
         'Feature',
         'Implies',
-        'IndependantFeature', 
+        'IndependantFeature',
         'Infers',
         'MutationSignature',
         'Ontology',
-        'Pathway', 
+        'Pathway',
         'PositionalVariant',
-        'Publication', 
-        'Statement', 
+        'Publication',
+        'Statement',
         'SubClassOf',
         'SupportedBy',
-        'Therapy', 
+        'Therapy',
         'User',
         'UserGroup',
         'V',
@@ -676,7 +676,7 @@ const createSchema = async (db, verbose=false) => {
 const loadSchema = async (db, verbose=false) => {
     // adds checks etc to the schema loaded from the database
     const schema = {};
-    
+
     const classes = await db.class.list();
     const inheritanceMap = {};
 
@@ -690,7 +690,7 @@ const loadSchema = async (db, verbose=false) => {
             inheritanceMap[model.name] = cls.superClass;
         }
     }
-    
+
     for (let name of Object.keys(inheritanceMap)) {
         const parent = inheritanceMap[name];
         schema[name]._inherits.push(schema[parent]);
@@ -761,7 +761,7 @@ const loadSchema = async (db, verbose=false) => {
         schema.E._edgeRestrictions = [];
     }
     schema.User.cast.uuid = castUUID;
-    
+
     if (verbose) {
         for (let cls of Object.values(schema)) {
             if (cls.isAbstract) {

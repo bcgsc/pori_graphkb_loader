@@ -148,27 +148,27 @@ describe('ClassModel', () => {
             expect(() => {
                 model.formatRecord({
                     req1: 'badTerm'
-                }, false, true);
+                }, {dropExtra: false, addDefaults: true});
             }).to.throw();
         });
         it('allows expected vocabulary', () => {
             expect(() => {
                 model.formatRecord({
                     req1: 'term1'
-                }, false, true);
+                }, {dropExtra: false, addDefaults: true});
             }).to.not.throw();
         });
         it('errors on un-cast-able input', () => {
             expect(() => {
                 model.formatRecord({
                     req1: 2
-                }, false, true);
+                }, {dropExtra: false, addDefaults: true});
             }).to.throw();
         });
         it('adds defaults', () => {
             const record = model.formatRecord({
                     req1: 'term1'
-                }, false, true);
+                }, {dropExtra: false, addDefaults: true});
             expect(record).to.have.property('req1', 'term1');
             expect(record).to.have.property('req2', 1);
             expect(record).to.have.property('opt2', 2);
@@ -178,12 +178,12 @@ describe('ClassModel', () => {
             expect(() => {
                 model.formatRecord({
                     req1: 'term1'
-                }, false, false);
+                }, {dropExtra: false, addDefaults: false});
             }).to.throw();
 
             const record = model.formatRecord({
                 req1: 'term1', req2: '1'
-                }, false, false);
+            }, {dropExtra: false, addDefaults: false});
             expect(record).to.have.property('req1', 'term1');
             expect(record).to.have.property('req2', '1');
             expect(record).to.not.have.property('opt2');
@@ -192,7 +192,7 @@ describe('ClassModel', () => {
         it('allows optional parameters', () => {
             const record = model.formatRecord({
                     req1: 'term1', req2: '1', opt1: '1'
-                }, false, false);
+                }, {dropExtra: false, addDefaults: false});
             expect(record).to.have.property('req1', 'term1');
             expect(record).to.have.property('req2', '1');
             expect(record).to.have.property('opt1', '1');
@@ -202,6 +202,5 @@ describe('ClassModel', () => {
             cache.vocabularyByClass = {};
         })
     });
-    
-});
 
+});

@@ -26,8 +26,8 @@ const checkAccess = (user, model, permissionsRequired) => {
 const createUser = async (db, opt) => {
     const {model, userName, groupNames} = opt;
     const record = model.formatRecord({
-        name: userName, 
-        groups: Array.from(groupNames, x => cache.userGroups[x]['@rid']), 
+        name: userName,
+        groups: Array.from(groupNames, x => cache.userGroups[x]['@rid']),
         deletedAt: null
     }, {dropExtra: false, addDefaults: true});
     await db.insert().into(model.name)
@@ -84,7 +84,7 @@ const create = async (db, opt) => {
         return await createEdge(db, opt);
     }
     const record = model.formatRecord(
-        Object.assign({}, content, {user: user['@rid']}), 
+        Object.assign({}, content, {createdBy: user['@rid']}),
         {dropExtra: false, addDefaults: true});
     return await db.insert().into(model.name).set(record).one();
 };
@@ -92,7 +92,7 @@ const create = async (db, opt) => {
 
 const createEdge = async (db, opt) => {
     const {content, model, user} = opt;
-    content.createdBy = user['@rid']; 
+    content.createdBy = user['@rid'];
     const record = model.formatRecord(content, {dropExtra: false, addDefaults: true});
     const from = record.out;
     const to = record.in;
@@ -118,9 +118,9 @@ const getStatement = (query) => {
 const select = async (db, opt) => {
     // set the default options
     opt = Object.assign({
-        activeOnly: true, 
-        exactlyN: null, 
-        fetchPlan: {'*': 1}, 
+        activeOnly: true,
+        exactlyN: null,
+        fetchPlan: {'*': 1},
         debug: false,
         where: {}
     }, opt);
@@ -132,7 +132,7 @@ const select = async (db, opt) => {
     if (Object.keys(params).length == 0) {
         query = db.select().from(opt.model.name);
     }
-    
+
     if (opt.debug) {
         console.log('select query statement:', getStatement(query));
     }
@@ -164,7 +164,7 @@ const remove = async (db, opt) => {
         where['@rid'] = rec['@rid'];
         where['createdAt'] = rec['createdAt'];
     }
-    
+
     const commit = db.let(
         'updatedRID', (tx) => {
             // update the original record and set the history link to link to the copy
