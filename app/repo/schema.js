@@ -124,7 +124,7 @@ class ClassModel {
         const reqAttr = this.required;
         const optAttr = this.optional;
 
-        if (! opt.ignoreExtra) {
+        if (! opt.ignoreExtra && ! opt.dropExtra) {
             for (let attr of Object.keys(record)) {
                 if (! reqAttr.includes(attr) && ! optAttr.includes(attr)) {
                     throw new Error(`unexpected attribute: ${attr}`);

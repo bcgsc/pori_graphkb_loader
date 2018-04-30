@@ -174,7 +174,7 @@ const remove = async (db, opt) => {
                 .return('AFTER @rid')
                 .where(where);
         }).let('updated', (tx) => {
-            return tx.select().from('$updatedRID').fetch({history: 10});
+            return tx.select().from('$updatedRID').fetch({'*': 1});
         }).commit();
     try {
         return await commit.return('$updated').one();
@@ -221,7 +221,7 @@ const update = async (db, opt) => {
                 .return('AFTER @rid')
                 .where(originalWhere);
         }).let('updated', (tx) => {
-            return tx.select().from('$updatedRID').fetch({history: 10});
+            return tx.select().from('$updatedRID').fetch({'*': 1});
         }).commit();
     if (verbose) {
         console.log(`update: ${commit.buildStatement()}`);

@@ -11,7 +11,7 @@ describe('schema', () => {
     before(async () => {
         ({server, db, schema, admin} = await setUpEmptyDB(false));
     });
-    describe('disease', () => {
+    describe('create', () => {
 
         it('error on source not specified', async () => {
             try {
@@ -46,6 +46,74 @@ describe('schema', () => {
                 });
             expect(record).to.have.property('name', 'cancer');
             expect(record).to.have.property('source', 'disease ontology');
+        });
+    });
+    describe('remove', () => {
+        it('an existing node', async () => {
+            const record = await create(db,
+                {
+                    model: schema.Disease,
+                    content: {name: 'cancer', source: 'disease ontology'},
+                    user: admin
+                });
+            const deleted = await remove(db,
+                {
+                    model: schema.Disease,
+                    where: {name: 'cancer', uuid: record.uuid},
+                    user: admin
+                });
+            console.log(deleted);
+            expect(deleted.deletedBy.toString()).to.equal(admin['@rid'].toString());
+        });
+        it('errors on no existing node', async () => {
+            const record = await create(db,
+                {
+                    model: schema.Disease,
+                    content: {name: 'cancer', source: 'disease ontology'},
+                    user: admin
+                });
+            expect(record).to.have.property('name', 'cancer');
+            expect(record).to.have.property('source', 'disease ontology');
+        });
+    });
+    //describe('select');
+    describe('update', () => {
+        it('change a node name', async () => {
+            // make the initial node
+            const content = {name: 'cancer', source: 'disease ontology'};
+            const record = await create(db,
+                {
+                    model: schema.Disease,
+                    content: content,
+                    user: admin
+                });
+            expect(record).to.have.property('name', 'cancer');
+            expect(record).to.have.property('source', 'disease ontology');
+            // change the name
+            const updated = await update(db,
+                {
+                    content: {name: 'new name'},
+                    model: schema.Disease,
+                    user: admin,
+                    where: Object.assign({}, content)
+                });
+            // check that a history link has been added to the node
+            expect(updated).to.have.property('name', 'new name');
+            expect(updated).to.have.property('source', 'disease ontology');
+            // check that the 'old'/copy node has the original details
+            expect(updated['@rid'].toString()).to.equal(record['@rid'].toString());
+            // select the original node
+            let originalNode = await select(db,
+                {
+                    where: content,
+                    activeOnly: false,
+                    exactlyN: 1,
+                    model: schema.Disease
+                });
+            originalNode = originalNode[0];
+            expect(updated['history'].toString()).to.equal(originalNode['@rid'].toString());
+            expect(originalNode['deletedBy']['@rid'].toString()).to.equal(admin['@rid'].toString());
+            expect(updated['createdBy'].toString()).to.equal(admin['@rid'].toString());
         });
     });
     afterEach(async () => {
