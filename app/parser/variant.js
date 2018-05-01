@@ -70,8 +70,9 @@ const parseContinuous  = (string) => {
     if (match === null) {
         throw new ParsingError(`Input string did not match the expected pattern: ${string}`);
     }
-    const result = {break1Repr: `${prefix}.${string}`};
+    
     let m;
+    const result = {};
     if (m = /\(([^_]+)_([^_]+)\)/.exec(match.group('break1'))) {
         result.break1Start = parsePosition(prefix, m[1])
         result.break1End =  parsePosition(prefix, m[2]);
@@ -88,6 +89,8 @@ const parseContinuous  = (string) => {
     }
 
     const tail = match.group('tail');
+    result.break1Repr = `${prefix}.${string.slice(0, string.length - tail.length)}`;
+
     if (match = /^del([A-Z\?\*]+)?ins([A-Z\?\*]+|\d+)?$/.exec(tail)) {  // indel
         result.type = 'delins';
         result.refSeq = match[1];
@@ -117,13 +120,17 @@ const parseContinuous  = (string) => {
         result.type = '>';
         result.refSeq = match[1];
         result.untemplatedSeq = match[2];
-    } else if (match = /^([A-Z]?)?fs(\*(\d+))?$/.exec(tail)) {
+    } else if (match = /^([A-Z\?])?fs(\*(\d+))?$/.exec(tail)) {
         if (prefix !== 'p') {
             throw new ParsingError('only protein notation can notate frameshift variants');
         }
         result.type = 'fs';
-        result.untemplatedSeq = match[1];
-        result.truncation = match[3] === undefined ? undefined : parseInt(match[3]);
+        if (match[1] !== undefined && match[1] !== '?') {
+            result.untemplatedSeq = match[1];
+        }
+        if (match[3] !== undefined) {
+            result.truncation = parseInt(match[3]);
+        }
     } else if (tail == 'spl'){
         result.type = 'spl';
     } else {
@@ -186,15 +193,19 @@ const parseDiscontinuous = (string) => {
         throw new ParsingError(`input string: ${string} did not match the expected pattern: ${exp}`);
     }
     match = match.groups();
-
-    const prefix1 = getPrefix(match.position1);
-    const pos1 = match.position1.slice(prefix1.length + 1);
-
-    const result = {type: match.type};
-    result.break1Start = parsePosition(prefix1, pos1);
-    result.break1Repr = `${prefix1}.${match.position1}`;
     
-    if (match.position2) {
+    const result = {type: match.type};
+
+    if (match.position1 !== 'na' && match.position1 !== '?') {
+
+        const prefix1 = getPrefix(match.position1);
+        const pos1 = match.position1.slice(prefix1.length + 1);
+
+        result.break1Start = parsePosition(prefix1, pos1);
+        result.break1Repr = `${prefix1}.${pos1}`;
+    }
+    
+    if (match.position2 && match.position2 !== '?' && match.position2 !== '?') {
         const prefix2 = getPrefix(match.position2);
         const pos2 = match.position2.slice(prefix2.length + 1);
         if (pos2 !== '?' && pos2 !== 'na') {

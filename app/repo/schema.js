@@ -442,7 +442,8 @@ const createSchema = async (db, verbose=false) => {
             {name: 'break2Repr', type: 'string'},
             {name: 'refSeq', type: 'string'},
             {name: 'untemplatedSeq', type: 'string'},
-            {name: 'untemplatedSeqSize', type: 'integer'}  // for when we know the number of bases inserted but not what they are
+            {name: 'untemplatedSeqSize', type: 'integer'},  // for when we know the number of bases inserted but not what they are
+            {name: 'truncation', type: 'integer'}
         ],
         indices: [
             {
@@ -461,7 +462,8 @@ const createSchema = async (db, verbose=false) => {
                     'type',
                     'untemplatedSeq',
                     'untemplatedSeqSize',
-                    'zygosity'
+                    'zygosity',
+                    'truncation'
                 ],
                 class: 'PositionalVariant'
             }

@@ -61,6 +61,13 @@ const addRoutes = (opt) => {
         db: db,
         optQueryParams: ['to', 'from']
     });
+
+    addResourceRoutes({
+        router: router,
+        model: schema.SubClassOf,
+        db: db,
+        optQueryParams: ['to', 'from']
+    });
     
     addResourceRoutes({
         router: router,
