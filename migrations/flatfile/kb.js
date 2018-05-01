@@ -1,7 +1,6 @@
 const parse = require('csv-parse/lib/sync');
 const fs = require('fs');
-const variantParser = require('./../../app/parser/variant');
-const {parsePosition} = require('./../../app/parser/position');
+const {parse: variantParser, NOTATION_TO_SUBTYPE} = require('./../../app/parser/variant');
 const request = require('request-promise');
 const stringSimilarity = require('string-similarity');
 const {getActiveFeature} = require('./hgnc');
@@ -74,8 +73,8 @@ const eventParser = (eventString) => {
         let variant, value, subtype, repr;
         try {
             repr = eventString.slice(0);
-            variant = variantParser.parseContinuous(eventString[0], eventString.slice(2));
-            subtype = variantParser.NOTATION_TO_SUBTYPE.get(variant.type);
+            variant = variantParser(repr);
+            subtype = variant.type;
             delete variant.type;
         } catch (err) {
             if (/^[\w\s]+$/.exec(eventString)) {
@@ -93,6 +92,8 @@ const eventParser = (eventString) => {
         for (let rec of result) {
             if (subtype) {
                 rec.subtype = subtype;
+            } else if (! value) {
+                console.log('did not find a subtype for', inputString, subtype);
             }
             if (repr && variant) {
                 rec.break1Repr = repr;
@@ -122,17 +123,18 @@ const eventParser = (eventString) => {
                 [altRef2, break2] = break2.split(':');
                 result.push(Object.assign({}, result[0], {reference2: altRef2}));
             }
+            let pos = {};
+            try {
+                pos = variantParser(`${subtype}(${prefix}.${break1},${prefix}.${break2})`);
+                pos.subtype = pos.type;
+                delete pos.type;
+            } catch (err) {
+                if (break1 !== '?' || break2 !== '?') {
+                    throw err;
+                }
+            }
             for (let parsedRecord of result) {
-                parsedRecord.subtype = subtype;
-                
-                if (break1 !== '?' && break1 !== 'na') {
-                    parsedRecord.break1Start = parsePosition(prefix, break1);
-                    parsePosition.break1Repr = `prefix.${break1}`;
-                }
-                if (break2 !== '?' && break2 !== 'na') {
-                    parsedRecord.break2Start = parsePosition(prefix, break2);
-                    parsePosition.break2Repr = `prefix.${break2}`;
-                }
+                Object.assign(parsedRecord, pos);
             }
         } else {
             throw new Error(`${eventString}, ${inputString}`);
@@ -225,13 +227,17 @@ const addOrGetArticle = async (article, token) => {
 
 
 const uploadEvent = async (event, token) => {
-    
-    const reference = await getActiveFeature({name: event.reference}, token);
-    event.reference = reference['@rid'];
+    let reference, reference2;
+    try {
+        reference = await getActiveFeature({name: event.reference}, token);
+        event.reference = reference['@rid'];
 
-    if (event.reference2) {
-        const reference2 = await getActiveFeature({name: event.reference2}, token);
-        event.reference2 = reference2['@rid'];
+        if (event.reference2) {
+            reference2 = await getActiveFeature({name: event.reference2}, token);
+            event.reference2 = reference2['@rid'];
+        }
+    } catch (err) {
+        throw err;
     }
     let opt = {
         method: 'POST',
@@ -244,6 +250,7 @@ const uploadEvent = async (event, token) => {
     };
     const record = await request(opt); 
     return record;
+
 }
 
 
@@ -299,7 +306,7 @@ const uploadKbFlatFile = async (filepath, token) => {
                     }
                 }
             } catch(err) {
-                console.error(err);
+                console.error(err, event);
                 errorCount++;
             }
         }
@@ -315,18 +322,18 @@ const uploadKbFlatFile = async (filepath, token) => {
         }*/
         // now try to create the events
         for (let variant of variants) {
-            if (variant.type == 'mutation' || variant.type == 'structural') {
-                continue;
-            }
+            //if (variant.type == 'mutation' || variant.type == 'structural') {
+            //    continue;
+            //}
             try {
                 const varRec = await uploadEvent(variant, token);
+                process.stdout.write('.');
             } catch (err) {
                 if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
                     process.stdout.write('*');
                 } else {
                     console.error(err.message);
                     console.error(variant);
-                    throw err;
                 }
             }
         }
