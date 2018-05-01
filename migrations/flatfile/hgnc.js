@@ -34,11 +34,13 @@ const stringSimilarity = require('string-similarity');
   location_sortable: '19q13.43' }
 */
 
-const BASE_URL = 'http://localhost:8080/api'
+const BASE_URL = 'http://localhost:8080/api';
+let LOAD_LIMIT;
 
 
 const addRecords = function* (arr, token) {
-    for (let i=0; i < arr.length; i++) {
+    const limit = LOAD_LIMIT !== undefined ? Math.min(arr.length, LOAD_LIMIT) : arr.length;
+    for (let i=0; i < limit; i++) {
         yield addRecord(arr[i], token);
     }
 }
@@ -122,20 +124,19 @@ const addRecord = async (record, token) => {
         let body; 
         try {
             const ensg = await getActiveFeature({name: record.ensembl_gene_id}, token);
-            if (! ensg) {
-                return;
+            if (ensg) {
+                body = {out: gene['@rid'], in: ensg['@rid']};
+                const newRecord = await request({
+                    method: 'POST',
+                    uri: 'http://localhost:8080/api/aliasof',
+                    body: body,
+                    headers: {
+                        Authorization: token
+                    },
+                    json: true
+                });
+                process.stdout.write('-');
             }
-            body = {out: gene['@rid'], in: ensg['@rid']};
-            const newRecord = await request({
-                method: 'POST',
-                uri: 'http://localhost:8080/api/aliasof',
-                body: body,
-                headers: {
-                    Authorization: token
-                },
-                json: true
-            });
-            process.stdout.write('-');
         } catch (err) {
             if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
                 process.stdout.write('=');
@@ -146,50 +147,57 @@ const addRecord = async (record, token) => {
     }
     // try adding the previous symbols
     for (let symbol of record.prev_symbol || []) {
-        if (symbol.toLowerCase() === gene.name.toLowerCase()) {
-            continue;
-        }
-        let prev;
-        try {
-            prev = await getActiveFeature({name: symbol, longName: record.name, source: 'hgnc', sourceId: record.hgnc_id}, token);
-        } catch (err) {
-            
-            try {
-                prev = await request({
-                    method: 'POST',
-                    uri: `${BASE_URL}/independantfeatures`,
-                    headers: {Authorization: token},
-                    json: true,
-                    body: {source: 'hgnc', name: symbol, biotype: 'gene', longName: record.name, sourceId: record.hgnc_id}
-                });
-            } catch (err2) {
-                console.log(record);
-                console.log(err);
-                console.log(err2.error);
-                throw new Error('ERROR. Could not select and also cannot add');
-            }
-        }
-        // add deprecated link
-        try {
-            const newRecord = await request({
-                method: 'POST',
-                uri: `${BASE_URL}/deprecatedby`,
-                body: {out: prev['@rid'], in: gene['@rid']},
-                headers: {
-                    Authorization: token
-                },
-                json: true
-            });
-            process.stdout.write('D');
-        } catch (err) {
-            if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
-                process.stdout.write('d');
-            } else {
-                throw err;
-            }
-        }
+        await addRelatedHugoGene(gene, symbol, token, 'deprecatedby')
+    }
+    // try adding the previous symbols
+    for (let symbol of record.alias_symbol || []) {
+        await addRelatedHugoGene(gene, symbol, token, 'aliasof')
     }
 };
+
+
+const addRelatedHugoGene = async (gene, symbol, token, relation='deprecatedby') => {
+    if (symbol.toLowerCase() === gene.name.toLowerCase()) {
+        return;
+    }
+    let prev = {source: 'hgnc', name: symbol, biotype: 'gene', longName: gene.longName, sourceId: gene.sourceId};
+    try {
+        prev = await getActiveFeature(prev, token);
+        process.stdout.write('*');
+    } catch (err) {
+        try {
+            prev = await request({
+                method: 'POST',
+                uri: `${BASE_URL}/independantfeatures`,
+                headers: {Authorization: token},
+                json: true,
+                body: prev
+            });
+            process.stdout.write('.');
+        } catch (err2) {
+            throw new Error('ERROR. Could not select and also cannot add');
+        }
+    }
+    // add link
+    try {
+        const newRecord = await request({
+            method: 'POST',
+            uri: `${BASE_URL}/${relation}`,
+            body: {out: prev['@rid'], in: gene['@rid']},
+            headers: {
+                Authorization: token
+            },
+            json: true
+        });
+        process.stdout.write(relation[0].toUpperCase());
+    } catch (err) {
+        if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
+            process.stdout.write(relation[0].toLowerCase());
+        } else {
+            throw err;
+        }
+    }
+}
 
 
 const getActiveFeature = async (opt, token) => {
@@ -216,7 +224,7 @@ const getActiveFeature = async (opt, token) => {
 
 const uploadHugoGenes = async (token) => {
     const iter = addRecords(hgnc.response.docs, token);
-    const pool = new PromisePool(iter, 1);
+    const pool = new PromisePool(iter, 10);
     await pool.start();
 }
 
