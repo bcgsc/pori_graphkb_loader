@@ -28,6 +28,12 @@ const fileExists = (fileName) => {
     return fileName;
 }
 
+
+const setTrue = () => {
+    return true;
+}
+
+
 const optionDefinitions = [
     {
         name: 'help',
@@ -40,6 +46,18 @@ const optionDefinitions = [
         description: 'The flatfile containing the kb entries',
         required: false,
         type: fileExists
+    },
+    {
+        name: 'hugo',
+        alias: 'u',
+        description: 'Flag to indicate if we should try loading the hugo genes',
+        type: Boolean
+    },
+    {
+        name: 'disease-ontology',
+        alias: 'd',
+        type: Boolean,
+        description: 'Flag to indicate if we should try loading the disease ontology'
     }
 ];
 
@@ -85,7 +103,9 @@ const upload = async (opt={hugo: true, do: true}) => {
     }
 }
 
-upload({hugo: true, do: false});
+console.log(options);
+
+upload({hugo: options.hugo, do: options['disease-ontology']});
 
 
 
