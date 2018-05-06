@@ -3,7 +3,7 @@ const {expect} = require('chai');
 const {castUUID} = require('./../app/repo/util');
 const cache = require('./../app/repo/cache');
 const {ClassModel} = require('./../app/repo/schema');
-const {checkAccess} = require('./../app/repo/base');
+const {checkAccess, buildWhere, relatedRIDsSubquery} = require('./../app/repo/base');
 const {PERMISSIONS} = require('./../app/repo/constants');
 
 
@@ -42,6 +42,116 @@ describe('checkAccess', () => {
         expect(access).to.be.false;
     });
 });
+
+
+describe('buildWhere', () => {
+    it('joins multiple attributes', () => {
+        const result = buildWhere({thing: 1, thing2: 2, thing3: 3});
+        expect(result).to.have.property('query', 'thing = :wparam0, thing2 = :wparam1, thing3 = :wparam2');
+        expect(result).to.have.property('params');
+        expect(result.params).to.have.property('wparam0', 1);
+        expect(result.params).to.have.property('wparam1', 2);
+        expect(result.params).to.have.property('wparam2', 3);
+    });
+    it('uses IS operator for boolean', () => {
+        const result = buildWhere({thing: 1, thing2: true, thing3: 3});
+        expect(result).to.have.property('query', 'thing = :wparam0, thing2 IS :wparam1, thing3 = :wparam2');
+        expect(result).to.have.property('params');
+        expect(result.params).to.have.property('wparam0', 1);
+        expect(result.params).to.have.property('wparam1', true);
+        expect(result.params).to.have.property('wparam2', 3);
+    });
+    it('no comma for single attr', () => {
+        const result = buildWhere({thing: 1});
+        expect(result).to.have.property('query', 'thing = :wparam0');
+        expect(result).to.have.property('params');
+        expect(result.params).to.have.property('wparam0', 1);
+    });
+    it('uses IN operator for arrays', () => {
+        const result = buildWhere({thing: 1, thing2: true, thing3: [1, 2, 3]});
+        expect(result).to.have.property('query', 'thing = :wparam0, thing2 IS :wparam1, thing3 IN :wparam2');
+        expect(result).to.have.property('params');
+        expect(result.params).to.have.property('wparam0', 1);
+        expect(result.params).to.have.property('wparam1', true);
+        expect(result.params).to.have.property('wparam2')
+        expect(result.params.wparam2).to.eql([1, 2, 3]);
+    });
+});
+
+
+describe('relatedRIDsSubquery', () => {
+    it('allows multiple edge classes', () => {
+        const result = relatedRIDsSubquery({
+            model: {name: 'table1'},
+            where: {name: 'blargh', lastname: 'monkeys'},
+            followBoth: ['aliasof', 'deprecatedby'],
+            depth: 10
+        });
+        expect(result).to.have.property(
+            'query', 
+            `select @rid from (match {class: table1, where: (name = :wparam0, lastname = :wparam1)}
+            .both('aliasof','deprecatedby'){while: ($depth < 10)} 
+            return $pathElements)`.replace(/\n\s+/g, ''));
+        expect(result).to.have.property('params');
+        expect(result.params).to.have.property('wparam0', 'blargh');
+        expect(result.params).to.have.property('wparam1', 'monkeys');
+    });
+    it('adds all follow options', () => {
+        const result = relatedRIDsSubquery({
+            model: {name: 'table1'},
+            where: {name: 'blargh', lastname: 'monkeys'},
+            followIn: ['aliasof'],
+            followOut: ['deprecatedby'],
+            depth: 10
+        });
+        expect(result).to.have.property(
+            'query', 
+            `select @rid from (match 
+            {class: table1, where: (name = :wparam0, lastname = :wparam1)}.in('aliasof'){while: ($depth < 10)}, 
+            {class: table1, where: (name = :wparam0, lastname = :wparam1)}.out('deprecatedby'){while: ($depth < 10)} 
+            return $pathElements)`.replace(/\n\s+/g, ''));
+        expect(result).to.have.property('params');
+        expect(result.params).to.have.property('wparam0', 'blargh');
+        expect(result.params).to.have.property('wparam1', 'monkeys');
+    });
+    it('allows no edge classes', () => {
+        const result = relatedRIDsSubquery({
+            model: {name: 'table1'},
+            where: {name: 'blargh', lastname: 'monkeys'},
+            depth: 10,
+            followBoth: []
+        });
+        expect(result).to.have.property(
+            'query', 
+            `select @rid from (match {class: table1, where: (name = :wparam0, lastname = :wparam1)}
+            .both(){while: ($depth < 10)} 
+            return $pathElements)`.replace(/\n\s+/g, ''));
+        expect(result).to.have.property('params');
+        expect(result.params).to.have.property('wparam0', 'blargh');
+        expect(result.params).to.have.property('wparam1', 'monkeys');
+    });
+    it('throws error on no where condition', () => {
+        expect(() => { relatedRIDsSubquery({
+            model: {name: 'table1'},
+            followBoth: ['aliasof', 'deprecatedby'],
+            depth: 10
+        }) }).to.throw();
+        expect(() => { relatedRIDsSubquery({
+            model: {name: 'table1'},
+            where: {},
+            followBoth: ['aliasof', 'deprecatedby'],
+            depth: 10
+        }) }).to.throw();
+    });
+    it('throws error on no edge direction', () => {
+        expect(() => { relatedRIDsSubquery({
+            model: {name: 'table1'},
+            where: {name: 'blargh', lastname: 'monkeys'},
+            depth: 10
+        }) }).to.throw();
+    });
+});
+
 
 describe('ClassModel', () => {
     describe('parseOClass', () => {
@@ -130,6 +240,81 @@ describe('ClassModel', () => {
             expect(child.isEdge).to.be.true;
         })
     })
+    describe('formatQuery', () => {
+        let model;
+        before(() => {
+             model = new ClassModel({
+                 name: 'example',
+                 required: ['requiredVar'],
+                 optional: ['defaultVar', 'castable', 'linkVar'],
+                 defaults: {defaultVar: () => 'default'},
+                 cast: {castable: (x) => x.toLowerCase()},
+                 links: ['linkVar']
+             });
+            cache.vocabulary = {example: {
+                requiredVar: [{class: 'example', name: 'req', term: 'vocab1'}, {class: 'example', name: 'req', term: 'vocab2'}]
+            }};
+        });
+        it('parses simple query', () => {
+            const {where, subqueries} = model.formatQuery({
+                requiredVar: 'vocab1'
+            });
+            expect(where).to.have.property('requiredVar', 'vocab1');
+        });
+        it('parses and re-flattens non-recursive subquery', () => {
+            const {where} = model.formatQuery({
+                requiredVar: 'vocab1',
+                'linkVar.thing': 'thing'
+            });
+            console.log(where);
+            expect(where).to.have.property('requiredVar', 'vocab1');
+            expect(where).to.have.property('linkVar.thing', 'thing');
+        });
+        it('list attribute ok', () => {
+            const {where, subqueries} = model.formatQuery({
+                requiredVar: ['vocab1', 'vocab2']
+            });
+            expect(where).to.have.property('requiredVar');
+            expect(where.requiredVar).to.eql(['vocab1', 'vocab2']);
+        });
+        it('parses and flattens subquery list', () => {
+            const {where, subqueries} = model.formatQuery({
+                requiredVar: 'vocab1',
+                'linkVar.thing': ['thing', 'thing2']
+            });
+            console.log(where);
+            expect(where).to.have.property('requiredVar', 'vocab1');
+            expect(where).to.have.property('linkVar.thing');
+            expect(where['linkVar.thing']).to.eql(['thing', 'thing2']);
+        });
+        it('cast for single attr', () => {
+            const {where, subqueries} = model.formatQuery({
+                requiredVar: 'vocab1',
+                castable: 'MixedCase'
+            });
+            console.log(where);
+            expect(where).to.have.property('requiredVar', 'vocab1');
+            expect(where).to.have.property('castable', 'mixedcase');
+        });
+        it('cast for list attr', () => {
+            const {where, subqueries} = model.formatQuery({
+                requiredVar: 'vocab1',
+                'castable': ['MixedCase', 'UPPERCASE']
+            });
+            console.log(where);
+            expect(where).to.have.property('requiredVar', 'vocab1');
+            expect(where).to.have.property('castable');
+            expect(where.castable).to.eql(['mixedcase', 'uppercase']);
+        });
+        it('error on cast for dict attr', () => {
+            expect(() => {
+                return model.formatQuery({
+                    requiredVar: 'vocab1',
+                    'castable': {MixedCase: 1, UPPERCASE: 2}
+                });
+            }).to.throw(TypeError);
+        });
+    });
     describe('formatRecord', () => {
         let model;
         before(() => {

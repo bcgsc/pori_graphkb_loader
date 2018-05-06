@@ -116,6 +116,30 @@ describe('schema', () => {
             expect(updated['createdBy'].toString()).to.equal(admin['@rid'].toString());
         });
     });
+    describe('select', () => {
+        let cancer, carcinoma;
+        before(async () => {
+            cancer = await create(db,
+                {
+                    model: schema.Disease,
+                    content: {name: 'cancer', source: 'disease ontology'},
+                    user: admin
+                });
+            carcinoma = await create(db,
+                {
+                    model: schema.Disease,
+                    content: {name: 'carcinoma', source: 'disease ontology'},
+                    user: admin
+                });
+            await create(db, {
+                model: schema.SubClassOf,
+                content: {from: carcinoma['@rid'], to: cancer['@rid']},
+                user: admin
+            });
+        });
+        it('get by name', async () => {
+        })
+    });
     afterEach(async () => {
         // clear all V/E records
         await db.query('delete edge e');

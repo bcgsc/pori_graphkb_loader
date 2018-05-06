@@ -310,16 +310,15 @@ const uploadKbFlatFile = async (filepath, token) => {
                 errorCount++;
             }
         }
-        /*
-        if (record.id_type !== 'pubmed') {
-            continue;
+        
+        if (record.id_type === 'pubmed') {
+            let evidence;
+            try {
+                evidence = await addOrGetArticle({title: record.id_title, pubmed: record.id}, token);
+            } catch(err) {
+                console.log(err);
+            }
         }
-        let evidence;
-        try {
-            evidence = await addOrGetArticle({title: record.id_title, pubmed: record.id}, token);
-        } catch(err) {
-            console.log(err);
-        }*/
         // now try to create the events
         for (let variant of variants) {
             //if (variant.type == 'mutation' || variant.type == 'structural') {

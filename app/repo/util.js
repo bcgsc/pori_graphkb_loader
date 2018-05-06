@@ -6,10 +6,19 @@ const castUUID = (uuid) => {
         return uuid;
     }
     throw new Error(`not a valid version 4 uuid ${uuid}`);
-}
+};
 
 const timeStampNow = () => {
     return moment().valueOf();
-}
+};
 
-module.exports = {timeStampNow, castUUID};
+const getParameterPrefix = (param) => {
+    const match = /^([^\.]+)\.([^\.]+)$/.exec(param);
+    if (match) {
+        return {prefix: match[1], suffix: match[2]};
+    } else {
+        return {};
+    }
+};
+
+module.exports = {timeStampNow, castUUID, getParameterPrefix};

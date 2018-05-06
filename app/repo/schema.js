@@ -1,11 +1,13 @@
 const {types}  = require('orientjs');
 const uuidV4 = require('uuid/v4');
+const _ = require('lodash');
 
 const {PERMISSIONS} = require('./constants');
 const {createRepoFunctions} = require('./functions');
-const {castUUID, timeStampNow} = require('./util');
+const {castUUID, timeStampNow, getParameterPrefix} = require('./util');
 const cache = require('./cache');
 const {select, populateCache} = require('./base');
+const {AttributeError} = require('./error');
 
 
 class ClassModel {
@@ -19,6 +21,7 @@ class ClassModel {
         this._inherits = opt.inherits || [];
         this._edgeRestrictions = opt.edgeRestrictions || null;
         this.isAbstract = opt.isAbstract;
+        this._linkedModels = opt.linkedModels || {};
     }
 
     get isEdge() {
@@ -52,6 +55,22 @@ class ClassModel {
         return optional;
     }
 
+    get properties() {
+        return _.concat(this.required, this.optional);
+    }
+    
+    get linkedModels() {
+        let linkedModels = Object.assign({}, this._linkedModels);
+        for (let parent of this._inherits) {
+            linkedModels = Object.assign({}, parent.linkedModels, linkedModels);
+        }
+        return linkedModels;
+    }
+    
+    linkModel(name, model) {
+        this._linkedModels[name] = model;
+    }
+
     get cast() {
         let cast = Object.assign({}, this._cast);
         for (let parent of this._inherits) {
@@ -82,6 +101,7 @@ class ClassModel {
         const optional = [];
         const defaults = {};
         const cast = {};
+        const links = [];
         for (let prop of oclass.properties) {
             if (prop.mandatory) {
                 required.push(prop.name);
@@ -95,6 +115,8 @@ class ClassModel {
                 cast[prop.name] = (x) => parseInt(x, 10);
             } else if (types[prop.type] === 'String') {
                 cast[prop.name] = (x) => x.toLowerCase();
+            } else if (types[prop.type] === 'Link') {
+                links.push(prop.name);
             }
             if (prop.name === 'uuid') {
                 defaults.uuid = uuidV4;
@@ -108,7 +130,8 @@ class ClassModel {
             optional: optional,
             defaults: defaults,
             cast: cast,
-            isAbstract: oclass.defaultClusterId === -1 ? true : false
+            isAbstract: oclass.defaultClusterId === -1 ? true : false,
+            links: links
         });
     }
 
@@ -123,10 +146,18 @@ class ClassModel {
         const formattedRecord = Object.assign({}, opt.dropExtra ? {} : record);
         const reqAttr = this.required;
         const optAttr = this.optional;
+        const prefixed = {};
 
+        // make a nested object for the parameter prefixed options
+        for (let attr of Object.keys(record)) {
+            const {prefix, suffix} = getParameterPrefix(attr);
+            if (this.links.includes(prefix) && suffix) {
+                prefixed[attr] = prefix;
+            }
+        }
         if (! opt.ignoreExtra && ! opt.dropExtra) {
             for (let attr of Object.keys(record)) {
-                if (! reqAttr.includes(attr) && ! optAttr.includes(attr)) {
+                if (! reqAttr.includes(attr) && ! optAttr.includes(attr) & prefixed[attr] === undefined) {
                     throw new Error(`unexpected attribute: ${attr}`);
                 }
             }
@@ -189,6 +220,71 @@ class ClassModel {
         }
 
         return formattedRecord;
+    }
+    
+    /**
+     * Parses query 'where' conditions based on the current class
+     */
+    formatQuery(query) {
+        const where = {};
+        const properties = this.properties;
+        const links = this.linkedModels;
+        const subqueries = {};
+        const cast = this.cast;
+
+        for (let condition of Object.keys(query)) {
+            const {prefix, suffix} = getParameterPrefix(condition);
+            let value;
+            if (typeof query[condition] === 'object' && query[condition] !== null) {
+                value = [];
+                for (let item of query[condition]) {
+                    if (cast[condition]) {
+                        value.push(cast[condition](item));
+                    } else {
+                        value.push(item);
+                    }
+                }
+            } else {
+                value = cast[condition] ? cast[condition](query[condition]) : query[condition];
+            }
+            if (properties.includes(prefix) && links[prefix]) {
+                if (subqueries[prefix] === undefined) {
+                    subqueries[prefix] = {where: {}, model: links[prefix]};
+                } 
+                if (['followIn', 'followOut', 'followBoth'].includes(suffix)) {
+                    subqueries[prefix][suffix] = value;
+                } else {
+                    subqueries[prefix].where[suffix] = value;
+                }
+            } else {
+                where[condition] = value;
+            }
+        }
+        // check all parameters are valid
+        for (let prop of Object.keys(where)) {
+            if (! properties.includes(prop)) {
+                throw new AttributeError(`unexpected attribute: ${prop} is not allowed for queries on class ${this.name}`);
+            }
+        }
+        
+        // now check if we actually need subqueries or not (contains follow clause)
+        // flatten them back out if we don't
+        const finalSubQueries = {};
+        for (let prop of Object.keys(subqueries)) {
+            const subquery = subqueries[prop];
+            if (where[prop] !== undefined) {
+                throw new AttributeError(`query property cannot be both specified directly and a subquery: ${prop}`);
+            }
+            if (subquery.followBoth === undefined && subquery.followIn === undefined && subquery.followIn === undefined) {
+                for (let subprop of Object.keys(subquery.where)) {
+                    where[`${prop}.${subprop}`] = subquery.where[subprop];
+                }
+            } else {
+                finalSubQueries[prop] = subquery;
+            }
+        }
+        
+        return {where, subqueries: finalSubQueries};
     }
 }
 
@@ -466,6 +562,24 @@ const createSchema = async (db, verbose=false) => {
                     'truncation'
                 ],
                 class: 'PositionalVariant'
+            },
+            {
+                name: 'PositionalVariant.reference',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                metadata: {ignoreNullValues: true},
+                properties: [
+                    'reference'
+                ],
+                class: 'PositionalVariant'
+            },
+            {
+                name: 'PositionalVariant.reference2',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                metadata: {ignoreNullValues: true},
+                properties: [
+                    'reference2'
+                ],
+                class: 'PositionalVariant'
             }
         ]
     });
@@ -493,6 +607,24 @@ const createSchema = async (db, verbose=false) => {
                     'type',
                     'value',
                     'zygosity'
+                ],
+                class: 'CategoryVariant'
+            },
+            {
+                name: 'CategoryVariant.reference',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                metadata: {ignoreNullValues: true},
+                properties: [
+                    'reference'
+                ],
+                class: 'CategoryVariant'
+            },
+            {
+                name: 'CategoryVariant.reference2',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                metadata: {ignoreNullValues: true},
+                properties: [
+                    'reference2'
                 ],
                 class: 'CategoryVariant'
             }
@@ -778,6 +910,18 @@ const loadSchema = async (db, verbose=false) => {
     // load the vocabulary
     await populateCache(db, schema);
     db.models = schema;
+    // not link the different models where appropriate
+    for (let name of ['V', 'E']) {
+        schema[name].linkModel('createdBy', schema.User);
+        schema[name].linkModel('deletedBy', schema.User);
+    }
+    schema.DependantFeature.linkModel('dependency', schema.IndependantFeature);
+    schema.PositionalVariant.linkModel('reference', schema.Feature);
+    schema.PositionalVariant.linkModel('reference2', schema.Feature);
+    schema.CategoryVariant.linkModel('reference', schema.Ontology);
+    schema.CategoryVariant.linkModel('reference2', schema.Ontology);
+    schema.Statement.linkModel('reviewBy', schema.User);
+    schema.Statement.linkModel('appliesTo', schema.Biomarker);
     return schema;
 };
 

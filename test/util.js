@@ -9,29 +9,30 @@ const shell = require('shelljs');
 // connect to the orientdb server
 // connect to the db server
 
-const setUpEmptyDB = async (verbose=false) => {
+const setUpEmptyDB = async (conf=emptyConf) => {
+    const verbose = conf.verbose;
     // set up the database server
     const server = OrientDB({
-        host: emptyConf.server.host,
-        HTTPport: emptyConf.server.port,
-        username: emptyConf.server.user,
-        password: emptyConf.server.pass
+        host: conf.server.host,
+        HTTPport: conf.server.port,
+        username: conf.server.user,
+        password: conf.server.pass
     });
-    const exists = await server.exists({name: emptyConf.db.name});
+    const exists = await server.exists({name: conf.db.name});
     if (verbose) {
-        console.log('db exists', exists, emptyConf.db.name);
+        console.log('db exists', exists, conf.db.name);
     }
     let db;
     if (exists) {
         if (verbose) {
             console.log('dropping the existing db');
         }
-        await server.drop({name: emptyConf.db.name});
+        await server.drop({name: conf.db.name});
     }
     if (verbose) {
-        console.log('creating the db', emptyConf.db.name);
+        console.log('creating the db', conf.db.name);
     }
-    db = await server.create({name: emptyConf.db.name, username: emptyConf.db.user, password: emptyConf.db.pass});
+    db = await server.create({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
     await db.query('alter database custom standardElementConstraints=false');
     if (verbose) {
         console.log('create the schema');
@@ -77,7 +78,7 @@ const setUpSampleDB = async (verbose=false) => {
     db = await server.create({name: sampleConf.db.name, username: sampleConf.db.user, password: sampleConf.db.pass});
     await db.query('alter database custom standardElementConstraints=false');
     //await db.query(`import database ${sampleConf.db.export} -preserveClusterIDs=TRUE`);
-    const command = `\$ORIENTDB_HOME/bin/console.sh "CONNECT remote:/home/creisle/applications/orientdb-community-2.2.17/databases/test_sample admin admin; SELECT FROM V; import database ${sampleConf.db.export} -preserveClusterIDs=TRUE"`;
+    const command = `${process.env.ORIENTDB_HOME}/bin/console.sh "CONNECT remote:${process.env.ORIENTDB_HOME}/databases/test_sample admin admin; SELECT FROM V; import database ${sampleConf.db.export} -preserveClusterIDs=TRUE"`;
     if (verbose) {
         console.log('executing shell command');
         console.log(command);

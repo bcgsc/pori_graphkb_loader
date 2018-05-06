@@ -4,6 +4,9 @@ const cache = require('./cache');
 const {timeStampNow} = require('./util');
 const {PERMISSIONS} = require('./constants');
 
+const RELATED_NODE_DEPTH = 3;
+const QUERY_LIMIT = 1000;
+
 
 const checkAccess = (user, model, permissionsRequired) => {
     if (! user.permissions) {
@@ -96,6 +99,7 @@ const createEdge = async (db, opt) => {
     const record = model.formatRecord(content, {dropExtra: false, addDefaults: true});
     const from = record.out;
     const to = record.in;
+    console.log('createEdge', record);
     delete record.out;
     delete record.in;
     return await db.create('EDGE', model.name).from(from).to(to).set(record).one();
@@ -109,9 +113,30 @@ const getStatement = (query) => {
         if (typeof value === 'string') {
             value = `'${value}'`;
         }
-        statement = statement.replace(':' + key, `${value}`);
+        statement = statement.replace(new RegExp(':' + key, 'g'), `${value}`);
     }
     return statement;
+}
+
+
+const whereSubClause = (paramName, arr, paramStartIndex=0) => {
+    const content = [];
+    const params = {};
+    for (let value of arr) {
+        const pname = `param${paramStartIndex}`;
+        if (value === undefined || value === null) {
+            content.push(`${paramName} is NULL`);
+        } else {
+            content.push(`${paramName} = :${pname}`);
+            params[pname] = value;
+            paramStartIndex++;
+        }
+    }
+    let query = `${content.join(' OR ')}`;
+    if (content.length > 1) {
+        query = `(${query})`;
+    }
+    return {query, params};
 }
 
 
@@ -121,22 +146,44 @@ const select = async (db, opt) => {
         activeOnly: true,
         exactlyN: null,
         fetchPlan: {'*': 1},
-        debug: false,
-        where: {}
+        debug: true,
+        where: {},
+        limit: QUERY_LIMIT
     }, opt);
-    const params = opt.model.formatRecord(opt.where, {addDefaults: false, dropExtra: false, ignoreMissing: true});
+    console.log('select', opt);
+    
+    const {where, subqueries} = opt.model.formatQuery(opt.where);
+    console.log(where, subqueries);
     if (opt.activeOnly) {
-        params.deletedAt = null;
+        where.deletedAt = null;
     }
-    let query = db.select().from(opt.model.name).where(params);
-    if (Object.keys(params).length == 0) {
-        query = db.select().from(opt.model.name);
+    const params = {};
+    let query = db.select().from(opt.model.name);
+    
+    if (opt.limit !== null) {  // set to null to disable limiting
+        console.log('adding query limit');
+        query.limit(opt.limit);
     }
 
+    for (let attr of Object.keys(where)) {
+        const value = (typeof where[attr] === 'object' && where[attr] !== null) ? where[attr] : [where[attr]];
+        let clause = whereSubClause(attr, value, Object.keys(params).length);
+        Object.assign(params, clause.params);
+        query.where(clause.query, clause.params);
+    }
+    for (let attr of Object.keys(subqueries)) {
+        let clause = relatedRIDsSubquery(Object.assign({
+            paramStartIndex: Object.keys(params).length
+        }, subqueries[attr]));
+        Object.assign(params, clause.params);
+        query.where(`${attr} in (${clause.query})`, clause.params);
+    }
+    
     if (opt.debug) {
+        console.log(query._state);
         console.log('select query statement:', getStatement(query));
     }
-    const recordList  = await query.fetch(opt.fetchPlan).all();
+    const recordList = await query.fetch(opt.fetchPlan).all();
     if (opt.exactlyN !== null) {
         if (recordList.length === 0) {
             if (opt.exactlyN === 0) {
@@ -156,6 +203,94 @@ const select = async (db, opt) => {
         return recordList;
     }
 };
+
+
+/**
+ * @param where {Object} the conditions to format
+ */
+const buildWhere = (where, paramStartIndex=0) => {
+    const params = {};
+    let query = [];
+    const keys = Object.keys(where);
+    for (let i = 0; i < keys.length; i++) {
+        const name = `wparam${i + paramStartIndex}`;
+        const value = where[keys[i]];
+        
+        if (value === null || value === undefined) {
+            query.push(`${keys[i]} IS NULL`);
+            params[name] = value;
+        } else if (typeof value === 'object') {
+            let clause = whereSubClause(keys[i], value, paramStartIndex);
+            paramStartIndex += Object.keys(clause.params).length;
+            Object.assign(params, clause.params);
+            query.push(clause.query);
+        } else {
+            query.push(`${keys[i]} = :${name}`);
+            params[name] = value;
+        } 
+    }
+    query = query.join(', ');
+    return {query: query, params: params};
+}
+
+/**
+ * Builds the SQL statement for retrieving a list of RIDs related to some target node (defined by the where clause)
+ *
+ * An example SQL statement might be
+ *
+ *      select * from variant 
+ *      where reference in (
+ *          select @rid from (
+ *              match {
+ *                  class: Feature, 
+ *                  as: feat, 
+ *                  where: (name = 'afdn')
+ *              }.both(){
+ *                  as: related, 
+ *                  while: ($depth < 10)
+ *              } return $pathElements
+ *          )
+ *      )
+ *
+ * @param opt {Object} Options
+ * @param opt.model {ClassModel} the class model the statement is being built for
+ * @param opt.depth {integer} the depth to look for related nodes until
+ * @param opt.recurseOn {Array} A list of edge class names to follow
+ * @param opt.where {Object} conditions to indicate a match
+ *
+ * @returns {Object} An object containing the query string and an object defining the parameters
+ */
+const relatedRIDsSubquery = (opt) => {
+    opt = Object.assign({
+        depth: RELATED_NODE_DEPTH,
+        paramStartIndex: 0
+    }, opt);
+    if (opt.followIn === undefined && opt.followOut === undefined && opt.followBoth === undefined) {
+        throw new Error('must defined at minimum one of follow{In,Out,Both}');
+    }
+    if (opt.where === undefined || Object.keys(opt.where).length === 0) {
+        throw new AttributeError('expected where value for relatedRIDsSubquery');
+    }
+    const {query: where, params} = buildWhere(opt.where, opt.paramStartIndex);
+    
+    let query = 'match ';
+    const prefix = `{class: ${opt.model.name}, where: (${where})}`;
+    
+    const expressions = [];
+
+    if (opt.followBoth !== undefined) {
+        expressions.push(`${prefix}.both(${Array.from(opt.followBoth, x => `'${x}'`).join(',')}){while: (\$depth < ${opt.depth})}`);
+    }
+    if (opt.followIn !== undefined) {
+        expressions.push(`${prefix}.in(${Array.from(opt.followIn, x => `'${x}'`).join(',')}){while: (\$depth < ${opt.depth})}`);
+    }
+    if (opt.followOut !== undefined) {
+        expressions.push(`${prefix}.out(${Array.from(opt.followOut, x => `'${x}'`).join(',')}){while: (\$depth < ${opt.depth})}`);
+    }
+    query = `select @rid from (${query}${expressions.join(', ')} return \$pathElements)`;
+    return {query, params};
+};
+
 
 const remove = async (db, opt) => {
     const {model, user, where} = opt;
@@ -234,4 +369,4 @@ const update = async (db, opt) => {
     }
 };
 
-module.exports = {select, create, update, remove, checkAccess, createUser, populateCache, cacheVocabulary};
+module.exports = {select, create, update, remove, checkAccess, createUser, populateCache, cacheVocabulary, buildWhere, relatedRIDsSubquery, QUERY_LIMIT};

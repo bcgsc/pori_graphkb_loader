@@ -4,7 +4,8 @@ const jc = require('json-cycle');
 const _ = require('lodash');
 
 const {ErrorMixin, AttributeError, NoResultFoundError, MultipleResultsFoundError} = require('./../repo/error');
-const {select, create, update, remove} = require('./../repo/base');
+const {select, create, update, remove, QUERY_LIMIT} = require('./../repo/base');
+const {getParameterPrefix} = require('./../repo/util');
 
 
 class InputValidationError extends ErrorMixin {};
@@ -14,10 +15,15 @@ const RECORD_LIMIT = 1000;
  * check that the parameters passed are expected
  */
 const validateParams = async (opt) => {
-    const params = Array.from(opt.params) || [];
     const required = opt.required || [];
     const optional = opt.optional || [];
     const allowNone = opt.allowNone !== undefined ? opt.allowNone : true;
+    const params = [];
+
+    for (let param of Array.from(opt.params) || []) {
+        const {prefix, suffix} = getParameterPrefix(param);
+        params.push(prefix ? prefix : param);
+    }
     if (Object.keys(params).length == 0 && ! allowNone) {
         throw new InputValidationError('no parameters were specified');
     }
@@ -48,8 +54,6 @@ const validateParams = async (opt) => {
 const addResourceRoutes = (opt) => {
     const {router, model, db, cacheUpdate} = opt;
     const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
-    optQueryParams.push('recordLimit');
-    optQueryParams.push('recordStart');
     const reqQueryParams = opt.reqQueryParams || [];
     const verbose = opt.verbose === undefined ? true : false;
     const route = opt.route || `/${model.name.toLowerCase()}${model.isEdge ? '' : 's'}`;
@@ -60,20 +64,18 @@ const addResourceRoutes = (opt) => {
     
     router.get(route, 
         async (req, res, next) => {
-            //if (req.query.recordLimit === undefined) {
-            //    req.query.recordLimit = RECORD_LIMIT;
-            //}
-            //if (req.query.recordStart === undefined) {
-            //    req.query.recordStart = 0;
-            //}
+            console.log(route, 'GET', req.query);
+            const params = _.omit(req.query, ['limit', 'followBoth', 'followOut', 'followIn']);
+            const other = Object.assign({limit: QUERY_LIMIT}, _.omit(req.query, Object.keys(params)));
+            console.log(other);
             try {
-                validateParams({params: req.query, required: reqQueryParams, optional: optQueryParams});
+                validateParams({params: params, required: reqQueryParams, optional: optQueryParams});
             } catch (err) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 return;
             }
             try {
-                const result = await select(db, {model: model, where: req.query});
+                const result = await select(db, Object.assign(other, {model: model, where: params}));
                 res.json(jc.decycle(result));
             } catch (err) {
                 res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));

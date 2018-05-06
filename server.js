@@ -1,7 +1,7 @@
 'use strict';
 
 // required packages
-const conf = require('./test/config/empty'); // get the database connection configuration
+const conf = require('./test/config/sample'); // get the database connection configuration
 const app = require('./app');
 const auth = require('./app/middleware/auth');
 const {PERMISSIONS} = require('./app/repo/constants');
