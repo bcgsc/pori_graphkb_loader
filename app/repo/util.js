@@ -21,4 +21,16 @@ const getParameterPrefix = (param) => {
     }
 };
 
-module.exports = {timeStampNow, castUUID, getParameterPrefix};
+/**
+ * wrap a string in single quotations
+ *
+ * @example
+ *  >>> quoteWrap('thing')
+ *  "'thing'"
+ *
+ */
+const quoteWrap = (string) => {
+    return `'${string}'`;
+}
+
+module.exports = {timeStampNow, castUUID, getParameterPrefix, quoteWrap};

@@ -65,7 +65,7 @@ const addResourceRoutes = (opt) => {
     router.get(route, 
         async (req, res, next) => {
             console.log(route, 'GET', req.query);
-            const params = _.omit(req.query, ['limit', 'followBoth', 'followOut', 'followIn']);
+            const params = _.omit(req.query, ['limit', 'fuzzyMatch', 'ancestors', 'descendants']);
             const other = Object.assign({limit: QUERY_LIMIT}, _.omit(req.query, Object.keys(params)));
             console.log(other);
             try {

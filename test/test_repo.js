@@ -2,8 +2,8 @@
 const {expect} = require('chai');
 const {castUUID} = require('./../app/repo/util');
 const cache = require('./../app/repo/cache');
-const {ClassModel} = require('./../app/repo/schema');
-const {checkAccess, buildWhere, relatedRIDsSubquery} = require('./../app/repo/base');
+const {ClassModel, FUZZY_CLASSES} = require('./../app/repo/schema');
+const {checkAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH} = require('./../app/repo/base');
 const {PERMISSIONS} = require('./../app/repo/constants');
 
 
@@ -43,7 +43,7 @@ describe('checkAccess', () => {
     });
 });
 
-
+/*
 describe('buildWhere', () => {
     it('joins multiple attributes', () => {
         const result = buildWhere({thing: 1, thing2: 2, thing3: 3});
@@ -151,6 +151,81 @@ describe('relatedRIDsSubquery', () => {
         }) }).to.throw();
     });
 });
+*/
+
+describe('Follow', () => {
+    it('allows empty constructor arguments', () => {
+        const follow = new Follow();
+        expect(follow.toString()).to.equal(`.both(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
+    })
+    it('allows In edge type', () => {
+        const follow = new Follow([], 'in');
+        expect(follow.toString()).to.equal(`.in(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
+    });
+    it('allows Out edge type', () => {
+        const follow = new Follow([], 'out');
+        expect(follow.toString()).to.equal(`.out(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
+    });
+    it('allows In and null depth', () => {
+        const follow = new Follow([], 'in', null);
+        expect(follow.toString()).to.equal(`.in(){while: ($matched.in().size() > 0)}`);
+    });
+    it('allows Out and null depth', () => {
+        const follow = new Follow([], 'out', null);
+        expect(follow.toString()).to.equal(`.out(){while: ($matched.out().size() > 0)}`);
+    });
+    it('allows In and null depth with classes', () => {
+        const follow = new Follow(['blargh', 'monkeys'], 'in', null);
+        expect(follow.toString()).to.equal(`.in('blargh', 'monkeys'){while: ($matched.in('blargh', 'monkeys').size() > 0)}`);
+    });
+    it('allows Out and null depth with classes', () => {
+        const follow = new Follow(['blargh', 'monkeys'], 'out', null);
+        expect(follow.toString()).to.equal(`.out('blargh', 'monkeys'){while: ($matched.out('blargh', 'monkeys').size() > 0)}`);
+    });
+    it('allows Both edge type', () => {
+        const follow = new Follow([], 'both');
+        expect(follow.toString()).to.equal(`.both(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
+    });
+    it('throws error for null depth and both type', () => {
+        expect(() => { new Follow([], 'both', null)}).to.throw();
+    });
+    it('allows multiple edge classes', () => {
+        const follow = new Follow(['thing1', 'thing2'], 'in');
+        expect(follow.toString()).to.equal(`.in('thing1', 'thing2'){while: ($depth < ${RELATED_NODE_DEPTH})}`);
+    });
+    it('allows input depth to override default', () => {
+        const follow = new Follow([], 'in', RELATED_NODE_DEPTH + 1);
+        expect(follow.toString()).to.equal(`.in(){while: ($depth < ${RELATED_NODE_DEPTH + 1})}`);
+    });
+});
+
+
+describe('SelectionQuery', () => {
+    const person = new ClassModel({name: 'Person', optional: ['name', 'lastname']})
+    const parent = new ClassModel({
+        name: 'parent',
+        required: ['name'],
+        optional: ['child'],
+        linkedModels: {child: person}
+    })
+    it('defaults to a match statement when follow is given', () => {
+        const query = new SelectionQuery(parent, {name: 'blargh'}, {follow: [[new Follow(['monkeys'])]]});
+        expect(query).to.have.property('params');
+        expect(query.params).to.eql({param0: 'blargh'});
+        expect(Object.keys(query.params).length).to.equal(1);
+        console.log(query)
+        const expected = `MATCH {class: parent, where: (name = :param0)}.both('monkeys'){while: (\$depth < ${RELATED_NODE_DEPTH})} return \$pathElements`;
+        expect(query.toString().toLowerCase()).to.equal(expected.toLowerCase());
+    });
+    it('defaults to a select statement when no follow arguments are given');
+    it('allows select subqueries');
+    it('allows match subqueries');
+    describe('conditionClause', () => {
+        it('allows alternate join string');
+        it('defaults to OR statement');
+        it('allows the surrounding braces to be left off');
+    });
+});
 
 
 describe('ClassModel', () => {
@@ -243,14 +318,18 @@ describe('ClassModel', () => {
     describe('formatQuery', () => {
         let model;
         before(() => {
-             model = new ClassModel({
-                 name: 'example',
-                 required: ['requiredVar'],
-                 optional: ['defaultVar', 'castable', 'linkVar'],
-                 defaults: {defaultVar: () => 'default'},
-                 cast: {castable: (x) => x.toLowerCase()},
-                 links: ['linkVar']
-             });
+            const linkedModel = new ClassModel({
+                name: 'other',
+                optional: ['thing']
+            });
+            model = new ClassModel({
+                name: 'example',
+                required: ['requiredVar'],
+                optional: ['defaultVar', 'castable', 'linkVar'],
+                defaults: {defaultVar: () => 'default'},
+                cast: {castable: (x) => x.toLowerCase()},
+                linkedModels: {linkVar: linkedModel}
+            });
             cache.vocabulary = {example: {
                 requiredVar: [{class: 'example', name: 'req', term: 'vocab1'}, {class: 'example', name: 'req', term: 'vocab2'}]
             }};
@@ -270,6 +349,86 @@ describe('ClassModel', () => {
             expect(where).to.have.property('requiredVar', 'vocab1');
             expect(where).to.have.property('linkVar.thing', 'thing');
         });
+        it('parses recursive subquery', () => {
+            const {where, subqueries} = model.formatQuery({
+                requiredVar: 'vocab1',
+                'linkVar.thing': 'thing',
+                'linkVar.fuzzyMatch': 4
+            });
+            console.log(where);
+            expect(where).to.have.property('requiredVar', 'vocab1');
+            expect(subqueries).to.have.property('linkVar');
+            expect(subqueries.linkVar.where).to.eql({thing: 'thing'});
+            expect(subqueries.linkVar.follow).to.have.property('length', 1);
+            expect(subqueries.linkVar.follow[0]).to.have.property('length', 1);
+            const follow = subqueries.linkVar.follow[0][0];
+            expect(follow).to.have.property('type', 'both');
+            expect(follow).to.have.property('classnames');
+            expect(follow.classnames).to.eql(FUZZY_CLASSES);
+        });
+        it('parses subquery with fuzzyMatch');
+        it('parses subquery with fuzzyMatch and ancestors');
+        it('parses subquery with fuzzyMatch and descendants');
+        it('parses subquery with fuzzyMatch and both ancestors and descendants');
+        it('parses subquery with ancestors');
+        it('parses subquery with descendants');
+        it('parses subquery with both ancestors and descendants');
+        it('parses query with fuzzyMatch', () => {
+            const result = model.formatQuery({
+                requiredVar: 'vocab1',
+                fuzzyMatch: 4
+            });
+            console.log(result);
+            expect(result.where).to.have.property('requiredVar', 'vocab1');
+            const follow = result.follow[0][0];
+            expect(follow).to.have.property('type', 'both');
+            expect(follow).to.have.property('classnames');
+            expect(follow.classnames).to.eql(FUZZY_CLASSES);
+            expect(follow.depth).to.equal(4);
+        });
+        it('parses query with fuzzyMatch and ancestors', () => {
+            const result = model.formatQuery({
+                requiredVar: 'vocab1',
+                fuzzyMatch: 4,
+                ancestors: ''
+            });
+            console.log(result);
+            expect(result.where).to.have.property('requiredVar', 'vocab1');
+            const follow = result.follow[0];
+            expect(follow).to.have.property('length', 3);
+            expect(follow[0]).to.have.property('type', 'both');
+            expect(follow[0]).to.have.property('classnames');
+            expect(follow[0].classnames).to.eql(FUZZY_CLASSES);
+            expect(follow[0].depth).to.equal(4);
+
+            expect(follow[1]).to.have.property('type', 'in');
+            expect(follow[1]).to.have.property('classnames');
+            expect(follow[1].classnames).to.eql([]);
+            expect(follow[1].depth).to.equal(null);
+            
+            expect(follow[2]).to.have.property('type', 'both');
+            expect(follow[2]).to.have.property('classnames');
+            expect(follow[2].classnames).to.eql(FUZZY_CLASSES);
+            expect(follow[2].depth).to.equal(4);
+        });
+        it('parses query with fuzzyMatch and descendants', () => {
+            const result = model.formatQuery({
+                requiredVar: 'vocab1',
+                fuzzyMatch: 4,
+                descendants: ''
+            });
+            console.log(result);
+            expect(result.where).to.have.property('requiredVar', 'vocab1');
+            const follow = result.follow[0];
+            expect(follow[1]).to.have.property('type', 'out');
+            expect(follow[1]).to.have.property('classnames');
+            expect(follow[1].classnames).to.eql([]);
+            expect(follow[1].depth).to.equal(null);
+        });
+        it('parses query with fuzzyMatch and both ancestors and descendants');
+        it('parses query with ancestors');
+        it('parses query with descendants');
+        it('parses query with both ancestors and descendants');
         it('list attribute ok', () => {
             const {where, subqueries} = model.formatQuery({
                 requiredVar: ['vocab1', 'vocab2']

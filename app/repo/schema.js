@@ -6,8 +6,11 @@ const {PERMISSIONS} = require('./constants');
 const {createRepoFunctions} = require('./functions');
 const {castUUID, timeStampNow, getParameterPrefix} = require('./util');
 const cache = require('./cache');
-const {select, populateCache} = require('./base');
+const {select, populateCache, Follow} = require('./base');
 const {AttributeError} = require('./error');
+
+
+const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 
 
 class ClassModel {
@@ -101,7 +104,6 @@ class ClassModel {
         const optional = [];
         const defaults = {};
         const cast = {};
-        const links = [];
         for (let prop of oclass.properties) {
             if (prop.mandatory) {
                 required.push(prop.name);
@@ -115,8 +117,6 @@ class ClassModel {
                 cast[prop.name] = (x) => parseInt(x, 10);
             } else if (types[prop.type] === 'String') {
                 cast[prop.name] = (x) => x.toLowerCase();
-            } else if (types[prop.type] === 'Link') {
-                links.push(prop.name);
             }
             if (prop.name === 'uuid') {
                 defaults.uuid = uuidV4;
@@ -130,11 +130,20 @@ class ClassModel {
             optional: optional,
             defaults: defaults,
             cast: cast,
-            isAbstract: oclass.defaultClusterId === -1 ? true : false,
-            links: links
+            isAbstract: oclass.defaultClusterId === -1 ? true : false
         });
     }
-
+    
+    /**
+     * Checks a single record to ensure it matches the expected pattern for this class model
+     *
+     * @param {Object} record the record to be checked
+     * @param {Object} opt options
+     * @param {Boolean=true} opt.dropExtra drop any record attributes that are not defined on the current class model by either required or optional
+     * @param {Boolean=false} opt.addDefaults add default values for any attributes not given (where defined)
+     * @param {Boolean=false} opt.ignoreMissing do not throw an error when a required attribute is missing
+     * @param {Boolean=false} opt.ignoreExtra do not throw an error when an unexpected value is given
+     */
     formatRecord(record, opt) {
         // add default options
         opt = Object.assign({
@@ -151,7 +160,7 @@ class ClassModel {
         // make a nested object for the parameter prefixed options
         for (let attr of Object.keys(record)) {
             const {prefix, suffix} = getParameterPrefix(attr);
-            if (this.links.includes(prefix) && suffix) {
+            if (this.linkedModels[prefix] && suffix) {
                 prefixed[attr] = prefix;
             }
         }
@@ -222,22 +231,60 @@ class ClassModel {
         return formattedRecord;
     }
     
+    formatFollow(query) {
+        const follow = [];
+        console.log('formatFollow', query);
+        const splitUnlessEmpty = (string) => {
+            return string === '' ? [] : string.split(',');
+        }
+        // translate the fuzzyMatch/ancestors/descendants into proper follow statements
+        if (query.ancestors !== undefined) {
+            if (typeof query.ancestors === 'string') {
+                follow.push([new Follow(splitUnlessEmpty(query.ancestors), 'in', null)]);
+            } else {
+                follow.push(Array.from(query.ancestors, anc => new Follow(splitUnlessEmpty(anc), 'in', null)));
+            }
+        }
+        if (query.descendants !== undefined) {
+            if (typeof query.descendants === 'string') {
+                follow.push([new Follow(splitUnlessEmpty(query.descendants), 'out', null)]);
+            } else {
+                follow.push(Array.from(query.descendants, desc => new Follow(splitUnlessEmpty(desc), 'out', null)));
+            }
+        }
+        if (query.fuzzyMatch) {
+            const fuzzy = new Follow(FUZZY_CLASSES, 'both', query.fuzzyMatch);
+            if (follow.length === 0) {
+                follow.push([fuzzy]);
+            } else {
+                for (let followArr of follow) {
+                    followArr.unshift(fuzzy);
+                    followArr.push(fuzzy);
+                }
+            }
+        }
+        return follow;
+    }
     /**
      * Parses query 'where' conditions based on the current class
      */
-    formatQuery(query) {
-        const where = {};
+    formatQuery(inputQuery) {
+        const query = {where: {}, subqueries: {}, follow: []};
         const properties = this.properties;
         const links = this.linkedModels;
         const subqueries = {};
         const cast = this.cast;
+        const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants'];
 
-        for (let condition of Object.keys(query)) {
+        for (let condition of Object.keys(inputQuery)) {
+            if (specialArgs.includes(condition)) {
+                continue;
+            }
             const {prefix, suffix} = getParameterPrefix(condition);
             let value;
-            if (typeof query[condition] === 'object' && query[condition] !== null) {
+            if (typeof inputQuery[condition] === 'object' && inputQuery[condition] !== null) {
                 value = [];
-                for (let item of query[condition]) {
+                for (let item of inputQuery[condition]) {
                     if (cast[condition]) {
                         value.push(cast[condition](item));
                     } else {
@@ -245,23 +292,23 @@ class ClassModel {
                     }
                 }
             } else {
-                value = cast[condition] ? cast[condition](query[condition]) : query[condition];
+                value = cast[condition] ? cast[condition](inputQuery[condition]) : inputQuery[condition];
             }
             if (properties.includes(prefix) && links[prefix]) {
                 if (subqueries[prefix] === undefined) {
                     subqueries[prefix] = {where: {}, model: links[prefix]};
                 } 
-                if (['followIn', 'followOut', 'followBoth'].includes(suffix)) {
+                if (specialArgs.includes(suffix)) {
                     subqueries[prefix][suffix] = value;
                 } else {
                     subqueries[prefix].where[suffix] = value;
                 }
             } else {
-                where[condition] = value;
+                query.where[condition] = value;
             }
         }
         // check all parameters are valid
-        for (let prop of Object.keys(where)) {
+        for (let prop of Object.keys(query.where)) {
             if (! properties.includes(prop)) {
                 throw new AttributeError(`unexpected attribute: ${prop} is not allowed for queries on class ${this.name}`);
             }
@@ -269,22 +316,25 @@ class ClassModel {
         
         // now check if we actually need subqueries or not (contains follow clause)
         // flatten them back out if we don't
-        const finalSubQueries = {};
         for (let prop of Object.keys(subqueries)) {
             const subquery = subqueries[prop];
-            if (where[prop] !== undefined) {
-                throw new AttributeError(`query property cannot be both specified directly and a subquery: ${prop}`);
+            
+            if (query.where[prop] !== undefined) {
+                throw new AttributeError(`inputQuery property cannot be both specified directly and a subquery: ${prop}`);
             }
-            if (subquery.followBoth === undefined && subquery.followIn === undefined && subquery.followIn === undefined) {
+            // translate the fuzzyMatch/ancestors/descendants into proper follow statements
+            subquery.follow = this.formatFollow(subquery);
+            if (subquery.follow.length === 0) {
                 for (let subprop of Object.keys(subquery.where)) {
-                    where[`${prop}.${subprop}`] = subquery.where[subprop];
+                    query.where[`${prop}.${subprop}`] = subquery.where[subprop];
                 }
             } else {
-                finalSubQueries[prop] = subquery;
+                query.subqueries[prop] = subquery;
             }
         }
+        query.follow = this.formatFollow(inputQuery);
         
-        return {where, subqueries: finalSubQueries};
+        return query;
     }
 }
 
@@ -419,7 +469,8 @@ const createSchema = async (db, verbose=false) => {
             {name: 'name', type: 'string', mandatory: true, notNull: true, type: 'string'},
             {name: 'nameVersion', type: 'string'},
             {name: 'description', type: 'string'},
-            {name: 'longName', type: 'string'}
+            {name: 'longName', type: 'string'},
+            {name: 'subsets', type: 'embedded list'}
         ],
         indices: [
             {
@@ -926,4 +977,4 @@ const loadSchema = async (db, verbose=false) => {
 };
 
 
-module.exports = {createSchema, loadSchema, ClassModel};
+module.exports = {createSchema, loadSchema, ClassModel, FUZZY_CLASSES};

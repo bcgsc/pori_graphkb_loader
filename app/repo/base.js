@@ -1,11 +1,151 @@
 'use strict';
 const {AttributeError, ControlledVocabularyError, MultipleResultsFoundError, NoResultFoundError, PermissionError, AuthenticationError} = require('./error');
 const cache = require('./cache');
-const {timeStampNow} = require('./util');
+const {timeStampNow, quoteWrap} = require('./util');
 const {PERMISSIONS} = require('./constants');
 
 const RELATED_NODE_DEPTH = 3;
 const QUERY_LIMIT = 1000;
+
+
+
+class Follow {
+    constructor(classnames=[], type='both', depth=RELATED_NODE_DEPTH) {
+        if (!['both', 'in', 'out'].includes(type)) {
+            throw new AttributeError(`expected type to be: in, out, or both. But was given: ${type}`);
+        }
+        if (type === 'both' && depth === null) {
+            throw new Error('following edges requires a stopping point. Cannot have null depth with type \'both\'');
+        }
+        this.classnames = classnames;
+        this.type = type;
+        this.depth = depth;
+    }
+    toString() {
+        const classesString = Array.from(this.classnames, quoteWrap).join(', ');
+        if (this.depth === null) {
+            // follow until out of edge types
+            return `.${this.type}(${classesString}){while: ($matched.${this.type}(${classesString}).size() > 0)}`;
+        } else {
+            return `.${this.type}(${classesString}){while: ($depth < ${this.depth})}`;
+        }
+    }
+}
+
+
+class SelectionQuery {
+    /**
+     * Builds the query statement for selecting or matching records from the database
+     *
+     * @param {Object} opt Selection options
+     * @param {Boolean} [opt.activeOnly=true] Return only non-deleted records
+     * @param {ClassModel} model the model to be selected from
+     * @param {Object} [where={}] the query requirements
+     *
+     * @param {Array[Array[Follow]]} [where.follow] Array of Arrays of Follow clauses. 
+     *
+     */
+    constructor(model, where={}, opt={}) {
+        this.model = model;
+        this.conditions = [];
+        this.params = {};
+        this.paramIndex = opt.paramIndex || 0;
+        this.follow = opt.follow || [];
+        
+        const formatted = model.formatQuery(where);
+        const {subqueries} = formatted;
+        where = formatted.where;
+        if (opt.activeOnly) {
+            where.deletedAt = null;
+        }
+
+        for (let attr of Object.keys(where)) {
+            const value = (typeof where[attr] === 'object' && where[attr] !== null) ? where[attr] : [where[attr]];
+            const clause = this.conditionClause(attr, value);
+            Object.assign(this.params, clause.params);
+            this.paramIndex += Object.keys(clause.params).length;
+            this.conditions.push(clause.query);
+        }
+        for (let attr of Object.keys(subqueries)) {
+            const subQuery = new SelectionQuery(
+                this.model.linkedModels[attr],
+                subqueries[attr],
+                {paramIndex: this.paramIndex, activeOnly: opt.activeOnly}
+            );
+            Object.assign(this.params, subQuery.params);
+            this.paramIndex += Object.keys(subQuery.params).length;
+            this.conditions.push(`${attr} in (SELECT @rid from (${subQuery.toString()}))`);
+        }
+    }
+    /**
+     * @param {string} name name of the parameter
+     * @param {Array} arr array of possible values
+     *
+     * @example
+     *  >>> query.OrClause('thing', ['blargh', null])
+     *  {query: '(thing = :param0 OR thing IS NULL)', params: {param0: 'blargh'}}
+     *
+     *  >>> query.OrClause('thing', [2])
+     *  {query: 'thing = :param0', params: {param0: 2}}
+     */
+    conditionClause(name, arr, opt) {
+        opt = Object.assign({
+            joinOperator: ' OR ',
+            noWrap: false
+        }, opt);
+        const content = [];
+        const params = {};
+        let paramStartIndex = Object.keys(this.params).length;
+
+        for (let value of arr) {
+            const pname = `param${paramStartIndex}`;
+            if (value === undefined || value === null) {
+                content.push(`${name} is NULL`);
+            } else {
+                content.push(`${name} = :${pname}`);
+                params[pname] = value;
+                paramStartIndex++;
+            }
+        }
+        let query = `${content.join(opt.joinOperator)}`;
+        if (content.length > 1 && ! opt.noWrap) {
+            query = `(${query})`;
+        }
+        return {query, params};
+    }
+    toString() {
+        let queryString;
+        if (this.follow.length > 0) {
+            // must be a match query to follow edges
+            const prefix = `{class: ${this.model.name}, where: (${this.conditions.join(', ')})}`;
+            const expressions = [];
+            for (let arr of this.follow) {
+                expressions.push(`${prefix}${Array.from(arr, x => x.toString()).join('')}`);
+            }
+             queryString = `MATCH ${expressions.join(', ')} RETURN \$pathElements`;
+        } else {
+            queryString = `SELECT * FROM ${this.model.name} WHERE ${this.conditions.join(' AND ')}`;
+        }
+        return queryString;
+    }
+    /**
+     * Returns the query as a string but substitutes all parameters to make the results more readable.
+     *
+     * @warning
+     *      use the toString and params to query the db. This method is for debugging/logging only
+     */
+    displayString() {
+        let statement = this.toString();
+        for (let key of Object.keys(this.params)) {
+            let value = this.params[key];
+            if (typeof value === 'string') {
+                value = `'${value}'`;
+            }
+            statement = statement.replace(new RegExp(':' + key, 'g'), `${value}`);
+        }
+        return statement;
+    }
+}
 
 
 const checkAccess = (user, model, permissionsRequired) => {
@@ -119,27 +259,21 @@ const getStatement = (query) => {
 }
 
 
-const whereSubClause = (paramName, arr, paramStartIndex=0) => {
-    const content = [];
-    const params = {};
-    for (let value of arr) {
-        const pname = `param${paramStartIndex}`;
-        if (value === undefined || value === null) {
-            content.push(`${paramName} is NULL`);
-        } else {
-            content.push(`${paramName} = :${pname}`);
-            params[pname] = value;
-            paramStartIndex++;
-        }
-    }
-    let query = `${content.join(' OR ')}`;
-    if (content.length > 1) {
-        query = `(${query})`;
-    }
-    return {query, params};
-}
-
-
+/**
+ * Builds the query statement for selecting or matching records from the database
+ *
+ * @param {Object} db Database connection from orientjs
+ *
+ * @param {Object} opt Selection options
+ * @param {Boolean} [opt.activeOnly=true] Return only non-deleted records
+ * @param {Boolean} [opt.debug=true] print more output to help with debugging queries
+ * @param {ClassModel} opt.model the model to be selected from
+ * @param {Object} [opt.where={}] the query requirements
+ * @param {int|null} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
+ * @param {int|null} [opt.limit=QUERY_LIMIT] the maximum number of records to return
+ * @param {Object} [opt.fetchPlan] key value mapping of class names to depths of edges to follow or '*' for any class
+ *
+ */
 const select = async (db, opt) => {
     // set the default options
     opt = Object.assign({
@@ -152,49 +286,30 @@ const select = async (db, opt) => {
     }, opt);
     console.log('select', opt);
     
-    const {where, subqueries} = opt.model.formatQuery(opt.where);
-    console.log(where, subqueries);
-    if (opt.activeOnly) {
-        where.deletedAt = null;
-    }
-    const params = {};
-    let query = db.select().from(opt.model.name);
-    
-    if (opt.limit !== null) {  // set to null to disable limiting
-        console.log('adding query limit');
-        query.limit(opt.limit);
+    const query = new SelectionQuery(opt.model, opt.where, opt);
+
+    if (opt.debug) {
+        console.log('select query statement:', query.displayString());
     }
 
-    for (let attr of Object.keys(where)) {
-        const value = (typeof where[attr] === 'object' && where[attr] !== null) ? where[attr] : [where[attr]];
-        let clause = whereSubClause(attr, value, Object.keys(params).length);
-        Object.assign(params, clause.params);
-        query.where(clause.query, clause.params);
-    }
-    for (let attr of Object.keys(subqueries)) {
-        let clause = relatedRIDsSubquery(Object.assign({
-            paramStartIndex: Object.keys(params).length
-        }, subqueries[attr]));
-        Object.assign(params, clause.params);
-        query.where(`${attr} in (${clause.query})`, clause.params);
-    }
-    
-    if (opt.debug) {
-        console.log(query._state);
-        console.log('select query statement:', getStatement(query));
-    }
-    const recordList = await query.fetch(opt.fetchPlan).all();
+    // send the query statement to the database
+    const recordList = await db.query(query.toString(), {
+        params: query.params,
+        limit: opt.limit,
+        fetchPlan: opt.fetchPlan
+    }).all();
+
     if (opt.exactlyN !== null) {
         if (recordList.length === 0) {
             if (opt.exactlyN === 0) {
                 return [];
             } else {
-                throw new NoResultFoundError(`query returned an empty list: ${getStatement(query)}`);
+                throw new NoResultFoundError(`query returned an empty list: ${query.displayString()}`);
             }
         } else if (opt.exactlyN !== recordList.length) {
             throw new MultipleResultsFoundError(
                 `query returned unexpected number of results. Found ${recordList.length} results `
-                `but expected ${opt.exactlyN} results: ${getStatement(query)}`
+                `but expected ${opt.exactlyN} results: ${query.displayString()}`
             );
         } else {
             return recordList;
@@ -204,92 +319,6 @@ const select = async (db, opt) => {
     }
 };
 
-
-/**
- * @param where {Object} the conditions to format
- */
-const buildWhere = (where, paramStartIndex=0) => {
-    const params = {};
-    let query = [];
-    const keys = Object.keys(where);
-    for (let i = 0; i < keys.length; i++) {
-        const name = `wparam${i + paramStartIndex}`;
-        const value = where[keys[i]];
-        
-        if (value === null || value === undefined) {
-            query.push(`${keys[i]} IS NULL`);
-            params[name] = value;
-        } else if (typeof value === 'object') {
-            let clause = whereSubClause(keys[i], value, paramStartIndex);
-            paramStartIndex += Object.keys(clause.params).length;
-            Object.assign(params, clause.params);
-            query.push(clause.query);
-        } else {
-            query.push(`${keys[i]} = :${name}`);
-            params[name] = value;
-        } 
-    }
-    query = query.join(', ');
-    return {query: query, params: params};
-}
-
-/**
- * Builds the SQL statement for retrieving a list of RIDs related to some target node (defined by the where clause)
- *
- * An example SQL statement might be
- *
- *      select * from variant 
- *      where reference in (
- *          select @rid from (
- *              match {
- *                  class: Feature, 
- *                  as: feat, 
- *                  where: (name = 'afdn')
- *              }.both(){
- *                  as: related, 
- *                  while: ($depth < 10)
- *              } return $pathElements
- *          )
- *      )
- *
- * @param opt {Object} Options
- * @param opt.model {ClassModel} the class model the statement is being built for
- * @param opt.depth {integer} the depth to look for related nodes until
- * @param opt.recurseOn {Array} A list of edge class names to follow
- * @param opt.where {Object} conditions to indicate a match
- *
- * @returns {Object} An object containing the query string and an object defining the parameters
- */
-const relatedRIDsSubquery = (opt) => {
-    opt = Object.assign({
-        depth: RELATED_NODE_DEPTH,
-        paramStartIndex: 0
-    }, opt);
-    if (opt.followIn === undefined && opt.followOut === undefined && opt.followBoth === undefined) {
-        throw new Error('must defined at minimum one of follow{In,Out,Both}');
-    }
-    if (opt.where === undefined || Object.keys(opt.where).length === 0) {
-        throw new AttributeError('expected where value for relatedRIDsSubquery');
-    }
-    const {query: where, params} = buildWhere(opt.where, opt.paramStartIndex);
-    
-    let query = 'match ';
-    const prefix = `{class: ${opt.model.name}, where: (${where})}`;
-    
-    const expressions = [];
-
-    if (opt.followBoth !== undefined) {
-        expressions.push(`${prefix}.both(${Array.from(opt.followBoth, x => `'${x}'`).join(',')}){while: (\$depth < ${opt.depth})}`);
-    }
-    if (opt.followIn !== undefined) {
-        expressions.push(`${prefix}.in(${Array.from(opt.followIn, x => `'${x}'`).join(',')}){while: (\$depth < ${opt.depth})}`);
-    }
-    if (opt.followOut !== undefined) {
-        expressions.push(`${prefix}.out(${Array.from(opt.followOut, x => `'${x}'`).join(',')}){while: (\$depth < ${opt.depth})}`);
-    }
-    query = `select @rid from (${query}${expressions.join(', ')} return \$pathElements)`;
-    return {query, params};
-};
 
 
 const remove = async (db, opt) => {
@@ -369,4 +398,4 @@ const update = async (db, opt) => {
     }
 };
 
-module.exports = {select, create, update, remove, checkAccess, createUser, populateCache, cacheVocabulary, buildWhere, relatedRIDsSubquery, QUERY_LIMIT};
+module.exports = {select, create, update, remove, checkAccess, createUser, populateCache, cacheVocabulary, QUERY_LIMIT, SelectionQuery, Follow, RELATED_NODE_DEPTH};
