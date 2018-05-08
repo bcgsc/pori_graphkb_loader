@@ -1,8 +1,7 @@
 'use strict';
-const {AttributeError, ControlledVocabularyError, MultipleResultsFoundError, NoResultFoundError, PermissionError, AuthenticationError} = require('./error');
+const {AttributeError, MultipleResultsFoundError, NoResultFoundError} = require('./error');
 const cache = require('./cache');
 const {timeStampNow, quoteWrap} = require('./util');
-const {PERMISSIONS} = require('./constants');
 
 const RELATED_NODE_DEPTH = 3;
 const QUERY_LIMIT = 1000;
@@ -10,6 +9,20 @@ const QUERY_LIMIT = 1000;
 
 
 class Follow {
+    /**
+     * Sets up the edge following clause portion for tha match query statement
+     * @param {Array[string]} classnames the names of the edge classes to follow
+     * @param {string} type the type of edge to follow (in, out, both)
+     * @param {int|null} depth depth of the edges to follow
+     *
+     * @example
+     * > new Follow().toString();
+     * '.both(){while: ($depth < 3)}'
+     *
+     * > new Follow(['blargh', 'monkeys'], 'out', null).toString();
+     * '.out('blargh', 'monkeys'){while: ($matched.out('blargh', 'monkeys').size() > 0)}'
+     *
+     */
     constructor(classnames=[], type='both', depth=RELATED_NODE_DEPTH) {
         if (!['both', 'in', 'out'].includes(type)) {
             throw new AttributeError(`expected type to be: in, out, or both. But was given: ${type}`);
@@ -42,7 +55,7 @@ class SelectionQuery {
      * @param {ClassModel} model the model to be selected from
      * @param {Object} [where={}] the query requirements
      *
-     * @param {Array[Array[Follow]]} [where.follow] Array of Arrays of Follow clauses. 
+     * @param {Array[Array[Follow]]} [where.follow] Array of Arrays of Follow clauses.
      *
      */
     constructor(model, where={}, opt={}) {
@@ -51,7 +64,7 @@ class SelectionQuery {
         this.params = {};
         this.paramIndex = opt.paramIndex || 0;
         this.follow = opt.follow || [];
-        
+
         const formatted = model.formatQuery(where);
         const {subqueries} = formatted;
         where = formatted.where;
@@ -122,7 +135,7 @@ class SelectionQuery {
             for (let arr of this.follow) {
                 expressions.push(`${prefix}${Array.from(arr, x => x.toString()).join('')}`);
             }
-             queryString = `MATCH ${expressions.join(', ')} RETURN \$pathElements`;
+            queryString = `MATCH ${expressions.join(', ')} RETURN \$pathElements`;
         } else {
             queryString = `SELECT * FROM ${this.model.name} WHERE ${this.conditions.join(' AND ')}`;
         }
@@ -178,7 +191,7 @@ const createUser = async (db, opt) => {
         .one();
     const user = await select(db, {where: {name: userName}, model: model, exactlyN: 1});
     return user;
-}
+};
 
 
 const populateCache = async (db, schema) => {
@@ -194,7 +207,7 @@ const populateCache = async (db, schema) => {
     }
     // load the vocabulary
     await cacheVocabulary(db, schema.Vocabulary);
-}
+};
 
 const cacheVocabulary = async (db, model) => {
     // load the vocabulary
@@ -243,20 +256,7 @@ const createEdge = async (db, opt) => {
     delete record.out;
     delete record.in;
     return await db.create('EDGE', model.name).from(from).to(to).set(record).one();
-}
-
-
-const getStatement = (query) => {
-    let statement = query.buildStatement();
-    for (let key of Object.keys(query._state.params)) {
-        let value = query._state.params[key];
-        if (typeof value === 'string') {
-            value = `'${value}'`;
-        }
-        statement = statement.replace(new RegExp(':' + key, 'g'), `${value}`);
-    }
-    return statement;
-}
+};
 
 
 /**
@@ -268,10 +268,10 @@ const getStatement = (query) => {
  * @param {Boolean} [opt.activeOnly=true] Return only non-deleted records
  * @param {Boolean} [opt.debug=true] print more output to help with debugging queries
  * @param {ClassModel} opt.model the model to be selected from
+ * @param {Object} [opt.fetchPlan] key value mapping of class names to depths of edges to follow or '*' for any class
  * @param {Object} [opt.where={}] the query requirements
  * @param {int|null} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
  * @param {int|null} [opt.limit=QUERY_LIMIT] the maximum number of records to return
- * @param {Object} [opt.fetchPlan] key value mapping of class names to depths of edges to follow or '*' for any class
  *
  */
 const select = async (db, opt) => {
@@ -285,7 +285,7 @@ const select = async (db, opt) => {
         limit: QUERY_LIMIT
     }, opt);
     console.log('select', opt);
-    
+
     const query = new SelectionQuery(opt.model, opt.where, opt);
 
     if (opt.debug) {
@@ -308,7 +308,7 @@ const select = async (db, opt) => {
             }
         } else if (opt.exactlyN !== recordList.length) {
             throw new MultipleResultsFoundError(
-                `query returned unexpected number of results. Found ${recordList.length} results `
+                `query returned unexpected number of results. Found ${recordList.length} results ` +
                 `but expected ${opt.exactlyN} results: ${query.displayString()}`
             );
         } else {
@@ -348,10 +348,18 @@ const remove = async (db, opt) => {
     }
 };
 
-/*
+
+/**
  * uses a transaction to copy the current record into a new record
  * then update the actual current record (to preserve links)
  * the link the copy to the current record with the history link
+ *
+ * @param {Object} db orientjs database connection
+ * @param {Object} opt options
+ * @param {Boolean=false} opt.verbose print extra information to the console
+ * @param {Object} opt.content the content for the new node (any unspecified attributes are assumed to be unchanged)
+ * @param {Object} opt.where the selection criteria for the original node
+ * @param {Object} opt.user the user updating the record
  */
 const update = async (db, opt) => {
     const {content, model, user, where} = opt;
