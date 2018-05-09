@@ -25,7 +25,7 @@ const router = express.Router();
 
 app.use('/api', router);
 router.use((req, res, next) => {
-    console.log(`[${req.method}] ${req.url}`);
+    console.log(`[${req.method}] ${req.url}`, req.body);
     next();
 });
 router.use(auth.checkToken);

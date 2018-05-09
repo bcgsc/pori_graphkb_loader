@@ -5,12 +5,12 @@
 const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
 const fs = require('fs');
-const { uploadDiseaseOntology } = require('./disease_ontology');
+const {uploadDiseaseOntology} = require('./disease_ontology');
 //const ensHg19 = require('./../ensembl69_hg19_annotations');
-const { uploadHugoGenes } = require('./hgnc');
-const { uploadKbFlatFile } = require('./kb');
-const _ = require('lodash');
-const request = require('request-promise');
+const {uploadHugoGenes} = require('./hgnc');
+const {uploadKbFlatFile} = require('./kb');
+const {uploadUberon} = require('./uberon');
+const path = require('path');
 
 const PERM_TOKEN = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7Im5hbWUiOiJhZG1pbiIsIkByaWQiOiIjNDE6MCJ9LCJpYXQiOjE1MjQyNDgwODgsImV4cCI6MTE1MjQyNDgwODh9.-PkTFeYCB7NyNs0XOap3ptPTp3icWxGbEBi2Hlku-kQ';
 
@@ -18,20 +18,15 @@ const argumentError = (usage, msg) => {
     console.log(usage);
     console.error(`Argument Error: ${msg}\n`);
     process.exit(2);
-}
+};
 
 
 const fileExists = (fileName) => {
     if (! fs.existsSync(fileName)) {
         throw new Error(`File does not exist: ${fileName}`);
     }
-    return fileName;
-}
-
-
-const setTrue = () => {
-    return true;
-}
+    return path.resolve(fileName);
+};
 
 
 const optionDefinitions = [
@@ -49,15 +44,34 @@ const optionDefinitions = [
     },
     {
         name: 'hugo',
-        alias: 'u',
+        alias: 'g',
         description: 'Flag to indicate if we should try loading the hugo genes',
-        type: Boolean
+        type: fileExists
     },
     {
         name: 'disease-ontology',
         alias: 'd',
-        type: Boolean,
+        type: fileExists,
         description: 'Flag to indicate if we should try loading the disease ontology'
+    },
+    {
+        name: 'host',
+        default: '127.0.0.1',
+        description: 'server hosting the KB API',
+        required: true
+    },
+    {
+        name: 'port',
+        type: parseInt,
+        default: 8080,
+        required: true,
+        description: 'port number for the server hosting the KB API'
+    },
+    {
+        name: 'uberon',
+        alias: 'u',
+        description: 'path to the uberon file to upload. Expected format is OWL',
+        type: fileExists
     }
 ];
 
@@ -86,26 +100,63 @@ if (options.help !== undefined) {
 
 // check all required arguments
 for (let opt of optionDefinitions) {
-    if (opt.required && options[opt.name] === undefined) {
-        argumentError(usage, `--${opt.name} is a required argument`);
+    if (options[opt.name] === undefined) {
+        if (opt.default !== undefined) {
+            options[opt.name] = opt.default;
+        } else if (opt.required) {
+            argumentError(usage, `--${opt.name} is a required argument`);
+        }
     }
 }
 
-const upload = async (opt={hugo: true, do: true}) => {
-    if (opt.do) {
-        await uploadDiseaseOntology(PERM_TOKEN);
+/**
+ * wrapper to make requests less verbose
+ */
+class ApiRequest {
+    constructor(options) {
+        this.baseUrl = `http://${options.host}:${options.port}/api`;
+        this.headers = {
+            Authorization: PERM_TOKEN
+        };
     }
-    if (opt.hugo) {
-        await uploadHugoGenes(PERM_TOKEN);
-    }
-    if (options['reference-flatfile']) {
-        await uploadKbFlatFile(options['reference-flatfile'], PERM_TOKEN);
+    request(opt) {
+        const req = {
+            method: opt.method || 'GET',
+            headers: this.headers,
+            uri: `${this.baseUrl}/${opt.uri}`,
+            json: true
+        };
+        if (opt.body) {
+            req.body = opt.body;
+        }
+        if (opt.qs) {
+            req.qs = opt.qs;
+        }
+        return req;
     }
 }
+
+const apiConnection = new ApiRequest(options);
+console.log(apiConnection);
+
+const upload = async () => {
+    if (options['disease-ontology']) {
+        await uploadDiseaseOntology({conn: apiConnection, filename: options['disease-ontology']});
+    }
+    if (options['hugo']) {
+        await uploadHugoGenes({conn: apiConnection,  filename: options['hugo']});
+    }
+    if (options['reference-flatfile']) {
+        await uploadKbFlatFile({conn: apiConnection, filename: options['reference-flatfile']});
+    }
+    if (options['uberon']) {
+        await uploadUberon({conn: apiConnection, filename: options['uberon']});
+    }
+};
 
 console.log(options);
 
-upload({hugo: options.hugo, do: options['disease-ontology']});
+upload();
 
 
 

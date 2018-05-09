@@ -1,8 +1,6 @@
-const hgnc = require('./../../hgnc_complete_set');
 const _ = require('lodash');
 const request = require('request-promise');
 const PromisePool = require('es6-promise-pool');
-const stringSimilarity = require('string-similarity');
 
 /* example record
 { gene_family: [ 'Immunoglobulin like domain containing' ],
@@ -34,7 +32,6 @@ const stringSimilarity = require('string-similarity');
   location_sortable: '19q13.43' }
 */
 
-const BASE_URL = 'http://localhost:8080/api';
 let LOAD_LIMIT;
 
 
@@ -43,46 +40,10 @@ const addRecords = function* (arr, token) {
     for (let i=0; i < limit; i++) {
         yield addRecord(arr[i], token);
     }
-}
-
-const convertNameToSymbol = (name) => {
-    let symbol = [];
-    const subs = {
-        zinc: 'zn',
-        antigen: 'age'
-    };
-    name = name.replace(/(\b(with|and|the|a|or|protein|family member)|-type|type)\b/i, '');
-    for (let token of name.split(/(\s|-)+/)) {
-        token = token.replace(/[^a-zA-Z0-9]+/, '').trim().toLowerCase();
-        if (subs[token] !== undefined) {
-            symbol.push(subs[token]);
-        } else {
-            let match = /^(ZN\b|[A-Z]|[0-9]+|[0-9]+[A-Z]\b)/i.exec(token);
-            if (match) {
-                symbol.push(match[1].toUpperCase());
-            }
-        }
-    }
-    return symbol.join('').toUpperCase();
-}
+};
 
 
-const bestMatches = (symbols, names) => {
-    const matches = {};
-    for (let name of names) {
-        const expectedSymbol = convertNameToSymbol(name);
-        for (let symbol of symbols) {
-            const sim = stringSimilarity.compareTwoStrings(symbol, expectedSymbol);
-            if (matches[symbol] === undefined || matches[symbol].similarity < sim) {
-                matches[symbol] = {name: name, expectedSymbol: expectedSymbol, similarity: sim};
-            }
-        }
-    }
-    return matches;
-}
-
-
-const addRecord = async (record, token) => {
+const addRecord = async (record, conn) => {
     if (record.status.toLowerCase() === 'entry withdrawn') {
         return;
     }
@@ -98,15 +59,11 @@ const addRecord = async (record, token) => {
     };
 
     // add the record to the kb
-    let opt = {
+    let opt = conn.request({
         method: 'POST',
-        uri: `${BASE_URL}/independantfeatures`,
-        body: gene,
-        headers: {
-            Authorization: token
-        },
-        json: true
-    };
+        uri: `independantfeatures`,
+        body: gene
+    });
     try {
         gene = await request(opt);
         process.stdout.write('.');
@@ -114,27 +71,23 @@ const addRecord = async (record, token) => {
         if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
             // already exists, try relating it
             process.stdout.write('*');
-            gene = await getActiveFeature(gene, token);
+            gene = await getActiveFeature(gene, conn);
         } else {
             throw err;
         }
     }
     // now try adding the relationships to other gene types
     if (record.ensembl_gene_id) {
-        let body; 
+        let body;
         try {
-            const ensg = await getActiveFeature({name: record.ensembl_gene_id}, token);
+            const ensg = await getActiveFeature({name: record.ensembl_gene_id}, conn);
             if (ensg) {
                 body = {out: gene['@rid'], in: ensg['@rid']};
-                const newRecord = await request({
+                await request(conn.request({
                     method: 'POST',
-                    uri: 'http://localhost:8080/api/aliasof',
-                    body: body,
-                    headers: {
-                        Authorization: token
-                    },
-                    json: true
-                });
+                    uri: 'aliasof',
+                    body: body
+                }));
                 process.stdout.write('-');
             }
         } catch (err) {
@@ -146,33 +99,31 @@ const addRecord = async (record, token) => {
         }
     }
     // try adding the previous symbols
-    for (let symbol of record.prev_symbol || []) {
-        await addRelatedHugoGene(gene, symbol, token, 'deprecatedby')
-    }
+    await Promise.all(Array.from(record.prev_symbol, (symbol) => {
+        return addRelatedHugoGene(gene, symbol, conn, 'deprecatedby');
+    }));
     // try adding the previous symbols
     for (let symbol of record.alias_symbol || []) {
-        await addRelatedHugoGene(gene, symbol, token, 'aliasof')
+        await addRelatedHugoGene(gene, symbol, conn, 'aliasof');
     }
 };
 
 
-const addRelatedHugoGene = async (gene, symbol, token, relation='deprecatedby') => {
+const addRelatedHugoGene = async (gene, symbol, conn, relation='deprecatedby') => {
     if (symbol.toLowerCase() === gene.name.toLowerCase()) {
         return;
     }
     let prev = {source: 'hgnc', name: symbol, biotype: 'gene', longName: gene.longName, sourceId: gene.sourceId};
     try {
-        prev = await getActiveFeature(prev, token);
+        prev = await getActiveFeature(prev, conn);
         process.stdout.write('*');
     } catch (err) {
         try {
-            prev = await request({
+            prev = await request(conn.request({
                 method: 'POST',
-                uri: `${BASE_URL}/independantfeatures`,
-                headers: {Authorization: token},
-                json: true,
+                uri: `independantfeatures`,
                 body: prev
-            });
+            }));
             process.stdout.write('.');
         } catch (err2) {
             throw new Error('ERROR. Could not select and also cannot add');
@@ -180,15 +131,11 @@ const addRelatedHugoGene = async (gene, symbol, token, relation='deprecatedby') 
     }
     // add link
     try {
-        const newRecord = await request({
+        await request(conn.request({
             method: 'POST',
-            uri: `${BASE_URL}/${relation}`,
-            body: {out: prev['@rid'], in: gene['@rid']},
-            headers: {
-                Authorization: token
-            },
-            json: true
-        });
+            uri: `${relation}`,
+            body: {out: prev['@rid'], in: gene['@rid']}
+        }));
         process.stdout.write(relation[0].toUpperCase());
     } catch (err) {
         if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
@@ -197,19 +144,14 @@ const addRelatedHugoGene = async (gene, symbol, token, relation='deprecatedby') 
             throw err;
         }
     }
-}
+};
 
 
-const getActiveFeature = async (opt, token) => {
-    opt = {
-        method: 'GET',
-        uri: `${BASE_URL}/independantfeatures`,
-        headers: {
-            Authorization: token
-        },
-        qs: Object.assign({}, opt, {deletedAt: "null"}),
-        json: true
-    };
+const getActiveFeature = async (opt, conn) => {
+    opt = conn.request({
+        uri: 'independantfeatures',
+        qs: Object.assign({}, opt, {deletedAt: 'null'})
+    });
 
     try {
         const rec = await request(opt);
@@ -220,12 +162,13 @@ const getActiveFeature = async (opt, token) => {
     } catch (err) {
         throw err;
     }
-}
+};
 
-const uploadHugoGenes = async (token) => {
-    const iter = addRecords(hgnc.response.docs, token);
+const uploadHugoGenes = async (opt) => {
+    const hgnc = require(opt.filename);
+    const iter = addRecords(hgnc.response.docs, opt.conn);
     const pool = new PromisePool(iter, 10);
     await pool.start();
-}
+};
 
 module.exports = {uploadHugoGenes, getActiveFeature};

@@ -56,13 +56,15 @@ const addResourceRoutes = (opt) => {
     const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
     const reqQueryParams = opt.reqQueryParams || [];
     const verbose = opt.verbose === undefined ? true : false;
-    const route = opt.route || `/${model.name.toLowerCase()}${model.isEdge ? '' : 's'}`;
-
+    let route = opt.route || `/${model.name.toLowerCase()}${model.isEdge ? '' : 's'}`;
+    if (route.endsWith('ys')) {
+        route = route.replace(/ys$/, 'ies');
+    }
     if (verbose) {
         console.log(`addResourceRoutes: ${route}`);
     }
-    
-    router.get(route, 
+
+    router.get(route,
         async (req, res, next) => {
             console.log(route, 'GET', req.query);
             const params = _.omit(req.query, ['limit', 'fuzzyMatch', 'ancestors', 'descendants']);
@@ -81,7 +83,7 @@ const addResourceRoutes = (opt) => {
                 res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
             }
         });
-    router.post(route, 
+    router.post(route,
         async (req, res, next) => {
             if (! _.isEmpty(req.query)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
@@ -123,9 +125,9 @@ const addResourceRoutes = (opt) => {
             }
         }
     );
-    
+
     // Add the id routes
-    router.get(`${route}/:id`, 
+    router.get(`${route}/:id`,
         async (req, res, next) => {
             if (! uuidValidate(req.params.id) ) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid uuid: ${req.params.id}`});
@@ -149,7 +151,7 @@ const addResourceRoutes = (opt) => {
                 }
             }
         });
-    router.put(`${route}/:id`, 
+    router.put(`${route}/:id`,
         async (req, res, next) => {
             if (! uuidValidate(req.params.id) ) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid uuid: ${req.params.id}`});
@@ -161,9 +163,9 @@ const addResourceRoutes = (opt) => {
             }
             try {
                 const result = await update(db, {
-                    model: model, 
-                    content: req.body, 
-                    where: {uuid: req.params.id, deletedAt: "null"}, 
+                    model: model,
+                    content: req.body,
+                    where: {uuid: req.params.id, deletedAt: "null"},
                     user: req.user
                 });
                 if (cacheUpdate) {

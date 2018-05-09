@@ -1,68 +1,43 @@
-const doid = require('./../../doid');
+/**
+ * Given the DOID JSON file. Upload the diseases and relationships to the knowledgebase using the REST API
+ */
+
 const _ = require('lodash');
 const request = require('request-promise');
+const {addRecord, getRecordBy} = require('./util');
+
+const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
 
 
-const getDiseaseBy = async (where, token) => {
-    newRecord = await request({
-        method: 'GET',
-        uri: 'http://localhost:8080/api/diseases',
-        headers: {Authorization: token},
-        json: true,
-        qs: where
-    });
-    if (newRecord.length > 1) {
-        throw new Error('expected a single record');
-    } else if (newRecord.length == 0) {
-        throw new Error('missing record');
-    }
-    newRecord = newRecord[0];
-    return newRecord;
+const parseDoid = (ident) => {
+    ident = ident.replace(PREFIX_TO_STRIP, '');
+    ident = ident.replace('_', ':');
+    return ident;
 };
 
-const addDisease = async (where, token, exists_ok=false) => {
-    let opt = {
-        method: 'POST',
-        uri: 'http://localhost:8080/api/diseases',
-        body: where,
-        headers: {
-            Authorization: token
-        },
-        json: true
-    };
-    try {
-        const newRecord = await request(opt);
-        process.stdout.write('.');
-        return newRecord;
-    } catch (err) {
-        if (exists_ok && err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
-            process.stdout.write('*');
-            return await getDiseaseBy(where, token);
-        }
-        throw err;
-    }
+const parseDoVersion = (version) => {
+    // ex. 'http://purl.obolibrary.org/obo/doid/releases/2018-03-02/doid.owl'
+    const m = /releases\/(\d\d\d\d-\d\d-\d\d)\//.exec(version);
+    return m[1];
 };
 
+/**
+ * Parses the disease ontology json for disease definitions, relationships to other DO diseases and relationships to NCI disease terms
+ *
+ * @param {Object} opt
+ */
+const uploadDiseaseOntology = async ({filename, conn}) => {
+    // load the DOID JSON
+    const DOID = require(filename);
 
-const uploadDiseaseOntology = async (PERM_TOKEN) => {
-    const parseDoid = (ident) => {
-        return `DOID:${ident.match(/\/DOID_\d+$/)[0].split('_')[1]}`;
-    }
-    
-    const parseDoVersion = (version) => {
-        // ex. 'http://purl.obolibrary.org/obo/doid/releases/2018-03-02/doid.owl'
-        m = /releases\/(\d\d\d\d-\d\d-\d\d)\//.exec(version);
-        return m[1];
-    }
-    
     // build the disease ontology first
     const nodesByName = {};  // store by name
     const deprecatedNodes = {};
     const synonymsByName = {};
-    
-    const doVersion = parseDoVersion(doid.graphs[0].meta.version);
-    console.log('\nAdding/getting the disease nodes')
-    for (let node of doid.graphs[0].nodes) {
+
+    const doVersion = parseDoVersion(DOID.graphs[0].meta.version);
+    console.log('\nAdding/getting the disease nodes');
+    for (let node of DOID.graphs[0].nodes) {
         if (node.id === undefined || node.lbl === undefined) {
             continue;
         }
@@ -82,6 +57,12 @@ const uploadDiseaseOntology = async (PERM_TOKEN) => {
         if (node.meta === undefined) {
             continue;
         }
+        if (node.meta.definition && node.meta.definition.val) {
+            nodesByName[node.lbl].description = node.meta.definition.val;
+        }
+        if (node.meta.subsets) {
+            nodesByName[node.lbl].subsets = Array.from(node.meta.subsets, (subset) => {return subset.replace(PREFIX_TO_STRIP, '');});
+        }
         deprecatedNodes[node.lbl] = node.meta.deprecated;
         if (node.meta && node.meta.synonyms) {
             for (let {val: alias} of node.meta.synonyms) {
@@ -92,11 +73,11 @@ const uploadDiseaseOntology = async (PERM_TOKEN) => {
             }
         }
     }
-    
+
     const diseaseRecords = {};
     for (let name of Object.keys(nodesByName)) {
         const node = nodesByName[name];
-        let newRecord = await addDisease(node, PERM_TOKEN, true);
+        let newRecord = await addRecord('diseases', node, conn, true);
 
         if (diseaseRecords[newRecord.sourceId] !== undefined) {
             console.log(newRecord);
@@ -112,24 +93,22 @@ const uploadDiseaseOntology = async (PERM_TOKEN) => {
         for (let synonym of synonymsByName[record.name]) {
             // get the synonym record
             try {
-                synonym = await getDiseaseBy({name: synonym, deletedAt: "null"}, PERM_TOKEN);
+                synonym = await getRecordBy('diseases', {name: synonym, deletedAt: 'null'}, conn);
             } catch (err) {
-                synonym = await addDisease({
-                    name: synonym, 
-                    sourceId: record.sourceId, 
+                synonym = await addRecord('diseases', {
+                    name: synonym,
+                    sourceId: record.sourceId,
                     source: record.source,
                     sourceVersion: doVersion
-                }, PERM_TOKEN); 
+                }, conn);
                 process.stdout.write('.');
             }
             try {
-                await request({
+                await request(conn.request({
                     method: 'POST',
-                    uri: 'http://localhost:8080/api/aliasof',
-                    body: {out: synonym['@rid'], in: record['@rid']},
-                    headers: {Authorization: PERM_TOKEN},
-                    json: true
-                });
+                    uri: 'aliasof',
+                    body: {out: synonym['@rid'], in: record['@rid']}
+                }));
                 process.stdout.write('.');
             } catch (err) {
                 if (! err.error || ! err.error.message || ! err.error.message.startsWith('Cannot index')) {
@@ -142,18 +121,22 @@ const uploadDiseaseOntology = async (PERM_TOKEN) => {
         }
     }
 
-    /* now add the edges to the kb
-    {
-      "sub" : "http://purl.obolibrary.org/obo/DOID_5039",
-      "pred" : "is_a",
-      "obj" : "http://purl.obolibrary.org/obo/DOID_461"
-    }
-    */
-    const relationshipTypes = {}
+    await loadEdges({DOID, conn, records: diseaseRecords});
+};
+
+/* now add the edges to the kb
+{
+  "sub" : "http://purl.obolibrary.org/obo/DOID_5039",
+  "pred" : "is_a",
+  "obj" : "http://purl.obolibrary.org/obo/DOID_461"
+}
+*/
+const loadEdges = async ({DOID, records, conn}) => {
+    const relationshipTypes = {};
     console.log('\nAdding the subclass relationships');
-    for (let edge of doid.graphs[0].edges) {
+    for (let edge of DOID.graphs[0].edges) {
         const {sub, pred, obj} = edge;
-        if (pred === "is_a") {  // currently only loading this class type
+        if (pred === 'is_a') {  // currently only loading this class type
             let src, tgt;
             try {
                 src = parseDoid(sub).toLowerCase();
@@ -161,21 +144,19 @@ const uploadDiseaseOntology = async (PERM_TOKEN) => {
             } catch (err) {
                 continue;
             }
-            if (! diseaseRecords[src] || ! diseaseRecords[tgt]) {
+            if (! records[src] || ! records[tgt]) {
                 console.log(`missing entries for ${src} ==is_a=> ${tgt}`);
             } else {
                 try {
-                    newRecord = await request({
+                    await request(conn.request({
                         method: 'POST',
-                        uri: 'http://localhost:8080/api/subclassof',
-                        body: {out: diseaseRecords[src]['@rid'], in: diseaseRecords[tgt]['@rid']},
-                        headers: {Authorization: PERM_TOKEN},
-                        json: true
-                    });
+                        uri: 'subclassof',
+                        body: {out: records[src]['@rid'], in: records[tgt]['@rid']}
+                    }));
                     process.stdout.write('.');
                 } catch (err) {
                     if (! err.error || ! err.error.message || ! err.error.message.startsWith('Cannot index')) {
-                        console.log({out: diseaseRecords[src]['@rid'], in: diseaseRecords[tgt]['@rid']});
+                        console.log({out: records[src]['@rid'], in: records[tgt]['@rid']});
                         console.log(err.error);
                     } else {
                         process.stdout.write('*');
@@ -186,7 +167,6 @@ const uploadDiseaseOntology = async (PERM_TOKEN) => {
             relationshipTypes[pred] = null;
         }
     }
-    console.log('relationshipTypes', Object.keys(relationshipTypes));
-}
+};
 
 module.exports = {uploadDiseaseOntology};

@@ -15,16 +15,14 @@ const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 
 class ClassModel {
 
-    constructor(opt) {
-        this.name = opt.name;
-        this._required = opt.required || [];
-        this._optional = opt.optional || [];
-        this._cast = opt.cast || {};
-        this._defaults = opt.defaults || {};
-        this._inherits = opt.inherits || [];
-        this._edgeRestrictions = opt.edgeRestrictions || null;
-        this.isAbstract = opt.isAbstract;
-        this._linkedModels = opt.linkedModels || {};
+    constructor({name, properties, cast, defaults, inherits, isAbstract, edgeRestrictions}) {
+        this.name = name;
+        this._cast = cast || {};
+        this._defaults = defaults || {};
+        this._inherits = inherits || [];
+        this._edgeRestrictions = edgeRestrictions || null;
+        this.isAbstract = isAbstract;
+        this._properties = properties || {};  // by name
     }
 
     get isEdge() {
@@ -42,7 +40,7 @@ class ClassModel {
 
     get required() {
         let required = [];
-        required.push(...this._required);
+        required.push(Array.from(Object.values(this.properties).filter(prop => prop.mandatory), (prop) => prop.name));
         for (let parent of this._inherits) {
             required.push(...parent.required);
         }
@@ -51,17 +49,25 @@ class ClassModel {
 
     get optional() {
         let optional = [];
-        optional.push(...this._optional);
+        optional.push(Array.from(Object.values(this.properties).filter(prop => ! prop.mandatory), (prop) => prop.name));
         for (let parent of this._inherits) {
             optional.push(...parent.optional);
         }
         return optional;
     }
 
-    get properties() {
-        return _.concat(this.required, this.optional);
+    get propertyNames() {
+        return Array.from(this.properties, prop => prop.name);
     }
-    
+
+    get properties() {
+        let properties = Object.assign({}, this._properties);
+        for (let parent of this._inherits) {
+            properties = Object.assign({}, parent.properties, properties);
+        }
+        return properties;
+    }
+
     get linkedModels() {
         let linkedModels = Object.assign({}, this._linkedModels);
         for (let parent of this._inherits) {
@@ -69,7 +75,7 @@ class ClassModel {
         }
         return linkedModels;
     }
-    
+
     linkModel(name, model) {
         this._linkedModels[name] = model;
     }
@@ -92,24 +98,19 @@ class ClassModel {
 
     toJSON() {
         return {
-            required: this._required,
-            optional: this._optional,
+            properties: this.properties,
             inherits: this.inherits,
             edgeRestrictions: this._edgeRestrictions
-        }
+        };
     }
 
     static parseOClass(oclass) {
-        const required = [];
-        const optional = [];
         const defaults = {};
         const cast = {};
+        const properties = {};
         for (let prop of oclass.properties) {
-            if (prop.mandatory) {
-                required.push(prop.name);
-            } else {
-                optional.push(prop.name);
-            }
+            properties[prop.name] = prop;
+
             if (prop.defaultValue) {
                 defaults[prop.name] = () => prop.defaultValue;
             }
@@ -126,14 +127,13 @@ class ClassModel {
         }
         return new this({
             name: oclass.name,
-            required: required,
-            optional: optional,
+            properties: properties,
             defaults: defaults,
             cast: cast,
             isAbstract: oclass.defaultClusterId === -1 ? true : false
         });
     }
-    
+
     /**
      * Checks a single record to ensure it matches the expected pattern for this class model
      *
@@ -230,13 +230,13 @@ class ClassModel {
 
         return formattedRecord;
     }
-    
+
     formatFollow(query) {
         const follow = [];
         console.log('formatFollow', query);
         const splitUnlessEmpty = (string) => {
             return string === '' ? [] : string.split(',');
-        }
+        };
         // translate the fuzzyMatch/ancestors/descendants into proper follow statements
         if (query.ancestors !== undefined) {
             if (typeof query.ancestors === 'string') {
@@ -270,7 +270,7 @@ class ClassModel {
      */
     formatQuery(inputQuery) {
         const query = {where: {}, subqueries: {}, follow: []};
-        const properties = this.properties;
+        const properties = this.propertyNames;
         const links = this.linkedModels;
         const subqueries = {};
         const cast = this.cast;
@@ -297,7 +297,7 @@ class ClassModel {
             if (properties.includes(prefix) && links[prefix]) {
                 if (subqueries[prefix] === undefined) {
                     subqueries[prefix] = {where: {}, model: links[prefix]};
-                } 
+                }
                 if (specialArgs.includes(suffix)) {
                     subqueries[prefix][suffix] = value;
                 } else {
@@ -313,12 +313,12 @@ class ClassModel {
                 throw new AttributeError(`unexpected attribute: ${prop} is not allowed for queries on class ${this.name}`);
             }
         }
-        
+
         // now check if we actually need subqueries or not (contains follow clause)
         // flatten them back out if we don't
         for (let prop of Object.keys(subqueries)) {
             const subquery = subqueries[prop];
-            
+
             if (query.where[prop] !== undefined) {
                 throw new AttributeError(`inputQuery property cannot be both specified directly and a subquery: ${prop}`);
             }
@@ -333,7 +333,7 @@ class ClassModel {
             }
         }
         query.follow = this.formatFollow(inputQuery);
-        
+
         return query;
     }
 }
@@ -355,11 +355,11 @@ const createClassModel = async (db, model) => {
     await Promise.all(Array.from(model.properties, (prop) => cls.property.create(prop)));
     await Promise.all(Array.from(model.indices, (i) => db.index.create(i)));
     return cls;
-}
+};
 
 const createProperties = async (cls, props) => {
     return await Promise.all(Array.from(props, (prop) => cls.property.create(prop)));
-}
+};
 
 /*
  * builds the schema in the database
@@ -376,7 +376,7 @@ const createSchema = async (db, verbose=false) => {
         ],
         indices: [
             {
-                name: `ActiveUserGroup`,
+                name: 'ActiveUserGroup',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
                 properties: ['name'],
@@ -388,8 +388,8 @@ const createSchema = async (db, verbose=false) => {
         {name: 'admin', permissions: {V: PERMISSIONS.ALL, E: PERMISSIONS.ALL, User: PERMISSIONS.ALL, UserGroup: PERMISSIONS.ALL}},
         {name: 'readOnly', permissions: {V: PERMISSIONS.READ, E: PERMISSIONS.READ, User: PERMISSIONS.READ, UserGroup: PERMISSIONS.READ}}
     ];
-    const groups = await Promise.all(Array.from(defaultGroups, x => db.insert().into('UserGroup').set(x).one() ));
-    cache.userGroups = {}
+    const groups = await Promise.all(Array.from(defaultGroups, x => db.insert().into('UserGroup').set(x).one()));
+    cache.userGroups = {};
     for (let group of groups) {
         cache.userGroups[group.name] = group;
     }
@@ -405,7 +405,7 @@ const createSchema = async (db, verbose=false) => {
         ],
         indices: [
             {
-                name: `ActiveUserName`,
+                name: 'ActiveUserName',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
                 properties: ['name', 'deletedAt'],
@@ -443,7 +443,7 @@ const createSchema = async (db, verbose=false) => {
         });
     }
     if (verbose) {
-        console.log(`defined schema for the major base classes`);
+        console.log('defined schema for the major base classes');
     }
     // now create the custom data related classes
     await createClassModel(db, {
@@ -457,24 +457,24 @@ const createSchema = async (db, verbose=false) => {
     });
     await db.class.create('Biomarker', null, null, true);  // purely for selection purposes
     if (verbose) {
-        console.log(`defining schema for Ontology class`);
+        console.log('defining schema for Ontology class');
     }
     await createClassModel(db, {
         name: 'Ontology',
         inherits: 'V,Biomarker',
         properties: [
-            {name: 'source', type: 'string', mandatory: true, type: 'string'},
+            {name: 'source', type: 'string', mandatory: true},
             {name: 'sourceVersion', type: 'string'},
             {name: 'sourceId', type: 'string'},
-            {name: 'name', type: 'string', mandatory: true, notNull: true, type: 'string'},
+            {name: 'name', type: 'string', mandatory: true, notNull: true},
             {name: 'nameVersion', type: 'string'},
             {name: 'description', type: 'string'},
             {name: 'longName', type: 'string'},
-            {name: 'subsets', type: 'embedded list'}
+            {name: 'subsets', type: 'embeddedset', linkedType: 'string'}
         ],
         indices: [
             {
-                name: `Ontology.active`,
+                name: 'Ontology.active',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
                 properties: ['source', 'sourceVersion', 'sourceId', 'name', 'deletedAt', 'nameVersion'],
@@ -490,9 +490,9 @@ const createSchema = async (db, verbose=false) => {
         isAbstract: true
     });
     if (verbose) {
-        console.log(`defining schema for Ontology subclasses`);
+        console.log('defining schema for Ontology subclasses');
     }
-    await Promise.all(Array.from(['MutationSignature', 'Therapy', 'Disease', 'Pathway'], (name) => {
+    await Promise.all(Array.from(['MutationSignature', 'Therapy', 'Disease', 'Pathway', 'AnatomicalEntity'], (name) => {
         db.class.create(name, 'Ontology', null, false);
     }));
     await createClassModel(db, {
@@ -514,7 +514,7 @@ const createSchema = async (db, verbose=false) => {
         ],
         indices: [
             {
-                name: `DependantFeature.active`,
+                name: 'DependantFeature.active',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
                 properties: ['source', 'sourceVersion', 'name', 'deletedAt', 'nameVersion', 'dependency'],
@@ -779,7 +779,7 @@ const createSchema = async (db, verbose=false) => {
             ],
             indices: [
                 {
-                    name: `Vocabulary.activeTerm`,
+                    name: 'Vocabulary.activeTerm',
                     type: 'unique',
                     metadata: {ignoreNullValues: false},
                     properties: ['deletedAt', 'class', 'property', 'term', 'conditionalProperty', 'conditionalValue'],
@@ -815,6 +815,7 @@ const createSchema = async (db, verbose=false) => {
     const properties = [];
     for (let name of [
         'AliasOf',
+        'AnatomicalEntity',
         'Biomarker',
         'CategoryVariant',
         'Cites',
@@ -914,7 +915,7 @@ const loadSchema = async (db, verbose=false) => {
     };
 
     // make the ontology base models
-    for (let name of ['Disease', 'Pathway', 'Pathway', 'Therapy', 'MutationSignature', 'IndependantFeature', 'DependantFeature']) {
+    for (let name of ['Disease', 'Pathway', 'Pathway', 'Therapy', 'MutationSignature', 'IndependantFeature', 'DependantFeature', 'AnatomicalEntity']) {
         if (name === 'DependantFeature') {
             edgeRestrictions.ElementOf.push([name, 'IndependantFeature']);
         } else {

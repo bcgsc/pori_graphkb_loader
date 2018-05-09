@@ -30,9 +30,9 @@ const addRoutes = (opt) => {
     addResourceRoutes({
         router: router,
         route: '/vocabulary',
-        model: schema.Vocabulary, 
-        db: db, 
-        cacheUpdate: cacheVocabulary 
+        model: schema.Vocabulary,
+        db: db,
+        cacheUpdate: cacheVocabulary
     });
 
     // disease routes
@@ -41,7 +41,13 @@ const addRoutes = (opt) => {
         model: schema.Disease,
         db: db
     });
-    
+
+    addResourceRoutes({
+        router: router,
+        model: schema.AnatomicalEntity,
+        db: db
+    });
+
     addResourceRoutes({
         router: router,
         model: schema.IndependantFeature,
@@ -54,7 +60,7 @@ const addRoutes = (opt) => {
         db: db,
         optQueryParams: ['to', 'from']
     });
-    
+
     addResourceRoutes({
         router: router,
         model: schema.DeprecatedBy,
@@ -68,7 +74,7 @@ const addRoutes = (opt) => {
         db: db,
         optQueryParams: ['to', 'from']
     });
-    
+
     addResourceRoutes({
         router: router,
         model: schema.Publication,
@@ -80,7 +86,7 @@ const addRoutes = (opt) => {
         model: schema.CategoryVariant,
         db: db
     });
-    
+
     addResourceRoutes({
         router: router,
         model: schema.PositionalVariant,
