@@ -17,11 +17,11 @@ class ClassModel {
     /**
      * @param {Object} opt
      * @param {string} opt.name the class name
-     * @param {Object} opt.defaults the mapping of attribute names to functions producing default values
-     * @param {Array[ClassModel]} opt.inherits the models this model inherits from
-     * @param {Array[[string, string]]} opt.edgeRestrictions list of class pairs this edge type is allowed to join
-     * @param {Boolean} opt.isAbstract this is an abstract class
-     * @param {Object} opt.properties mapping by attribute name to property objects (defined by orientjs)
+     * @param {Object.<string,function>} [opt.defaults={}] the mapping of attribute names to functions producing default values
+     * @param {ClassModel[]} [opt.inherits=[]] the models this model inherits from
+     * @param {Array} [opt.edgeRestrictions=[]] list of class pairs this edge type is allowed to join
+     * @param {boolean} [opt.isAbstract=false] this is an abstract class
+     * @param {Object.<string,Object>} [opt.properties={}] mapping by attribute name to property objects (defined by orientjs)
      */
     constructor(opt) {
         this.name = opt.name;
@@ -38,7 +38,7 @@ class ClassModel {
     }
 
     /**
-     * @returns {Array[string]} the list of parent class names which this class inherits from
+     * @returns {string[]} the list of parent class names which this class inherits from
      */
     get inherits() {
         let parents = [];
@@ -50,7 +50,7 @@ class ClassModel {
     }
 
     /**
-     * @returns {Array[string]} a list of property names for all required properties
+     * @returns {string[]} a list of property names for all required properties
      */
     get required() {
         let required = Array.from(Object.values(this._properties).filter(prop => prop.mandatory), (prop) => prop.name);
@@ -61,7 +61,7 @@ class ClassModel {
     }
 
     /**
-     * @returns {Array[string]} a list of property names for all optional properties
+     * @returns {string[]} a list of property names for all optional properties
      */
     get optional() {
         let optional = Array.from(Object.values(this._properties).filter(prop => ! prop.mandatory), (prop) => prop.name);
@@ -72,7 +72,7 @@ class ClassModel {
     }
 
     /**
-     * @returns {Array[string]} list of property names
+     * @returns {string[]} list of property names
      */
     get propertyNames() {
         return Object.keys(this.properties);
@@ -146,10 +146,10 @@ class ClassModel {
      *
      * @param {Object} record the record to be checked
      * @param {Object} opt options
-     * @param {Boolean=true} opt.dropExtra drop any record attributes that are not defined on the current class model by either required or optional
-     * @param {Boolean=false} opt.addDefaults add default values for any attributes not given (where defined)
-     * @param {Boolean=false} opt.ignoreMissing do not throw an error when a required attribute is missing
-     * @param {Boolean=false} opt.ignoreExtra do not throw an error when an unexpected value is given
+     * @param {boolean} [opt.dropExtra=true] drop any record attributes that are not defined on the current class model by either required or optional
+     * @param {boolean} [opt.addDefaults=false] add default values for any attributes not given (where defined)
+     * @param {boolean} [opt.ignoreMissing=false] do not throw an error when a required attribute is missing
+     * @param {boolean} [opt.ignoreExtra=false] do not throw an error when an unexpected value is given
      */
     formatRecord(record, opt) {
         // add default options

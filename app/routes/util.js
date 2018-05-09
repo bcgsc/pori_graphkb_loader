@@ -218,6 +218,18 @@ const errorToJSON = (err) => {
 };
 
 
+/**
+ *
+ * @param {string} rid the putative @rid value
+ * @returns {boolean} true if the string follows the expected format for an @rid, false otherwise
+ *
+ * @example
+ * >>> looksLikeRID('#4:10');
+ * true
+ * @example
+ * >>> looksLikeRID('4:0');
+ * false
+ */
 const looksLikeRID = (rid) => {
     try {
         if (/^#\d+:\d+$/.exec(rid.trim())) {

@@ -24,6 +24,8 @@ const getParameterPrefix = (param) => {
 /**
  * wrap a string in single quotations
  *
+ * @param {string} string the input string
+ *
  * @example
  *  >>> quoteWrap('thing')
  *  "'thing'"

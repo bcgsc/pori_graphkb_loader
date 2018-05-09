@@ -11,9 +11,9 @@ const QUERY_LIMIT = 1000;
 class Follow {
     /**
      * Sets up the edge following clause portion for tha match query statement
-     * @param {Array[string]} classnames the names of the edge classes to follow
-     * @param {string} type the type of edge to follow (in, out, both)
-     * @param {int|null} depth depth of the edges to follow
+     * @param {string[]} classnames the names of the edge classes to follow
+     * @param {string} [type='both'] the type of edge to follow (in, out, both)
+     * @param {?number} [depth=RELATED_NODE_DEPTH] depth of the edges to follow
      *
      * @example
      * > new Follow().toString();
@@ -51,11 +51,11 @@ class SelectionQuery {
      * Builds the query statement for selecting or matching records from the database
      *
      * @param {Object} opt Selection options
-     * @param {Boolean} [opt.activeOnly=true] Return only non-deleted records
+     * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
      * @param {ClassModel} model the model to be selected from
      * @param {Object} [where={}] the query requirements
      *
-     * @param {Array[Array[Follow]]} [where.follow] Array of Arrays of Follow clauses.
+     * @param {Array.<Follow[]>} [where.follow=[]] Array of Arrays of Follow clauses.
      *
      */
     constructor(model, where={}, opt={}) {
@@ -271,13 +271,13 @@ const createEdge = async (db, opt) => {
  * @param {Object} db Database connection from orientjs
  *
  * @param {Object} opt Selection options
- * @param {Boolean} [opt.activeOnly=true] Return only non-deleted records
- * @param {Boolean} [opt.debug=true] print more output to help with debugging queries
+ * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
+ * @param {boolean} [opt.debug=true] print more output to help with debugging queries
  * @param {ClassModel} opt.model the model to be selected from
- * @param {Object} [opt.fetchPlan] key value mapping of class names to depths of edges to follow or '*' for any class
+ * @param {Object} [opt.fetchPlan={'*': 1}] key value mapping of class names to depths of edges to follow or '*' for any class
  * @param {Object} [opt.where={}] the query requirements
- * @param {int|null} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
- * @param {int|null} [opt.limit=QUERY_LIMIT] the maximum number of records to return
+ * @param {?number} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
+ * @param {?number} [opt.limit=QUERY_LIMIT] the maximum number of records to return
  *
  */
 const select = async (db, opt) => {
@@ -362,7 +362,7 @@ const remove = async (db, opt) => {
  *
  * @param {Object} db orientjs database connection
  * @param {Object} opt options
- * @param {Boolean=false} opt.verbose print extra information to the console
+ * @param {boolean} [opt.verbose=false] print extra information to the console
  * @param {Object} opt.content the content for the new node (any unspecified attributes are assumed to be unchanged)
  * @param {Object} opt.where the selection criteria for the original node
  * @param {Object} opt.user the user updating the record

@@ -4,16 +4,16 @@ const {ParsingError} = require('./../repo/error');
 const {parsePosition} = require('./position');
 
 const EVENT_SUBTYPE = {
-    INS: 'insertion', 
-    DEL: 'deletion', 
-    SUB: 'substitution', 
-    INV: 'inversion', 
-    INDEL: 'indel', 
-    GAIN: 'gain', 
-    LOSS: 'loss', 
-    TRANS: 'translocation', 
-    ITRANS: 'inverted translocation', 
-    EXT: 'extension', 
+    INS: 'insertion',
+    DEL: 'deletion',
+    SUB: 'substitution',
+    INV: 'inversion',
+    INDEL: 'indel',
+    GAIN: 'gain',
+    LOSS: 'loss',
+    TRANS: 'translocation',
+    ITRANS: 'inverted translocation',
+    EXT: 'extension',
     FS: 'frameshift',
     FUSION: 'fusion',
     DUP: 'duplication',
@@ -70,7 +70,7 @@ const parseContinuous  = (string) => {
     if (match === null) {
         throw new ParsingError(`Input string did not match the expected pattern: ${string}`);
     }
-    
+
     let m;
     const result = {};
     if (m = /\(([^_]+)_([^_]+)\)/.exec(match.group('break1'))) {
@@ -136,7 +136,7 @@ const parseContinuous  = (string) => {
     } else {
         throw new ParsingError(`Did not recognize type: ${tail}`);
     }
-    
+
     return result;
 };
 
@@ -145,7 +145,7 @@ const parseHistoneVariant = (string) => {
     /**
      * https://epigeneticsandchromatin.biomedcentral.com/articles/10.1186/1756-8935-5-7
      * function to parse histone modification variant notation
-     * @type {string} input string
+     * @param {string} input string
      */
     const r = nRegex(
         '^(?<histone>H[0-9A-Z-]+)'
@@ -193,7 +193,7 @@ const parseDiscontinuous = (string) => {
         throw new ParsingError(`input string: ${string} did not match the expected pattern: ${exp}`);
     }
     match = match.groups();
-    
+
     const result = {type: match.type};
 
     if (match.position1 !== 'na' && match.position1 !== '?') {
@@ -204,7 +204,7 @@ const parseDiscontinuous = (string) => {
         result.break1Start = parsePosition(prefix1, pos1);
         result.break1Repr = `${prefix1}.${pos1}`;
     }
-    
+
     if (match.position2 && match.position2 !== '?' && match.position2 !== '?') {
         const prefix2 = getPrefix(match.position2);
         const pos2 = match.position2.slice(prefix2.length + 1);

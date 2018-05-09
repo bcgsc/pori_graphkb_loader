@@ -43,6 +43,7 @@
     "sample": "nyc --reporter=html --reporter=text mocha test/test_sample_db.js --timeout 30000",
     "empty": "nyc --reporter=html --reporter=text mocha test/test_repo*.js --timeout 30000",
     "lint": "eslint -c .eslintrc.json app test",
-    "doc": "swagger-jsdoc -o swagger-spec.json -d doc/swagger-jsdoc-defn.js app/repo/*js app/routes/*js"
+    "doc": "swagger-jsdoc -o swagger-spec.json -d doc/swagger-jsdoc-defn.js app/repo/*js app/routes/*js",
+    "jsdoc": "jsdoc -r app -R README.md"
   }
 }
