@@ -5,7 +5,14 @@ const cache = require('./../app/repo/cache');
 const {ClassModel, FUZZY_CLASSES} = require('./../app/repo/schema');
 const {checkAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH} = require('./../app/repo/base');
 const {PERMISSIONS} = require('./../app/repo/constants');
+const {types}  = require('orientjs');
 
+
+const OJS_TYPES = {};
+for (let num of Object.keys(types)) {
+    const name = types[num].toLowerCase();
+    OJS_TYPES[name] = num;
+}
 
 describe('util.castUUID', () => {
 
@@ -15,7 +22,7 @@ describe('util.castUUID', () => {
     });
     it('errors on bad uuid', () => {
         const uuid = '933fd4de-5bd6-471c-4ea6e';
-        expect(() => { castUUID(uuid) } ).to.throw();
+        expect(() => { castUUID(uuid); }).to.throw();
     });
 });
 
@@ -88,9 +95,9 @@ describe('relatedRIDsSubquery', () => {
             depth: 10
         });
         expect(result).to.have.property(
-            'query', 
+            'query',
             `select @rid from (match {class: table1, where: (name = :wparam0, lastname = :wparam1)}
-            .both('aliasof','deprecatedby'){while: ($depth < 10)} 
+            .both('aliasof','deprecatedby'){while: ($depth < 10)}
             return $pathElements)`.replace(/\n\s+/g, ''));
         expect(result).to.have.property('params');
         expect(result.params).to.have.property('wparam0', 'blargh');
@@ -105,10 +112,10 @@ describe('relatedRIDsSubquery', () => {
             depth: 10
         });
         expect(result).to.have.property(
-            'query', 
-            `select @rid from (match 
-            {class: table1, where: (name = :wparam0, lastname = :wparam1)}.in('aliasof'){while: ($depth < 10)}, 
-            {class: table1, where: (name = :wparam0, lastname = :wparam1)}.out('deprecatedby'){while: ($depth < 10)} 
+            'query',
+            `select @rid from (match
+            {class: table1, where: (name = :wparam0, lastname = :wparam1)}.in('aliasof'){while: ($depth < 10)},
+            {class: table1, where: (name = :wparam0, lastname = :wparam1)}.out('deprecatedby'){while: ($depth < 10)}
             return $pathElements)`.replace(/\n\s+/g, ''));
         expect(result).to.have.property('params');
         expect(result.params).to.have.property('wparam0', 'blargh');
@@ -122,9 +129,9 @@ describe('relatedRIDsSubquery', () => {
             followBoth: []
         });
         expect(result).to.have.property(
-            'query', 
+            'query',
             `select @rid from (match {class: table1, where: (name = :wparam0, lastname = :wparam1)}
-            .both(){while: ($depth < 10)} 
+            .both(){while: ($depth < 10)}
             return $pathElements)`.replace(/\n\s+/g, ''));
         expect(result).to.have.property('params');
         expect(result.params).to.have.property('wparam0', 'blargh');
@@ -157,7 +164,7 @@ describe('Follow', () => {
     it('allows empty constructor arguments', () => {
         const follow = new Follow();
         expect(follow.toString()).to.equal(`.both(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
-    })
+    });
     it('allows In edge type', () => {
         const follow = new Follow([], 'in');
         expect(follow.toString()).to.equal(`.in(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
@@ -168,26 +175,26 @@ describe('Follow', () => {
     });
     it('allows In and null depth', () => {
         const follow = new Follow([], 'in', null);
-        expect(follow.toString()).to.equal(`.in(){while: ($matched.in().size() > 0)}`);
+        expect(follow.toString()).to.equal('.in(){while: ($matched.in().size() > 0)}');
     });
     it('allows Out and null depth', () => {
         const follow = new Follow([], 'out', null);
-        expect(follow.toString()).to.equal(`.out(){while: ($matched.out().size() > 0)}`);
+        expect(follow.toString()).to.equal('.out(){while: ($matched.out().size() > 0)}');
     });
     it('allows In and null depth with classes', () => {
         const follow = new Follow(['blargh', 'monkeys'], 'in', null);
-        expect(follow.toString()).to.equal(`.in('blargh', 'monkeys'){while: ($matched.in('blargh', 'monkeys').size() > 0)}`);
+        expect(follow.toString()).to.equal('.in(\'blargh\', \'monkeys\'){while: ($matched.in(\'blargh\', \'monkeys\').size() > 0)}');
     });
     it('allows Out and null depth with classes', () => {
         const follow = new Follow(['blargh', 'monkeys'], 'out', null);
-        expect(follow.toString()).to.equal(`.out('blargh', 'monkeys'){while: ($matched.out('blargh', 'monkeys').size() > 0)}`);
+        expect(follow.toString()).to.equal('.out(\'blargh\', \'monkeys\'){while: ($matched.out(\'blargh\', \'monkeys\').size() > 0)}');
     });
     it('allows Both edge type', () => {
         const follow = new Follow([], 'both');
         expect(follow.toString()).to.equal(`.both(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
     });
     it('throws error for null depth and both type', () => {
-        expect(() => { new Follow([], 'both', null)}).to.throw();
+        expect(() => { new Follow([], 'both', null);}).to.throw();
     });
     it('allows multiple edge classes', () => {
         const follow = new Follow(['thing1', 'thing2'], 'in');
@@ -201,19 +208,25 @@ describe('Follow', () => {
 
 
 describe('SelectionQuery', () => {
-    const person = new ClassModel({name: 'Person', optional: ['name', 'lastname']})
+    const person = new ClassModel({
+        name: 'Person',
+        properties: {
+            name: {name: 'name'},
+            lastname: {name: 'lastname'}
+        }
+    });
     const parent = new ClassModel({
         name: 'parent',
-        required: ['name'],
-        optional: ['child'],
-        linkedModels: {child: person}
-    })
+        properties: {
+            name: {name: 'name', mandatory: true},
+            child: {name: 'child', linkedModel: person}
+        }
+    });
     it('defaults to a match statement when follow is given', () => {
         const query = new SelectionQuery(parent, {name: 'blargh'}, {follow: [[new Follow(['monkeys'])]]});
         expect(query).to.have.property('params');
         expect(query.params).to.eql({param0: 'blargh'});
         expect(Object.keys(query.params).length).to.equal(1);
-        console.log(query)
         const expected = `MATCH {class: parent, where: (name = :param0)}.both('monkeys'){while: (\$depth < ${RELATED_NODE_DEPTH})} return \$pathElements`;
         expect(query.toString().toLowerCase()).to.equal(expected.toLowerCase());
     });
@@ -221,9 +234,58 @@ describe('SelectionQuery', () => {
     it('allows select subqueries');
     it('allows match subqueries');
     describe('conditionClause', () => {
-        it('allows alternate join string');
-        it('defaults to OR statement');
-        it('allows the surrounding braces to be left off');
+        it('allows alternate join string', () => {
+            const selectionQuery = new SelectionQuery({
+                name: 'model',
+                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                properties: {blargh: {type: 'any'}}
+            });
+            const {query, params} = selectionQuery.conditionClause('blargh', ['monkey', null], {joinOperator: ', '});
+            expect(query).to.equal('(blargh = :param0, blargh is NULL)');
+            expect(params).to.eql({param0: 'monkey'});
+        });
+        it('defaults to OR statement', () => {
+            const selectionQuery = new SelectionQuery({
+                name: 'model',
+                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                properties: {blargh: {type: 'any'}}
+            });
+            const {query, params} = selectionQuery.conditionClause('blargh', ['monkey', null]);
+            expect(query).to.equal('(blargh = :param0 OR blargh is NULL)');
+            expect(params).to.eql({param0: 'monkey'});
+        });
+        it('allows the surrounding braces to be left off', () => {
+            const selectionQuery = new SelectionQuery({
+                name: 'model',
+                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                properties: {blargh: {type: 'any'}}
+            });
+            const {query, params} = selectionQuery.conditionClause('blargh', ['monkey', null], {joinOperator: ', ', noWrap: true});
+            expect(query).to.equal('blargh = :param0, blargh is NULL');
+            expect(params).to.eql({param0: 'monkey'});
+        });
+        it('defaults to contains for non-object vs set/map/list types', () => {
+            const model = new ClassModel({
+                name: 'blargh',
+                properties: {
+                    monkeys: {name: 'monkeys', type: 'embeddedlist'}
+                }
+            });
+            const selectionQuery = new SelectionQuery(model);
+            const {query} = selectionQuery.conditionClause('monkeys', [2]);
+            expect(query).to.equal('monkeys contains :param0');
+        });
+        it('defaults to = for object vs set/map/list types', () => {
+            const model = new ClassModel({
+                name: 'blargh',
+                properties: {
+                    monkeys: {name: 'monkeys', type: 'embeddedlist'}
+                }
+            });
+            const selectionQuery = new SelectionQuery(model);
+            const {query} = selectionQuery.conditionClause('monkeys', [[2, 3]]);
+            expect(query).to.equal('monkeys = :param0');
+        });
     });
 });
 
@@ -251,7 +313,7 @@ describe('ClassModel', () => {
                 name: 'name',
                 shortName: null,
                 defaultClusterId: -1,
-                properties: [{name: 'prop1', mandatory: true}],
+                properties: [{name: 'prop1', mandatory: true, type: OJS_TYPES.any}],
                 superClass: null
             });
             expect(parsed).to.have.property('name', 'name');
@@ -266,7 +328,7 @@ describe('ClassModel', () => {
             const parsed = ClassModel.parseOClass({
                 name: 'name',
                 shortName: null,
-                properties: [{name: 'prop1', mandatory: false}],
+                properties: [{name: 'prop1', mandatory: false, type: OJS_TYPES.any}],
                 superClass: null
             });
             expect(parsed.optional).to.eql(['prop1']);
@@ -275,7 +337,7 @@ describe('ClassModel', () => {
             const parsed = ClassModel.parseOClass({
                 name: 'name',
                 shortName: null,
-                properties: [{name: 'prop1', mandatory: false, defaultValue: 1, type: '1'}],  // orientjs types integer
+                properties: [{name: 'prop1', mandatory: false, defaultValue: 1, type: OJS_TYPES.integer}],
                 superClass: null
             });
             expect(parsed.defaults).to.have.property('prop1');
@@ -284,15 +346,30 @@ describe('ClassModel', () => {
             const parsed = ClassModel.parseOClass({
                 name: 'name',
                 shortName: null,
-                properties: [{name: 'prop1', mandatory: false, defaultValue: 1, type: '7'}],  // orientjs String type
+                properties: [{name: 'prop1', mandatory: false, defaultValue: 1, type: OJS_TYPES.string}],
                 superClass: null
             });
             expect(parsed.cast).to.have.property('prop1');
         });
     });
     describe('inheritance', () => {
-        const person = new ClassModel({name: 'person', required: ['name'], optional: ['gender'], defaults: {'gender': () => 'not specified'}})
-        const child = new ClassModel({name: 'child', required: ['mom'], optional: ['age'], cast: {'mom': (x) => x.toLowerCase() }, inherits: [person], edgeRestrictions: []});
+        const person = new ClassModel({
+            name: 'person',
+            properties: {
+                gender: {name: 'gender'},
+                name: {name: 'name', mandatory: true}
+            },
+            defaults: {'gender': () => 'not specified'}
+        });
+        const child = new ClassModel({
+            name: 'child',
+            properties: {
+                mom: {name: 'mom', mandatory: true},
+                age: {name: 'age'}
+            },
+            cast: {'mom': (x) => x.toLowerCase()},
+            inherits: [person], edgeRestrictions: []
+        });
 
         it('child required returns person attr', () => {
             expect(person.required).to.eql(['name']);
@@ -313,29 +390,34 @@ describe('ClassModel', () => {
         it('is not an edge', () => {
             expect(person.isEdge).to.be.false;
             expect(child.isEdge).to.be.true;
-        })
-    })
+        });
+    });
     describe('formatQuery', () => {
         let model;
         before(() => {
             const linkedModel = new ClassModel({
                 name: 'other',
-                optional: ['thing']
+                properties: {
+                    thing: {name: 'thing'}
+                }
             });
             model = new ClassModel({
                 name: 'example',
-                required: ['requiredVar'],
-                optional: ['defaultVar', 'castable', 'linkVar'],
+                properties: {
+                    requiredVar: {name: 'requiredVar', mandatory: true},
+                    defaultVar: {name: 'defaultVar'},
+                    castable: {name: 'castable'},
+                    linkVar: {name: 'linkVar', linkedModel: linkedModel}
+                },
                 defaults: {defaultVar: () => 'default'},
-                cast: {castable: (x) => x.toLowerCase()},
-                linkedModels: {linkVar: linkedModel}
+                cast: {castable: (x) => x.toLowerCase()}
             });
             cache.vocabulary = {example: {
                 requiredVar: [{class: 'example', name: 'req', term: 'vocab1'}, {class: 'example', name: 'req', term: 'vocab2'}]
             }};
         });
         it('parses simple query', () => {
-            const {where, subqueries} = model.formatQuery({
+            const {where} = model.formatQuery({
                 requiredVar: 'vocab1'
             });
             expect(where).to.have.property('requiredVar', 'vocab1');
@@ -345,7 +427,6 @@ describe('ClassModel', () => {
                 requiredVar: 'vocab1',
                 'linkVar.thing': 'thing'
             });
-            console.log(where);
             expect(where).to.have.property('requiredVar', 'vocab1');
             expect(where).to.have.property('linkVar.thing', 'thing');
         });
@@ -355,7 +436,6 @@ describe('ClassModel', () => {
                 'linkVar.thing': 'thing',
                 'linkVar.fuzzyMatch': 4
             });
-            console.log(where);
             expect(where).to.have.property('requiredVar', 'vocab1');
             expect(subqueries).to.have.property('linkVar');
             expect(subqueries.linkVar.where).to.eql({thing: 'thing'});
@@ -378,7 +458,6 @@ describe('ClassModel', () => {
                 requiredVar: 'vocab1',
                 fuzzyMatch: 4
             });
-            console.log(result);
             expect(result.where).to.have.property('requiredVar', 'vocab1');
             const follow = result.follow[0][0];
             expect(follow).to.have.property('type', 'both');
@@ -392,7 +471,6 @@ describe('ClassModel', () => {
                 fuzzyMatch: 4,
                 ancestors: ''
             });
-            console.log(result);
             expect(result.where).to.have.property('requiredVar', 'vocab1');
             const follow = result.follow[0];
             expect(follow).to.have.property('length', 3);
@@ -405,7 +483,7 @@ describe('ClassModel', () => {
             expect(follow[1]).to.have.property('classnames');
             expect(follow[1].classnames).to.eql([]);
             expect(follow[1].depth).to.equal(null);
-            
+
             expect(follow[2]).to.have.property('type', 'both');
             expect(follow[2]).to.have.property('classnames');
             expect(follow[2].classnames).to.eql(FUZZY_CLASSES);
@@ -417,7 +495,6 @@ describe('ClassModel', () => {
                 fuzzyMatch: 4,
                 descendants: ''
             });
-            console.log(result);
             expect(result.where).to.have.property('requiredVar', 'vocab1');
             const follow = result.follow[0];
             expect(follow[1]).to.have.property('type', 'out');
@@ -430,37 +507,34 @@ describe('ClassModel', () => {
         it('parses query with descendants');
         it('parses query with both ancestors and descendants');
         it('list attribute ok', () => {
-            const {where, subqueries} = model.formatQuery({
+            const {where} = model.formatQuery({
                 requiredVar: ['vocab1', 'vocab2']
             });
             expect(where).to.have.property('requiredVar');
             expect(where.requiredVar).to.eql(['vocab1', 'vocab2']);
         });
         it('parses and flattens subquery list', () => {
-            const {where, subqueries} = model.formatQuery({
+            const {where} = model.formatQuery({
                 requiredVar: 'vocab1',
                 'linkVar.thing': ['thing', 'thing2']
             });
-            console.log(where);
             expect(where).to.have.property('requiredVar', 'vocab1');
             expect(where).to.have.property('linkVar.thing');
             expect(where['linkVar.thing']).to.eql(['thing', 'thing2']);
         });
         it('cast for single attr', () => {
-            const {where, subqueries} = model.formatQuery({
+            const {where} = model.formatQuery({
                 requiredVar: 'vocab1',
                 castable: 'MixedCase'
             });
-            console.log(where);
             expect(where).to.have.property('requiredVar', 'vocab1');
             expect(where).to.have.property('castable', 'mixedcase');
         });
         it('cast for list attr', () => {
-            const {where, subqueries} = model.formatQuery({
+            const {where} = model.formatQuery({
                 requiredVar: 'vocab1',
                 'castable': ['MixedCase', 'UPPERCASE']
             });
-            console.log(where);
             expect(where).to.have.property('requiredVar', 'vocab1');
             expect(where).to.have.property('castable');
             expect(where.castable).to.eql(['mixedcase', 'uppercase']);
@@ -477,13 +551,17 @@ describe('ClassModel', () => {
     describe('formatRecord', () => {
         let model;
         before(() => {
-             model = new ClassModel({
-                 name: 'example',
-                 required: ['req1', 'req2'],
-                 optional: ['opt1', 'opt2'],
-                 defaults: {req2: () => 1, opt2: () => 2},
-                 cast: {req1: (x) => x.toLowerCase() }
-             });
+            model = new ClassModel({
+                name: 'example',
+                properties: {
+                    req1: {name: 'req1', mandatory: true},
+                    req2: {name: 'req2', mandatory: true},
+                    opt1: {name: 'opt1'},
+                    opt2: {name: 'opt2'}
+                },
+                defaults: {req2: () => 1, opt2: () => 2},
+                cast: {req1: (x) => x.toLowerCase()}
+            });
             cache.vocabulary = {example: {
                 req1: [{class: 'example', name: 'req1', term: 'term1'}, {class: 'example', name: 'req1', term: 2}]
             }};
@@ -511,8 +589,8 @@ describe('ClassModel', () => {
         });
         it('adds defaults', () => {
             const record = model.formatRecord({
-                    req1: 'term1'
-                }, {dropExtra: false, addDefaults: true});
+                req1: 'term1'
+            }, {dropExtra: false, addDefaults: true});
             expect(record).to.have.property('req1', 'term1');
             expect(record).to.have.property('req2', 1);
             expect(record).to.have.property('opt2', 2);
@@ -535,8 +613,8 @@ describe('ClassModel', () => {
         });
         it('allows optional parameters', () => {
             const record = model.formatRecord({
-                    req1: 'term1', req2: '1', opt1: '1'
-                }, {dropExtra: false, addDefaults: false});
+                req1: 'term1', req2: '1', opt1: '1'
+            }, {dropExtra: false, addDefaults: false});
             expect(record).to.have.property('req1', 'term1');
             expect(record).to.have.property('req2', '1');
             expect(record).to.have.property('opt1', '1');
@@ -544,7 +622,7 @@ describe('ClassModel', () => {
         });
         after(() => {
             cache.vocabularyByClass = {};
-        })
+        });
     });
 
 });

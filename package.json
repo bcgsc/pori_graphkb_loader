@@ -6,7 +6,6 @@
     "body-parser": "^1.15.2",
     "command-line-args": "^5.0.2",
     "command-line-usage": "^5.0.4",
-    "contextify": "^1.0.0",
     "csv-parse": "^2.2.0",
     "es6-promise-pool": "^2.5.0",
     "express": "^4.14.0",

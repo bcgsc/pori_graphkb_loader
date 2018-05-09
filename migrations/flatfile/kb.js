@@ -12,7 +12,7 @@ const TYPE_MAPPING = {
     CNV: 'copy number',
     'ELV-RNA': 'RNA expression',
     'ELV-PROT': 'protein expression'
-}
+};
 
 
 const eventParser = (eventString) => {
@@ -37,7 +37,7 @@ const eventParser = (eventString) => {
             throw new Error(`bad type: ${match[1]}`);
         }
         eventString = eventString.slice(match[0].length);
-    } 
+    }
     if (eventString.length == 0) {
         return result;
     }
@@ -69,7 +69,7 @@ const eventParser = (eventString) => {
         if (eventString.length == 0) {
             return result;
         }
-        
+
         let variant, value, subtype, repr;
         try {
             repr = eventString.slice(0);
@@ -158,7 +158,7 @@ const addOrGetArticle = async (article, token) => {
         let rec = await request(opt);
         if (rec.length == 1) {
             return rec[0];
-        } 
+        }
     } catch (err) {
         console.log(err.error);
         throw err;
@@ -217,7 +217,7 @@ const addOrGetArticle = async (article, token) => {
             rec = await request(opt);
             process.stdout.write('.');
             return rec;
-        } 
+        }
     } catch (err) {
         console.log(err.error);
         throw err;
@@ -248,7 +248,7 @@ const uploadEvent = async (event, token) => {
         body: event,
         json: true
     };
-    const record = await request(opt); 
+    const record = await request(opt);
     return record;
 
 }
@@ -310,7 +310,7 @@ const uploadKbFlatFile = async (filepath, token) => {
                 errorCount++;
             }
         }
-        
+
         if (record.id_type === 'pubmed') {
             let evidence;
             try {

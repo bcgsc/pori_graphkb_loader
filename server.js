@@ -4,17 +4,48 @@
 const conf = require('./test/config/sample'); // get the database connection configuration
 const app = require('./app');
 const auth = require('./app/middleware/auth');
-const {PERMISSIONS} = require('./app/repo/constants');
 const fs = require('fs');
+const {createSchema, loadSchema} = require('./app/repo/schema');
+const {createUser} = require('./app/repo/base');
+const OrientDB  = require('orientjs');
 
 // cleanup
 process.on('SIGINT', app.close);
 //process.on('uncaughtException', app.close);
 
-
-
 (async () => {
     try {
+        const verbose = conf.verbose || process.env.VERBOSE !== '';
+        // set up the database server
+        const server = OrientDB({
+            host: conf.server.host,
+            HTTPport: conf.server.port,
+            username: conf.server.user,
+            password: conf.server.pass
+        });
+        const exists = await server.exists({name: conf.db.name});
+        if (verbose) {
+            console.log('db exists', exists, conf.db.name);
+        }
+        let db, schema;
+        if (! exists) {
+            if (verbose) {
+                console.log('creating the db', conf.db.name);
+            }
+            db = await server.create({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
+            await db.query('alter database custom standardElementConstraints=false');
+            if (verbose) {
+                console.log('create the schema');
+            }
+            await createSchema(db, verbose);
+            schema = await loadSchema(db, verbose);
+            // create the admin user
+            const user = await createUser(db, {model: schema.User, userName: 'admin', groupNames: ['admin']});
+            if (verbose) {
+                console.log('created the user:', user);
+            }
+            await server.close();
+        }
         console.log('creating certificate');
         console.log('creating the admin test token');
         auth.keys.private = fs.readFileSync(conf.private_key);

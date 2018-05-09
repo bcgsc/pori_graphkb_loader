@@ -81,9 +81,9 @@ class SelectionQuery {
         }
         for (let attr of Object.keys(subqueries)) {
             const subQuery = new SelectionQuery(
-                this.model.linkedModels[attr],
-                subqueries[attr],
-                {paramIndex: this.paramIndex, activeOnly: opt.activeOnly}
+                subqueries[attr].model,
+                subqueries[attr].where,
+                Object.assign({paramIndex: this.paramIndex, activeOnly: opt.activeOnly}, subqueries[attr])
             );
             Object.assign(this.params, subQuery.params);
             this.paramIndex += Object.keys(subQuery.params).length;
@@ -98,6 +98,7 @@ class SelectionQuery {
      *  >>> query.OrClause('thing', ['blargh', null])
      *  {query: '(thing = :param0 OR thing IS NULL)', params: {param0: 'blargh'}}
      *
+     * @example
      *  >>> query.OrClause('thing', [2])
      *  {query: 'thing = :param0', params: {param0: 2}}
      */
@@ -109,11 +110,16 @@ class SelectionQuery {
         const content = [];
         const params = {};
         let paramStartIndex = Object.keys(this.params).length;
+        const property = this.model.properties[name];
 
         for (let value of arr) {
             const pname = `param${paramStartIndex}`;
             if (value === undefined || value === null) {
                 content.push(`${name} is NULL`);
+            } else if (typeof value !== 'object' && /^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
+                content.push(`${name} contains :${pname}`);
+                params[pname] = value;
+                paramStartIndex++;
             } else {
                 content.push(`${name} = :${pname}`);
                 params[pname] = value;

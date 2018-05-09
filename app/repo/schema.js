@@ -14,21 +14,32 @@ const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 
 
 class ClassModel {
-
-    constructor({name, properties, cast, defaults, inherits, isAbstract, edgeRestrictions}) {
-        this.name = name;
-        this._cast = cast || {};
-        this._defaults = defaults || {};
-        this._inherits = inherits || [];
-        this._edgeRestrictions = edgeRestrictions || null;
-        this.isAbstract = isAbstract;
-        this._properties = properties || {};  // by name
+    /**
+     * @param {Object} opt
+     * @param {string} opt.name the class name
+     * @param {Object} opt.defaults the mapping of attribute names to functions producing default values
+     * @param {Array[ClassModel]} opt.inherits the models this model inherits from
+     * @param {Array[[string, string]]} opt.edgeRestrictions list of class pairs this edge type is allowed to join
+     * @param {Boolean} opt.isAbstract this is an abstract class
+     * @param {Object} opt.properties mapping by attribute name to property objects (defined by orientjs)
+     */
+    constructor(opt) {
+        this.name = opt.name;
+        this._cast = opt.cast || {};
+        this._defaults = opt.defaults || {};
+        this._inherits = opt.inherits || [];
+        this._edgeRestrictions = opt.edgeRestrictions || null;
+        this.isAbstract = opt.isAbstract;
+        this._properties = opt.properties || {};  // by name
     }
 
     get isEdge() {
         return this._edgeRestrictions === null ? false : true;
     }
 
+    /**
+     * @returns {Array[string]} the list of parent class names which this class inherits from
+     */
     get inherits() {
         let parents = [];
         for (let model of this._inherits) {
@@ -38,26 +49,33 @@ class ClassModel {
         return parents;
     }
 
+    /**
+     * @returns {Array[string]} a list of property names for all required properties
+     */
     get required() {
-        let required = [];
-        required.push(Array.from(Object.values(this.properties).filter(prop => prop.mandatory), (prop) => prop.name));
+        let required = Array.from(Object.values(this._properties).filter(prop => prop.mandatory), (prop) => prop.name);
         for (let parent of this._inherits) {
             required.push(...parent.required);
         }
         return required;
     }
 
+    /**
+     * @returns {Array[string]} a list of property names for all optional properties
+     */
     get optional() {
-        let optional = [];
-        optional.push(Array.from(Object.values(this.properties).filter(prop => ! prop.mandatory), (prop) => prop.name));
+        let optional = Array.from(Object.values(this._properties).filter(prop => ! prop.mandatory), (prop) => prop.name);
         for (let parent of this._inherits) {
             optional.push(...parent.optional);
         }
         return optional;
     }
 
+    /**
+     * @returns {Array[string]} list of property names
+     */
     get propertyNames() {
-        return Array.from(this.properties, prop => prop.name);
+        return Object.keys(this.properties);
     }
 
     get properties() {
@@ -66,18 +84,6 @@ class ClassModel {
             properties = Object.assign({}, parent.properties, properties);
         }
         return properties;
-    }
-
-    get linkedModels() {
-        let linkedModels = Object.assign({}, this._linkedModels);
-        for (let parent of this._inherits) {
-            linkedModels = Object.assign({}, parent.linkedModels, linkedModels);
-        }
-        return linkedModels;
-    }
-
-    linkModel(name, model) {
-        this._linkedModels[name] = model;
     }
 
     get cast() {
@@ -114,9 +120,10 @@ class ClassModel {
             if (prop.defaultValue) {
                 defaults[prop.name] = () => prop.defaultValue;
             }
-            if (types[prop.type] === 'Integer') {
+            prop.type = types[prop.type].toLowerCase();  // human readable, defaults to number system from the db
+            if (prop.type === 'integer') {
                 cast[prop.name] = (x) => parseInt(x, 10);
-            } else if (types[prop.type] === 'String') {
+            } else if (prop.type === 'string') {
                 cast[prop.name] = (x) => x.toLowerCase();
             }
             if (prop.name === 'uuid') {
@@ -153,20 +160,19 @@ class ClassModel {
             ignoreExtra: false
         }, opt);
         const formattedRecord = Object.assign({}, opt.dropExtra ? {} : record);
-        const reqAttr = this.required;
-        const optAttr = this.optional;
+        const properties = this.properties;
         const prefixed = {};
 
         // make a nested object for the parameter prefixed options
         for (let attr of Object.keys(record)) {
             const {prefix, suffix} = getParameterPrefix(attr);
-            if (this.linkedModels[prefix] && suffix) {
+            if (properties[prefix] && suffix && properties[prefix].linkedModel) {
                 prefixed[attr] = prefix;
             }
         }
         if (! opt.ignoreExtra && ! opt.dropExtra) {
             for (let attr of Object.keys(record)) {
-                if (! reqAttr.includes(attr) && ! optAttr.includes(attr) & prefixed[attr] === undefined) {
+                if (properties[attr] === undefined && prefixed[attr] === undefined) {
                     throw new Error(`unexpected attribute: ${attr}`);
                 }
             }
@@ -185,25 +191,25 @@ class ClassModel {
                 }
             }
         }
-        // check that the required attributes are there
-        for (let attr of reqAttr) {
-            if (record[attr] === undefined && opt.ignoreMissing) {
-                continue;
+        for (let prop of Object.values(properties)) {
+            // check that the required attributes are there
+            if (prop.mandatory) {
+                if (record[prop.name] === undefined && opt.ignoreMissing) {
+                    continue;
+                }
+                if (record[prop.name] !== undefined) {
+                    formattedRecord[prop.name] = record[prop.name];
+                }
+                if (formattedRecord[prop.name] === undefined && ! opt.ignoreMissing) {
+                    throw Error(`missing required attribute ${prop.name}`);
+                }
+                formattedRecord[prop.name] = formattedRecord[prop.name];
+            } else if (record[prop.name] !== undefined) {
+                // add any optional attributes that were specified
+                formattedRecord[prop.name] = record[prop.name];
             }
-            if (record[attr] !== undefined) {
-                formattedRecord[attr] = record[attr];
-            }
-            if (formattedRecord[attr] === undefined && ! opt.ignoreMissing) {
-                throw Error(`missing required attribute ${attr}`);
-            }
-            formattedRecord[attr] = formattedRecord[attr];
         }
-        // add any optional attributes that were specified
-        for (let attr of optAttr) {
-            if (record[attr] !== undefined) {
-                formattedRecord[attr] = record[attr];
-            }
-        }
+
         // try the casting
         for (let attr of Object.keys(this.cast)) {
             if (formattedRecord[attr] != undefined) {
@@ -233,7 +239,6 @@ class ClassModel {
 
     formatFollow(query) {
         const follow = [];
-        console.log('formatFollow', query);
         const splitUnlessEmpty = (string) => {
             return string === '' ? [] : string.split(',');
         };
@@ -266,12 +271,13 @@ class ClassModel {
         return follow;
     }
     /**
-     * Parses query 'where' conditions based on the current class
+     * Parses query 'where' conditions based on the current class.
+     * In general this is used in translating the API query to a DB select query
      */
     formatQuery(inputQuery) {
         const query = {where: {}, subqueries: {}, follow: []};
-        const properties = this.propertyNames;
-        const links = this.linkedModels;
+        const propertyNames = this.propertyNames;
+        const properties = this.properties;
         const subqueries = {};
         const cast = this.cast;
         const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants'];
@@ -294,9 +300,9 @@ class ClassModel {
             } else {
                 value = cast[condition] ? cast[condition](inputQuery[condition]) : inputQuery[condition];
             }
-            if (properties.includes(prefix) && links[prefix]) {
+            if (propertyNames.includes(prefix) && properties[prefix].linkedModel) {
                 if (subqueries[prefix] === undefined) {
-                    subqueries[prefix] = {where: {}, model: links[prefix]};
+                    subqueries[prefix] = {where: {}, model: properties[prefix].linkedModel};
                 }
                 if (specialArgs.includes(suffix)) {
                     subqueries[prefix][suffix] = value;
@@ -309,7 +315,7 @@ class ClassModel {
         }
         // check all parameters are valid
         for (let prop of Object.keys(query.where)) {
-            if (! properties.includes(prop)) {
+            if (! propertyNames.includes(prop)) {
                 throw new AttributeError(`unexpected attribute: ${prop} is not allowed for queries on class ${this.name}`);
             }
         }
@@ -963,17 +969,13 @@ const loadSchema = async (db, verbose=false) => {
     await populateCache(db, schema);
     db.models = schema;
     // not link the different models where appropriate
-    for (let name of ['V', 'E']) {
-        schema[name].linkModel('createdBy', schema.User);
-        schema[name].linkModel('deletedBy', schema.User);
+    for (let model of Object.values(schema)) {
+        for (let prop of Object.values(model._properties)) {
+            if (prop.linkedClass && schema[prop.linkedClass]) {
+                prop.linkedModel = schema[prop.linkedClass];
+            }
+        }
     }
-    schema.DependantFeature.linkModel('dependency', schema.IndependantFeature);
-    schema.PositionalVariant.linkModel('reference', schema.Feature);
-    schema.PositionalVariant.linkModel('reference2', schema.Feature);
-    schema.CategoryVariant.linkModel('reference', schema.Ontology);
-    schema.CategoryVariant.linkModel('reference2', schema.Ontology);
-    schema.Statement.linkModel('reviewBy', schema.User);
-    schema.Statement.linkModel('appliesTo', schema.Biomarker);
     return schema;
 };
 
