@@ -1,5 +1,3 @@
-const _ = require('lodash');
-
 const {addResourceRoutes} = require('./util');
 const {cacheVocabulary} = require('./../repo/base');
 const {addStatement} = require('./statement');
@@ -8,15 +6,15 @@ const {addParserRoutes} = require('./parser');
 
 
 const addRoutes = (opt) => {
-    const {router, schema, db, verbose} = opt;
+    const {router, schema, db} = opt;
     // main route (useful to be able to ping)
     router.route('/')
-        .get((req, res, next) => {
+        .get((req, res) => {
             res.send('welcome to the knowledgebase api');
         });
     // returns a json representing the current schema
     router.route('/schema')
-        .get((req, res, next) => {
+        .get((req, res) => {
             res.json(schema);
         });
     addResourceRoutes({

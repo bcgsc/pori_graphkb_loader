@@ -74,7 +74,7 @@ const parseContinuous  = (string) => {
     let m;
     const result = {};
     if (m = /\(([^_]+)_([^_]+)\)/.exec(match.group('break1'))) {
-        result.break1Start = parsePosition(prefix, m[1])
+        result.break1Start = parsePosition(prefix, m[1]);
         result.break1End =  parsePosition(prefix, m[2]);
     } else {
         result.break1Start = parsePosition(prefix, match.group('break1'));

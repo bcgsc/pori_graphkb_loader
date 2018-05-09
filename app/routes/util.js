@@ -8,7 +8,7 @@ const {select, create, update, remove, QUERY_LIMIT} = require('./../repo/base');
 const {getParameterPrefix} = require('./../repo/util');
 
 
-class InputValidationError extends ErrorMixin {};
+class InputValidationError extends ErrorMixin {}
 const RECORD_LIMIT = 1000;
 
 /*
@@ -21,7 +21,7 @@ const validateParams = async (opt) => {
     const params = [];
 
     for (let param of Array.from(opt.params) || []) {
-        const {prefix, suffix} = getParameterPrefix(param);
+        const {prefix} = getParameterPrefix(param);
         params.push(prefix ? prefix : param);
     }
     if (Object.keys(params).length == 0 && ! allowNone) {
@@ -65,7 +65,7 @@ const addResourceRoutes = (opt) => {
     }
 
     router.get(route,
-        async (req, res, next) => {
+        async (req, res) => {
             console.log(route, 'GET', req.query);
             const params = _.omit(req.query, ['limit', 'fuzzyMatch', 'ancestors', 'descendants']);
             const other = Object.assign({limit: QUERY_LIMIT}, _.omit(req.query, Object.keys(params)));
@@ -84,7 +84,7 @@ const addResourceRoutes = (opt) => {
             }
         });
     router.post(route,
-        async (req, res, next) => {
+        async (req, res) => {
             if (! _.isEmpty(req.query)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
                 return;
@@ -105,7 +105,7 @@ const addResourceRoutes = (opt) => {
         }
     );
     router.delete(route,
-        async (req, res, next) => {
+        async (req, res) => {
             if (! _.isEmpty(req.query)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type'});
                 return;
@@ -128,8 +128,8 @@ const addResourceRoutes = (opt) => {
 
     // Add the id routes
     router.get(`${route}/:id`,
-        async (req, res, next) => {
-            if (! uuidValidate(req.params.id) ) {
+        async (req, res) => {
+            if (! uuidValidate(req.params.id)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid uuid: ${req.params.id}`});
                 return;
             }
@@ -139,7 +139,7 @@ const addResourceRoutes = (opt) => {
                 res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 return;
             }
-            const where = Object.assign({}, req.query, {uuid: req.params.id, deletedAt: "null"});
+            const where = Object.assign({}, req.query, {uuid: req.params.id, deletedAt: 'null'});
             try {
                 const result = await select(db, {model: model, where: where, exactlyN: 1});
                 res.json(jc.decycle(result));
@@ -152,8 +152,8 @@ const addResourceRoutes = (opt) => {
             }
         });
     router.put(`${route}/:id`,
-        async (req, res, next) => {
-            if (! uuidValidate(req.params.id) ) {
+        async (req, res) => {
+            if (! uuidValidate(req.params.id)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid uuid: ${req.params.id}`});
                 return;
             }
@@ -165,7 +165,7 @@ const addResourceRoutes = (opt) => {
                 const result = await update(db, {
                     model: model,
                     content: req.body,
-                    where: {uuid: req.params.id, deletedAt: "null"},
+                    where: {uuid: req.params.id, deletedAt: 'null'},
                     user: req.user
                 });
                 if (cacheUpdate) {
@@ -182,8 +182,8 @@ const addResourceRoutes = (opt) => {
         }
     );
     router.delete(`${route}/:id`,
-        async (req, res, next) => {
-            if (! uuidValidate(req.params.id) ) {
+        async (req, res) => {
+            if (! uuidValidate(req.params.id)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid uuid: ${req.params.id}`});
                 return;
             }
@@ -192,7 +192,7 @@ const addResourceRoutes = (opt) => {
                 return;
             }
             try {
-                const result = await remove(db, {model: model, where: {uuid: req.params.id, deletedAt: "null"}, user: req.user});
+                const result = await remove(db, {model: model, where: {uuid: req.params.id, deletedAt: 'null'}, user: req.user});
                 if (cacheUpdate) {
                     await cacheUpdate(db);
                 }
@@ -235,9 +235,9 @@ const looksLikeRID = (rid) => {
         if (/^#\d+:\d+$/.exec(rid.trim())) {
             return true;
         }
-    } catch (err) {}
+    } catch (err) {}  // eslint-disable-line no-empty
     return false;
-}
+};
 
 
 module.exports = {validateParams, addResourceRoutes, InputValidationError, errorToJSON, looksLikeRID};

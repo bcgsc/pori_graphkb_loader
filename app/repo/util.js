@@ -33,6 +33,6 @@ const getParameterPrefix = (param) => {
  */
 const quoteWrap = (string) => {
     return `'${string}'`;
-}
+};
 
 module.exports = {timeStampNow, castUUID, getParameterPrefix, quoteWrap};

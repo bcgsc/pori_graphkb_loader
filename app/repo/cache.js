@@ -3,6 +3,6 @@ const cache = {
     users: {},
     features: {},
     userGroups: {}
-}
+};
 
-module.exports = cache; 
+module.exports = cache;

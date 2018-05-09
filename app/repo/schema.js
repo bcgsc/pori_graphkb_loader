@@ -1,12 +1,11 @@
 const {types}  = require('orientjs');
 const uuidV4 = require('uuid/v4');
-const _ = require('lodash');
 
 const {PERMISSIONS} = require('./constants');
 const {createRepoFunctions} = require('./functions');
 const {castUUID, timeStampNow, getParameterPrefix} = require('./util');
 const cache = require('./cache');
-const {select, populateCache, Follow} = require('./base');
+const {populateCache, Follow} = require('./base');
 const {AttributeError} = require('./error');
 
 
@@ -766,10 +765,10 @@ const createSchema = async (db, verbose=false) => {
                 {name: 'type', type: 'string', mandatory: true, notNull: true},
                 {name: 'subtype', type: 'string'},
                 {name: 'relevance', type: 'string'},
-                {name: 'reviewBy', type: 'link', linkedClass: 'User', notNull: true, notNull: true},
+                {name: 'reviewBy', type: 'link', linkedClass: 'User', notNull: true},
                 {name: 'reviewAt', type: 'long'},
                 {name: 'reviewStatus', type: 'string'},
-                {name: 'appliesTo', type: 'link', linkedClass: 'Biomarker', notNull: true, notNull: true}
+                {name: 'appliesTo', type: 'link', linkedClass: 'Biomarker', notNull: true}
             ]
         }),
         createClassModel(db, {

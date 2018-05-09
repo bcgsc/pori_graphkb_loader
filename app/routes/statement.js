@@ -1,19 +1,17 @@
 const HTTP_STATUS = require('http-status-codes');
-var uuidValidate = require('uuid-validate');
 const jc = require('json-cycle');
 const _ = require('lodash');
 const {errorToJSON, looksLikeRID} = require('./util');
-const {ErrorMixin, AttributeError, NoResultFoundError, MultipleResultsFoundError} = require('./../repo/error');
-const {select, create, update, remove} = require('./../repo/base');
+const {AttributeError} = require('./../repo/error');
+const {create} = require('./../repo/base');
 
 
 const addStatement = (opt) => {
     const {router, schema, db} = opt;
     const model = schema.Statement;
-    const verbose = opt.verbose === undefined ? true : false;
 
-    router.post('/statements', 
-        async (req, res, next) => {
+    router.post('/statements',
+        async (req, res) => {
             if (! _.isEmpty(req.query)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
                 return;
@@ -35,7 +33,7 @@ const addStatement = (opt) => {
                     return;
                 }
             }
-            
+
             try {
                 // ensure that the dependency records are valid
                 dependencies = await Promise.all(Array.from(dependencies, async (rid) => {

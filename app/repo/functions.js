@@ -5,13 +5,13 @@
 // db.query('CREATE FUNCTION getUserByName "select * from User where name = :name and deletedAt is null" PARAMETERS [name] IDEMPOTENT true LANGUAGE sql');
 const createFunction = async (db, func) => {
     return await db.query(
-        `CREATE FUNCTION ${func.name} :code PARAMETERS [${func.params.join(',')}] IDEMPOTENT :idempotent LANGUAGE ${func.language === 'javascript' ? 'javascript' : 'sql'}`, 
+        `CREATE FUNCTION ${func.name} :code PARAMETERS [${func.params.join(',')}] IDEMPOTENT :idempotent LANGUAGE ${func.language === 'javascript' ? 'javascript' : 'sql'}`,
         {params: {
-            code: func.code, 
+            code: func.code,
             idempotent: func.idempotent || false
         }}
     );
-}
+};
 
 
 const createRepoFunctions = async (db) => {
@@ -28,6 +28,6 @@ if (selection.length === 1) {
     `});
     }
     await Promise.all(Array.from(repoFunctions, x => createFunction(db, x)));
-}
+};
 
 module.exports = {createRepoFunctions};
