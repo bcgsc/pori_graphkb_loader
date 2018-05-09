@@ -1,0 +1,413 @@
+openapi: 3.0.0
+info:
+    title: Graph KB
+
+paths:
+    /users:
+        parameters:
+            - $ref: '#/components/parameters/Authorization'
+        get:
+            summary: returns a list of users
+            parameters:
+                - in: query
+                  name: name
+                  schema:
+                    type: string
+                  description: the user name
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: '#/components/schemas/User'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+
+    /users/{id}:
+        parameters:
+            - $ref: '#/components/parameters/@rid'
+            - $ref: '#/components/parameters/Authorization'
+        get:
+            summary: return a particular user
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/User'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+
+    /diseases:
+        parameters:
+            - $ref: '#/components/parameters/Authorization'
+        get:
+            summary: returns a list of disease terms
+            parameters:
+                - $ref: '#/components/parameters/Ontology/name'
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: '#components/schemas/Disease'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+
+    /diseases/{id}:
+        parameters:
+            - $ref: '#/components/parameters/@rid'
+            - $ref: '#/components/parameters/Authorization'
+        get:
+            summary: return a particular disease record
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Disease'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+    /anatomicalentities:
+        parameters:
+            - $ref: '#/components/parameters/Authorization'
+        get:
+            summary: returns a list of anatomical entity terms
+            parameters:
+                - $ref: '#/components/parameters/Ontology/name'
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: '#components/schemas/AnatomicalEntity'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+
+    /anatomicalentities/{id}:
+        parameters:
+            - $ref: '#/components/parameters/@rid'
+            - $ref: '#/components/parameters/Authorization'
+        get:
+            summary: return a particular anatomical entity record
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AnatomicalEntity'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+
+
+components:
+    responses:
+        NotAuthorized:
+            description: authorization failed or insufficient permissions were found
+            content:
+                application/json:
+                    schema:
+                        $ref: '#/components/schemas/Error'
+        RecordNotFound:
+            description: the record does not exist
+            content:
+                application/json:
+                    schema:
+                        $ref: '#/components/schemas/Error'
+        RecordAlreadyExists:
+            description: the record already exists
+            content:
+                application/json:
+                    schema:
+                        $ref: '#/components/schemas/Error'
+    parameters:
+        Authorization:
+            in: header
+            name: Authorization
+            schema:
+                type: string
+                format: token
+            description: token containing the user information/authentication
+        '@rid':
+            in: path
+            name: '@rid'
+            schema:
+                type: string
+            description: the recordID. This ID will be different between versions of the same node and refers to a particular version only
+            example: '34:1'
+        createdAt:
+            in: query
+            name: createdAt
+            schema:
+                type: integer
+            description: when the record was created
+        createdBy:
+            in: query
+            name: createdBy
+            description: the recordID of the user who created the record
+            schema:
+                type: string
+        deletedAt:
+            in: query
+            name: deletedAt
+            description: if given, indicates the time at which a record has been deleted. null for active records
+            schema:
+                type: integer
+                nullable: true
+        deletedBy:
+            name: deletedBy
+            in: query
+            description: the recordID of the user who deleted the record
+            schema:
+                type: string
+                nullable: true
+        history:
+            in: query
+            name: history
+            description: the recordID of the previous version of this record
+            schema:
+                type: string
+                nullable: true
+        uuid:
+            name: uuid
+            in: query
+            description: record id that will be common for all versions of a given record
+            schema:
+                type: string
+                format: uuid
+        Ontology:
+            description:
+                name: description
+                in: query
+                schema:
+                    type: string
+                    nullable: true
+                description: paragraph describing/defining the ontology term
+            longName:
+                name: longName
+                in: query
+                schema:
+                    type: string
+                    nullable: true
+                description: extended name field for more verbose descriptor
+            name:
+                name: name
+                in: query
+                schema:
+                    type: string
+                description: the name of the ontology term
+            nameVersion:
+                name: nameVersion
+                in: query
+                schema:
+                    type: string
+                description: the version of the name (from the external source)
+            source:
+                in: query
+                schema:
+                    type: string
+                description: the name of the external source the ontology term is derived from
+            sourceId:
+                name: sourceId
+                in: query
+                schema:
+                    type: string
+                    nullable: true
+                description: the ID in the external source
+            sourceVersion:
+                name: sourceVersion
+                in: query
+                schema:
+                    type: string
+                    nullable: true
+                description: the version of the external source
+            subsets:
+                in: query
+                name: subsets
+                schema:
+                    type: string
+                description: ontology subset this term belongs to
+
+    schemas:
+        Error:
+            type: object
+            properties:
+                message:
+                    type: string
+                    description: the error message
+                name:
+                    type: string
+                    description: the name of the type of error
+                stacktrace:
+                    type: string
+                    description: optionally the error may include a stack trace to aid in debugging
+        ODB:
+            type: object
+            properties:
+                '@rid':
+                    type: string
+                    description: the record ID, unique for any given node/edge in the database
+                    example: '#34:1'
+                    pattern: '^#\d+:\d+$'
+                '@class':
+                    type: string
+                    description: table the record belongs to
+        UserGroup:
+            allOf:
+                - $ref: '#/components/schemas/ODB'
+            type: object
+            properties:
+                name:
+                    type: string
+                    description: name of the user group
+                permissions:
+                    type: object
+        User:
+            allOf:
+                - $ref: '#/components/schemas/ODB'
+            type: object
+            properties:
+                name:
+                    type: string
+                createdAt:
+                    description: when the record was created
+                    type: integer
+                deletedAt:
+                    type: integer
+                    nullable: true
+                groups:
+                    type: array
+                    items:
+                        $ref: '#/components/schemas/UserGroup'
+                history:
+                    oneOf:
+                        - type: string
+                          example: '#47:2'
+                        - $ref: '#/components/schemas/User'
+                    nullable: true
+        MixIn:
+            allOf:
+                - $ref: '#/components/schemas/ODB'
+            type: object
+            required:
+                - createdAt
+                - createdBy
+                - uuid
+            properties:
+                createdAt:
+                    type: integer
+                    description: when the record was created
+                createdBy:
+                    description: user who created the record
+                    oneOf:
+                        - type: string
+                          example: '#47:0'
+                        - $ref: '#/components/schemas/User'
+                deletedAt:
+                    description: if given, indicates the time at which a record has been deleted. null for active records
+                    type: integer
+                    nullable: true
+                deletedBy:
+                    description: the user who deleted the record
+                    oneOf:
+                        - type: string
+                          example: '#47:1'
+                        - $ref: '#/components/schemas/User'
+                    nullable: true
+                history:
+                    description: link to the previous version of this record
+                    oneOf:
+                        - type: string
+                          example: '#34:2'
+                        - type: object
+                    nullable: true
+                uuid:
+                    description: record id that will be common for all versions of a given record
+                    type: string
+                    format: uuid
+        Ontology:
+            allOf:
+                - $ref: '#/components/schemas/MixIn'
+            type: object
+            properties:
+                description:
+                    type: string
+                    nullable: true
+                    description: paragraph describing/defining the ontology term
+                longName:
+                    type: string
+                    description: extended name field for more verbose descriptor
+                    nullable: true
+                name:
+                    type: string
+                    description: the name of the ontology term
+                nameVersion:
+                    type: string
+                    description: the version of the name (from the external source)
+                source:
+                    type: string
+                    description: the name of the external source the ontology term is derived from
+                sourceId:
+                    type: string
+                    nullable: true
+                    description: the ID in the external source
+                sourceVersion:
+                    type: string
+                    nullable: true
+                    description: the version of the external source
+                subsets:
+                    type: array
+                    description: ontology subset(s) this term belongs to
+                    items:
+                        type: string
+        Disease:
+            allOf:
+                - $ref: '#/components/schemas/Ontology'
+            type: object
+            properties:
+                name:
+                    example: cancer
+                source:
+                    example: disease ontology
+                sourceVersion:
+                    example: "2018-03-02"
+                sourceId:
+                    example: "doid:162"
+                description:
+                    example: "a disease of cellular proliferation that is malignant and primary ..."
+                subsets:
+                    items:
+                        example: "doid#DO_AGR_slim"
+        AnatomicalEntity:
+            allOf:
+                - $ref: '#/components/schemas/Ontology'
+            type: object
+            properties:
+                name:
+                    example: peripheral nervous system
+                source:
+                    example: uberon
+                sourceId:
+                    example: "uberon:0000010"
+                description:
+                    example: "a major division of the nervous system that contains ..."
+                subsets:
+                    items:
+                        example: "uberon/core#uberon_slim"
+
+
+
+
+
