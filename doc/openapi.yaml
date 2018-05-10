@@ -49,6 +49,12 @@ paths:
             summary: returns a list of disease terms
             parameters:
                 - $ref: '#/components/parameters/Ontology/name'
+                - $ref: '#/components/parameters/Ontology/source'
+                - $ref: '#/components/parameters/Ontology/sourceId'
+                - $ref: '#/components/parameters/Ontology/sourceVersion'
+                - $ref: '#/components/parameters/Ontology/longName'
+                - $ref: '#/components/parameters/Ontology/nameVersion'
+                - $ref: '#/components/parameters/limit'
             responses:
                 '200':
                     content:
@@ -83,6 +89,11 @@ paths:
             summary: returns a list of anatomical entity terms
             parameters:
                 - $ref: '#/components/parameters/Ontology/name'
+                - $ref: '#/components/parameters/Ontology/source'
+                - $ref: '#/components/parameters/Ontology/sourceId'
+                - $ref: '#/components/parameters/Ontology/sourceVersion'
+                - $ref: '#/components/parameters/Ontology/longName'
+                - $ref: '#/components/parameters/Ontology/nameVersion'
             responses:
                 '200':
                     content:
@@ -133,6 +144,14 @@ components:
                     schema:
                         $ref: '#/components/schemas/Error'
     parameters:
+        limit:
+            in: query
+            name: limit
+            schema:
+                type: integer
+                nullable: true
+            description: limits the number of records to return
+            default: 1000
         Authorization:
             in: header
             name: Authorization
