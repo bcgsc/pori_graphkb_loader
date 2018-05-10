@@ -66,10 +66,8 @@ const addResourceRoutes = (opt) => {
 
     router.get(route,
         async (req, res) => {
-            console.log(route, 'GET', req.query);
             const params = _.omit(req.query, ['limit', 'fuzzyMatch', 'ancestors', 'descendants']);
             const other = Object.assign({limit: QUERY_LIMIT}, _.omit(req.query, Object.keys(params)));
-            console.log(other);
             try {
                 validateParams({params: params, required: reqQueryParams, optional: optQueryParams});
             } catch (err) {
@@ -80,7 +78,7 @@ const addResourceRoutes = (opt) => {
                 const result = await select(db, Object.assign(other, {model: model, where: params}));
                 res.json(jc.decycle(result));
             } catch (err) {
-                res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
+                res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
     router.post(route,
@@ -97,9 +95,9 @@ const addResourceRoutes = (opt) => {
                 res.json(jc.decycle(result));
             } catch (err) {
                 if (err instanceof AttributeError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(errorToJSON(err));
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
         }
@@ -118,9 +116,9 @@ const addResourceRoutes = (opt) => {
                 res.json(jc.decycle(result));
             } catch (err) {
                 if (err instanceof AttributeError || err instanceof NoResultFoundError || err instanceof MultipleResultsFoundError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(errorToJSON(err));
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
         }
@@ -129,34 +127,36 @@ const addResourceRoutes = (opt) => {
     // Add the id routes
     router.get(`${route}/:id`,
         async (req, res) => {
-            if (! uuidValidate(req.params.id)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid uuid: ${req.params.id}`});
+            if (! looksLikeRID(req.params.id, false)) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid record ID: ${req.params.id}`});
                 return;
             }
+            req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             try {
                 validateParams({params: req.query, required: reqQueryParams, optional: optQueryParams});
             } catch (err) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 return;
             }
-            const where = Object.assign({}, req.query, {uuid: req.params.id, deletedAt: 'null'});
+            const where = Object.assign({}, req.query, {'@rid': req.params.id, deletedAt: 'null'});
             try {
                 const result = await select(db, {model: model, where: where, exactlyN: 1});
-                res.json(jc.decycle(result));
+                res.json(jc.decycle(result[0]));
             } catch (err) {
                 if (err instanceof NoResultFoundError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(errorToJSON(err));
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
         });
     router.put(`${route}/:id`,
         async (req, res) => {
-            if (! uuidValidate(req.params.id)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid uuid: ${req.params.id}`});
+            if (! looksLikeRID(req.params.id, false)) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid record ID: ${req.params.id}`});
                 return;
             }
+            req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             if (! _.isEmpty(req.query)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
                 return;
@@ -165,7 +165,7 @@ const addResourceRoutes = (opt) => {
                 const result = await update(db, {
                     model: model,
                     content: req.body,
-                    where: {uuid: req.params.id, deletedAt: 'null'},
+                    where: {'@rid': req.params.id, deletedAt: 'null'},
                     user: req.user
                 });
                 if (cacheUpdate) {
@@ -174,34 +174,35 @@ const addResourceRoutes = (opt) => {
                 res.json(jc.decycle(result));
             } catch (err) {
                 if (err instanceof AttributeError || err instanceof NoResultFoundError || err instanceof MultipleResultsFoundError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(errorToJSON(err));
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
         }
     );
     router.delete(`${route}/:id`,
         async (req, res) => {
-            if (! uuidValidate(req.params.id)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid uuid: ${req.params.id}`});
+            if (! looksLikeRID(req.params.id, false)) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid record ID: ${req.params.id}`});
                 return;
             }
+            req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             if (! _.isEmpty(req.query)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type'});
                 return;
             }
             try {
-                const result = await remove(db, {model: model, where: {uuid: req.params.id, deletedAt: 'null'}, user: req.user});
+                const result = await remove(db, {model: model, where: {'@rid': req.params.id, deletedAt: 'null'}, user: req.user});
                 if (cacheUpdate) {
                     await cacheUpdate(db);
                 }
                 res.json(jc.decycle(result));
             } catch (err) {
                 if (err instanceof AttributeError || err instanceof NoResultFoundError || err instanceof MultipleResultsFoundError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(errorToJSON(err));
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
         }
@@ -221,6 +222,7 @@ const errorToJSON = (err) => {
 /**
  *
  * @param {string} rid the putative @rid value
+ * @param {boolean} [requireHash=true] if true the hash must be present
  * @returns {boolean} true if the string follows the expected format for an @rid, false otherwise
  *
  * @example
@@ -229,10 +231,17 @@ const errorToJSON = (err) => {
  * @example
  * >>> looksLikeRID('4:0');
  * false
+ * @example
+ * >>> looksLikeRID('#4:10', false);
+ * true
+ * @example
+ * >>> looksLikeRID('4:0', false);
+ * true
  */
-const looksLikeRID = (rid) => {
+const looksLikeRID = (rid, requireHash=true) => {
     try {
-        if (/^#\d+:\d+$/.exec(rid.trim())) {
+        const pattern = requireHash ? /^#\d+:\d+$/ : /^#?\d+:\d+$/;
+        if (pattern.exec(rid.trim())) {
             return true;
         }
     } catch (err) {}  // eslint-disable-line no-empty

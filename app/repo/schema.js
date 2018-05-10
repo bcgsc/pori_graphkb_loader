@@ -1,5 +1,6 @@
 const {types}  = require('orientjs');
 const uuidV4 = require('uuid/v4');
+const _ = require('lodash');
 
 const {PERMISSIONS} = require('./constants');
 const {createRepoFunctions} = require('./functions');
@@ -114,6 +115,7 @@ class ClassModel {
         const cast = {};
         const properties = {};
         for (let prop of oclass.properties) {
+            prop = _.omit(prop, ['class']);
             properties[prop.name] = prop;
 
             if (prop.defaultValue) {
@@ -280,6 +282,7 @@ class ClassModel {
         const subqueries = {};
         const cast = this.cast;
         const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants'];
+        const odbArgs = ['@rid', '@class'];
 
         for (let condition of Object.keys(inputQuery)) {
             if (specialArgs.includes(condition)) {
@@ -314,7 +317,7 @@ class ClassModel {
         }
         // check all parameters are valid
         for (let prop of Object.keys(query.where)) {
-            if (! propertyNames.includes(prop)) {
+            if (! propertyNames.includes(prop) && ! odbArgs.includes(prop)) {
                 throw new AttributeError(`unexpected attribute: ${prop} is not allowed for queries on class ${this.name}`);
             }
         }

@@ -10,6 +10,7 @@ const {uploadDiseaseOntology} = require('./disease_ontology');
 const {uploadHugoGenes} = require('./hgnc');
 const {uploadKbFlatFile} = require('./kb');
 const {uploadUberon} = require('./uberon');
+const {uploadNCIT} = require('./ncit');
 const path = require('path');
 
 const PERM_TOKEN = process.env.TEST_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7Im5hbWUiOiJhZG1pbiIsIkByaWQiOiIjNDE6MCJ9LCJpYXQiOjE1MjQyNDgwODgsImV4cCI6MTE1MjQyNDgwODh9.-PkTFeYCB7NyNs0XOap3ptPTp3icWxGbEBi2Hlku-kQ';
@@ -71,6 +72,12 @@ const optionDefinitions = [
         name: 'uberon',
         alias: 'u',
         description: 'path to the uberon file to upload. Expected format is OWL',
+        type: fileExists
+    },
+    {
+        name: 'ncit',
+        alias: 'n',
+        description: 'path to the NCIT owl file to upload',
         type: fileExists
     }
 ];
@@ -151,6 +158,9 @@ const upload = async () => {
     }
     if (options['uberon']) {
         await uploadUberon({conn: apiConnection, filename: options['uberon']});
+    }
+    if (options['ncit']) {
+        await uploadNCIT({conn: apiConnection, filename: options['ncit']});
     }
 };
 

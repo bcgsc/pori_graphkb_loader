@@ -226,7 +226,7 @@ UBPROP:0000004 { label: 'obsolete provenance_notes' }
 const parseUberonId = (string) => {
     let nodeId = string.replace(STRIP_PREFIX, '');
     nodeId = nodeId.replace('_', ':');
-    return nodeId;
+    return nodeId.toLowerCase();
 };
 
 
@@ -235,16 +235,6 @@ const uploadUberon = async ({filename, conn}) => {
     const graph = rdf.graph();
     const nodesByUberonId = {};
     rdf.parse(content, graph, 'http://purl.obolibrary.org/obo/uberon.owl', 'application/rdf+xml');
-    console.log(Object.keys(graph));
-    for (let attr of Object.keys(graph.predicateIndex)) {
-        if (graph.predicateIndex[attr].length < 100) {
-            continue;
-        }
-        console.log(attr, graph.predicateIndex[attr].length);
-        for (let i =0; i < 2 && i < graph.predicateIndex[attr].length; i++) {
-            console.log(graph.predicateIndex[attr][i]);
-        }
-    }
 
     for (let statement of graph.statements) {
         const nodeId = parseUberonId(statement.subject.value);
@@ -252,7 +242,7 @@ const uploadUberon = async ({filename, conn}) => {
         if (statement.object.termType == 'BlankNode') {
             continue;
         }
-        if (nodeId.startsWith('UBERON:')) {
+        if (nodeId.startsWith('uberon:')) {
             if (! nodesByUberonId[nodeId]) {
                 nodesByUberonId[nodeId] = {subClassOf: [], id: nodeId, subsets: [], subPropertyOf: [], someValuesFrom: [], misc: []};
             }
@@ -270,6 +260,7 @@ const uploadUberon = async ({filename, conn}) => {
         }
     }
     const records = {};
+    console.log('\nAdding the uberon entity nodes');
     for (let rec of Object.values(nodesByUberonId)) {
         if (! rec.label) {
             continue;
@@ -286,9 +277,21 @@ const uploadUberon = async ({filename, conn}) => {
         const dbEntry = await addRecord('anatomicalentities', body, conn, true);
         records[dbEntry.sourceId] = dbEntry;
     }
-    console.log('writing: uberon.tmp.json');
+    console.log('\nAdding the subClassOf relationships');
+    for (let rec of Object.values(records)) {
+        for (let tgt of nodesByUberonId[rec.sourceId].subClassOf) {
+            if (records[tgt]) {
+                const body = {
+                    out: rec['@rid'].toString(),
+                    in: records[tgt]['@rid'].toString()
+                };
+                await addRecord('subclassof', body, conn, true);
+            }
+        }
+    }
+    /*console.log('writing: uberon.tmp.json');
     jsonfile.writeFileSync('uberon.tmp.json', nodesByUberonId);
-    console.log('json file has', Object.keys(nodesByUberonId).length, 'entries');
+    console.log('json file has', Object.keys(nodesByUberonId).length, 'entries');*/
 };
 
 module.exports = {uploadUberon};

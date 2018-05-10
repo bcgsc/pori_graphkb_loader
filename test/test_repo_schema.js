@@ -137,8 +137,7 @@ describe('schema', () => {
                 user: admin
             });
         });
-        it('get by name', async () => {
-        })
+        it('get by name');
     });
     afterEach(async () => {
         // clear all V/E records

@@ -1,6 +1,7 @@
 {
   "name": "knowledgebase-api",
   "main": "index.js",
+  "version": "2.0.0",
   "dependencies": {
     "bluebird": "^3.5.0",
     "body-parser": "^1.15.2",
@@ -22,6 +23,7 @@
     "request-promise": "^4.2.1",
     "shelljs": "^0.8.1",
     "string-similarity": "^1.2.0",
+    "swagger-ui": "^3.14.1",
     "uuid": "^3.0.1",
     "uuid-validate": "0.0.2",
     "year": "^0.2.1"

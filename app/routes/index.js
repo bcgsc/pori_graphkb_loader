@@ -1,3 +1,5 @@
+const jc = require('json-cycle');
+
 const {addResourceRoutes} = require('./util');
 const {cacheVocabulary} = require('./../repo/base');
 const {addStatement} = require('./statement');
@@ -15,7 +17,7 @@ const addRoutes = (opt) => {
     // returns a json representing the current schema
     router.route('/schema')
         .get((req, res) => {
-            res.json(schema);
+            res.json(jc.decycle(schema));
         });
     addResourceRoutes({
         router: router,

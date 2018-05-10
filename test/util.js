@@ -51,7 +51,7 @@ const setUpEmptyDB = async (conf=emptyConf) => {
 const tearDownEmptyDB = async (server) => {
     //await server.drop({name: emptyConf.db.name});
     await server.close();
-}
+};
 
 const setUpSampleDB = async (verbose=false) => {
     // set up the database server
@@ -66,26 +66,24 @@ const setUpSampleDB = async (verbose=false) => {
         console.log('db exists', exists, sampleConf.db.name);
     }
     let db;
-    if (exists) {
+    if (! exists) {
         if (verbose) {
-            console.log('dropping the existing db');
+            console.log('creating the db', sampleConf.db.name);
         }
-        await server.drop({name: sampleConf.db.name});
-    }
-    if (verbose) {
-        console.log('creating the db', sampleConf.db.name);
-    }
-    db = await server.create({name: sampleConf.db.name, username: sampleConf.db.user, password: sampleConf.db.pass});
-    await db.query('alter database custom standardElementConstraints=false');
-    //await db.query(`import database ${sampleConf.db.export} -preserveClusterIDs=TRUE`);
-    const command = `${process.env.ORIENTDB_HOME}/bin/console.sh "CONNECT remote:${process.env.ORIENTDB_HOME}/databases/test_sample admin admin; SELECT FROM V; import database ${sampleConf.db.export} -preserveClusterIDs=TRUE"`;
-    if (verbose) {
-        console.log('executing shell command');
-        console.log(command);
-    }
-    const code = await shell.exec(command, {silent:true}).code;
-    if (code !== 0) {
-        throw new Error(`exit code ${code}, expected 0`);
+        db = await server.create({name: sampleConf.db.name, username: sampleConf.db.user, password: sampleConf.db.pass});
+        await db.query('alter database custom standardElementConstraints=false');
+        //await db.query(`import database ${sampleConf.db.export} -preserveClusterIDs=TRUE`);
+        const command = `${process.env.ORIENTDB_HOME}/bin/console.sh "CONNECT remote:${process.env.ORIENTDB_HOME}/databases/test_sample admin admin; SELECT FROM V; import database ${sampleConf.db.export} -preserveClusterIDs=TRUE"`;
+        if (verbose) {
+            console.log('executing shell command');
+            console.log(command);
+        }
+        const code = await shell.exec(command, {silent:true}).code;
+        if (code !== 0) {
+            throw new Error(`exit code ${code}, expected 0`);
+        }
+    } else {
+        db = server.use({name: sampleConf.db.name});
     }
     const schema = await loadSchema(db, verbose);
     return {server, db, schema};
@@ -95,6 +93,6 @@ const setUpSampleDB = async (verbose=false) => {
 const tearDownSampleDB = async (server) => {
     //await server.drop({name: sampleConf.db.name});
     await server.close();
-}
+};
 
 module.exports = {setUpEmptyDB, tearDownEmptyDB, setUpSampleDB, tearDownSampleDB};

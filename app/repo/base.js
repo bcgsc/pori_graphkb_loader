@@ -116,7 +116,7 @@ class SelectionQuery {
             const pname = `param${paramStartIndex}`;
             if (value === undefined || value === null) {
                 content.push(`${name} is NULL`);
-            } else if (typeof value !== 'object' && /^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
+            } else if (typeof value !== 'object' && property && /^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
                 content.push(`${name} contains :${pname}`);
                 params[pname] = value;
                 paramStartIndex++;
@@ -274,7 +274,7 @@ const createEdge = async (db, opt) => {
  * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
  * @param {boolean} [opt.debug=true] print more output to help with debugging queries
  * @param {ClassModel} opt.model the model to be selected from
- * @param {Object} [opt.fetchPlan={'*': 1}] key value mapping of class names to depths of edges to follow or '*' for any class
+ * @param {string} [opt.fetchPlan='*: 1'] key value mapping of class names to depths of edges to follow or '*' for any class
  * @param {Object} [opt.where={}] the query requirements
  * @param {?number} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
  * @param {?number} [opt.limit=QUERY_LIMIT] the maximum number of records to return
@@ -285,12 +285,11 @@ const select = async (db, opt) => {
     opt = Object.assign({
         activeOnly: true,
         exactlyN: null,
-        fetchPlan: {'*': 1},
-        debug: true,
+        fetchPlan: '*:1',
+        debug: process.env.DEBUG === '1' || false,
         where: {},
         limit: QUERY_LIMIT
     }, opt);
-    console.log('select', opt);
 
     const query = new SelectionQuery(opt.model, opt.where, opt);
 
