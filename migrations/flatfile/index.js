@@ -11,6 +11,7 @@ const {uploadHugoGenes} = require('./hgnc');
 const {uploadKbFlatFile} = require('./kb');
 const {uploadUberon} = require('./uberon');
 const {uploadNCIT} = require('./ncit');
+const {uploadOncoTree} = require('./oncotree');
 const path = require('path');
 
 const PERM_TOKEN = process.env.TEST_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7Im5hbWUiOiJhZG1pbiIsIkByaWQiOiIjNDE6MCJ9LCJpYXQiOjE1MjQyNDgwODgsImV4cCI6MTE1MjQyNDgwODh9.-PkTFeYCB7NyNs0XOap3ptPTp3icWxGbEBi2Hlku-kQ';
@@ -79,6 +80,11 @@ const optionDefinitions = [
         alias: 'n',
         description: 'path to the NCIT owl file to upload',
         type: fileExists
+    },
+    {
+        name: 'oncotree',
+        alias: 'o',
+        description: 'flag to indicate upload of oncotree latest stable release from their web API'
     }
 ];
 
@@ -161,6 +167,9 @@ const upload = async () => {
     }
     if (options['ncit']) {
         await uploadNCIT({conn: apiConnection, filename: options['ncit']});
+    }
+    if (options.oncotree !== undefined) {
+        await uploadOncoTree(apiConnection);
     }
 };
 
