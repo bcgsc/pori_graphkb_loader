@@ -14,6 +14,8 @@ paths:
                   schema:
                     type: string
                   description: the user name
+                - $ref: '#/components/parameters/returnProperties'
+                  example: name,createdAt
             responses:
                 '200':
                     content:
@@ -30,6 +32,9 @@ paths:
             - $ref: '#/components/parameters/@rid'
             - $ref: '#/components/parameters/Authorization'
         get:
+            parameters:
+                - $ref: '#/components/parameters/returnProperties'
+                  example: name,createdAt
             summary: return a particular user
             responses:
                 '200':
@@ -55,6 +60,8 @@ paths:
                 - $ref: '#/components/parameters/Ontology/longName'
                 - $ref: '#/components/parameters/Ontology/nameVersion'
                 - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/returnProperties'
+                  example: name,source
             responses:
                 '200':
                     content:
@@ -71,6 +78,9 @@ paths:
             - $ref: '#/components/parameters/@rid'
             - $ref: '#/components/parameters/Authorization'
         get:
+            parameters:
+                - $ref: '#/components/parameters/returnProperties'
+                  example: name,source
             summary: return a particular disease record
             responses:
                 '200':
@@ -94,6 +104,8 @@ paths:
                 - $ref: '#/components/parameters/Ontology/sourceVersion'
                 - $ref: '#/components/parameters/Ontology/longName'
                 - $ref: '#/components/parameters/Ontology/nameVersion'
+                - $ref: '#/components/parameters/returnProperties'
+                  example: name,source
             responses:
                 '200':
                     content:
@@ -111,6 +123,9 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular anatomical entity record
+            parameters:
+                - $ref: '#/components/parameters/returnProperties'
+                  example: name,source
             responses:
                 '200':
                     content:
@@ -144,6 +159,12 @@ components:
                     schema:
                         $ref: '#/components/schemas/Error'
     parameters:
+        returnProperties:
+            in: query
+            name: returnProperties
+            schema:
+                type: string
+            description: csv list of attributes to return. Returns the whole record if not specified
         limit:
             in: query
             name: limit
