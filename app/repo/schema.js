@@ -281,7 +281,7 @@ class ClassModel {
         const properties = this.properties;
         const subqueries = {};
         const cast = this.cast;
-        const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants'];
+        const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties'];
         const odbArgs = ['@rid', '@class'];
 
         for (let condition of Object.keys(inputQuery)) {
@@ -341,7 +341,16 @@ class ClassModel {
             }
         }
         query.follow = this.formatFollow(inputQuery);
-
+        if (inputQuery.returnProperties !== undefined) {
+            // make sure the colnames specified make sense
+            let props = inputQuery.returnProperties.split(',');
+            for (let propName of props) {
+                if (! propertyNames.includes(propName) && ! odbArgs.includes(propName)) {
+                    throw new AttributeError(`returnProperties query parameter must be a csv delimited string of columns on this class type: ${propertyNames}`);
+                }
+            }
+            query.returnProperties = props;
+        }
         return query;
     }
 }

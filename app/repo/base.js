@@ -71,6 +71,9 @@ class SelectionQuery {
         if (opt.activeOnly) {
             where.deletedAt = null;
         }
+        if (formatted.returnProperties) {
+            this.returnProperties = formatted.returnProperties;
+        }
 
         for (let attr of Object.keys(where)) {
             const value = (typeof where[attr] === 'object' && where[attr] !== null) ? where[attr] : [where[attr]];
@@ -134,6 +137,7 @@ class SelectionQuery {
     }
     toString() {
         let queryString;
+        const selectionElements = this.returnProperties ? this.returnProperties.join(', ') : '*';
         if (this.follow.length > 0) {
             // must be a match query to follow edges
             const prefix = `{class: ${this.model.name}, where: (${this.conditions.join(', ')})}`;
@@ -143,7 +147,7 @@ class SelectionQuery {
             }
             queryString = `MATCH ${expressions.join(', ')} RETURN \$pathElements`;
         } else {
-            queryString = `SELECT * FROM ${this.model.name} WHERE ${this.conditions.join(' AND ')}`;
+            queryString = `SELECT ${selectionElements} FROM ${this.model.name} WHERE ${this.conditions.join(' AND ')}`;
         }
         return queryString;
     }
@@ -258,7 +262,6 @@ const createEdge = async (db, opt) => {
     const record = model.formatRecord(content, {dropExtra: false, addDefaults: true});
     const from = record.out;
     const to = record.in;
-    console.log('createEdge', record);
     delete record.out;
     delete record.in;
     return await db.create('EDGE', model.name).from(from).to(to).set(record).one();
@@ -290,7 +293,6 @@ const select = async (db, opt) => {
         where: {},
         limit: QUERY_LIMIT
     }, opt);
-
     const query = new SelectionQuery(opt.model, opt.where, opt);
 
     if (opt.debug) {
