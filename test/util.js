@@ -1,8 +1,7 @@
 'use strict';
 const OrientDB  = require('orientjs');
 const {createSchema, loadSchema} = require('./../app/repo/schema');
-const {createUser, populateCache} = require('./../app/repo/base');
-const {PERMISSIONS} = require('./../app/repo/constants');
+const {createUser} = require('./../app/repo/base');
 const emptyConf = require('./config/empty');
 const sampleConf = require('./config/sample');
 const shell = require('shelljs');
@@ -10,6 +9,7 @@ const shell = require('shelljs');
 // connect to the db server
 
 const setUpEmptyDB = async (conf=emptyConf) => {
+    console.log(conf);
     const verbose = conf.verbose;
     // set up the database server
     const server = OrientDB({
@@ -63,27 +63,26 @@ const setUpSampleDB = async (verbose=false) => {
     });
     const exists = await server.exists({name: sampleConf.db.name});
     if (verbose) {
-        console.log('db exists', exists, sampleConf.db.name);
+        console.log('db exists. will drop', exists, sampleConf.db.name);
+    }
+    if (exists) {
+        await server.drop({name: sampleConf.db.name});
     }
     let db;
-    if (! exists) {
-        if (verbose) {
-            console.log('creating the db', sampleConf.db.name);
-        }
-        db = await server.create({name: sampleConf.db.name, username: sampleConf.db.user, password: sampleConf.db.pass});
-        await db.query('alter database custom standardElementConstraints=false');
-        //await db.query(`import database ${sampleConf.db.export} -preserveClusterIDs=TRUE`);
-        const command = `${process.env.ORIENTDB_HOME}/bin/console.sh "CONNECT remote:${process.env.ORIENTDB_HOME}/databases/test_sample admin admin; SELECT FROM V; import database ${sampleConf.db.export} -preserveClusterIDs=TRUE"`;
-        if (verbose) {
-            console.log('executing shell command');
-            console.log(command);
-        }
-        const code = await shell.exec(command, {silent:true}).code;
-        if (code !== 0) {
-            throw new Error(`exit code ${code}, expected 0`);
-        }
-    } else {
-        db = server.use({name: sampleConf.db.name});
+    if (verbose) {
+        console.log('creating the db', sampleConf.db.name);
+    }
+    db = await server.create({name: sampleConf.db.name, username: sampleConf.db.user, password: sampleConf.db.pass});
+    await db.query('alter database custom standardElementConstraints=false');
+    //await db.query(`import database ${sampleConf.db.export} -preserveClusterIDs=TRUE`);
+    const command = `${process.env.ORIENTDB_HOME}/bin/console.sh "CONNECT remote:${process.env.ORIENTDB_HOME}/databases/test_sample admin admin; SELECT FROM V; import database ${sampleConf.db.export} -preserveClusterIDs=TRUE"`;
+    if (verbose) {
+        console.log('executing shell command');
+        console.log(command);
+    }
+    const code = await shell.exec(command, {silent:true}).code;
+    if (code !== 0) {
+        throw new Error(`exit code ${code}, expected 0`);
     }
     const schema = await loadSchema(db, verbose);
     return {server, db, schema};

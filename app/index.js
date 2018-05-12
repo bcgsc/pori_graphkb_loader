@@ -7,29 +7,9 @@ const defaultConf = require('./../config/default'); // get the database connecti
 const addRoutes = require('./routes');
 const OrientDB  = require('orientjs');
 const {loadSchema} = require('./repo/schema');
-const {populateCache} = require('./repo/base');
-const https = require('https');
 const auth = require('./middleware/auth');
 const {parseNullQueryParams} = require('./middleware');
 const fs = require('fs');
-
-
-let orientServer, dbServer, appServer;
-const app = express();
-// set up middleware parser to deal with jsons
-app.use(bodyParser.urlencoded({extended: true}));
-app.use(bodyParser.json());
-
-// set up the routes
-const router = express.Router();
-
-app.use('/api', router);
-router.use((req, res, next) => {
-    console.log(`[${req.method}] ${req.url}`, req.body);
-    next();
-});
-router.use(auth.checkToken);
-router.use(parseNullQueryParams);
 
 
 const connectDB = async (conf, verbose=true) => {
@@ -47,7 +27,7 @@ const connectDB = async (conf, verbose=true) => {
     try {
         db = await server.use({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
         if (verbose) {
-            console.log(`loading the schema`);
+            console.log('loading the schema');
         }
     } catch (err) {
         server.close();
@@ -67,44 +47,70 @@ const connectDB = async (conf, verbose=true) => {
     return {server, db, schema};
 };
 
-const listen = async (conf={app: {}}, verbose=false) => {
-    // connect to the database
-    const {server, db, schema} = await connectDB(conf, verbose);
-    orientServer = server;
-    dbServer = db;
-    // create the authentication certificate for managing tokens
-    if (! auth.keys.private ) {
-        auth.keys.private = fs.readFileSync(conf.private_key);
+
+class AppServer {
+    constructor(conf={app: {}}, verbose=false, noAuth=false) {
+        this.app = express();
+        this.verbose = verbose;
+        // set up middleware parser to deal with jsons
+        this.app.use(bodyParser.urlencoded({extended: true}));
+        this.app.use(bodyParser.json());
+        this.db = null;
+        this.server = null;
+        this.conf = conf;
+
+        // set up the routes
+        this.router = express.Router();
+        this.app.use('/api', this.router);
+        // add some basic logging
+        if (verbose) {
+            this.router.use((req, res, next) => {
+                console.log(`[${req.method}] ${req.url}`, req.body);
+                next();
+            });
+        }
+        if (! noAuth) {
+            this.router.use(auth.checkToken);
+        }
+        this.router.use(parseNullQueryParams);
     }
-    // add the db connection reference to the routes
-    addRoutes({router, db, schema});
-    // last catch any errors for undefined routes. all actual routes should be defined above
-    app.use((req, res) => {
-        res.status(404);
-        res.send({error: 'Not Found'});
-    });
-    //appServer = await https.createServer({cert: keys.cert, key: keys.private, rejectUnauthorized: false}, app).listen(conf.app.port || defaultConf.app.port);
-    appServer = await app.listen(conf.app.port || defaultConf.app.port);
-    console.log('started application server at:', appServer.address().port);
+    async listen() {
+        // connect to the database
+        const {db, schema} = await connectDB(this.conf, this.verbose);
+        this.db = db;
+        // create the authentication certificate for managing tokens
+        if (! auth.keys.private) {
+            auth.keys.private = fs.readFileSync(this.conf.private_key);
+        }
+        // add the db connection reference to the routes
+        addRoutes({router: this.router, db: this.db, schema: schema});
+        // last catch any errors for undefined routes. all actual routes should be defined above
+        this.app.use((req, res) => {
+            res.status(404);
+            res.send({error: 'Not Found'});
+        });
+        //appServer = await https.createServer({cert: keys.cert, key: keys.private, rejectUnauthorized: false}, app).listen(conf.app.port || defaultConf.app.port);
+        this.server = await this.app.listen(this.conf.app.port || defaultConf.app.port);
+        console.log('started application server at:', this.server.address().port);
+    }
+    async close() {
+        if (this.verbose)
+            console.log('cleaning up');
+        try {
+            if (this.server) {
+                await this.server.close();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+        try {
+            if (this.db) {
+                await this.db.close();
+            }
+        } catch (err) {
+            console.error(err);
+        }
+    }
 }
 
-const close = async () => {
-    console.log('cleaning up');
-    try {
-        if (appServer) {
-            await appServer.close();
-        }
-    } catch (err) {
-        console.error(err);
-    }
-    try {
-        if (dbServer) {
-            await dbServer.close();
-        }
-    } catch (err) {
-        console.error(err);
-    }
-    process.exit();
-}
-
-module.exports = {app, listen, close};
+module.exports = {AppServer};

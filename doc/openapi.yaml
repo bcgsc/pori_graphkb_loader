@@ -8,6 +8,8 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: returns a list of users
+            tags:
+                - admin
             parameters:
                 - in: query
                   name: name
@@ -26,16 +28,34 @@ paths:
                                     $ref: '#/components/schemas/User'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
-
+        post:
+            summary: add a new user
+            tags:
+                - admin
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/User'
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/User'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '409':
+                    $ref: '#/components/responses/RecordAlreadyExists'
     /users/{id}:
         parameters:
             - $ref: '#/components/parameters/@rid'
             - $ref: '#/components/parameters/Authorization'
         get:
-            parameters:
-                - $ref: '#/components/parameters/returnProperties'
-                  example: name,createdAt
             summary: return a particular user
+            tags:
+                - admin
             responses:
                 '200':
                     content:
@@ -46,12 +66,47 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
-
+        put:
+            summary: modify an existing user record
+            tags:
+                - admin
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/User'
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/User'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+        delete:
+            summary: delete a user record
+            tags:
+                - admin
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/User'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
     /diseases:
         parameters:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: returns a list of disease terms
+            tags:
+                - ontology
             parameters:
                 - $ref: '#/components/parameters/Ontology/name'
                 - $ref: '#/components/parameters/Ontology/source'
@@ -72,16 +127,48 @@ paths:
                                     $ref: '#components/schemas/Disease'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
-
+        post:
+            summary: add a new disease term record
+            tags:
+                - ontology
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Disease'
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Disease'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '409':
+                    $ref: '#/components/responses/RecordAlreadyExists'
     /diseases/{id}:
         parameters:
             - $ref: '#/components/parameters/@rid'
             - $ref: '#/components/parameters/Authorization'
         get:
-            parameters:
-                - $ref: '#/components/parameters/returnProperties'
-                  example: name,source
             summary: return a particular disease record
+            tags:
+                - ontology
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Disease'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+        put:
+            summary: alter a particular disease record
+            tags:
+                - ontology
             responses:
                 '200':
                     content:
@@ -97,6 +184,8 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: returns a list of anatomical entity terms
+            tags:
+                - ontology
             parameters:
                 - $ref: '#/components/parameters/Ontology/name'
                 - $ref: '#/components/parameters/Ontology/source'
@@ -116,16 +205,34 @@ paths:
                                     $ref: '#components/schemas/AnatomicalEntity'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
-
+        post:
+            summary: add a new anatomical entity record
+            tags:
+                - ontology
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/AnatomicalEntity'
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AnatomicalEntity'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '409':
+                    $ref: '#/components/responses/RecordAlreadyExists'
     /anatomicalentities/{id}:
         parameters:
             - $ref: '#/components/parameters/@rid'
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular anatomical entity record
-            parameters:
-                - $ref: '#/components/parameters/returnProperties'
-                  example: name,source
+            tags:
+                - ontology
             responses:
                 '200':
                     content:
@@ -185,8 +292,8 @@ components:
             name: '@rid'
             schema:
                 type: string
-            description: the recordID. This ID will be different between versions of the same node and refers to a particular version only
-            example: '34:1'
+            description: record identifier
+            example: '#34:1'
         createdAt:
             in: query
             name: createdAt
@@ -279,7 +386,6 @@ components:
                 schema:
                     type: string
                 description: ontology subset this term belongs to
-
     schemas:
         Error:
             type: object
@@ -293,20 +399,7 @@ components:
                 stacktrace:
                     type: string
                     description: optionally the error may include a stack trace to aid in debugging
-        ODB:
-            type: object
-            properties:
-                '@rid':
-                    type: string
-                    description: the record ID, unique for any given node/edge in the database
-                    example: '#34:1'
-                    pattern: '^#\d+:\d+$'
-                '@class':
-                    type: string
-                    description: table the record belongs to
         UserGroup:
-            allOf:
-                - $ref: '#/components/schemas/ODB'
             type: object
             properties:
                 name:
@@ -315,9 +408,9 @@ components:
                 permissions:
                     type: object
         User:
-            allOf:
-                - $ref: '#/components/schemas/ODB'
             type: object
+            required:
+                - name
             properties:
                 name:
                     type: string
@@ -337,50 +430,11 @@ components:
                           example: '#47:2'
                         - $ref: '#/components/schemas/User'
                     nullable: true
-        MixIn:
-            allOf:
-                - $ref: '#/components/schemas/ODB'
+        Ontology:
             type: object
             required:
-                - createdAt
-                - createdBy
-                - uuid
-            properties:
-                createdAt:
-                    type: integer
-                    description: when the record was created
-                createdBy:
-                    description: user who created the record
-                    oneOf:
-                        - type: string
-                          example: '#47:0'
-                        - $ref: '#/components/schemas/User'
-                deletedAt:
-                    description: if given, indicates the time at which a record has been deleted. null for active records
-                    type: integer
-                    nullable: true
-                deletedBy:
-                    description: the user who deleted the record
-                    oneOf:
-                        - type: string
-                          example: '#47:1'
-                        - $ref: '#/components/schemas/User'
-                    nullable: true
-                history:
-                    description: link to the previous version of this record
-                    oneOf:
-                        - type: string
-                          example: '#34:2'
-                        - type: object
-                    nullable: true
-                uuid:
-                    description: record id that will be common for all versions of a given record
-                    type: string
-                    format: uuid
-        Ontology:
-            allOf:
-                - $ref: '#/components/schemas/MixIn'
-            type: object
+                - name
+                - source
             properties:
                 description:
                     type: string

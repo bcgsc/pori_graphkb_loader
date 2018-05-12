@@ -8,3 +8,6 @@ coverage
 *gz
 *zip
 *tar
+.vscode
+test/data/
+id_rsa*

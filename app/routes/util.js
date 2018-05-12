@@ -9,7 +9,6 @@ const {getParameterPrefix} = require('./../repo/util');
 
 
 class InputValidationError extends ErrorMixin {}
-const RECORD_LIMIT = 1000;
 
 /*
  * check that the parameters passed are expected
@@ -78,6 +77,9 @@ const addResourceRoutes = (opt) => {
                 const result = await select(db, Object.assign(other, {model: model, where: req.query}));
                 res.json(jc.decycle(result));
             } catch (err) {
+                if (verbose) {
+                    console.error(err);
+                }
                 res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
@@ -97,6 +99,9 @@ const addResourceRoutes = (opt) => {
                 if (err instanceof AttributeError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
+                    if (verbose) {
+                        console.error(err);
+                    }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
@@ -118,6 +123,9 @@ const addResourceRoutes = (opt) => {
                 if (err instanceof AttributeError || err instanceof NoResultFoundError || err instanceof MultipleResultsFoundError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
+                    if (verbose) {
+                        console.error(err);
+                    }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
@@ -132,22 +140,20 @@ const addResourceRoutes = (opt) => {
                 return;
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
-            const params = _.omit(req.query, ['limit', 'fuzzyMatch', 'ancestors', 'descendants', 'returnProperties']);
-            const other = Object.assign({limit: QUERY_LIMIT}, _.omit(req.query, Object.keys(params)));
-            try {
-                validateParams({params: params, required: reqQueryParams, optional: optQueryParams});
-            } catch (err) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+            if (! _.isEmpty(req.query)) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
                 return;
             }
-            const where = Object.assign({}, req.query, {'@rid': req.params.id, deletedAt: 'null'});
             try {
-                const result = await select(db, Object.assign(other, {model: model, where: where, exactlyN: 1}));
+                const result = await select(db, {model: model, where: {'@rid': req.params.id}, exactlyN: 1});
                 res.json(jc.decycle(result[0]));
             } catch (err) {
                 if (err instanceof NoResultFoundError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
+                    if (verbose) {
+                        console.error(err);
+                    }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
@@ -178,6 +184,9 @@ const addResourceRoutes = (opt) => {
                 if (err instanceof AttributeError || err instanceof NoResultFoundError || err instanceof MultipleResultsFoundError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
+                    if (verbose) {
+                        console.error(err);
+                    }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
@@ -204,6 +213,9 @@ const addResourceRoutes = (opt) => {
                 if (err instanceof AttributeError || err instanceof NoResultFoundError || err instanceof MultipleResultsFoundError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
+                    if (verbose) {
+                        console.error(err);
+                    }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }

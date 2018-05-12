@@ -10,8 +10,11 @@ const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
 
 
 const parseDoid = (ident) => {
-    ident = ident.replace(PREFIX_TO_STRIP, '');
-    ident = ident.replace('_', ':');
+    const match = /.*(DOID_\d+)$/.exec(ident);
+    if (! match) {
+        throw new Error(`invalid DOID: ${ident}`);
+    }
+    ident = match[1].replace('_', ':').toLowerCase();
     return ident;
 };
 
@@ -34,6 +37,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
     const nodesByName = {};  // store by name
     const deprecatedNodes = {};
     const synonymsByName = {};
+    const ncitAliases = {};
 
     const doVersion = parseDoVersion(DOID.graphs[0].meta.version);
     console.log('\nAdding/getting the disease nodes');
@@ -72,7 +76,20 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                 }
             }
         }
+        for (let {val: other} of (node.meta.xrefs || [])) {
+            let match;
+            if (match = /^NCI:(C\d+)$/.exec(other)) {
+                try {
+                    const ncitNode = await getRecordBy('diseases', {source: 'ncit', sourceId: match[1]}, conn);
+                    if (ncitAliases[node.id] === undefined) {
+                        ncitAliases[node.id] = [];
+                    }
+                    ncitAliases[node.id].push(ncitNode);
+                } catch (err) {};
+            }
+        }
     }
+    console.log(`parsed ncit links: ${Object.keys(ncitAliases).length}`);
 
     const diseaseRecords = {};
     for (let name of Object.keys(nodesByName)) {
@@ -83,7 +100,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
             console.log(newRecord);
             console.log(diseaseRecords[newRecord.sourceId]);
             console.log(Object.keys(diseaseRecords));
-            throw new Error('expected source id to be unique for this load', newRecord.sourceId);
+            throw new Error(`expected source id to be unique for this load: ${newRecord.sourceId}`);
         }
         diseaseRecords[newRecord.sourceId] = newRecord;
     }
@@ -93,7 +110,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         for (let synonym of synonymsByName[record.name]) {
             // get the synonym record
             try {
-                synonym = await getRecordBy('diseases', {name: synonym, deletedAt: 'null'}, conn);
+                synonym = await getRecordBy('diseases', {name: synonym, deletedAt: 'null', source: record.source}, conn);
             } catch (err) {
                 synonym = await addRecord('diseases', {
                     name: synonym,
@@ -118,6 +135,17 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                     process.stdout.write('*');
                 }
             }
+        }
+    }
+    // add the ncit edges
+    console.log('\nadding the doid => ncit aliasof links', Object.keys(ncitAliases).length);
+    for (let nodeLbl of Object.keys(ncitAliases)) {
+        if (! diseaseRecords[nodeLbl]) {
+            continue;
+        }
+        const curr = diseaseRecords[nodeLbl]['@rid'];
+        for (let other of ncitAliases[nodeLbl]) {
+            await addRecord('aliasof', {out: curr, in: other['@rid']}, conn, true);
         }
     }
 
@@ -145,7 +173,7 @@ const loadEdges = async ({DOID, records, conn}) => {
                 continue;
             }
             if (! records[src] || ! records[tgt]) {
-                console.log(`missing entries for ${src} ==is_a=> ${tgt}`);
+                //console.log(`missing entries for ${src} ==is_a=> ${tgt}`);
             } else {
                 try {
                     await request(conn.request({

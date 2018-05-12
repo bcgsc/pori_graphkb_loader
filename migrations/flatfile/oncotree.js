@@ -47,6 +47,17 @@ const uploadOncoTree = async (conn) => {
         if (record.parent != null) {
             subclassof.push({src: record.code.toLowerCase(), tgt: record.parent.toLowerCase()});
         }
+        if (record.externalReferences && record.externalReferences['NCI']) {
+            for (let ncitID of record.externalReferences['NCI']) {
+                try {
+                    const ncitRec = await getRecordBy('diseases', {source: 'ncit', sourceId: ncitID}, conn);
+                    await addRecord('aliasof', {out: rec['@rid'], in: ncitRec['@rid']}, conn);
+                } catch (err) {
+                    // don't care. Don't add relationship unless the node exists
+                    process.stdout.write('x');
+                }
+            }
+        }
     }
     console.log('\nAdding subclass relationships');
     for (let {src, tgt} of subclassof) {

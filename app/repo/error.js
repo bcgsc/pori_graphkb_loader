@@ -9,7 +9,7 @@ class ErrorMixin extends Error {
         Error.captureStackTrace(this);
     }
     toJSON() {
-        return {message: this.message, name: this.name, stack: this.stack};
+        return {message: this.message, name: this.name, stacktrace: this.stack};
     }
 }
 

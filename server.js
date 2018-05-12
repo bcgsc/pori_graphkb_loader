@@ -2,16 +2,16 @@
 
 // required packages
 const conf = require('./test/config/sample'); // get the database connection configuration
-const app = require('./app');
+const {AppServer} = require('./app');
 const auth = require('./app/middleware/auth');
 const fs = require('fs');
 const {createSchema, loadSchema} = require('./app/repo/schema');
 const {createUser} = require('./app/repo/base');
 const OrientDB  = require('orientjs');
 
-// cleanup
-process.on('SIGINT', app.close);
+
 //process.on('uncaughtException', app.close);
+let app;
 
 (async () => {
     try {
@@ -58,7 +58,13 @@ process.on('SIGINT', app.close);
         const adminToken = await auth.generateToken({user: admin}, 10000000000);
         console.log('test adminToken');
         console.log(adminToken);
-        app.listen(conf, true);
+        app = new AppServer(conf, true, false);
+        app.listen();
+        // cleanup
+        process.on('SIGINT', async () => {
+            await app.close();
+            process.exit(1);
+        });
     } catch(err) {
         console.error('Failed to start server', err);
         app.close();
