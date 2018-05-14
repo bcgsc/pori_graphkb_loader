@@ -3,12 +3,12 @@ var uuidValidate = require('uuid-validate');
 const jc = require('json-cycle');
 const _ = require('lodash');
 const {errorToJSON, looksLikeRID} = require('./util');
-const {ErrorMixin, AttributeError, NoResultFoundError, MultipleResultsFoundError} = require('./../repo/error');
+const {ErrorMixin, AttributeError, NoRecordFoundError, MultipleRecordsFoundError} = require('./../repo/error');
 const {select, create, update, remove} = require('./../repo/base');
 const {parse} = require('./../parser/variant');
 
 
-const addVariantRoutes = (opt) => { 
+const addVariantRoutes = (opt) => {
     const {router, schema, db} = opt;
     const verbose = opt.verbose === undefined ? true : false;
     if (verbose) {
@@ -24,7 +24,7 @@ const addVariantRoutes = (opt) => {
                 return;
             }
             let features = [content.reference];
-            
+
             if (req.body.parse !== undefined) {
                 try {
                     Object.assign(content, parse(req.body.parse));
@@ -59,7 +59,7 @@ const addVariantRoutes = (opt) => {
                 res.status(500).json(errorToJSON(err));
                 return;
             }
-            
+
             // now parse any positions
             res.status(200).json({message: 'ok so far', features: features, content: content});
         });

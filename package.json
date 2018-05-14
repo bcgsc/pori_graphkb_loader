@@ -41,10 +41,10 @@
   },
   "scripts": {
     "watch": "nodemon server.js --use-strict",
-    "unit": "nyc --reporter=html --reporter=text mocha --recursive test/test_repo.js",
-    "test": "nyc --reporter=html --reporter=text mocha test/test_*.js --timeout 30000",
-    "sample": "nyc --reporter=html --reporter=text mocha test/test_sample_db.js --timeout 100000",
-    "empty": "nyc --reporter=html --reporter=text mocha test/test_repo*.js --timeout 30000",
+    "unit": "nyc --reporter=html --reporter=text mocha --recursive test/repo/unit.js test/parser",
+    "test-repo": "nyc --reporter=html --reporter=text mocha test/repo --recursive --exit --timeout 30000",
+    "sample": "nyc --reporter=html --reporter=text mocha test/routes/sample.js --timeout 100000",
+    "empty": "nyc --reporter=html --reporter=text mocha test/routes/empty.js --exit --timeout 30000",
     "lint": "eslint -c .eslintrc.json app test",
     "doc": "swagger-jsdoc -o swagger-spec.json -d doc/swagger-jsdoc-defn.js app/repo/*js app/routes/*js",
     "jsdoc": "jsdoc -r app -R README.md"

@@ -174,7 +174,7 @@ class ClassModel {
         if (! opt.ignoreExtra && ! opt.dropExtra) {
             for (let attr of Object.keys(record)) {
                 if (properties[attr] === undefined && prefixed[attr] === undefined) {
-                    throw new Error(`unexpected attribute: ${attr}`);
+                    throw new AttributeError(`unexpected attribute: ${attr}`);
                 }
             }
         }
@@ -202,7 +202,7 @@ class ClassModel {
                     formattedRecord[prop.name] = record[prop.name];
                 }
                 if (formattedRecord[prop.name] === undefined && ! opt.ignoreMissing) {
-                    throw Error(`missing required attribute ${prop.name}`);
+                    throw new AttributeError(`missing required attribute ${prop.name}`);
                 }
                 formattedRecord[prop.name] = formattedRecord[prop.name];
             } else if (record[prop.name] !== undefined) {
@@ -229,7 +229,7 @@ class ClassModel {
                         }
                     }
                     if (! accepted) {
-                        throw Error(`Attribute violates controlled vocabulary stipulation ${formattedRecord[attr]}`);
+                        throw new AttributeError(`Attribute violates controlled vocabulary stipulation ${formattedRecord[attr]}`);
                     }
                 }
             }
@@ -365,7 +365,7 @@ const createClassModel = async (db, model) => {
     model.inherits = model.inherits || null;
 
     if (model.name === undefined) {
-        throw new Error(`required attribute was not defined: clsname=${model.name}`);
+        throw new AttributeError(`required attribute was not defined: clsname=${model.name}`);
     }
 
     const cls = await db.class.create(model.name, model.inherits, null, model.isAbstract); // create the class first
@@ -418,7 +418,8 @@ const createSchema = async (db, verbose=false) => {
             {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
             {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
             {name: 'deletedAt', type: 'long'},
-            {name: 'history', type: 'link', notNull: true}
+            {name: 'history', type: 'link', notNull: true},
+            {name: 'createdBy', type: 'link', notNull: true, mandatory: false}
         ],
         indices: [
             {
@@ -950,12 +951,12 @@ const loadSchema = async (db, verbose=false) => {
 
     for (let name of Object.keys(edgeRestrictions)) {
         if (! schema[name]) {
-            throw Error(`Did not load the expected class: ${name}`);
+            throw new Error(`Did not load the expected class: ${name}`);
         }
         schema[name]._edgeRestrictions = edgeRestrictions[name];
         for (let [source, target] of edgeRestrictions[name] || []) {
             if (! schema[source] || ! schema[target]) {
-                throw Error(`Did not load an expected class: ${source}, ${target}`);
+                throw new Error(`Did not load an expected class: ${source}, ${target}`);
             }
         }
     }

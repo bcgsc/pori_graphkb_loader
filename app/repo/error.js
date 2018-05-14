@@ -9,7 +9,11 @@ class ErrorMixin extends Error {
         Error.captureStackTrace(this);
     }
     toJSON() {
-        return {message: this.message, name: this.name, stacktrace: this.stack};
+        return {
+            message: this.message,
+            name: this.name,
+            stacktrace: this.stack
+        };
     }
 }
 
@@ -23,7 +27,7 @@ class ParsingError extends ErrorMixin {}
 class ControlledVocabularyError extends ErrorMixin {}
 
 
-class NoResultFoundError extends ErrorMixin {}
+class NoRecordFoundError extends ErrorMixin {}
 
 
 class PermissionError extends ErrorMixin {}
@@ -32,9 +36,20 @@ class PermissionError extends ErrorMixin {}
 class AuthenticationError extends ErrorMixin {}
 
 
-class MultipleResultsFoundError extends ErrorMixin {}
+class MultipleRecordsFoundError extends ErrorMixin {}
+
+
+class RecordExistsError extends ErrorMixin {}
 
 
 module.exports = {
-    ErrorMixin, AttributeError, ParsingError, ControlledVocabularyError, NoResultFoundError, MultipleResultsFoundError, PermissionError, AuthenticationError
+    RecordExistsError,
+    ErrorMixin,
+    AttributeError,
+    ParsingError,
+    ControlledVocabularyError,
+    NoRecordFoundError,
+    MultipleRecordsFoundError,
+    PermissionError,
+    AuthenticationError
 };

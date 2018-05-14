@@ -1,5 +1,4 @@
 'use strict';
-const rewire = require('rewire');
 const {
     expect
 } = require('chai');
@@ -17,34 +16,33 @@ const chaiHttp = require('chai-http');
 
 const HTTP_STATUS = require('http-status-codes');
 const conf = require('./../config/empty');
-const auth = rewire('./../../app/middleware/auth');
+const auth = require('./../../app/middleware/auth');
 
 
 chai.use(chaiHttp);
 
+const REALLY_LONG_TIME = 10000000000;
+
 
 describe('schema', () => {
-    let db, admin, app;
+    let db, admin, app, mockToken;
     before(async () => {
         ({
             db,
             admin
         } = await setUpEmptyDB(conf));
-        const mockToken = async (req, res, next) => {
-            req.user = {name: 'admin', '@rid': '#41:0'};
-            next();
-        };
-        auth.__set__('checkToken', mockToken);
+
         const {AppServer} = require('./../../app');
         app = new AppServer(conf, true);
 
         await app.listen(conf);
+        mockToken = await auth.generateToken(admin, REALLY_LONG_TIME);
     });
     describe('GET /users', () => {
         it('name', async () => {
             const res = await chai.request(app.app)
-                .get('/api/users?name=admin');
-            console.log(res);
+                .get('/api/users?name=admin')
+                .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
             expect(res.body).to.be.a('array');
             expect(res.body.length).to.equal(1);
@@ -52,21 +50,259 @@ describe('schema', () => {
         });
     });
     describe('POST /users', () => {
-        it('name', async () => {
+        it('OK', async () => {
             const res = await chai.request(app.app)
                 .post('/api/users')
                 .type('json')
                 .send({
                     name: 'blargh monkeys'
-                });
-            console.log(res);
+                })
+                .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
-            expect(res.body).to.be.a('array');
-            expect(res.body.length).to.equal(1);
-            expect(res.body[0].name).to.equal('admin');
+            expect(res.body).to.be.a('object');
+            expect(res.body.name).to.equal('blargh monkeys');
+        });
+        it('BAD REQUEST', async () => {
+            let res;
+            try {
+                res = await chai.request(app.app)
+                    .post('/api/users')
+                    .type('json')
+                    .send({
+                    })
+                    .set('Authorization', mockToken);
+            } catch (err) {
+                res = err;
+            }
+            expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+            expect(res.response.body).to.have.property('name', 'AttributeError');
+        });
+        it('UNAUTHORIZED', async () => {
+            let res;
+            try {
+                res = await chai.request(app.app)
+                    .post('/api/users')
+                    .type('json')
+                    .send({
+                        name: 'blargh monkeys'
+                    });
+            } catch (err) {
+                res = err;
+            }
+            expect(res).to.have.status(HTTP_STATUS.UNAUTHORIZED);
+        });
+        it('CONFLICT', async () => {
+            let res;
+            try {
+                res = await chai.request(app.app)
+                    .post('/api/users')
+                    .type('json')
+                    .set('Authorization', mockToken)
+                    .send({
+                        name: 'admin'
+                    });
+            } catch (err) {
+                res = err;
+            }
+            console.log(res.response.body);
+            expect(res).to.have.status(HTTP_STATUS.CONFLICT);
         });
     });
-
+    describe('POST /diseases', () => {
+        it('OK', async () => {
+            const res = await chai.request(app.app)
+                .post('/api/diseases')
+                .type('json')
+                .send({
+                    name: 'cancer',
+                    source: 'bcgsc'
+                })
+                .set('Authorization', mockToken);
+            expect(res).to.have.status(HTTP_STATUS.OK);
+            expect(res.body).to.be.a('object');
+            expect(res.body).to.have.property('name', 'cancer');
+            expect(res.body).to.have.property('source', 'bcgsc');
+        });
+        it('BAD REQUEST (no source given)', async () => {
+            let res;
+            try {
+                res = await chai.request(app.app)
+                    .post('/api/diseases')
+                    .type('json')
+                    .send({
+                        name: 'cancer'
+                    })
+                    .set('Authorization', mockToken);
+            } catch (err) {
+                res = err;
+            }
+            expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+            expect(res.response.body).to.have.property('name', 'AttributeError');
+        });
+        it('BAD REQUEST (no name given)', async () => {
+            let res;
+            try {
+                res = await chai.request(app.app)
+                    .post('/api/diseases')
+                    .type('json')
+                    .send({
+                        source: 'bcgsc'
+                    })
+                    .set('Authorization', mockToken);
+            } catch (err) {
+                res = err;
+            }
+            expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+            expect(res.response.body).to.have.property('name', 'AttributeError');
+        });
+        it('UNAUTHORIZED', async () => {
+            let res;
+            try {
+                res = await chai.request(app.app)
+                    .post('/api/diseases')
+                    .type('json')
+                    .send({
+                        name: 'cancer',
+                        source: 'bcgsc'
+                    });
+            } catch (err) {
+                res = err;
+            }
+            expect(res).to.have.status(HTTP_STATUS.UNAUTHORIZED);
+        });
+        it('CONFLICT', async () => {
+            let res;
+            res = await chai.request(app.app)
+                .post('/api/diseases')
+                .type('json')
+                .send({
+                    name: 'cancer',
+                    source: 'bcgsc'
+                })
+                .set('Authorization', mockToken);
+            expect(res).to.have.status(HTTP_STATUS.OK);
+            try {
+                res = await chai.request(app.app)
+                    .post('/api/diseases')
+                    .type('json')
+                    .send({
+                        name: 'cancer',
+                        source: 'bcgsc'
+                    })
+                    .set('Authorization', mockToken);
+            } catch (err) {
+                res = err;
+            }
+            console.log(res.response.body);
+            expect(res).to.have.status(HTTP_STATUS.CONFLICT);
+        });
+    });
+    describe('PATCH /diseases', () => {
+        let disease, diseaseId;
+        beforeEach(async () => {
+            const res = await chai.request(app.app)
+                .post('/api/diseases')
+                .type('json')
+                .send({
+                    name: 'cancer',
+                    source: 'bcgsc'
+                })
+                .set('Authorization', mockToken);
+            disease = res.body;
+            diseaseId = res.body['@rid'].replace('#', '');
+            console.log(disease);
+        });
+        it('OK', async () => {
+            console.log(disease['@rid']);
+            const res = await chai.request(app.app)
+                .patch(`/api/diseases/${diseaseId}`)
+                .type('json')
+                .send({
+                    name: 'carcinoma'
+                })
+                .set('Authorization', mockToken);
+            expect(res).to.have.status(HTTP_STATUS.OK);
+            expect(res.body).to.be.a('object');
+            expect(res.body).to.have.property('name', 'carcinoma');
+            expect(res.body).to.have.property('source', disease.source);
+            expect(res.body).to.have.property('@rid', disease['@rid']);
+            expect(res.body).to.have.property('history');
+            expect(res.body.history).to.not.equal(disease['@rid']);
+        });
+        it('BAD REQUEST (record not found)', async () => {
+            let res;
+            try {
+                res = await chai.request(app.app)
+                    .patch('/api/diseases/456:0')
+                    .type('json')
+                    .send({
+                        name: 'cancer'
+                    })
+                    .set('Authorization', mockToken);
+            } catch (err) {
+                res = err;
+            }
+            expect(res).to.have.status(HTTP_STATUS.NOT_FOUND);
+            expect(res.response.body).to.have.property('name', 'NoRecordFound');
+        });
+        it('BAD REQUEST (no name given)', async () => {
+            let res;
+            try {
+                res = await chai.request(app.app)
+                    .patch('/api/diseases')
+                    .type('json')
+                    .send({
+                        source: 'bcgsc'
+                    })
+                    .set('Authorization', mockToken);
+            } catch (err) {
+                res = err;
+            }
+            expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+            expect(res.response.body).to.have.property('name', 'AttributeError');
+        });
+        it('UNAUTHORIZED', async () => {
+            let res;
+            try {
+                res = await chai.request(app.app)
+                    .patch('/api/diseases')
+                    .type('json')
+                    .send({
+                        name: 'cancer',
+                        source: 'bcgsc'
+                    });
+            } catch (err) {
+                res = err;
+            }
+            expect(res).to.have.status(HTTP_STATUS.UNAUTHORIZED);
+        });
+        it('CONFLICT', async () => {
+            let res;
+            res = await chai.request(app.app)
+                .post('/api/diseases')
+                .type('json')
+                .send({
+                    name: 'cancer',
+                    source: 'bcgsc'
+                })
+                .set('Authorization', mockToken);
+            expect(res).to.have.status(HTTP_STATUS.OK);
+            try {
+                res = await chai.request(app.app)
+                    .patch('/api/diseases')
+                    .type('json')
+                    .send({
+                        name: 'cancer',
+                        source: 'bcgsc'
+                    })
+                    .set('Authorization', mockToken);
+            } catch (err) {
+                res = err;
+            }
+            console.log(res.response.body);
+            expect(res).to.have.status(HTTP_STATUS.CONFLICT);
+        });
+    })
     afterEach(async () => {
         // clear all V/E records
         await db.query('delete edge e');

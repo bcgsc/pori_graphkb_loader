@@ -8,7 +8,7 @@ const {addParserRoutes} = require('./parser');
 
 
 const addRoutes = (opt) => {
-    const {router, schema, db} = opt;
+    const {router, schema, db, verbose} = opt;
     // main route (useful to be able to ping)
     router.route('/')
         .get((req, res) => {
@@ -23,7 +23,8 @@ const addRoutes = (opt) => {
         router: router,
         model: schema.User,
         db: db,
-        optQueryParams: ['name']
+        optQueryParams: ['name'],
+        verbose: verbose
     });
 
     // vocabulary routes
@@ -32,77 +33,89 @@ const addRoutes = (opt) => {
         route: '/vocabulary',
         model: schema.Vocabulary,
         db: db,
-        cacheUpdate: cacheVocabulary
+        cacheUpdate: cacheVocabulary,
+        verbose: verbose
     });
 
     // disease routes
     addResourceRoutes({
         router: router,
         model: schema.Disease,
-        db: db
+        db: db,
+        verbose: verbose
     });
 
     addResourceRoutes({
         router: router,
         model: schema.AnatomicalEntity,
-        db: db
+        db: db,
+        verbose: verbose
     });
 
     addResourceRoutes({
         router: router,
         model: schema.IndependantFeature,
-        db: db
+        db: db,
+        verbose: verbose
     });
 
     addResourceRoutes({
         router: router,
         model: schema.AliasOf,
         db: db,
-        optQueryParams: ['to', 'from']
+        optQueryParams: ['to', 'from'],
+        verbose: verbose
     });
 
     addResourceRoutes({
         router: router,
         model: schema.DeprecatedBy,
         db: db,
-        optQueryParams: ['to', 'from']
+        optQueryParams: ['to', 'from'],
+        verbose: verbose
     });
 
     addResourceRoutes({
         router: router,
         model: schema.SubClassOf,
         db: db,
-        optQueryParams: ['to', 'from']
+        optQueryParams: ['to', 'from'],
+        verbose: verbose
     });
 
     addResourceRoutes({
         router: router,
         model: schema.Publication,
-        db: db
+        db: db,
+        verbose: verbose
     });
 
     addResourceRoutes({
         router: router,
         model: schema.CategoryVariant,
-        db: db
+        db: db,
+        verbose: verbose
     });
 
     addResourceRoutes({
         router: router,
         model: schema.PositionalVariant,
-        db: db
+        db: db,
+        verbose: verbose
     });
 
     addStatement({
         router: router,
         schema: schema,
-        db: db
+        db: db,
+        verbose: verbose
     });
 
     addVariantRoutes({
         router: router,
         schema: schema,
-        db: db
+        db: db,
+        verbose: verbose
     });
 
     addParserRoutes(router);

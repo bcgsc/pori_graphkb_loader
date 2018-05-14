@@ -1,5 +1,5 @@
 'use strict';
-const {AttributeError, MultipleResultsFoundError, NoResultFoundError} = require('./error');
+const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError} = require('./error');
 const cache = require('./cache');
 const {timeStampNow, quoteWrap} = require('./util');
 
@@ -252,7 +252,15 @@ const create = async (db, opt) => {
     const record = model.formatRecord(
         Object.assign({}, content, {createdBy: user['@rid']}),
         {dropExtra: false, addDefaults: true});
-    return await db.insert().into(model.name).set(record).one();
+    try {
+        return await db.insert().into(model.name).set(record).one();
+    } catch (err) {
+        if (err.type.toLowerCase().includes('orecordduplicatedexception')) {
+            throw new RecordExistsError(err.message);
+        } else {
+            throw err;
+        }
+    }
 };
 
 
@@ -264,7 +272,15 @@ const createEdge = async (db, opt) => {
     const to = record.in;
     delete record.out;
     delete record.in;
-    return await db.create('EDGE', model.name).from(from).to(to).set(record).one();
+    try {
+        return await db.create('EDGE', model.name).from(from).to(to).set(record).one();
+    } catch (err) {
+        if (err.type.toLowerCase().includes('orecordduplicatedexception')) {
+            throw new RecordExistsError(err.message);
+        } else {
+            throw err;
+        }
+    }
 };
 
 
@@ -311,10 +327,10 @@ const select = async (db, opt) => {
             if (opt.exactlyN === 0) {
                 return [];
             } else {
-                throw new NoResultFoundError(`query returned an empty list: ${query.displayString()}`);
+                throw new NoRecordFoundError(`query returned an empty list: ${query.displayString()}`);
             }
         } else if (opt.exactlyN !== recordList.length) {
-            throw new MultipleResultsFoundError(
+            throw new MultipleRecordsFoundError(
                 `query returned unexpected number of results. Found ${recordList.length} results ` +
                 `but expected ${opt.exactlyN} results: ${query.displayString()}`
             );

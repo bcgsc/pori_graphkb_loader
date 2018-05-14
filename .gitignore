@@ -11,3 +11,4 @@ coverage
 .vscode
 test/data/
 id_rsa*
+out

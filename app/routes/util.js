@@ -3,7 +3,7 @@ var uuidValidate = require('uuid-validate');
 const jc = require('json-cycle');
 const _ = require('lodash');
 
-const {ErrorMixin, AttributeError, NoResultFoundError, MultipleResultsFoundError} = require('./../repo/error');
+const {ErrorMixin, AttributeError, NoRecordFoundError, MultipleRecordsFoundError, RecordExistsError} = require('./../repo/error');
 const {select, create, update, remove, QUERY_LIMIT} = require('./../repo/base');
 const {getParameterPrefix} = require('./../repo/util');
 
@@ -50,11 +50,11 @@ const validateParams = async (opt) => {
  * example:
  *      router.route('/feature') = resource({model: <ClassModel>, db: <OrientDB conn>, reqQueryParams: ['source', 'name', 'biotype']});
  */
-const addResourceRoutes = (opt) => {
+const addResourceRoutes = (opt, verbose) => {
     const {router, model, db, cacheUpdate} = opt;
     const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
     const reqQueryParams = opt.reqQueryParams || [];
-    const verbose = opt.verbose === undefined ? true : false;
+    verbose = opt.verbose || verbose;
     let route = opt.route || `/${model.name.toLowerCase()}${model.isEdge ? '' : 's'}`;
     if (route.endsWith('ys')) {
         route = route.replace(/ys$/, 'ies');
@@ -98,6 +98,8 @@ const addResourceRoutes = (opt) => {
             } catch (err) {
                 if (err instanceof AttributeError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } else if (err instanceof RecordExistsError) {
+                    res.status(HTTP_STATUS.CONFLICT).json(err);
                 } else {
                     if (verbose) {
                         console.error(err);
@@ -120,7 +122,7 @@ const addResourceRoutes = (opt) => {
                 }
                 res.json(jc.decycle(result));
             } catch (err) {
-                if (err instanceof AttributeError || err instanceof NoResultFoundError || err instanceof MultipleResultsFoundError) {
+                if (err instanceof AttributeError || err instanceof NoRecordFoundError || err instanceof MultipleRecordsFoundError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
                     if (verbose) {
@@ -148,7 +150,7 @@ const addResourceRoutes = (opt) => {
                 const result = await select(db, {model: model, where: {'@rid': req.params.id}, exactlyN: 1});
                 res.json(jc.decycle(result[0]));
             } catch (err) {
-                if (err instanceof NoResultFoundError) {
+                if (err instanceof NoRecordFoundError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
                     if (verbose) {
@@ -158,7 +160,7 @@ const addResourceRoutes = (opt) => {
                 }
             }
         });
-    router.put(`${route}/:id`,
+    router.patch(`${route}/:id`,
         async (req, res) => {
             if (! looksLikeRID(req.params.id, false)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid record ID: ${req.params.id}`});
@@ -181,7 +183,7 @@ const addResourceRoutes = (opt) => {
                 }
                 res.json(jc.decycle(result));
             } catch (err) {
-                if (err instanceof AttributeError || err instanceof NoResultFoundError || err instanceof MultipleResultsFoundError) {
+                if (err instanceof AttributeError || err instanceof NoRecordFoundError || err instanceof MultipleRecordsFoundError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
                     if (verbose) {
@@ -210,7 +212,7 @@ const addResourceRoutes = (opt) => {
                 }
                 res.json(jc.decycle(result));
             } catch (err) {
-                if (err instanceof AttributeError || err instanceof NoResultFoundError || err instanceof MultipleResultsFoundError) {
+                if (err instanceof AttributeError || err instanceof NoRecordFoundError || err instanceof MultipleRecordsFoundError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
                     if (verbose) {
@@ -221,15 +223,6 @@ const addResourceRoutes = (opt) => {
             }
         }
     );
-};
-
-
-const errorToJSON = (err) => {
-    const json = {message: err.message};
-    for (let attr of Object.keys(err)) {
-        json[attr] = err[attr];
-    }
-    return json;
 };
 
 
@@ -263,4 +256,4 @@ const looksLikeRID = (rid, requireHash=true) => {
 };
 
 
-module.exports = {validateParams, addResourceRoutes, InputValidationError, errorToJSON, looksLikeRID};
+module.exports = {validateParams, addResourceRoutes, InputValidationError, looksLikeRID};

@@ -49,7 +49,7 @@ const connectDB = async (conf, verbose=true) => {
 
 
 class AppServer {
-    constructor(conf={app: {}}, verbose=false, noAuth=false) {
+    constructor(conf={app: {}}, verbose=false) {
         this.app = express();
         this.verbose = verbose;
         // set up middleware parser to deal with jsons
@@ -69,9 +69,7 @@ class AppServer {
                 next();
             });
         }
-        if (! noAuth) {
-            this.router.use(auth.checkToken);
-        }
+        this.router.use(auth.checkToken);
         this.router.use(parseNullQueryParams);
     }
     async listen() {
@@ -83,15 +81,17 @@ class AppServer {
             auth.keys.private = fs.readFileSync(this.conf.private_key);
         }
         // add the db connection reference to the routes
-        addRoutes({router: this.router, db: this.db, schema: schema});
+        addRoutes({router: this.router, db: this.db, schema: schema, verbose: this.verbose});
         // last catch any errors for undefined routes. all actual routes should be defined above
         this.app.use((req, res) => {
             res.status(404);
-            res.send({error: 'Not Found'});
+            res.send({error: 'Not Found', name: 'UrlNotFound', message: 'The requested url does not exist'});
         });
         //appServer = await https.createServer({cert: keys.cert, key: keys.private, rejectUnauthorized: false}, app).listen(conf.app.port || defaultConf.app.port);
         this.server = await this.app.listen(this.conf.app.port || defaultConf.app.port);
-        console.log('started application server at:', this.server.address().port);
+        if (this.verbose) {
+            console.log('started application server at:', this.server.address().port);
+        }
     }
     async close() {
         if (this.verbose)

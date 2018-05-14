@@ -9,7 +9,6 @@ const TOKEN_TIMEOUT = 120;
  * - check the user is allowed permission to the given endpoint
  */
 const checkToken = async (req, res, next) => {
-    console.log('checkToken');
     const token = req.header('Authorization');
     if (token === undefined) {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json({message: 'did not find authorized token', type: 'PermissionError'});
@@ -26,7 +25,7 @@ const checkToken = async (req, res, next) => {
 };
 
 const generateToken = async (user, expires) => {
-    return await jwt.sign(user, keys.private, {expiresIn: expires || TOKEN_TIMEOUT});
+    return await jwt.sign({user}, keys.private, {expiresIn: expires || TOKEN_TIMEOUT});
 };
 
 module.exports = {generateToken, checkToken, keys};

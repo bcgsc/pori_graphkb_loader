@@ -8,9 +8,8 @@ const shell = require('shelljs');
 // connect to the orientdb server
 // connect to the db server
 
-const setUpEmptyDB = async (conf=emptyConf) => {
-    console.log(conf);
-    const verbose = conf.verbose;
+const setUpEmptyDB = async (conf=emptyConf, verbose=false) => {
+    verbose = conf.verbose || verbose;
     // set up the database server
     const server = OrientDB({
         host: conf.server.host,

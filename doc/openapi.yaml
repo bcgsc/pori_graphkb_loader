@@ -1,6 +1,15 @@
+
 openapi: 3.0.0
 info:
     title: Graph KB
+
+tags:
+    - name: Admin
+      description: Administrative operations for adding, editing, and removing users
+    - name: Diseases
+      description: Operations to do with disease ontology terms
+    - name: Anatomical Entities
+      description: Operations to do with anatomical entity ontology terms
 
 paths:
     /users:
@@ -9,7 +18,7 @@ paths:
         get:
             summary: returns a list of users
             tags:
-                - admin
+                - Admin
             parameters:
                 - in: query
                   name: name
@@ -17,7 +26,7 @@ paths:
                     type: string
                   description: the user name
                 - $ref: '#/components/parameters/returnProperties'
-                  example: name,createdAt
+                  example: 'name,createdAt'
             responses:
                 '200':
                     content:
@@ -26,12 +35,15 @@ paths:
                                 type: array
                                 items:
                                     $ref: '#/components/schemas/User'
+                    links:
+                        userById:
+                            $ref: '#/components/links/userById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
         post:
             summary: add a new user
             tags:
-                - admin
+                - Admin
             requestBody:
                 required: true
                 content:
@@ -39,23 +51,27 @@ paths:
                         schema:
                             $ref: '#/components/schemas/User'
             responses:
-                '200':
+                '201':
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/User'
+                    links:
+                        userById:
+                            $ref: '#/components/links/userById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '409':
-                    $ref: '#/components/responses/RecordAlreadyExists'
+                    $ref: '#/components/responses/RecordExistsError'
     /users/{id}:
         parameters:
             - $ref: '#/components/parameters/@rid'
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular user
+            operationId: userById
             tags:
-                - admin
+                - Admin
             responses:
                 '200':
                     content:
@@ -66,10 +82,11 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
-        put:
-            summary: modify an existing user record
+        patch:
+            summary: alter an existing user record
+            operationId: userById
             tags:
-                - admin
+                - Admin
             requestBody:
                 required: true
                 content:
@@ -88,8 +105,9 @@ paths:
                     $ref: '#/components/responses/RecordNotFound'
         delete:
             summary: delete a user record
+            operationId: userById
             tags:
-                - admin
+                - Admin
             responses:
                 '200':
                     content:
@@ -106,7 +124,7 @@ paths:
         get:
             summary: returns a list of disease terms
             tags:
-                - ontology
+                - Diseases
             parameters:
                 - $ref: '#/components/parameters/Ontology/name'
                 - $ref: '#/components/parameters/Ontology/source'
@@ -116,7 +134,7 @@ paths:
                 - $ref: '#/components/parameters/Ontology/nameVersion'
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/returnProperties'
-                  example: name,source
+                  example: 'name,source'
             responses:
                 '200':
                     content:
@@ -125,12 +143,15 @@ paths:
                                 type: array
                                 items:
                                     $ref: '#components/schemas/Disease'
+                    links:
+                        diseaseById:
+                            $ref: '#/components/links/diseaseById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
         post:
             summary: add a new disease term record
             tags:
-                - ontology
+                - Diseases
             requestBody:
                 required: true
                 content:
@@ -138,23 +159,27 @@ paths:
                         schema:
                             $ref: '#/components/schemas/Disease'
             responses:
-                '200':
+                '201':
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Disease'
+                    links:
+                        diseaseById:
+                            $ref: '#/components/links/diseaseById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '409':
-                    $ref: '#/components/responses/RecordAlreadyExists'
+                    $ref: '#/components/responses/RecordExistsError'
     /diseases/{id}:
         parameters:
             - $ref: '#/components/parameters/@rid'
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular disease record
+            operationId: diseaseById
             tags:
-                - ontology
+                - Diseases
             responses:
                 '200':
                     content:
@@ -165,10 +190,26 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
-        put:
+        patch:
             summary: alter a particular disease record
+            operationId: diseaseById
             tags:
-                - ontology
+                - Diseases
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Disease'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+        delete:
+            summary: delete a particular disease record
+            operationId: diseaseById
+            tags:
+                - Diseases
             responses:
                 '200':
                     content:
@@ -185,7 +226,7 @@ paths:
         get:
             summary: returns a list of anatomical entity terms
             tags:
-                - ontology
+                - Anatomical Entities
             parameters:
                 - $ref: '#/components/parameters/Ontology/name'
                 - $ref: '#/components/parameters/Ontology/source'
@@ -194,7 +235,7 @@ paths:
                 - $ref: '#/components/parameters/Ontology/longName'
                 - $ref: '#/components/parameters/Ontology/nameVersion'
                 - $ref: '#/components/parameters/returnProperties'
-                  example: name,source
+                  example: 'name,source'
             responses:
                 '200':
                     content:
@@ -203,12 +244,15 @@ paths:
                                 type: array
                                 items:
                                     $ref: '#components/schemas/AnatomicalEntity'
+                    links:
+                        anatomicalEntityById:
+                            $ref: '#/components/links/anatomicalEntityById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
         post:
             summary: add a new anatomical entity record
             tags:
-                - ontology
+                - Anatomical Entities
             requestBody:
                 required: true
                 content:
@@ -216,23 +260,27 @@ paths:
                         schema:
                             $ref: '#/components/schemas/AnatomicalEntity'
             responses:
-                '200':
+                '201':
                     content:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/AnatomicalEntity'
+                    links:
+                        anatomicalEntityById:
+                            $ref: '#/components/links/anatomicalEntityById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '409':
-                    $ref: '#/components/responses/RecordAlreadyExists'
+                    $ref: '#/components/responses/RecordExistsError'
     /anatomicalentities/{id}:
         parameters:
             - $ref: '#/components/parameters/@rid'
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular anatomical entity record
+            operationId: anatomicalEntityById
             tags:
-                - ontology
+                - Anatomical Entities
             responses:
                 '200':
                     content:
@@ -243,9 +291,176 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
-
+        patch:
+            summary: alter a particular anatomical entity record
+            operationId: anatomicalEntityById
+            tags:
+                - Anatomical Entities
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AnatomicalEntity'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+        delete:
+            summary: delete a particular anatomical entity record
+            operationId: anatomicalEntityById
+            tags:
+                - Anatomical Entities
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/AnatomicalEntity'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+    /therapies:
+        parameters:
+            - $ref: '#/components/parameters/Authorization'
+        get:
+            summary: returns a list of therapy terms
+            tags:
+                - Therapies
+            parameters:
+                - $ref: '#/components/parameters/Ontology/name'
+                - $ref: '#/components/parameters/Ontology/source'
+                - $ref: '#/components/parameters/Ontology/sourceId'
+                - $ref: '#/components/parameters/Ontology/sourceVersion'
+                - $ref: '#/components/parameters/Ontology/longName'
+                - $ref: '#/components/parameters/Ontology/nameVersion'
+                - $ref: '#/components/parameters/returnProperties'
+                  example: 'name,source'
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: '#components/schemas/Therapy'
+                    links:
+                        getTherapyById:
+                            parameters:
+                                id: $response.body#/@rid
+                            operationRef: '#/paths/~1therapies~1{id}/get'
+                        editTherapyById:
+                            parameters:
+                                id: $response.body#/@rid
+                            operationRef: '#/paths/~1therapies~1{id}/patch'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in PATCH `/users/{id}`.
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+        post:
+            summary: add a new therapy record
+            tags:
+                - Therapies
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Therapy'
+            responses:
+                '201':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Therapy'
+                    links:
+                        getTherapyById:
+                            parameters:
+                                id: $response.body#/@rid
+                            operationRef: '#/paths/~1therapies~1{id}/get'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in GET `/users/{id}`.
+                        editTherapyById:
+                            parameters:
+                                id: $response.body#/@rid
+                            operationRef: '#/paths/therapies/{id}/patch'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in PATCH `/users/{id}`.
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '409':
+                    $ref: '#/components/responses/RecordExistsError'
+    /therapies/{id}:
+        parameters:
+            - $ref: '#/components/parameters/@rid'
+            - $ref: '#/components/parameters/Authorization'
+        get:
+            summary: return a particular therapy record
+            operationId: therapyById
+            tags:
+                - Therapies
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Therapy'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+        patch:
+            summary: alter a particular therapy record
+            operationId: therapyById
+            tags:
+                - Therapies
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Therapy'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+        delete:
+            summary: delete a particular therapy record
+            operationId: therapyById
+            tags:
+                - Therapies
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Therapy'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
 
 components:
+    links:
+        userById:
+            operationId: userById
+            parameters:
+                id: $response.body#/@rid
+            description: 'The `@rid` value returned in the response can be used as the `id` parameter in `/users/{id}` operations.'
+        diseaseById:
+            operationId: diseaseById
+            parameters:
+                id: $response.body#/@rid
+            description: 'The `@rid` value returned in the response can be used as the `id` parameter in `/diseases/{id}` operations.'
+        anatomicalEntityById:
+            operationId: anatomicalEntityById
+            parameters:
+                id: $response.body#/@rid
+            description: 'The `@rid` value returned in the response can be used as the `id` parameter in `/anatomicalentities/{id}` operations.'
     responses:
         NotAuthorized:
             description: authorization failed or insufficient permissions were found
@@ -259,12 +474,15 @@ components:
                 application/json:
                     schema:
                         $ref: '#/components/schemas/Error'
-        RecordAlreadyExists:
+        RecordExistsError:
             description: the record already exists
             content:
                 application/json:
                     schema:
                         $ref: '#/components/schemas/Error'
+                        properties:
+                            name:
+                                example: 'RecordExistsError'
     parameters:
         returnProperties:
             in: query
@@ -399,7 +617,17 @@ components:
                 stacktrace:
                     type: string
                     description: optionally the error may include a stack trace to aid in debugging
+        ODB:
+            type:
+                object
+            properties:
+                '@rid':
+                    type: string
+                    example: '#44:1'
+                    pattern: '^#\d+:\d+$'
         UserGroup:
+            allOf:
+                - $ref: '#/components/schemas/ODB'
             type: object
             properties:
                 name:
@@ -408,6 +636,8 @@ components:
                 permissions:
                     type: object
         User:
+            allOf:
+                - $ref: '#/components/schemas/ODB'
             type: object
             required:
                 - name
@@ -431,6 +661,8 @@ components:
                         - $ref: '#/components/schemas/User'
                     nullable: true
         Ontology:
+            allOf:
+                - $ref: '#/components/schemas/ODB'
             type: object
             required:
                 - name
@@ -500,6 +732,13 @@ components:
                 subsets:
                     items:
                         example: "uberon/core#uberon_slim"
+        Therapy:
+            allOf:
+                - $ref: '#/components/schemas/Ontology'
+            type: object
+            properties:
+                name:
+                    example: carboplatin
 
 
 
