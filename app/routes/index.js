@@ -54,6 +54,13 @@ const addRoutes = (opt) => {
 
     addResourceRoutes({
         router: router,
+        model: schema.Therapy,
+        db: db,
+        verbose: verbose
+    });
+
+    addResourceRoutes({
+        router: router,
         model: schema.IndependantFeature,
         db: db,
         verbose: verbose

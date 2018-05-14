@@ -2,18 +2,27 @@
 
 
 class ErrorMixin extends Error {
-    constructor(message) {
+    constructor(content) {
+        let message;
+        if (typeof content === 'object' && content !== null) {
+            message = content.message;
+            delete content.message;
+        } else {
+            message = content;
+            content = {};
+        }
         super(message);
         this.message = message;
         this.name = this.constructor.name;
         Error.captureStackTrace(this);
+        this.content = content;
     }
     toJSON() {
-        return {
+        return Object.assign(this.content, {
             message: this.message,
             name: this.name,
             stacktrace: this.stack
-        };
+        });
     }
 }
 

@@ -7,6 +7,17 @@ const RELATED_NODE_DEPTH = 3;
 const QUERY_LIMIT = 1000;
 
 
+const wrapIfTypeError = (err) => {
+    if (err && err.type) {
+        if (err.type.toLowerCase().includes('orecordduplicatedexception')) {
+            return new RecordExistsError(err);
+        } else if (err.type.toLowerCase().includes('orecordnotfoundexception')) {
+            return new NoRecordFoundError(err);
+        }
+    }
+    return err;
+};
+
 
 class Follow {
     /**
@@ -199,8 +210,11 @@ const createUser = async (db, opt) => {
     await db.insert().into(model.name)
         .set(record)
         .one();
-    const user = await select(db, {where: {name: userName}, model: model, exactlyN: 1});
-    return user;
+    try {
+        return await select(db, {where: {name: userName}, model: model, exactlyN: 1});
+    } catch (err) {
+        throw wrapIfTypeError(err);
+    }
 };
 
 
@@ -255,11 +269,7 @@ const create = async (db, opt) => {
     try {
         return await db.insert().into(model.name).set(record).one();
     } catch (err) {
-        if (err.type.toLowerCase().includes('orecordduplicatedexception')) {
-            throw new RecordExistsError(err.message);
-        } else {
-            throw err;
-        }
+        throw wrapIfTypeError(err);
     }
 };
 
@@ -275,11 +285,7 @@ const createEdge = async (db, opt) => {
     try {
         return await db.create('EDGE', model.name).from(from).to(to).set(record).one();
     } catch (err) {
-        if (err.type.toLowerCase().includes('orecordduplicatedexception')) {
-            throw new RecordExistsError(err.message);
-        } else {
-            throw err;
-        }
+        throw wrapIfTypeError(err);
     }
 };
 
@@ -343,19 +349,24 @@ const select = async (db, opt) => {
 };
 
 
-
+/**
+ * Mark a particular record as deleted
+ *
+ *
+ */
 const remove = async (db, opt) => {
     const {model, user, where} = opt;
-    if (where['@rid'] === undefined) {
+    let rid = where['@rid'];
+    if (rid === undefined) {
         const rec = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
-        where['@rid'] = rec['@rid'];
+        rid = rec['@rid'];
         where['createdAt'] = rec['createdAt'];
     }
-
+    delete where['@rid'];
     const commit = db.let(
         'updatedRID', (tx) => {
             // update the original record and set the history link to link to the copy
-            return tx.update(`${where['@rid']}`)
+            return tx.update(`${rid}`)
                 .set({deletedAt: timeStampNow()})
                 .set(`deletedBy = ${user['@rid']}`)
                 .return('AFTER @rid')
@@ -367,7 +378,7 @@ const remove = async (db, opt) => {
         return await commit.return('$updated').one();
     } catch (err) {
         err.sql = commit.buildStatement();
-        throw err;
+        throw wrapIfTypeError(err);
     }
 };
 
@@ -425,7 +436,7 @@ const update = async (db, opt) => {
         return await commit.return('$updated').one();
     } catch (err) {
         err.sql = commit.buildStatement();
-        throw err;
+        throw wrapIfTypeError(err);
     }
 };
 

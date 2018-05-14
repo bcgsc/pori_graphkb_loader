@@ -25,7 +25,11 @@ const checkToken = async (req, res, next) => {
 };
 
 const generateToken = async (user, expires) => {
-    return await jwt.sign({user}, keys.private, {expiresIn: expires || TOKEN_TIMEOUT});
+    if (expires === null) {
+        return await jwt.sign({user}, keys.private);
+    } else {
+        return await jwt.sign({user}, keys.private, {expiresIn: expires || TOKEN_TIMEOUT});
+    }
 };
 
 module.exports = {generateToken, checkToken, keys};

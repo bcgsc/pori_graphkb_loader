@@ -109,30 +109,6 @@ const addResourceRoutes = (opt, verbose) => {
             }
         }
     );
-    router.delete(route,
-        async (req, res) => {
-            if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type'});
-                return;
-            }
-            try {
-                const result = await remove(db, {model: model, where: req.body.where, user: req.user});
-                if (cacheUpdate) {
-                    await cacheUpdate(db);
-                }
-                res.json(jc.decycle(result));
-            } catch (err) {
-                if (err instanceof AttributeError || err instanceof NoRecordFoundError || err instanceof MultipleRecordsFoundError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                } else {
-                    if (verbose) {
-                        console.error(err);
-                    }
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
-                }
-            }
-        }
-    );
 
     // Add the id routes
     router.get(`${route}/:id`,
@@ -151,7 +127,7 @@ const addResourceRoutes = (opt, verbose) => {
                 res.json(jc.decycle(result[0]));
             } catch (err) {
                 if (err instanceof NoRecordFoundError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                    res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 } else {
                     if (verbose) {
                         console.error(err);
@@ -175,7 +151,7 @@ const addResourceRoutes = (opt, verbose) => {
                 const result = await update(db, {
                     model: model,
                     content: req.body,
-                    where: {'@rid': req.params.id, deletedAt: 'null'},
+                    where: {'@rid': req.params.id, deletedAt: null},
                     user: req.user
                 });
                 if (cacheUpdate) {
@@ -183,8 +159,12 @@ const addResourceRoutes = (opt, verbose) => {
                 }
                 res.json(jc.decycle(result));
             } catch (err) {
-                if (err instanceof AttributeError || err instanceof NoRecordFoundError || err instanceof MultipleRecordsFoundError) {
+                if (err instanceof AttributeError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } else if (err instanceof NoRecordFoundError) {
+                    res.status(HTTP_STATUS.NOT_FOUND).json(err);
+                } else if (err instanceof RecordExistsError) {
+                    res.status(HTTP_STATUS.CONFLICT).json(err);
                 } else {
                     if (verbose) {
                         console.error(err);
@@ -206,14 +186,16 @@ const addResourceRoutes = (opt, verbose) => {
                 return;
             }
             try {
-                const result = await remove(db, {model: model, where: {'@rid': req.params.id, deletedAt: 'null'}, user: req.user});
+                const result = await remove(db, {model: model, where: {'@rid': req.params.id, deletedAt: null}, user: req.user});
                 if (cacheUpdate) {
                     await cacheUpdate(db);
                 }
                 res.json(jc.decycle(result));
             } catch (err) {
-                if (err instanceof AttributeError || err instanceof NoRecordFoundError || err instanceof MultipleRecordsFoundError) {
+                if (err instanceof AttributeError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } else if (err instanceof NoRecordFoundError) {
+                    res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 } else {
                     if (verbose) {
                         console.error(err);

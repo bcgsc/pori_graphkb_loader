@@ -55,7 +55,7 @@ let app;
             next();
         };
         auth.checkToken = checkToken;
-        const adminToken = await auth.generateToken({user: admin}, 10000000000);
+        const adminToken = await auth.generateToken({user: admin}, null);
         console.log('test adminToken');
         console.log(adminToken);
         app = new AppServer(conf, true, false);

@@ -3,13 +3,13 @@
 // required packages
 const express = require('express');
 const bodyParser = require('body-parser');
-const defaultConf = require('./../config/default'); // get the database connection configuration
 const addRoutes = require('./routes');
 const OrientDB  = require('orientjs');
 const {loadSchema} = require('./repo/schema');
 const auth = require('./middleware/auth');
 const {parseNullQueryParams} = require('./middleware');
 const fs = require('fs');
+const http = require('http');
 
 
 const connectDB = async (conf, verbose=true) => {
@@ -82,15 +82,19 @@ class AppServer {
         }
         // add the db connection reference to the routes
         addRoutes({router: this.router, db: this.db, schema: schema, verbose: this.verbose});
+        if (this.verbose) {
+            console.log('Adding 404 capture');
+        }
         // last catch any errors for undefined routes. all actual routes should be defined above
         this.app.use((req, res) => {
             res.status(404);
             res.send({error: 'Not Found', name: 'UrlNotFound', message: 'The requested url does not exist'});
         });
         //appServer = await https.createServer({cert: keys.cert, key: keys.private, rejectUnauthorized: false}, app).listen(conf.app.port || defaultConf.app.port);
-        this.server = await this.app.listen(this.conf.app.port || defaultConf.app.port);
+        this.server = await http.createServer(this.app).listen(this.conf.app.port);
+        //this.server = await this.app.listen(this.conf.app.port, this.conf.app.host);
         if (this.verbose) {
-            console.log('started application server at:', this.server.address().port);
+            console.log('started application server at:', this.server.address().host, this.server.address().port);
         }
     }
     async close() {
