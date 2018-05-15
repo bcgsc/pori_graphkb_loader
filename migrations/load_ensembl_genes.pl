@@ -34,10 +34,28 @@ my $ua;
 
 main();
 
-sub getFeatureByName
+sub getHugoFeatureByName
 {
     my ($name) = @_;
-    my $uri = "$server_endpoint/independantfeatures?name=$name&deletedAt=null";
+    my $uri = "$server_endpoint/independantfeatures?name=$name&deletedAt=null&source=hgnc";
+    my $req = HTTP::Request->new(GET => $uri);
+    $req->header('content-type' => 'application/json');
+    $req->header('Authorization' => $token);
+    my $resp = $ua->request($req);
+    my $content = $resp->decoded_content;
+    if ($resp->is_success) {
+        my $message = parse_json($content);
+        return $message->[0];
+    } else {
+        print "failed request: $content from $uri\n";
+        return undef;
+    }
+}
+
+sub getEnsemblFeatureByIdAndVersion
+{
+    my ($name, $sourceVersion) = @_;
+    my $uri = "$server_endpoint/independantfeatures?sourceId=$name&deletedAt=null&source=ensembl&sourceVersion=$sourceVersion";
     my $req = HTTP::Request->new(GET => $uri);
     $req->header('content-type' => 'application/json');
     $req->header('Authorization' => $token);
@@ -80,33 +98,6 @@ END_MESSAGE
         } else {
             print "=";
         }
-    }
-}
-
-
-sub createHugoGene
-{
-    my ($name) = @_;
-    my $req = HTTP::Request->new(POST => "$server_endpoint/independantfeatures");
-    $req->header('content-type' => 'application/json');
-    $req->header('Authorization' => $token);
-    my $content = <<"END_MESSAGE";
-{
-    "name": "$name",
-    "source": "hgnc",
-    "biotype": "gene"
-}
-END_MESSAGE
-    $req->content($content);
-    my $resp = $ua->request($req);
-    $content = $resp->decoded_content;
-    if ($resp->is_success) {
-        print "H";
-        my $json = parse_json($content);
-        return $json;
-    } else {
-        print "ERROR: $content\n";
-        return undef;
     }
 }
 
@@ -190,11 +181,11 @@ END_MESSAGE
         if ($gene->external_db() eq 'HGNC') {
             my $hugoname = $gene->external_name();
             # get the hugo gene from the db
-            my $hugo = getFeatureByName($hugoname);
+            my $hugo = getHugoFeatureByName($hugoname);
             if (! defined $hugo) {
                 next;
             }
-            my $ensg = getFeatureByName($name);
+            my $ensg = getEnsemblFeatureByIdAndVersion($name, $sourceVersion);
             if (defined $ensg && defined $hugo) {
                 createAliasEdge($ensg->{'@rid'}, $hugo->{'@rid'});
             }
