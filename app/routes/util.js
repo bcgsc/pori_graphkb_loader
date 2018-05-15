@@ -86,7 +86,7 @@ const addResourceRoutes = (opt, verbose) => {
     router.post(route,
         async (req, res) => {
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: 'No query parameters are allowed for this query type', params: req.query}));
                 return;
             }
             try {
@@ -114,12 +114,12 @@ const addResourceRoutes = (opt, verbose) => {
     router.get(`${route}/:id`,
         async (req, res) => {
             if (! looksLikeRID(req.params.id, false)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid record ID: ${req.params.id}`});
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
                 return;
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: 'No query parameters are allowed for this query type', params: req.query}));
                 return;
             }
             try {
@@ -139,12 +139,12 @@ const addResourceRoutes = (opt, verbose) => {
     router.patch(`${route}/:id`,
         async (req, res) => {
             if (! looksLikeRID(req.params.id, false)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid record ID: ${req.params.id}`});
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
                 return;
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: 'No query parameters are allowed for this query type', params: req.query}));
                 return;
             }
             try {
@@ -177,12 +177,12 @@ const addResourceRoutes = (opt, verbose) => {
     router.delete(`${route}/:id`,
         async (req, res) => {
             if (! looksLikeRID(req.params.id, false)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: `ID does not look like a valid record ID: ${req.params.id}`});
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
                 return;
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type'});
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: 'No query parameters are allowed for this query type'}));
                 return;
             }
             try {
