@@ -45,7 +45,7 @@ const uploadHugoGenes = async (opt) => {
     for (let gene of genes) {
         let body = {
             source: 'hgnc',
-            nameVersion: gene.date_modified,
+            sourceIdVersion: gene.date_modified,
             sourceId: gene.hgnc_id,
             name: gene.symbol,
             longName: gene.name,
