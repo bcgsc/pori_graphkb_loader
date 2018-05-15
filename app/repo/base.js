@@ -46,7 +46,7 @@ class Follow {
         }
         this.classnames = classnames;
         this.type = type;
-        this.depth = depth;
+        this.depth = depth === null ? null : Number(depth);
     }
     toString() {
         const classesString = Array.from(this.classnames, quoteWrap).join(', ');
@@ -77,10 +77,11 @@ class SelectionQuery {
         this.conditions = [];
         this.params = {};
         this.paramIndex = opt.paramIndex || 0;
-        this.follow = opt.follow || [];
+        this.follow = [];
 
         const formatted = model.formatQuery(where);
-        const {subqueries} = formatted;
+        const {subqueries, follow} = formatted;
+        this.follow = follow;
         where = formatted.where;
         if (opt.activeOnly) {
             where.deletedAt = null;
@@ -154,12 +155,12 @@ class SelectionQuery {
         const selectionElements = this.returnProperties ? this.returnProperties.join(', ') : '*';
         if (this.follow.length > 0) {
             // must be a match query to follow edges
-            const prefix = `{class: ${this.model.name}, where: (${this.conditions.join(', ')})}`;
+            const prefix = `{class: ${this.model.name}, where: (${this.conditions.join(' AND ')})}`;
             const expressions = [];
             for (let arr of this.follow) {
                 expressions.push(`${prefix}${Array.from(arr, x => x.toString()).join('')}`);
             }
-            queryString = `MATCH ${expressions.join(', ')} RETURN \$pathElements`;
+            queryString = `MATCH ${expressions.join(',')} RETURN \$pathElements`;
         } else {
             queryString = `SELECT ${selectionElements} FROM ${this.model.name} WHERE ${this.conditions.join(' AND ')}`;
         }
