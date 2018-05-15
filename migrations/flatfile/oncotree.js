@@ -49,6 +49,7 @@ const uploadOncoTree = async (conn) => {
         }
         if (record.externalReferences && record.externalReferences['NCI']) {
             for (let ncitID of record.externalReferences['NCI']) {
+                ncitID = `ncit:${ncitID.toLowerCase()}`;
                 try {
                     const ncitRec = await getRecordBy('diseases', {source: 'ncit', sourceId: ncitID}, conn);
                     await addRecord('aliasof', {out: rec['@rid'], in: ncitRec['@rid']}, conn);

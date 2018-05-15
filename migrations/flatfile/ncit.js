@@ -52,10 +52,10 @@ const jsonfile = require('jsonfile');
 const {addRecord} = require('./util');
 
 const ROOT_NODES = {
-    AGONIST: 'ncit:#c1514',
-    CHEM_MOD: 'ncit:#c1932',
-    PHARMA: 'ncit:#c1909',
-    DISEASE: 'ncit:#c2991'
+    AGONIST: 'ncit:c1514',
+    CHEM_MOD: 'ncit:c1932',
+    PHARMA: 'ncit:c1909',
+    DISEASE: 'ncit:c2991'
 };
 
 const PRED_MAP = {
@@ -70,7 +70,7 @@ const PRED_MAP = {
 
 
 const parseNcitID = (string) => {
-    const match = /.*(#C\d+)$/.exec(string);
+    const match = /.*#(C\d+)$/.exec(string);
     if (match) {
         return `ncit:${match[1].toLowerCase()}`;
     }
@@ -141,8 +141,8 @@ const uploadNCIT = async ({filename, conn}) => {
         }
     }
 
-    const diseaseNodes = [];
-    const therapyNodes = [];
+    const diseaseNodes = {};
+    const therapyNodes = {};
     const subclassEdges = [];
     console.log(Object.keys(nodesByCode).slice(0, 10));
     // get the diseases top node and all subclass nodes
@@ -151,7 +151,7 @@ const uploadNCIT = async ({filename, conn}) => {
 
     while (queue.length > 0) {
         const currNode = queue.shift();
-        diseaseNodes.push(currNode);
+        diseaseNodes[currNode.code] = currNode;
         for (let childCode of currNode.subclasses || []) {
             queue.push(nodesByCode[childCode]);
             subclassEdges.push({tgt: currNode.code, src: childCode});
@@ -166,7 +166,7 @@ const uploadNCIT = async ({filename, conn}) => {
 
     while (queue.length > 0) {
         const currNode = queue.shift();
-        therapyNodes.push(currNode);
+        therapyNodes[currNode.code] = currNode;
         for (let childCode of currNode.subclasses || []) {
             queue.push(nodesByCode[childCode]);
             subclassEdges.push({tgt: currNode.code, src: childCode});
@@ -174,8 +174,8 @@ const uploadNCIT = async ({filename, conn}) => {
     }
 
     const records = {};
-    console.log(`\nLoading ${diseaseNodes.length} disease nodes nodes`);
-    for (let node of diseaseNodes) {
+    console.log(`\nLoading ${Object.keys(diseaseNodes).length} disease nodes nodes`);
+    for (let node of Object.values(diseaseNodes)) {
         if (! node[PRED_MAP.CODE] || ! node[PRED_MAP.LABEL]) {  // do not include anything that does not have at minimum these values
             continue;
         }
@@ -191,10 +191,10 @@ const uploadNCIT = async ({filename, conn}) => {
             body.subsets = node[PRED_MAP.SUBSETOF];
         }
         const dbEntry = await addRecord('diseases', body, conn, true);
-        records[dbEntry.sourceId] = records;
+        records[dbEntry.sourceId] = dbEntry;
     }
-    console.log(`\nLoading ${therapyNodes.length} therapy nodes`);
-    for (let node of therapyNodes) {
+    console.log(`\nLoading ${Object.keys(therapyNodes).length} therapy nodes`);
+    for (let node of Object.values(therapyNodes)) {
         if (! node[PRED_MAP.CODE] || ! node[PRED_MAP.LABEL]) {  // do not include anything that does not have at minimum these values
             continue;
         }
@@ -210,7 +210,7 @@ const uploadNCIT = async ({filename, conn}) => {
             body.subsets = node[PRED_MAP.SUBSETOF];
         }
         const dbEntry = await addRecord('therapies', body, conn, true);
-        records[dbEntry.sourceId] = records;
+        records[dbEntry.sourceId] = dbEntry;
     }
     console.log(`\nLoading ${subclassEdges.length} subclassof relationships`);
     for (let {src, tgt} of subclassEdges) {

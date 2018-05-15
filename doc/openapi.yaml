@@ -3,6 +3,9 @@ openapi: 3.0.0
 info:
     title: Graph KB
 
+servers:
+    - url: http://10.9.202.242:8088/api/
+
 tags:
     - name: Admin
       description: Administrative operations for adding, editing, and removing users
@@ -40,6 +43,8 @@ paths:
                             $ref: '#/components/links/userById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         post:
             summary: add a new user
             tags:
@@ -63,6 +68,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '409':
                     $ref: '#/components/responses/RecordExistsError'
+                '400':
+                    $ref: '#/components/responses/BadInput'
     /users/{id}:
         parameters:
             - $ref: '#/components/parameters/@rid'
@@ -82,6 +89,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         patch:
             summary: alter an existing user record
             operationId: userById
@@ -103,6 +112,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         delete:
             summary: delete a user record
             operationId: userById
@@ -118,6 +129,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
     /diseases:
         parameters:
             - $ref: '#/components/parameters/Authorization'
@@ -148,6 +161,8 @@ paths:
                             $ref: '#/components/links/diseaseById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         post:
             summary: add a new disease term record
             tags:
@@ -171,6 +186,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '409':
                     $ref: '#/components/responses/RecordExistsError'
+                '400':
+                    $ref: '#/components/responses/BadInput'
     /diseases/{id}:
         parameters:
             - $ref: '#/components/parameters/@rid'
@@ -190,6 +207,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         patch:
             summary: alter a particular disease record
             operationId: diseaseById
@@ -205,6 +224,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         delete:
             summary: delete a particular disease record
             operationId: diseaseById
@@ -220,6 +241,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
     /anatomicalentities:
         parameters:
             - $ref: '#/components/parameters/Authorization'
@@ -249,6 +272,8 @@ paths:
                             $ref: '#/components/links/anatomicalEntityById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         post:
             summary: add a new anatomical entity record
             tags:
@@ -272,6 +297,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '409':
                     $ref: '#/components/responses/RecordExistsError'
+                '400':
+                    $ref: '#/components/responses/BadInput'
     /anatomicalentities/{id}:
         parameters:
             - $ref: '#/components/parameters/@rid'
@@ -291,6 +318,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         patch:
             summary: alter a particular anatomical entity record
             operationId: anatomicalEntityById
@@ -306,6 +335,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         delete:
             summary: delete a particular anatomical entity record
             operationId: anatomicalEntityById
@@ -321,6 +352,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
     /therapies:
         parameters:
             - $ref: '#/components/parameters/Authorization'
@@ -359,6 +392,8 @@ paths:
                                 the `id` parameter in PATCH `/users/{id}`.
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         post:
             summary: add a new therapy record
             tags:
@@ -394,6 +429,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '409':
                     $ref: '#/components/responses/RecordExistsError'
+                '400':
+                    $ref: '#/components/responses/BadInput'
     /therapies/{id}:
         parameters:
             - $ref: '#/components/parameters/@rid'
@@ -413,6 +450,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         patch:
             summary: alter a particular therapy record
             operationId: therapyById
@@ -428,6 +467,8 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
         delete:
             summary: delete a particular therapy record
             operationId: therapyById
@@ -443,6 +484,123 @@ paths:
                     $ref: '#/components/responses/NotAuthorized'
                 '404':
                     $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
+    /independantfeatures:
+        parameters:
+            - $ref: '#/components/parameters/Authorization'
+        get:
+            summary: returns a list of features (independant)
+            tags:
+                - Features
+            parameters:
+                - $ref: '#/components/parameters/Ontology/name'
+                - $ref: '#/components/parameters/Ontology/source'
+                - $ref: '#/components/parameters/Ontology/sourceId'
+                - $ref: '#/components/parameters/Ontology/sourceVersion'
+                - $ref: '#/components/parameters/Ontology/longName'
+                - $ref: '#/components/parameters/Ontology/nameVersion'
+                - $ref: '#/components/parameters/limit'
+                - $ref: '#/components/parameters/returnProperties'
+                  example: 'name,source'
+                - $ref: '#/components/parameters/Feature/biotype'
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                type: array
+                                items:
+                                    $ref: '#components/schemas/IndependantFeature'
+                    links:
+                        diseaseById:
+                            $ref: '#/components/links/independantFeatureById'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '400':
+                    $ref: '#/components/responses/BadInput'
+        post:
+            summary: add a new featuer (independant) record
+            tags:
+                - Features
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/IndependantFeature'
+            responses:
+                '201':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/IndependantFeature'
+                    links:
+                        diseaseById:
+                            $ref: '#/components/links/independantFeatureById'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '409':
+                    $ref: '#/components/responses/RecordExistsError'
+                '400':
+                    $ref: '#/components/responses/BadInput'
+    /independantfeatures/{id}:
+        parameters:
+            - $ref: '#/components/parameters/@rid'
+            - $ref: '#/components/parameters/Authorization'
+        get:
+            summary: return a particular feature (independant) record
+            operationId: independantFeatureById
+            tags:
+                - Features
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/IndependantFeature'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
+        patch:
+            summary: alter a particular feature (independant) record
+            operationId: independantFeatureById
+            tags:
+                - Features
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/IndependantFeature'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
+        delete:
+            summary: delete a particular feature (independant) record
+            operationId: independantFeatureById
+            tags:
+                - Features
+            responses:
+                '200':
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/IndependantFeature'
+                '401':
+                    $ref: '#/components/responses/NotAuthorized'
+                '404':
+                    $ref: '#/components/responses/RecordNotFound'
+                '400':
+                    $ref: '#/components/responses/BadInput'
+
+
 
 components:
     links:
@@ -461,6 +619,11 @@ components:
             parameters:
                 id: $response.body#/@rid
             description: 'The `@rid` value returned in the response can be used as the `id` parameter in `/anatomicalentities/{id}` operations.'
+        independantFeatureById:
+            operationId: independantFeatureById
+            parameters:
+                id: $response.body#/@rid
+            description: 'The `@rid` value returned in the response can be used as the `id` parameter in `/independantfeatures/{id}` operations.'
     responses:
         NotAuthorized:
             description: authorization failed or insufficient permissions were found
@@ -482,7 +645,16 @@ components:
                         $ref: '#/components/schemas/Error'
                         properties:
                             name:
-                                example: 'RecordExistsError'
+                                example: RecordExistsError
+        BadInput:
+            description: bad request contains invalid input
+            content:
+                application/json:
+                    schema:
+                        $ref: '#/components/schemas/Error'
+                        properties:
+                            name:
+                                example: AttributeError
     parameters:
         returnProperties:
             in: query
@@ -552,6 +724,13 @@ components:
             schema:
                 type: string
                 format: uuid
+        Feature:
+            biotype:
+                name: biotype
+                in: query
+                description: the biological type classification of the feature
+                schema:
+                    type: string
         Ontology:
             description:
                 name: description
@@ -580,6 +759,7 @@ components:
                     type: string
                 description: the version of the name (from the external source)
             source:
+                name: source
                 in: query
                 schema:
                     type: string
@@ -739,6 +919,39 @@ components:
             properties:
                 name:
                     example: carboplatin
+                source:
+                    example: ncit
+                sourceId:
+                    example: ncit:c1282
+                description:
+                    example: "a second-generation platinum compound with a broad spectrum of antineoplastic properties..."
+        Feature:
+            type: object
+            required:
+                - biotype
+            properties:
+                biotype:
+                    type: string
+                    description: the biological feature type
+                    example: gene
+        IndependantFeature:
+            allOf:
+                - $ref: '#/components/schemas/Ontology'
+                - $ref: '#/components/schemas/Feature'
+            type: object
+            properties:
+                source:
+                    example: hgnc
+                sourceId:
+                    example: "hgnc:1097"
+                biotype:
+                    example: gene
+                name:
+                    example: braf
+                nameVersion:
+                    example: "2018-04-20"
+                longName:
+                    example: "b-raf proto-oncogene, serine/threonine kinase"
 
 
 

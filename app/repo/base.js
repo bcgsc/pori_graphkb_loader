@@ -7,6 +7,9 @@ const RELATED_NODE_DEPTH = 3;
 const QUERY_LIMIT = 1000;
 
 
+/**
+ * Check if the error is a particular type (expected from orientdb) and return an instance of the corresponding error class
+ */
 const wrapIfTypeError = (err) => {
     if (err && err.type) {
         if (err.type.toLowerCase().includes('orecordduplicatedexception')) {
@@ -199,7 +202,15 @@ const checkAccess = (user, model, permissionsRequired) => {
     return false;
 };
 
-
+/**
+ * Create new User record
+ *
+ * @param {object} db the orientjs database connection
+ * @param {object} opt options
+ * @param {ClassModel} opt.model the class model for User
+ * @param {string} opt.userName the name of the new user
+ * @param {string[]} opt.groupNames the list of group names for which to add the new user to
+ */
 const createUser = async (db, opt) => {
     const {model, userName, groupNames} = opt;
     const record = model.formatRecord({
@@ -255,8 +266,14 @@ const cacheVocabulary = async (db, model) => {
     }
 };
 
-/*
- * create a record
+/**
+ * create new record in the database
+ *
+ * @param {object} db the orientjs database connection
+ * @param {object} opt options
+ * @param {object} opt.content the contents of the new record
+ * @param {ClassModel} opt.model the model for the table/class to insert the new record into
+ * @param {object} opt.user the user creating the new record
  */
 const create = async (db, opt) => {
     const {content, model, user} = opt;
@@ -273,7 +290,17 @@ const create = async (db, opt) => {
     }
 };
 
-
+/**
+ * create new edge record in the database
+ *
+ * @param {object} db the orientjs database connection
+ * @param {object} opt options
+ * @param {object} opt.content the contents of the new record
+ * @param {string} opt.content.out the @rid of the source node
+ * @param {string} opt.content.in the @rid of the target node
+ * @param {ClassModel} opt.model the model for the table/class to insert the new record into
+ * @param {object} opt.user the user creating the new record
+ */
 const createEdge = async (db, opt) => {
     const {content, model, user} = opt;
     content.createdBy = user['@rid'];

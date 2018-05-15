@@ -80,16 +80,20 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
             let match;
             if (match = /^NCI:(C\d+)$/.exec(other)) {
                 try {
-                    const ncitNode = await getRecordBy('diseases', {source: 'ncit', sourceId: match[1]}, conn);
+                    const ncitId = `ncit:${match[1].toLowerCase()}`;
+                    const ncitNode = await getRecordBy('diseases', {source: 'ncit', sourceId: ncitId}, conn);
                     if (ncitAliases[node.id] === undefined) {
                         ncitAliases[node.id] = [];
                     }
                     ncitAliases[node.id].push(ncitNode);
-                } catch (err) {};
+                    process.stdout.write('.');
+                } catch (err) {
+                    process.stdout.write('x');
+                };
             }
         }
     }
-    console.log(`parsed ncit links: ${Object.keys(ncitAliases).length}`);
+    console.log(`\nparsed ncit links: ${Object.keys(ncitAliases).length}`);
 
     const diseaseRecords = {};
     for (let name of Object.keys(nodesByName)) {

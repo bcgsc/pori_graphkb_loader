@@ -281,7 +281,7 @@ class ClassModel {
         const properties = this.properties;
         const subqueries = {};
         const cast = this.cast;
-        const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties'];
+        const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit'];
         const odbArgs = ['@rid', '@class'];
 
         for (let condition of Object.keys(inputQuery)) {
