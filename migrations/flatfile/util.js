@@ -39,4 +39,46 @@ const addRecord = async (className, where, conn, exists_ok=false) => {
     }
 };
 
-module.exports = {addRecord, getRecordBy};
+
+const convertOwlGraphToJson = (graph, idParser) => {
+    const initialRecords = {};
+    for (let statement of graph.statements) {
+        let src;
+        try {
+            src = idParser(statement.subject.value);
+        } catch (err) {
+            continue;
+        }
+        if (initialRecords[src] === undefined) {
+            initialRecords[src] = {code: src};
+        }
+        if (initialRecords[src][statement.predicate.value] === undefined) {
+            initialRecords[src][statement.predicate.value] = [];
+        }
+        initialRecords[src][statement.predicate.value].push(statement.object.value);
+    }
+    const nodesByCode = {};
+    //const initialRecords = require(filename);
+
+    // transform all NCIT codes to std format
+    for (let record of Object.values(initialRecords)) {
+        nodesByCode[record.code] = record;
+        for (let predicate of Object.keys(record)) {
+            if (typeof record[predicate] === 'object' && record[predicate] !== null) {
+                const formatted = [];
+                for (let item of record[predicate]) {
+                    try {
+                        item = idParser(item);
+                    } catch (err) {
+                        // ignore, will be unamed n\d+ nodes
+                    }
+                    formatted.push(item);
+                }
+                record[predicate] = formatted;
+            }
+        }
+    }
+    return nodesByCode;
+};
+
+module.exports = {addRecord, getRecordBy, convertOwlGraphToJson};

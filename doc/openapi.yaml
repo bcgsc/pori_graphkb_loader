@@ -160,7 +160,7 @@ paths:
                 - $ref: '#/components/parameters/Ontology/sourceId'
                 - $ref: '#/components/parameters/Ontology/sourceVersion'
                 - $ref: '#/components/parameters/Ontology/longName'
-                - $ref: '#/components/parameters/Ontology/nameVersion'
+                - $ref: '#/components/parameters/Ontology/sourceIdVersion'
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/returnProperties'
                   example: 'name,source'
@@ -291,7 +291,7 @@ paths:
                 - $ref: '#/components/parameters/Ontology/sourceId'
                 - $ref: '#/components/parameters/Ontology/sourceVersion'
                 - $ref: '#/components/parameters/Ontology/longName'
-                - $ref: '#/components/parameters/Ontology/nameVersion'
+                - $ref: '#/components/parameters/Ontology/sourceIdVersion'
                 - $ref: '#/components/parameters/returnProperties'
                   example: 'name,source'
                 - $ref: '#/components/parameters/ancestors'
@@ -421,7 +421,7 @@ paths:
                 - $ref: '#/components/parameters/Ontology/sourceId'
                 - $ref: '#/components/parameters/Ontology/sourceVersion'
                 - $ref: '#/components/parameters/Ontology/longName'
-                - $ref: '#/components/parameters/Ontology/nameVersion'
+                - $ref: '#/components/parameters/Ontology/sourceIdVersion'
                 - $ref: '#/components/parameters/returnProperties'
                   example: 'name,source'
                 - $ref: '#/components/parameters/ancestors'
@@ -563,7 +563,7 @@ paths:
                 - $ref: '#/components/parameters/Ontology/sourceId'
                 - $ref: '#/components/parameters/Ontology/sourceVersion'
                 - $ref: '#/components/parameters/Ontology/longName'
-                - $ref: '#/components/parameters/Ontology/nameVersion'
+                - $ref: '#/components/parameters/Ontology/sourceIdVersion'
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/returnProperties'
                   example: 'name,source'
@@ -836,8 +836,8 @@ components:
                 schema:
                     type: string
                 description: the name of the ontology term
-            nameVersion:
-                name: nameVersion
+            sourceIdVersion:
+                name: sourceIdVersion
                 in: query
                 schema:
                     type: string
@@ -929,7 +929,7 @@ components:
                 - $ref: '#/components/schemas/ODB'
             type: object
             required:
-                - name
+                - sourceId
                 - source
             properties:
                 description:
@@ -943,7 +943,7 @@ components:
                 name:
                     type: string
                     description: the name of the ontology term
-                nameVersion:
+                sourceIdVersion:
                     type: string
                     description: the version of the name (from the external source)
                 source:
@@ -1032,7 +1032,7 @@ components:
                     example: gene
                 name:
                     example: braf
-                nameVersion:
+                sourceIdVersion:
                     example: "2018-04-20"
                 longName:
                     example: "b-raf proto-oncogene, serine/threonine kinase"

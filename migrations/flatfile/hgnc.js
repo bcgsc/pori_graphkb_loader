@@ -1,6 +1,4 @@
-const _ = require('lodash');
-const request = require('request-promise');
-const PromisePool = require('es6-promise-pool');
+const {getRecordBy, addRecord} = require('./util');
 
 /* example record
 { gene_family: [ 'Immunoglobulin like domain containing' ],
@@ -32,143 +30,68 @@ const PromisePool = require('es6-promise-pool');
   location_sortable: '19q13.43' }
 */
 
-let LOAD_LIMIT;
-
-
-const addRecords = function* (arr, token) {
-    const limit = LOAD_LIMIT !== undefined ? Math.min(arr.length, LOAD_LIMIT) : arr.length;
-    for (let i=0; i < limit; i++) {
-        yield addRecord(arr[i], token);
-    }
-};
-
-
-const addRecord = async (record, conn) => {
-    if (record.status.toLowerCase() === 'entry withdrawn') {
-        return;
-    }
-    record.prev_name = record.prev_name || [];
-    record.prev_symbol = record.prev_symbol || [];
-    let gene = {
-        source: 'hgnc',
-        nameVersion: record.date_modified,
-        sourceId: record.hgnc_id,
-        name: record.symbol,
-        longName: record.name,
-        biotype: 'gene'
-    };
-
-    // add the record to the kb
-    let opt = conn.request({
-        method: 'POST',
-        uri: `independantfeatures`,
-        body: gene
-    });
-    try {
-        gene = await request(opt);
-        process.stdout.write('.');
-    } catch (err) {
-        if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
-            // already exists, try relating it
-            process.stdout.write('*');
-            gene = await getActiveFeature(gene, conn);
-        } else {
-            throw err;
-        }
-    }
-    // now try adding the relationships to other gene types
-    if (record.ensembl_gene_id) {
-        let body;
-        try {
-            const ensg = await getActiveFeature({name: record.ensembl_gene_id}, conn);
-            if (ensg) {
-                body = {out: gene['@rid'], in: ensg['@rid']};
-                await request(conn.request({
-                    method: 'POST',
-                    uri: 'aliasof',
-                    body: body
-                }));
-                process.stdout.write('-');
-            }
-        } catch (err) {
-            if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
-                process.stdout.write('=');
-            } else if (! err.message.includes('could not get a single feature')) {
-                throw err;
-            }
-        }
-    }
-    // try adding the previous symbols
-    await Promise.all(Array.from(record.prev_symbol, (symbol) => {
-        return addRelatedHugoGene(gene, symbol, conn, 'deprecatedby');
-    }));
-    // try adding the previous symbols
-    for (let symbol of record.alias_symbol || []) {
-        await addRelatedHugoGene(gene, symbol, conn, 'aliasof');
-    }
-};
-
-
-const addRelatedHugoGene = async (gene, symbol, conn, relation='deprecatedby') => {
-    if (symbol.toLowerCase() === gene.name.toLowerCase()) {
-        return;
-    }
-    let prev = {source: 'hgnc', name: symbol, biotype: 'gene', longName: gene.longName, sourceId: gene.sourceId};
-    try {
-        prev = await getActiveFeature(prev, conn);
-        process.stdout.write('*');
-    } catch (err) {
-        try {
-            prev = await request(conn.request({
-                method: 'POST',
-                uri: `independantfeatures`,
-                body: prev
-            }));
-            process.stdout.write('.');
-        } catch (err2) {
-            throw new Error('ERROR. Could not select and also cannot add');
-        }
-    }
-    // add link
-    try {
-        await request(conn.request({
-            method: 'POST',
-            uri: `${relation}`,
-            body: {out: prev['@rid'], in: gene['@rid']}
-        }));
-        process.stdout.write(relation[0].toUpperCase());
-    } catch (err) {
-        if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
-            process.stdout.write(relation[0].toLowerCase());
-        } else {
-            throw err;
-        }
-    }
-};
-
-
-const getActiveFeature = async (opt, conn) => {
-    opt = conn.request({
-        uri: 'independantfeatures',
-        qs: Object.assign({}, opt, {deletedAt: 'null'})
-    });
-
-    try {
-        const rec = await request(opt);
-        if (rec.length !== 1) {
-            throw new Error(`could not get a single feature with that name: ${opt.qs.name}. Found ${rec.length} features`);
-        }
-        return rec[0];
-    } catch (err) {
-        throw err;
-    }
-};
 
 const uploadHugoGenes = async (opt) => {
-    const hgnc = require(opt.filename);
-    const iter = addRecords(hgnc.response.docs, opt.conn);
-    const pool = new PromisePool(iter, 10);
-    await pool.start();
+    const {filename, conn} = opt;
+    console.log(`loading: ${filename}`);
+    const hgnc = require(filename);
+    const genes = hgnc.response.docs;
+    const aliasOf = [];
+    const ensemblLinks = [];
+    const deprecatedBy = [];
+    const records = {};
+
+    console.log(`\nAdding ${genes.length} feature records`);
+    for (let gene of genes) {
+        let body = {
+            source: 'hgnc',
+            nameVersion: gene.date_modified,
+            sourceId: gene.hgnc_id,
+            name: gene.symbol,
+            longName: gene.name,
+            biotype: 'gene'
+        };
+        const record = await addRecord('independantfeatures', body, conn, true);
+        records[record.sourceId] = record;
+
+        if (record.ensembl_gene_id) {
+            try {
+                const ensembl = await getRecordBy('independantfeatures', {source: 'ensembl', biotype: 'gene', sourceId: record.ensembl_gene_id}, conn);
+                ensemblLinks.push({src: record['@rid'], tgt: ensembl['@rid']});
+            } catch (err) {
+                process.stdout.write('x');
+            }
+        }
+        for (let symbol of record.prev_symbol || []) {
+            const related = await addRecord('independantfeatures', {
+                source: record.source,
+                sourceId: record.sourceId,
+                biotype: record.biotype,
+                name: symbol
+            });
+            deprecatedBy.push({src: related['@rid'], tgt: record['@rid']});
+        }
+        for (let symbol of record.alias_symbol || []) {
+            try {
+                const related = getRecordBy('independantfeatures', {source: 'hgnc', name: symbol}, conn);
+                aliasOf.push({src: record['@rid'], tgt: related['@rid']});
+            } catch (err) {
+                process.stdout.write('x');
+            }
+        }
+    }
+    console.log(`\nAdding the ${ensemblLinks.length} ensembl links`);
+    for (let {src, tgt} of ensemblLinks) {
+        await addRecord('aliasof', {out: src, in: tgt}, conn, true);
+    }
+    console.log(`\nAdding the ${aliasOf.length} aliasof links`);
+    for (let {src, tgt} of aliasOf) {
+        await addRecord('aliasof', {out: src, in: tgt}, conn, true);
+    }
+    console.log(`\nAdding the ${deprecatedBy.length} deprecatedby links`);
+    for (let {src, tgt} of deprecatedBy) {
+        await addRecord('deprecatedby', {out: src, in: tgt}, conn, true);
+    }
 };
 
-module.exports = {uploadHugoGenes, getActiveFeature};
+module.exports = {uploadHugoGenes};

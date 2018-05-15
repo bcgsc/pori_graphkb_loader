@@ -61,8 +61,8 @@ sub createAliasEdge
     $req->header('Authorization' => $token);
     my $content = <<"END_MESSAGE";
 {
-    "in": "$tgt", 
-    "out": "$src" 
+    "in": "$tgt",
+    "out": "$src"
 }
 END_MESSAGE
     $req->content($content);
@@ -92,7 +92,7 @@ sub createHugoGene
     $req->header('Authorization' => $token);
     my $content = <<"END_MESSAGE";
 {
-    "name": "$name", 
+    "name": "$name",
     "source": "hgnc",
     "biotype": "gene"
 }
@@ -111,7 +111,7 @@ END_MESSAGE
 }
 
 
-sub print_hash 
+sub print_hash
 {
     my ($h) = @_;
     print "$h\n";
@@ -130,18 +130,18 @@ sub main
 
     $registry = 'Bio::EnsEMBL::Registry';
     $registry->load_registry_from_db(%$database_information);
-    
+
     # load all the different transcripts
-    my $transcript_adaptor = $registry->get_adaptor('human', 'core', 'gene'); 
+    my $transcript_adaptor = $registry->get_adaptor('human', 'core', 'gene');
     my @glist = @{$transcript_adaptor->fetch_all()};
     my $total = scalar @glist;
     print "connecting to the user agent\n";
     $ua = LWP::UserAgent->new;
-    
+
     print "loading $total genes\n";
-    
+
     my $source = "ensembl";
-    my $sourceVersion = software_version(); 
+    my $sourceVersion = software_version();
     while ( my $gene = shift @glist )
     {
         my $name = $gene->stable_id();
@@ -160,8 +160,8 @@ sub main
         }
         my $content = <<"END_MESSAGE";
 {
-    "name": "$name", 
-    "source": "$source", 
+    "sourceId": "$name",
+    "source": "$source",
     "sourceVersion": "$sourceVersion",
     "start": "$start",
     "end": "$end",
@@ -175,11 +175,11 @@ END_MESSAGE
             print ".";
         }
         else {
-            my $temp = $resp->decoded_content; 
+            my $temp = $resp->decoded_content;
             if (index($temp, "Cannot index record") == -1) {
                 print "HTTP POST error code: ", $resp->code, "\n";
                 print "HTTP POST error message: ", $resp->message, "\n";
-                print "$req\n"; 
+                print "$req\n";
                 print "$temp";
                 last;
             } else {

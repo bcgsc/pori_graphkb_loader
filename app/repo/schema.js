@@ -481,12 +481,12 @@ const createSchema = async (db, verbose=false) => {
         name: 'Ontology',
         inherits: 'V,Biomarker',
         properties: [
-            {name: 'source', type: 'string', mandatory: true},
+            {name: 'source', type: 'string', mandatory: true, notNull: true},
             {name: 'sourceVersion', type: 'string'},
-            {name: 'sourceId', type: 'string'},
+            {name: 'sourceId', type: 'string', mandatory: true, notNull: true},
             {name: 'sourceUri', type: 'string'},
-            {name: 'name', type: 'string', mandatory: true, notNull: true},
-            {name: 'nameVersion', type: 'string'},
+            {name: 'name', type: 'string'},
+            {name: 'sourceIdVersion', type: 'string'},
             {name: 'description', type: 'string'},
             {name: 'longName', type: 'string'},
             {name: 'subsets', type: 'embeddedset', linkedType: 'string'}
@@ -496,7 +496,7 @@ const createSchema = async (db, verbose=false) => {
                 name: 'Ontology.active',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['source', 'sourceVersion', 'sourceId', 'name', 'deletedAt', 'nameVersion'],
+                properties: ['source', 'sourceVersion', 'sourceId', 'name', 'deletedAt', 'sourceIdVersion'],
                 class:  'Ontology'
             },
             {
@@ -522,12 +522,12 @@ const createSchema = async (db, verbose=false) => {
         name: 'DependantFeature',
         inherits: 'V,Feature,Biomarker',
         properties: [
-            {name: 'source', type: 'string'},
+            {name: 'source', type: 'string', mandatory: true, notNull: true},
             {name: 'sourceVersion', type: 'string'},
-            {name: 'sourceId', type: 'string'},
+            {name: 'sourceId', type: 'string', mandatory: true, notNull: true},
             {name: 'sourceUri', type: 'string'},
-            {name: 'name', type: 'string', mandatory: true, notNull: true},
-            {name: 'nameVersion', type: 'string'},
+            {name: 'name', type: 'string'},
+            {name: 'sourceIdVersion', type: 'string'},
             {name: 'description', type: 'string'},
             {name: 'longName', type: 'string'},
             {name: 'dependency', type: 'link', linkedClass: 'IndependantFeature', notNull: true}
@@ -537,7 +537,7 @@ const createSchema = async (db, verbose=false) => {
                 name: 'DependantFeature.active',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['source', 'sourceVersion', 'name', 'deletedAt', 'nameVersion', 'dependency'],
+                properties: ['source', 'sourceVersion', 'name', 'deletedAt', 'sourceIdVersion', 'dependency'],
                 class: 'DependantFeature'
             },
             {
