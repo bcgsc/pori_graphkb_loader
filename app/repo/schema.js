@@ -504,6 +504,12 @@ const createSchema = async (db, verbose=false) => {
                 type: 'NOTUNIQUE_HASH_INDEX',
                 properties: ['name'],
                 class: 'Ontology'
+            },
+            {
+                name: 'Ontology.sourceId',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                properties: ['sourceId'],
+                class: 'Ontology'
             }
         ],
         isAbstract: true
@@ -544,6 +550,12 @@ const createSchema = async (db, verbose=false) => {
                 name: 'DependantFeature.name',
                 type: 'NOTUNIQUE_HASH_INDEX',
                 properties: ['name'],
+                class: 'DependantFeature'
+            },
+            {
+                name: 'DependantFeature.sourceId',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                properties: ['sourceId'],
                 class: 'DependantFeature'
             }
         ]
