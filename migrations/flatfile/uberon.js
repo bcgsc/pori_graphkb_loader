@@ -15,6 +15,15 @@ const parseUberonId = (string) => {
     }
 };
 
+const parseSubsetName = (string) => {
+    let match = /.*([^\/]+)$/.exec(string);
+    if (match) {
+        return match[1];
+    } else {
+        return string;
+    }
+};
+
 
 const PRED_MAP = {
     CROSS_REF: 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
@@ -52,7 +61,7 @@ const uploadUberon = async ({filename, conn}) => {
             body.description = node[PRED_MAP.DESCRIPTION][0];
         }
         if (node[PRED_MAP.SUBSETOF]) {
-            body.subsets = node[PRED_MAP.SUBSETOF];
+            body.subsets = Array.from(node[PRED_MAP.SUBSETOF], parseSubsetName);
         }
         if (node[PRED_MAP.SUBCLASSOF]) {
             for (let parentCode of node[PRED_MAP.SUBCLASSOF]) {
