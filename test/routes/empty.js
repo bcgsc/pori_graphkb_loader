@@ -3,12 +3,6 @@ const {
     expect
 } = require('chai');
 const {
-    create,
-    update,
-    remove,
-    select
-} = require('./../../app/repo/base');
-const {
     setUpEmptyDB,
 } = require('./../util');
 const chai = require('chai');

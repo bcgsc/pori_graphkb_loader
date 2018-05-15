@@ -39,8 +39,27 @@ paths:
                                 items:
                                     $ref: '#/components/schemas/User'
                     links:
-                        userById:
-                            $ref: '#/components/links/userById'
+                        getUserById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1users~1{id}/get'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in GET `/users/{id}`.
+                        patchUserById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1users~1{id}/patch'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in PATCH `/users/{id}`.
+                        deleteUserById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1users~1{id}/delete'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in DELETE `/users/{id}`.
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '400':
@@ -76,7 +95,6 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular user
-            operationId: userById
             tags:
                 - Admin
             responses:
@@ -93,7 +111,6 @@ paths:
                     $ref: '#/components/responses/BadInput'
         patch:
             summary: alter an existing user record
-            operationId: userById
             tags:
                 - Admin
             requestBody:
@@ -116,7 +133,6 @@ paths:
                     $ref: '#/components/responses/BadInput'
         delete:
             summary: delete a user record
-            operationId: userById
             tags:
                 - Admin
             responses:
@@ -148,6 +164,9 @@ paths:
                 - $ref: '#/components/parameters/limit'
                 - $ref: '#/components/parameters/returnProperties'
                   example: 'name,source'
+                - $ref: '#/components/parameters/ancestors'
+                - $ref: '#/components/parameters/descendants'
+                - $ref: '#/components/parameters/fuzzyMatch'
             responses:
                 '200':
                     content:
@@ -157,8 +176,27 @@ paths:
                                 items:
                                     $ref: '#components/schemas/Disease'
                     links:
-                        diseaseById:
-                            $ref: '#/components/links/diseaseById'
+                        getDiseaseById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1diseases~1{id}/get'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in GET `/diseases/{id}`.
+                        patchDiseaseById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1diseases~1{id}/patch'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in PATCH `/diseases/{id}`.
+                        deleteDiseaseById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1diseases~1{id}/delete'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in DELETE `/diseases/{id}`.
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '400':
@@ -194,7 +232,6 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular disease record
-            operationId: diseaseById
             tags:
                 - Diseases
             responses:
@@ -211,7 +248,6 @@ paths:
                     $ref: '#/components/responses/BadInput'
         patch:
             summary: alter a particular disease record
-            operationId: diseaseById
             tags:
                 - Diseases
             responses:
@@ -228,7 +264,6 @@ paths:
                     $ref: '#/components/responses/BadInput'
         delete:
             summary: delete a particular disease record
-            operationId: diseaseById
             tags:
                 - Diseases
             responses:
@@ -259,6 +294,9 @@ paths:
                 - $ref: '#/components/parameters/Ontology/nameVersion'
                 - $ref: '#/components/parameters/returnProperties'
                   example: 'name,source'
+                - $ref: '#/components/parameters/ancestors'
+                - $ref: '#/components/parameters/descendants'
+                - $ref: '#/components/parameters/fuzzyMatch'
             responses:
                 '200':
                     content:
@@ -268,8 +306,27 @@ paths:
                                 items:
                                     $ref: '#components/schemas/AnatomicalEntity'
                     links:
-                        anatomicalEntityById:
-                            $ref: '#/components/links/anatomicalEntityById'
+                        getAnatomicalEntityById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1anatomicalentities~1{id}/get'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in GET `/anatomicalentities/{id}`.
+                        patchAnatomicalEntityById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1anatomicalentities~1{id}/patch'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in PATCH `/anatomicalentities/{id}`.
+                        deleteAnatomicalEntityById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1anatomicalentities~1{id}/delete'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in DELETE `/anatomicalentities/{id}`.
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '400':
@@ -305,7 +362,6 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular anatomical entity record
-            operationId: anatomicalEntityById
             tags:
                 - Anatomical Entities
             responses:
@@ -322,7 +378,6 @@ paths:
                     $ref: '#/components/responses/BadInput'
         patch:
             summary: alter a particular anatomical entity record
-            operationId: anatomicalEntityById
             tags:
                 - Anatomical Entities
             responses:
@@ -339,7 +394,6 @@ paths:
                     $ref: '#/components/responses/BadInput'
         delete:
             summary: delete a particular anatomical entity record
-            operationId: anatomicalEntityById
             tags:
                 - Anatomical Entities
             responses:
@@ -370,6 +424,9 @@ paths:
                 - $ref: '#/components/parameters/Ontology/nameVersion'
                 - $ref: '#/components/parameters/returnProperties'
                   example: 'name,source'
+                - $ref: '#/components/parameters/ancestors'
+                - $ref: '#/components/parameters/descendants'
+                - $ref: '#/components/parameters/fuzzyMatch'
             responses:
                 '200':
                     content:
@@ -380,16 +437,26 @@ paths:
                                     $ref: '#components/schemas/Therapy'
                     links:
                         getTherapyById:
-                            parameters:
-                                id: $response.body#/@rid
+                            allOf:
+                                - $ref: '#/components/links/byId'
                             operationRef: '#/paths/~1therapies~1{id}/get'
-                        editTherapyById:
-                            parameters:
-                                id: $response.body#/@rid
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in GET `/therapies/{id}`.
+                        patchTherapyById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
                             operationRef: '#/paths/~1therapies~1{id}/patch'
                             description: >
                                 The `@rid` value returned in the response can be used as
-                                the `id` parameter in PATCH `/users/{id}`.
+                                the `id` parameter in PATCH `/therapies/{id}`.
+                        deleteTherapyById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1therapies~1{id}/delete'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in DELETE `/therapies/{id}`.
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '400':
@@ -437,7 +504,6 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular therapy record
-            operationId: therapyById
             tags:
                 - Therapies
             responses:
@@ -454,7 +520,6 @@ paths:
                     $ref: '#/components/responses/BadInput'
         patch:
             summary: alter a particular therapy record
-            operationId: therapyById
             tags:
                 - Therapies
             responses:
@@ -471,7 +536,6 @@ paths:
                     $ref: '#/components/responses/BadInput'
         delete:
             summary: delete a particular therapy record
-            operationId: therapyById
             tags:
                 - Therapies
             responses:
@@ -504,6 +568,9 @@ paths:
                 - $ref: '#/components/parameters/returnProperties'
                   example: 'name,source'
                 - $ref: '#/components/parameters/Feature/biotype'
+                - $ref: '#/components/parameters/ancestors'
+                - $ref: '#/components/parameters/descendants'
+                - $ref: '#/components/parameters/fuzzyMatch'
             responses:
                 '200':
                     content:
@@ -513,8 +580,27 @@ paths:
                                 items:
                                     $ref: '#components/schemas/IndependantFeature'
                     links:
-                        diseaseById:
-                            $ref: '#/components/links/independantFeatureById'
+                        getIndependantFeatureById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1independantfeatures~1{id}/get'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in GET `/independantfeatures/{id}`.
+                        patchIndependantFeatureById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1independantfeatures~1{id}/patch'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in PATCH `/independantfeatures/{id}`.
+                        deleteIndependantFeatureById:
+                            allOf:
+                                - $ref: '#/components/links/byId'
+                            operationRef: '#/paths/~1independantfeatures~1{id}/delete'
+                            description: >
+                                The `@rid` value returned in the response can be used as
+                                the `id` parameter in DELETE `/independantfeatures/{id}`.
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '400':
@@ -550,7 +636,6 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular feature (independant) record
-            operationId: independantFeatureById
             tags:
                 - Features
             responses:
@@ -567,7 +652,6 @@ paths:
                     $ref: '#/components/responses/BadInput'
         patch:
             summary: alter a particular feature (independant) record
-            operationId: independantFeatureById
             tags:
                 - Features
             responses:
@@ -584,7 +668,6 @@ paths:
                     $ref: '#/components/responses/BadInput'
         delete:
             summary: delete a particular feature (independant) record
-            operationId: independantFeatureById
             tags:
                 - Features
             responses:
@@ -604,26 +687,9 @@ paths:
 
 components:
     links:
-        userById:
-            operationId: userById
+        byId:
             parameters:
                 id: $response.body#/@rid
-            description: 'The `@rid` value returned in the response can be used as the `id` parameter in `/users/{id}` operations.'
-        diseaseById:
-            operationId: diseaseById
-            parameters:
-                id: $response.body#/@rid
-            description: 'The `@rid` value returned in the response can be used as the `id` parameter in `/diseases/{id}` operations.'
-        anatomicalEntityById:
-            operationId: anatomicalEntityById
-            parameters:
-                id: $response.body#/@rid
-            description: 'The `@rid` value returned in the response can be used as the `id` parameter in `/anatomicalentities/{id}` operations.'
-        independantFeatureById:
-            operationId: independantFeatureById
-            parameters:
-                id: $response.body#/@rid
-            description: 'The `@rid` value returned in the response can be used as the `id` parameter in `/independantfeatures/{id}` operations.'
     responses:
         NotAuthorized:
             description: authorization failed or insufficient permissions were found
@@ -670,6 +736,24 @@ components:
                 nullable: true
             description: limits the number of records to return
             default: 1000
+        fuzzyMatch:
+            in: query
+            name: fuzzyMatch
+            schema:
+                type: integer
+            description: indicates that aliasof and deprecatedby links should be followed when matching ontology terms to 'n' degrees away
+        ancestors:
+            in: query
+            name: ancestors
+            schema:
+                type: string
+            description: csv list of edge class names for which to get all ancestors (follows ingoing edges) of any matched nodes
+        descendants:
+            in: query
+            name: descendants
+            schema:
+                type: string
+            description: csv list of edge class names for which to get all descendants (follows outgoing edges) of any matched nodes
         Authorization:
             in: header
             name: Authorization
