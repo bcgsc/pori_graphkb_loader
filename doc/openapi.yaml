@@ -2,9 +2,11 @@
 openapi: 3.0.0
 info:
     title: Graph KB
+    description: API for accessing the graph knowledgebase
 
 servers:
     - url: http://10.9.202.242:8088/api/
+      description: test server
 
 tags:
     - name: Admin
@@ -12,7 +14,13 @@ tags:
     - name: Diseases
       description: Operations to do with disease ontology terms
     - name: Anatomical Entities
-      description: Operations to do with anatomical entity ontology terms
+      description: Anatomical entities describe body parts, tissues, and organs
+    - name: Features
+      description: >
+        Features which ares used as reference points for describing variants.
+        Generally these are genes, proteins, domains, etc.
+    - name: Therapies
+      description: Therapies includes listing of drugs, protocols, and any other treatments
 
 paths:
     /users:
@@ -80,9 +88,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/User'
-                    links:
-                        userById:
-                            $ref: '#/components/links/userById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '409':
@@ -217,9 +222,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Disease'
-                    links:
-                        diseaseById:
-                            $ref: '#/components/links/diseaseById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '409':
@@ -347,9 +349,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/AnatomicalEntity'
-                    links:
-                        anatomicalEntityById:
-                            $ref: '#/components/links/anatomicalEntityById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '409':
@@ -621,9 +620,6 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/IndependantFeature'
-                    links:
-                        diseaseById:
-                            $ref: '#/components/links/independantFeatureById'
                 '401':
                     $ref: '#/components/responses/NotAuthorized'
                 '409':
