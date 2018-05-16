@@ -89,7 +89,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                     process.stdout.write('.');
                 } catch (err) {
                     process.stdout.write('x');
-                };
+                }
             }
         }
     }
