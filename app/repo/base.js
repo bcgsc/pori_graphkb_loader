@@ -1,7 +1,9 @@
 'use strict';
 const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError} = require('./error');
 const cache = require('./cache');
-const {timeStampNow, quoteWrap} = require('./util');
+const {timeStampNow, quoteWrap, looksLikeRID} = require('./util');
+const RID = require('orientjs').RID;
+
 
 const RELATED_NODE_DEPTH = 3;
 const QUERY_LIMIT = 1000;
@@ -69,8 +71,6 @@ class SelectionQuery {
      * @param {ClassModel} model the model to be selected from
      * @param {Object} [where={}] the query requirements
      *
-     * @param {Array.<Follow[]>} [where.follow=[]] Array of Arrays of Follow clauses.
-     *
      */
     constructor(model, where={}, opt={}) {
         this.model = model;
@@ -134,14 +134,19 @@ class SelectionQuery {
             const pname = `param${paramStartIndex}`;
             if (value === undefined || value === null) {
                 content.push(`${name} is NULL`);
-            } else if (typeof value !== 'object' && property && /^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
-                content.push(`${name} contains :${pname}`);
-                params[pname] = value;
-                paramStartIndex++;
             } else {
-                content.push(`${name} = :${pname}`);
-                params[pname] = value;
-                paramStartIndex++;
+                if (property && property.type && property.type.includes('link') && looksLikeRID(value)) {
+                    value = new RID(`#${value.replace(/^#/, '')}`);
+                }
+                if ((typeof value !== 'object' || value instanceof RID) && property && /^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
+                    content.push(`${name} contains :${pname}`);
+                    params[pname] = value;
+                    paramStartIndex++;
+                } else {
+                    content.push(`${name} = :${pname}`);
+                    params[pname] = value;
+                    paramStartIndex++;
+                }
             }
         }
         let query = `${content.join(opt.joinOperator)}`;
@@ -346,7 +351,7 @@ const select = async (db, opt) => {
     const query = new SelectionQuery(opt.model, opt.where, opt);
 
     if (opt.debug) {
-        console.log('select query statement:', query.displayString());
+        console.log('select query statement:', query.displayString(), {limit: opt.limit, fetchPlan: opt.fetchPlan});
     }
 
     // send the query statement to the database

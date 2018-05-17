@@ -16,7 +16,7 @@ const parseUberonId = (string) => {
 };
 
 const parseSubsetName = (string) => {
-    let match = /.*([^\/]+)$/.exec(string);
+    let match = /.*\/([^\/]+)$/.exec(string);
     if (match) {
         return match[1];
     } else {

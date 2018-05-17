@@ -1,11 +1,11 @@
 'use strict';
 const {expect} = require('chai');
-const {castUUID} = require('./../app/repo/util');
-const cache = require('./../app/repo/cache');
-const {ClassModel, FUZZY_CLASSES} = require('./../app/repo/schema');
-const {checkAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH} = require('./../app/repo/base');
-const {PERMISSIONS} = require('./../app/repo/constants');
-const {types}  = require('orientjs');
+const {castUUID, looksLikeRID} = require('./../../app/repo/util');
+const cache = require('./../../app/repo/cache');
+const {ClassModel, FUZZY_CLASSES} = require('./../../app/repo/schema');
+const {checkAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH} = require('./../../app/repo/base');
+const {PERMISSIONS} = require('./../../app/repo/constants');
+const {types, RID}  = require('orientjs');
 
 
 const OJS_TYPES = {};
@@ -15,7 +15,6 @@ for (let num of Object.keys(types)) {
 }
 
 describe('util.castUUID', () => {
-
     it('returns valid uuid', () => {
         const uuid = '933fd4de-5bd6-471c-9869-a7601294ea6e';
         expect(castUUID(uuid)).to.equal(uuid);
@@ -23,6 +22,25 @@ describe('util.castUUID', () => {
     it('errors on bad uuid', () => {
         const uuid = '933fd4de-5bd6-471c-4ea6e';
         expect(() => { castUUID(uuid); }).to.throw();
+    });
+});
+
+
+describe('util.looksLikeRID', () => {
+    it('false for bad rid', () => {
+        expect(looksLikeRID('4')).to.be.false;
+    });
+    it('true for rid without hash if not strict', () => {
+        expect(looksLikeRID('4:0')).to.be.true;
+    });
+    it('false for rid without hash if strict', () => {
+        expect(looksLikeRID('4:0', true)).to.be.false;
+    });
+    it('true for rid with hash if strict', () => {
+        expect(looksLikeRID('#4:0'), true).to.be.true;
+    });
+    it('true for rid with hash if not strict', () => {
+        expect(looksLikeRID('#4:0')).to.be.true;
     });
 });
 
@@ -222,12 +240,12 @@ describe('SelectionQuery', () => {
             child: {name: 'child', linkedModel: person}
         }
     });
-    it('defaults to a match statement when follow is given', () => {
-        const query = new SelectionQuery(parent, {name: 'blargh'}, {follow: [[new Follow(['monkeys'])]]});
+    it('defaults to a match statement when fuzzyMatch is given', () => {
+        const query = new SelectionQuery(parent, {name: 'blargh', fuzzyMatch: 1});
         expect(query).to.have.property('params');
         expect(query.params).to.eql({param0: 'blargh'});
         expect(Object.keys(query.params).length).to.equal(1);
-        const expected = `MATCH {class: parent, where: (name = :param0)}.both('monkeys'){while: (\$depth < ${RELATED_NODE_DEPTH})} return \$pathElements`;
+        const expected = `MATCH {class: parent, where: (name = :param0)}.both('aliasof', 'deprecatedby'){while: (\$depth < 1)} return \$pathElements`;
         expect(query.toString().toLowerCase()).to.equal(expected.toLowerCase());
     });
     it('defaults to a select statement when no follow arguments are given');
@@ -243,6 +261,16 @@ describe('SelectionQuery', () => {
             const {query, params} = selectionQuery.conditionClause('blargh', ['monkey', null], {joinOperator: ', '});
             expect(query).to.equal('(blargh = :param0, blargh is NULL)');
             expect(params).to.eql({param0: 'monkey'});
+        });
+        it('defaults a string to an RID object if the expected property is a link', () => {
+            const selectionQuery = new SelectionQuery({
+                name: 'model',
+                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                properties: {blargh: {type: 'link'}}
+            });
+            const {query, params} = selectionQuery.conditionClause('blargh', ['4:0', null]);
+            expect(query).to.equal('(blargh = :param0 OR blargh is NULL)');
+            expect(params).to.eql({param0: new RID('#4:0')});
         });
         it('defaults to OR statement', () => {
             const selectionQuery = new SelectionQuery({

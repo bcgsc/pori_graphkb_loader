@@ -2,6 +2,10 @@
 openapi: 3.0.0
 info:
     title: Graph KB
+    description: >
+        Knowlegebase is a curated database of variants in cancer and their therapeutic, biological, diagnostic, and prognostic implications according to literature.
+        The main use of Knowlegebase is to act as the link between the known and published variant information and the expermientally collected data.
+        It is used in generation of reports as well as building target sequences for the targeted alignment pipeline.
 
 servers:
     - url: http://10.9.202.242:8088/api/
@@ -30,6 +34,7 @@ paths:
                   description: the user name
                 - $ref: '#/components/parameters/returnProperties'
                   example: 'name,createdAt'
+                - $ref: '#/components/parameters/neighbors'
             responses:
                 '200':
                     content:
@@ -65,7 +70,7 @@ paths:
                 '400':
                     $ref: '#/components/responses/BadInput'
         post:
-            summary: add a new user
+            summary: create a new user
             tags:
                 - Admin
             requestBody:
@@ -95,6 +100,8 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular user
+            parameters:
+                - $ref: '#/components/parameters/neighbors'
             tags:
                 - Admin
             responses:
@@ -167,6 +174,7 @@ paths:
                 - $ref: '#/components/parameters/ancestors'
                 - $ref: '#/components/parameters/descendants'
                 - $ref: '#/components/parameters/fuzzyMatch'
+                - $ref: '#/components/parameters/neighbors'
             responses:
                 '200':
                     content:
@@ -202,7 +210,7 @@ paths:
                 '400':
                     $ref: '#/components/responses/BadInput'
         post:
-            summary: add a new disease term record
+            summary: create a new disease term record
             tags:
                 - Diseases
             requestBody:
@@ -232,6 +240,8 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular disease record
+            parameters:
+                - $ref: '#/components/parameters/neighbors'
             tags:
                 - Diseases
             responses:
@@ -297,6 +307,7 @@ paths:
                 - $ref: '#/components/parameters/ancestors'
                 - $ref: '#/components/parameters/descendants'
                 - $ref: '#/components/parameters/fuzzyMatch'
+                - $ref: '#/components/parameters/neighbors'
             responses:
                 '200':
                     content:
@@ -332,7 +343,7 @@ paths:
                 '400':
                     $ref: '#/components/responses/BadInput'
         post:
-            summary: add a new anatomical entity record
+            summary: create a new anatomical entity record
             tags:
                 - Anatomical Entities
             requestBody:
@@ -362,6 +373,8 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular anatomical entity record
+            parameters:
+                - $ref: '#/components/parameters/neighbors'
             tags:
                 - Anatomical Entities
             responses:
@@ -427,6 +440,7 @@ paths:
                 - $ref: '#/components/parameters/ancestors'
                 - $ref: '#/components/parameters/descendants'
                 - $ref: '#/components/parameters/fuzzyMatch'
+                - $ref: '#/components/parameters/neighbors'
             responses:
                 '200':
                     content:
@@ -462,7 +476,7 @@ paths:
                 '400':
                     $ref: '#/components/responses/BadInput'
         post:
-            summary: add a new therapy record
+            summary: create a new therapy record
             tags:
                 - Therapies
             requestBody:
@@ -504,6 +518,8 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular therapy record
+            parameters:
+                - $ref: '#/components/parameters/neighbors'
             tags:
                 - Therapies
             responses:
@@ -571,6 +587,7 @@ paths:
                 - $ref: '#/components/parameters/ancestors'
                 - $ref: '#/components/parameters/descendants'
                 - $ref: '#/components/parameters/fuzzyMatch'
+                - $ref: '#/components/parameters/neighbors'
             responses:
                 '200':
                     content:
@@ -606,7 +623,7 @@ paths:
                 '400':
                     $ref: '#/components/responses/BadInput'
         post:
-            summary: add a new featuer (independant) record
+            summary: create a new feature (independant) record
             tags:
                 - Features
             requestBody:
@@ -636,6 +653,8 @@ paths:
             - $ref: '#/components/parameters/Authorization'
         get:
             summary: return a particular feature (independant) record
+            parameters:
+                - $ref: '#/components/parameters/neighbors'
             tags:
                 - Features
             responses:
@@ -683,7 +702,40 @@ paths:
                 '400':
                     $ref: '#/components/responses/BadInput'
 
-
+    # edge routes
+    /subclassof:
+        post:
+            summary: create a new subclassOf edge
+            tags:
+                - Edges
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Edge'
+    /aliasof:
+        post:
+            summary: create a new aliasof edge
+            tags:
+                - Edges
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Edge'
+    /deprecatedby:
+        post:
+            summary: create a new deprecatedby edge
+            tags:
+                - Edges
+            requestBody:
+                required: true
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/Edge'
 
 components:
     links:
@@ -722,6 +774,14 @@ components:
                             name:
                                 example: AttributeError
     parameters:
+        neighbors:
+            in: query
+            name: neighbors
+            schema:
+                type: integer
+                minimum: 0
+                maximum: 5
+            description: return neighbors of the selected node(s) up to 'n' edges away. If this is set to 0, no neighbors will be returned. To collect all immediate neighbors this must be set to 2.
         returnProperties:
             in: query
             name: returnProperties
@@ -882,12 +942,26 @@ components:
                     type: string
                     description: optionally the error may include a stack trace to aid in debugging
         ODB:
-            type:
-                object
+            type: object
             properties:
                 '@rid':
                     type: string
                     example: '#44:1'
+                    pattern: '^#\d+:\d+$'
+        Edge:
+            allOf:
+                - $ref: '#/components/schemas/ODB'
+            type: object
+            properties:
+                out:
+                    type: string
+                    dscription: the source vertex/node
+                    example: '#22:1'
+                    pattern: '^#\d+:\d+$'
+                in:
+                    type: string
+                    description: the target/destination vertex/node
+                    example: '#23:0'
                     pattern: '^#\d+:\d+$'
         UserGroup:
             allOf:

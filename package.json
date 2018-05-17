@@ -41,7 +41,7 @@
   },
   "scripts": {
     "watch": "nodemon server.js --use-strict",
-    "unit": "nyc --reporter=html --reporter=text mocha --recursive test/repo/unit.js test/parser",
+    "unit": "nyc --reporter=html --reporter=text mocha --recursive test/repo/unit.js",
     "test-repo": "nyc --reporter=html --reporter=text mocha test/repo --recursive --exit --timeout 30000",
     "sample": "nyc --reporter=html --reporter=text mocha test/routes/sample.js --timeout 100000",
     "empty": "nyc --reporter=html --reporter=text mocha test/routes/empty.js --exit --timeout 60000",

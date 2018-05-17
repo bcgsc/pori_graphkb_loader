@@ -1,12 +1,13 @@
 const HTTP_STATUS = require('http-status-codes');
-var uuidValidate = require('uuid-validate');
 const jc = require('json-cycle');
 const _ = require('lodash');
 
-const {ErrorMixin, AttributeError, NoRecordFoundError, MultipleRecordsFoundError, RecordExistsError} = require('./../repo/error');
+const {ErrorMixin, AttributeError, NoRecordFoundError,  RecordExistsError} = require('./../repo/error');
 const {select, create, update, remove, QUERY_LIMIT} = require('./../repo/base');
-const {getParameterPrefix} = require('./../repo/util');
+const {getParameterPrefix, looksLikeRID} = require('./../repo/util');
 
+
+const MAX_JUMPS = 6;  // fetchplans beyond 6 are very slow
 
 class InputValidationError extends ErrorMixin {}
 
@@ -65,6 +66,24 @@ const addResourceRoutes = (opt, verbose) => {
 
     router.get(route,
         async (req, res) => {
+            let fetchPlan = '*:1';
+            if (req.query.neighbors !== undefined) {
+                const neighbors = Number(req.query.neighbors);
+                if (isNaN(neighbors) || neighbors < 0 || neighbors > MAX_JUMPS) {
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: `neighbors must be a number between 0 and ${MAX_JUMPS}`}));
+                    return;
+                }
+                fetchPlan = `*:${neighbors}`;
+                delete req.query.neighbors;
+            }
+            if (req.query.fuzzyMatch !== undefined) {
+                const fuzzyMatch = Number(req.query.fuzzyMatch);
+                if (isNaN(fuzzyMatch) || fuzzyMatch < 0 || fuzzyMatch > MAX_JUMPS) {
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: `fuzzyMatch must be a number between 0 and ${MAX_JUMPS}`}));
+                    return;
+                }
+                req.query.fuzzyMatch = fuzzyMatch;
+            }
             const params = _.omit(req.query, ['limit', 'fuzzyMatch', 'ancestors', 'descendants', 'returnProperties']);
             const other = Object.assign({limit: QUERY_LIMIT}, _.omit(req.query, Object.keys(params)));
             try {
@@ -74,9 +93,13 @@ const addResourceRoutes = (opt, verbose) => {
                 return;
             }
             try {
-                const result = await select(db, Object.assign(other, {model: model, where: req.query}));
+                const result = await select(db, Object.assign(other, {model: model, where: req.query, fetchPlan: fetchPlan}));
                 res.json(jc.decycle(result));
             } catch (err) {
+                if (err instanceof AttributeError) {
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                    return;
+                }
                 if (verbose) {
                     console.error(err);
                 }
@@ -113,6 +136,16 @@ const addResourceRoutes = (opt, verbose) => {
     // Add the id routes
     router.get(`${route}/:id`,
         async (req, res) => {
+            let fetchPlan = '*:1';
+            if (req.query.neighbors !== undefined) {
+                const neighbors = Number(req.query.neighbors);
+                if (isNaN(neighbors) || neighbors < 0 || neighbors > MAX_JUMPS) {
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: 'neighbors must be a number between 0 and 6'}));
+                    return;
+                }
+                fetchPlan = `*:${neighbors}`;
+                delete req.query.neighbors;
+            }
             if (! looksLikeRID(req.params.id, false)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
                 return;
@@ -123,7 +156,7 @@ const addResourceRoutes = (opt, verbose) => {
                 return;
             }
             try {
-                const result = await select(db, {model: model, where: {'@rid': req.params.id}, exactlyN: 1});
+                const result = await select(db, {model: model, where: {'@rid': req.params.id}, exactlyN: 1, fetchPlan: fetchPlan});
                 res.json(jc.decycle(result[0]));
             } catch (err) {
                 if (err instanceof NoRecordFoundError) {
@@ -208,34 +241,4 @@ const addResourceRoutes = (opt, verbose) => {
 };
 
 
-/**
- *
- * @param {string} rid the putative @rid value
- * @param {boolean} [requireHash=true] if true the hash must be present
- * @returns {boolean} true if the string follows the expected format for an @rid, false otherwise
- *
- * @example
- * >>> looksLikeRID('#4:10');
- * true
- * @example
- * >>> looksLikeRID('4:0');
- * false
- * @example
- * >>> looksLikeRID('#4:10', false);
- * true
- * @example
- * >>> looksLikeRID('4:0', false);
- * true
- */
-const looksLikeRID = (rid, requireHash=true) => {
-    try {
-        const pattern = requireHash ? /^#\d+:\d+$/ : /^#?\d+:\d+$/;
-        if (pattern.exec(rid.trim())) {
-            return true;
-        }
-    } catch (err) {}  // eslint-disable-line no-empty
-    return false;
-};
-
-
-module.exports = {validateParams, addResourceRoutes, InputValidationError, looksLikeRID};
+module.exports = {validateParams, addResourceRoutes, InputValidationError};

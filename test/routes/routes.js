@@ -9,7 +9,7 @@ chai.use(chatHttp);
 let app = server.app;
 
 describe('GET', () => {
-    before( async () => {
+    before(async () => {
         await server.listen();
     });
     describe('/feature', () => {

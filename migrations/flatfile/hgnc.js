@@ -51,7 +51,7 @@ const uploadHugoGenes = async (opt) => {
             longName: gene.name,
             biotype: 'gene'
         };
-        if (gene.longName.toLowerCase().trim() === 'entry withdrawn') {
+        if (gene.longName && gene.longName.toLowerCase().trim() === 'entry withdrawn') {
             continue;
         }
         const record = await addRecord('independantfeatures', body, conn, true);
