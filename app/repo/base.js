@@ -1,7 +1,7 @@
 'use strict';
 const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError} = require('./error');
 const cache = require('./cache');
-const {timeStampNow, quoteWrap, looksLikeRID, getParameterPrefix, DEBUG, VERBOSE} = require('./util');
+const {timeStampNow, quoteWrap, looksLikeRID, getParameterPrefix, VERBOSE} = require('./util');
 const RID = require('orientjs').RID;
 
 
@@ -281,7 +281,7 @@ class SelectionQuery {
      * Returns the query as a string but substitutes all parameters to make the results more readable.
      *
      * @warning
-     *      use the toString and params to query the db. This method is for debugging/logging only
+     *      use the toString and params to query the db. This method is for VERBOSEging/logging only
      */
     displayString() {
         let {query: statement, params} = this.toString();
@@ -395,6 +395,9 @@ const create = async (db, opt) => {
     const record = model.formatRecord(
         Object.assign({}, content, {createdBy: user['@rid']}),
         {dropExtra: false, addDefaults: true});
+    if (VERBOSE) {
+        console.log('create:', record);
+    }
     try {
         return await db.insert().into(model.name).set(record).one();
     } catch (err) {
@@ -453,7 +456,7 @@ const select = async (db, opt) => {
         limit: QUERY_LIMIT
     }, opt);
     const query = new SelectionQuery(opt.model, opt.where, opt);
-    if (DEBUG) {
+    if (VERBOSE) {
         console.log('select query statement:', query.displayString(), {limit: opt.limit, fetchPlan: opt.fetchPlan});
     }
 
@@ -514,6 +517,9 @@ const remove = async (db, opt) => {
         }).let('updated', (tx) => {
             return tx.select().from('$updatedRID').fetch({'*': 1});
         }).commit();
+    if (VERBOSE) {
+        console.log('remove:', commit.buildStatement());
+    }
     try {
         return await commit.return('$updated').one();
     } catch (err) {

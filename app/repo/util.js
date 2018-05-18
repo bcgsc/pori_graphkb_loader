@@ -4,7 +4,6 @@ const uuidValidate = require('uuid-validate');
 
 
 const VERBOSE = (process.env.VERBOSE === '1' ? true : false);
-const DEBUG = (process.env.DEBUG === '1' ? true : false);
 
 const castUUID = (uuid) => {
     if (uuidValidate(uuid, 4)) {
@@ -84,4 +83,4 @@ const quoteWrap = (string) => {
     return `'${string}'`;
 };
 
-module.exports = {timeStampNow, castUUID, getParameterPrefix, quoteWrap, looksLikeRID, castToRID, VERBOSE, DEBUG};
+module.exports = {timeStampNow, castUUID, getParameterPrefix, quoteWrap, looksLikeRID, castToRID, VERBOSE};

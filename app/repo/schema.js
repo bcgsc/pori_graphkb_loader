@@ -29,13 +29,13 @@ class ClassModel {
         this._cast = opt.cast || {};
         this._defaults = opt.defaults || {};
         this._inherits = opt.inherits || [];
+        this.isEdge = opt.this.isEdge ? true : false;
         this._edgeRestrictions = opt.edgeRestrictions || null;
+        if (this._edgeRestrictions && ! this.isEdge) {
+            this.isEdge = true;
+        }
         this.isAbstract = opt.isAbstract;
         this._properties = opt.properties || {};  // by name
-    }
-
-    get isEdge() {
-        return this._edgeRestrictions === null ? false : true;
     }
 
     /**
@@ -135,7 +135,7 @@ class ClassModel {
                     for (let item of linkset) {
                         formatted.add(castToRID(item));
                     }
-                    return formatted;
+                    return Array.from(formatted);
                 };
             } else if (prop.type === 'linklist') {
                 cast[prop.name] = (linklist) => {
@@ -340,7 +340,8 @@ const createSchema = async (db) => {
         {name: 'deletedAt', type: 'long'},
         {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User'},
         {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true},
-        {name: 'history', type: 'link', notNull: true}
+        {name: 'history', type: 'link', notNull: true},
+        {name: 'comment', type: 'string'}
     ]);
     const E = await db.class.get('E');
     await createProperties(E, [
@@ -349,7 +350,8 @@ const createSchema = async (db) => {
         {name: 'deletedAt', type: 'long'},
         {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User'},
         {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true},
-        {name: 'history', type: 'link', notNull: true}
+        {name: 'history', type: 'link', notNull: true},
+        {name: 'comment', type: 'string'}
     ]);
 
     for (let cls of ['E', 'V', 'User']) {
@@ -385,7 +387,6 @@ const createSchema = async (db) => {
             {name: 'source', type: 'string', mandatory: true, notNull: true},
             {name: 'sourceVersion', type: 'string'},
             {name: 'sourceId', type: 'string', mandatory: true, notNull: true},
-            {name: 'sourceUri', type: 'string'},
             {name: 'name', type: 'string'},
             {name: 'sourceIdVersion', type: 'string'},
             {name: 'description', type: 'string'},
@@ -728,8 +729,39 @@ const createSchema = async (db) => {
             ]
         })
     ]);
+    await createClassModel(db, {
+        name: 'OntologyEdge',
+        inherits: 'E',
+        properties: [
+            {name: 'source', type: 'string', mandatory: true, notNull: true},
+            {name: 'sourceVersion', type: 'string'}
+        ]
+    });
+    // create all the ontology based edge classes
+    await Promise.all(Array.from(['ElementOf', 'SubClassOf', 'DeprecatedBy', 'AliasOf', 'TargetOf'], (name) => {
+        if (VERBOSE) {
+            console.log(`defining schema for class: ${name}`);
+        }
+        createClassModel(db, {
+            name: name,
+            inherits: 'OntologyEdge',
+            properties: [
+                {name: 'in', type: 'link'},
+                {name: 'out', type: 'link'}
+            ],
+            indices: [
+                {
+                    name: `${name}.restrictMulti`,
+                    type: 'unique',
+                    metadata: {ignoreNullValues: false},
+                    properties: ['deletedAt', 'in', 'out'],
+                    class: name
+                }
+            ]
+        });
+    }));
     // create all the edge classes
-    await Promise.all(Array.from(['Infers', 'ElementOf', 'SubClassOf', 'DeprecatedBy', 'AliasOf', 'SupportedBy', 'Implies', 'Cites'], (name) => {
+    await Promise.all(Array.from(['Infers', 'SupportedBy', 'Implies', 'Cites'], (name) => {
         if (VERBOSE) {
             console.log(`defining schema for class: ${name}`);
         }
@@ -851,6 +883,10 @@ const loadSchema = async (db) => {
             ['Statement', 'Publication'],
             ['Statement', 'ClinicalTrial'],
             ['Statement', 'ExternalSource']
+        ],
+        TargetOf: [
+            ['Disease', 'Therapy'],
+            ['Feature', 'Therapy']
         ]
     };
 
@@ -893,7 +929,7 @@ const loadSchema = async (db) => {
                 formatted.add(item);
             }
         }
-        return formatted;
+        return Array.from(formatted);
     };
     if (schema.E._edgeRestrictions === null) {
         schema.E._edgeRestrictions = [];
