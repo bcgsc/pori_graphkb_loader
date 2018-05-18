@@ -1,4 +1,5 @@
 const moment = require('moment');
+const {RID}  = require('orientjs');
 const uuidValidate = require('uuid-validate');
 
 const castUUID = (uuid) => {
@@ -17,9 +18,23 @@ const getParameterPrefix = (param) => {
     if (match) {
         return {prefix: match[1], suffix: match[2]};
     } else {
-        return {};
+        return {prefix: param};
     }
 };
+
+
+const castToRID = (string) => {
+    console.log(string);
+    if (string instanceof RID) {
+        return string;
+    } else if (typeof string === 'object' && string !== null) {
+        return castToRID(string['@rid']);
+    } else {
+        string = `#${string.replace(/^#/, '')}`;
+        return new RID(string);
+    }
+};
+
 
 /**
  *
@@ -64,4 +79,4 @@ const quoteWrap = (string) => {
     return `'${string}'`;
 };
 
-module.exports = {timeStampNow, castUUID, getParameterPrefix, quoteWrap, looksLikeRID};
+module.exports = {timeStampNow, castUUID, getParameterPrefix, quoteWrap, looksLikeRID, castToRID};

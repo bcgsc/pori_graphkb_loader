@@ -12,6 +12,7 @@ const {uploadKbFlatFile} = require('./kb');
 const {uploadUberon} = require('./uberon');
 const {uploadNCIT} = require('./ncit');
 const {uploadOncoTree} = require('./oncotree');
+const {uploadDrugBank} = require('./drugbank');
 const path = require('path');
 
 const PERM_TOKEN = process.env.TEST_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7Im5hbWUiOiJhZG1pbiIsIkByaWQiOiIjNDE6MCJ9LCJpYXQiOjE1MjQyNDgwODgsImV4cCI6MTE1MjQyNDgwODh9.-PkTFeYCB7NyNs0XOap3ptPTp3icWxGbEBi2Hlku-kQ';
@@ -85,6 +86,12 @@ const optionDefinitions = [
         name: 'oncotree',
         alias: 'o',
         description: 'flag to indicate upload of oncotree latest stable release from their web API'
+    },
+    {
+        name: 'drugbank',
+        alias: 'b',
+        description: 'path tp the drugbank xml file',
+        type: fileExists
     }
 ];
 
@@ -170,6 +177,9 @@ const upload = async () => {
     }
     if (options.oncotree !== undefined) {
         await uploadOncoTree(apiConnection);
+    }
+    if (options.drugbank) {
+        await uploadDrugBank({conn: apiConnection, filename: options.drugbank});
     }
 };
 

@@ -1,12 +1,13 @@
 'use strict';
 const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError} = require('./error');
 const cache = require('./cache');
-const {timeStampNow, quoteWrap, looksLikeRID} = require('./util');
+const {timeStampNow, quoteWrap, looksLikeRID, getParameterPrefix} = require('./util');
 const RID = require('orientjs').RID;
 
 
 const RELATED_NODE_DEPTH = 3;
 const QUERY_LIMIT = 1000;
+const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 
 
 /**
@@ -59,6 +60,39 @@ class Follow {
             return `.${this.type}(${classesString}){while: ($depth < ${this.depth})}`;
         }
     }
+    static parse(query) {
+        const follow = [];
+        const splitUnlessEmpty = (string) => {
+            return string === '' ? [] : string.split(',');
+        };
+        // translate the fuzzyMatch/ancestors/descendants into proper follow statements
+        if (query.ancestors !== undefined) {
+            if (typeof query.ancestors === 'string') {
+                follow.push([new this(splitUnlessEmpty(query.ancestors), 'in', null)]);
+            } else {
+                follow.push(Array.from(query.ancestors, anc => new this(splitUnlessEmpty(anc), 'in', null)));
+            }
+        }
+        if (query.descendants !== undefined) {
+            if (typeof query.descendants === 'string') {
+                follow.push([new this(splitUnlessEmpty(query.descendants), 'out', null)]);
+            } else {
+                follow.push(Array.from(query.descendants, desc => new this(splitUnlessEmpty(desc), 'out', null)));
+            }
+        }
+        if (query.fuzzyMatch) {
+            const fuzzy = new this(FUZZY_CLASSES, 'both', query.fuzzyMatch);
+            if (follow.length === 0) {
+                follow.push([fuzzy]);
+            } else {
+                for (let followArr of follow) {
+                    followArr.unshift(fuzzy);
+                    followArr.push(fuzzy);
+                }
+            }
+        }
+        return follow;
+    }
 }
 
 
@@ -72,42 +106,82 @@ class SelectionQuery {
      * @param {Object} [where={}] the query requirements
      *
      */
-    constructor(model, where={}, opt={}) {
+    constructor(model, inputQuery={}, opt={activeOnly: false}) {
         this.model = model;
-        this.conditions = [];
-        this.params = {};
-        this.paramIndex = opt.paramIndex || 0;
+        this.conditions = {};
         this.follow = [];
 
-        const formatted = model.formatQuery(where);
-        const {subqueries, follow} = formatted;
-        this.follow = follow;
-        where = formatted.where;
-        if (opt.activeOnly) {
-            where.deletedAt = null;
+        const query = {where: {}, subqueries: {}, follow: []};
+        const propertyNames = this.model.propertyNames;
+
+
+        if (opt.activeOnly && propertyNames.includes('deletedAt')) {
+            inputQuery.deletedAt = null;
         }
-        if (formatted.returnProperties) {
-            this.returnProperties = formatted.returnProperties;
+        const properties = this.model.properties;
+        const cast = this.model.cast;
+        const subqueries = {};
+        const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit'];
+        const odbArgs = ['@rid', '@class'];
+        // split the original query into subqueries where appropriate
+        for (let condition of Object.keys(inputQuery)) {
+            if (specialArgs.includes(condition)) {
+                continue;
+            }
+            let {prefix, suffix} = getParameterPrefix(condition);
+            let value = inputQuery[condition];
+            if (typeof value !== 'object' || value === null) {
+                // query params are returned as an array when given twice in the url but otherwise not, change all to arrays for consistency
+                value = [value];
+            }
+            if (! propertyNames.includes(prefix)) {
+                throw new AttributeError(`unexpected attribute ${prefix} for class ${this.name}`);
+            }
+            if (suffix && properties[prefix].linkedModel) {
+                if (subqueries[prefix] === undefined) {
+                    subqueries[prefix] = {where: {}, model: properties[prefix].linkedModel};
+                }
+                subqueries[prefix].where[suffix] = value;
+            } else {
+                if (cast[condition]) {
+                    if (/(set|list|map)/.exec(properties[condition].type)) {  //expect a mutli-value type already
+                        value = cast[condition](value);
+                    } else {
+                        // cast is meant to operate individually
+                        for (let i=0; i < value.length; i++) {
+                            value[i] = cast[condition](value[i]);
+                        }
+                    }
+                }
+                this.conditions[condition] = value;
+            }
+        }
+        this.follow = Follow.parse(inputQuery);
+
+        for (let propName of Object.keys(subqueries)) {
+            const inputSubquery = subqueries[propName];
+            const subquery = new SelectionQuery(inputSubquery.model, inputSubquery.where, opt);
+            if (subquery.follow.length === 0) {  // don't need a subquery, can use direct links instead
+                for (let subPropName of Object.keys(subquery.conditions)) {
+                    this.conditions[`${propName}.${subPropName}`] = subquery.conditions[subPropName];
+                }
+            } else {
+                this.conditions[propName] = subquery;
+            }
         }
 
-        for (let attr of Object.keys(where)) {
-            const value = (typeof where[attr] === 'object' && where[attr] !== null) ? where[attr] : [where[attr]];
-            const clause = this.conditionClause(attr, value);
-            Object.assign(this.params, clause.params);
-            this.paramIndex += Object.keys(clause.params).length;
-            this.conditions.push(clause.query);
-        }
-        for (let attr of Object.keys(subqueries)) {
-            const subQuery = new SelectionQuery(
-                subqueries[attr].model,
-                subqueries[attr].where,
-                Object.assign({paramIndex: this.paramIndex, activeOnly: opt.activeOnly}, subqueries[attr])
-            );
-            Object.assign(this.params, subQuery.params);
-            this.paramIndex += Object.keys(subQuery.params).length;
-            this.conditions.push(`${attr} in (SELECT @rid from (${subQuery.toString()}))`);
+        if (inputQuery.returnProperties !== undefined) {
+            // make sure the colnames specified make sense
+            let props = inputQuery.returnProperties.split(',');
+            for (let propName of props) {
+                if (! propertyNames.includes(propName) && ! odbArgs.includes(propName)) {
+                    throw new AttributeError(`returnProperties query parameter must be a csv delimited string of columns on this class type: ${propertyNames}`);
+                }
+            }
+            query.returnProperties = props;
         }
     }
+
     /**
      * @param {string} name name of the parameter
      * @param {Array} arr array of possible values
@@ -123,15 +197,15 @@ class SelectionQuery {
     conditionClause(name, arr, opt) {
         opt = Object.assign({
             joinOperator: ' OR ',
-            noWrap: false
+            noWrap: false,
+            paramStartIndex: 0
         }, opt);
         const content = [];
         const params = {};
-        let paramStartIndex = Object.keys(this.params).length;
         const property = this.model.properties[name];
 
         for (let value of arr) {
-            const pname = `param${paramStartIndex}`;
+            const pname = `param${opt.paramStartIndex}`;
             if (value === undefined || value === null) {
                 content.push(`${name} is NULL`);
             } else {
@@ -141,11 +215,11 @@ class SelectionQuery {
                 if ((typeof value !== 'object' || value instanceof RID) && property && /^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
                     content.push(`${name} contains :${pname}`);
                     params[pname] = value;
-                    paramStartIndex++;
+                    opt.paramStartIndex++;
                 } else {
                     content.push(`${name} = :${pname}`);
                     params[pname] = value;
-                    paramStartIndex++;
+                    opt.paramStartIndex++;
                 }
             }
         }
@@ -155,21 +229,45 @@ class SelectionQuery {
         }
         return {query, params};
     }
-    toString() {
+    toString(paramStartIndex=0) {
         let queryString;
         const selectionElements = this.returnProperties ? this.returnProperties.join(', ') : '*';
+        const conditions = [];
+        const params = {};
+        const conditionNames = Object.keys(this.conditions);
+        conditionNames.sort();  // parameters will have the same aliases
+        for (let attr of conditionNames) {
+            let clause;
+            if (this.conditions[attr] instanceof SelectionQuery) {
+                clause = this.conditions[attr].toString(paramStartIndex);
+                clause.query = `${attr} IN (SELECT @rid FROM (${clause.query}))`;
+            } else {
+                clause = this.conditionClause(attr, this.conditions[attr], {paramStartIndex});
+            }
+            paramStartIndex += Object.keys(clause.params).length;
+            Object.assign(params, clause.params);
+            conditions.push(clause.query);
+        }
         if (this.follow.length > 0) {
             // must be a match query to follow edges
-            const prefix = `{class: ${this.model.name}, where: (${this.conditions.join(' AND ')})}`;
+            let prefix;
+            if (conditions.length > 0) {
+                prefix = `{class: ${this.model.name}, where: (${conditions.join(' AND ')})}`;
+            } else {
+                prefix = `{class: ${this.model.name}}`;
+            }
             const expressions = [];
             for (let arr of this.follow) {
                 expressions.push(`${prefix}${Array.from(arr, x => x.toString()).join('')}`);
             }
             queryString = `MATCH ${expressions.join(',')} RETURN \$pathElements`;
         } else {
-            queryString = `SELECT ${selectionElements} FROM ${this.model.name} WHERE ${this.conditions.join(' AND ')}`;
+            queryString = `SELECT ${selectionElements} FROM ${this.model.name}`;
+            if (conditions.length > 0) {
+                queryString = `${queryString} WHERE ${conditions.join(' AND ')}`;
+            }
         }
-        return queryString;
+        return {query: queryString, params: params};
     }
     /**
      * Returns the query as a string but substitutes all parameters to make the results more readable.
@@ -178,9 +276,9 @@ class SelectionQuery {
      *      use the toString and params to query the db. This method is for debugging/logging only
      */
     displayString() {
-        let statement = this.toString();
-        for (let key of Object.keys(this.params)) {
-            let value = this.params[key];
+        let {query: statement, params} = this.toString();
+        for (let key of Object.keys(params)) {
+            let value = params[key];
             if (typeof value === 'string') {
                 value = `'${value}'`;
             }
@@ -355,8 +453,9 @@ const select = async (db, opt) => {
     }
 
     // send the query statement to the database
-    const recordList = await db.query(query.toString(), {
-        params: query.params,
+    const {params, query: statement} = query.toString();
+    const recordList = await db.query(statement, {
+        params: params,
         limit: opt.limit,
         fetchPlan: opt.fetchPlan
     }).all();
@@ -366,13 +465,16 @@ const select = async (db, opt) => {
             if (opt.exactlyN === 0) {
                 return [];
             } else {
-                throw new NoRecordFoundError(`query returned an empty list: ${query.displayString()}`);
+                throw new NoRecordFoundError({
+                    message: 'query expected results but returned an empty list',
+                    sql: query.displayString()
+                });
             }
         } else if (opt.exactlyN !== recordList.length) {
-            throw new MultipleRecordsFoundError(
-                `query returned unexpected number of results. Found ${recordList.length} results ` +
-                `but expected ${opt.exactlyN} results: ${query.displayString()}`
-            );
+            throw new MultipleRecordsFoundError({
+                message: `query returned unexpected number of results. Found ${recordList.length} results but expected ${opt.exactlyN} results`,
+                sql: query.displayString()
+            });
         } else {
             return recordList;
         }
@@ -407,6 +509,7 @@ const remove = async (db, opt) => {
         }).let('updated', (tx) => {
             return tx.select().from('$updatedRID').fetch({'*': 1});
         }).commit();
+    console.log(commit.buildStatement());
     try {
         return await commit.return('$updated').one();
     } catch (err) {
@@ -432,6 +535,7 @@ const update = async (db, opt) => {
     const {content, model, user, where} = opt;
     const verbose = opt.verbose || (process.env.VERBOSE == '1' ? true : false);
     const original = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
+    console.log('formatRecord', original);
     const originalWhere = Object.assign(model.formatRecord(original, {dropExtra: true, addDefaults: false}));
     delete originalWhere.createdBy;
     delete originalWhere.history;

@@ -26,6 +26,7 @@
     "string-similarity": "^1.2.0",
     "uuid": "^3.0.1",
     "uuid-validate": "0.0.2",
+    "xml2js": "^0.4.19",
     "year": "^0.2.1"
   },
   "devDependencies": {
@@ -42,9 +43,9 @@
   "scripts": {
     "watch": "nodemon server.js --use-strict",
     "unit": "nyc --reporter=html --reporter=text mocha --recursive test/repo/unit.js",
-    "test-repo": "nyc --reporter=html --reporter=text mocha test/repo --recursive --exit --timeout 30000",
+    "test-repo": "nyc --reporter=html --reporter=text mocha test/repo --recursive --exit --timeout 100000",
     "sample": "nyc --reporter=html --reporter=text mocha test/routes/sample.js --timeout 100000",
-    "empty": "nyc --reporter=html --reporter=text mocha test/routes/empty.js --exit --timeout 60000",
+    "empty": "nyc --reporter=html --reporter=text mocha test/routes/empty.js --exit --timeout 100000",
     "lint": "eslint -c .eslintrc.json app test",
     "doc": "swagger-jsdoc -o swagger-spec.json -d doc/swagger-jsdoc-defn.js app/repo/*js app/routes/*js",
     "jsdoc": "jsdoc -r app -R README.md"

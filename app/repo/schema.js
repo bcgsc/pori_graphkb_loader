@@ -4,13 +4,14 @@ const _ = require('lodash');
 
 const {PERMISSIONS} = require('./constants');
 const {createRepoFunctions} = require('./functions');
-const {castUUID, timeStampNow, getParameterPrefix} = require('./util');
+const {castUUID, timeStampNow, getParameterPrefix, castToRID} = require('./util');
 const cache = require('./cache');
-const {populateCache, Follow} = require('./base');
+const {populateCache} = require('./base');
 const {AttributeError} = require('./error');
 
 
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
+
 
 
 class ClassModel {
@@ -126,6 +127,20 @@ class ClassModel {
                 cast[prop.name] = (x) => parseInt(x, 10);
             } else if (prop.type === 'string') {
                 cast[prop.name] = (x) => x.toLowerCase();
+            } else if (prop.type === 'link') {
+                cast[prop.name] = castToRID;
+            } else if (prop.type === 'linkset') {
+                cast[prop.name] = (linkset) => {
+                    const formatted = new Set();
+                    for (let item of linkset) {
+                        formatted.add(castToRID(item));
+                    }
+                    return formatted;
+                };
+            } else if (prop.type === 'linklist') {
+                cast[prop.name] = (linklist) => {
+                    return Array.from(linklist, item => castToRID(item));
+                };
             }
             if (prop.name === 'uuid') {
                 defaults.uuid = uuidV4;
@@ -234,124 +249,7 @@ class ClassModel {
                 }
             }
         }
-
         return formattedRecord;
-    }
-
-    formatFollow(query) {
-        const follow = [];
-        const splitUnlessEmpty = (string) => {
-            return string === '' ? [] : string.split(',');
-        };
-        // translate the fuzzyMatch/ancestors/descendants into proper follow statements
-        if (query.ancestors !== undefined) {
-            if (typeof query.ancestors === 'string') {
-                follow.push([new Follow(splitUnlessEmpty(query.ancestors), 'in', null)]);
-            } else {
-                follow.push(Array.from(query.ancestors, anc => new Follow(splitUnlessEmpty(anc), 'in', null)));
-            }
-        }
-        if (query.descendants !== undefined) {
-            if (typeof query.descendants === 'string') {
-                follow.push([new Follow(splitUnlessEmpty(query.descendants), 'out', null)]);
-            } else {
-                follow.push(Array.from(query.descendants, desc => new Follow(splitUnlessEmpty(desc), 'out', null)));
-            }
-        }
-        if (query.fuzzyMatch) {
-            const fuzzy = new Follow(FUZZY_CLASSES, 'both', query.fuzzyMatch);
-            if (follow.length === 0) {
-                follow.push([fuzzy]);
-            } else {
-                for (let followArr of follow) {
-                    followArr.unshift(fuzzy);
-                    followArr.push(fuzzy);
-                }
-            }
-        }
-        return follow;
-    }
-    /**
-     * Parses query 'where' conditions based on the current class.
-     * In general this is used in translating the API query to a DB select query
-     */
-    formatQuery(inputQuery) {
-        const query = {where: {}, subqueries: {}, follow: []};
-        const propertyNames = this.propertyNames;
-        const properties = this.properties;
-        const subqueries = {};
-        const cast = this.cast;
-        const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit'];
-        const odbArgs = ['@rid', '@class'];
-
-        for (let condition of Object.keys(inputQuery)) {
-            if (specialArgs.includes(condition)) {
-                continue;
-            }
-            const {prefix, suffix} = getParameterPrefix(condition);
-            let value;
-            if (typeof inputQuery[condition] === 'object' && inputQuery[condition] !== null) {
-                value = [];
-                for (let item of inputQuery[condition]) {
-                    if (cast[condition]) {
-                        value.push(cast[condition](item));
-                    } else {
-                        value.push(item);
-                    }
-                }
-            } else {
-                value = cast[condition] ? cast[condition](inputQuery[condition]) : inputQuery[condition];
-            }
-            if (propertyNames.includes(prefix) && properties[prefix].linkedModel) {
-                if (subqueries[prefix] === undefined) {
-                    subqueries[prefix] = {where: {}, model: properties[prefix].linkedModel};
-                }
-                if (specialArgs.includes(suffix)) {
-                    subqueries[prefix][suffix] = value;
-                } else {
-                    subqueries[prefix].where[suffix] = value;
-                }
-            } else {
-                query.where[condition] = value;
-            }
-        }
-        // check all parameters are valid
-        for (let prop of Object.keys(query.where)) {
-            if (! propertyNames.includes(prop) && ! odbArgs.includes(prop)) {
-                throw new AttributeError(`unexpected attribute: ${prop} is not allowed for queries on class ${this.name}`);
-            }
-        }
-
-        // now check if we actually need subqueries or not (contains follow clause)
-        // flatten them back out if we don't
-        for (let prop of Object.keys(subqueries)) {
-            const subquery = subqueries[prop];
-
-            if (query.where[prop] !== undefined) {
-                throw new AttributeError(`inputQuery property cannot be both specified directly and a subquery: ${prop}`);
-            }
-            // translate the fuzzyMatch/ancestors/descendants into proper follow statements
-            subquery.follow = this.formatFollow(subquery);
-            if (subquery.follow.length === 0) {
-                for (let subprop of Object.keys(subquery.where)) {
-                    query.where[`${prop}.${subprop}`] = subquery.where[subprop];
-                }
-            } else {
-                query.subqueries[prop] = subquery;
-            }
-        }
-        query.follow = this.formatFollow(inputQuery);
-        if (inputQuery.returnProperties !== undefined) {
-            // make sure the colnames specified make sense
-            let props = inputQuery.returnProperties.split(',');
-            for (let propName of props) {
-                if (! propertyNames.includes(propName) && ! odbArgs.includes(propName)) {
-                    throw new AttributeError(`returnProperties query parameter must be a csv delimited string of columns on this class type: ${propertyNames}`);
-                }
-            }
-            query.returnProperties = props;
-        }
-        return query;
     }
 }
 
@@ -517,7 +415,14 @@ const createSchema = async (db, verbose=false) => {
     if (verbose) {
         console.log('defining schema for Ontology subclasses');
     }
-    await Promise.all(Array.from(['MutationSignature', 'Therapy', 'Disease', 'Pathway', 'AnatomicalEntity'], (name) => {
+    await createClassModel(db, {
+        name: 'Therapy',
+        inherits: 'Ontology',
+        properties: [
+            {name: 'mechanismOfAction', type: 'string'}
+        ]
+    });
+    await Promise.all(Array.from(['MutationSignature', 'Disease', 'Pathway', 'AnatomicalEntity'], (name) => {
         db.class.create(name, 'Ontology', null, false);
     }));
     await createClassModel(db, {
@@ -973,8 +878,19 @@ const loadSchema = async (db, verbose=false) => {
         }
     }
     // add the api-level checks?
-    schema.V.cast.uuid = castUUID;
-    schema.E.cast.uuid = castUUID;
+    schema.V._cast.uuid = castUUID;
+    schema.E._cast.uuid = castUUID;
+    schema.Ontology._cast.subsets = (subsets) => {
+        const formatted = new Set();
+        for (let item of subsets){
+            item = item.toLowerCase().trim();
+            if (item) {
+                formatted.add(item);
+            }
+        }
+        console.log('schema.Ontology.case.subsets', formatted);
+        return formatted;
+    };
     if (schema.E._edgeRestrictions === null) {
         schema.E._edgeRestrictions = [];
     }
@@ -993,6 +909,9 @@ const loadSchema = async (db, verbose=false) => {
     }
     // load the vocabulary
     await populateCache(db, schema);
+    if(verbose) {
+        console.log('linking models');
+    }
     db.models = schema;
     // not link the different models where appropriate
     for (let model of Object.values(schema)) {

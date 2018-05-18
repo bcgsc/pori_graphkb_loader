@@ -67,6 +67,7 @@ const addResourceRoutes = (opt, verbose) => {
     router.get(route,
         async (req, res) => {
             let fetchPlan = '*:1';
+            console.log(req.query);
             if (req.query.neighbors !== undefined) {
                 const neighbors = Number(req.query.neighbors);
                 if (isNaN(neighbors) || neighbors < 0 || neighbors > MAX_JUMPS) {

@@ -2,7 +2,7 @@
 const {expect} = require('chai');
 const {castUUID, looksLikeRID} = require('./../../app/repo/util');
 const cache = require('./../../app/repo/cache');
-const {ClassModel, FUZZY_CLASSES} = require('./../../app/repo/schema');
+const {ClassModel} = require('./../../app/repo/schema');
 const {checkAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH} = require('./../../app/repo/base');
 const {PERMISSIONS} = require('./../../app/repo/constants');
 const {types, RID}  = require('orientjs');
@@ -13,6 +13,10 @@ for (let num of Object.keys(types)) {
     const name = types[num].toLowerCase();
     OJS_TYPES[name] = num;
 }
+
+const stripSQL = (string) => {
+    return string.replace(/\s+\./g, '.').replace(/\s+/g, ' ');
+};
 
 describe('util.castUUID', () => {
     it('returns valid uuid', () => {
@@ -68,115 +72,6 @@ describe('checkAccess', () => {
     });
 });
 
-/*
-describe('buildWhere', () => {
-    it('joins multiple attributes', () => {
-        const result = buildWhere({thing: 1, thing2: 2, thing3: 3});
-        expect(result).to.have.property('query', 'thing = :wparam0, thing2 = :wparam1, thing3 = :wparam2');
-        expect(result).to.have.property('params');
-        expect(result.params).to.have.property('wparam0', 1);
-        expect(result.params).to.have.property('wparam1', 2);
-        expect(result.params).to.have.property('wparam2', 3);
-    });
-    it('uses IS operator for boolean', () => {
-        const result = buildWhere({thing: 1, thing2: true, thing3: 3});
-        expect(result).to.have.property('query', 'thing = :wparam0, thing2 IS :wparam1, thing3 = :wparam2');
-        expect(result).to.have.property('params');
-        expect(result.params).to.have.property('wparam0', 1);
-        expect(result.params).to.have.property('wparam1', true);
-        expect(result.params).to.have.property('wparam2', 3);
-    });
-    it('no comma for single attr', () => {
-        const result = buildWhere({thing: 1});
-        expect(result).to.have.property('query', 'thing = :wparam0');
-        expect(result).to.have.property('params');
-        expect(result.params).to.have.property('wparam0', 1);
-    });
-    it('uses IN operator for arrays', () => {
-        const result = buildWhere({thing: 1, thing2: true, thing3: [1, 2, 3]});
-        expect(result).to.have.property('query', 'thing = :wparam0, thing2 IS :wparam1, thing3 IN :wparam2');
-        expect(result).to.have.property('params');
-        expect(result.params).to.have.property('wparam0', 1);
-        expect(result.params).to.have.property('wparam1', true);
-        expect(result.params).to.have.property('wparam2')
-        expect(result.params.wparam2).to.eql([1, 2, 3]);
-    });
-});
-
-
-describe('relatedRIDsSubquery', () => {
-    it('allows multiple edge classes', () => {
-        const result = relatedRIDsSubquery({
-            model: {name: 'table1'},
-            where: {name: 'blargh', lastname: 'monkeys'},
-            followBoth: ['aliasof', 'deprecatedby'],
-            depth: 10
-        });
-        expect(result).to.have.property(
-            'query',
-            `select @rid from (match {class: table1, where: (name = :wparam0, lastname = :wparam1)}
-            .both('aliasof','deprecatedby'){while: ($depth < 10)}
-            return $pathElements)`.replace(/\n\s+/g, ''));
-        expect(result).to.have.property('params');
-        expect(result.params).to.have.property('wparam0', 'blargh');
-        expect(result.params).to.have.property('wparam1', 'monkeys');
-    });
-    it('adds all follow options', () => {
-        const result = relatedRIDsSubquery({
-            model: {name: 'table1'},
-            where: {name: 'blargh', lastname: 'monkeys'},
-            followIn: ['aliasof'],
-            followOut: ['deprecatedby'],
-            depth: 10
-        });
-        expect(result).to.have.property(
-            'query',
-            `select @rid from (match
-            {class: table1, where: (name = :wparam0, lastname = :wparam1)}.in('aliasof'){while: ($depth < 10)},
-            {class: table1, where: (name = :wparam0, lastname = :wparam1)}.out('deprecatedby'){while: ($depth < 10)}
-            return $pathElements)`.replace(/\n\s+/g, ''));
-        expect(result).to.have.property('params');
-        expect(result.params).to.have.property('wparam0', 'blargh');
-        expect(result.params).to.have.property('wparam1', 'monkeys');
-    });
-    it('allows no edge classes', () => {
-        const result = relatedRIDsSubquery({
-            model: {name: 'table1'},
-            where: {name: 'blargh', lastname: 'monkeys'},
-            depth: 10,
-            followBoth: []
-        });
-        expect(result).to.have.property(
-            'query',
-            `select @rid from (match {class: table1, where: (name = :wparam0, lastname = :wparam1)}
-            .both(){while: ($depth < 10)}
-            return $pathElements)`.replace(/\n\s+/g, ''));
-        expect(result).to.have.property('params');
-        expect(result.params).to.have.property('wparam0', 'blargh');
-        expect(result.params).to.have.property('wparam1', 'monkeys');
-    });
-    it('throws error on no where condition', () => {
-        expect(() => { relatedRIDsSubquery({
-            model: {name: 'table1'},
-            followBoth: ['aliasof', 'deprecatedby'],
-            depth: 10
-        }) }).to.throw();
-        expect(() => { relatedRIDsSubquery({
-            model: {name: 'table1'},
-            where: {},
-            followBoth: ['aliasof', 'deprecatedby'],
-            depth: 10
-        }) }).to.throw();
-    });
-    it('throws error on no edge direction', () => {
-        expect(() => { relatedRIDsSubquery({
-            model: {name: 'table1'},
-            where: {name: 'blargh', lastname: 'monkeys'},
-            depth: 10
-        }) }).to.throw();
-    });
-});
-*/
 
 describe('Follow', () => {
     it('allows empty constructor arguments', () => {
@@ -240,17 +135,237 @@ describe('SelectionQuery', () => {
             child: {name: 'child', linkedModel: person}
         }
     });
+    const linkedModel = new ClassModel({
+        name: 'other',
+        properties: {
+            thing: {name: 'thing'}
+        }
+    });
+    const restrictiveModel = new ClassModel({
+        name: 'example',
+        properties: {
+            requiredVar: {name: 'requiredVar', mandatory: true},
+            defaultVar: {name: 'defaultVar'},
+            castable: {name: 'castable'},
+            linkVar: {name: 'linkVar', linkedModel: linkedModel},
+            embeddedSetVar: {name: 'embeddedSetVar', type: 'embeddedset'}
+        },
+        defaults: {defaultVar: () => 'default'},
+        cast: {
+            castable: (x) => x.toLowerCase(),
+            embeddedSetVar: (x) => {
+                const items = new Set();
+                for (let item of x) {
+                    item = item.toLowerCase().trim();
+                    if (item) {
+                        items.add(item);
+                    }
+                }
+                return items;
+            }
+        }
+    });
     it('defaults to a match statement when fuzzyMatch is given', () => {
         const query = new SelectionQuery(parent, {name: 'blargh', fuzzyMatch: 1});
-        expect(query).to.have.property('params');
-        expect(query.params).to.eql({param0: 'blargh'});
-        expect(Object.keys(query.params).length).to.equal(1);
-        const expected = `MATCH {class: parent, where: (name = :param0)}.both('aliasof', 'deprecatedby'){while: (\$depth < 1)} return \$pathElements`;
-        expect(query.toString().toLowerCase()).to.equal(expected.toLowerCase());
+        const {query: statement} = query.toString();
+        expect(statement).to.equal(stripSQL(
+            `MATCH {class: parent, where: (name = :param0)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 1)}
+            RETURN $pathElements`
+        ));
     });
     it('defaults to a select statement when no follow arguments are given');
     it('allows select subqueries');
     it('allows match subqueries');
+    it('parses simple query', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1'
+        });
+        expect(query).to.have.property('conditions');
+        expect(query.conditions).to.eql({requiredVar: ['vocab1']});
+        const {query: statement, params} = query.toString();
+        expect(statement).to.equal('SELECT * FROM example WHERE requiredVar = :param0');
+        expect(params).to.eql({param0: 'vocab1'});
+    });
+    it('parses query without where clause', () => {
+        const query = new SelectionQuery(restrictiveModel);
+        expect(query).to.have.property('conditions');
+        expect(query.conditions).to.eql({});
+        const {query: statement, params} = query.toString();
+        expect(statement).to.equal('SELECT * FROM example');
+        expect(params).to.eql({});
+    });
+    it('parses and re-flattens non-recursive subquery', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            'linkVar.thing': 'thing'
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: ['vocab1'],
+            'linkVar.thing': ['thing']
+        });
+        const {query: statement, params} = query.toString();
+        expect(statement).to.equal('SELECT * FROM example WHERE linkVar.thing = :param0 AND requiredVar = :param1');
+        expect(params).to.eql({param1: 'vocab1', param0: 'thing'});
+    });
+    it('parses recursive subquery', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            'linkVar.thing': 'thing',
+            'linkVar.fuzzyMatch': 4
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: ['vocab1'],
+            linkVar: new SelectionQuery(linkedModel, {thing: 'thing', fuzzyMatch: 4})
+        });
+        const {query: statement, params} = query.toString();
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE linkVar IN
+                (SELECT @rid FROM
+                    (MATCH {class: other, where: (thing = :param0)}.both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)} RETURN $pathElements))
+                    AND requiredVar = :param1`));
+        expect(params).to.eql({param1: 'vocab1', param0: 'thing'});
+    });
+    it('parses subquery with fuzzyMatch');
+    it('parses subquery with fuzzyMatch and ancestors');
+    it('parses subquery with fuzzyMatch and descendants');
+    it('parses subquery with fuzzyMatch and both ancestors and descendants');
+    it('parses subquery with ancestors');
+    it('parses subquery with descendants');
+    it('parses subquery with both ancestors and descendants');
+    it('parses query with fuzzyMatch', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            fuzzyMatch: 4
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: ['vocab1'],
+        });
+        expect(query.follow).to.eql([[new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4)]]);
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'vocab1'});
+        expect(statement).to.eql(stripSQL(
+            `MATCH {class: example, where: (requiredVar = :param0)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)} RETURN $pathElements`));
+    });
+    it('parses query with fuzzyMatch and ancestors', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            fuzzyMatch: 4,
+            ancestors: ''
+        });
+        expect(query.conditions).to.eql({requiredVar: ['vocab1']});
+        expect(query.follow).to.eql([[
+            new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4),
+            new Follow([], 'in', null),
+            new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4)
+        ]]);
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'vocab1'});
+        expect(statement).to.eql(stripSQL(
+            `MATCH {class: example, where: (requiredVar = :param0)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
+            .in(){while: ($matched.in().size() > 0)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
+            RETURN $pathElements`));
+    });
+    it('parses query with fuzzyMatch and descendants', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            fuzzyMatch: 4,
+            descendants: ''
+        });
+        expect(query.conditions).to.eql({requiredVar: ['vocab1']});
+        expect(query.follow).to.eql([[
+            new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4),
+            new Follow([], 'out', null),
+            new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4)
+        ]]);
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'vocab1'});
+        expect(statement).to.eql(stripSQL(
+            `MATCH {class: example, where: (requiredVar = :param0)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
+            .out(){while: ($matched.out().size() > 0)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
+            RETURN $pathElements`));
+    });
+    it('parses query with fuzzyMatch and both ancestors and descendants');
+    it('parses query with ancestors');
+    it('parses query with descendants');
+    it('parses query with both ancestors and descendants');
+    it('list attribute ok', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: ['vocab1', 'vocab2']
+        });
+        expect(query.conditions).to.eql({requiredVar: ['vocab1', 'vocab2']});
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'vocab1', param1: 'vocab2'});
+        expect(statement).to.eql(stripSQL(
+            `SELECT * FROM example WHERE
+            (requiredVar = :param0 OR requiredVar = :param1)`));
+    });
+    it('parses and flattens subquery list', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: ['vocab1', 'vocab2'],
+            'linkVar.thing': ['thing1', 'thing2']
+        });
+        expect(query.conditions).to.eql({requiredVar: ['vocab1', 'vocab2'], 'linkVar.thing': ['thing1', 'thing2']});
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param2: 'vocab1', param3: 'vocab2', param0: 'thing1', param1: 'thing2'});
+        expect(statement).to.eql(stripSQL(
+            `SELECT * FROM example WHERE
+            (linkVar.thing = :param0 OR linkVar.thing = :param1)
+            AND (requiredVar = :param2 OR requiredVar = :param3)`));
+    });
+    it('cast for single attr', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            castable: 'MixedCase'
+        });
+        expect(query.conditions).to.eql({requiredVar: ['vocab1'], castable: ['mixedcase']});
+    });
+    it('cast for list values', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            'castable': ['MixedCase', 'UPPERCASE']
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: ['vocab1'],
+            castable: ['mixedcase', 'uppercase']
+        });
+        expect(query.follow).to.have.property('length', 0);
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'mixedcase', param1: 'uppercase', param2: 'vocab1'});
+        expect(statement).to.eql(stripSQL(
+            `SELECT * FROM example WHERE
+            (castable = :param0 OR castable = :param1)
+            AND requiredVar = :param2`));
+    });
+    it('cast for list values to be compared against list attr', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            'embeddedSetVar': ['mixedCase', 'UPPERCASE']
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: ['vocab1'],
+            embeddedSetVar: new Set('mixedcase', 'uppercase')
+        });
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'mixedcase', param1: 'uppercase', param2: 'vocab1'});
+        expect(statement).to.eql(stripSQL(
+            `SELECT * FROM example WHERE
+            (embeddedSetVar contains :param0 OR embeddedSetVar contains :param1)
+            AND requiredVar = :param2`));
+    });
+    it('error on cast for dict attr', () => {
+        expect(() => {
+            return restrictiveModel.formatQuery({
+                requiredVar: 'vocab1',
+                'castable': {MixedCase: 1, UPPERCASE: 2}
+            });
+        }).to.throw(TypeError);
+    });
     describe('conditionClause', () => {
         it('allows alternate join string', () => {
             const selectionQuery = new SelectionQuery({
@@ -420,165 +535,10 @@ describe('ClassModel', () => {
             expect(child.isEdge).to.be.true;
         });
     });
-    describe('formatQuery', () => {
-        let model;
-        before(() => {
-            const linkedModel = new ClassModel({
-                name: 'other',
-                properties: {
-                    thing: {name: 'thing'}
-                }
-            });
-            model = new ClassModel({
-                name: 'example',
-                properties: {
-                    requiredVar: {name: 'requiredVar', mandatory: true},
-                    defaultVar: {name: 'defaultVar'},
-                    castable: {name: 'castable'},
-                    linkVar: {name: 'linkVar', linkedModel: linkedModel}
-                },
-                defaults: {defaultVar: () => 'default'},
-                cast: {castable: (x) => x.toLowerCase()}
-            });
-            cache.vocabulary = {example: {
-                requiredVar: [{class: 'example', name: 'req', term: 'vocab1'}, {class: 'example', name: 'req', term: 'vocab2'}]
-            }};
-        });
-        it('parses simple query', () => {
-            const {where} = model.formatQuery({
-                requiredVar: 'vocab1'
-            });
-            expect(where).to.have.property('requiredVar', 'vocab1');
-        });
-        it('parses and re-flattens non-recursive subquery', () => {
-            const {where} = model.formatQuery({
-                requiredVar: 'vocab1',
-                'linkVar.thing': 'thing'
-            });
-            expect(where).to.have.property('requiredVar', 'vocab1');
-            expect(where).to.have.property('linkVar.thing', 'thing');
-        });
-        it('parses recursive subquery', () => {
-            const {where, subqueries} = model.formatQuery({
-                requiredVar: 'vocab1',
-                'linkVar.thing': 'thing',
-                'linkVar.fuzzyMatch': 4
-            });
-            expect(where).to.have.property('requiredVar', 'vocab1');
-            expect(subqueries).to.have.property('linkVar');
-            expect(subqueries.linkVar.where).to.eql({thing: 'thing'});
-            expect(subqueries.linkVar.follow).to.have.property('length', 1);
-            expect(subqueries.linkVar.follow[0]).to.have.property('length', 1);
-            const follow = subqueries.linkVar.follow[0][0];
-            expect(follow).to.have.property('type', 'both');
-            expect(follow).to.have.property('classnames');
-            expect(follow.classnames).to.eql(FUZZY_CLASSES);
-        });
-        it('parses subquery with fuzzyMatch');
-        it('parses subquery with fuzzyMatch and ancestors');
-        it('parses subquery with fuzzyMatch and descendants');
-        it('parses subquery with fuzzyMatch and both ancestors and descendants');
-        it('parses subquery with ancestors');
-        it('parses subquery with descendants');
-        it('parses subquery with both ancestors and descendants');
-        it('parses query with fuzzyMatch', () => {
-            const result = model.formatQuery({
-                requiredVar: 'vocab1',
-                fuzzyMatch: 4
-            });
-            expect(result.where).to.have.property('requiredVar', 'vocab1');
-            const follow = result.follow[0][0];
-            expect(follow).to.have.property('type', 'both');
-            expect(follow).to.have.property('classnames');
-            expect(follow.classnames).to.eql(FUZZY_CLASSES);
-            expect(follow.depth).to.equal(4);
-        });
-        it('parses query with fuzzyMatch and ancestors', () => {
-            const result = model.formatQuery({
-                requiredVar: 'vocab1',
-                fuzzyMatch: 4,
-                ancestors: ''
-            });
-            expect(result.where).to.have.property('requiredVar', 'vocab1');
-            const follow = result.follow[0];
-            expect(follow).to.have.property('length', 3);
-            expect(follow[0]).to.have.property('type', 'both');
-            expect(follow[0]).to.have.property('classnames');
-            expect(follow[0].classnames).to.eql(FUZZY_CLASSES);
-            expect(follow[0].depth).to.equal(4);
 
-            expect(follow[1]).to.have.property('type', 'in');
-            expect(follow[1]).to.have.property('classnames');
-            expect(follow[1].classnames).to.eql([]);
-            expect(follow[1].depth).to.equal(null);
-
-            expect(follow[2]).to.have.property('type', 'both');
-            expect(follow[2]).to.have.property('classnames');
-            expect(follow[2].classnames).to.eql(FUZZY_CLASSES);
-            expect(follow[2].depth).to.equal(4);
-        });
-        it('parses query with fuzzyMatch and descendants', () => {
-            const result = model.formatQuery({
-                requiredVar: 'vocab1',
-                fuzzyMatch: 4,
-                descendants: ''
-            });
-            expect(result.where).to.have.property('requiredVar', 'vocab1');
-            const follow = result.follow[0];
-            expect(follow[1]).to.have.property('type', 'out');
-            expect(follow[1]).to.have.property('classnames');
-            expect(follow[1].classnames).to.eql([]);
-            expect(follow[1].depth).to.equal(null);
-        });
-        it('parses query with fuzzyMatch and both ancestors and descendants');
-        it('parses query with ancestors');
-        it('parses query with descendants');
-        it('parses query with both ancestors and descendants');
-        it('list attribute ok', () => {
-            const {where} = model.formatQuery({
-                requiredVar: ['vocab1', 'vocab2']
-            });
-            expect(where).to.have.property('requiredVar');
-            expect(where.requiredVar).to.eql(['vocab1', 'vocab2']);
-        });
-        it('parses and flattens subquery list', () => {
-            const {where} = model.formatQuery({
-                requiredVar: 'vocab1',
-                'linkVar.thing': ['thing', 'thing2']
-            });
-            expect(where).to.have.property('requiredVar', 'vocab1');
-            expect(where).to.have.property('linkVar.thing');
-            expect(where['linkVar.thing']).to.eql(['thing', 'thing2']);
-        });
-        it('cast for single attr', () => {
-            const {where} = model.formatQuery({
-                requiredVar: 'vocab1',
-                castable: 'MixedCase'
-            });
-            expect(where).to.have.property('requiredVar', 'vocab1');
-            expect(where).to.have.property('castable', 'mixedcase');
-        });
-        it('cast for list attr', () => {
-            const {where} = model.formatQuery({
-                requiredVar: 'vocab1',
-                'castable': ['MixedCase', 'UPPERCASE']
-            });
-            expect(where).to.have.property('requiredVar', 'vocab1');
-            expect(where).to.have.property('castable');
-            expect(where.castable).to.eql(['mixedcase', 'uppercase']);
-        });
-        it('error on cast for dict attr', () => {
-            expect(() => {
-                return model.formatQuery({
-                    requiredVar: 'vocab1',
-                    'castable': {MixedCase: 1, UPPERCASE: 2}
-                });
-            }).to.throw(TypeError);
-        });
-    });
     describe('formatRecord', () => {
         let model;
-        before(() => {
+        beforeEach(() => {
             model = new ClassModel({
                 name: 'example',
                 properties: {
@@ -623,6 +583,56 @@ describe('ClassModel', () => {
             expect(record).to.have.property('req2', 1);
             expect(record).to.have.property('opt2', 2);
             expect(record).to.not.have.property('opt1');
+        });
+        it('cast embedded types', () => {
+            model = new ClassModel({
+                name: 'example',
+                properties: {
+                    thing: {name: 'thing', type: 'embeddedset'}
+                },
+                cast: {thing: (x) => {
+                    const thing = new Set();
+                    for (let item of x) {
+                        item = item.toLowerCase().trim();
+                        if (item !== '') {
+                            thing.add(item);
+                        }
+                    }
+                    return thing;
+                }}
+            });
+            const record = model.formatRecord({
+                thing: ['aThinNG', 'another THING']
+            }, {dropExtra: false, addDefaults: true});
+            expect(record).to.have.property('thing');
+            expect(record.thing).to.eql(new Set(['athing', 'another thing']));
+        });
+        it('cast inheritied embedded types', () => {
+            model = new ClassModel({
+                name: 'example',
+                properties: {
+                    thing: {name: 'thing', type: 'embeddedset'}
+                },
+                cast: {thing: (x) => {
+                    const thing = new Set();
+                    for (let item of x) {
+                        item = item.toLowerCase().trim();
+                        if (item !== '') {
+                            thing.add(item);
+                        }
+                    }
+                    return thing;
+                }}
+            });
+            const childModel = new ClassModel({
+                name: 'child',
+                inherits: [model]
+            });
+            const record = childModel.formatRecord({
+                thing: ['aThinNG', 'another THING']
+            }, {dropExtra: false, addDefaults: true});
+            expect(record).to.have.property('thing');
+            expect(record.thing).to.eql(new Set(['athing', 'another thing']));
         });
         it('does not add defaults', () => {
             expect(() => {
