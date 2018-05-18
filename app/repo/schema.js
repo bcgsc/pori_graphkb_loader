@@ -4,7 +4,7 @@ const _ = require('lodash');
 
 const {PERMISSIONS} = require('./constants');
 const {createRepoFunctions} = require('./functions');
-const {castUUID, timeStampNow, getParameterPrefix, castToRID} = require('./util');
+const {castUUID, timeStampNow, getParameterPrefix, castToRID, VERBOSE} = require('./util');
 const cache = require('./cache');
 const {populateCache} = require('./base');
 const {AttributeError} = require('./error');
@@ -282,7 +282,7 @@ const createProperties = async (cls, props) => {
 /*
  * builds the schema in the database
  */
-const createSchema = async (db, verbose=false) => {
+const createSchema = async (db) => {
     // create the permissions class
     const Permissions = await db.class.create('Permissions', null, null, false); // (name, extends, clusters, abstract)
     // create the user class
@@ -361,7 +361,7 @@ const createSchema = async (db, verbose=false) => {
             'class':  cls
         });
     }
-    if (verbose) {
+    if (VERBOSE) {
         console.log('defined schema for the major base classes');
     }
     // now create the custom data related classes
@@ -375,7 +375,7 @@ const createSchema = async (db, verbose=false) => {
         ]
     });
     await db.class.create('Biomarker', null, null, true);  // purely for selection purposes
-    if (verbose) {
+    if (VERBOSE) {
         console.log('defining schema for Ontology class');
     }
     await createClassModel(db, {
@@ -415,7 +415,7 @@ const createSchema = async (db, verbose=false) => {
         ],
         isAbstract: true
     });
-    if (verbose) {
+    if (VERBOSE) {
         console.log('defining schema for Ontology subclasses');
     }
     await createClassModel(db, {
@@ -730,7 +730,7 @@ const createSchema = async (db, verbose=false) => {
     ]);
     // create all the edge classes
     await Promise.all(Array.from(['Infers', 'ElementOf', 'SubClassOf', 'DeprecatedBy', 'AliasOf', 'SupportedBy', 'Implies', 'Cites'], (name) => {
-        if (verbose) {
+        if (VERBOSE) {
             console.log(`defining schema for class: ${name}`);
         }
         createClassModel(db, {
@@ -787,7 +787,7 @@ const createSchema = async (db, verbose=false) => {
         properties.push({min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', notNull: true, readOnly: false, name: name});
     }
     await createProperties(Permissions, properties);
-    if (verbose) {
+    if (VERBOSE) {
         console.log('create the custom server functions');
     }
     // now load the custom functions. MUST be es5 or straight sql
@@ -799,7 +799,7 @@ const createSchema = async (db, verbose=false) => {
 /*
  * loads the schema from the database and then adds additional checks. returns the object of models
  */
-const loadSchema = async (db, verbose=false) => {
+const loadSchema = async (db) => {
     // adds checks etc to the schema loaded from the database
     const schema = {};
 
@@ -900,7 +900,7 @@ const loadSchema = async (db, verbose=false) => {
     }
     schema.User.cast.uuid = castUUID;
 
-    if (verbose) {
+    if (VERBOSE) {
         for (let cls of Object.values(schema)) {
             if (cls.isAbstract) {
                 continue;
@@ -908,12 +908,12 @@ const loadSchema = async (db, verbose=false) => {
             console.log(`loaded class: ${cls.name} [${cls.inherits}]`);
         }
     }
-    if (verbose) {
+    if (VERBOSE) {
         console.log('populating the cache');
     }
     // load the vocabulary
     await populateCache(db, schema);
-    if(verbose) {
+    if(VERBOSE) {
         console.log('linking models');
     }
     db.models = schema;

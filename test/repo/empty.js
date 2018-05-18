@@ -88,7 +88,6 @@ describe('schema', () => {
                 },
                 user: admin
             });
-            console.log(deleted);
             expect(deleted.deletedBy.toString()).to.equal(admin['@rid'].toString());
         });
         it('errors on no existing node', async () => {
@@ -119,7 +118,6 @@ describe('schema', () => {
             });
             expect(record).to.have.property('sourceId', 'cancer');
             expect(record).to.have.property('source', 'disease ontology');
-            console.log('original', record);
             // change the name
             const updated = await update(db, {
                 content: {
@@ -129,7 +127,6 @@ describe('schema', () => {
                 user: admin,
                 where: Object.assign({}, content)
             });
-            console.log('updated', updated);
             // check that a history link has been added to the node
             expect(updated).to.have.property('sourceId', 'new name');
             expect(updated).to.have.property('source', 'disease ontology');
@@ -142,7 +139,6 @@ describe('schema', () => {
                 exactlyN: 1,
                 model: schema.Disease
             });
-            console.log('reselect original', originalNode);
             originalNode = originalNode[0];
             expect(updated['history']).to.eql(originalNode['@rid']);
             expect(originalNode['deletedBy']['@rid']).to.eql(admin['@rid']);

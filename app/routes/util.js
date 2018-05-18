@@ -4,7 +4,7 @@ const _ = require('lodash');
 
 const {ErrorMixin, AttributeError, NoRecordFoundError,  RecordExistsError} = require('./../repo/error');
 const {select, create, update, remove, QUERY_LIMIT} = require('./../repo/base');
-const {getParameterPrefix, looksLikeRID} = require('./../repo/util');
+const {getParameterPrefix, looksLikeRID, VERBOSE} = require('./../repo/util');
 
 
 const MAX_JUMPS = 6;  // fetchplans beyond 6 are very slow
@@ -51,23 +51,21 @@ const validateParams = async (opt) => {
  * example:
  *      router.route('/feature') = resource({model: <ClassModel>, db: <OrientDB conn>, reqQueryParams: ['source', 'name', 'biotype']});
  */
-const addResourceRoutes = (opt, verbose) => {
+const addResourceRoutes = (opt) => {
     const {router, model, db, cacheUpdate} = opt;
     const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
     const reqQueryParams = opt.reqQueryParams || [];
-    verbose = opt.verbose || verbose;
     let route = opt.route || `/${model.name.toLowerCase()}${model.isEdge ? '' : 's'}`;
     if (route.endsWith('ys')) {
         route = route.replace(/ys$/, 'ies');
     }
-    if (verbose) {
+    if (VERBOSE) {
         console.log(`addResourceRoutes: ${route}`);
     }
 
     router.get(route,
         async (req, res) => {
             let fetchPlan = '*:1';
-            console.log(req.query);
             if (req.query.neighbors !== undefined) {
                 const neighbors = Number(req.query.neighbors);
                 if (isNaN(neighbors) || neighbors < 0 || neighbors > MAX_JUMPS) {
@@ -101,7 +99,7 @@ const addResourceRoutes = (opt, verbose) => {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                     return;
                 }
-                if (verbose) {
+                if (VERBOSE) {
                     console.error(err);
                 }
                 res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
@@ -125,7 +123,7 @@ const addResourceRoutes = (opt, verbose) => {
                 } else if (err instanceof RecordExistsError) {
                     res.status(HTTP_STATUS.CONFLICT).json(err);
                 } else {
-                    if (verbose) {
+                    if (VERBOSE) {
                         console.error(err);
                     }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
@@ -163,7 +161,7 @@ const addResourceRoutes = (opt, verbose) => {
                 if (err instanceof NoRecordFoundError) {
                     res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 } else {
-                    if (verbose) {
+                    if (VERBOSE) {
                         console.error(err);
                     }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
@@ -200,7 +198,7 @@ const addResourceRoutes = (opt, verbose) => {
                 } else if (err instanceof RecordExistsError) {
                     res.status(HTTP_STATUS.CONFLICT).json(err);
                 } else {
-                    if (verbose) {
+                    if (VERBOSE) {
                         console.error(err);
                     }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
@@ -231,7 +229,7 @@ const addResourceRoutes = (opt, verbose) => {
                 } else if (err instanceof NoRecordFoundError) {
                     res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 } else {
-                    if (verbose) {
+                    if (VERBOSE) {
                         console.error(err);
                     }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);

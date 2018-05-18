@@ -1,7 +1,7 @@
 'use strict';
 const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError} = require('./error');
 const cache = require('./cache');
-const {timeStampNow, quoteWrap, looksLikeRID, getParameterPrefix} = require('./util');
+const {timeStampNow, quoteWrap, looksLikeRID, getParameterPrefix, DEBUG, VERBOSE} = require('./util');
 const RID = require('orientjs').RID;
 
 
@@ -358,7 +358,7 @@ const populateCache = async (db, schema) => {
 
 const cacheVocabulary = async (db, model) => {
     // load the vocabulary
-    if (process.env.VERBOSE == '1') {
+    if (VERBOSE) {
         console.log('updating the vocabulary cache');
     }
     const rows = await select(db, {model: model});
@@ -373,7 +373,7 @@ const cacheVocabulary = async (db, model) => {
         }
         cache.vocabulary[row.class][row.property].push(row);
     }
-    if (process.env.VERBOSE == '1') {
+    if (VERBOSE) {
         console.log(cache.vocabulary);
     }
 };
@@ -436,7 +436,6 @@ const createEdge = async (db, opt) => {
  *
  * @param {Object} opt Selection options
  * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
- * @param {boolean} [opt.debug=true] print more output to help with debugging queries
  * @param {ClassModel} opt.model the model to be selected from
  * @param {string} [opt.fetchPlan='*: 1'] key value mapping of class names to depths of edges to follow or '*' for any class
  * @param {Object} [opt.where={}] the query requirements
@@ -450,12 +449,11 @@ const select = async (db, opt) => {
         activeOnly: true,
         exactlyN: null,
         fetchPlan: '*:1',
-        debug: process.env.DEBUG === '1' || false,
         where: {},
         limit: QUERY_LIMIT
     }, opt);
     const query = new SelectionQuery(opt.model, opt.where, opt);
-    if (opt.debug) {
+    if (DEBUG) {
         console.log('select query statement:', query.displayString(), {limit: opt.limit, fetchPlan: opt.fetchPlan});
     }
 
@@ -532,16 +530,14 @@ const remove = async (db, opt) => {
  *
  * @param {Object} db orientjs database connection
  * @param {Object} opt options
- * @param {boolean} [opt.verbose=false] print extra information to the console
  * @param {Object} opt.content the content for the new node (any unspecified attributes are assumed to be unchanged)
  * @param {Object} opt.where the selection criteria for the original node
  * @param {Object} opt.user the user updating the record
  */
 const update = async (db, opt) => {
     const {content, model, user, where} = opt;
-    const verbose = opt.verbose || (process.env.VERBOSE == '1' ? true : false);
     const original = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
-    const originalWhere = Object.assign(model.formatRecord(original, {dropExtra: true, addDefaults: false, verbose: verbose}));
+    const originalWhere = Object.assign(model.formatRecord(original, {dropExtra: true, addDefaults: false}));
     delete originalWhere.createdBy;
     delete originalWhere.history;
     const copy = Object.assign({}, originalWhere, {deletedAt: timeStampNow()});
@@ -571,7 +567,7 @@ const update = async (db, opt) => {
         }).let('updated', (tx) => {
             return tx.select().from('$updatedRID').fetch({'*': 1});
         }).commit();
-    if (verbose) {
+    if (VERBOSE) {
         console.log(`update: ${commit.buildStatement()}`);
     }
     try {

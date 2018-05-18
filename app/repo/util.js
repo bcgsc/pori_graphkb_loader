@@ -2,6 +2,10 @@ const moment = require('moment');
 const {RID}  = require('orientjs');
 const uuidValidate = require('uuid-validate');
 
+
+const VERBOSE = (process.env.VERBOSE === '1' ? true : false);
+const DEBUG = (process.env.DEBUG === '1' ? true : false);
+
 const castUUID = (uuid) => {
     if (uuidValidate(uuid, 4)) {
         return uuid;
@@ -9,9 +13,11 @@ const castUUID = (uuid) => {
     throw new Error(`not a valid version 4 uuid ${uuid}`);
 };
 
+
 const timeStampNow = () => {
     return moment().valueOf();
 };
+
 
 const getParameterPrefix = (param) => {
     const match = /^([^\.]+)\.([^\.]+)$/.exec(param);
@@ -24,7 +30,6 @@ const getParameterPrefix = (param) => {
 
 
 const castToRID = (string) => {
-    console.log(string);
     if (string instanceof RID) {
         return string;
     } else if (typeof string === 'object' && string !== null) {
@@ -79,4 +84,4 @@ const quoteWrap = (string) => {
     return `'${string}'`;
 };
 
-module.exports = {timeStampNow, castUUID, getParameterPrefix, quoteWrap, looksLikeRID, castToRID};
+module.exports = {timeStampNow, castUUID, getParameterPrefix, quoteWrap, looksLikeRID, castToRID, VERBOSE, DEBUG};

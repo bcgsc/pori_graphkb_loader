@@ -10,9 +10,10 @@ const auth = require('./middleware/auth');
 const {parseNullQueryParams} = require('./middleware');
 const fs = require('fs');
 const http = require('http');
+const {VERBOSE} = require('./repo/util');
 
 
-const connectDB = async (conf, verbose=true) => {
+const connectDB = async (conf) => {
     // set up the database server
     const server = OrientDB({
         host: conf.server.host,
@@ -20,13 +21,13 @@ const connectDB = async (conf, verbose=true) => {
         username: conf.server.user,
         password: conf.server.pass
     });
-    if (verbose) {
+    if (VERBOSE) {
         console.log(`connecting to the database: ${conf.db.name} as ${conf.db.user}`);
     }
     let db;
     try {
         db = await server.use({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
-        if (verbose) {
+        if (VERBOSE) {
             console.log('loading the schema');
         }
     } catch (err) {
@@ -35,12 +36,12 @@ const connectDB = async (conf, verbose=true) => {
     }
     let schema;
     try {
-        schema = await loadSchema(db, verbose);
+        schema = await loadSchema(db);
     } catch (err) {
         server.close();
         throw err;
     }
-    if (verbose) {
+    if (VERBOSE) {
         console.log('loaded the schema');
     }
     // create the admin user
@@ -49,9 +50,8 @@ const connectDB = async (conf, verbose=true) => {
 
 
 class AppServer {
-    constructor(conf={app: {}}, verbose=false) {
+    constructor(conf={app: {}}) {
         this.app = express();
-        this.verbose = verbose;
         // set up middleware parser to deal with jsons
         this.app.use(bodyParser.urlencoded({extended: true}));
         this.app.use(bodyParser.json());
@@ -63,7 +63,7 @@ class AppServer {
         this.router = express.Router();
         this.app.use('/api', this.router);
         // add some basic logging
-        if (verbose) {
+        if (VERBOSE) {
             this.router.use((req, res, next) => {
                 console.log(`[${req.method}] ${req.url}`, req.body);
                 next();
@@ -74,15 +74,15 @@ class AppServer {
     }
     async listen() {
         // connect to the database
-        const {db, schema} = await connectDB(this.conf, this.verbose);
+        const {db, schema} = await connectDB(this.conf);
         this.db = db;
         // create the authentication certificate for managing tokens
         if (! auth.keys.private) {
             auth.keys.private = fs.readFileSync(this.conf.private_key);
         }
         // add the db connection reference to the routes
-        addRoutes({router: this.router, db: this.db, schema: schema, verbose: this.verbose});
-        if (this.verbose) {
+        addRoutes({router: this.router, db: this.db, schema: schema});
+        if (VERBOSE) {
             console.log('Adding 404 capture');
         }
         // last catch any errors for undefined routes. all actual routes should be defined above
@@ -93,12 +93,12 @@ class AppServer {
         //appServer = await https.createServer({cert: keys.cert, key: keys.private, rejectUnauthorized: false}, app).listen(conf.app.port || defaultConf.app.port);
         this.server = await http.createServer(this.app).listen(this.conf.app.port);
         //this.server = await this.app.listen(this.conf.app.port, this.conf.app.host);
-        if (this.verbose) {
+        if (VERBOSE) {
             console.log('started application server at:', this.server.address().host, this.server.address().port);
         }
     }
     async close() {
-        if (this.verbose)
+        if (VERBOSE)
             console.log('cleaning up');
         try {
             if (this.server) {
