@@ -5,18 +5,18 @@ const _ = require('lodash');
 const {errorToJSON, looksLikeRID} = require('./util');
 const {ErrorMixin, AttributeError, NoRecordFoundError, MultipleRecordsFoundError} = require('./../repo/error');
 const {select, create, update, remove} = require('./../repo/base');
+const {VERBOSE} = require('./../repo/util');
 const {parse} = require('./../parser/variant');
 
 
 const addVariantRoutes = (opt) => {
     const {router, schema, db} = opt;
-    const verbose = opt.verbose === undefined ? true : false;
-    if (verbose) {
+    if (VERBOSE) {
         console.log('addVariantRoutes');
     }
 
     router.post('/variants',
-        async (req, res, next) => {
+        async (req, res) => {
             // ensure that all the dependencies exist, or create them if they do not
             const content = req.body.content;
             if (content === undefined) {
@@ -63,6 +63,6 @@ const addVariantRoutes = (opt) => {
             // now parse any positions
             res.status(200).json({message: 'ok so far', features: features, content: content});
         });
-}
+};
 
 module.exports = {addVariantRoutes};
