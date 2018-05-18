@@ -1,7 +1,7 @@
 'use strict';
 const {expect} = require('chai');
 const chai = require('chai');
-const {setUpSampleDB, tearDownSampleDB} = require('./util');
+const {setUpSampleDB, tearDownSampleDB} = require('./../util');
 const app = require('../app');
 const conf = require('./config/sample');
 const auth = require('./../app/middleware/auth');

@@ -878,6 +878,8 @@ const loadSchema = async (db, verbose=false) => {
         }
     }
     // add the api-level checks?
+    schema.V._cast['@rid'] = castToRID;
+    schema.E._cast['@rid'] = castToRID;
     schema.V._cast.uuid = castUUID;
     schema.E._cast.uuid = castUUID;
     schema.Ontology._cast.subsets = (subsets) => {
@@ -888,7 +890,6 @@ const loadSchema = async (db, verbose=false) => {
                 formatted.add(item);
             }
         }
-        console.log('schema.Ontology.case.subsets', formatted);
         return formatted;
     };
     if (schema.E._edgeRestrictions === null) {

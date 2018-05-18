@@ -21,6 +21,7 @@ const REALLY_LONG_TIME = 10000000000;
 describe('schema', () => {
     let db, admin, app, mockToken;
     before(async () => {
+        conf.verbose = true;
         ({
             db,
             admin
@@ -108,13 +109,13 @@ describe('schema', () => {
                 .post('/api/diseases')
                 .type('json')
                 .send({
-                    name: 'cancer',
+                    sourceId: 'cancer',
                     source: 'bcgsc'
                 })
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
             expect(res.body).to.be.a('object');
-            expect(res.body).to.have.property('name', 'cancer');
+            expect(res.body).to.have.property('sourceId', 'cancer');
             expect(res.body).to.have.property('source', 'bcgsc');
         });
         it('BAD REQUEST (no source given)', async () => {
@@ -124,7 +125,7 @@ describe('schema', () => {
                     .post('/api/diseases')
                     .type('json')
                     .send({
-                        name: 'cancer'
+                        sourceId: 'cancer'
                     })
                     .set('Authorization', mockToken);
             } catch (err) {
@@ -133,7 +134,7 @@ describe('schema', () => {
             expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
             expect(res.response.body).to.have.property('name', 'AttributeError');
         });
-        it('BAD REQUEST (no name given)', async () => {
+        it('BAD REQUEST (no sourceId given)', async () => {
             let res;
             try {
                 res = await chai.request(app.app)
@@ -156,7 +157,7 @@ describe('schema', () => {
                     .post('/api/diseases')
                     .type('json')
                     .send({
-                        name: 'cancer',
+                        sourceId: 'cancer',
                         source: 'bcgsc'
                     });
             } catch (err) {
@@ -170,7 +171,7 @@ describe('schema', () => {
                 .post('/api/diseases')
                 .type('json')
                 .send({
-                    name: 'cancer',
+                    sourceId: 'cancer',
                     source: 'bcgsc'
                 })
                 .set('Authorization', mockToken);
@@ -180,7 +181,7 @@ describe('schema', () => {
                     .post('/api/diseases')
                     .type('json')
                     .send({
-                        name: 'cancer',
+                        sourceId: 'cancer',
                         source: 'bcgsc'
                     })
                     .set('Authorization', mockToken);
@@ -197,7 +198,7 @@ describe('schema', () => {
                 .post('/api/diseases')
                 .type('json')
                 .send({
-                    name: 'cancer',
+                    sourceId: 'cancer',
                     source: 'bcgsc'
                 })
                 .set('Authorization', mockToken);
@@ -209,12 +210,12 @@ describe('schema', () => {
                 .patch(`/api/diseases/${diseaseId}`)
                 .type('json')
                 .send({
-                    name: 'carcinoma'
+                    sourceId: 'carcinoma'
                 })
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
             expect(res.body).to.be.a('object');
-            expect(res.body).to.have.property('name', 'carcinoma');
+            expect(res.body).to.have.property('sourceId', 'carcinoma');
             expect(res.body).to.have.property('source', disease.source);
             expect(res.body).to.have.property('@rid', disease['@rid']);
             expect(res.body).to.have.property('history');
@@ -227,7 +228,7 @@ describe('schema', () => {
                     .patch('/api/diseases/456:0')
                     .type('json')
                     .send({
-                        name: 'cancer'
+                        sourceId: 'cancer'
                     })
                     .set('Authorization', mockToken);
             } catch (err) {
@@ -243,7 +244,7 @@ describe('schema', () => {
                     .patch(`/api/diseases/${diseaseId}`)
                     .type('json')
                     .send({
-                        name: 'cancer',
+                        sourceId: 'cancer',
                         source: 'bcgsc'
                     });
             } catch (err) {
@@ -257,7 +258,7 @@ describe('schema', () => {
                 .post('/api/diseases')
                 .type('json')
                 .send({
-                    name: 'carcinoma',
+                    sourceId: 'carcinoma',
                     source: 'bcgsc'
                 })
                 .set('Authorization', mockToken);
@@ -267,7 +268,7 @@ describe('schema', () => {
                     .patch(`/api/diseases/${diseaseId}`)
                     .type('json')
                     .send({
-                        name: 'carcinoma'
+                        sourceId: 'carcinoma'
                     })
                     .set('Authorization', mockToken);
             } catch (err) {
@@ -283,7 +284,7 @@ describe('schema', () => {
                 .post('/api/diseases')
                 .type('json')
                 .send({
-                    name: 'cancer',
+                    sourceId: 'cancer',
                     source: 'bcgsc'
                 })
                 .set('Authorization', mockToken);
@@ -297,7 +298,7 @@ describe('schema', () => {
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
             expect(res.body).to.be.a('object');
-            expect(res.body).to.have.property('name', disease.name);
+            expect(res.body).to.have.property('sourceId', disease.sourceId);
             expect(res.body).to.have.property('source', disease.source);
             expect(res.body).to.have.property('@rid', disease['@rid']);
             expect(res.body).to.have.property('deletedAt');

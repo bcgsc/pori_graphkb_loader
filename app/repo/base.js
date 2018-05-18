@@ -134,8 +134,8 @@ class SelectionQuery {
                 // query params are returned as an array when given twice in the url but otherwise not, change all to arrays for consistency
                 value = [value];
             }
-            if (! propertyNames.includes(prefix)) {
-                throw new AttributeError(`unexpected attribute ${prefix} for class ${this.name}`);
+            if (! propertyNames.includes(prefix) && ! odbArgs.includes(prefix)) {
+                throw new AttributeError(`unexpected attribute ${prefix} for class ${this.model.name}`);
             }
             if (suffix && properties[prefix].linkedModel) {
                 if (subqueries[prefix] === undefined) {
@@ -144,12 +144,20 @@ class SelectionQuery {
                 subqueries[prefix].where[suffix] = value;
             } else {
                 if (cast[condition]) {
-                    if (/(set|list|map)/.exec(properties[condition].type)) {  //expect a mutli-value type already
-                        value = cast[condition](value);
+                    if (properties[condition] && /(set|list|map)/.exec(properties[condition].type)) {  //expect a mutli-value type already
+                        try {
+                            value = cast[condition](value);
+                        } catch (err) {
+                            throw new AttributeError(err);
+                        }
                     } else {
                         // cast is meant to operate individually
                         for (let i=0; i < value.length; i++) {
-                            value[i] = cast[condition](value[i]);
+                            try {
+                                value[i] = cast[condition](value[i]);
+                            } catch (err) {
+                                throw new AttributeError(err);
+                            }
                         }
                     }
                 }
@@ -447,7 +455,6 @@ const select = async (db, opt) => {
         limit: QUERY_LIMIT
     }, opt);
     const query = new SelectionQuery(opt.model, opt.where, opt);
-
     if (opt.debug) {
         console.log('select query statement:', query.displayString(), {limit: opt.limit, fetchPlan: opt.fetchPlan});
     }
@@ -509,7 +516,6 @@ const remove = async (db, opt) => {
         }).let('updated', (tx) => {
             return tx.select().from('$updatedRID').fetch({'*': 1});
         }).commit();
-    console.log(commit.buildStatement());
     try {
         return await commit.return('$updated').one();
     } catch (err) {
@@ -535,8 +541,7 @@ const update = async (db, opt) => {
     const {content, model, user, where} = opt;
     const verbose = opt.verbose || (process.env.VERBOSE == '1' ? true : false);
     const original = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
-    console.log('formatRecord', original);
-    const originalWhere = Object.assign(model.formatRecord(original, {dropExtra: true, addDefaults: false}));
+    const originalWhere = Object.assign(model.formatRecord(original, {dropExtra: true, addDefaults: false, verbose: verbose}));
     delete originalWhere.createdBy;
     delete originalWhere.history;
     const copy = Object.assign({}, originalWhere, {deletedAt: timeStampNow()});
