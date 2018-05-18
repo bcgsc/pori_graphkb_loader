@@ -188,6 +188,9 @@ class ClassModel {
         }
         if (! opt.ignoreExtra && ! opt.dropExtra) {
             for (let attr of Object.keys(record)) {
+                if (this.isEdge && (attr === 'out' || attr === 'in')) {
+                    continue;
+                }
                 if (properties[attr] === undefined && prefixed[attr] === undefined) {
                     throw new AttributeError(`unexpected attribute: ${attr}`);
                 }
