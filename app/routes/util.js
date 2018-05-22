@@ -43,6 +43,20 @@ const validateParams = async (opt) => {
 };
 
 
+const processCsvQueryParam = (value) => {
+    if (typeof value === 'string') {
+        value = value === '' ? [] : value.split(',');
+        return value;
+    } else {
+        const arr = [];
+        for (let i=0; i< value.length; i++) {
+            arr.push(...processCsvQueryParam(value[i]));
+        }
+        return arr;
+    }
+};
+
+
 /*
  * add basic CRUD methods for any standard db class
  *
@@ -82,6 +96,11 @@ const addResourceRoutes = (opt) => {
                     return;
                 }
                 req.query.fuzzyMatch = fuzzyMatch;
+            }
+            for (let csvParam of ['ancestors', 'descendants', 'returnProperties']) {
+                if (req.query[csvParam] !== undefined) {
+                    req.query[csvParam] = processCsvQueryParam(req.query.csvParam);
+                }
             }
             const params = _.omit(req.query, ['limit', 'fuzzyMatch', 'ancestors', 'descendants', 'returnProperties']);
             const other = Object.assign({limit: QUERY_LIMIT}, _.omit(req.query, Object.keys(params)));

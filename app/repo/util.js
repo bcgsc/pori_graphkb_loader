@@ -27,7 +27,11 @@ const getParameterPrefix = (param) => {
     }
 };
 
-
+/**
+ * Given an input object/string, attemps to return the RID equivalent
+ * @param string the input object
+ * @returns {orientjs.RID} the record ID
+ */
 const castToRID = (string) => {
     if (string instanceof RID) {
         return string;

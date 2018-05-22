@@ -29,9 +29,9 @@ class ClassModel {
         this._cast = opt.cast || {};
         this._defaults = opt.defaults || {};
         this._inherits = opt.inherits || [];
-        this.isEdge = opt.this.isEdge ? true : false;
+        this.isEdge = opt.isEdge ? true : false;
         this._edgeRestrictions = opt.edgeRestrictions || null;
-        if (this._edgeRestrictions && ! this.isEdge) {
+        if (this._edgeRestrictions) {
             this.isEdge = true;
         }
         this.isAbstract = opt.isAbstract;
@@ -103,6 +103,9 @@ class ClassModel {
         return defaults;
     }
 
+    /**
+     * returns a partial json representation of the current class model
+     */
     toJSON() {
         return {
             properties: this.properties,
@@ -110,7 +113,11 @@ class ClassModel {
             edgeRestrictions: this._edgeRestrictions
         };
     }
-
+    /**
+     * Given some orientjs class object, convert it to the current model
+     * @param {object} oclass
+     * @returns {ClassModel} the parsed class
+     */
     static parseOClass(oclass) {
         const defaults = {};
         const cast = {};
@@ -256,8 +263,10 @@ class ClassModel {
     }
 }
 
-/*
+/**
  * creates a class in the database
+ *
+ * @returns {object} the newly created class
  */
 const createClassModel = async (db, model) => {
     model.properties = model.properties || [];
@@ -279,8 +288,10 @@ const createProperties = async (cls, props) => {
     return await Promise.all(Array.from(props, (prop) => cls.property.create(prop)));
 };
 
-/*
- * builds the schema in the database
+/**
+ * Defines and uilds the schema in the database
+ *
+ * @param {object} db the orientjs database connection object
  */
 const createSchema = async (db) => {
     // create the permissions class
@@ -828,8 +839,10 @@ const createSchema = async (db) => {
 
 
 
-/*
+/**
  * loads the schema from the database and then adds additional checks. returns the object of models
+ *
+ * @param {object} db the orientjs database connection
  */
 const loadSchema = async (db) => {
     // adds checks etc to the schema loaded from the database
@@ -959,6 +972,12 @@ const loadSchema = async (db) => {
             if (prop.linkedClass && schema[prop.linkedClass]) {
                 prop.linkedModel = schema[prop.linkedClass];
             }
+        }
+    }
+    // ensure all edge classes are set as such
+    for (let model of Object.values(schema)) {
+        if (! model.isEdge && model.inherits.includes('E')) {
+            model.isEdge = true;
         }
     }
     return schema;

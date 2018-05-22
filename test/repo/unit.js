@@ -74,6 +74,11 @@ describe('checkAccess', () => {
 
 
 describe('Follow', () => {
+    it('errors on bad edge type', () => {
+        expect(() => {
+            new Follow([], 'badEdgeType');
+        }).to.throw('expected type to be');
+    });
     it('allows empty constructor arguments', () => {
         const follow = new Follow();
         expect(follow.toString()).to.equal(`.both(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
@@ -165,6 +170,27 @@ describe('SelectionQuery', () => {
             }
         }
     });
+    it('errors on unexpected parameter', () => {
+        expect(() => {
+            new SelectionQuery(parent, {name: 'blargh', fuzzyMatch: 1, badAttr: null});
+        }).to.throw('unexpected attribute');
+    });
+    it('match in select when returnProperties and fuzzyMatch specified', () => {
+        const query = new SelectionQuery(parent, {name: 'blargh', fuzzyMatch: 1, returnProperties: ['name', 'child']});
+        const {query: statement} = query.toString();
+        expect(statement).to.equal(stripSQL(
+            `SELECT name, child FROM (MATCH {class: parent, where: (name = :param0)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 1)}
+            RETURN $pathElements)`
+        ));
+    });
+    it('throws error on invalid return property', () => {
+        expect(() => {
+            new SelectionQuery(parent, {name: 'blargh', returnProperties: ['name', 'bad']});
+        }).to.throw('columns on this class type');
+    });
+    it('match in select when returnProperties and ancestors specified');
+    it('match in select when returnProperties and descendants specified');
     it('defaults to a match statement when fuzzyMatch is given', () => {
         const query = new SelectionQuery(parent, {name: 'blargh', fuzzyMatch: 1});
         const {query: statement} = query.toString();
@@ -174,9 +200,11 @@ describe('SelectionQuery', () => {
             RETURN $pathElements`
         ));
     });
-    it('defaults to a select statement when no follow arguments are given');
-    it('allows select subqueries');
-    it('allows match subqueries');
+    it('defaults to a select statement when no follow arguments are given', () => {
+        const query = new SelectionQuery(parent, {name: 'blargh'});
+        const {query: statement} = query.toString();
+        expect(statement).to.equal('SELECT * FROM parent WHERE name = :param0');
+    });
     it('parses simple query', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: 'vocab1'
@@ -195,7 +223,7 @@ describe('SelectionQuery', () => {
         expect(statement).to.equal('SELECT * FROM example');
         expect(params).to.eql({});
     });
-    it('parses and re-flattens non-recursive subquery', () => {
+    it('parses and re-flattens simple subquery', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: 'vocab1',
             'linkVar.thing': 'thing'
@@ -208,7 +236,7 @@ describe('SelectionQuery', () => {
         expect(statement).to.equal('SELECT * FROM example WHERE linkVar.thing = :param0 AND requiredVar = :param1');
         expect(params).to.eql({param1: 'vocab1', param0: 'thing'});
     });
-    it('parses recursive subquery', () => {
+    it('parses subquery with fuzzyMatch', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: 'vocab1',
             'linkVar.thing': 'thing',
@@ -226,13 +254,121 @@ describe('SelectionQuery', () => {
                     AND requiredVar = :param1`));
         expect(params).to.eql({param1: 'vocab1', param0: 'thing'});
     });
-    it('parses subquery with fuzzyMatch');
     it('parses subquery with fuzzyMatch and ancestors');
     it('parses subquery with fuzzyMatch and descendants');
     it('parses subquery with fuzzyMatch and both ancestors and descendants');
-    it('parses subquery with ancestors');
-    it('parses subquery with descendants');
-    it('parses subquery with both ancestors and descendants');
+    it('parses subquery with ancestors (single edge class)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            'linkVar.thing': 'thing',
+            'linkVar.ancestors': 'subclassof'
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: ['vocab1'],
+            linkVar: new SelectionQuery(linkedModel, {thing: 'thing', ancestors: 'subclassof'})
+        });
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE
+            linkVar IN (SELECT @rid FROM
+                (MATCH {class: other, where: (thing = :param0)}
+                .in('subclassof'){while: ($matched.in('subclassof').size() > 0)}
+                RETURN $pathElements))
+            AND requiredVar = :param1`
+        ));
+    });
+    it('parses subquery with ancestors (multiple edge classes)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            'linkVar.thing': 'thing',
+            'linkVar.ancestors': ['subclassof', 'aliasof']
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: ['vocab1'],
+            linkVar: new SelectionQuery(linkedModel, {thing: 'thing', ancestors: ['subclassof', 'aliasof']})
+        });
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE
+            linkVar IN (SELECT @rid FROM
+                (MATCH {class: other, where: (thing = :param0)}
+                .in('subclassof', 'aliasof'){while: ($matched.in('subclassof', 'aliasof').size() > 0)}
+                RETURN $pathElements))
+            AND requiredVar = :param1`
+        ));
+    });
+    it('parses subquery with descendants (single edge class)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            'linkVar.thing': 'thing',
+            'linkVar.descendants': 'subclassof'
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: ['vocab1'],
+            linkVar: new SelectionQuery(linkedModel, {thing: 'thing', descendants: 'subclassof'})
+        });
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE
+            linkVar IN (SELECT @rid FROM
+                (MATCH {class: other, where: (thing = :param0)}
+                .out('subclassof'){while: ($matched.out('subclassof').size() > 0)}
+                RETURN $pathElements))
+            AND requiredVar = :param1`
+        ));
+    });
+    it('parses subquery with descendants (multiple edge classes)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            'linkVar.thing': 'thing',
+            'linkVar.descendants': ['subclassof', 'aliasof']
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: ['vocab1'],
+            linkVar: new SelectionQuery(linkedModel, {thing: 'thing', descendants: ['subclassof', 'aliasof']})
+        });
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE
+            linkVar IN (SELECT @rid FROM
+                (MATCH {class: other, where: (thing = :param0)}
+                .out('subclassof', 'aliasof'){while: ($matched.out('subclassof', 'aliasof').size() > 0)}
+                RETURN $pathElements))
+            AND requiredVar = :param1`
+        ));
+    });
+    it('parses subquery with both ancestors and descendants', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: 'vocab1',
+            'linkVar.thing': 'thing',
+            'linkVar.descendants': ['subclassof'],
+            'linkVar.ancestors': ['aliasof']
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: ['vocab1'],
+            linkVar: new SelectionQuery(linkedModel, {
+                thing: 'thing',
+                descendants: ['subclassof'],
+                ancestors: ['aliasof']
+            })
+        });
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE
+            linkVar IN (SELECT @rid FROM
+                (MATCH {class: other, where: (thing = :param0)}
+                .in('aliasof'){while: ($matched.in('aliasof').size() > 0)},
+                {class: other, where: (thing = :param0)}
+                .out('subclassof'){while: ($matched.out('subclassof').size() > 0)}
+                RETURN $pathElements))
+            AND requiredVar = :param1`
+        ));
+    });
     it('parses query with fuzzyMatch', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: 'vocab1',

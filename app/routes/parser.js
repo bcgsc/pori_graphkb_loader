@@ -1,7 +1,6 @@
 const HTTP_STATUS = require('http-status-codes');
 const {parsePosition} = require('./../parser/position');
 const {parse} = require('./../parser/variant');
-const {errorToJSON} = require('./util');
 
 
 const addParserRoutes = (router) => {
@@ -11,7 +10,7 @@ const addParserRoutes = (router) => {
             const pos = parsePosition(req.params.prefix, req.body.content);
             res.status(HTTP_STATUS.OK).json(pos);
         } catch (err) {
-            res.status(HTTP_STATUS.BAD_REQUEST).json(errorToJSON(err));
+            res.status(HTTP_STATUS.BAD_REQUEST).json(err);
         }
     });
 
@@ -20,7 +19,7 @@ const addParserRoutes = (router) => {
             const pos = parse(req.body.content);
             res.status(HTTP_STATUS.OK).json(pos);
         } catch (err) {
-            res.status(HTTP_STATUS.BAD_REQUEST).json(errorToJSON(err));
+            res.status(HTTP_STATUS.BAD_REQUEST).json(err);
         }
     });
 };

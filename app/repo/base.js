@@ -60,25 +60,26 @@ class Follow {
             return `.${this.type}(${classesString}){while: ($depth < ${this.depth})}`;
         }
     }
+    /**
+     * Based on the input query, create the follow statement (part of a match expresion)
+     * @param {object} query
+     *
+     * @returns {Follow} the follow statement
+     */
     static parse(query) {
         const follow = [];
-        const splitUnlessEmpty = (string) => {
-            return string === '' ? [] : string.split(',');
-        };
         // translate the fuzzyMatch/ancestors/descendants into proper follow statements
         if (query.ancestors !== undefined) {
             if (typeof query.ancestors === 'string') {
-                follow.push([new this(splitUnlessEmpty(query.ancestors), 'in', null)]);
-            } else {
-                follow.push(Array.from(query.ancestors, anc => new this(splitUnlessEmpty(anc), 'in', null)));
+                query.ancestors = query.ancestors === '' ? [] : [query.ancestors];
             }
+            follow.push([new this(query.ancestors, 'in', null)]);
         }
         if (query.descendants !== undefined) {
             if (typeof query.descendants === 'string') {
-                follow.push([new this(splitUnlessEmpty(query.descendants), 'out', null)]);
-            } else {
-                follow.push(Array.from(query.descendants, desc => new this(splitUnlessEmpty(desc), 'out', null)));
+                query.descendants = query.descendants === '' ? [] : [query.descendants];
             }
+            follow.push([new this(query.descendants, 'out', null)]);
         }
         if (query.fuzzyMatch) {
             const fuzzy = new this(FUZZY_CLASSES, 'both', query.fuzzyMatch);
@@ -111,9 +112,7 @@ class SelectionQuery {
         this.conditions = {};
         this.follow = [];
 
-        const query = {where: {}, subqueries: {}, follow: []};
         const propertyNames = this.model.propertyNames;
-
 
         if (opt.activeOnly && propertyNames.includes('deletedAt')) {
             inputQuery.deletedAt = null;
@@ -180,13 +179,12 @@ class SelectionQuery {
 
         if (inputQuery.returnProperties !== undefined) {
             // make sure the colnames specified make sense
-            let props = inputQuery.returnProperties.split(',');
-            for (let propName of props) {
+            for (let propName of inputQuery.returnProperties) {
                 if (! propertyNames.includes(propName) && ! odbArgs.includes(propName)) {
                     throw new AttributeError(`returnProperties query parameter must be a csv delimited string of columns on this class type: ${propertyNames}`);
                 }
             }
-            query.returnProperties = props;
+            this.returnProperties = inputQuery.returnProperties;
         }
     }
 
@@ -237,6 +235,13 @@ class SelectionQuery {
         }
         return {query, params};
     }
+    /**
+     * print the selection query as a string with SQL paramters.
+     *
+     * @param {int} paramStartIndex
+     *
+     * @returns {object} an object containing the SQL query statment (query) and the parameters (params)
+     */
     toString(paramStartIndex=0) {
         let queryString;
         const selectionElements = this.returnProperties ? this.returnProperties.join(', ') : '*';
@@ -268,7 +273,10 @@ class SelectionQuery {
             for (let arr of this.follow) {
                 expressions.push(`${prefix}${Array.from(arr, x => x.toString()).join('')}`);
             }
-            queryString = `MATCH ${expressions.join(',')} RETURN \$pathElements`;
+            queryString = `MATCH ${expressions.join(', ')} RETURN \$pathElements`;
+            if (selectionElements !== '*') {
+                queryString = `SELECT ${selectionElements} FROM (${queryString})`;
+            }
         } else {
             queryString = `SELECT ${selectionElements} FROM ${this.model.name}`;
             if (conditions.length > 0) {

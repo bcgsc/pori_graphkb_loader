@@ -11,18 +11,16 @@ const {
 } = require('./../../app/repo/base');
 
 const {
-    setUpEmptyDB,
-    tearDownEmptyDB
+    setUpEmptyDB
 } = require('./../util');
 
 const emptyConf = require('./../config/empty');
 emptyConf.verbose = true;
 
 describe('schema', () => {
-    let server, db, schema, admin;
+    let db, schema, admin;
     before(async () => {
         ({
-            server,
             db,
             schema,
             admin
@@ -147,7 +145,7 @@ describe('schema', () => {
     });
     describe('select', () => {
         let cancer, carcinoma;
-        before(async () => {
+        beforeEach(async () => {
             cancer = await create(db, {
                 model: schema.Disease,
                 content: {
@@ -159,21 +157,32 @@ describe('schema', () => {
             carcinoma = await create(db, {
                 model: schema.Disease,
                 content: {
-                    sourceId: 'carcinoma',
+                    sourceId: 'disease of cellular proliferation',
                     source: 'disease ontology'
                 },
                 user: admin
             });
             await create(db, {
-                model: schema.SubClassOf,
+                model: schema.AliasOf,
                 content: {
+                    source: 'disease ontology',
                     out: carcinoma['@rid'],
                     in: cancer['@rid']
                 },
                 user: admin
             });
         });
-        it('get by name');
+        it('get by name', async () => {
+            const records = await select(db, {
+                model: schema.Disease,
+                where: {
+                    sourceId: 'cancer',
+                    fuzzyMatch: 3
+                },
+                user: admin
+            });
+            expect(records).to.have.property('length', 2);
+        });
     });
     afterEach(async () => {
         // clear all V/E records
