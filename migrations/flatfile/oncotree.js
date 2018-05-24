@@ -52,7 +52,7 @@ const uploadOncoTree = async (conn) => {
                 ncitID = `ncit:${ncitID.toLowerCase()}`;
                 try {
                     const ncitRec = await getRecordBy('diseases', {source: 'ncit', sourceId: ncitID}, conn);
-                    await addRecord('aliasof', {out: rec['@rid'], in: ncitRec['@rid']}, conn);
+                    await addRecord('aliasof', {out: rec['@rid'], in: ncitRec['@rid'], source: 'oncotree'}, conn);
                 } catch (err) {
                     // don't care. Don't add relationship unless the node exists
                     process.stdout.write('x');
@@ -64,7 +64,7 @@ const uploadOncoTree = async (conn) => {
     for (let {src, tgt} of subclassof) {
         src = recordBySourceID[src]['@rid'];
         tgt = recordBySourceID[tgt]['@rid'];
-        await addRecord('subclassof', {out: src, in: tgt}, conn, true);
+        await addRecord('subclassof', {out: src, in: tgt, source: 'oncotree'}, conn, true);
     }
     console.log();
 };

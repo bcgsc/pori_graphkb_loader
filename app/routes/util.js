@@ -80,6 +80,14 @@ const addResourceRoutes = (opt) => {
     router.get(route,
         async (req, res) => {
             let fetchPlan = '*:1';
+            if (req.query.skip !== undefined) {
+                const skip = Number(req.query.skip);
+                if (isNaN(skip) || skip < 0) {
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError('skip must be a number 0 or greater'));
+                    return;
+                }
+                req.query.skip = skip;
+            }
             if (req.query.neighbors !== undefined) {
                 const neighbors = Number(req.query.neighbors);
                 if (isNaN(neighbors) || neighbors < 0 || neighbors > MAX_JUMPS) {

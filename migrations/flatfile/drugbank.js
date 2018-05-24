@@ -77,6 +77,7 @@ const xml2js = require('xml2js');
 const fs = require('fs');
 const {addRecord} = require('./util');
 const jsonfile = require('jsonfile');
+const SOURCE = 'drugbank';
 
 /**
  * Promise wrapper around the xml to js parser so it will work with async instead of callback
@@ -105,7 +106,7 @@ const uploadDrugBank = async ({filename, conn}) => {
     for (let drug of xml.drugbank.drug) {
         try {
             let body = {
-                source: 'drugbank',
+                source: SOURCE,
                 sourceId: drug['drugbank-id'][0]['_'],
                 name: drug.name[0],
                 sourceIdVersion: drug['$'].updated,

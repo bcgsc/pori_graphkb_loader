@@ -31,6 +31,8 @@ const {getRecordBy, addRecord} = require('./util');
 */
 
 
+const SOURCE = 'hgnc';
+
 const uploadHugoGenes = async (opt) => {
     const {filename, conn} = opt;
     console.log(`loading: ${filename}`);
@@ -44,7 +46,7 @@ const uploadHugoGenes = async (opt) => {
     console.log(`\nAdding ${genes.length} feature records`);
     for (let gene of genes) {
         let body = {
-            source: 'hgnc',
+            source: SOURCE,
             sourceIdVersion: gene.date_modified,
             sourceId: gene.hgnc_id,
             name: gene.symbol,
@@ -85,15 +87,15 @@ const uploadHugoGenes = async (opt) => {
     }
     console.log(`\nAdding the ${ensemblLinks.length} ensembl links`);
     for (let {src, tgt} of ensemblLinks) {
-        await addRecord('aliasof', {out: src, in: tgt}, conn, true);
+        await addRecord('aliasof', {out: src, in: tgt, source: SOURCE}, conn, true);
     }
     console.log(`\nAdding the ${aliasOf.length} aliasof links`);
     for (let {src, tgt} of aliasOf) {
-        await addRecord('aliasof', {out: src, in: tgt}, conn, true);
+        await addRecord('aliasof', {out: src, in: tgt, source: SOURCE}, conn, true);
     }
     console.log(`\nAdding the ${deprecatedBy.length} deprecatedby links`);
     for (let {src, tgt} of deprecatedBy) {
-        await addRecord('deprecatedby', {out: src, in: tgt}, conn, true);
+        await addRecord('deprecatedby', {out: src, in: tgt, source: SOURCE}, conn, true);
     }
 };
 

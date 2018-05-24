@@ -51,6 +51,8 @@ const fs = require('fs');
 const jsonfile = require('jsonfile');
 const {addRecord, convertOwlGraphToJson} = require('./util');
 
+const SOURCE = 'ncit';
+
 const ROOT_NODES = {
     AGONIST: 'ncit:c1514',
     CHEM_MOD: 'ncit:c1932',
@@ -105,7 +107,7 @@ const createRecords = async (inputRecords, dbClassName, conn) => {
             continue;
         }
         const body = {
-            source: 'ncit',
+            source: SOURCE,
             name: node[PRED_MAP.LABEL][0],
             sourceId: node.code
         };
@@ -169,7 +171,7 @@ const uploadNCIT = async ({filename, conn}) => {
     console.log(`\nLoading ${subclassEdges.length} subclassof relationships`);
     for (let {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
-            await addRecord('subclassof', {out: records[src]['@rid'], in: records[tgt]['@rid']}, conn, true);
+            await addRecord('subclassof', {out: records[src]['@rid'], in: records[tgt]['@rid'], source: SOURCE}, conn, true);
         } else {
             process.stdout.write('x');
         }

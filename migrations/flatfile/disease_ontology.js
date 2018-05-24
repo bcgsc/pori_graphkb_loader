@@ -7,7 +7,7 @@ const request = require('request-promise');
 const {addRecord, getRecordBy} = require('./util');
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
-
+const SOURCE = 'disease ontology';
 
 const parseDoid = (ident) => {
     const match = /.*(DOID_\d+)$/.exec(ident);
@@ -52,7 +52,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         }
         node.lbl = node.lbl.toLowerCase();
         nodesByName[node.lbl] = {
-            source: 'disease ontology',
+            source: SOURCE,
             sourceId: node.id,
             name: node.lbl,
             sourceVersion: doVersion
@@ -128,7 +128,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                 await request(conn.request({
                     method: 'POST',
                     uri: 'aliasof',
-                    body: {out: synonym['@rid'], in: record['@rid']}
+                    body: {out: synonym['@rid'], in: record['@rid'], source: SOURCE}
                 }));
                 process.stdout.write('.');
             } catch (err) {
@@ -149,7 +149,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         }
         const curr = diseaseRecords[nodeLbl]['@rid'];
         for (let other of ncitAliases[nodeLbl]) {
-            await addRecord('aliasof', {out: curr, in: other['@rid']}, conn, true);
+            await addRecord('aliasof', {out: curr, in: other['@rid'], source: SOURCE}, conn, true);
         }
     }
 
@@ -183,7 +183,7 @@ const loadEdges = async ({DOID, records, conn}) => {
                     await request(conn.request({
                         method: 'POST',
                         uri: 'subclassof',
-                        body: {out: records[src]['@rid'], in: records[tgt]['@rid']}
+                        body: {out: records[src]['@rid'], in: records[tgt]['@rid'], source: SOURCE}
                     }));
                     process.stdout.write('.');
                 } catch (err) {

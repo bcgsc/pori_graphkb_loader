@@ -111,6 +111,11 @@ class SelectionQuery {
         this.model = model;
         this.conditions = {};
         this.follow = [];
+        this.skip = null;
+
+        if (inputQuery.skip) {
+            this.skip = Number(inputQuery.skip);
+        }
 
         const propertyNames = this.model.propertyNames;
 
@@ -120,7 +125,7 @@ class SelectionQuery {
         const properties = this.model.properties;
         const cast = this.model.cast;
         const subqueries = {};
-        const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit'];
+        const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip'];
         const odbArgs = ['@rid', '@class'];
         // split the original query into subqueries where appropriate
         for (let condition of Object.keys(inputQuery)) {
@@ -282,6 +287,9 @@ class SelectionQuery {
             if (conditions.length > 0) {
                 queryString = `${queryString} WHERE ${conditions.join(' AND ')}`;
             }
+        }
+        if (this.skip != null) {
+            queryString = `${queryString} skip ${this.skip}`;
         }
         return {query: queryString, params: params};
     }
@@ -452,6 +460,7 @@ const createEdge = async (db, opt) => {
  * @param {Object} [opt.where={}] the query requirements
  * @param {?number} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
  * @param {?number} [opt.limit=QUERY_LIMIT] the maximum number of records to return
+ * @param {number} [opt.skip=0] the number of records to skip (for pagination)
  *
  */
 const select = async (db, opt) => {
@@ -461,16 +470,17 @@ const select = async (db, opt) => {
         exactlyN: null,
         fetchPlan: '*:1',
         where: {},
-        limit: QUERY_LIMIT
+        limit: QUERY_LIMIT,
+        skip: 0
     }, opt);
     const query = new SelectionQuery(opt.model, opt.where, opt);
     if (VERBOSE) {
-        console.log('select query statement:', query.displayString(), {limit: opt.limit, fetchPlan: opt.fetchPlan});
+        console.log('select query statement:', query.displayString(), {limit: opt.limit, fetchPlan: opt.fetchPlan, skip: opt.skip});
     }
 
     // send the query statement to the database
     const {params, query: statement} = query.toString();
-    const recordList = await db.query(statement, {
+    const recordList = await db.query(`${statement}`, {
         params: params,
         limit: opt.limit,
         fetchPlan: opt.fetchPlan

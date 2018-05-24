@@ -6,6 +6,9 @@ const fs = require('fs');
 const {addRecord, getRecordBy, convertOwlGraphToJson} = require('./util');
 
 
+const SOURCE = 'uberon';
+
+
 const parseUberonId = (string) => {
     let match = /.*\/UBERON_(\d+)$/.exec(string);
     if (match) {
@@ -53,7 +56,7 @@ const uploadUberon = async ({filename, conn}) => {
             continue;
         }
         const body = {
-            source: 'uberon',
+            source: SOURCE,
             name: node[PRED_MAP.LABEL][0],
             sourceId: node.code
         };
@@ -72,7 +75,7 @@ const uploadUberon = async ({filename, conn}) => {
             for (let aliasCode of node[PRED_MAP.CROSS_REF]) {
                 aliasCode = aliasCode.toLowerCase();
                 if (/^ncit:c\d+$/.exec(aliasCode)) {
-                    ncitLinks.push({src: node.code, tgt: aliasCode});
+                    ncitLinks.push({src: node.code, tgt: aliasCode, source: SOURCE});
                 }
             }
         }
@@ -84,7 +87,8 @@ const uploadUberon = async ({filename, conn}) => {
         if (records[src] && records[tgt]) {
             await addRecord('subclassof', {
                 out: records[src]['@rid'],
-                in: records[tgt]['@rid']
+                in: records[tgt]['@rid'],
+                source: SOURCE
             }, conn, true);
         } else {
             process.stdout.write('x');
@@ -100,7 +104,8 @@ const uploadUberon = async ({filename, conn}) => {
             const ncitRecord = await getRecordBy('anatomicalentities', {source: 'ncit', sourceId: tgt}, conn);
             await addRecord('aliasof', {
                 out: records[src]['@rid'],
-                in: ncitRecord['@rid']
+                in: ncitRecord['@rid'],
+                source: SOURCE
             }, conn, true);
         } catch (err) {
             // ignore missing vocabulary
