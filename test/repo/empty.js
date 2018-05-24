@@ -183,6 +183,27 @@ describe('schema', () => {
             });
             expect(records).to.have.property('length', 2);
         });
+        it('limit 1', async () => {
+            const records = await select(db, {
+                model: schema.Disease,
+                limit: 1,
+                user: admin
+            });
+            expect(records).to.have.property('length', 1);
+            expect(records[0]).to.have.property('sourceId', 'cancer');
+        });
+        it('limit 1, skip 1', async () => {
+            const records = await select(db, {
+                model: schema.Disease,
+                where: {
+                    skip: 1
+                },
+                limit: 1,
+                user: admin
+            });
+            expect(records).to.have.property('length', 1);
+            expect(records[0]).to.have.property('sourceId', 'disease of cellular proliferation');
+        });
     });
     afterEach(async () => {
         // clear all V/E records
