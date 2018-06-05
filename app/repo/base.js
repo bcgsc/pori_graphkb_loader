@@ -486,6 +486,10 @@ const select = async (db, opt) => {
         fetchPlan: opt.fetchPlan
     }).all();
 
+    if (process.env.DEBUG == '1') {
+        console.log(`selected ${recordList.length} records`);
+    }
+
     if (opt.exactlyN !== null) {
         if (recordList.length === 0) {
             if (opt.exactlyN === 0) {

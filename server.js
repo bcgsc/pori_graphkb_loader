@@ -12,6 +12,8 @@ const OrientDB  = require('orientjs');
 
 //process.on('uncaughtException', app.close);
 let app;
+conf.db.name = 'api_test';
+delete conf.port;
 
 (async () => {
     try {
