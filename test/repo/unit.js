@@ -3,7 +3,7 @@ const {expect} = require('chai');
 const {castUUID, looksLikeRID} = require('./../../app/repo/util');
 const cache = require('./../../app/repo/cache');
 const {ClassModel} = require('./../../app/repo/schema');
-const {checkAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH} = require('./../../app/repo/base');
+const {checkAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH, Clause, Comparison} = require('./../../app/repo/base');
 const {PERMISSIONS} = require('./../../app/repo/constants');
 const {types, RID}  = require('orientjs');
 
@@ -136,47 +136,38 @@ describe('SelectionQuery', () => {
     const parent = new ClassModel({
         name: 'parent',
         properties: {
-            name: {name: 'name', mandatory: true},
-            child: {name: 'child', linkedModel: person}
+            name: {name: 'name', mandatory: true, type: 'string'},
+            child: {name: 'child', linkedModel: person, type: 'link'}
         }
     });
     const linkedModel = new ClassModel({
         name: 'other',
         properties: {
-            thing: {name: 'thing'}
+            thing: {name: 'thing', type: 'string'}
         }
     });
     const restrictiveModel = new ClassModel({
         name: 'example',
         properties: {
-            requiredVar: {name: 'requiredVar', mandatory: true},
-            defaultVar: {name: 'defaultVar'},
-            castable: {name: 'castable'},
-            linkVar: {name: 'linkVar', linkedModel: linkedModel},
+            requiredVar: {name: 'requiredVar', mandatory: true, type: 'string'},
+            defaultVar: {name: 'defaultVar', type: 'string'},
+            castable: {name: 'castable', type: 'string'},
+            linkVar: {name: 'linkVar', linkedModel: linkedModel, type: 'link'},
             embeddedSetVar: {name: 'embeddedSetVar', type: 'embeddedset'}
         },
         defaults: {defaultVar: () => 'default'},
         cast: {
             castable: (x) => x.toLowerCase(),
-            embeddedSetVar: (x) => {
-                const items = new Set();
-                for (let item of x) {
-                    item = item.toLowerCase().trim();
-                    if (item) {
-                        items.add(item);
-                    }
-                }
-                return items;
-            }
+            embeddedSetVar: (x) => x.toLowerCase().trim()
         }
     });
     it('errors on unexpected parameter', () => {
         expect(() => {
-            new SelectionQuery(parent, {name: 'blargh', fuzzyMatch: 1, badAttr: null});
+            new SelectionQuery(parent, {name: new Comparison('blargh'), fuzzyMatch: 1, badAttr: new Comparison(null)});
         }).to.throw('unexpected attribute');
     });
     it('match in select when returnProperties and fuzzyMatch specified', () => {
-        const query = new SelectionQuery(parent, {name: 'blargh', fuzzyMatch: 1, returnProperties: ['name', 'child']});
+        const query = new SelectionQuery(parent, {name: new Comparison('blargh'), fuzzyMatch: 1, returnProperties: ['name', 'child']});
         const {query: statement} = query.toString();
         expect(statement).to.equal(stripSQL(
             `SELECT name, child FROM (MATCH {class: parent, where: (name = :param0)}
@@ -186,13 +177,13 @@ describe('SelectionQuery', () => {
     });
     it('throws error on invalid return property', () => {
         expect(() => {
-            new SelectionQuery(parent, {name: 'blargh', returnProperties: ['name', 'bad']});
-        }).to.throw('columns on this class type');
+            new SelectionQuery(parent, {name: new Comparison('blargh'), returnProperties: ['name', 'bad']});
+        }).to.throw('is not a valid member of class');
     });
     it('match in select when returnProperties and ancestors specified');
     it('match in select when returnProperties and descendants specified');
     it('defaults to a match statement when fuzzyMatch is given', () => {
-        const query = new SelectionQuery(parent, {name: 'blargh', fuzzyMatch: 1});
+        const query = new SelectionQuery(parent, {name: new Comparison('blargh'), fuzzyMatch: 1});
         const {query: statement} = query.toString();
         expect(statement).to.equal(stripSQL(
             `MATCH {class: parent, where: (name = :param0)}
@@ -201,16 +192,16 @@ describe('SelectionQuery', () => {
         ));
     });
     it('defaults to a select statement when no follow arguments are given', () => {
-        const query = new SelectionQuery(parent, {name: 'blargh'});
+        const query = new SelectionQuery(parent, {name: new Comparison('blargh')});
         const {query: statement} = query.toString();
         expect(statement).to.equal('SELECT * FROM parent WHERE name = :param0');
     });
     it('parses simple query', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1'
+            requiredVar: new Comparison('vocab1')
         });
         expect(query).to.have.property('conditions');
-        expect(query.conditions).to.eql({requiredVar: ['vocab1']});
+        expect(query.conditions).to.eql({requiredVar: new Comparison('vocab1')});
         const {query: statement, params} = query.toString();
         expect(statement).to.equal('SELECT * FROM example WHERE requiredVar = :param0');
         expect(params).to.eql({param0: 'vocab1'});
@@ -225,12 +216,12 @@ describe('SelectionQuery', () => {
     });
     it('parses and re-flattens simple subquery', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
-            'linkVar.thing': 'thing'
+            requiredVar: new Comparison('vocab1'),
+            'linkVar.thing': new Comparison('thing')
         });
         expect(query.conditions).to.eql({
-            requiredVar: ['vocab1'],
-            'linkVar.thing': ['thing']
+            requiredVar: new Comparison('vocab1'),
+            'linkVar.thing': new Comparison('thing')
         });
         const {query: statement, params} = query.toString();
         expect(statement).to.equal('SELECT * FROM example WHERE linkVar.thing = :param0 AND requiredVar = :param1');
@@ -238,13 +229,13 @@ describe('SelectionQuery', () => {
     });
     it('parses subquery with fuzzyMatch', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
-            'linkVar.thing': 'thing',
+            requiredVar: new Comparison('vocab1'),
+            'linkVar.thing': new Comparison('thing'),
             'linkVar.fuzzyMatch': 4
         });
         expect(query.conditions).to.eql({
-            requiredVar: ['vocab1'],
-            linkVar: new SelectionQuery(linkedModel, {thing: 'thing', fuzzyMatch: 4})
+            requiredVar: new Comparison('vocab1'),
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), fuzzyMatch: 4})
         });
         const {query: statement, params} = query.toString();
         expect(statement).to.equal(stripSQL(
@@ -259,13 +250,13 @@ describe('SelectionQuery', () => {
     it('parses subquery with fuzzyMatch and both ancestors and descendants');
     it('parses subquery with ancestors (single edge class)', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
-            'linkVar.thing': 'thing',
-            'linkVar.ancestors': 'subclassof'
+            requiredVar: new Comparison('vocab1'),
+            'linkVar.thing': new Comparison('thing'),
+            'linkVar.ancestors': ['subclassof']
         });
         expect(query.conditions).to.eql({
-            requiredVar: ['vocab1'],
-            linkVar: new SelectionQuery(linkedModel, {thing: 'thing', ancestors: 'subclassof'})
+            requiredVar: new Comparison('vocab1'),
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), ancestors: ['subclassof']})
         });
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
@@ -280,13 +271,13 @@ describe('SelectionQuery', () => {
     });
     it('parses subquery with ancestors (multiple edge classes)', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
-            'linkVar.thing': 'thing',
+            requiredVar: new Comparison('vocab1'),
+            'linkVar.thing': new Comparison('thing'),
             'linkVar.ancestors': ['subclassof', 'aliasof']
         });
         expect(query.conditions).to.eql({
-            requiredVar: ['vocab1'],
-            linkVar: new SelectionQuery(linkedModel, {thing: 'thing', ancestors: ['subclassof', 'aliasof']})
+            requiredVar: new Comparison('vocab1'),
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), ancestors: ['subclassof', 'aliasof']})
         });
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
@@ -301,13 +292,13 @@ describe('SelectionQuery', () => {
     });
     it('parses subquery with descendants (single edge class)', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
-            'linkVar.thing': 'thing',
-            'linkVar.descendants': 'subclassof'
+            requiredVar: new Comparison('vocab1'),
+            'linkVar.thing': new Comparison('thing'),
+            'linkVar.descendants': ['subclassof']
         });
         expect(query.conditions).to.eql({
-            requiredVar: ['vocab1'],
-            linkVar: new SelectionQuery(linkedModel, {thing: 'thing', descendants: 'subclassof'})
+            requiredVar: new Comparison('vocab1'),
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), descendants: ['subclassof']})
         });
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
@@ -322,13 +313,13 @@ describe('SelectionQuery', () => {
     });
     it('parses subquery with descendants (multiple edge classes)', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
-            'linkVar.thing': 'thing',
+            requiredVar: new Comparison('vocab1'),
+            'linkVar.thing': new Comparison('thing'),
             'linkVar.descendants': ['subclassof', 'aliasof']
         });
         expect(query.conditions).to.eql({
-            requiredVar: ['vocab1'],
-            linkVar: new SelectionQuery(linkedModel, {thing: 'thing', descendants: ['subclassof', 'aliasof']})
+            requiredVar: new Comparison('vocab1'),
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), descendants: ['subclassof', 'aliasof']})
         });
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
@@ -343,15 +334,15 @@ describe('SelectionQuery', () => {
     });
     it('parses subquery with both ancestors and descendants', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
-            'linkVar.thing': 'thing',
+            requiredVar: new Comparison('vocab1'),
+            'linkVar.thing': new Comparison('thing'),
             'linkVar.descendants': ['subclassof'],
             'linkVar.ancestors': ['aliasof']
         });
         expect(query.conditions).to.eql({
-            requiredVar: ['vocab1'],
+            requiredVar: new Comparison('vocab1'),
             linkVar: new SelectionQuery(linkedModel, {
-                thing: 'thing',
+                thing: new Comparison('thing'),
                 descendants: ['subclassof'],
                 ancestors: ['aliasof']
             })
@@ -371,11 +362,11 @@ describe('SelectionQuery', () => {
     });
     it('parses query with fuzzyMatch', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
+            requiredVar: new Comparison('vocab1'),
             fuzzyMatch: 4
         });
         expect(query.conditions).to.eql({
-            requiredVar: ['vocab1'],
+            requiredVar: new Comparison('vocab1'),
         });
         expect(query.follow).to.eql([[new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4)]]);
         const {query: statement, params} = query.toString();
@@ -386,11 +377,11 @@ describe('SelectionQuery', () => {
     });
     it('parses query with fuzzyMatch and ancestors', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
+            requiredVar: new Comparison('vocab1'),
             fuzzyMatch: 4,
-            ancestors: ''
+            ancestors: []
         });
-        expect(query.conditions).to.eql({requiredVar: ['vocab1']});
+        expect(query.conditions).to.eql({requiredVar: new Comparison('vocab1')});
         expect(query.follow).to.eql([[
             new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4),
             new Follow([], 'in', null),
@@ -407,11 +398,11 @@ describe('SelectionQuery', () => {
     });
     it('parses query with fuzzyMatch and descendants', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
+            requiredVar: new Comparison('vocab1'),
             fuzzyMatch: 4,
-            descendants: ''
+            descendants: []
         });
-        expect(query.conditions).to.eql({requiredVar: ['vocab1']});
+        expect(query.conditions).to.eql({requiredVar: new Comparison('vocab1')});
         expect(query.follow).to.eql([[
             new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4),
             new Follow([], 'out', null),
@@ -432,9 +423,9 @@ describe('SelectionQuery', () => {
     it('parses query with both ancestors and descendants');
     it('list attribute ok', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: ['vocab1', 'vocab2']
+            requiredVar: new Clause('OR', ['vocab1', 'vocab2'])
         });
-        expect(query.conditions).to.eql({requiredVar: ['vocab1', 'vocab2']});
+        expect(query.conditions).to.eql({requiredVar: new Clause('OR', ['vocab1', 'vocab2'])});
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'vocab1', param1: 'vocab2'});
         expect(statement).to.eql(stripSQL(
@@ -443,10 +434,10 @@ describe('SelectionQuery', () => {
     });
     it('parses and flattens subquery list', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: ['vocab1', 'vocab2'],
-            'linkVar.thing': ['thing1', 'thing2']
+            requiredVar: new Clause('OR', ['vocab1', 'vocab2']),
+            'linkVar.thing': new Clause('OR', ['thing1', 'thing2'])
         });
-        expect(query.conditions).to.eql({requiredVar: ['vocab1', 'vocab2'], 'linkVar.thing': ['thing1', 'thing2']});
+        expect(query.conditions).to.eql({requiredVar: new Clause('OR', ['vocab1', 'vocab2']), 'linkVar.thing': new Clause('OR', ['thing1', 'thing2'])});
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param2: 'vocab1', param3: 'vocab2', param0: 'thing1', param1: 'thing2'});
         expect(statement).to.eql(stripSQL(
@@ -456,19 +447,19 @@ describe('SelectionQuery', () => {
     });
     it('cast for single attr', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
-            castable: 'MixedCase'
+            requiredVar: new Comparison('vocab1'),
+            castable: new Comparison('MixedCase')
         });
-        expect(query.conditions).to.eql({requiredVar: ['vocab1'], castable: ['mixedcase']});
+        expect(query.conditions).to.eql({requiredVar: new Comparison('vocab1'), castable: new Comparison('mixedcase')});
     });
     it('cast for list values', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
-            'castable': ['MixedCase', 'UPPERCASE']
+            requiredVar: new Comparison('vocab1'),
+            'castable': new Clause('OR', ['MixedCase', 'UPPERCASE'])
         });
         expect(query.conditions).to.eql({
-            requiredVar: ['vocab1'],
-            castable: ['mixedcase', 'uppercase']
+            requiredVar: new Comparison('vocab1'),
+            castable: new Clause('OR', ['mixedcase', 'uppercase'])
         });
         expect(query.follow).to.have.property('length', 0);
         const {query: statement, params} = query.toString();
@@ -480,18 +471,18 @@ describe('SelectionQuery', () => {
     });
     it('cast for list values to be compared against list attr', () => {
         const query = new SelectionQuery(restrictiveModel, {
-            requiredVar: 'vocab1',
-            'embeddedSetVar': ['mixedCase', 'UPPERCASE']
+            requiredVar: new Comparison('vocab1'),
+            'embeddedSetVar': new Clause('OR', ['mixedCase', 'UPPERCASE'])
         });
         expect(query.conditions).to.eql({
-            requiredVar: ['vocab1'],
-            embeddedSetVar: new Set('mixedcase', 'uppercase')
+            requiredVar: new Comparison('vocab1'),
+            embeddedSetVar: new Clause('OR', ['mixedcase', 'uppercase'])
         });
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'mixedcase', param1: 'uppercase', param2: 'vocab1'});
         expect(statement).to.eql(stripSQL(
             `SELECT * FROM example WHERE
-            (embeddedSetVar contains :param0 OR embeddedSetVar contains :param1)
+            (embeddedSetVar CONTAINS :param0 OR embeddedSetVar CONTAINS :param1)
             AND requiredVar = :param2`));
     });
     it('error on cast for dict attr', () => {
@@ -503,24 +494,14 @@ describe('SelectionQuery', () => {
         }).to.throw(TypeError);
     });
     describe('conditionClause', () => {
-        it('allows alternate join string', () => {
-            const selectionQuery = new SelectionQuery({
-                name: 'model',
-                formatQuery: () => { return {subqueries: {}, where: {}}; },
-                properties: {blargh: {type: 'any'}}
-            });
-            const {query, params} = selectionQuery.conditionClause('blargh', ['monkey', null], {joinOperator: ', '});
-            expect(query).to.equal('(blargh = :param0, blargh is NULL)');
-            expect(params).to.eql({param0: 'monkey'});
-        });
         it('defaults a string to an RID object if the expected property is a link', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
                 formatQuery: () => { return {subqueries: {}, where: {}}; },
                 properties: {blargh: {type: 'link'}}
             });
-            const {query, params} = selectionQuery.conditionClause('blargh', ['4:0', null]);
-            expect(query).to.equal('(blargh = :param0 OR blargh is NULL)');
+            const {query, params} = selectionQuery.conditionClause('blargh', new Clause('OR', ['4:0', null]));
+            expect(query).to.equal('blargh = :param0 OR blargh IS NULL');
             expect(params).to.eql({param0: new RID('#4:0')});
         });
         it('defaults to OR statement', () => {
@@ -529,19 +510,51 @@ describe('SelectionQuery', () => {
                 formatQuery: () => { return {subqueries: {}, where: {}}; },
                 properties: {blargh: {type: 'any'}}
             });
-            const {query, params} = selectionQuery.conditionClause('blargh', ['monkey', null]);
-            expect(query).to.equal('(blargh = :param0 OR blargh is NULL)');
+            console.log(selectionQuery);
+            const {query, params} = selectionQuery.conditionClause('blargh', new Clause('OR', ['monkey', null]));
+            console.log(query, params);
+            expect(query).to.equal('blargh = :param0 OR blargh IS NULL');
             expect(params).to.eql({param0: 'monkey'});
         });
-        it('allows the surrounding braces to be left off', () => {
+        it('allows mix of AND and OR', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
                 formatQuery: () => { return {subqueries: {}, where: {}}; },
-                properties: {blargh: {type: 'any'}}
+                properties: {blargh: {type: 'any'}, name: {type: 'string'}}
             });
-            const {query, params} = selectionQuery.conditionClause('blargh', ['monkey', null], {joinOperator: ', ', noWrap: true});
-            expect(query).to.equal('blargh = :param0, blargh is NULL');
-            expect(params).to.eql({param0: 'monkey'});
+            const {query, params} = selectionQuery.conditionClause('blargh', new Clause('AND', [new Clause('OR', ['monkey', null]), 'blargh']));
+            expect(query).to.equal('(blargh = :param0 OR blargh IS NULL) AND blargh = :param1');
+            expect(params).to.eql({param0: 'monkey', param1: 'blargh'});
+        });
+        it('containstext operator', () => {
+            const selectionQuery = new SelectionQuery({
+                name: 'model',
+                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                properties: {blargh: {type: 'string'}, name: {type: 'string'}}
+            });
+            const {query, params} = selectionQuery.conditionClause('blargh', new Comparison('monkeys', '~'));
+            expect(query).to.equal('blargh CONTAINSTEXT :param0');
+            expect(params).to.eql({param0: 'monkeys'});
+        });
+        it('not operator', () => {
+            const selectionQuery = new SelectionQuery({
+                name: 'model',
+                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                properties: {blargh: {type: 'string'}, name: {type: 'string'}}
+            });
+            const {query, params} = selectionQuery.conditionClause('blargh', new Comparison('monkeys', '=', true));
+            expect(query).to.equal('NOT (blargh = :param0)');
+            expect(params).to.eql({param0: 'monkeys'});
+        });
+        it('not and containstext operators', () => {
+            const selectionQuery = new SelectionQuery({
+                name: 'model',
+                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                properties: {blargh: {type: 'string'}, name: {type: 'string'}}
+            });
+            const {query, params} = selectionQuery.conditionClause('blargh', new Comparison('monkeys', '~', true));
+            expect(query).to.equal('NOT (blargh CONTAINSTEXT :param0)');
+            expect(params).to.eql({param0: 'monkeys'});
         });
         it('defaults to contains for non-object vs set/map/list types', () => {
             const model = new ClassModel({
@@ -551,10 +564,10 @@ describe('SelectionQuery', () => {
                 }
             });
             const selectionQuery = new SelectionQuery(model);
-            const {query} = selectionQuery.conditionClause('monkeys', [2]);
-            expect(query).to.equal('monkeys contains :param0');
+            const {query} = selectionQuery.conditionClause('monkeys', new Comparison(2));
+            expect(query).to.equal('monkeys CONTAINS :param0');
         });
-        it('defaults to = for object vs set/map/list types', () => {
+        it('defaults to contains for set/map/list types', () => {
             const model = new ClassModel({
                 name: 'blargh',
                 properties: {
@@ -562,8 +575,8 @@ describe('SelectionQuery', () => {
                 }
             });
             const selectionQuery = new SelectionQuery(model);
-            const {query} = selectionQuery.conditionClause('monkeys', [[2, 3]]);
-            expect(query).to.equal('monkeys = :param0');
+            const {query} = selectionQuery.conditionClause('monkeys', new Clause('OR', [2, 3]));
+            expect(query).to.equal('monkeys CONTAINS :param0 OR monkeys CONTAINS :param1');
         });
     });
 });
@@ -726,22 +739,13 @@ describe('ClassModel', () => {
                 properties: {
                     thing: {name: 'thing', type: 'embeddedset'}
                 },
-                cast: {thing: (x) => {
-                    const thing = new Set();
-                    for (let item of x) {
-                        item = item.toLowerCase().trim();
-                        if (item !== '') {
-                            thing.add(item);
-                        }
-                    }
-                    return thing;
-                }}
+                cast: {thing: (x) => x.toLowerCase().trim()}
             });
             const record = model.formatRecord({
                 thing: ['aThinNG', 'another THING']
             }, {dropExtra: false, addDefaults: true});
             expect(record).to.have.property('thing');
-            expect(record.thing).to.eql(new Set(['athing', 'another thing']));
+            expect(record.thing).to.eql(['athinng', 'another thing']);
         });
         it('cast inheritied embedded types', () => {
             model = new ClassModel({
@@ -749,16 +753,7 @@ describe('ClassModel', () => {
                 properties: {
                     thing: {name: 'thing', type: 'embeddedset'}
                 },
-                cast: {thing: (x) => {
-                    const thing = new Set();
-                    for (let item of x) {
-                        item = item.toLowerCase().trim();
-                        if (item !== '') {
-                            thing.add(item);
-                        }
-                    }
-                    return thing;
-                }}
+                cast: {thing: (x) => x.toLowerCase().trim()}
             });
             const childModel = new ClassModel({
                 name: 'child',
@@ -768,7 +763,7 @@ describe('ClassModel', () => {
                 thing: ['aThinNG', 'another THING']
             }, {dropExtra: false, addDefaults: true});
             expect(record).to.have.property('thing');
-            expect(record.thing).to.eql(new Set(['athing', 'another thing']));
+            expect(record.thing).to.eql(['athinng', 'another thing']);
         });
         it('does not add defaults', () => {
             expect(() => {

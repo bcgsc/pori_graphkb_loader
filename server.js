@@ -64,7 +64,9 @@ delete conf.port;
         app.listen();
         // cleanup
         process.on('SIGINT', async () => {
-            await app.close();
+            if (app) {
+                await app.close();
+            }
             process.exit(1);
         });
     } catch(err) {

@@ -7,7 +7,6 @@ const addRoutes = require('./routes');
 const OrientDB  = require('orientjs');
 const {loadSchema} = require('./repo/schema');
 const auth = require('./middleware/auth');
-const {parseNullQueryParams} = require('./middleware');
 const fs = require('fs');
 const http = require('http');
 const {VERBOSE} = require('./repo/util');
@@ -38,7 +37,7 @@ const connectDB = async (conf) => {
     try {
         schema = await loadSchema(db);
     } catch (err) {
-        server.close();
+        db.close();
         throw err;
     }
     if (VERBOSE) {
@@ -70,10 +69,12 @@ class AppServer {
             });
         }
         this.router.use(auth.checkToken);
-        this.router.use(parseNullQueryParams);
     }
     async listen() {
         // connect to the database
+        if (VERBOSE) {
+            console.log('starting db connection');
+        }
         const {db, schema} = await connectDB(this.conf);
         this.db = db;
         // create the authentication certificate for managing tokens

@@ -3,11 +3,13 @@ const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExis
 const cache = require('./cache');
 const {timeStampNow, quoteWrap, looksLikeRID, getParameterPrefix, VERBOSE} = require('./util');
 const RID = require('orientjs').RID;
+const _ = require('lodash');
 
 
 const RELATED_NODE_DEPTH = 3;
 const QUERY_LIMIT = 1000;
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
+const SPECIAL_QUERY_ARGS = new Set(['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip', 'neighbors', 'includeHistory']);
 
 
 /**
@@ -40,7 +42,7 @@ class Follow {
      * '.out('blargh', 'monkeys'){while: ($matched.out('blargh', 'monkeys').size() > 0)}'
      *
      */
-    constructor(classnames=[], type='both', depth=RELATED_NODE_DEPTH) {
+    constructor(classnames=[], type='both', depth=RELATED_NODE_DEPTH, activeOnly=true) {
         if (!['both', 'in', 'out'].includes(type)) {
             throw new AttributeError(`expected type to be: in, out, or both. But was given: ${type}`);
         }
@@ -50,39 +52,47 @@ class Follow {
         this.classnames = classnames;
         this.type = type;
         this.depth = depth === null ? null : Number(depth);
+        this.activeOnly = activeOnly;
     }
     toString() {
         const classesString = Array.from(this.classnames, quoteWrap).join(', ');
         if (this.depth === null) {
             // follow until out of edge types
-            return `.${this.type}(${classesString}){while: ($matched.${this.type}(${classesString}).size() > 0)}`;
+            if (this.activeOnly) {
+                return `.${this.type}(${classesString}){while: ($matched.${this.type}(${classesString}).size() > 0 AND $matched.deletedAt IS NULL)}`;
+            } else {
+                return `.${this.type}(${classesString}){while: ($matched.${this.type}(${classesString}).size() > 0)}`;
+            }
         } else {
-            return `.${this.type}(${classesString}){while: ($depth < ${this.depth})}`;
+            if (this.activeOnly) {
+                return `.${this.type}(${classesString}){while: ($depth < ${this.depth} AND $matched.deletedAt IS NULL)}`;
+            } else {
+                return `.${this.type}(${classesString}){while: ($depth < ${this.depth})}`;
+            }
         }
     }
     /**
      * Based on the input query, create the follow statement (part of a match expresion)
      * @param {object} query
+     * @param {Array} [query.ancestors] list of edge class names to follow for all ancestors
+     * @param {Array} [query.descendants] list of edge class names to follow for all descendants
+     * @param {int} [query.fuzzyMatch] sets how far to follow 'aliasof' and 'deprecatedby' edges
+     * @param {bool} [query.activeOnly=true] only follow active nodes/edges
      *
      * @returns {Follow} the follow statement
      */
     static parse(query) {
+        const activeOnly = query.activeOnly === undefined ? true: query.activeOnly;
         const follow = [];
         // translate the fuzzyMatch/ancestors/descendants into proper follow statements
-        if (query.ancestors !== undefined) {
-            if (typeof query.ancestors === 'string') {
-                query.ancestors = query.ancestors === '' ? [] : [query.ancestors];
-            }
-            follow.push([new this(query.ancestors, 'in', null)]);
+        if (query.ancestors) {
+            follow.push([new this(query.ancestors, 'in', null, activeOnly)]);
         }
-        if (query.descendants !== undefined) {
-            if (typeof query.descendants === 'string') {
-                query.descendants = query.descendants === '' ? [] : [query.descendants];
-            }
-            follow.push([new this(query.descendants, 'out', null)]);
+        if (query.descendants) {
+            follow.push([new this(query.descendants, 'out', null, activeOnly)]);
         }
         if (query.fuzzyMatch) {
-            const fuzzy = new this(FUZZY_CLASSES, 'both', query.fuzzyMatch);
+            const fuzzy = new this(FUZZY_CLASSES, 'both', query.fuzzyMatch, activeOnly);
             if (follow.length === 0) {
                 follow.push([fuzzy]);
             } else {
@@ -97,6 +107,102 @@ class Follow {
 }
 
 
+class Clause {
+    /**
+     * @param {string} type can be OR or AND
+     * @param {Array.<(Comparison|Clause)>} comparisons the array of comparisons (or clauses) which make up the clause
+     */
+    constructor(type='OR', comparisons=[]) {
+        this.type = type;
+        this.comparisons = Array.from(comparisons, (comp) => {
+            if (comp instanceof Clause || comp instanceof Comparison) {
+                return comp;
+            } else {
+                return new Comparison(comp);
+            }
+        });
+    }
+    push(item) {
+        this.comparisons.push(item);
+    }
+    get length() {
+        return this.comparisons.length;
+    }
+    applyCast(cast) {
+        for (let item of this.comparisons) {
+            item.applyCast(cast);
+        }
+    }
+    /**
+     * @param {string} name the name of the attribute we are comparing to
+     * @param {int} [paramIndex=0] the number to append to parameter names
+     * @param {bool} [listableType=false] indicates if the attribute being compared to is a set/list/bag/map etc.
+     */
+    toString(name, paramIndex=0, listableType=false) {
+        const params = {};
+        let components = [];
+        for (let comp of this.comparisons) {
+            const result = comp.toString(name, paramIndex + (Object.keys(params).length), listableType);
+            if (comp instanceof Clause && comp.length > 1) {
+                // wrap in brackets
+                result.query = `(${result.query})`;
+            }
+            Object.assign(params, result.params);
+            components.push(result.query);
+        }
+        let query = components.join(` ${this.type} `);
+        return {query, params};
+    }
+}
+
+
+class Comparison {
+    /**
+     * @param value the value to be compared to
+     * @param {string} operator the operator to use for the comparison
+     * @param {bool} negate if true then surround the comparison with a negation
+     */
+    constructor(value, operator='=', negate=false) {
+        this.value = value;
+        this.operator = operator;
+        this.negate = negate;
+        if (operator !== '=' && operator !== '~') {
+            throw new AttributeError('Invalid operator. Only = and ~ are supported operators');
+        }
+    }
+    applyCast(cast) {
+        this.value = cast(this.value);
+    }
+    /**
+     * @param {string} name the name of the attribute we are comparing to
+     * @param {int} [paramIndex=0] the number to append to parameter names
+     * @param {bool} [listableType=false] indicates if the attribute being compared to is a set/list/bag/map etc.
+     */
+    toString(name, paramIndex=0, listableType=false) {
+        const params = {};
+        let query;
+        const pname = `param${paramIndex}`;
+        if (listableType) {
+            if (this.value === null) {
+                query = `${name} CONTAINS NULL`;
+            } else {
+                params[pname] = this.value;
+                query = `${name} CONTAINS :${pname}`;
+            }
+        } else if (this.value !== null) {
+            params[pname] = this.value;
+            query = `${name} ${this.operator === '~' ? 'CONTAINSTEXT' : '=' } :${pname}`;
+        } else {
+            query = `${name} IS NULL`;
+        }
+        if (this.negate) {
+            query = `NOT (${query})`;
+        }
+        return {query, params};
+    }
+}
+
+
 class SelectionQuery {
     /**
      * Builds the query statement for selecting or matching records from the database
@@ -104,139 +210,115 @@ class SelectionQuery {
      * @param {Object} opt Selection options
      * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
      * @param {ClassModel} model the model to be selected from
-     * @param {Object} [where={}] the query requirements
+     * @param {Object} [inputQuery={}] object of property names linked to values, comparisons, or clauses
      *
      */
-    constructor(model, inputQuery={}, opt={activeOnly: false}) {
+    constructor(model, inputQuery={}, opt={}) {
         this.model = model;
+        console.log('model', model);
         this.conditions = {};
         this.follow = [];
-        this.skip = null;
-
-        if (inputQuery.skip) {
-            this.skip = Number(inputQuery.skip);
+        this.skip = opt.skip ? opt.skip : null;
+        this.activeOnly = opt.activeOnly === undefined ? true : opt.activeOnly;
+        this.properties = Object.assign({}, model.properties);
+        this.returnProperties = inputQuery.returnProperties ? inputQuery.returnProperties : null;
+        const propertyNames = this.model.propertyNames;
+        console.log('propertyNames', propertyNames);
+        // can only return properties which belong to this class
+        for (let propName of this.returnProperties || []) {
+            if (! propertyNames.includes(propName)) {
+                throw new AttributeError(`invalid return property '${propName}' is not a valid member of class '${this.model.name}'`);
+            }
         }
 
-        const propertyNames = this.model.propertyNames;
-
-        if (opt.activeOnly && propertyNames.includes('deletedAt')) {
+        if (this.activeOnly && propertyNames.includes('deletedAt')) {
             inputQuery.deletedAt = null;
         }
-        const properties = this.model.properties;
-        const cast = this.model.cast;
+        this.cast = Object.assign({}, this.model.cast);
         const subqueries = {};
-        const specialArgs = ['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip'];
         const odbArgs = ['@rid', '@class'];
         // split the original query into subqueries where appropriate
-        for (let condition of Object.keys(inputQuery)) {
-            if (specialArgs.includes(condition)) {
+        for (let [name, value] of Object.entries(inputQuery)) {
+            if (SPECIAL_QUERY_ARGS.has(name)) {
                 continue;
             }
-            let {prefix, suffix} = getParameterPrefix(condition);
-            let value = inputQuery[condition];
-            if (typeof value !== 'object' || value === null) {
-                // query params are returned as an array when given twice in the url but otherwise not, change all to arrays for consistency
-                value = [value];
+
+            let {prefix, suffix} = getParameterPrefix(name);
+
+            if (! (SPECIAL_QUERY_ARGS.has(suffix)) && ! (value instanceof Comparison || value instanceof Clause)) {
+                value = new Comparison(value);  // default to basic equals
             }
+
             if (! propertyNames.includes(prefix) && ! odbArgs.includes(prefix)) {
                 throw new AttributeError(`unexpected attribute ${prefix} for class ${this.model.name}`);
             }
-            if (suffix && properties[prefix].linkedModel) {
+            if (suffix && this.properties[prefix].linkedModel) {
                 if (subqueries[prefix] === undefined) {
-                    subqueries[prefix] = {where: {}, model: properties[prefix].linkedModel};
+                    subqueries[prefix] = {where: {}, model: this.properties[prefix].linkedModel};
                 }
                 subqueries[prefix].where[suffix] = value;
-            } else {
-                if (cast[condition]) {
-                    if (properties[condition] && /(set|list|map)/.exec(properties[condition].type)) {  //expect a mutli-value type already
-                        try {
-                            value = cast[condition](value);
-                        } catch (err) {
-                            throw new AttributeError(err);
-                        }
-                    } else {
-                        // cast is meant to operate individually
-                        for (let i=0; i < value.length; i++) {
-                            try {
-                                value[i] = cast[condition](value[i]);
-                            } catch (err) {
-                                throw new AttributeError(err);
-                            }
-                        }
+                continue;
+            }
+            this.conditions[name] = value;
+        }
+        this.follow = Follow.parse(Object.assign({activeOnly: this.activeOnly}, inputQuery));
+
+        for (let [name, value] of Object.entries(subqueries)) {
+            const subquery = new SelectionQuery(value.model, value.where, {activeOnly: this.activeOnly});
+            if (subquery.follow.length === 0) {  // don't need a subquery, can use direct links instead and add the property definition here
+                for (let subPropName of Object.keys(subquery.conditions)) {
+                    const combinedName = `${name}.${subPropName}`;
+                    this.conditions[combinedName] = subquery.conditions[subPropName];
+                    const propDefn = this.properties[name].linkedModel.properties[subPropName];
+                    this.properties[combinedName] = propDefn;
+                    if (subquery.model.cast[subPropName]) {
+                        this.cast[combinedName] = subquery.model.cast[subPropName];
                     }
                 }
-                this.conditions[condition] = value;
-            }
-        }
-        this.follow = Follow.parse(inputQuery);
-
-        for (let propName of Object.keys(subqueries)) {
-            const inputSubquery = subqueries[propName];
-            const subquery = new SelectionQuery(inputSubquery.model, inputSubquery.where, opt);
-            if (subquery.follow.length === 0) {  // don't need a subquery, can use direct links instead
-                for (let subPropName of Object.keys(subquery.conditions)) {
-                    this.conditions[`${propName}.${subPropName}`] = subquery.conditions[subPropName];
-                }
             } else {
-                this.conditions[propName] = subquery;
+                this.conditions[name] = subquery;
             }
         }
-
-        if (inputQuery.returnProperties !== undefined) {
-            // make sure the colnames specified make sense
-            for (let propName of inputQuery.returnProperties) {
-                if (! propertyNames.includes(propName) && ! odbArgs.includes(propName)) {
-                    throw new AttributeError(`returnProperties query parameter must be a csv delimited string of columns on this class type: ${propertyNames}`);
-                }
+        for (let [name, condition] of Object.entries(this.conditions)) {
+            if (! (condition instanceof SelectionQuery) && this.cast[name]) {
+                condition.applyCast(this.cast[name]);
             }
-            this.returnProperties = inputQuery.returnProperties;
         }
     }
 
     /**
      * @param {string} name name of the parameter
-     * @param {Array} arr array of possible values
+     * @param {Clause|Comparison} value possible value(s)
+     * @param {int} [paramIndex=0] the index to use for naming parameters
      *
      * @example
-     *  >>> query.OrClause('thing', ['blargh', null])
+     *  >>> query.OrClause('thing', new Clause('OR', [new Comparison('blargh'), new Comparison(null)]))
      *  {query: '(thing = :param0 OR thing IS NULL)', params: {param0: 'blargh'}}
      *
      * @example
-     *  >>> query.OrClause('thing', [2])
+     *  >>> query.OrClause('thing', new Comparison(2))
      *  {query: 'thing = :param0', params: {param0: 2}}
      */
-    conditionClause(name, arr, opt) {
-        opt = Object.assign({
-            joinOperator: ' OR ',
-            noWrap: false,
-            paramStartIndex: 0
-        }, opt);
-        const content = [];
-        const params = {};
-        const property = this.model.properties[name];
+    conditionClause(name, value, paramIndex=0) {
+        const property = this.properties[name];
 
-        for (let value of arr) {
-            const pname = `param${opt.paramStartIndex}`;
-            if (value === undefined || value === null) {
-                content.push(`${name} is NULL`);
-            } else {
-                if (property && property.type && property.type.includes('link') && looksLikeRID(value)) {
-                    value = new RID(`#${value.replace(/^#/, '')}`);
-                }
-                if ((typeof value !== 'object' || value instanceof RID) && property && /^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
-                    content.push(`${name} contains :${pname}`);
-                    params[pname] = value;
-                    opt.paramStartIndex++;
-                } else {
-                    content.push(`${name} = :${pname}`);
-                    params[pname] = value;
-                    opt.paramStartIndex++;
+        let isList = false;
+        if (! property || ! property.type) {
+            throw new AttributeError(`property '${name}' is not defined on this model '${this.model.name}'`);
+        }
+        if (/^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
+            isList = true;
+        }
+
+        const {query, params} = value.toString(name, paramIndex, isList);
+        if (property.type.includes('link')) {
+            for (let pname of Object.keys(params)) {
+                if (params[pname] !== null && ! looksLikeRID(params[pname])) {
+                    throw new AttributeError(`'${name}' expects an RID or null but saw '${params[pname]}'`);
+                } else if (params[pname] !== null) {
+                    params[pname] = new RID(`#${params[pname].replace(/^#/, '')}`);
                 }
             }
-        }
-        let query = `${content.join(opt.joinOperator)}`;
-        if (content.length > 1 && ! opt.noWrap) {
-            query = `(${query})`;
         }
         return {query, params};
     }
@@ -260,10 +342,13 @@ class SelectionQuery {
                 clause = this.conditions[attr].toString(paramStartIndex);
                 clause.query = `${attr} IN (SELECT @rid FROM (${clause.query}))`;
             } else {
-                clause = this.conditionClause(attr, this.conditions[attr], {paramStartIndex});
+                clause = this.conditionClause(attr, this.conditions[attr], paramStartIndex);
             }
             paramStartIndex += Object.keys(clause.params).length;
             Object.assign(params, clause.params);
+            if (this.conditions[attr] instanceof Clause && this.conditions[attr].length > 1) {
+                clause.query = `(${clause.query})`;
+            }
             conditions.push(clause.query);
         }
         if (this.follow.length > 0) {
@@ -457,7 +542,7 @@ const createEdge = async (db, opt) => {
  * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
  * @param {ClassModel} opt.model the model to be selected from
  * @param {string} [opt.fetchPlan='*: 1'] key value mapping of class names to depths of edges to follow or '*' for any class
- * @param {Object} [opt.where={}] the query requirements
+ * @param {Array} [opt.where=[]] the query requirements
  * @param {?number} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
  * @param {?number} [opt.limit=QUERY_LIMIT] the maximum number of records to return
  * @param {number} [opt.skip=0] the number of records to skip (for pagination)
@@ -469,11 +554,11 @@ const select = async (db, opt) => {
         activeOnly: true,
         exactlyN: null,
         fetchPlan: '*:1',
-        where: {},
         limit: QUERY_LIMIT,
         skip: 0
     }, opt);
-    const query = new SelectionQuery(opt.model, opt.where, opt);
+
+    const query = new SelectionQuery(opt.model, opt.where || {}, opt);
     if (VERBOSE) {
         console.log('select query statement:', query.displayString(), {limit: opt.limit, fetchPlan: opt.fetchPlan, skip: opt.skip});
     }
@@ -559,7 +644,7 @@ const remove = async (db, opt) => {
  * @param {Object} db orientjs database connection
  * @param {Object} opt options
  * @param {Object} opt.content the content for the new node (any unspecified attributes are assumed to be unchanged)
- * @param {Object} opt.where the selection criteria for the original node
+ * @param {Array} opt.where the selection criteria for the original node
  * @param {Object} opt.user the user updating the record
  */
 const update = async (db, opt) => {
@@ -568,7 +653,7 @@ const update = async (db, opt) => {
     const originalWhere = Object.assign(model.formatRecord(original, {dropExtra: true, addDefaults: false}));
     delete originalWhere.createdBy;
     delete originalWhere.history;
-    const copy = Object.assign({}, originalWhere, {deletedAt: timeStampNow()});
+    const copy = Object.assign({}, _.omit(originalWhere, ['@rid', '@version']), {deletedAt: timeStampNow()});
 
     const commit = db.let(
         'copy', (tx) => {
@@ -606,4 +691,4 @@ const update = async (db, opt) => {
     }
 };
 
-module.exports = {select, create, update, remove, checkAccess, createUser, populateCache, cacheVocabulary, QUERY_LIMIT, SelectionQuery, Follow, RELATED_NODE_DEPTH};
+module.exports = {select, create, update, remove, checkAccess, createUser, populateCache, cacheVocabulary, QUERY_LIMIT, SelectionQuery, Follow, RELATED_NODE_DEPTH, Comparison, Clause};

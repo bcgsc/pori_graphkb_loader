@@ -36,6 +36,14 @@ class ClassModel {
         }
         this.isAbstract = opt.isAbstract;
         this._properties = opt.properties || {};  // by name
+
+        for (let prop of Object.values(this._properties)) {
+            if (/(set|list|bag|map)/.exec(prop.type)) {
+                prop.iterable = true;
+            } else {
+                prop.iterable = false;
+            }
+        }
     }
 
     /**
@@ -134,21 +142,10 @@ class ClassModel {
                 cast[prop.name] = (x) => parseInt(x, 10);
             } else if (prop.type === 'string') {
                 cast[prop.name] = (x) => x.toLowerCase();
-            } else if (prop.type === 'link') {
+            } else if (prop.type.includes('link')) {
                 cast[prop.name] = castToRID;
-            } else if (prop.type === 'linkset') {
-                cast[prop.name] = (linkset) => {
-                    const formatted = new Set();
-                    for (let item of linkset) {
-                        formatted.add(castToRID(item));
-                    }
-                    return Array.from(formatted);
-                };
-            } else if (prop.type === 'linklist') {
-                cast[prop.name] = (linklist) => {
-                    return Array.from(linklist, item => castToRID(item));
-                };
             }
+
             if (prop.name === 'uuid') {
                 defaults.uuid = uuidV4;
             } else if (prop.name === 'createdAt') {
@@ -239,7 +236,13 @@ class ClassModel {
         // try the casting
         for (let attr of Object.keys(this.cast)) {
             if (formattedRecord[attr] != undefined) {
-                formattedRecord[attr] = this.cast[attr](formattedRecord[attr]);
+                if (/(bag|set|list|map)/.exec(properties[attr].type)) {
+                    for (let i in formattedRecord[attr]) {
+                        formattedRecord[attr][i] = this.cast[attr](formattedRecord[attr][i]);
+                    }
+                } else {
+                    formattedRecord[attr] = this.cast[attr](formattedRecord[attr]);
+                }
             }
         }
         // check any controlled vocabulary
@@ -930,10 +933,13 @@ const loadSchema = async (db) => {
         }
     }
     // add the api-level checks?
-    schema.V._cast['@rid'] = castToRID;
-    schema.E._cast['@rid'] = castToRID;
-    schema.V._cast.uuid = castUUID;
-    schema.E._cast.uuid = castUUID;
+    let ridProperty = {name: '@rid', type: 'string'};
+    for (let modelName of ['User', 'V', 'Vocabulary', 'E', 'UserGroup']) {
+        schema[modelName]._properties['@rid'] = ridProperty;
+        schema[modelName]._cast['@rid'] = castToRID;
+        schema[modelName]._cast.uuid = castUUID;
+    }
+
     schema.Ontology._cast.subsets = (subsets) => {
         const formatted = new Set();
         for (let item of subsets){

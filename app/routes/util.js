@@ -3,10 +3,10 @@ const jc = require('json-cycle');
 const _ = require('lodash');
 
 const {ErrorMixin, AttributeError, NoRecordFoundError,  RecordExistsError} = require('./../repo/error');
-const {select, create, update, remove, QUERY_LIMIT} = require('./../repo/base');
+const {select, create, update, remove, QUERY_LIMIT, SPEICAL_QUERY_ARGS, Clause, Comparison} = require('./../repo/base');
 const {getParameterPrefix, looksLikeRID, VERBOSE} = require('./../repo/util');
 
-
+//const SPEICAL_QUERY_ARGS = new Set(['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip']);
 const MAX_JUMPS = 6;  // fetchplans beyond 6 are very slow
 
 class InputValidationError extends ErrorMixin {}
@@ -43,17 +43,87 @@ const validateParams = async (opt) => {
 };
 
 
-const processCsvQueryParam = (value) => {
-    if (typeof value === 'string') {
-        value = value === '' ? [] : value.split(',');
-        return value;
-    } else {
-        const arr = [];
-        for (let i=0; i< value.length; i++) {
-            arr.push(...processCsvQueryParam(value[i]));
+const parseQueryLanguage = async (inputQuery) => {
+    /**
+     * parse any query parameters based on the expected operator syntax. The final result will be
+     * an object of attribute names as keys and arrays (AND) or arrays (OR) or clauses {value,operator}
+     *
+     * @example
+     * > parseQueryLanguage({'name': ['~cancer', '~pancreas|~pancreatic']})
+     * {
+     *      name: [
+     *          [{value: 'cancer', operator: '~'}],
+     *          [{value: 'pancreas', operator: '~'}, {value: 'pancreatic', operator: '~'}]
+     *      ]
+     * }
+     */
+    const query = {};
+
+    for (let {name, valueList} in inputQuery) {
+        if (name === 'fuzzyMatch' || name === 'limit' || name === 'skip' || name === 'neighbors') {
+            if (isNaN(Number(valueList))) {
+                throw new InputValidationError(`Expected ${name} to be a number, but found ${valueList}`);
+            }
+            valueList = Number(valueList);
+            if ((name === 'fuzzyMatch' || name === 'neighbors') && (valueList < 0 || valueList > MAX_JUMPS)) {
+                throw new InputValidationError(`${name} must be a number between 0 and ${MAX_JUMPS}`);
+            }
+            if ((name === 'skip' || name === 'limit') && (valueList < 1)) {
+                throw new InputValidationError(`${name} must be a positive integer greater than zero`);
+            }
+            if (name == 'limit' && valueList > QUERY_LIMIT) {
+                throw new InputValidationError(`${name} must be a value between 0 and ${QUERY_LIMIT}. Please use skip and limit to paginate larger queries`);
+            }
+            query[name] = valueList;
+        } else if (name == 'descendants' || name == 'ancestors' || name == 'returnProperties') {
+            if (typeof(valueList) !== 'string') {
+                throw new InputValidationError(`Query parameter ${name} cannot be specified multiple times`);
+            }
+            query[name] = valueList === '' ? [] : valueList.split(',');  // empty string should give an empty list
+        } else if (name === 'activeOnly') {
+            valueList = valueList.trim().lower();
+            if (['0', 'false', 'f'].includes(valueList)) {
+                query.activeOnly = false;
+            } else {
+                query.activeOnly = true;
+            }
+        } else {
+            if (typeof(valueList) === 'string') {
+                valueList = [valueList];  // when a query parameter is given multiple times, express parses it as a list. Cast any non-lists to lists to make this consistent
+            }
+            const clauseList = [];
+            for (let i in valueList) {
+                const orList = new Clause('OR');
+                for (let value of valueList[i].split('|')) {
+                    let negate = false;
+                    if (value.startswith('!')) {
+                        negate = true;
+                        value = value.slice(1);
+                    }
+                    let operator = '=';
+                    if (value.startswith('~')) {
+                        operator = '~';
+                        value = valueList.slice(1);
+                    }
+                    if (value === 'null') {
+                        value = null;
+                    }
+                    orList.push(new Comparison(value, operator, negate));
+                }
+                if (orList.length === 1) {
+                    clauseList.push(orList.comparisons[0]);
+                } else {
+                    clauseList.push(orList);
+                }
+            }
+            if (clauseList.length > 1) {
+                query[name] = new Clause('AND', clauseList);
+            } else {
+                query[name] = clauseList[0];
+            }
         }
-        return arr;
     }
+    return query;
 };
 
 
@@ -79,47 +149,29 @@ const addResourceRoutes = (opt) => {
 
     router.get(route,
         async (req, res) => {
-            let fetchPlan = '*:1';
-            if (req.query.skip !== undefined) {
-                const skip = Number(req.query.skip);
-                if (isNaN(skip) || skip < 0) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError('skip must be a number 0 or greater'));
-                    return;
-                }
-                req.query.skip = skip;
-            }
-            if (req.query.neighbors !== undefined) {
-                const neighbors = Number(req.query.neighbors);
-                if (isNaN(neighbors) || neighbors < 0 || neighbors > MAX_JUMPS) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: `neighbors must be a number between 0 and ${MAX_JUMPS}`}));
-                    return;
-                }
-                fetchPlan = `*:${neighbors}`;
-                delete req.query.neighbors;
-            }
-            if (req.query.fuzzyMatch !== undefined) {
-                const fuzzyMatch = Number(req.query.fuzzyMatch);
-                if (isNaN(fuzzyMatch) || fuzzyMatch < 0 || fuzzyMatch > MAX_JUMPS) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: `fuzzyMatch must be a number between 0 and ${MAX_JUMPS}`}));
-                    return;
-                }
-                req.query.fuzzyMatch = fuzzyMatch;
-            }
-            for (let csvParam of ['ancestors', 'descendants', 'returnProperties']) {
-                if (req.query[csvParam] !== undefined) {
-                    req.query[csvParam] = processCsvQueryParam(req.query.csvParam);
-                }
-            }
-            const params = _.omit(req.query, ['limit', 'fuzzyMatch', 'ancestors', 'descendants', 'returnProperties']);
-            const other = Object.assign({limit: QUERY_LIMIT}, _.omit(req.query, Object.keys(params)));
             try {
-                validateParams({params: params, required: reqQueryParams, optional: optQueryParams});
+                req.query = parseQueryLanguage(req.query);
+            } catch (err) {
+                if (err instanceof InputValidationError) {
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } else {
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                }
+                return;
+            }
+            try {
+                validateParams({params: _.omit(req.query, SPEICAL_QUERY_ARGS), required: reqQueryParams, optional: optQueryParams});
             } catch (err) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 return;
             }
+            let fetchPlan = '*:1';
+            if (req.query.neighbors !== undefined) {
+                fetchPlan = `*${req.query.neighbors}`;
+                delete req.query.neighbors;
+            }
             try {
-                const result = await select(db, Object.assign(other, {model: model, where: req.query, fetchPlan: fetchPlan}));
+                const result = await select(db, {model: model, where: req.query, fetchPlan: fetchPlan});
                 res.json(jc.decycle(result));
             } catch (err) {
                 if (err instanceof AttributeError) {
@@ -135,7 +187,7 @@ const addResourceRoutes = (opt) => {
     router.post(route,
         async (req, res) => {
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: 'No query parameters are allowed for this query type', params: req.query}));
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type', params: req.query}));
                 return;
             }
             try {
@@ -163,22 +215,23 @@ const addResourceRoutes = (opt) => {
     router.get(`${route}/:id`,
         async (req, res) => {
             let fetchPlan = '*:1';
-            if (req.query.neighbors !== undefined) {
-                const neighbors = Number(req.query.neighbors);
-                if (isNaN(neighbors) || neighbors < 0 || neighbors > MAX_JUMPS) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: 'neighbors must be a number between 0 and 6'}));
-                    return;
+            try {
+                req.query = parseQueryLanguage(req.query);
+            } catch (err) {
+                if (err instanceof InputValidationError) {
+                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } else {
+                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
-                fetchPlan = `*:${neighbors}`;
-                delete req.query.neighbors;
+                return;
             }
             if (! looksLikeRID(req.params.id, false)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
                 return;
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: 'No query parameters are allowed for this query type', params: req.query}));
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type', params: req.query}));
                 return;
             }
             try {
@@ -198,12 +251,12 @@ const addResourceRoutes = (opt) => {
     router.patch(`${route}/:id`,
         async (req, res) => {
             if (! looksLikeRID(req.params.id, false)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
                 return;
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: 'No query parameters are allowed for this query type', params: req.query}));
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type', params: req.query}));
                 return;
             }
             try {
@@ -236,12 +289,12 @@ const addResourceRoutes = (opt) => {
     router.delete(`${route}/:id`,
         async (req, res) => {
             if (! looksLikeRID(req.params.id, false)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
                 return;
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({message: 'No query parameters are allowed for this query type'}));
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type'}));
                 return;
             }
             try {

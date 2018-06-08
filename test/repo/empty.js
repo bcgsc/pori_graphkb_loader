@@ -195,9 +195,7 @@ describe('schema', () => {
         it('limit 1, skip 1', async () => {
             const records = await select(db, {
                 model: schema.Disease,
-                where: {
-                    skip: 1
-                },
+                skip: 1,
                 limit: 1,
                 user: admin
             });

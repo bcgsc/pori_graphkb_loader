@@ -330,6 +330,79 @@ describe('schema', () => {
             expect(res).to.have.status(HTTP_STATUS.UNAUTHORIZED);
         });
     });
+    // select neighbors that are not deleted
+    describe('propogating active record selection', () => {
+        let disease;
+        beforeEach(async () => {
+            const res1 = await chai.request(app.app)
+                .post('/api/diseases')
+                .type('json')
+                .send({
+                    sourceId: 'cancer',
+                    source: 'bcgsc'
+                })
+                .set('Authorization', mockToken);
+            disease = res1.body;
+            const res2 = await chai.request(app.app)
+                .post('/api/diseases')
+                .type('json')
+                .send({
+                    sourceId: 'carcinoma',
+                    source: 'bcgsc'
+                })
+                .set('Authorization', mockToken);
+            await chai.request(app.app)
+                .post('/api/aliasof')
+                .type('json')
+                .send({
+                    out: res1.body['@rid'],
+                    in: res2.body['@rid'],
+                    source: 'bcgsc'
+                })
+                .set('Authorization', mockToken);
+            let res3 = await chai.request(app.app)
+                .post('/api/diseases')
+                .type('json')
+                .send({
+                    sourceId: 'disease of cellular proliferation',
+                    source: 'other'
+                })
+                .set('Authorization', mockToken);
+            const res4 = await chai.request(app.app)
+                .post('/api/aliasof')
+                .type('json')
+                .send({
+                    out: res1.body['@rid'],
+                    in: res3.body['@rid'],
+                    source: 'bcgsc'
+                })
+                .set('Authorization', mockToken);
+            await chai.request(app.app)
+                .delete(`/api/diseases/${res2.body['@rid'].slice(1)}`)
+                .set('Authorization', mockToken);
+            await chai.request(app.app)
+                .delete(`/api/aliasof/${res4.body['@rid'].slice(1)}`)
+                .set('Authorization', mockToken);
+        });
+        it('default limits to active records', async () => {
+            const res = await chai.request(app.app)
+                .get(`/api/diseases/${disease['@rid'].slice(1)}`)
+                .set('Authorization', mockToken)
+                .query({neighbors: 2});
+            expect(res.body).to.have.property('sourceId', 'cancer');
+            expect(res.body).to.have.property('out_AliasOf');
+            expect(res.body.out_AliasOf).to.eql([]);
+        });
+        it('includes deleted when not limited to active', async () => {
+            const res = await chai.request(app.app)
+                .get(`/api/diseases/${disease['@rid'].slice(1)}`)
+                .set('Authorization', mockToken)
+                .query({neighbors: 2, activeOnly: false});
+            expect(res.body).to.have.property('sourceId', 'cancer');
+            expect(res.body).to.have.property('out_AliasOf');
+            expect(res.body.out_AliasOf).to.have.property('length', 2);
+        });
+    });
     afterEach(async () => {
         // clear all V/E records
         await db.query('delete edge e');
