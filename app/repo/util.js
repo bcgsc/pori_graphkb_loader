@@ -1,6 +1,7 @@
 const moment = require('moment');
 const {RID}  = require('orientjs');
 const uuidValidate = require('uuid-validate');
+const {AttributeError} = require('./error');
 
 
 const VERBOSE = (process.env.VERBOSE === '1' ? true : false);
@@ -28,19 +29,23 @@ const getParameterPrefix = (param) => {
 };
 
 /**
- * Given an input object/string, attemps to return the RID equivalent
+ * Given an input object/estring, attemps to return the RID equivalent
  * @param string the input object
  * @returns {orientjs.RID} the record ID
  */
 const castToRID = (string) => {
+    if (string == null) {
+        throw new AttributeError('cannot cast null/undefined to RID');
+    }
     if (string instanceof RID) {
         return string;
-    } else if (typeof string === 'object' && string !== null) {
+    } else if (typeof string === 'object' && string['@rid'] !== undefined) {
         return castToRID(string['@rid']);
-    } else {
+    } else if (looksLikeRID(string)) {
         string = `#${string.replace(/^#/, '')}`;
         return new RID(string);
     }
+    throw new AttributeError(`'${string}' is not a valid RID`);
 };
 
 

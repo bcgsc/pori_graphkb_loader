@@ -35,82 +35,23 @@ const addRoutes = (opt) => {
         cacheUpdate: cacheVocabulary
     });
 
-    // disease routes
-    addResourceRoutes({
-        router: router,
-        model: schema.Disease,
-        db: db
-    });
-
-    addResourceRoutes({
-        router: router,
-        model: schema.AnatomicalEntity,
-        db: db
-    });
-
-    addResourceRoutes({
-        router: router,
-        model: schema.Therapy,
-        db: db
-    });
-
-    addResourceRoutes({
-        router: router,
-        model: schema.IndependantFeature,
-        db: db
-    });
-
-    addResourceRoutes({
-        router: router,
-        model: schema.AliasOf,
-        db: db,
-        optQueryParams: ['to', 'from']
-    });
-
-    addResourceRoutes({
-        router: router,
-        model: schema.DeprecatedBy,
-        db: db,
-        optQueryParams: ['to', 'from']
-    });
-
-    addResourceRoutes({
-        router: router,
-        model: schema.SubClassOf,
-        db: db,
-        optQueryParams: ['to', 'from']
-    });
-
-    addResourceRoutes({
-        router: router,
-        model: schema.Publication,
-        db: db
-    });
-
-    addResourceRoutes({
-        router: router,
-        model: schema.CategoryVariant,
-        db: db
-    });
-
-    addResourceRoutes({
-        router: router,
-        model: schema.PositionalVariant,
-        db: db
-    });
-
-    addStatement({
-        router: router,
-        schema: schema,
-        db: db
-    });
-
-    addVariantRoutes({
-        router: router,
-        schema: schema,
-        db: db
-    });
-
+    // simple routes
+    for (let cls of Object.keys(schema)) {
+        if (schema[cls].isAbstract) {  // do not set up routes for abstract classes
+            continue;
+        }
+        if (['User', 'UserGroup', 'V', 'E', 'Vocabulary', 'Statement', 'Permissions'].includes(cls)) {
+            continue;
+        }
+        if (process.env.VERBOSE === '1') {
+            console.log(`route: ${cls}`);
+        }
+        if (schema[cls].isEdge) {
+            addResourceRoutes({router: router, model: schema[cls], db: db, optQueryParams: ['to', 'from']});
+        } else {
+            addResourceRoutes({router: router, model: schema[cls], db: db});
+        }
+    }
     addParserRoutes(router);
 };
 

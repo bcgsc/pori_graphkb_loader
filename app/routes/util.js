@@ -43,7 +43,7 @@ const validateParams = async (opt) => {
 };
 
 
-const parseQueryLanguage = async (inputQuery) => {
+const parseQueryLanguage = (inputQuery) => {
     /**
      * parse any query parameters based on the expected operator syntax. The final result will be
      * an object of attribute names as keys and arrays (AND) or arrays (OR) or clauses {value,operator}
@@ -58,8 +58,7 @@ const parseQueryLanguage = async (inputQuery) => {
      * }
      */
     const query = {};
-
-    for (let {name, valueList} in inputQuery) {
+    for (let [name, valueList] of Object.entries(inputQuery)) {
         if (name === 'fuzzyMatch' || name === 'limit' || name === 'skip' || name === 'neighbors') {
             if (isNaN(Number(valueList))) {
                 throw new InputValidationError(`Expected ${name} to be a number, but found ${valueList}`);
@@ -72,38 +71,43 @@ const parseQueryLanguage = async (inputQuery) => {
                 throw new InputValidationError(`${name} must be a positive integer greater than zero`);
             }
             if (name == 'limit' && valueList > QUERY_LIMIT) {
-                throw new InputValidationError(`${name} must be a value between 0 and ${QUERY_LIMIT}. Please use skip and limit to paginate larger queries`);
+                throw new InputValidationError(`${name} must be a number between 1 and ${QUERY_LIMIT}. Please use skip and limit to paginate larger queries`);
             }
             query[name] = valueList;
         } else if (name == 'descendants' || name == 'ancestors' || name == 'returnProperties') {
             if (typeof(valueList) !== 'string') {
                 throw new InputValidationError(`Query parameter ${name} cannot be specified multiple times`);
             }
-            query[name] = valueList === '' ? [] : valueList.split(',');  // empty string should give an empty list
+            query[name] = valueList.split(',').filter(x => x.length > 0);  // empty string should give an empty list
         } else if (name === 'activeOnly') {
-            valueList = valueList.trim().lower();
+            valueList = valueList.trim().toLowerCase();
             if (['0', 'false', 'f'].includes(valueList)) {
                 query.activeOnly = false;
             } else {
                 query.activeOnly = true;
             }
+        } else if (valueList !== null && typeof valueList == 'object' && ! (valueList instanceof Array)) {
+            // subqueries
+            valueList = parseQueryLanguage(valueList);
+            query[name] = valueList;
         } else {
-            if (typeof(valueList) === 'string') {
-                valueList = [valueList];  // when a query parameter is given multiple times, express parses it as a list. Cast any non-lists to lists to make this consistent
+            if (! (valueList instanceof Array)) {
+                valueList = [valueList];
             }
             const clauseList = [];
+
             for (let i in valueList) {
                 const orList = new Clause('OR');
                 for (let value of valueList[i].split('|')) {
                     let negate = false;
-                    if (value.startswith('!')) {
+                    if (value.startsWith('!')) {
                         negate = true;
                         value = value.slice(1);
                     }
                     let operator = '=';
-                    if (value.startswith('~')) {
+                    if (value.startsWith('~')) {
                         operator = '~';
-                        value = valueList.slice(1);
+                        value = value.slice(1);
                     }
                     if (value === 'null') {
                         value = null;
@@ -143,9 +147,6 @@ const addResourceRoutes = (opt) => {
     if (route.endsWith('ys')) {
         route = route.replace(/ys$/, 'ies');
     }
-    if (VERBOSE) {
-        console.log(`addResourceRoutes: ${route}`);
-    }
 
     router.get(route,
         async (req, res) => {
@@ -155,6 +156,9 @@ const addResourceRoutes = (opt) => {
                 if (err instanceof InputValidationError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
+                    if (VERBOSE) {
+                        console.error('INTERNAL_SERVER_ERROR', err);
+                    }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
                 return;
@@ -167,7 +171,7 @@ const addResourceRoutes = (opt) => {
             }
             let fetchPlan = '*:1';
             if (req.query.neighbors !== undefined) {
-                fetchPlan = `*${req.query.neighbors}`;
+                fetchPlan = `*:${req.query.neighbors}`;
                 delete req.query.neighbors;
             }
             try {
@@ -179,7 +183,7 @@ const addResourceRoutes = (opt) => {
                     return;
                 }
                 if (VERBOSE) {
-                    console.error(err);
+                    console.error('INTERNAL_SERVER_ERROR', err);
                 }
                 res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
@@ -203,7 +207,7 @@ const addResourceRoutes = (opt) => {
                     res.status(HTTP_STATUS.CONFLICT).json(err);
                 } else {
                     if (VERBOSE) {
-                        console.error(err);
+                        console.error('INTERNAL_SERVER_ERROR', err);
                     }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
@@ -214,13 +218,15 @@ const addResourceRoutes = (opt) => {
     // Add the id routes
     router.get(`${route}/:id`,
         async (req, res) => {
-            let fetchPlan = '*:1';
             try {
                 req.query = parseQueryLanguage(req.query);
             } catch (err) {
                 if (err instanceof InputValidationError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
+                    if (VERBOSE) {
+                        console.error('INTERNAL_SERVER_ERROR', err);
+                    }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
                 return;
@@ -230,19 +236,30 @@ const addResourceRoutes = (opt) => {
                 return;
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
-            if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type', params: req.query}));
+
+
+            let fetchPlan = '*:1';
+            if (req.query.neighbors !== undefined) {
+                fetchPlan = `*:${req.query.neighbors}`;
+                delete req.query.neighbors;
+            }
+
+            try {
+                validateParams({params: _.omit(req.query, ['activeOnly']), required: reqQueryParams, optional: optQueryParams});
+            } catch (err) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 return;
             }
+
             try {
-                const result = await select(db, {model: model, where: {'@rid': req.params.id}, exactlyN: 1, fetchPlan: fetchPlan});
+                const result = await select(db, Object.assign(req.query, {model: model, where: {'@rid': req.params.id}, exactlyN: 1, fetchPlan: fetchPlan}));
                 res.json(jc.decycle(result[0]));
             } catch (err) {
                 if (err instanceof NoRecordFoundError) {
                     res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 } else {
                     if (VERBOSE) {
-                        console.error(err);
+                        console.error('INTERNAL_SERVER_ERROR', err);
                     }
                     res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
@@ -256,7 +273,7 @@ const addResourceRoutes = (opt) => {
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type', params: req.query}));
+                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'Query parameters are allowed for this query type', params: req.query}));
                 return;
             }
             try {
@@ -320,4 +337,4 @@ const addResourceRoutes = (opt) => {
 };
 
 
-module.exports = {validateParams, addResourceRoutes, InputValidationError};
+module.exports = {validateParams, addResourceRoutes, InputValidationError, parseQueryLanguage, MAX_JUMPS};

@@ -46,7 +46,7 @@ delete conf.port;
             if (verbose) {
                 console.log('created the user:', user);
             }
-            await server.close();
+            await db.close();
         }
         console.log('creating certificate');
         console.log('creating the admin test token');

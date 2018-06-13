@@ -18,13 +18,32 @@ const emptyConf = require('./../config/empty');
 emptyConf.verbose = true;
 
 describe('schema', () => {
-    let db, schema, admin;
+    let db, schema, admin, doSource, otherSource;
     before(async () => {
         ({
             db,
             schema,
             admin
         } = await setUpEmptyDB(emptyConf));
+        if (process.env.VERBOSE == '1') {
+            console.log('finished DB setup');
+        }
+        // create the source
+        doSource = await create(db, {
+            model: schema.Source,
+            content: {
+                name: 'disease ontology'
+            },
+            user: admin
+        });
+        otherSource = await create(db, {
+            model: schema.Source,
+            content: {
+                name: 'some other source',
+                version: '2'
+            },
+            user: admin
+        });
     });
     describe('create', () => {
 
@@ -48,33 +67,22 @@ describe('schema', () => {
                 model: schema.Disease,
                 content: {
                     sourceId: 'cancer',
-                    source: 'disease ontology'
+                    source: doSource
                 },
                 user: admin
             });
             expect(record).to.have.property('sourceId', 'cancer');
-            expect(record).to.have.property('source', 'disease ontology');
-        });
-        it('errors on disease which violates source disease ontology', async () => {
-            const record = await create(db, {
-                model: schema.Disease,
-                content: {
-                    sourceId: 'cancer',
-                    source: 'disease ontology'
-                },
-                user: admin
-            });
-            expect(record).to.have.property('sourceId', 'cancer');
-            expect(record).to.have.property('source', 'disease ontology');
+            expect(record.source).to.eql(doSource['@rid']);
         });
     });
     describe('remove', () => {
+
         it('an existing node', async () => {
             const record = await create(db, {
                 model: schema.Disease,
                 content: {
                     sourceId: 'cancer',
-                    source: 'disease ontology'
+                    source: doSource
                 },
                 user: admin
             });
@@ -88,18 +96,6 @@ describe('schema', () => {
             });
             expect(deleted.deletedBy.toString()).to.equal(admin['@rid'].toString());
         });
-        it('errors on no existing node', async () => {
-            const record = await create(db, {
-                model: schema.Disease,
-                content: {
-                    sourceId: 'cancer',
-                    source: 'disease ontology'
-                },
-                user: admin
-            });
-            expect(record).to.have.property('sourceId', 'cancer');
-            expect(record).to.have.property('source', 'disease ontology');
-        });
     });
     //describe('select');
     describe('update', () => {
@@ -107,7 +103,7 @@ describe('schema', () => {
             // make the initial node
             const content = {
                 sourceId: 'cancer',
-                source: 'disease ontology'
+                source: doSource
             };
             const record = await create(db, {
                 model: schema.Disease,
@@ -115,7 +111,7 @@ describe('schema', () => {
                 user: admin
             });
             expect(record).to.have.property('sourceId', 'cancer');
-            expect(record).to.have.property('source', 'disease ontology');
+            expect(record.source).to.eql(doSource['@rid']);
             // change the name
             const updated = await update(db, {
                 content: {
@@ -127,7 +123,7 @@ describe('schema', () => {
             });
             // check that a history link has been added to the node
             expect(updated).to.have.property('sourceId', 'new name');
-            expect(updated).to.have.property('source', 'disease ontology');
+            expect(record.source).to.eql(doSource['@rid']);
             // check that the 'old'/copy node has the original details
             expect(updated['@rid']).to.eql(record['@rid']);
             // select the original node
@@ -150,7 +146,7 @@ describe('schema', () => {
                 model: schema.Disease,
                 content: {
                     sourceId: 'cancer',
-                    source: 'disease ontology'
+                    source: doSource
                 },
                 user: admin
             });
@@ -158,14 +154,14 @@ describe('schema', () => {
                 model: schema.Disease,
                 content: {
                     sourceId: 'disease of cellular proliferation',
-                    source: 'disease ontology'
+                    source: doSource
                 },
                 user: admin
             });
             await create(db, {
                 model: schema.AliasOf,
                 content: {
-                    source: 'disease ontology',
+                    source: doSource,
                     out: carcinoma['@rid'],
                     in: cancer['@rid']
                 },

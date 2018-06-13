@@ -23,6 +23,7 @@
     "rdflib": "^0.16.8",
     "request-promise": "^4.2.1",
     "shelljs": "^0.8.1",
+    "string-similarity": "^1.2.0",
     "uuid": "^3.0.1",
     "uuid-validate": "0.0.2",
     "xml2js": "^0.4.19",
@@ -36,6 +37,7 @@
     "mocha": "^5.1.1",
     "nodemon": "^1.11.0",
     "nyc": "^11.1.0",
+    "qs": "^6.5.2",
     "rewire": "^4.0.1",
     "swagger-jsdoc": "^1.9.4"
   },

@@ -4,7 +4,7 @@ const _ = require('lodash');
 
 const {PERMISSIONS} = require('./constants');
 const {createRepoFunctions} = require('./functions');
-const {castUUID, timeStampNow, getParameterPrefix, castToRID, VERBOSE} = require('./util');
+const {castUUID, timeStampNow, castToRID, VERBOSE} = require('./util');
 const cache = require('./cache');
 const {populateCache} = require('./base');
 const {AttributeError} = require('./error');
@@ -132,6 +132,9 @@ class ClassModel {
         const properties = {};
         for (let prop of oclass.properties) {
             prop = _.omit(prop, ['class']);
+            if (prop.name.startsWith('@') && ! ['@version', '@class', '@rid'].includes(prop.name)) {
+                continue;
+            }
             properties[prop.name] = prop;
 
             if (prop.defaultValue) {
@@ -143,7 +146,18 @@ class ClassModel {
             } else if (prop.type === 'string') {
                 cast[prop.name] = (x) => x.toLowerCase();
             } else if (prop.type.includes('link')) {
-                cast[prop.name] = castToRID;
+                if (prop.notNull) {
+                    cast[prop.name] = castToRID;
+                } else {
+                    cast[prop.name] = (string) => {
+                        try {
+                            if (string === null || string.toLowerCase() == 'null') {
+                                return null;
+                            }
+                        } catch (err) {}
+                        return castToRID(string);
+                    };
+                }
             }
 
             if (prop.name === 'uuid') {
@@ -183,13 +197,6 @@ class ClassModel {
         const properties = this.properties;
         const prefixed = {};
 
-        // make a nested object for the parameter prefixed options
-        for (let attr of Object.keys(record)) {
-            const {prefix, suffix} = getParameterPrefix(attr);
-            if (properties[prefix] && suffix && properties[prefix].linkedModel) {
-                prefixed[attr] = prefix;
-            }
-        }
         if (! opt.ignoreExtra && ! opt.dropExtra) {
             for (let attr of Object.keys(record)) {
                 if (this.isEdge && (attr === 'out' || attr === 'in')) {
@@ -380,26 +387,125 @@ const createSchema = async (db) => {
     if (VERBOSE) {
         console.log('defined schema for the major base classes');
     }
-    // now create the custom data related classes
-    await createClassModel(db, {
-        name: 'Feature',
-        isAbstract: true,
-        properties: [
-            {name: 'start', type: 'integer'},
-            {name: 'end', type: 'integer'},
-            {name: 'biotype', type: 'string', mandatory: true, notNull: true}
-        ]
-    });
+
     await db.class.create('Biomarker', null, null, true);  // purely for selection purposes
+
+    // create the evidence classes
+    await createClassModel(db, {
+        name: 'Evidence',
+        inherits: 'V',
+        properties: [
+            {name: 'url', type: 'string'},
+            {name: 'description', type: 'string'}
+        ],
+        isAbstract: true
+    });
+    await Promise.all([
+        createClassModel(db, {
+            name: 'Publication',
+            inherits: 'Evidence',
+            properties: [
+                {name: 'journalName', type: 'string'},
+                {name: 'title', type: 'string', mandatory: true, notNull: true},
+                {name: 'year', type: 'integer'},
+                {name: 'pubmed', type: 'integer'},
+                {name: 'pmcid', type: 'string'},
+                {name: 'doi', type: 'string'}
+            ],
+            indices: [
+                {
+                    name: 'Publication.activeTitle',
+                    type: 'unique',
+                    metadata: {ignoreNullValues: false},
+                    properties: ['deletedAt', 'title', 'year'],
+                    class: 'Publication'
+                }
+            ]
+        }),
+        createClassModel(db, {
+            name: 'ClinicalTrial',
+            inherits: 'Evidence',
+            properties: [
+                {name: 'nctID', type: 'string'},
+                {name: 'name', type: 'string', mandatory: true, notNull: true},
+                {name: 'phase', type: 'string'},
+                {name: 'size', type: 'integer'},
+                {name: 'startYear', type: 'integer'},
+                {name: 'completionYear', type: 'integer'},
+                {name: 'country', type: 'string'},
+                {name: 'city', type: 'string'}
+            ],
+            indices: [
+                {
+                    name: 'ClinicalTrial.activeName',
+                    type: 'unique',
+                    metadata: {ignoreNullValues: false},
+                    properties: ['deletedAt', 'name'],
+                    class: 'ClinicalTrial'
+                }
+            ]
+        }),
+        createClassModel(db, {
+            name: 'Statement',
+            inherits: 'V',
+            properties: [
+                {name: 'type', type: 'string', mandatory: true, notNull: true},
+                {name: 'subtype', type: 'string'},
+                {name: 'relevance', type: 'string'},
+                {name: 'reviewBy', type: 'link', linkedClass: 'User', notNull: true},
+                {name: 'reviewAt', type: 'long'},
+                {name: 'reviewStatus', type: 'string'},
+                {name: 'appliesTo', type: 'link', linkedClass: 'Biomarker', notNull: true}
+            ]
+        }),
+        createClassModel(db, {
+            name: 'Vocabulary',
+            inherits: 'V',
+            properties: [
+                {name: 'class', type: 'string', mandatory: true, notNull: true},
+                {name: 'property', type: 'string', mandatory: true, notNull: true},
+                {name: 'term', type: 'string', mandatory: true, notNull: true},
+                {name: 'definition', type: 'string'},
+                {name: 'conditionalProperty', type: 'string'},
+                {name: 'conditionalValue', type: 'string'}
+            ],
+            indices: [
+                {
+                    name: 'Vocabulary.activeTerm',
+                    type: 'unique',
+                    metadata: {ignoreNullValues: false},
+                    properties: ['deletedAt', 'class', 'property', 'term', 'conditionalProperty', 'conditionalValue'],
+                    class:  'Vocabulary'
+                }
+            ]
+        })
+    ]);
+
     if (VERBOSE) {
         console.log('defining schema for Ontology class');
     }
     await createClassModel(db, {
+        name: 'Source',
+        inherits: 'Evidence',
+        properties: [
+            {name: 'name', type: 'string', mandatory: true, notNull: true},
+            {name: 'version', type: 'string'}
+        ],
+        indices: [
+            {
+                name: 'Source.active',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['name', 'version', 'deletedAt'],
+                class: 'Source'
+            }
+        ]
+    });
+    await createClassModel(db, {
         name: 'Ontology',
         inherits: 'V,Biomarker',
         properties: [
-            {name: 'source', type: 'string', mandatory: true, notNull: true},
-            {name: 'sourceVersion', type: 'string'},
+            {name: 'source', type: 'link', mandatory: true, notNull: true},
             {name: 'sourceId', type: 'string', mandatory: true, notNull: true},
             {name: 'name', type: 'string'},
             {name: 'sourceIdVersion', type: 'string'},
@@ -412,7 +518,7 @@ const createSchema = async (db) => {
                 name: 'Ontology.active',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['source', 'sourceVersion', 'sourceId', 'name', 'deletedAt', 'sourceIdVersion'],
+                properties: ['source', 'sourceId', 'name', 'deletedAt', 'sourceIdVersion'],
                 class:  'Ontology'
             },
             {
@@ -440,49 +546,20 @@ const createSchema = async (db) => {
             {name: 'mechanismOfAction', type: 'string'}
         ]
     });
+     // now create the custom data related classes
+    await createClassModel(db, {
+        name: 'Feature',
+        inherits: 'Ontology',
+        properties: [
+            {name: 'start', type: 'integer'},
+            {name: 'end', type: 'integer'},
+            {name: 'biotype', type: 'string', mandatory: true, notNull: true}
+        ]
+    });
     await Promise.all(Array.from(['MutationSignature', 'Disease', 'Pathway', 'AnatomicalEntity'], (name) => {
         db.class.create(name, 'Ontology', null, false);
     }));
-    await createClassModel(db, {
-        name: 'IndependantFeature',
-        inherits: 'Ontology,Feature'
-    });
-    await createClassModel(db, {
-        name: 'DependantFeature',
-        inherits: 'V,Feature,Biomarker',
-        properties: [
-            {name: 'source', type: 'string', mandatory: true, notNull: true},
-            {name: 'sourceVersion', type: 'string'},
-            {name: 'sourceId', type: 'string', mandatory: true, notNull: true},
-            {name: 'sourceUri', type: 'string'},
-            {name: 'name', type: 'string'},
-            {name: 'sourceIdVersion', type: 'string'},
-            {name: 'description', type: 'string'},
-            {name: 'longName', type: 'string'},
-            {name: 'dependency', type: 'link', linkedClass: 'IndependantFeature', notNull: true}
-        ],
-        indices: [
-            {
-                name: 'DependantFeature.active',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: ['source', 'sourceVersion', 'name', 'deletedAt', 'sourceIdVersion', 'dependency'],
-                class: 'DependantFeature'
-            },
-            {
-                name: 'DependantFeature.name',
-                type: 'NOTUNIQUE_HASH_INDEX',
-                properties: ['name'],
-                class: 'DependantFeature'
-            },
-            {
-                name: 'DependantFeature.sourceId',
-                type: 'NOTUNIQUE_HASH_INDEX',
-                properties: ['sourceId'],
-                class: 'DependantFeature'
-            }
-        ]
-    });
+
     await db.class.create('Position', null, null, true);
     await createClassModel(db, {
         name: 'GenomicPosition',
@@ -636,118 +713,11 @@ const createSchema = async (db) => {
             }
         ]
     });
-    // create the evidence classes
-    await createClassModel(db, {
-        name: 'Evidence',
-        inherits: 'V',
-        properties: [
-            {name: 'url', type: 'string'},
-            {name: 'summary', type: 'string'}
-        ],
-        isAbstract: true
-    });
-    await Promise.all([
-        createClassModel(db, {
-            name: 'Publication',
-            inherits: 'Evidence',
-            properties: [
-                {name: 'journalName', type: 'string'},
-                {name: 'title', type: 'string', mandatory: true, notNull: true},
-                {name: 'year', type: 'integer'},
-                {name: 'pubmed', type: 'integer'},
-                {name: 'pmcid', type: 'string'},
-                {name: 'doi', type: 'string'}
-            ],
-            indices: [
-                {
-                    name: 'Publication.activeTitle',
-                    type: 'unique',
-                    metadata: {ignoreNullValues: false},
-                    properties: ['deletedAt', 'title', 'year'],
-                    class: 'Publication'
-                }
-            ]
-        }),
-        createClassModel(db, {
-            name: 'ClinicalTrial',
-            inherits: 'Evidence',
-            properties: [
-                {name: 'nctID', type: 'string'},
-                {name: 'name', type: 'string', mandatory: true, notNull: true},
-                {name: 'phase', type: 'string'},
-                {name: 'size', type: 'integer'},
-                {name: 'startYear', type: 'integer'},
-                {name: 'completionYear', type: 'integer'},
-                {name: 'country', type: 'string'},
-                {name: 'city', type: 'string'}
-            ],
-            indices: [
-                {
-                    name: 'ClinicalTrial.activeName',
-                    type: 'unique',
-                    metadata: {ignoreNullValues: false},
-                    properties: ['deletedAt', 'name'],
-                    class: 'ClinicalTrial'
-                }
-            ]
-        }),
-        createClassModel(db, {
-            name: 'ExternalSource',
-            inherits: 'Evidence',
-            properties: [
-                {name: 'name', type: 'string', mandatory: true, notNull: true},
-                {name: 'version', type: 'string'},
-            ],
-            indices: [
-                {
-                    name: 'ExternalSource.activeSource',
-                    type: 'unique',
-                    metadata: {ignoreNullValues: false},
-                    properties: ['deletedAt', 'name', 'version'],
-                    class: 'ExternalSource'
-                }
-            ]
-        }),
-        createClassModel(db, {
-            name: 'Statement',
-            inherits: 'V',
-            properties: [
-                {name: 'type', type: 'string', mandatory: true, notNull: true},
-                {name: 'subtype', type: 'string'},
-                {name: 'relevance', type: 'string'},
-                {name: 'reviewBy', type: 'link', linkedClass: 'User', notNull: true},
-                {name: 'reviewAt', type: 'long'},
-                {name: 'reviewStatus', type: 'string'},
-                {name: 'appliesTo', type: 'link', linkedClass: 'Biomarker', notNull: true}
-            ]
-        }),
-        createClassModel(db, {
-            name: 'Vocabulary',
-            inherits: 'V',
-            properties: [
-                {name: 'class', type: 'string', mandatory: true, notNull: true},
-                {name: 'property', type: 'string', mandatory: true, notNull: true},
-                {name: 'term', type: 'string', mandatory: true, notNull: true},
-                {name: 'definition', type: 'string'},
-                {name: 'conditionalProperty', type: 'string'},
-                {name: 'conditionalValue', type: 'string'}
-            ],
-            indices: [
-                {
-                    name: 'Vocabulary.activeTerm',
-                    type: 'unique',
-                    metadata: {ignoreNullValues: false},
-                    properties: ['deletedAt', 'class', 'property', 'term', 'conditionalProperty', 'conditionalValue'],
-                    class:  'Vocabulary'
-                }
-            ]
-        })
-    ]);
     await createClassModel(db, {
         name: 'OntologyEdge',
         inherits: 'E',
         properties: [
-            {name: 'source', type: 'string', mandatory: true, notNull: true},
+            {name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source'},
             {name: 'sourceVersion', type: 'string'}
         ]
     });
@@ -763,7 +733,7 @@ const createSchema = async (db) => {
                 {name: 'in', type: 'link'},
                 {name: 'out', type: 'link'}
             ],
-            indices: [
+            indices: [ // add index on the class so it doesn't apply across classes
                 {
                     name: `${name}.restrictMulti`,
                     type: 'unique',
@@ -806,15 +776,12 @@ const createSchema = async (db) => {
         'CategoryVariant',
         'Cites',
         'ClinicalTrial',
-        'DependantFeature',
         'DeprecatedBy',
         'Disease',
         'E',
         'ElementOf',
-        'ExternalSource',
         'Feature',
         'Implies',
-        'IndependantFeature',
         'Infers',
         'MutationSignature',
         'Ontology',
@@ -869,20 +836,18 @@ const loadSchema = async (db) => {
         const parent = inheritanceMap[name];
         schema[name]._inherits.push(schema[parent]);
     }
-    schema.IndependantFeature._inherits.push(schema.Feature);  // work-around for orientjs not loading all superclasses (only loads the first)
-    schema.DependantFeature._inherits.push(schema.Feature);
-    for (let cls of ['Variant', 'Ontology', 'DependantFeature']) {
+    for (let cls of ['Variant', 'Ontology']) {
         schema[cls]._inherits.push(schema.Biomarker);
     }
 
     // defines the source/target classes allowed for each type of edge/relationship
     const edgeRestrictions = {
-        AliasOf: [],
-        DeprecatedBy: [],
+        AliasOf: [],  // auto add all self
+        DeprecatedBy: [],  // auto add all self
         ElementOf: [
             ['ClinicalTrial', 'Publication'],
-            ['Publication', 'ExternalSource'],
-            ['ClinicalTrial', 'ExternalSource']
+            ['Publication', 'Source'],
+            ['ClinicalTrial', 'Source']
         ],
         Implies: [
             ['CategoryVariant', 'Statement'],
@@ -894,11 +859,11 @@ const loadSchema = async (db) => {
             ['PositionalVariant', 'PositionalVariant'],
             ['CategoryVariant', 'CategoryVariant']
         ],
-        SubClassOf: [],
+        SubClassOf: [],  // auto add all self
         SupportedBy: [
             ['Statement', 'Publication'],
             ['Statement', 'ClinicalTrial'],
-            ['Statement', 'ExternalSource']
+            ['Statement', 'Source']
         ],
         TargetOf: [
             ['Disease', 'Therapy'],
@@ -907,17 +872,10 @@ const loadSchema = async (db) => {
     };
 
     // make the ontology base models
-    for (let name of ['Disease', 'Pathway', 'Pathway', 'Therapy', 'MutationSignature', 'IndependantFeature', 'DependantFeature', 'AnatomicalEntity']) {
-        if (name === 'DependantFeature') {
-            edgeRestrictions.ElementOf.push([name, 'IndependantFeature']);
-        } else {
-            edgeRestrictions.ElementOf.push([name, name]);
-        }
-        if (name !== 'DependantFeature' && name !== 'IndependantFeature') {
-            edgeRestrictions.SubClassOf.push([name, name]);
-        }
+    for (let name of ['Disease', 'Pathway', 'Pathway', 'Therapy', 'MutationSignature', 'Feature', 'AnatomicalEntity']) {
         edgeRestrictions.AliasOf.push([name, name]);
         edgeRestrictions.DeprecatedBy.push([name, name]);
+        edgeRestrictions.SubClassOf.push([name, name]);
         edgeRestrictions.Implies.push([name, 'Statement']);
     }
 
@@ -940,16 +898,7 @@ const loadSchema = async (db) => {
         schema[modelName]._cast.uuid = castUUID;
     }
 
-    schema.Ontology._cast.subsets = (subsets) => {
-        const formatted = new Set();
-        for (let item of subsets){
-            item = item.toLowerCase().trim();
-            if (item) {
-                formatted.add(item);
-            }
-        }
-        return Array.from(formatted);
-    };
+    schema.Ontology._cast.subsets = item => item.trim().toLowerCase();
     if (schema.E._edgeRestrictions === null) {
         schema.E._edgeRestrictions = [];
     }
@@ -985,6 +934,9 @@ const loadSchema = async (db) => {
         if (! model.isEdge && model.inherits.includes('E')) {
             model.isEdge = true;
         }
+    }
+    if (VERBOSE) {
+        console.log('schema loading complete');
     }
     return schema;
 };

@@ -922,7 +922,7 @@ components:
                 name: subsets
                 schema:
                     type: string
-                description: ontology subset this term belongs to
+                description: ontology subset this term belongs to. Queries will check they query item against every item in the set
     schemas:
         Error:
             type: object

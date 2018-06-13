@@ -1,11 +1,13 @@
 'use strict';
 const {expect} = require('chai');
 const {castUUID, looksLikeRID} = require('./../../app/repo/util');
+const {parseQueryLanguage, MAX_JUMPS} = require('./../../app/routes/util');
 const cache = require('./../../app/repo/cache');
 const {ClassModel} = require('./../../app/repo/schema');
-const {checkAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH, Clause, Comparison} = require('./../../app/repo/base');
+const {checkAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH, Clause, Comparison, QUERY_LIMIT} = require('./../../app/repo/base');
 const {PERMISSIONS} = require('./../../app/repo/constants');
 const {types, RID}  = require('orientjs');
+const qs = require('qs'); // to simulate express query parameter pparsing for tests
 
 
 const OJS_TYPES = {};
@@ -81,46 +83,83 @@ describe('Follow', () => {
     });
     it('allows empty constructor arguments', () => {
         const follow = new Follow();
-        expect(follow.toString()).to.equal(`.both(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
+        expect(follow.toString()).to.equal(`.both(){while: ($depth < ${RELATED_NODE_DEPTH} AND deletedAt IS NULL), where: (deletedAt IS NULL)}`);
     });
     it('allows In edge type', () => {
-        const follow = new Follow([], 'in');
+        const follow = new Follow([], 'in', RELATED_NODE_DEPTH, false);
         expect(follow.toString()).to.equal(`.in(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
     });
+    it('allows in edge type (default active)', () => {
+        // active only ?
+        const follow = new Follow([], 'in', RELATED_NODE_DEPTH, true);
+        expect(follow.toString()).to.equal(`.in(){while: ($depth < ${RELATED_NODE_DEPTH} AND deletedAt IS NULL), where: (deletedAt IS NULL)}`);
+    });
     it('allows Out edge type', () => {
-        const follow = new Follow([], 'out');
+        const follow = new Follow([], 'out', RELATED_NODE_DEPTH, false);
         expect(follow.toString()).to.equal(`.out(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
     });
+    it('allows Out edge type (default active)', () => {
+        const follow = new Follow([], 'out');
+        expect(follow.toString()).to.equal(`.out(){while: ($depth < ${RELATED_NODE_DEPTH} AND deletedAt IS NULL), where: (deletedAt IS NULL)}`);
+    });
     it('allows In and null depth', () => {
+        const follow = new Follow([], 'in', null, false);
+        expect(follow.toString()).to.equal('.in(){while: (in().size() > 0)}');
+    });
+    it('allows In and null depth (default active)', () => {
         const follow = new Follow([], 'in', null);
-        expect(follow.toString()).to.equal('.in(){while: ($matched.in().size() > 0)}');
+        expect(follow.toString()).to.equal('.in(){while: (in().size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}');
     });
     it('allows Out and null depth', () => {
+        const follow = new Follow([], 'out', null, false);
+        expect(follow.toString()).to.equal('.out(){while: (out().size() > 0)}');
+    });
+    it('allows Out and null depth (default active)', () => {
         const follow = new Follow([], 'out', null);
-        expect(follow.toString()).to.equal('.out(){while: ($matched.out().size() > 0)}');
+        expect(follow.toString()).to.equal('.out(){while: (out().size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}');
     });
     it('allows In and null depth with classes', () => {
+        const follow = new Follow(['blargh', 'monkeys'], 'in', null, false);
+        expect(follow.toString()).to.equal('.in(\'blargh\', \'monkeys\'){while: (in(\'blargh\', \'monkeys\').size() > 0)}');
+    });
+    it('allows In and null depth with classes (active)', () => {
         const follow = new Follow(['blargh', 'monkeys'], 'in', null);
-        expect(follow.toString()).to.equal('.in(\'blargh\', \'monkeys\'){while: ($matched.in(\'blargh\', \'monkeys\').size() > 0)}');
+        expect(follow.toString()).to.equal('.in(\'blargh\', \'monkeys\'){while: (in(\'blargh\', \'monkeys\').size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}');
     });
     it('allows Out and null depth with classes', () => {
+        const follow = new Follow(['blargh', 'monkeys'], 'out', null, false);
+        expect(follow.toString()).to.equal('.out(\'blargh\', \'monkeys\'){while: (out(\'blargh\', \'monkeys\').size() > 0)}');
+    });
+    it('allows Out and null depth with classes (active)', () => {
         const follow = new Follow(['blargh', 'monkeys'], 'out', null);
-        expect(follow.toString()).to.equal('.out(\'blargh\', \'monkeys\'){while: ($matched.out(\'blargh\', \'monkeys\').size() > 0)}');
+        expect(follow.toString()).to.equal('.out(\'blargh\', \'monkeys\'){while: (out(\'blargh\', \'monkeys\').size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}');
     });
     it('allows Both edge type', () => {
-        const follow = new Follow([], 'both');
+        const follow = new Follow([], 'both', RELATED_NODE_DEPTH, false);
         expect(follow.toString()).to.equal(`.both(){while: ($depth < ${RELATED_NODE_DEPTH})}`);
+    });
+    it('allows Both edge type (active)', () => {
+        const follow = new Follow([], 'both');
+        expect(follow.toString()).to.equal(`.both(){while: ($depth < ${RELATED_NODE_DEPTH} AND deletedAt IS NULL), where: (deletedAt IS NULL)}`);
     });
     it('throws error for null depth and both type', () => {
         expect(() => { new Follow([], 'both', null);}).to.throw();
     });
     it('allows multiple edge classes', () => {
-        const follow = new Follow(['thing1', 'thing2'], 'in');
+        const follow = new Follow(['thing1', 'thing2'], 'in', RELATED_NODE_DEPTH, false);
         expect(follow.toString()).to.equal(`.in('thing1', 'thing2'){while: ($depth < ${RELATED_NODE_DEPTH})}`);
     });
+    it('allows multiple edge classes (active)', () => {
+        const follow = new Follow(['thing1', 'thing2'], 'in');
+        expect(follow.toString()).to.equal(`.in('thing1', 'thing2'){while: ($depth < ${RELATED_NODE_DEPTH} AND deletedAt IS NULL), where: (deletedAt IS NULL)}`);
+    });
     it('allows input depth to override default', () => {
-        const follow = new Follow([], 'in', RELATED_NODE_DEPTH + 1);
+        const follow = new Follow([], 'in', RELATED_NODE_DEPTH + 1, false);
         expect(follow.toString()).to.equal(`.in(){while: ($depth < ${RELATED_NODE_DEPTH + 1})}`);
+    });
+    it('allows input depth to override default (active)', () => {
+        const follow = new Follow([], 'in', RELATED_NODE_DEPTH + 1);
+        expect(follow.toString()).to.equal(`.in(){while: ($depth < ${RELATED_NODE_DEPTH + 1} AND deletedAt IS NULL), where: (deletedAt IS NULL)}`);
     });
 });
 
@@ -163,15 +202,25 @@ describe('SelectionQuery', () => {
     });
     it('errors on unexpected parameter', () => {
         expect(() => {
-            new SelectionQuery(parent, {name: new Comparison('blargh'), fuzzyMatch: 1, badAttr: new Comparison(null)});
+            const query = new SelectionQuery(parent, {name: new Comparison('blargh'), fuzzyMatch: 1, badAttr: new Comparison(null)});
+            console.log(query);
         }).to.throw('unexpected attribute');
     });
     it('match in select when returnProperties and fuzzyMatch specified', () => {
-        const query = new SelectionQuery(parent, {name: new Comparison('blargh'), fuzzyMatch: 1, returnProperties: ['name', 'child']});
+        const query = new SelectionQuery(parent, {name: new Comparison('blargh'), fuzzyMatch: 1, returnProperties: ['name', 'child']}, {activeOnly: false});
         const {query: statement} = query.toString();
         expect(statement).to.equal(stripSQL(
             `SELECT name, child FROM (MATCH {class: parent, where: (name = :param0)}
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 1)}
+            RETURN $pathElements)`
+        ));
+    });
+    it('match in select when returnProperties and fuzzyMatch specified (activeOnly)', () => {
+        const query = new SelectionQuery(parent, {name: new Comparison('blargh'), fuzzyMatch: 1, returnProperties: ['name', 'child']}, {activeOnly: true});
+        const {query: statement} = query.toString();
+        expect(statement).to.equal(stripSQL(
+            `SELECT name, child FROM (MATCH {class: parent, where: (deletedAt IS NULL AND name = :param0)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 1 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
             RETURN $pathElements)`
         ));
     });
@@ -183,7 +232,7 @@ describe('SelectionQuery', () => {
     it('match in select when returnProperties and ancestors specified');
     it('match in select when returnProperties and descendants specified');
     it('defaults to a match statement when fuzzyMatch is given', () => {
-        const query = new SelectionQuery(parent, {name: new Comparison('blargh'), fuzzyMatch: 1});
+        const query = new SelectionQuery(parent, {name: new Comparison('blargh'), fuzzyMatch: 1}, {activeOnly: false});
         const {query: statement} = query.toString();
         expect(statement).to.equal(stripSQL(
             `MATCH {class: parent, where: (name = :param0)}
@@ -191,34 +240,68 @@ describe('SelectionQuery', () => {
             RETURN $pathElements`
         ));
     });
+    it('defaults to a match statement when fuzzyMatch is given (activeOnly)', () => {
+        const query = new SelectionQuery(parent, {name: new Comparison('blargh'), fuzzyMatch: 1});
+        const {query: statement} = query.toString();
+        expect(statement).to.equal(stripSQL(
+            `MATCH {class: parent, where: (deletedAt IS NULL AND name = :param0)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 1 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
+            RETURN $pathElements`
+        ));
+    });
     it('defaults to a select statement when no follow arguments are given', () => {
-        const query = new SelectionQuery(parent, {name: new Comparison('blargh')});
+        const query = new SelectionQuery(parent, {name: new Comparison('blargh')}, {activeOnly: false});
         const {query: statement} = query.toString();
         expect(statement).to.equal('SELECT * FROM parent WHERE name = :param0');
+    });
+    it('defaults to a select statement when no follow arguments are given (active Only)', () => {
+        const query = new SelectionQuery(parent, {name: new Comparison('blargh')}, {activeOnly: true});
+        const {query: statement} = query.toString();
+        expect(statement).to.equal('SELECT * FROM parent WHERE deletedAt IS NULL AND name = :param0');
     });
     it('parses simple query', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1')
-        });
+        }, {activeOnly: false});
         expect(query).to.have.property('conditions');
         expect(query.conditions).to.eql({requiredVar: new Comparison('vocab1')});
         const {query: statement, params} = query.toString();
         expect(statement).to.equal('SELECT * FROM example WHERE requiredVar = :param0');
         expect(params).to.eql({param0: 'vocab1'});
     });
+    it('parses simple query (activeOnly)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: new Comparison('vocab1')
+        }, {activeOnly: true});
+        expect(query).to.have.property('conditions');
+        expect(query.conditions).to.eql({requiredVar: new Comparison('vocab1'), deletedAt: new Comparison(null)});
+        const {query: statement, params} = query.toString();
+        expect(statement).to.equal('SELECT * FROM example WHERE deletedAt IS NULL AND requiredVar = :param0');
+        expect(params).to.eql({param0: 'vocab1'});
+    });
     it('parses query without where clause', () => {
-        const query = new SelectionQuery(restrictiveModel);
+        const query = new SelectionQuery(restrictiveModel, {}, {activeOnly: false});
         expect(query).to.have.property('conditions');
         expect(query.conditions).to.eql({});
         const {query: statement, params} = query.toString();
         expect(statement).to.equal('SELECT * FROM example');
         expect(params).to.eql({});
     });
+    it('parses query without where clause (activeOnly)', () => {
+        const query = new SelectionQuery(restrictiveModel, {}, {activeOnly: true});
+        expect(query).to.have.property('conditions');
+        expect(query.conditions).to.eql({
+            deletedAt: new Comparison(null)
+        });
+        const {query: statement, params} = query.toString();
+        expect(statement).to.equal('SELECT * FROM example WHERE deletedAt IS NULL');
+        expect(params).to.eql({});
+    });
     it('parses and re-flattens simple subquery', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
-            'linkVar.thing': new Comparison('thing')
-        });
+            linkVar: {thing: new Comparison('thing')}
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({
             requiredVar: new Comparison('vocab1'),
             'linkVar.thing': new Comparison('thing')
@@ -227,15 +310,32 @@ describe('SelectionQuery', () => {
         expect(statement).to.equal('SELECT * FROM example WHERE linkVar.thing = :param0 AND requiredVar = :param1');
         expect(params).to.eql({param1: 'vocab1', param0: 'thing'});
     });
+    it('parses and re-flattens simple subquery (activeOnly)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: new Comparison('vocab1'),
+            linkVar: {thing: new Comparison('thing')}
+        }, {activeOnly: true});
+        expect(query.conditions).to.eql({
+            requiredVar: new Comparison('vocab1'),
+            deletedAt: new Comparison(null),
+            'linkVar.thing': new Comparison('thing'),
+            'linkVar.deletedAt': new Comparison(null)
+        });
+        const {query: statement, params} = query.toString();
+        expect(statement).to.equal('SELECT * FROM example WHERE deletedAt IS NULL AND linkVar.deletedAt IS NULL AND linkVar.thing = :param0 AND requiredVar = :param1');
+        expect(params).to.eql({param1: 'vocab1', param0: 'thing'});
+    });
     it('parses subquery with fuzzyMatch', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
-            'linkVar.thing': new Comparison('thing'),
-            'linkVar.fuzzyMatch': 4
-        });
+            linkVar: {thing: new Comparison('thing'), fuzzyMatch: 4}
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({
             requiredVar: new Comparison('vocab1'),
-            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), fuzzyMatch: 4})
+            linkVar: new SelectionQuery(linkedModel, {
+                thing: new Comparison('thing'),
+                fuzzyMatch: 4}, {activeOnly: false}
+            )
         });
         const {query: statement, params} = query.toString();
         expect(statement).to.equal(stripSQL(
@@ -245,18 +345,35 @@ describe('SelectionQuery', () => {
                     AND requiredVar = :param1`));
         expect(params).to.eql({param1: 'vocab1', param0: 'thing'});
     });
+    it('parses subquery with fuzzyMatch (activeOnly)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: new Comparison('vocab1'),
+            linkVar: {thing: new Comparison('thing'), fuzzyMatch: 4}
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: new Comparison('vocab1'),
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), fuzzyMatch: 4, deletedAt: new Comparison(null)}),
+            deletedAt: new Comparison(null)
+        });
+        const {query: statement, params} = query.toString();
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE deletedAt IS NULL AND linkVar IN
+                (SELECT @rid FROM
+                    (MATCH {class: other, where: (deletedAt IS NULL AND thing = :param0)}.both('AliasOf', 'DeprecatedBy'){while: ($depth < 4 AND deletedAt IS NULL), where: (deletedAt IS NULL)} RETURN $pathElements))
+                    AND requiredVar = :param1`));
+        expect(params).to.eql({param1: 'vocab1', param0: 'thing'});
+    });
     it('parses subquery with fuzzyMatch and ancestors');
     it('parses subquery with fuzzyMatch and descendants');
     it('parses subquery with fuzzyMatch and both ancestors and descendants');
     it('parses subquery with ancestors (single edge class)', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
-            'linkVar.thing': new Comparison('thing'),
-            'linkVar.ancestors': ['subclassof']
-        });
+            linkVar: {thing: new Comparison('thing'), ancestors: ['subclassof']}
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({
             requiredVar: new Comparison('vocab1'),
-            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), ancestors: ['subclassof']})
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), ancestors: ['subclassof']}, {activeOnly: false})
         });
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
@@ -264,7 +381,28 @@ describe('SelectionQuery', () => {
             `SELECT * FROM example WHERE
             linkVar IN (SELECT @rid FROM
                 (MATCH {class: other, where: (thing = :param0)}
-                .in('subclassof'){while: ($matched.in('subclassof').size() > 0)}
+                .in('subclassof'){while: (in('subclassof').size() > 0)}
+                RETURN $pathElements))
+            AND requiredVar = :param1`
+        ));
+    });
+    it('parses subquery with ancestors (single edge class) (activeOnly)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: new Comparison('vocab1'),
+            linkVar: {thing: new Comparison('thing'), ancestors: ['subclassof']}
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: new Comparison('vocab1'),
+            deletedAt: new Comparison(null),
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), ancestors: ['subclassof']})
+        });
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE
+            deletedAt IS NULL AND linkVar IN (SELECT @rid FROM
+                (MATCH {class: other, where: (deletedAt IS NULL AND thing = :param0)}
+                .in('subclassof'){while: (in('subclassof').size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
                 RETURN $pathElements))
             AND requiredVar = :param1`
         ));
@@ -272,12 +410,11 @@ describe('SelectionQuery', () => {
     it('parses subquery with ancestors (multiple edge classes)', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
-            'linkVar.thing': new Comparison('thing'),
-            'linkVar.ancestors': ['subclassof', 'aliasof']
-        });
+            linkVar: {thing: new Comparison('thing'), ancestors: ['subclassof', 'aliasof']}
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({
             requiredVar: new Comparison('vocab1'),
-            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), ancestors: ['subclassof', 'aliasof']})
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), ancestors: ['subclassof', 'aliasof']}, {activeOnly: false})
         });
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
@@ -285,7 +422,28 @@ describe('SelectionQuery', () => {
             `SELECT * FROM example WHERE
             linkVar IN (SELECT @rid FROM
                 (MATCH {class: other, where: (thing = :param0)}
-                .in('subclassof', 'aliasof'){while: ($matched.in('subclassof', 'aliasof').size() > 0)}
+                .in('subclassof', 'aliasof'){while: (in('subclassof', 'aliasof').size() > 0)}
+                RETURN $pathElements))
+            AND requiredVar = :param1`
+        ));
+    });
+    it('parses subquery with ancestors (multiple edge classes) (activeOnly)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: new Comparison('vocab1'),
+            linkVar: {thing: new Comparison('thing'), ancestors: ['subclassof', 'aliasof']}
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: new Comparison('vocab1'),
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), ancestors: ['subclassof', 'aliasof']}),
+            deletedAt: new Comparison(null)
+        });
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE
+            deletedAt IS NULL AND linkVar IN (SELECT @rid FROM
+                (MATCH {class: other, where: (deletedAt IS NULL AND thing = :param0)}
+                .in('subclassof', 'aliasof'){while: (in('subclassof', 'aliasof').size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
                 RETURN $pathElements))
             AND requiredVar = :param1`
         ));
@@ -293,12 +451,11 @@ describe('SelectionQuery', () => {
     it('parses subquery with descendants (single edge class)', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
-            'linkVar.thing': new Comparison('thing'),
-            'linkVar.descendants': ['subclassof']
-        });
+            linkVar: {thing: new Comparison('thing'), descendants: ['subclassof']}
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({
             requiredVar: new Comparison('vocab1'),
-            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), descendants: ['subclassof']})
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), descendants: ['subclassof']}, {activeOnly: false})
         });
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
@@ -306,7 +463,28 @@ describe('SelectionQuery', () => {
             `SELECT * FROM example WHERE
             linkVar IN (SELECT @rid FROM
                 (MATCH {class: other, where: (thing = :param0)}
-                .out('subclassof'){while: ($matched.out('subclassof').size() > 0)}
+                .out('subclassof'){while: (out('subclassof').size() > 0)}
+                RETURN $pathElements))
+            AND requiredVar = :param1`
+        ));
+    });
+    it('parses subquery with descendants (single edge class) (activeOnly)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: new Comparison('vocab1'),
+            linkVar: {thing: new Comparison('thing'), descendants: ['subclassof']}
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: new Comparison('vocab1'),
+            deletedAt: new Comparison(null),
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), descendants: ['subclassof']})
+        });
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE
+            deletedAt IS NULL AND linkVar IN (SELECT @rid FROM
+                (MATCH {class: other, where: (deletedAt IS NULL AND thing = :param0)}
+                .out('subclassof'){while: (out('subclassof').size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
                 RETURN $pathElements))
             AND requiredVar = :param1`
         ));
@@ -314,12 +492,11 @@ describe('SelectionQuery', () => {
     it('parses subquery with descendants (multiple edge classes)', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
-            'linkVar.thing': new Comparison('thing'),
-            'linkVar.descendants': ['subclassof', 'aliasof']
-        });
+            linkVar: {thing: new Comparison('thing'), descendants: ['subclassof', 'aliasof']}
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({
             requiredVar: new Comparison('vocab1'),
-            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), descendants: ['subclassof', 'aliasof']})
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), descendants: ['subclassof', 'aliasof']}, {activeOnly: false})
         });
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
@@ -327,7 +504,28 @@ describe('SelectionQuery', () => {
             `SELECT * FROM example WHERE
             linkVar IN (SELECT @rid FROM
                 (MATCH {class: other, where: (thing = :param0)}
-                .out('subclassof', 'aliasof'){while: ($matched.out('subclassof', 'aliasof').size() > 0)}
+                .out('subclassof', 'aliasof'){while: (out('subclassof', 'aliasof').size() > 0)}
+                RETURN $pathElements))
+            AND requiredVar = :param1`
+        ));
+    });
+    it('parses subquery with descendants (multiple edge classes) (activeOnly)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: new Comparison('vocab1'),
+            linkVar: {thing: new Comparison('thing'), descendants: ['subclassof', 'aliasof']}
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: new Comparison('vocab1'),
+            deletedAt: new Comparison(null),
+            linkVar: new SelectionQuery(linkedModel, {thing: new Comparison('thing'), descendants: ['subclassof', 'aliasof']})
+        });
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE
+            deletedAt IS NULL AND linkVar IN (SELECT @rid FROM
+                (MATCH {class: other, where: (deletedAt IS NULL AND thing = :param0)}
+                .out('subclassof', 'aliasof'){while: (out('subclassof', 'aliasof').size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
                 RETURN $pathElements))
             AND requiredVar = :param1`
         ));
@@ -335,12 +533,37 @@ describe('SelectionQuery', () => {
     it('parses subquery with both ancestors and descendants', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
-            'linkVar.thing': new Comparison('thing'),
-            'linkVar.descendants': ['subclassof'],
-            'linkVar.ancestors': ['aliasof']
+            linkVar: {thing: new Comparison('thing'), descendants: ['subclassof'], ancestors: ['aliasof']}
+        }, {activeOnly: false});
+        expect(query.conditions).to.eql({
+            requiredVar: new Comparison('vocab1'),
+            linkVar: new SelectionQuery(linkedModel, {
+                thing: new Comparison('thing'),
+                descendants: ['subclassof'],
+                ancestors: ['aliasof']
+            }, {activeOnly: false})
+        });
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
+        expect(statement).to.equal(stripSQL(
+            `SELECT * FROM example WHERE
+            linkVar IN (SELECT @rid FROM
+                (MATCH {class: other, where: (thing = :param0)}
+                .in('aliasof'){while: (in('aliasof').size() > 0)},
+                {class: other, where: (thing = :param0)}
+                .out('subclassof'){while: (out('subclassof').size() > 0)}
+                RETURN $pathElements))
+            AND requiredVar = :param1`
+        ));
+    });
+    it('parses subquery with both ancestors and descendants (activeOnly)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: new Comparison('vocab1'),
+            linkVar: {thing: new Comparison('thing'), descendants: ['subclassof'], ancestors: ['aliasof']}
         });
         expect(query.conditions).to.eql({
             requiredVar: new Comparison('vocab1'),
+            deletedAt: new Comparison(null),
             linkVar: new SelectionQuery(linkedModel, {
                 thing: new Comparison('thing'),
                 descendants: ['subclassof'],
@@ -351,11 +574,11 @@ describe('SelectionQuery', () => {
         expect(params).to.eql({param0: 'thing', param1: 'vocab1'});
         expect(statement).to.equal(stripSQL(
             `SELECT * FROM example WHERE
-            linkVar IN (SELECT @rid FROM
-                (MATCH {class: other, where: (thing = :param0)}
-                .in('aliasof'){while: ($matched.in('aliasof').size() > 0)},
-                {class: other, where: (thing = :param0)}
-                .out('subclassof'){while: ($matched.out('subclassof').size() > 0)}
+            deletedAt IS NULL AND linkVar IN (SELECT @rid FROM
+                (MATCH {class: other, where: (deletedAt IS NULL AND thing = :param0)}
+                .in('aliasof'){while: (in('aliasof').size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)},
+                {class: other, where: (deletedAt IS NULL AND thing = :param0)}
+                .out('subclassof'){while: (out('subclassof').size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
                 RETURN $pathElements))
             AND requiredVar = :param1`
         ));
@@ -364,24 +587,41 @@ describe('SelectionQuery', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
             fuzzyMatch: 4
-        });
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({
             requiredVar: new Comparison('vocab1'),
         });
-        expect(query.follow).to.eql([[new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4)]]);
+        expect(query.follow).to.eql([[new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4, false)]]);
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'vocab1'});
         expect(statement).to.eql(stripSQL(
             `MATCH {class: example, where: (requiredVar = :param0)}
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)} RETURN $pathElements`));
     });
-    it('parses query with fuzzyMatch and ancestors', () => {
+    it('parses query with fuzzyMatch (activeOnly)', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: new Comparison('vocab1'),
+            fuzzyMatch: 4,
+            deletedAt: new Comparison(null)
+        });
+        expect(query.conditions).to.eql({
+            requiredVar: new Comparison('vocab1'),
+            deletedAt: new Comparison(null)
+        });
+        expect(query.follow).to.eql([[new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4)]]);
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'vocab1'});
+        expect(statement).to.eql(stripSQL(
+            `MATCH {class: example, where: (deletedAt IS NULL AND requiredVar = :param0)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4 AND deletedAt IS NULL), where: (deletedAt IS NULL)} RETURN $pathElements`));
+    });
+    it('parses query with fuzzyMatch and ancestors (activeOnly', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
             fuzzyMatch: 4,
             ancestors: []
-        });
-        expect(query.conditions).to.eql({requiredVar: new Comparison('vocab1')});
+        }, {activeOnly: true});
+        expect(query.conditions).to.eql({requiredVar: new Comparison('vocab1'), deletedAt: new Comparison(null)});
         expect(query.follow).to.eql([[
             new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4),
             new Follow([], 'in', null),
@@ -390,9 +630,30 @@ describe('SelectionQuery', () => {
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'vocab1'});
         expect(statement).to.eql(stripSQL(
+            `MATCH {class: example, where: (deletedAt IS NULL AND requiredVar = :param0)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
+            .in(){while: (in().size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
+            RETURN $pathElements`));
+    });
+    it('parses query with fuzzyMatch and ancestors', () => {
+        const query = new SelectionQuery(restrictiveModel, {
+            requiredVar: new Comparison('vocab1'),
+            fuzzyMatch: 4,
+            ancestors: []
+        }, {activeOnly: false});
+        expect(query.conditions).to.eql({requiredVar: new Comparison('vocab1')});
+        expect(query.follow).to.eql([[
+            new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4, false),
+            new Follow([], 'in', null, false),
+            new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4, false)
+        ]]);
+        const {query: statement, params} = query.toString();
+        expect(params).to.eql({param0: 'vocab1'});
+        expect(statement).to.eql(stripSQL(
             `MATCH {class: example, where: (requiredVar = :param0)}
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
-            .in(){while: ($matched.in().size() > 0)}
+            .in(){while: (in().size() > 0)}
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
             RETURN $pathElements`));
     });
@@ -401,19 +662,19 @@ describe('SelectionQuery', () => {
             requiredVar: new Comparison('vocab1'),
             fuzzyMatch: 4,
             descendants: []
-        });
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({requiredVar: new Comparison('vocab1')});
         expect(query.follow).to.eql([[
-            new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4),
-            new Follow([], 'out', null),
-            new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4)
+            new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4, false),
+            new Follow([], 'out', null, false),
+            new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4, false)
         ]]);
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'vocab1'});
         expect(statement).to.eql(stripSQL(
             `MATCH {class: example, where: (requiredVar = :param0)}
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
-            .out(){while: ($matched.out().size() > 0)}
+            .out(){while: (out().size() > 0)}
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
             RETURN $pathElements`));
     });
@@ -424,7 +685,7 @@ describe('SelectionQuery', () => {
     it('list attribute ok', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Clause('OR', ['vocab1', 'vocab2'])
-        });
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({requiredVar: new Clause('OR', ['vocab1', 'vocab2'])});
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'vocab1', param1: 'vocab2'});
@@ -435,8 +696,8 @@ describe('SelectionQuery', () => {
     it('parses and flattens subquery list', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Clause('OR', ['vocab1', 'vocab2']),
-            'linkVar.thing': new Clause('OR', ['thing1', 'thing2'])
-        });
+            linkVar: {thing: new Clause('OR', ['thing1', 'thing2'])}
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({requiredVar: new Clause('OR', ['vocab1', 'vocab2']), 'linkVar.thing': new Clause('OR', ['thing1', 'thing2'])});
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param2: 'vocab1', param3: 'vocab2', param0: 'thing1', param1: 'thing2'});
@@ -449,14 +710,14 @@ describe('SelectionQuery', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
             castable: new Comparison('MixedCase')
-        });
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({requiredVar: new Comparison('vocab1'), castable: new Comparison('mixedcase')});
     });
     it('cast for list values', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
-            'castable': new Clause('OR', ['MixedCase', 'UPPERCASE'])
-        });
+            castable: new Clause('OR', ['MixedCase', 'UPPERCASE'])
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({
             requiredVar: new Comparison('vocab1'),
             castable: new Clause('OR', ['mixedcase', 'uppercase'])
@@ -472,8 +733,8 @@ describe('SelectionQuery', () => {
     it('cast for list values to be compared against list attr', () => {
         const query = new SelectionQuery(restrictiveModel, {
             requiredVar: new Comparison('vocab1'),
-            'embeddedSetVar': new Clause('OR', ['mixedCase', 'UPPERCASE'])
-        });
+            embeddedSetVar: new Clause('OR', ['mixedCase', 'UPPERCASE'])
+        }, {activeOnly: false});
         expect(query.conditions).to.eql({
             requiredVar: new Comparison('vocab1'),
             embeddedSetVar: new Clause('OR', ['mixedcase', 'uppercase'])
@@ -498,7 +759,8 @@ describe('SelectionQuery', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
                 formatQuery: () => { return {subqueries: {}, where: {}}; },
-                properties: {blargh: {type: 'link'}}
+                properties: {blargh: {type: 'link'}},
+                propertyNames: ['blargh']
             });
             const {query, params} = selectionQuery.conditionClause('blargh', new Clause('OR', ['4:0', null]));
             expect(query).to.equal('blargh = :param0 OR blargh IS NULL');
@@ -508,11 +770,10 @@ describe('SelectionQuery', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
                 formatQuery: () => { return {subqueries: {}, where: {}}; },
-                properties: {blargh: {type: 'any'}}
+                properties: {blargh: {type: 'any'}},
+                propertyNames: ['blargh']
             });
-            console.log(selectionQuery);
             const {query, params} = selectionQuery.conditionClause('blargh', new Clause('OR', ['monkey', null]));
-            console.log(query, params);
             expect(query).to.equal('blargh = :param0 OR blargh IS NULL');
             expect(params).to.eql({param0: 'monkey'});
         });
@@ -520,7 +781,8 @@ describe('SelectionQuery', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
                 formatQuery: () => { return {subqueries: {}, where: {}}; },
-                properties: {blargh: {type: 'any'}, name: {type: 'string'}}
+                properties: {blargh: {type: 'any'}, name: {type: 'string'}},
+                propertyNames: ['blargh', 'name']
             });
             const {query, params} = selectionQuery.conditionClause('blargh', new Clause('AND', [new Clause('OR', ['monkey', null]), 'blargh']));
             expect(query).to.equal('(blargh = :param0 OR blargh IS NULL) AND blargh = :param1');
@@ -530,7 +792,8 @@ describe('SelectionQuery', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
                 formatQuery: () => { return {subqueries: {}, where: {}}; },
-                properties: {blargh: {type: 'string'}, name: {type: 'string'}}
+                properties: {blargh: {type: 'string'}, name: {type: 'string'}},
+                propertyNames: ['blargh', 'name']
             });
             const {query, params} = selectionQuery.conditionClause('blargh', new Comparison('monkeys', '~'));
             expect(query).to.equal('blargh CONTAINSTEXT :param0');
@@ -540,7 +803,8 @@ describe('SelectionQuery', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
                 formatQuery: () => { return {subqueries: {}, where: {}}; },
-                properties: {blargh: {type: 'string'}, name: {type: 'string'}}
+                properties: {blargh: {type: 'string'}, name: {type: 'string'}},
+                propertyNames: ['blargh', 'name']
             });
             const {query, params} = selectionQuery.conditionClause('blargh', new Comparison('monkeys', '=', true));
             expect(query).to.equal('NOT (blargh = :param0)');
@@ -550,7 +814,8 @@ describe('SelectionQuery', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
                 formatQuery: () => { return {subqueries: {}, where: {}}; },
-                properties: {blargh: {type: 'string'}, name: {type: 'string'}}
+                properties: {blargh: {type: 'string'}, name: {type: 'string'}},
+                propertyNames: ['blargh', 'name']
             });
             const {query, params} = selectionQuery.conditionClause('blargh', new Comparison('monkeys', '~', true));
             expect(query).to.equal('NOT (blargh CONTAINSTEXT :param0)');
@@ -561,7 +826,8 @@ describe('SelectionQuery', () => {
                 name: 'blargh',
                 properties: {
                     monkeys: {name: 'monkeys', type: 'embeddedlist'}
-                }
+                },
+                propertyNames: ['monkeys']
             });
             const selectionQuery = new SelectionQuery(model);
             const {query} = selectionQuery.conditionClause('monkeys', new Comparison(2));
@@ -572,11 +838,196 @@ describe('SelectionQuery', () => {
                 name: 'blargh',
                 properties: {
                     monkeys: {name: 'monkeys', type: 'embeddedlist'}
-                }
+                },
+                propertyNames: ['monkeys']
             });
             const selectionQuery = new SelectionQuery(model);
             const {query} = selectionQuery.conditionClause('monkeys', new Clause('OR', [2, 3]));
             expect(query).to.equal('monkeys CONTAINS :param0 OR monkeys CONTAINS :param1');
+        });
+    });
+});
+
+
+describe('parseQueryLanguage', () => {
+    it('not operator', () => {
+        const result = parseQueryLanguage(qs.parse('thing=!0'));
+        expect(result).to.eql({thing: new Comparison('0', '=', true)});
+    });
+    it('OR operator', () => {
+        const result = parseQueryLanguage(qs.parse('thing=2|3'));
+        expect(result).to.eql({thing: new Clause('OR', ['2', '3'])});
+    });
+    describe('fuzzyMatch', () => {
+        it('error on non-number', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('fuzzyMatch=r'));
+            }).to.throw('to be a number');
+        });
+        it('error on negative number', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('fuzzyMatch=-2'));
+            }).to.throw('must be a number between 0 and');
+        });
+        it(`error on number greater than limit ${MAX_JUMPS}`, () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse(`fuzzyMatch=${MAX_JUMPS + 1}`));
+            }).to.throw('must be a number between 0 and');
+        });
+        it('ok for valid number', () => {
+            let result = parseQueryLanguage(qs.parse('fuzzyMatch=1'));
+            expect(result).to.eql({fuzzyMatch: 1});
+            result = parseQueryLanguage(qs.parse(`fuzzyMatch=${MAX_JUMPS}`));
+            expect(result).to.eql({fuzzyMatch: MAX_JUMPS});
+        });
+    });
+    describe('neighbors', () => {
+        it('error on non-number', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('neighbors=r'));
+            }).to.throw('to be a number');
+        });
+        it('error on negative number', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('neighbors=-2'));
+            }).to.throw('must be a number between 0 and');
+        });
+        it(`error on number greater than limit ${MAX_JUMPS}`, () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse(`neighbors=${MAX_JUMPS + 1}`));
+            }).to.throw('must be a number between 0 and');
+        });
+        it('ok for valid number', () => {
+            let result = parseQueryLanguage(qs.parse('neighbors=1'));
+            expect(result).to.eql({neighbors: 1});
+            result = parseQueryLanguage(qs.parse(`neighbors=${MAX_JUMPS}`));
+            expect(result).to.eql({neighbors: MAX_JUMPS});
+        });
+    });
+    describe('limit', () => {
+        it('error on non-number', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('limit=r'));
+            }).to.throw('to be a number');
+        });
+        it('error on negative number', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('limit=-2'));
+            }).to.throw('must be a positive integer greater than');
+        });
+        it(`error on number greater than limit ${QUERY_LIMIT}`, () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse(`limit=${QUERY_LIMIT + 1}`));
+            }).to.throw('must be a number between 1 and');
+        });
+        it('ok for valid number', () => {
+            let result = parseQueryLanguage(qs.parse('limit=1'));
+            expect(result).to.eql({limit: 1});
+        });
+    });
+    describe('skip', () => {
+        it('error on non-number', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('skip=r'));
+            }).to.throw('to be a number');
+        });
+        it('error on zero', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('skip=0'));
+            }).to.throw('must be a positive');
+        });
+        it('ok for valid number', () => {
+            let result = parseQueryLanguage(qs.parse('skip=1'));
+            expect(result).to.eql({skip: 1});
+        });
+    });
+    describe('descendants', () => {
+        it('splits list', () => {
+            const result = parseQueryLanguage(qs.parse('descendants=thing,other'));
+            expect(result).to.eql({descendants: ['thing', 'other']});
+        });
+        it('removes empty strings', () => {
+            const result = parseQueryLanguage(qs.parse('descendants='));
+            expect(result).to.eql({descendants: []});
+        });
+        it('ignores trailing commas', () => {
+            const result = parseQueryLanguage(qs.parse('descendants=thing,,'));
+            expect(result).to.eql({descendants: ['thing']});
+        });
+        it('errors on list', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('descendants=1&descendants=2'));
+            }).to.throw('cannot be specified multiple times');
+        });
+    });
+    describe('ancestors', () => {
+        it('splits list', () => {
+            const result = parseQueryLanguage(qs.parse('ancestors=thing,other'));
+            expect(result).to.eql({ancestors: ['thing', 'other']});
+        });
+        it('removes empty strings', () => {
+            const result = parseQueryLanguage(qs.parse('ancestors='));
+            expect(result).to.eql({ancestors: []});
+        });
+        it('ignores trailing commas', () => {
+            const result = parseQueryLanguage(qs.parse('ancestors=thing,,'));
+            expect(result).to.eql({ancestors: ['thing']});
+        });
+        it('errors on list', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('ancestors=1&ancestors=2'));
+            }).to.throw('cannot be specified multiple times');
+        });
+    });
+    describe('returnProperties', () => {
+        it('splits list', () => {
+            const result = parseQueryLanguage(qs.parse('returnProperties=thing,other'));
+            expect(result).to.eql({returnProperties: ['thing', 'other']});
+        });
+        it('removes empty strings', () => {
+            const result = parseQueryLanguage(qs.parse('returnProperties='));
+            expect(result).to.eql({returnProperties: []});
+        });
+        it('ignores trailing commas', () => {
+            const result = parseQueryLanguage(qs.parse('returnProperties=thing,,'));
+            expect(result).to.eql({returnProperties: ['thing']});
+        });
+        it('errors on list', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('returnProperties=1&returnProperties=2'));
+            }).to.throw('cannot be specified multiple times');
+        });
+    });
+    describe('activeOnly', () => {
+        it('can be true', () => {
+            const result = parseQueryLanguage(qs.parse('activeOnly=1'));
+            expect(result).to.eql({activeOnly: true});
+        });
+        it('can be false', () => {
+            let result = parseQueryLanguage(qs.parse('activeOnly=f'));
+            expect(result).to.eql({activeOnly: false});
+            result = parseQueryLanguage(qs.parse('activeOnly=false'));
+            expect(result).to.eql({activeOnly: false});
+            result = parseQueryLanguage(qs.parse('activeOnly=0'));
+            expect(result).to.eql({activeOnly: false});
+        });
+    });
+    it('containstext operator', () => {
+        const result = parseQueryLanguage(qs.parse('thing=~other'));
+        expect(result).to.eql({thing: new Comparison('other', '~')});
+    });
+    it('multiple values', () => {
+        const result = parseQueryLanguage(qs.parse('thing=1&thing=2'));
+        expect(result).to.eql({thing: new Clause('AND', ['1', '2'])});
+    });
+    describe('subquery support', () => {
+        it('not operator', () => {
+            const result = parseQueryLanguage(qs.parse('thing[a]=1&thing[b]=!2'));
+            expect(result).to.eql({thing: {a: new Comparison('1'), b: new Comparison('2', '=', true)}});
+        });
+        it('OR operator', () => {
+            const result = parseQueryLanguage(qs.parse('thing[a]=1&thing[b]=2|3'));
+            expect(result).to.eql({thing: {a: new Comparison('1'), b: new Clause('OR', ['2', '3'])}});
         });
     });
 });

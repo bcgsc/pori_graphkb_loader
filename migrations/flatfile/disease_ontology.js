@@ -7,7 +7,7 @@ const request = require('request-promise');
 const {addRecord, getRecordBy} = require('./util');
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
-const SOURCE = 'disease ontology';
+const SOURCE_NAME = 'disease ontology';
 
 const parseDoid = (ident) => {
     const match = /.*(DOID_\d+)$/.exec(ident);
@@ -40,7 +40,17 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
     const ncitAliases = {};
 
     const doVersion = parseDoVersion(DOID.graphs[0].meta.version);
+    const source = await addRecord('sources', {
+        name: SOURCE_NAME,
+        version: doVersion
+    }, conn, true);
     console.log('\nAdding/getting the disease nodes');
+
+    let ncitSource;
+    try {
+        ncitSource = await getRecordBy('sources', {name: 'ncit'}, conn);
+    } catch (err) {}
+
     for (let node of DOID.graphs[0].nodes) {
         if (node.id === undefined || node.lbl === undefined) {
             continue;
@@ -52,10 +62,9 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         }
         node.lbl = node.lbl.toLowerCase();
         nodesByName[node.lbl] = {
-            source: SOURCE,
+            source: source,
             sourceId: node.id,
-            name: node.lbl,
-            sourceVersion: doVersion
+            name: node.lbl
         };
         synonymsByName[node.lbl] = [];
         if (node.meta === undefined) {
@@ -76,12 +85,15 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                 }
             }
         }
+        if (ncitSource == undefined) {
+            continue;
+        }
         for (let {val: other} of (node.meta.xrefs || [])) {
             let match;
             if (match = /^NCI:(C\d+)$/.exec(other)) {
                 try {
                     const ncitId = `ncit:${match[1].toLowerCase()}`;
-                    const ncitNode = await getRecordBy('diseases', {source: 'ncit', sourceId: ncitId}, conn);
+                    const ncitNode = await getRecordBy('diseases', {source: ncitSource, sourceId: ncitId}, conn);
                     if (ncitAliases[node.id] === undefined) {
                         ncitAliases[node.id] = [];
                     }
@@ -119,8 +131,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                 synonym = await addRecord('diseases', {
                     name: synonym,
                     sourceId: record.sourceId,
-                    source: record.source,
-                    sourceVersion: doVersion
+                    source: source
                 }, conn);
                 process.stdout.write('.');
             }
@@ -128,7 +139,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                 await request(conn.request({
                     method: 'POST',
                     uri: 'aliasof',
-                    body: {out: synonym['@rid'], in: record['@rid'], source: SOURCE}
+                    body: {out: synonym['@rid'], in: record['@rid'], source: source}
                 }));
                 process.stdout.write('.');
             } catch (err) {
@@ -149,11 +160,11 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         }
         const curr = diseaseRecords[nodeLbl]['@rid'];
         for (let other of ncitAliases[nodeLbl]) {
-            await addRecord('aliasof', {out: curr, in: other['@rid'], source: SOURCE}, conn, true);
+            await addRecord('aliasof', {out: curr, in: other['@rid'], source: source}, conn, true);
         }
     }
 
-    await loadEdges({DOID, conn, records: diseaseRecords});
+    await loadEdges({DOID, conn, records: diseaseRecords, source});
 };
 
 /* now add the edges to the kb
@@ -163,7 +174,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
   "obj" : "http://purl.obolibrary.org/obo/DOID_461"
 }
 */
-const loadEdges = async ({DOID, records, conn}) => {
+const loadEdges = async ({DOID, records, conn, source}) => {
     const relationshipTypes = {};
     console.log('\nAdding the subclass relationships');
     for (let edge of DOID.graphs[0].edges) {
@@ -183,7 +194,7 @@ const loadEdges = async ({DOID, records, conn}) => {
                     await request(conn.request({
                         method: 'POST',
                         uri: 'subclassof',
-                        body: {out: records[src]['@rid'], in: records[tgt]['@rid'], source: SOURCE}
+                        body: {out: records[src]['@rid'], in: records[tgt]['@rid'], source: source}
                     }));
                     process.stdout.write('.');
                 } catch (err) {

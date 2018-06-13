@@ -2,7 +2,7 @@
 const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError} = require('./error');
 const cache = require('./cache');
 const {timeStampNow, quoteWrap, looksLikeRID, getParameterPrefix, VERBOSE} = require('./util');
-const RID = require('orientjs').RID;
+const {RID, RIDBag} = require('orientjs');
 const _ = require('lodash');
 
 
@@ -24,6 +24,51 @@ const wrapIfTypeError = (err) => {
         }
     }
     return err;
+};
+
+/**
+ * Given a list of records, removes any object which contains a non-null deletedAt property
+ */
+const trimDeletedRecords = (recordList) => {
+    const queue = recordList.slice();
+    const visited = new Set();
+    while (queue.length > 0) {
+        const curr = queue.shift(); // remove the first element from the list
+
+        if (visited.has(curr)) {  // avoid infinite look from cycles
+            continue;
+        }
+        visited.add(curr);
+        const keys = Array.from(Object.keys(curr));
+        for (let attr of keys) {
+            const value = curr[attr];
+            if (value instanceof RIDBag) {
+                const arr = [];
+                for (let edge of value.all()) {
+                    if (edge.deletedAt == null && (! edge.in || edge.in.deletedAt == null) && (! edge.out || edge.out.deletedAt == null)) {
+                        // remove edges where the edge is deleted or either node it connects is deleted
+                        queue.push(edge);
+                        arr.push(edge);
+                    }
+                }
+                curr[attr] = arr;
+            } else if (typeof value === 'object' && value !== null) {
+                if (value.deletedAt != null) {
+                    delete curr[attr];
+                } else {
+                    queue.push(value);
+                }
+            }
+        }
+    }
+    // remove the top level elements last
+    const result = [];
+    for (let record of recordList) {
+        if (record.deletedAt == null) {
+            result.push(record);
+        }
+    }
+    return result;
 };
 
 
@@ -59,13 +104,13 @@ class Follow {
         if (this.depth === null) {
             // follow until out of edge types
             if (this.activeOnly) {
-                return `.${this.type}(${classesString}){while: ($matched.${this.type}(${classesString}).size() > 0 AND $matched.deletedAt IS NULL)}`;
+                return `.${this.type}(${classesString}){while: (${this.type}(${classesString}).size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}`;
             } else {
-                return `.${this.type}(${classesString}){while: ($matched.${this.type}(${classesString}).size() > 0)}`;
+                return `.${this.type}(${classesString}){while: (${this.type}(${classesString}).size() > 0)}`;
             }
         } else {
             if (this.activeOnly) {
-                return `.${this.type}(${classesString}){while: ($depth < ${this.depth} AND $matched.deletedAt IS NULL)}`;
+                return `.${this.type}(${classesString}){while: ($depth < ${this.depth} AND deletedAt IS NULL), where: (deletedAt IS NULL)}`;
             } else {
                 return `.${this.type}(${classesString}){while: ($depth < ${this.depth})}`;
             }
@@ -215,7 +260,6 @@ class SelectionQuery {
      */
     constructor(model, inputQuery={}, opt={}) {
         this.model = model;
-        console.log('model', model);
         this.conditions = {};
         this.follow = [];
         this.skip = opt.skip ? opt.skip : null;
@@ -223,7 +267,6 @@ class SelectionQuery {
         this.properties = Object.assign({}, model.properties);
         this.returnProperties = inputQuery.returnProperties ? inputQuery.returnProperties : null;
         const propertyNames = this.model.propertyNames;
-        console.log('propertyNames', propertyNames);
         // can only return properties which belong to this class
         for (let propName of this.returnProperties || []) {
             if (! propertyNames.includes(propName)) {
@@ -231,39 +274,44 @@ class SelectionQuery {
             }
         }
 
-        if (this.activeOnly && propertyNames.includes('deletedAt')) {
-            inputQuery.deletedAt = null;
+        if (this.activeOnly) {
+            this.conditions.deletedAt = new Comparison(null);
         }
         this.cast = Object.assign({}, this.model.cast);
-        const subqueries = {};
-        const odbArgs = ['@rid', '@class'];
         // split the original query into subqueries where appropriate
         for (let [name, value] of Object.entries(inputQuery)) {
-            if (SPECIAL_QUERY_ARGS.has(name)) {
+            if (SPECIAL_QUERY_ARGS.has(name) || name == 'deletedAt') {
                 continue;
             }
-
-            let {prefix, suffix} = getParameterPrefix(name);
-
-            if (! (SPECIAL_QUERY_ARGS.has(suffix)) && ! (value instanceof Comparison || value instanceof Clause)) {
-                value = new Comparison(value);  // default to basic equals
+            if (this.properties[name] === undefined) {
+                throw new AttributeError(`unexpected attribute '${name}' is not defined on this class model '${this.model.name}'`);
             }
 
-            if (! propertyNames.includes(prefix) && ! odbArgs.includes(prefix)) {
-                throw new AttributeError(`unexpected attribute ${prefix} for class ${this.model.name}`);
-            }
-            if (suffix && this.properties[prefix].linkedModel) {
-                if (subqueries[prefix] === undefined) {
-                    subqueries[prefix] = {where: {}, model: this.properties[prefix].linkedModel};
+            if (! (value instanceof Comparison || value instanceof Clause || value instanceof SelectionQuery)) {
+                if (typeof value == 'object' && value !== null && ! (value instanceof Array)) {
+                    // subquery
+                    if (this.properties[name].linkedModel) {
+                        value = new SelectionQuery(this.properties[name].linkedModel, value, {activeOnly: this.activeOnly});
+                        // can this subquery be flattened?
+                        if (value.follow.length === 0) {
+                            for (let [subqName, subqProp] of Object.entries(value.conditions)) {
+                                const combinedName = `${name}.${subqName}`;
+                                this.properties[combinedName] = this.properties[name].linkedModel.properties[subqName];
+                                this.conditions[combinedName] = subqProp;
+                            }
+                        } else {
+                            this.conditions[name] = value;
+                        }
+                        continue;
+                    }
                 }
-                subqueries[prefix].where[suffix] = value;
-                continue;
+                value = new Comparison(value);  // default to basic equals
             }
             this.conditions[name] = value;
         }
         this.follow = Follow.parse(Object.assign({activeOnly: this.activeOnly}, inputQuery));
 
-        for (let [name, value] of Object.entries(subqueries)) {
+        /*for (let [name, value] of Object.entries(subqueries)) {
             const subquery = new SelectionQuery(value.model, value.where, {activeOnly: this.activeOnly});
             if (subquery.follow.length === 0) {  // don't need a subquery, can use direct links instead and add the property definition here
                 for (let subPropName of Object.keys(subquery.conditions)) {
@@ -278,7 +326,7 @@ class SelectionQuery {
             } else {
                 this.conditions[name] = subquery;
             }
-        }
+        }*/
         for (let [name, condition] of Object.entries(this.conditions)) {
             if (! (condition instanceof SelectionQuery) && this.cast[name]) {
                 condition.applyCast(this.cast[name]);
@@ -300,11 +348,14 @@ class SelectionQuery {
      *  {query: 'thing = :param0', params: {param0: 2}}
      */
     conditionClause(name, value, paramIndex=0) {
-        const property = this.properties[name];
+        let property = this.properties[name];
+        if (! property && value.value === null) {
+            property = {type: 'null'};  // Ignore null not exist b/c will be the same as null
+        }
 
         let isList = false;
         if (! property || ! property.type) {
-            throw new AttributeError(`property '${name}' is not defined on this model '${this.model.name}'`);
+            throw new AttributeError(`property '${name}' with value '${value.value}' is not defined on this model '${this.model.name}'`);
         }
         if (/^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
             isList = true;
@@ -313,7 +364,9 @@ class SelectionQuery {
         const {query, params} = value.toString(name, paramIndex, isList);
         if (property.type.includes('link')) {
             for (let pname of Object.keys(params)) {
-                if (params[pname] !== null && ! looksLikeRID(params[pname])) {
+                if (params[pname] instanceof RID) {
+                    continue;
+                } else if (params[pname] !== null && ! looksLikeRID(params[pname])) {
                     throw new AttributeError(`'${name}' expects an RID or null but saw '${params[pname]}'`);
                 } else if (params[pname] !== null) {
                     params[pname] = new RID(`#${params[pname].replace(/^#/, '')}`);
@@ -557,7 +610,6 @@ const select = async (db, opt) => {
         limit: QUERY_LIMIT,
         skip: 0
     }, opt);
-
     const query = new SelectionQuery(opt.model, opt.where || {}, opt);
     if (VERBOSE) {
         console.log('select query statement:', query.displayString(), {limit: opt.limit, fetchPlan: opt.fetchPlan, skip: opt.skip});
@@ -565,7 +617,7 @@ const select = async (db, opt) => {
 
     // send the query statement to the database
     const {params, query: statement} = query.toString();
-    const recordList = await db.query(`${statement}`, {
+    let recordList = await db.query(`${statement}`, {
         params: params,
         limit: opt.limit,
         fetchPlan: opt.fetchPlan
@@ -573,6 +625,10 @@ const select = async (db, opt) => {
 
     if (process.env.DEBUG == '1') {
         console.log(`selected ${recordList.length} records`);
+    }
+
+    if (opt.activeOnly) {
+        recordList = trimDeletedRecords(recordList);
     }
 
     if (opt.exactlyN !== null) {

@@ -34,6 +34,18 @@ describe('schema', () => {
         await app.listen();
         mockToken = await auth.generateToken(admin, REALLY_LONG_TIME);
     });
+    let source;
+    beforeEach(async () => {
+        const res = await chai.request(app.app)
+            .post('/api/sources')
+            .type('json')
+            .send({
+                name: 'bcgsc',
+                version: '2018'
+            })
+            .set('Authorization', mockToken);
+        source = res.body;
+    });
     describe('GET /users', () => {
         it('name', async () => {
             const res = await chai.request(app.app)
@@ -104,19 +116,20 @@ describe('schema', () => {
         });
     });
     describe('POST /diseases', () => {
+
         it('OK', async () => {
             const res = await chai.request(app.app)
                 .post('/api/diseases')
                 .type('json')
                 .send({
                     sourceId: 'cancer',
-                    source: 'bcgsc'
+                    source: source
                 })
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
             expect(res.body).to.be.a('object');
             expect(res.body).to.have.property('sourceId', 'cancer');
-            expect(res.body).to.have.property('source', 'bcgsc');
+            expect(res.body.source).to.eql(source['@rid']);
         });
         it('BAD REQUEST (no source given)', async () => {
             let res;
@@ -141,7 +154,7 @@ describe('schema', () => {
                     .post('/api/diseases')
                     .type('json')
                     .send({
-                        source: 'bcgsc'
+                        source: source
                     })
                     .set('Authorization', mockToken);
             } catch (err) {
@@ -158,7 +171,7 @@ describe('schema', () => {
                     .type('json')
                     .send({
                         sourceId: 'cancer',
-                        source: 'bcgsc'
+                        source: source
                     });
             } catch (err) {
                 res = err;
@@ -172,7 +185,7 @@ describe('schema', () => {
                 .type('json')
                 .send({
                     sourceId: 'cancer',
-                    source: 'bcgsc'
+                    source: source
                 })
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
@@ -182,7 +195,7 @@ describe('schema', () => {
                     .type('json')
                     .send({
                         sourceId: 'cancer',
-                        source: 'bcgsc'
+                        source: source
                     })
                     .set('Authorization', mockToken);
             } catch (err) {
@@ -199,7 +212,7 @@ describe('schema', () => {
                 .type('json')
                 .send({
                     sourceId: 'cancer',
-                    source: 'bcgsc'
+                    source: source
                 })
                 .set('Authorization', mockToken);
             disease = res.body;
@@ -245,7 +258,7 @@ describe('schema', () => {
                     .type('json')
                     .send({
                         sourceId: 'cancer',
-                        source: 'bcgsc'
+                        source: source
                     });
             } catch (err) {
                 res = err;
@@ -259,7 +272,7 @@ describe('schema', () => {
                 .type('json')
                 .send({
                     sourceId: 'carcinoma',
-                    source: 'bcgsc'
+                    source: source
                 })
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
@@ -285,7 +298,7 @@ describe('schema', () => {
                 .type('json')
                 .send({
                     sourceId: 'cancer',
-                    source: 'bcgsc'
+                    source: source
                 })
                 .set('Authorization', mockToken);
             disease = res.body;
@@ -339,7 +352,7 @@ describe('schema', () => {
                 .type('json')
                 .send({
                     sourceId: 'cancer',
-                    source: 'bcgsc'
+                    source: source
                 })
                 .set('Authorization', mockToken);
             disease = res1.body;
@@ -348,7 +361,7 @@ describe('schema', () => {
                 .type('json')
                 .send({
                     sourceId: 'carcinoma',
-                    source: 'bcgsc'
+                    source: source
                 })
                 .set('Authorization', mockToken);
             await chai.request(app.app)
@@ -357,7 +370,7 @@ describe('schema', () => {
                 .send({
                     out: res1.body['@rid'],
                     in: res2.body['@rid'],
-                    source: 'bcgsc'
+                    source: source
                 })
                 .set('Authorization', mockToken);
             let res3 = await chai.request(app.app)
@@ -365,7 +378,7 @@ describe('schema', () => {
                 .type('json')
                 .send({
                     sourceId: 'disease of cellular proliferation',
-                    source: 'other'
+                    source: source
                 })
                 .set('Authorization', mockToken);
             const res4 = await chai.request(app.app)
@@ -374,7 +387,7 @@ describe('schema', () => {
                 .send({
                     out: res1.body['@rid'],
                     in: res3.body['@rid'],
-                    source: 'bcgsc'
+                    source: source
                 })
                 .set('Authorization', mockToken);
             await chai.request(app.app)
