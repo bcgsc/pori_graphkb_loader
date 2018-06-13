@@ -58,6 +58,17 @@ Query all diseases where the name is 'breast cancer' or is not 'pancreatic cance
 /api/diseases?name=breast cancer|!pancreatic cancer
 ```
 
+### Using subqueries
+
+Since the KB is a graph database, queries can include conditions on related elements with minimal penalty (does not require a join).
+As such KB will support querying on related objects using the following syntax
+
+Query all diseases created by the user with the user name 'blargh'
+
+```
+/api/diseases?createdBy[name]=blargh
+```
+
 ---
 
 
