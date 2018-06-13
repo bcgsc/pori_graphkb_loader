@@ -303,6 +303,8 @@ class SelectionQuery {
                             this.conditions[name] = value;
                         }
                         continue;
+                    } else {
+                        throw new AttributeError(`cannot subquery the non-linked attribute '${name}'`);
                     }
                 }
                 value = new Comparison(value);  // default to basic equals
@@ -603,13 +605,14 @@ const createEdge = async (db, opt) => {
  */
 const select = async (db, opt) => {
     // set the default options
+    opt.where = opt.where || {};
     opt = Object.assign({
         activeOnly: true,
         exactlyN: null,
         fetchPlan: '*:1',
         limit: QUERY_LIMIT,
         skip: 0
-    }, opt);
+    }, opt.where, opt);
     const query = new SelectionQuery(opt.model, opt.where || {}, opt);
     if (VERBOSE) {
         console.log('select query statement:', query.displayString(), {limit: opt.limit, fetchPlan: opt.fetchPlan, skip: opt.skip});

@@ -51,8 +51,6 @@ const fs = require('fs');
 const jsonfile = require('jsonfile');
 const {addRecord, convertOwlGraphToJson} = require('./util');
 
-const SOURCE = 'ncit';
-
 const ROOT_NODES = {
     AGONIST: 'ncit:c1514',
     CHEM_MOD: 'ncit:c1932',
@@ -85,7 +83,6 @@ const subclassTree = (nodesByCode, roots) => {
     const queue = roots;
     const subtree = {};
     const subclassEdges = [];
-    console.log('root node', queue[0]);
 
     while (queue.length > 0) {
         const currNode = queue.shift();
@@ -99,7 +96,7 @@ const subclassTree = (nodesByCode, roots) => {
 };
 
 
-const createRecords = async (inputRecords, dbClassName, conn) => {
+const createRecords = async (inputRecords, dbClassName, conn, source) => {
     const records = {};
     console.log(`\nLoading ${Object.keys(inputRecords).length} ${dbClassName} nodes`);
     for (let node of Object.values(inputRecords)) {
@@ -107,7 +104,7 @@ const createRecords = async (inputRecords, dbClassName, conn) => {
             continue;
         }
         const body = {
-            source: SOURCE,
+            source: source['@rid'],
             name: node[PRED_MAP.LABEL][0],
             sourceId: node.code
         };
@@ -131,6 +128,8 @@ const uploadNCIT = async ({filename, conn}) => {
     const graph = rdf.graph();
     rdf.parse(content, graph, 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl', 'application/rdf+xml');
     const nodesByCode = convertOwlGraphToJson(graph, parseNcitID);
+
+    const source = await addRecord('sources', {name: 'ncit'}, conn, true);
 
     // for the given source nodes, include all descendents Has_NICHD_Parentdants/subclasses
     for (let node of Object.values(nodesByCode)) {
@@ -156,22 +155,21 @@ const uploadNCIT = async ({filename, conn}) => {
     subclassEdges.push(...diseaseNodes.edges);
     subclassEdges.push(...therapyNodes.edges);
     subclassEdges.push(...anatomyNodes.edges);
-    console.log(Object.keys(nodesByCode).slice(0, 10));
 
     const records = {};
-    let result = await createRecords(anatomyNodes.tree, 'anatomicalentities', conn);
+    let result = await createRecords(anatomyNodes.tree, 'anatomicalentities', conn, source);
     Object.assign(records, result);
 
-    result = await createRecords(therapyNodes.tree, 'therapies', conn);
+    result = await createRecords(therapyNodes.tree, 'therapies', conn, source);
     Object.assign(records, result);
 
-    result = await createRecords(diseaseNodes.tree, 'diseases', conn);
+    result = await createRecords(diseaseNodes.tree, 'diseases', conn, source);
     Object.assign(records, result);
 
     console.log(`\nLoading ${subclassEdges.length} subclassof relationships`);
     for (let {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
-            await addRecord('subclassof', {out: records[src]['@rid'], in: records[tgt]['@rid'], source: SOURCE}, conn, true);
+            await addRecord('subclassof', {out: records[src]['@rid'], in: records[tgt]['@rid'], source: source['@rid']}, conn, true);
         } else {
             process.stdout.write('x');
         }

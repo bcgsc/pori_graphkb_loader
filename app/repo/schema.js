@@ -505,7 +505,7 @@ const createSchema = async (db) => {
         name: 'Ontology',
         inherits: 'V,Biomarker',
         properties: [
-            {name: 'source', type: 'link', mandatory: true, notNull: true},
+            {name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source'},
             {name: 'sourceId', type: 'string', mandatory: true, notNull: true},
             {name: 'name', type: 'string'},
             {name: 'sourceIdVersion', type: 'string'},

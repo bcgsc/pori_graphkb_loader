@@ -45,7 +45,7 @@ const castToRID = (string) => {
         string = `#${string.replace(/^#/, '')}`;
         return new RID(string);
     }
-    throw new AttributeError(`'${string}' is not a valid RID`);
+    throw new AttributeError({message: 'not a valid RID', value: string});
 };
 
 

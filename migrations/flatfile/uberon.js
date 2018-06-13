@@ -6,9 +6,6 @@ const fs = require('fs');
 const {addRecord, getRecordBy, convertOwlGraphToJson} = require('./util');
 
 
-const SOURCE = 'uberon';
-
-
 const parseUberonId = (string) => {
     let match = /.*\/UBERON_(\d+)$/.exec(string);
     if (match) {
@@ -49,6 +46,7 @@ const uploadUberon = async ({filename, conn}) => {
     const nodesByCode = convertOwlGraphToJson(graph, parseUberonId);
 
     const subclassEdges = [];
+    const source = await addRecord('sources', {name: 'uberon'}, conn, true);
 
     console.log(`Adding the uberon ${Object.keys(nodesByCode).length} entity nodes`);
     for (let node of Object.values(nodesByCode)) {
@@ -56,7 +54,7 @@ const uploadUberon = async ({filename, conn}) => {
             continue;
         }
         const body = {
-            source: SOURCE,
+            source: source['@rid'],
             name: node[PRED_MAP.LABEL][0],
             sourceId: node.code
         };
@@ -75,7 +73,7 @@ const uploadUberon = async ({filename, conn}) => {
             for (let aliasCode of node[PRED_MAP.CROSS_REF]) {
                 aliasCode = aliasCode.toLowerCase();
                 if (/^ncit:c\d+$/.exec(aliasCode)) {
-                    ncitLinks.push({src: node.code, tgt: aliasCode, source: SOURCE});
+                    ncitLinks.push({src: node.code, tgt: aliasCode, source: source['@rid']});
                 }
             }
         }
@@ -88,7 +86,7 @@ const uploadUberon = async ({filename, conn}) => {
             await addRecord('subclassof', {
                 out: records[src]['@rid'],
                 in: records[tgt]['@rid'],
-                source: SOURCE
+                source: source['@rid']
             }, conn, true);
         } else {
             process.stdout.write('x');
@@ -101,11 +99,11 @@ const uploadUberon = async ({filename, conn}) => {
             continue;
         }
         try {
-            const ncitRecord = await getRecordBy('anatomicalentities', {source: 'ncit', sourceId: tgt}, conn);
+            const ncitRecord = await getRecordBy('anatomicalentities', {source: {name: 'ncit'}, sourceId: tgt}, conn);
             await addRecord('aliasof', {
                 out: records[src]['@rid'],
                 in: ncitRecord['@rid'],
-                source: SOURCE
+                source: source['@rid']
             }, conn, true);
         } catch (err) {
             // ignore missing vocabulary

@@ -1029,6 +1029,23 @@ describe('parseQueryLanguage', () => {
             const result = parseQueryLanguage(qs.parse('thing[a]=1&thing[b]=2|3'));
             expect(result).to.eql({thing: {a: new Comparison('1'), b: new Clause('OR', ['2', '3'])}});
         });
+        it('cast in subquery', () => {
+            const input = `source[@type]=d&
+                source[@class]=Source&
+                source[name]=oncotree&
+                source[version]=2018-06-01&
+                source[createdAt]=1528923952899&
+                source[createdBy]=#41:0&
+                source[uuid]=739d22e8-7750-46b3-bce5-3f0b8f47e7e6&
+                source[@rid]=#18:1&
+                source[@version]=1&
+                name=Dysembryoplastic Neuroepithelial Tumor&
+                sourceId=DNT`.replace(/[\n\s]+/g, '');
+            const result = parseQueryLanguage(qs.parse(input));
+            expect(result).to.have.property('source');
+            expect(result.source).to.have.property('@rid');
+            expect(result.source['@rid']).to.eql(new Comparison('#18:1'));
+        });
     });
 });
 

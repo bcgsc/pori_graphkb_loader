@@ -102,11 +102,12 @@ const uploadDrugBank = async ({filename, conn}) => {
     const content = fs.readFileSync(filename).toString();
     console.log(`parsing: ${filename}`);
     const xml = await parseXML(content);
+    const source = await addRecord('sources', {name: 'drugbank'}, conn, true);
     console.log('uploading records');
     for (let drug of xml.drugbank.drug) {
         try {
             let body = {
-                source: SOURCE,
+                source: source,
                 sourceId: drug['drugbank-id'][0]['_'],
                 name: drug.name[0],
                 sourceIdVersion: drug['$'].updated,

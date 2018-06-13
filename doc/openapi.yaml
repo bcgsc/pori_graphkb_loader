@@ -169,7 +169,6 @@ paths:
                 - $ref: '#/components/parameters/Ontology/name'
                 - $ref: '#/components/parameters/Ontology/source'
                 - $ref: '#/components/parameters/Ontology/sourceId'
-                - $ref: '#/components/parameters/Ontology/sourceVersion'
                 - $ref: '#/components/parameters/Ontology/longName'
                 - $ref: '#/components/parameters/Ontology/sourceIdVersion'
                 - $ref: '#/components/parameters/limit'
@@ -300,7 +299,6 @@ paths:
                 - $ref: '#/components/parameters/Ontology/name'
                 - $ref: '#/components/parameters/Ontology/source'
                 - $ref: '#/components/parameters/Ontology/sourceId'
-                - $ref: '#/components/parameters/Ontology/sourceVersion'
                 - $ref: '#/components/parameters/Ontology/longName'
                 - $ref: '#/components/parameters/Ontology/sourceIdVersion'
                 - $ref: '#/components/parameters/returnProperties'
@@ -430,7 +428,6 @@ paths:
                 - $ref: '#/components/parameters/Ontology/name'
                 - $ref: '#/components/parameters/Ontology/source'
                 - $ref: '#/components/parameters/Ontology/sourceId'
-                - $ref: '#/components/parameters/Ontology/sourceVersion'
                 - $ref: '#/components/parameters/Ontology/longName'
                 - $ref: '#/components/parameters/Ontology/sourceIdVersion'
                 - $ref: '#/components/parameters/returnProperties'
@@ -575,7 +572,6 @@ paths:
                 - $ref: '#/components/parameters/Ontology/name'
                 - $ref: '#/components/parameters/Ontology/source'
                 - $ref: '#/components/parameters/Ontology/sourceId'
-                - $ref: '#/components/parameters/Ontology/sourceVersion'
                 - $ref: '#/components/parameters/Ontology/longName'
                 - $ref: '#/components/parameters/Ontology/sourceIdVersion'
                 - $ref: '#/components/parameters/limit'
@@ -910,13 +906,6 @@ components:
                     type: string
                     nullable: true
                 description: the ID in the external source
-            sourceVersion:
-                name: sourceVersion
-                in: query
-                schema:
-                    type: string
-                    nullable: true
-                description: the version of the external source
             subsets:
                 in: query
                 name: subsets
@@ -993,6 +982,19 @@ components:
                           example: '#47:2'
                         - $ref: '#/components/schemas/User'
                     nullable: true
+        Source:
+            type: object
+            required:
+                - name
+            properties:
+                name:
+                    type: string
+                    nullable: false
+                    description: name of the source
+                version:
+                    type: string
+                    nullable: true
+                    description: version of the source
         Ontology:
             allOf:
                 - $ref: '#/components/schemas/ODB'
@@ -1016,16 +1018,14 @@ components:
                     type: string
                     description: the version of the name (from the external source)
                 source:
-                    type: string
-                    description: the name of the external source the ontology term is derived from
+                    oneOf:
+                        - type: string
+                          example: '#18:0'
+                        - $ref: '#/components/schemas/Source'
                 sourceId:
                     type: string
                     nullable: true
                     description: the ID in the external source
-                sourceVersion:
-                    type: string
-                    nullable: true
-                    description: the version of the external source
                 subsets:
                     type: array
                     description: ontology subset(s) this term belongs to
@@ -1038,17 +1038,13 @@ components:
             properties:
                 name:
                     example: cancer
-                source:
-                    example: disease ontology
-                sourceVersion:
-                    example: "2018-03-02"
                 sourceId:
-                    example: "doid:162"
+                    example: 'doid:162'
                 description:
-                    example: "a disease of cellular proliferation that is malignant and primary ..."
+                    example: 'a disease of cellular proliferation that is malignant and primary ...'
                 subsets:
                     items:
-                        example: "doid#DO_AGR_slim"
+                        example: 'doid#DO_AGR_slim'
         AnatomicalEntity:
             allOf:
                 - $ref: '#/components/schemas/Ontology'
@@ -1056,15 +1052,13 @@ components:
             properties:
                 name:
                     example: peripheral nervous system
-                source:
-                    example: uberon
                 sourceId:
-                    example: "uberon:0000010"
+                    example: 'uberon:0000010'
                 description:
-                    example: "a major division of the nervous system that contains ..."
+                    example: 'a major division of the nervous system that contains ...'
                 subsets:
                     items:
-                        example: "uberon/core#uberon_slim"
+                        example: 'uberon/core#uberon_slim'
         Therapy:
             allOf:
                 - $ref: '#/components/schemas/Ontology'
@@ -1072,39 +1066,29 @@ components:
             properties:
                 name:
                     example: carboplatin
-                source:
-                    example: ncit
                 sourceId:
                     example: ncit:c1282
                 description:
-                    example: "a second-generation platinum compound with a broad spectrum of antineoplastic properties..."
+                    example: 'a second-generation platinum compound with a broad spectrum of antineoplastic properties...'
         Feature:
+            allOf:
+                - $ref: '#/components/schemas/Ontology'
             type: object
             required:
                 - biotype
             properties:
+                sourceId:
+                    example: 'hgnc:1097'
                 biotype:
                     type: string
                     description: the biological feature type
                     example: gene
-        IndependantFeature:
-            allOf:
-                - $ref: '#/components/schemas/Ontology'
-                - $ref: '#/components/schemas/Feature'
-            type: object
-            properties:
-                source:
-                    example: hgnc
-                sourceId:
-                    example: "hgnc:1097"
-                biotype:
-                    example: gene
                 name:
                     example: braf
                 sourceIdVersion:
-                    example: "2018-04-20"
+                    example: '2018-04-20'
                 longName:
-                    example: "b-raf proto-oncogene, serine/threonine kinase"
+                    example: 'b-raf proto-oncogene, serine/threonine kinase'
 
 
 
