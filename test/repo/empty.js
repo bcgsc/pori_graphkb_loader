@@ -82,7 +82,7 @@ describe('schema', () => {
                 model: schema.Disease,
                 content: {
                     sourceId: 'cancer',
-                    source: doSource
+                    source: doSource['@rid']
                 },
                 user: admin
             });
@@ -103,7 +103,7 @@ describe('schema', () => {
             // make the initial node
             const content = {
                 sourceId: 'cancer',
-                source: doSource
+                source: doSource['@rid'].toString()
             };
             const record = await create(db, {
                 model: schema.Disease,
