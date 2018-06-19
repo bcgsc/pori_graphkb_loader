@@ -43,6 +43,11 @@ const validateParams = async (opt) => {
 };
 
 
+/**
+ * Parse the operators prefixed on the query parameters
+ *
+ * @param {Object} inputQuery
+ */
 const parseQueryLanguage = (inputQuery) => {
     /**
      * parse any query parameters based on the expected operator syntax. The final result will be
@@ -143,7 +148,7 @@ const addResourceRoutes = (opt) => {
     const {router, model, db, cacheUpdate} = opt;
     const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
     const reqQueryParams = opt.reqQueryParams || [];
-    let route = model.routeName;
+    let route = opt.route || model.routeName;
     console.log('addResourceRoutes', route);
 
     router.get(route,
@@ -221,21 +226,18 @@ const addResourceRoutes = (opt) => {
                 req.query = parseQueryLanguage(req.query);
             } catch (err) {
                 if (err instanceof InputValidationError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
                     if (VERBOSE) {
                         console.error('INTERNAL_SERVER_ERROR', err);
                     }
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
-                return;
             }
             if (! looksLikeRID(req.params.id, false)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
-                return;
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
-
 
             let fetchPlan = null;
             if (req.query.neighbors !== undefined) {
@@ -246,8 +248,7 @@ const addResourceRoutes = (opt) => {
             try {
                 validateParams({params: _.omit(req.query, ['activeOnly']), required: reqQueryParams, optional: optQueryParams});
             } catch (err) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                return;
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
             }
 
             try {
@@ -267,13 +268,11 @@ const addResourceRoutes = (opt) => {
     router.patch(`${route}/:id`,
         async (req, res, next) => {
             if (! looksLikeRID(req.params.id, false)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
-                return;
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'Query parameters are allowed for this query type', params: req.query}));
-                return;
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'Query parameters are allowed for this query type', params: req.query}));
             }
             try {
                 const result = await update(db, {
@@ -305,13 +304,11 @@ const addResourceRoutes = (opt) => {
     router.delete(`${route}/:id`,
         async (req, res, next) => {
             if (! looksLikeRID(req.params.id, false)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
-                return;
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
             }
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type'}));
-                return;
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type'}));
             }
             try {
                 const result = await remove(db, {model: model, where: {'@rid': req.params.id, deletedAt: null}, user: req.user});

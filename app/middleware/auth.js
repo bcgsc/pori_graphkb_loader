@@ -67,13 +67,11 @@ const checkToken = async (req, res, next) => {
         const decoded = jwt.verify(token, keys.private);
         req.user = decoded.user;
         console.log('checkToken', decoded);
+        console.log('redirecting from auth', req.url);
+        return next();
     } catch (err) {
-        next(err);
+        return next(err);
     }
-    console.log('redirecting from auth', req.url);
-    // TODO: verify the user against the gsc ACL
-    // TODO: then verify the user against the kb list of users
-    next();
 };
 
 

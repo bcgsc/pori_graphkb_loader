@@ -2,9 +2,20 @@ const jc = require('json-cycle');
 
 const {addResourceRoutes} = require('./util');
 const {cacheVocabulary} = require('./../repo/base');
-const {addStatement} = require('./statement');
-const {addVariantRoutes} = require('./variant');
 const {addParserRoutes} = require('./parser');
+
+
+const printAllRoutes = (router) => {
+    let count = 0;
+    for (let layer of router.stack) {
+        try {
+            console.log(count, layer.route.path);
+        } catch (err) {
+            console.log(count, layer.handle);
+        }
+        count++;
+    }
+};
 
 
 const addRoutes = (opt) => {
@@ -36,20 +47,20 @@ const addRoutes = (opt) => {
     });
 
     // simple routes
-    for (let cls of Object.keys(schema)) {
-        if (schema[cls].isAbstract) {  // do not set up routes for abstract classes
+    for (let model of Object.values(schema)) {
+        if (model.isAbstract) {  // do not set up routes for abstract classes
             continue;
         }
-        if (['User', 'UserGroup', 'V', 'E', 'Vocabulary', 'Statement', 'Permissions'].includes(cls)) {
+        if (['User', 'UserGroup', 'V', 'E', 'Vocabulary', 'Statement', 'Permissions'].includes(model.name)) {
             continue;
         }
         if (process.env.VERBOSE === '1') {
-            console.log(`route: ${cls} as ${schema[cls].routeName}`);
+            console.log(`route: ${model.name} as ${model.routeName}`);
         }
-        addResourceRoutes({router: router, model: schema[cls], db: db});
+        addResourceRoutes({router, model, db});
     }
-    console.log('stack', Array.from(router.stack, (layer) => { return layer.route; }));
-    //addParserRoutes(router);
+
+    addParserRoutes(router);
 };
 
 module.exports = addRoutes;

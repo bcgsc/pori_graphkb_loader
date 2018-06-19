@@ -49,12 +49,12 @@ class ClassModel {
     get routeName() {
         if (! this.isEdge) {
             if (/.*[^aeiou]y$/.exec(this.name)) {
-                return `${this.name.slice(0, this.name.length - 1)}ies`.toLowerCase();
+                return `/${this.name.slice(0, this.name.length - 1)}ies`.toLowerCase();
             } else {
-                return `${this.name}s`.toLowerCase();
+                return `/${this.name}s`.toLowerCase();
             }
         }
-        return this.name.toLowerCase();
+        return `/${this.name.toLowerCase()}`;
     }
 
     /**

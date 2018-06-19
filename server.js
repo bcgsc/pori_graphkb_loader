@@ -51,13 +51,7 @@ delete conf.port;
         console.log('creating certificate');
         console.log('creating the admin test token');
         auth.keys.private = fs.readFileSync(conf.private_key);
-        const admin = {name: 'admin', '@rid': '#41:0'};
-        const checkToken = async (req, res, next) => {
-            console.log('checkToken stub');
-            req.user = admin;
-            next();
-        };
-        auth.checkToken = checkToken;
+        conf.disableCats = true;
         app = new AppServer(conf, true, false);
         app.listen();
         // cleanup
