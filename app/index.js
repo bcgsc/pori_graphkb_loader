@@ -14,10 +14,10 @@ const http = require('http');
 const {VERBOSE} = require('./repo/util');
 const HTTP_STATUS = require('http-status-codes');
 const swaggerUi = require('swagger-ui-express');
-
+const path = require('path');
 
 const logRequests = (req, res, next) => {
-    console.log(`[${req.method}] ${req.url}`, req.body);
+    console.log(`[${req.method}] ${req.url}`);
     return next();
 };
 
@@ -77,7 +77,7 @@ class AppServer {
         this.router = express.Router();
         this.app.use('/api', this.router);
 
-        this.router.route('/token').post(async (req, res, next) => {
+        this.router.route('/token').post(async (req, res) => {
             // generate a token to return to the user
             if (req.body.username === undefined || req.body.password === undefined) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'body requires both username and password to generate a token'});
@@ -100,7 +100,6 @@ class AppServer {
             }
             return res.status(HTTP_STATUS.OK).json({kbToken: token, catsToken: cats.token});
         });
-        //this.router.use(checkToken);
     }
 
     /**
@@ -116,13 +115,21 @@ class AppServer {
         this.schema = schema;
         // set up the swagger docs
         this.spec = generateSwaggerSpec(schema);
-        this.router.use('/docs', swaggerUi.serve, swaggerUi.setup(this.spec, {swaggerOptions: {
+        this.router.use('/docs/spec', swaggerUi.serve, swaggerUi.setup(this.spec, {swaggerOptions: {
             deepLinking: true,
             displayOperationId: true,
             defaultModelRendering: 'model',
             operationsSorter: 'alpha',
-            tagsSorter: 'alpha'
+            tagsSorter: 'alpha',
+            docExpansion: 'none'
         }}));
+        // serve the user manual related files
+        const docsDir = path.join(__dirname, './../doc');
+        this.router.use('/docs', express.static(docsDir));
+        this.router.use('/docs', (req, res, next) => {
+            res.sendFile(path.join(docsDir, 'index.md'));
+        });
+
         this.router.use(checkToken);
 
         // create the authentication certificate for managing tokens

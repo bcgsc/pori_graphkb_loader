@@ -9,6 +9,10 @@ Knowlegebase is a curated database of variants in cancer and their therapeutic, 
 The main use of Knowlegebase is to act as the link between the known and published variant information and the expermientally collected data.
 It is used in generation of reports as well as building target sequences for the targeted alignment pipeline.
 
+## Authentication
+
+Authentication is managed via tokens. See the [authentication](.#/Authentication) related routes for more information.
+
 ## Dynamic Queries
 
 
@@ -35,7 +39,7 @@ Query all diseases where the name contains *'pancreatic'*
 /api/diseases?name=~pancreatic
 \`\`\`
 
-### Combinining the Contains and NOT Operators
+### Combining the Contains and NOT Operators
 
 Query all diseases where the name does not contain *'breast'*
 
@@ -235,7 +239,47 @@ const generateSwaggerSpec = (schema) => {
         servers: [{
             url: 'http://kbapi01:8088/api'
         }],
-        paths: {},
+        paths: {
+            '/token': {
+                post: {
+                    summary: 'Generate an authentication token to be used for requests to the KB API server',
+                    tags: ['Authentication'],
+                    requestBody: {
+                        required: true,
+                        content: {'application/json': {schema: {
+                            type: 'object',
+                            properties: {
+                                username: {type: 'string', description: 'the username'},
+                                password: {type: 'string', description: 'the password associated with this username'}
+                            }
+                        }}}
+                    },
+                    responses: {
+                        200: {
+                            description: 'The user is valid and a token has been generated',
+                            content: {'application/json': {schema:{
+                                type: 'object',
+                                properties: {
+                                    kbToken: {
+                                        type: 'string',
+                                        format: 'token',
+                                        description: 'the token for KB API requests'
+                                    },
+                                    catsToken: {
+                                        type: 'string',
+                                        format: 'token',
+                                        description: 'the token from CATS'
+                                    }
+                                }
+                            }}}
+                        },
+                        401: {
+                            description: 'The credentials were incorrect or not found'
+                        }
+                    }
+                }
+            }
+        },
         components: {
             schemas: {
                 RID: {
@@ -345,17 +389,17 @@ const generateSwaggerSpec = (schema) => {
                             getById: {
                                 parameters: {rid: '$response.body#/result.@rid'},
                                 operationId: `get${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`/${model.routeName}/{rid}\`](.#/${model.name}/get${model.routeName}__rid_) requests`
+                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`${model.routeName}/{rid}\`](.#/${model.name}/get${model.routeName}__rid_) requests`
                             },
                             patchById: {
                                 parameters: {rid: '$response.body#/result.@rid'},
                                 operationId: `get${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`/${model.routeName}/{rid}\`](.#/${model.name}/patch${model.routeName}__rid_) requests`
+                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`${model.routeName}/{rid}\`](.#/${model.name}/patch${model.routeName}__rid_) requests`
                             },
                             deleteById: {
                                 parameters: {rid: '$response.body#/result.@rid'},
                                 operationId: `delete${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`/${model.routeName}/{rid}\`](.#/${model.name}/delete${model.routeName}__rid_) requests`
+                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`${model.routeName}/{rid}\`](.#/${model.name}/delete${model.routeName}__rid_) requests`
                             }
                         }
                     },
@@ -383,17 +427,17 @@ const generateSwaggerSpec = (schema) => {
                             getById: {
                                 parameters: {rid: '$response.body#/result[].@rid'},
                                 operationId: `get${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`/${model.routeName}/{rid}\`](.#/${model.name}/get${model.routeName}__rid_) requests`
+                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`${model.routeName}/{rid}\`](.#/${model.name}/get${model.routeName}__rid_) requests`
                             },
                             patchById: {
                                 parameters: {rid: '$response.body#/result[].@rid'},
                                 operationId: `get${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`/${model.routeName}/{rid}\`](.#/${model.name}/patch${model.routeName}__rid_) requests`
+                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`${model.routeName}/{rid}\`](.#/${model.name}/patch${model.routeName}__rid_) requests`
                             },
                             deleteById: {
                                 parameters: {rid: '$response.body#/result[].@rid'},
                                 operationId: `delete${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`/${model.routeName}/{rid}\`](.#/${model.name}/delete${model.routeName}__rid_) requests`
+                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`${model.routeName}/{rid}\`](.#/${model.name}/delete${model.routeName}__rid_) requests`
                             }
                         }
                     },

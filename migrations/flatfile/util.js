@@ -6,6 +6,7 @@ const getRecordBy = async (className, where, conn) => {
         uri: className,
         qs: where
     }));
+    newRecord = newRecord.result;
     if (newRecord.length > 1) {
         throw new Error('expected a single record');
     } else if (newRecord.length == 0) {
@@ -30,7 +31,7 @@ const addRecord = async (className, where, conn, exists_ok=false, getIgnore=[]) 
     try {
         const newRecord = await request(opt);
         process.stdout.write('.');
-        return newRecord;
+        return newRecord.result;
     } catch (err) {
         if (exists_ok && err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
             process.stdout.write('*');

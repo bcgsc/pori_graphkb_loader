@@ -14,8 +14,7 @@ const {uploadNCIT} = require('./ncit');
 const {uploadOncoTree} = require('./oncotree');
 const {uploadDrugBank} = require('./drugbank');
 const path = require('path');
-
-const PERM_TOKEN = process.env.TEST_TOKEN || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7Im5hbWUiOiJhZG1pbiIsIkByaWQiOiIjNDE6MCJ9LCJpYXQiOjE1MjQyNDgwODgsImV4cCI6MTE1MjQyNDgwODh9.-PkTFeYCB7NyNs0XOap3ptPTp3icWxGbEBi2Hlku-kQ';
+const request = require('request-promise');
 
 const argumentError = (usage, msg) => {
     console.log(usage);
@@ -69,6 +68,18 @@ const optionDefinitions = [
         default: 8080,
         required: true,
         description: 'port number for the server hosting the KB API'
+    },
+    {
+        name: 'username',
+        default: process.env.KB_USER || process.env.USER,
+        required: true,
+        description: 'ldap username required for access to the kb (KB_USER)'
+    },
+    {
+        name: 'password',
+        default: process.env.KB_PASSWORD,
+        required: true,
+        description: 'the password for access to the kb api (KB_PASSWORD)'
     },
     {
         name: 'uberon',
@@ -135,9 +146,16 @@ for (let opt of optionDefinitions) {
 class ApiRequest {
     constructor(options) {
         this.baseUrl = `http://${options.host}:${options.port}/api`;
-        this.headers = {
-            Authorization: PERM_TOKEN
-        };
+        this.headers = {};
+    }
+    async setAuth({username, password}) {
+        const token = await request({
+            method: 'POST',
+            uri: `${this.baseUrl}/token`,
+            json: true,
+            body: {username, password}
+        });
+        this.headers.Authorization = token.kbToken;
     }
     request(opt) {
         const req = {
@@ -157,9 +175,10 @@ class ApiRequest {
 }
 
 const apiConnection = new ApiRequest(options);
-console.log(apiConnection);
 
 const upload = async () => {
+    await apiConnection.setAuth(options);
+    console.log('Authorization', apiConnection.headers);
     if (options['disease-ontology']) {
         await uploadDiseaseOntology({conn: apiConnection, filename: options['disease-ontology']});
     }
@@ -182,8 +201,6 @@ const upload = async () => {
         await uploadDrugBank({conn: apiConnection, filename: options.drugbank});
     }
 };
-
-console.log(options);
 
 upload();
 
