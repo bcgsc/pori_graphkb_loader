@@ -1,4 +1,5 @@
 'use strict';
+const jc = require('json-cycle');
 
 
 class ErrorMixin extends Error {
@@ -18,11 +19,11 @@ class ErrorMixin extends Error {
         this.content = content;
     }
     toJSON() {
-        return Object.assign(this.content, {
+        return jc.decycle(Object.assign(this.content, {
             message: this.message,
             name: this.name,
             stacktrace: this.stack
-        });
+        }));
     }
 }
 
@@ -40,6 +41,9 @@ class NoRecordFoundError extends ErrorMixin {}
 
 
 class PermissionError extends ErrorMixin {}
+
+
+class ExpiredTokenError extends ErrorMixin {}
 
 
 class AuthenticationError extends ErrorMixin {}
@@ -60,5 +64,6 @@ module.exports = {
     NoRecordFoundError,
     MultipleRecordsFoundError,
     PermissionError,
-    AuthenticationError
+    AuthenticationError,
+    ExpiredTokenError
 };

@@ -44,15 +44,12 @@ const addRoutes = (opt) => {
             continue;
         }
         if (process.env.VERBOSE === '1') {
-            console.log(`route: ${cls}`);
+            console.log(`route: ${cls} as ${schema[cls].routeName}`);
         }
-        if (schema[cls].isEdge) {
-            addResourceRoutes({router: router, model: schema[cls], db: db, optQueryParams: ['to', 'from']});
-        } else {
-            addResourceRoutes({router: router, model: schema[cls], db: db});
-        }
+        addResourceRoutes({router: router, model: schema[cls], db: db});
     }
-    addParserRoutes(router);
+    console.log('stack', Array.from(router.stack, (layer) => { return layer.route; }));
+    //addParserRoutes(router);
 };
 
 module.exports = addRoutes;

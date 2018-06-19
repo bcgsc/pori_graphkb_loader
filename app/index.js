@@ -7,9 +7,13 @@ const addRoutes = require('./routes');
 const OrientDB  = require('orientjs');
 const {loadSchema} = require('./repo/schema');
 const auth = require('./middleware/auth');
+const {generateSwaggerSpec} = require('./routes/openapi');
+const {checkToken, generateToken, catsToken} = require('./middleware/auth');  // WARNING: middleware fails if function is not imported by itself
 const fs = require('fs');
 const http = require('http');
 const {VERBOSE} = require('./repo/util');
+const HTTP_STATUS = require('http-status-codes');
+//const swaggerUi = require('swagger-ui-express');
 
 
 const connectDB = async (conf) => {
@@ -54,22 +58,54 @@ class AppServer {
         // set up middleware parser to deal with jsons
         this.app.use(bodyParser.urlencoded({extended: true}));
         this.app.use(bodyParser.json());
+
         this.db = null;
         this.server = null;
         this.conf = conf;
 
         // set up the routes
         this.router = express.Router();
+        //this.swaggerRouter = express.Router();
         this.app.use('/api', this.router);
+        //this.app.use('/docs', this.swaggerRouter);
+
         // add some basic logging
         if (VERBOSE) {
             this.router.use((req, res, next) => {
-                console.log(`[${req.method}] ${req.url}`, req.body);
+                console.log(`[${req.method}] ${req.url}`);
                 next();
             });
         }
-        this.router.use(auth.checkToken);
+        /*
+        this.router.route('/token').post(async (req, res) => {
+            // generate a token to return to the user
+            if (req.body.username === undefined || req.body.password === undefined) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'body requires both username and password to generate a token'});
+            }
+            // first level authentication
+            let cats = {user: req.body.username, token: null};
+            if (! this.conf.disableCats) {  // FOR TESTING
+                try {
+                    cats = await catsToken(req.body.username, req.body.password);
+                } catch (err) {
+                    return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
+                }
+            }
+            // kb-level authentication
+            let token;
+            try {
+                token = await generateToken(this.db, cats.user, cats.exp);
+            } catch (err) {
+                return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
+            }
+            return res.status(HTTP_STATUS.OK).json({kbToken: token, catsToken: cats.token});
+        });*/
+        //this.router.use(checkToken);
     }
+
+    /**
+     * Connect to the database, start the API server, and set dynamically built routes
+     */
     async listen() {
         // connect to the database
         if (VERBOSE) {
@@ -77,6 +113,16 @@ class AppServer {
         }
         const {db, schema} = await connectDB(this.conf);
         this.db = db;
+        // set up the swagger docs
+        //this.spec = generateSwaggerSpec(schema);
+        /*this.swaggerRouter.use('/', swaggerUi.serve, swaggerUi.setup(this.spec, {swaggerOptions: {
+            deepLinking: true,
+            displayOperationId: true,
+            defaultModelRendering: 'model',
+            operationsSorter: 'alpha',
+            tagsSorter: 'alpha'
+        }}));*/
+
         // create the authentication certificate for managing tokens
         if (! auth.keys.private) {
             auth.keys.private = fs.readFileSync(this.conf.private_key);
@@ -86,10 +132,15 @@ class AppServer {
         if (VERBOSE) {
             console.log('Adding 404 capture');
         }
+        /**/
         // last catch any errors for undefined routes. all actual routes should be defined above
-        this.app.use((req, res) => {
-            res.status(404);
-            res.send({error: 'Not Found', name: 'UrlNotFound', message: 'The requested url does not exist'});
+        this.router.use((req, res) => {
+            res.status(HTTP_STATUS.NOT_FOUND).send({error: 'Not Found', name: 'UrlNotFound', message: 'The requested url does not exist', url: req.url, method: req.method});
+        });
+        // catch any other errors
+        this.router.use(function (err, req, res, next) {  // error handling
+            console.error(err.stack);
+            res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send('Something broke!');
         });
         //appServer = await https.createServer({cert: keys.cert, key: keys.private, rejectUnauthorized: false}, app).listen(conf.app.port || defaultConf.app.port);
         this.server = await http.createServer(this.app).listen(this.conf.app.port);

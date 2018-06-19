@@ -1,7 +1,7 @@
 'use strict';
 const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError} = require('./error');
 const cache = require('./cache');
-const {timeStampNow, quoteWrap, looksLikeRID, getParameterPrefix, VERBOSE} = require('./util');
+const {timeStampNow, quoteWrap, looksLikeRID, VERBOSE} = require('./util');
 const {RID, RIDBag} = require('orientjs');
 const _ = require('lodash');
 
@@ -29,7 +29,7 @@ const wrapIfTypeError = (err) => {
 /**
  * Given a list of records, removes any object which contains a non-null deletedAt property
  */
-const trimDeletedRecords = (recordList) => {
+const trimDeletedRecords = (recordList, activeOnly=true) => {
     const queue = recordList.slice();
     const visited = new Set();
     while (queue.length > 0) {
@@ -42,10 +42,16 @@ const trimDeletedRecords = (recordList) => {
         const keys = Array.from(Object.keys(curr));
         for (let attr of keys) {
             const value = curr[attr];
-            if (value instanceof RIDBag) {
+            if (attr === '@type' || attr === '@version') {
+                delete curr[attr];
+            } else if (value instanceof RID) {
+                if (value.cluster < 0) {  // abstract, remove
+                    delete curr[attr];
+                }
+            } else if (value instanceof RIDBag) {
                 const arr = [];
                 for (let edge of value.all()) {
-                    if (edge.deletedAt == null && (! edge.in || edge.in.deletedAt == null) && (! edge.out || edge.out.deletedAt == null)) {
+                    if (! activeOnly || (edge.deletedAt == null && (! edge.in || edge.in.deletedAt == null) && (! edge.out || edge.out.deletedAt == null))) {
                         // remove edges where the edge is deleted or either node it connects is deleted
                         queue.push(edge);
                         arr.push(edge);
@@ -53,7 +59,7 @@ const trimDeletedRecords = (recordList) => {
                 }
                 curr[attr] = arr;
             } else if (typeof value === 'object' && value !== null) {
-                if (value.deletedAt != null) {
+                if (value.deletedAt != null && activeOnly) {
                     delete curr[attr];
                 } else {
                     queue.push(value);
@@ -64,7 +70,7 @@ const trimDeletedRecords = (recordList) => {
     // remove the top level elements last
     const result = [];
     for (let record of recordList) {
-        if (record.deletedAt == null) {
+        if (record.deletedAt == null && activeOnly) {
             result.push(record);
         }
     }
@@ -313,22 +319,6 @@ class SelectionQuery {
         }
         this.follow = Follow.parse(Object.assign({activeOnly: this.activeOnly}, inputQuery));
 
-        /*for (let [name, value] of Object.entries(subqueries)) {
-            const subquery = new SelectionQuery(value.model, value.where, {activeOnly: this.activeOnly});
-            if (subquery.follow.length === 0) {  // don't need a subquery, can use direct links instead and add the property definition here
-                for (let subPropName of Object.keys(subquery.conditions)) {
-                    const combinedName = `${name}.${subPropName}`;
-                    this.conditions[combinedName] = subquery.conditions[subPropName];
-                    const propDefn = this.properties[name].linkedModel.properties[subPropName];
-                    this.properties[combinedName] = propDefn;
-                    if (subquery.model.cast[subPropName]) {
-                        this.cast[combinedName] = subquery.model.cast[subPropName];
-                    }
-                }
-            } else {
-                this.conditions[name] = subquery;
-            }
-        }*/
         for (let [name, condition] of Object.entries(this.conditions)) {
             if (! (condition instanceof SelectionQuery) && this.cast[name]) {
                 condition.applyCast(this.cast[name]);
@@ -587,6 +577,21 @@ const createEdge = async (db, opt) => {
     }
 };
 
+/**
+ * Given a user name return the active record. Groups will be returned in full so that table level permissions can be checked
+ */
+const getUserByName = async (db, username) => {
+    // raw SQL to avoid having to load db models in the middleware
+    const user = await db.query('SELECT * from User where name = :param0 AND deletedAt IS NULL', {params: {param0: username}, fetchPlan: 'groups:1'}).all();
+    if (user.length > 1) {
+        throw new MultipleRecordsFoundError(`username '${username} is not unique and returned multiple records`);
+    } else if (user.length === 0) {
+        throw new NoRecordFoundError(`no user found for the username '${username}'`);
+    } else {
+        return user[0];
+    }
+};
+
 
 /**
  * Builds the query statement for selecting or matching records from the database
@@ -596,7 +601,7 @@ const createEdge = async (db, opt) => {
  * @param {Object} opt Selection options
  * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
  * @param {ClassModel} opt.model the model to be selected from
- * @param {string} [opt.fetchPlan='*: 1'] key value mapping of class names to depths of edges to follow or '*' for any class
+ * @param {string} [opt.fetchPlan='*:0'] key value mapping of class names to depths of edges to follow or '*' for any class
  * @param {Array} [opt.where=[]] the query requirements
  * @param {?number} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
  * @param {?number} [opt.limit=QUERY_LIMIT] the maximum number of records to return
@@ -609,7 +614,6 @@ const select = async (db, opt) => {
     opt = Object.assign({
         activeOnly: true,
         exactlyN: null,
-        fetchPlan: '*:1',
         limit: QUERY_LIMIT,
         skip: 0
     }, opt.where, opt);
@@ -620,19 +624,20 @@ const select = async (db, opt) => {
 
     // send the query statement to the database
     const {params, query: statement} = query.toString();
-    let recordList = await db.query(`${statement}`, {
+    const queryOpt = {
         params: params,
-        limit: opt.limit,
-        fetchPlan: opt.fetchPlan
-    }).all();
+        limit: opt.limit
+    };
+    if (opt.fetchPlan) {
+        queryOpt.fetchPlan = opt.fetchPlan;
+    }
+    let recordList = await db.query(`${statement}`, queryOpt).all();
 
     if (process.env.DEBUG == '1') {
         console.log(`selected ${recordList.length} records`);
     }
 
-    if (opt.activeOnly) {
-        recordList = trimDeletedRecords(recordList);
-    }
+    recordList = trimDeletedRecords(recordList, opt.activeOnly);
 
     if (opt.exactlyN !== null) {
         if (recordList.length === 0) {
@@ -750,4 +755,4 @@ const update = async (db, opt) => {
     }
 };
 
-module.exports = {select, create, update, remove, checkAccess, createUser, populateCache, cacheVocabulary, QUERY_LIMIT, SelectionQuery, Follow, RELATED_NODE_DEPTH, Comparison, Clause};
+module.exports = {select, create, update, remove, checkAccess, createUser, populateCache, cacheVocabulary, QUERY_LIMIT, SelectionQuery, Follow, RELATED_NODE_DEPTH, Comparison, Clause, getUserByName};

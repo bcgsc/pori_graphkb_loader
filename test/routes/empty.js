@@ -32,7 +32,7 @@ describe('schema', () => {
         app = new AppServer(conf, false);
 
         await app.listen();
-        mockToken = await auth.generateToken(admin, REALLY_LONG_TIME);
+        mockToken = await auth.generateToken(db, admin.name, REALLY_LONG_TIME);
     });
     let source;
     beforeEach(async () => {

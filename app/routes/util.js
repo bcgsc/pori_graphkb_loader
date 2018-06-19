@@ -7,7 +7,7 @@ const {select, create, update, remove, QUERY_LIMIT, SPEICAL_QUERY_ARGS, Clause, 
 const {getParameterPrefix, looksLikeRID, VERBOSE} = require('./../repo/util');
 
 //const SPEICAL_QUERY_ARGS = new Set(['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip']);
-const MAX_JUMPS = 6;  // fetchplans beyond 6 are very slow
+const MAX_JUMPS = 4;  // fetchplans beyond 6 are very slow
 
 class InputValidationError extends ErrorMixin {}
 
@@ -143,13 +143,12 @@ const addResourceRoutes = (opt) => {
     const {router, model, db, cacheUpdate} = opt;
     const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
     const reqQueryParams = opt.reqQueryParams || [];
-    let route = opt.route || `/${model.name.toLowerCase()}${model.isEdge ? '' : 's'}`;
-    if (route.endsWith('ys')) {
-        route = route.replace(/ys$/, 'ies');
-    }
+    let route = model.routeName;
+    console.log('addResourceRoutes', route);
 
     router.get(route,
-        async (req, res) => {
+        async (req, res, next) => {
+            console.log('TRY ROUTE', route);
             try {
                 req.query = parseQueryLanguage(req.query);
             } catch (err) {
@@ -169,14 +168,14 @@ const addResourceRoutes = (opt) => {
                 res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 return;
             }
-            let fetchPlan = '*:1';
+            let fetchPlan = null;
             if (req.query.neighbors !== undefined) {
                 fetchPlan = `*:${req.query.neighbors}`;
                 delete req.query.neighbors;
             }
             try {
                 const result = await select(db, {model: model, where: req.query, fetchPlan: fetchPlan});
-                res.json(jc.decycle(result));
+                return res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
@@ -189,7 +188,7 @@ const addResourceRoutes = (opt) => {
             }
         });
     router.post(route,
-        async (req, res) => {
+        async (req, res, next) => {
             if (! _.isEmpty(req.query)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type', params: req.query}));
                 return;
@@ -199,7 +198,7 @@ const addResourceRoutes = (opt) => {
                 if (cacheUpdate) {
                     await cacheUpdate(db);
                 }
-                res.json(jc.decycle(result));
+                res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
@@ -217,7 +216,7 @@ const addResourceRoutes = (opt) => {
 
     // Add the id routes
     router.get(`${route}/:id`,
-        async (req, res) => {
+        async (req, res, next) => {
             try {
                 req.query = parseQueryLanguage(req.query);
             } catch (err) {
@@ -238,7 +237,7 @@ const addResourceRoutes = (opt) => {
             req.params.id = `#${req.params.id.replace(/^#/, '')}`;
 
 
-            let fetchPlan = '*:1';
+            let fetchPlan = null;
             if (req.query.neighbors !== undefined) {
                 fetchPlan = `*:${req.query.neighbors}`;
                 delete req.query.neighbors;
@@ -253,7 +252,7 @@ const addResourceRoutes = (opt) => {
 
             try {
                 const result = await select(db, Object.assign(req.query, {model: model, where: {'@rid': req.params.id}, exactlyN: 1, fetchPlan: fetchPlan}));
-                res.json(jc.decycle(result[0]));
+                res.json({result: jc.decycle(result[0])});
             } catch (err) {
                 if (err instanceof NoRecordFoundError) {
                     res.status(HTTP_STATUS.NOT_FOUND).json(err);
@@ -266,7 +265,7 @@ const addResourceRoutes = (opt) => {
             }
         });
     router.patch(`${route}/:id`,
-        async (req, res) => {
+        async (req, res, next) => {
             if (! looksLikeRID(req.params.id, false)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
                 return;
@@ -286,7 +285,7 @@ const addResourceRoutes = (opt) => {
                 if (cacheUpdate) {
                     await cacheUpdate(db);
                 }
-                res.json(jc.decycle(result));
+                res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);
@@ -304,7 +303,7 @@ const addResourceRoutes = (opt) => {
         }
     );
     router.delete(`${route}/:id`,
-        async (req, res) => {
+        async (req, res, next) => {
             if (! looksLikeRID(req.params.id, false)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.id}`}));
                 return;
@@ -319,7 +318,7 @@ const addResourceRoutes = (opt) => {
                 if (cacheUpdate) {
                     await cacheUpdate(db);
                 }
-                res.json(jc.decycle(result));
+                res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
                     res.status(HTTP_STATUS.BAD_REQUEST).json(err);

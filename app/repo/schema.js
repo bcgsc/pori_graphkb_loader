@@ -46,6 +46,17 @@ class ClassModel {
         }
     }
 
+    get routeName() {
+        if (! this.isEdge) {
+            if (/.*[^aeiou]y$/.exec(this.name)) {
+                return `${this.name.slice(0, this.name.length - 1)}ies`.toLowerCase();
+            } else {
+                return `${this.name}s`.toLowerCase();
+            }
+        }
+        return this.name.toLowerCase();
+    }
+
     /**
      * @returns {string[]} the list of parent class names which this class inherits from
      */
@@ -717,8 +728,7 @@ const createSchema = async (db) => {
         name: 'OntologyEdge',
         inherits: 'E',
         properties: [
-            {name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source'},
-            {name: 'sourceVersion', type: 'string'}
+            {name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source'}
         ]
     });
     // create all the ontology based edge classes
