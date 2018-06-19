@@ -51,7 +51,7 @@ const addRoutes = (opt) => {
         if (model.isAbstract) {  // do not set up routes for abstract classes
             continue;
         }
-        if (['User', 'UserGroup', 'V', 'E', 'Vocabulary', 'Statement', 'Permissions'].includes(model.name)) {
+        if (['User', 'V', 'E', 'Vocabulary', 'Statement', 'Permissions'].includes(model.name)) {
             continue;
         }
         if (process.env.VERBOSE === '1') {

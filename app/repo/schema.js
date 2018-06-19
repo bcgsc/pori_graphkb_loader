@@ -336,6 +336,7 @@ const createSchema = async (db) => {
     });
     const defaultGroups = [
         {name: 'admin', permissions: {V: PERMISSIONS.ALL, E: PERMISSIONS.ALL, User: PERMISSIONS.ALL, UserGroup: PERMISSIONS.ALL}},
+        {name: 'regular', permissions: {V: PERMISSIONS.ALL, E: PERMISSIONS.ALL, User: PERMISSIONS.READ, UserGroup: PERMISSIONS.READ}},
         {name: 'readOnly', permissions: {V: PERMISSIONS.READ, E: PERMISSIONS.READ, User: PERMISSIONS.READ, UserGroup: PERMISSIONS.READ}}
     ];
     const groups = await Promise.all(Array.from(defaultGroups, x => db.insert().into('UserGroup').set(x).one()));

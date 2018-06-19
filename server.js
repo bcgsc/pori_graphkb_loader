@@ -13,7 +13,7 @@ const OrientDB  = require('orientjs');
 
 //process.on('uncaughtException', app.close);
 let app;
-conf.db.name = 'api_test';
+conf.db.name = 'api_test_v0.0.3';
 delete conf.port;
 
 (async () => {
@@ -60,9 +60,6 @@ delete conf.port;
         try {
             await createUser(app.db, {model: app.schema.User, userName: process.env.USER || 'admin', groupNames: ['admin']});
         } catch (err) {
-            if (! (err instanceof RecordExistsError)) {
-                throw err;
-            }
         }
         // cleanup
         process.on('SIGINT', async () => {
