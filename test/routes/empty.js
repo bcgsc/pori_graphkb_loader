@@ -345,7 +345,7 @@ describe('schema', () => {
         });
     });
     // select neighbors that are not deleted
-    describe('propogating active record selection', () => {
+    describe('GET /diseases: propogating active record selection', () => {
         let disease;
         beforeEach(async () => {
             const res1 = await chai.request(app.app)
@@ -415,6 +415,56 @@ describe('schema', () => {
             expect(res.body.result).to.have.property('sourceId', 'cancer');
             expect(res.body.result).to.have.property('out_AliasOf');
             expect(res.body.result.out_AliasOf).to.have.property('length', 2);
+        });
+    });
+    describe('GET /diseases query FULLTEXT index', () => {
+        beforeEach(async () => {
+            await chai.request(app.app)
+                .post('/api/diseases')
+                .type('json')
+                .send({
+                    sourceId: '2',
+                    name: 'liver cancer',
+                    source: source
+                })
+                .set('Authorization', mockToken);
+            await chai.request(app.app)
+                .post('/api/diseases')
+                .type('json')
+                .send({
+                    sourceId: '3',
+                    name: 'breast cancer',
+                    source: source
+                })
+                .set('Authorization', mockToken);
+            await chai.request(app.app)
+                .post('/api/diseases')
+                .type('json')
+                .send({
+                    sourceId: '1',
+                    name: 'liver angiosarcoma',
+                    source: source
+                })
+                .set('Authorization', mockToken);
+        });
+        it('requires all terms', async() => {
+            const res = await chai.request(app.app)
+                .get('/api/diseases')
+                .type('json')
+                .query({name: '~liver cancer'})
+                .set('Authorization', mockToken);
+            expect(res).to.have.status(HTTP_STATUS.OK);
+            expect(res.body.result).to.have.property('length', 1);
+            expect(res.body.result[0]).to.have.property('name', 'liver cancer');
+        });
+        it('ignores case (due to cast)', async() => {
+            const res = await chai.request(app.app)
+                .get('/api/diseases')
+                .type('json')
+                .query({name: '~CAncer'})
+                .set('Authorization', mockToken);
+            expect(res).to.have.status(HTTP_STATUS.OK);
+            expect(res.body.result).to.have.property('length', 2);
         });
     });
     afterEach(async () => {

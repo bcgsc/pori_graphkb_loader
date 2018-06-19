@@ -97,7 +97,6 @@ describe('schema', () => {
             expect(deleted.deletedBy.toString()).to.equal(admin['@rid'].toString());
         });
     });
-    //describe('select');
     describe('update', () => {
         it('change a node name', async () => {
             // make the initial node

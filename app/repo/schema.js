@@ -12,6 +12,8 @@ const {AttributeError} = require('./error');
 
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 
+const INDEX_SEP_CHARS = ' \r\n\t:;,.|+*/\\=!?[]()';  // default separator chars for orientdb full text hash: https://github.com/orientechnologies/orientdb/blob/2.2.x/core/src/main/java/com/orientechnologies/orient/core/index/OIndexFullText.java
+
 
 
 class ClassModel {
@@ -544,6 +546,13 @@ const createSchema = async (db) => {
                 type: 'NOTUNIQUE_HASH_INDEX',
                 properties: ['sourceId'],
                 class: 'Ontology'
+            },
+            {
+                name: 'Ontology.full',
+                type: 'FULLTEXT_HASH_INDEX',
+                properties: ['name'],
+                class: 'Ontology',
+                metadata: {separatorChars: INDEX_SEP_CHARS}
             }
         ],
         isAbstract: true
@@ -953,4 +962,4 @@ const loadSchema = async (db) => {
 };
 
 
-module.exports = {createSchema, loadSchema, ClassModel, FUZZY_CLASSES};
+module.exports = {createSchema, loadSchema, ClassModel, FUZZY_CLASSES, INDEX_SEP_CHARS};

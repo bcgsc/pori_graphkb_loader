@@ -5,12 +5,14 @@ const _ = require('lodash');
 const {ErrorMixin, AttributeError, NoRecordFoundError,  RecordExistsError} = require('./../repo/error');
 const {select, create, update, remove, QUERY_LIMIT, SPEICAL_QUERY_ARGS, Clause, Comparison} = require('./../repo/base');
 const {getParameterPrefix, looksLikeRID, VERBOSE} = require('./../repo/util');
+const {INDEX_SEP_CHARS} = require('./../repo/schema');
+const escapeStringRegexp = require('escape-string-regexp');
 
 //const SPEICAL_QUERY_ARGS = new Set(['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip']);
 const MAX_JUMPS = 4;  // fetchplans beyond 6 are very slow
+const INDEX_SEP_REGEX = new RegExp(`[${escapeStringRegexp(INDEX_SEP_CHARS)}]+`, 'g');
 
 class InputValidationError extends ErrorMixin {}
-
 /*
  * check that the parameters passed are expected
  */
@@ -113,6 +115,14 @@ const parseQueryLanguage = (inputQuery) => {
                     if (value.startsWith('~')) {
                         operator = '~';
                         value = value.slice(1);
+                        if (INDEX_SEP_REGEX.exec(value)) {
+                            // contains a separator char, should split into AND clause
+                            const andClause = new Clause('AND', Array.from(value.split(INDEX_SEP_REGEX), (word) => {
+                                return new Comparison(word, '~', negate);
+                            }));
+                            orList.push(andClause);
+                            continue;
+                        }
                     }
                     if (value === 'null') {
                         value = null;

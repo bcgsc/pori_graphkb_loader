@@ -1,5 +1,7 @@
 # Knowledgebase Database and API
 
+![Build Status](https://www.bcgsc.ca/bamboo/plugins/servlet/wittified/build-status/KNOW-KNOW)
+
 A REST API implemented using the orientjs node framework.
 
 orientjs: https://github.com/orientechnologies/orientjs
