@@ -131,7 +131,8 @@ describe('schema', () => {
                 where: content,
                 activeOnly: false,
                 exactlyN: 1,
-                model: schema.Disease
+                model: schema.Disease,
+                fetchPlan: '*:1'
             });
             originalNode = originalNode[0];
             expect(updated['history']).to.eql(originalNode['@rid']);

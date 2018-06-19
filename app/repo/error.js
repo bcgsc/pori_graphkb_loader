@@ -43,9 +43,6 @@ class NoRecordFoundError extends ErrorMixin {}
 class PermissionError extends ErrorMixin {}
 
 
-class ExpiredTokenError extends ErrorMixin {}
-
-
 class AuthenticationError extends ErrorMixin {}
 
 
@@ -64,6 +61,5 @@ module.exports = {
     NoRecordFoundError,
     MultipleRecordsFoundError,
     PermissionError,
-    AuthenticationError,
-    ExpiredTokenError
+    AuthenticationError
 };

@@ -2,7 +2,7 @@ const HTTP_STATUS = require('http-status-codes');
 const jwt = require('jsonwebtoken');
 const request = require('request-promise');
 const moment = require('moment');
-const {ExpiredTokenError, AuthenticationError} = require('./../repo/error');
+const {AuthenticationError} = require('./../repo/error');
 const {getUserByName} = require('./../repo/base');
 
 const keys = {};
@@ -29,11 +29,10 @@ const catsToken = async (username, password) => {
         if (response.body === undefined) {  // happens with ldap timeout error
             throw new AuthenticationError('no body was returned');
         }
-        console.log(response.body);
         // check if the token has expired
         const cats = jwt.decode(response.body.message);
         if (moment().valueOf() >= cats.exp) {
-            throw new ExpiredTokenError({message: 'token has expired', exp: cats.exp});
+            throw new jwt.TokenExpiredError({message: 'token has expired', exp: cats.exp});
         }
         return {token: response.body.message, user: cats.user, exp: cats.exp};
     } catch (err) {
@@ -66,11 +65,9 @@ const checkToken = async (req, res, next) => {
     try {
         const decoded = jwt.verify(token, keys.private);
         req.user = decoded.user;
-        console.log('checkToken', decoded);
-        console.log('redirecting from auth', req.url);
         return next();
     } catch (err) {
-        return next(err);
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
     }
 };
 

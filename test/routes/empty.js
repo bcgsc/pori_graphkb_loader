@@ -16,6 +16,7 @@ const auth = require('./../../app/middleware/auth');
 chai.use(chaiHttp);
 
 const REALLY_LONG_TIME = 10000000000;
+conf.disableCats = true;
 
 
 describe('schema', () => {
@@ -44,7 +45,7 @@ describe('schema', () => {
                 version: '2018'
             })
             .set('Authorization', mockToken);
-        source = res.body;
+        source = res.body.result;
     });
     describe('GET /users', () => {
         it('name', async () => {
@@ -52,9 +53,9 @@ describe('schema', () => {
                 .get('/api/users?name=admin')
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
-            expect(res.body).to.be.a('array');
-            expect(res.body.length).to.equal(1);
-            expect(res.body[0].name).to.equal('admin');
+            expect(res.body.result).to.be.a('array');
+            expect(res.body.result.length).to.equal(1);
+            expect(res.body.result[0].name).to.equal('admin');
         });
     });
     describe('POST /users', () => {
@@ -67,8 +68,8 @@ describe('schema', () => {
                 })
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
-            expect(res.body).to.be.a('object');
-            expect(res.body.name).to.equal('blargh monkeys');
+            expect(res.body.result).to.be.a('object');
+            expect(res.body.result.name).to.equal('blargh monkeys');
         });
         it('BAD REQUEST', async () => {
             let res;
@@ -127,9 +128,9 @@ describe('schema', () => {
                 })
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
-            expect(res.body).to.be.a('object');
-            expect(res.body).to.have.property('sourceId', 'cancer');
-            expect(res.body.source).to.eql(source['@rid']);
+            expect(res.body.result).to.be.a('object');
+            expect(res.body.result).to.have.property('sourceId', 'cancer');
+            expect(res.body.result.source).to.eql(source['@rid']);
         });
         it('BAD REQUEST (no source given)', async () => {
             let res;
@@ -215,8 +216,8 @@ describe('schema', () => {
                     source: source
                 })
                 .set('Authorization', mockToken);
-            disease = res.body;
-            diseaseId = res.body['@rid'].replace('#', '');
+            disease = res.body.result;
+            diseaseId = disease['@rid'].replace('#', '');
         });
         it('OK', async () => {
             const res = await chai.request(app.app)
@@ -227,12 +228,12 @@ describe('schema', () => {
                 })
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
-            expect(res.body).to.be.a('object');
-            expect(res.body).to.have.property('sourceId', 'carcinoma');
-            expect(res.body).to.have.property('source', disease.source);
-            expect(res.body).to.have.property('@rid', disease['@rid']);
-            expect(res.body).to.have.property('history');
-            expect(res.body.history).to.not.equal(disease['@rid']);
+            expect(res.body.result).to.be.a('object');
+            expect(res.body.result).to.have.property('sourceId', 'carcinoma');
+            expect(res.body.result).to.have.property('source', disease.source);
+            expect(res.body.result).to.have.property('@rid', disease['@rid']);
+            expect(res.body.result).to.have.property('history');
+            expect(res.body.result.history).to.not.equal(disease['@rid']);
         });
         it('NOT FOUND', async () => {
             let res;
@@ -301,8 +302,8 @@ describe('schema', () => {
                     source: source
                 })
                 .set('Authorization', mockToken);
-            disease = res.body;
-            diseaseId = res.body['@rid'].replace('#', '');
+            disease = res.body.result;
+            diseaseId = res.body.result['@rid'].replace('#', '');
         });
         it('OK', async () => {
             const res = await chai.request(app.app)
@@ -310,13 +311,13 @@ describe('schema', () => {
                 .type('json')
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
-            expect(res.body).to.be.a('object');
-            expect(res.body).to.have.property('sourceId', disease.sourceId);
-            expect(res.body).to.have.property('source', disease.source);
-            expect(res.body).to.have.property('@rid', disease['@rid']);
-            expect(res.body).to.have.property('deletedAt');
-            expect(res.body.deletedAt).to.be.a.number;
-            expect(res.body).to.have.property('deletedBy', admin['@rid'].toString());
+            expect(res.body.result).to.be.a('object');
+            expect(res.body.result).to.have.property('sourceId', disease.sourceId);
+            expect(res.body.result).to.have.property('source', disease.source);
+            expect(res.body.result).to.have.property('@rid', disease['@rid']);
+            expect(res.body.result).to.have.property('deletedAt');
+            expect(res.body.result.deletedAt).to.be.a.number;
+            expect(res.body.result).to.have.property('deletedBy', admin['@rid'].toString());
         });
         it('NOT FOUND', async () => {
             let res;
@@ -355,7 +356,7 @@ describe('schema', () => {
                     source: source
                 })
                 .set('Authorization', mockToken);
-            disease = res1.body;
+            disease = res1.body.result;
             const res2 = await chai.request(app.app)
                 .post('/api/diseases')
                 .type('json')
@@ -368,8 +369,8 @@ describe('schema', () => {
                 .post('/api/aliasof')
                 .type('json')
                 .send({
-                    out: res1.body['@rid'],
-                    in: res2.body['@rid'],
+                    out: res1.body.result['@rid'],
+                    in: res2.body.result['@rid'],
                     source: source
                 })
                 .set('Authorization', mockToken);
@@ -385,16 +386,16 @@ describe('schema', () => {
                 .post('/api/aliasof')
                 .type('json')
                 .send({
-                    out: res1.body['@rid'],
-                    in: res3.body['@rid'],
+                    out: res1.body.result['@rid'],
+                    in: res3.body.result['@rid'],
                     source: source
                 })
                 .set('Authorization', mockToken);
             await chai.request(app.app)
-                .delete(`/api/diseases/${res2.body['@rid'].slice(1)}`)
+                .delete(`/api/diseases/${res2.body.result['@rid'].slice(1)}`)
                 .set('Authorization', mockToken);
             await chai.request(app.app)
-                .delete(`/api/aliasof/${res4.body['@rid'].slice(1)}`)
+                .delete(`/api/aliasof/${res4.body.result['@rid'].slice(1)}`)
                 .set('Authorization', mockToken);
         });
         it('default limits to active records', async () => {
@@ -402,18 +403,18 @@ describe('schema', () => {
                 .get(`/api/diseases/${disease['@rid'].slice(1)}`)
                 .set('Authorization', mockToken)
                 .query({neighbors: 2});
-            expect(res.body).to.have.property('sourceId', 'cancer');
-            expect(res.body).to.have.property('out_AliasOf');
-            expect(res.body.out_AliasOf).to.eql([]);
+            expect(res.body.result).to.have.property('sourceId', 'cancer');
+            expect(res.body.result).to.have.property('out_AliasOf');
+            expect(res.body.result.out_AliasOf).to.eql([]);
         });
         it('includes deleted when not limited to active', async () => {
             const res = await chai.request(app.app)
                 .get(`/api/diseases/${disease['@rid'].slice(1)}`)
                 .set('Authorization', mockToken)
                 .query({neighbors: 2, activeOnly: false});
-            expect(res.body).to.have.property('sourceId', 'cancer');
-            expect(res.body).to.have.property('out_AliasOf');
-            expect(res.body.out_AliasOf).to.have.property('length', 2);
+            expect(res.body.result).to.have.property('sourceId', 'cancer');
+            expect(res.body.result).to.have.property('out_AliasOf');
+            expect(res.body.result.out_AliasOf).to.have.property('length', 2);
         });
     });
     afterEach(async () => {

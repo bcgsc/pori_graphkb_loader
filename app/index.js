@@ -133,11 +133,10 @@ class AppServer {
         if (VERBOSE) {
             console.log('Adding 404 capture');
         }
-        /**/
         // catch any other errors
         this.router.use((err, req, res, next) => {  // error handling
             console.error(err.stack);
-            return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send('Something broke!');
+            return res.status(err.code || HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
         });
         // last catch any errors for undefined routes. all actual routes should be defined above
         this.router.use((req, res, next) => {
@@ -148,11 +147,6 @@ class AppServer {
                 url: req.url,
                 method: req.method
             });
-        });
-        // catch any other errors
-        this.router.use(function (err, req, res, next) {  // error handling
-            console.error(err.stack);
-            res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).send('Something broke!');
         });
 
         //appServer = await https.createServer({cert: keys.cert, key: keys.private, rejectUnauthorized: false}, app).listen(conf.app.port || defaultConf.app.port);

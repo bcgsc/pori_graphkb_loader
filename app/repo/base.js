@@ -9,7 +9,7 @@ const _ = require('lodash');
 const RELATED_NODE_DEPTH = 3;
 const QUERY_LIMIT = 1000;
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
-const SPECIAL_QUERY_ARGS = new Set(['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip', 'neighbors', 'includeHistory']);
+const SPECIAL_QUERY_ARGS = new Set(['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip', 'neighbors', 'activeOnly']);
 
 
 /**
@@ -70,7 +70,7 @@ const trimDeletedRecords = (recordList, activeOnly=true) => {
     // remove the top level elements last
     const result = [];
     for (let record of recordList) {
-        if (record.deletedAt == null && activeOnly) {
+        if (record.deletedAt == null || ! activeOnly) {
             result.push(record);
         }
     }
@@ -636,7 +636,6 @@ const select = async (db, opt) => {
     if (process.env.DEBUG == '1') {
         console.log(`selected ${recordList.length} records`);
     }
-
     recordList = trimDeletedRecords(recordList, opt.activeOnly);
 
     if (opt.exactlyN !== null) {
@@ -719,19 +718,25 @@ const update = async (db, opt) => {
     delete originalWhere.history;
     const copy = Object.assign({}, _.omit(originalWhere, ['@rid', '@version']), {deletedAt: timeStampNow()});
 
+    const originalUserRID = original.createdBy instanceof RID ? original.createdBy : original.createdBy['@rid'];
+    let historyRID = null;
+    if (original.history) {
+        historyRID = original.history instanceof RID ? original.history : original.history['@rid'];
+    }
+
     const commit = db.let(
         'copy', (tx) => {
             // create the copy of the original record with a deletion time
             if (original.history !== undefined) {
                 return tx.create(model.isEdge ? 'EDGE' : 'VERTEX', model.name)
                     .set(copy)
-                    .set(`createdBy = ${original.createdBy['@rid']}`)
+                    .set(`createdBy = ${originalUserRID}`)
                     .set(`deletedBy = ${user['@rid']}`)
-                    .set(`history = ${original.history['@rid']}`);
+                    .set(`history = ${historyRID}`);
             } else {
                 return tx.create(model.isEdge ? 'EDGE' : 'VERTEX', model.name)
                     .set(copy)
-                    .set(`createdBy = ${original.createdBy['@rid']}`)
+                    .set(`createdBy = ${originalUserRID}`)
                     .set(`deletedBy = ${user['@rid']}`);
             }
         }).let('updatedRID', (tx) => {
@@ -744,7 +749,7 @@ const update = async (db, opt) => {
         }).let('updated', (tx) => {
             return tx.select().from('$updatedRID').fetch({'*': 1});
         }).commit();
-    if (VERBOSE) {
+    if (VERBOSE || process.env.DEBUG === '1') {
         console.log(`update: ${commit.buildStatement()}`);
     }
     try {
