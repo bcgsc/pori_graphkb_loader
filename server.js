@@ -7,6 +7,7 @@ const auth = require('./app/middleware/auth');
 const fs = require('fs');
 const {createSchema, loadSchema} = require('./app/repo/schema');
 const {createUser} = require('./app/repo/base');
+const {RecordExistsError} = require('./app/repo/error');
 const OrientDB  = require('orientjs');
 
 
@@ -42,18 +43,27 @@ delete conf.port;
             await createSchema(db, verbose);
             schema = await loadSchema(db, verbose);
             // create the admin user
-            const user = await createUser(db, {model: schema.User, userName: 'admin', groupNames: ['admin']});
+            const user = await createUser(db, {model: schema.User, userName: process.env.USER || 'admin', groupNames: ['admin']});
             if (verbose) {
                 console.log('created the user:', user);
             }
             await db.close();
         }
+
         console.log('creating certificate');
-        console.log('creating the admin test token');
         auth.keys.private = fs.readFileSync(conf.private_key);
-        conf.disableCats = true;
+        //conf.disableCats = true;
         app = new AppServer(conf, true, false);
-        app.listen();
+        await app.listen();
+
+        // if the user starting the server does not exist, add them as an admin
+        try {
+            await createUser(app.db, {model: app.schema.User, userName: process.env.USER || 'admin', groupNames: ['admin']});
+        } catch (err) {
+            if (! (err instanceof RecordExistsError)) {
+                throw err;
+            }
+        }
         // cleanup
         process.on('SIGINT', async () => {
             if (app) {

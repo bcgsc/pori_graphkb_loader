@@ -151,7 +151,7 @@ const addResourceRoutes = (opt) => {
     let route = opt.route || model.routeName;
 
     router.get(route,
-        async (req, res, next) => {
+        async (req, res) => {
             try {
                 req.query = parseQueryLanguage(req.query);
             } catch (err) {
@@ -191,7 +191,7 @@ const addResourceRoutes = (opt) => {
             }
         });
     router.post(route,
-        async (req, res, next) => {
+        async (req, res) => {
             if (! _.isEmpty(req.query)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type', params: req.query}));
                 return;
@@ -219,7 +219,7 @@ const addResourceRoutes = (opt) => {
 
     // Add the rid routes
     router.get(`${route}/:rid`,
-        async (req, res, next) => {
+        async (req, res) => {
             try {
                 req.query = parseQueryLanguage(req.query);
             } catch (err) {
@@ -267,7 +267,7 @@ const addResourceRoutes = (opt) => {
             }
         });
     router.patch(`${route}/:rid`,
-        async (req, res, next) => {
+        async (req, res) => {
             if (! looksLikeRID(req.params.rid, false)) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.rid}`}));
             }
@@ -303,7 +303,7 @@ const addResourceRoutes = (opt) => {
         }
     );
     router.delete(`${route}/:rid`,
-        async (req, res, next) => {
+        async (req, res) => {
             if (! looksLikeRID(req.params.rid, false)) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.rid}`}));
             }

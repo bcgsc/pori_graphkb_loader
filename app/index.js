@@ -113,6 +113,7 @@ class AppServer {
         }
         const {db, schema} = await connectDB(this.conf);
         this.db = db;
+        this.schema = schema;
         // set up the swagger docs
         this.spec = generateSwaggerSpec(schema);
         this.router.use('/docs', swaggerUi.serve, swaggerUi.setup(this.spec, {swaggerOptions: {

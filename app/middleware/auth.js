@@ -26,15 +26,15 @@ const catsToken = async (username, password) => {
                 'Accept': 'application/json'
             }
         });
-        if (response.body === undefined) {  // happens with ldap timeout error
+        if (response === undefined) {  // happens with ldap timeout error
             throw new AuthenticationError('no body was returned');
         }
         // check if the token has expired
-        const cats = jwt.decode(response.body.message);
-        if (moment().valueOf() >= cats.exp) {
+        const cats = jwt.decode(response.message);
+        if (moment().unix() >= cats.exp) {
             throw new jwt.TokenExpiredError({message: 'token has expired', exp: cats.exp});
         }
-        return {token: response.body.message, user: cats.user, exp: cats.exp};
+        return {token: response.message, user: cats.user, exp: cats.exp};
     } catch (err) {
         throw new AuthenticationError(err.response || err);
     }
