@@ -29,7 +29,7 @@ npm start
 
 The schema for the database consist of four major types of data: ontology terms, variants, literature/evidence, and statements.
 
-![schema](doc/schema.svg)
+![schema](./doc/schema.svg)
 
 ## OpenAPI Specification
 
@@ -43,7 +43,7 @@ to CATS with the users credentials and a token is returned if the user exists an
 
 The next step happens when KB looks up the username in the KB database. Each user in KB belongs to one or more UserGroups. Each of these UserGroups contains table-level permission schemas.
 
-![KB Authentication Process](doc/authentication.svg)
+![KB Authentication Process](./doc/authentication.svg)
 
 In summary, KB Client will send user credentials and recieve a token which will be used in the header of all subsequent requests.
 
