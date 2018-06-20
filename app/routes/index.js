@@ -2,7 +2,7 @@ const jc = require('json-cycle');
 
 const {addResourceRoutes} = require('./util');
 const {cacheVocabulary} = require('./../repo/base');
-const {addParserRoutes} = require('./parser');
+
 
 
 const printAllRoutes = (router) => {
@@ -59,8 +59,6 @@ const addRoutes = (opt) => {
         }
         addResourceRoutes({router, model, db});
     }
-
-    addParserRoutes(router);
 };
 
 module.exports = addRoutes;

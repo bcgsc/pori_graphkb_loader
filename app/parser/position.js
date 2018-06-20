@@ -11,6 +11,42 @@ const PREFIX_CLASS = {
 };
 
 
+const _positionString = (breakpoint) => {
+    switch(breakpoint['@class']) {
+        case PREFIX_CLASS.c: {
+            if (breakpoint.offset) {
+                return `${breakpoint.pos}${breakpoint.offset > 0 ? '+' : ''}${breakpoint.offset}`;
+            }
+            return `${breakpoint.pos}`;
+        }
+        case PREFIX_CLASS.y: {
+            if (breakpoint.minorBand) {
+                return `${breakpoint.arm}${breakpoint.majorBand || '?'}.${breakpoint.minorBand}`;
+            } else if (breakpoint.majorBand) {
+                return `${breakpoint.arm}${breakpoint.majorBand || '?'}`;
+            } else {
+                return breakpoint.arm;
+            }
+        }
+        case PREFIX_CLASS.p: {
+            return `${breakpoint.refAA || '?'}${breakpoint.pos || '?'}`;
+        }
+        default: {
+            return `${breakpoint.pos}`;
+        }
+    };
+}
+
+
+const breakRepr = (prefix, break1, break2) => {
+    if (break2) {  // range
+        return `${prefix}.(${_positionString(break1)}_${_positionString(break2)})`;
+    }
+    return `${prefix}.${_positionString(break1)}`;
+};
+
+
+
 const parsePosition = (prefix, string) => {
     let result = {'@class': PREFIX_CLASS[prefix]};
     switch(prefix) {
@@ -39,10 +75,9 @@ const parsePosition = (prefix, string) => {
             if (m === null) {
                 throw new ParsingError(`input '${string}' did not match the expected pattern for 'c' prefixed positions`);
             }
-            return {
-                pos: m[1] ? parseInt(m[1]) : 1,
-                offset: m[2] === undefined ? 0 : parseInt(m[2])
-            };
+            result.pos = m[1] ? parseInt(m[1]) : 1;
+            result.offset = m[2] === undefined ? 0 : parseInt(m[2]);
+            return result;
         }
         case 'p': {
             const m = /^([A-Z\?\*])?(\d+|\?)$/.exec(string);
@@ -77,4 +112,4 @@ const parsePosition = (prefix, string) => {
     }
 };
 
-module.exports = {parsePosition};
+module.exports = {parsePosition, breakRepr};

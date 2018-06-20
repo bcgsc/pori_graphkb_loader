@@ -15,6 +15,7 @@ const {VERBOSE} = require('./repo/util');
 const HTTP_STATUS = require('http-status-codes');
 const swaggerUi = require('swagger-ui-express');
 const path = require('path');
+const {parse} = require('./parser/variant');
 
 const logRequests = (req, res, next) => {
     console.log(`[${req.method}] ${req.url}`);
@@ -103,6 +104,16 @@ class AppServer {
                 return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
             }
             return res.status(HTTP_STATUS.OK).json({kbToken: token, catsToken: cats.token});
+        });
+
+        // add the variant parser route
+        this.router.post('/parser/variant', async (req, res) => {
+            try {
+                const parsed = parse(req.body.content);
+                res.status(HTTP_STATUS.OK).json({result: parsed});
+            } catch (err) {
+                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+            }
         });
     }
 

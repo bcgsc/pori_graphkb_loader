@@ -1,7 +1,7 @@
 'use strict';
 const nRegex = require('named-js-regexp');
 const {ParsingError} = require('./../repo/error');
-const {parsePosition} = require('./position');
+const {parsePosition, breakRepr} = require('./position');
 
 const EVENT_SUBTYPE = {
     INS: 'insertion',
@@ -57,7 +57,11 @@ const getPrefix = (string) => {
 };
 
 
-const parseContinuous  = (string) => {
+const parse = (string) => {
+    if (string.length < 3) {
+        throw new ParsingError(`Too short. Must be a minimum of three characters: ${string}`);
+    }
+
     const prefix = getPrefix(string);
     string = string.slice(prefix.length + 1);
     const p = '([A-Z0-9\\*\\?\\+\\-]*[0-9\\?]|[pq][0-9\\.\?]*)';
@@ -89,23 +93,36 @@ const parseContinuous  = (string) => {
     }
 
     const tail = match.group('tail');
-    result.break1Repr = `${prefix}.${string.slice(0, string.length - tail.length)}`;
+    result.break1Repr = breakRepr(prefix, result.break1Start, result.break1End);
+    if (result.break2Start) {
+        result.break2Repr = breakRepr(prefix, result.break2Start, result.break2End);
+    }
 
     if (match = /^del([A-Z\?\*]+)?ins([A-Z\?\*]+|\d+)?$/.exec(tail)) {  // indel
         result.type = 'delins';
-        result.refSeq = match[1];
+        if (match[1]) {
+            result.refSeq = match[1];
+        }
         if (parseInt(match[2])) {
             result.untemplatedSeqSize = parseInt(match[2]);
-        } else if (match[2]) {
+        } else if (match[2] && match[2] !== '?') {
             result.untemplatedSeq = match[2];
-            if (match[2] !== '?') {
-                result.untemplatedSeqSize = result.untemplatedSeq.length;
-            }
         }
     } else if (match = /^(del|inv|ins|dup)([A-Z\?\*]+|\d+)?$/.exec(tail)) {  // deletion
         result.type = match[1];
-        if (/^[A-Z]+/.exec(match[2])) {
-            result.refSeq = match[2];
+        if (parseInt(match[2])) {
+            if (result.type === 'ins' || result.type === 'dup') {
+                result.untemplatedSeqSize = parseInt(match[2]);
+            }
+        } else if (match[2] && match[2] !== '?') {
+            if (result.type === 'dup') {
+                result.untemplatedSeq = match[2];
+                result.refSeq = match[2];
+            } else if (result.type === 'ins') {
+                result.untemplatedSeq = match[2];
+            } else {
+                result.refSeq = match[2];
+            }
         }
     } else if (match = /^[A-Z\?\*]$/.exec(tail)) {
         if (prefix !== 'p') {
@@ -116,6 +133,8 @@ const parseContinuous  = (string) => {
     } else if (match = /^([A-Z\?])>([A-Z\?])$/.exec(tail)) {
         if (prefix === 'p') {
             throw new ParsingError('protein notation does not use ">" for a substitution');
+        } else if (prefix === 'e') {
+            throw new ParsingError('Cannot defined substitutions at the exon coordinate level');
         }
         result.type = '>';
         result.refSeq = match[1];
@@ -136,106 +155,39 @@ const parseContinuous  = (string) => {
     } else {
         throw new ParsingError(`Did not recognize type: ${tail}`);
     }
-
-    return result;
-};
-
-
-const parseHistoneVariant = (string) => {
-    /**
-     * https://epigeneticsandchromatin.biomedcentral.com/articles/10.1186/1756-8935-5-7
-     * function to parse histone modification variant notation
-     * @param {string} input string
-     */
-    const r = nRegex(
-        '^(?<histone>H[0-9A-Z-]+)'
-        + '(\\.(?<subtype>[A-Z0-9]))?'
-        + '(?<aa>K|Lys|Arg|R|Ser|S)'
-        + '(?<pos>[0-9]+)'
-        + '(?<modification>me|ac|ub)'
-        + '(?<count>[1-9][0-9]*|\\?)?$'
-    );
-    const match = r.exec(string);
-
-    if (match === null) {
-        throw new ParsingError(`input string did not match expected pattern: ${string}`);
-    }
-    const count = parseInt(match.group('count'));
-
-    return {
-        histone: match.group('histone'),
-        subtype: match.group('subtype'),
-        protein_position: {
-            ref_aa: match.group('aa'),
-            pos: parseInt(match.group('pos')),
-            prefix: 'p'
-        },
-        modification: {
-            type: match.group('modification'),
-            count: count == undefined ? undefined : count
-        }
-    };
-};
-
-
-const parseDiscontinuous = (string) => {
-    const exp = '<type>(<position 1>,<position 2>)';
-    const regex = nRegex(
-        '(?<type>[^\\)\\(]*)'
-        + '\\('
-        + '(?<position1>[^,]+)'
-        + ','
-        + '(?<position2>[^,]+)'
-        + '\\)'
-    );
-    let match = regex.exec(string);
-    if (match == null) {
-        throw new ParsingError(`input string: ${string} did not match the expected pattern: ${exp}`);
-    }
-    match = match.groups();
-
-    const result = {type: match.type};
-
-    if (match.position1 !== 'na' && match.position1 !== '?') {
-
-        const prefix1 = getPrefix(match.position1);
-        const pos1 = match.position1.slice(prefix1.length + 1);
-
-        result.break1Start = parsePosition(prefix1, pos1);
-        result.break1Repr = `${prefix1}.${pos1}`;
-    }
-
-    if (match.position2 && match.position2 !== '?' && match.position2 !== '?') {
-        const prefix2 = getPrefix(match.position2);
-        const pos2 = match.position2.slice(prefix2.length + 1);
-        if (pos2 !== '?' && pos2 !== 'na') {
-            result.break2Start = parsePosition(prefix2, pos2);
-            result.break2Repr = `${prefix2}.${pos2}`;
-        }
-    }
-    return result;
-};
-
-
-const parse = (string) => {
-    if (string.length < 3) {
-        throw new ParsingError(`Too short. Must be a minimum of three characters: ${string}`);
-    }
-    let result;
-    try {
-        result = parseContinuous(string);
-    } catch (err) {
-        if (string.includes(')')) {
-            result = parseDiscontinuous(string);
-        } else {
-            throw err;
-        }
-    }
     if (! NOTATION_TO_SUBTYPE.has(result.type)) {
         throw new ParsingError(`unsupported event type: ${result.type}`);
     }
     result.type = NOTATION_TO_SUBTYPE.get(result.type);
+    if (result.untemplatedSeq && result.untemplatedSeqSize === undefined) {
+        result.untemplatedSeqSize = result.untemplatedSeq.length;
+    }
+    // check for innapropriate types
+    if (prefix === 'y') {
+        if (result.refSeq || result.untemplatedSeq) {
+            throw new ParsingError('cannot define sequence elements at the cytoband level');
+        } else if (! [EVENT_SUBTYPE.DUP, EVENT_SUBTYPE.DEL, EVENT_SUBTYPE.GAIN, EVENT_SUBTYPE.LOSS, EVENT_SUBTYPE.INV].includes(result.type)) {
+            throw new ParsingError({
+                message: 'Invalid type for cytoband level event notation',
+                parsed: result
+            });
+        }
+    } else if (prefix === 'e') {
+        if (result.refSeq || result.untemplatedSeq) {
+            throw new ParsingError('cannot define sequence elements at the exon level');
+        } else if (! [EVENT_SUBTYPE.DUP, EVENT_SUBTYPE.DEL].includes(result.type)) {
+            throw new ParsingError({
+                message: 'only duplication and deletion events can be declared at the exon level',
+                parsed: result
+            });
+        }
+    }
+    // special case refSeq protein substitutions
+    if (prefix === 'p' && ! result.break1End && ! result.break2Start && ! result.break2End && result.break1Start.refAA) {
+        result.refSeq = result.break1Start.refAA;
+    }
     return result;
 };
 
-module.exports = {parsePosition, parse, NOTATION_TO_SUBTYPE};
+
+module.exports = {parse, NOTATION_TO_SUBTYPE, EVENT_SUBTYPE};

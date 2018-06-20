@@ -1,255 +1,311 @@
 'use strict';
 const {expect} = require('chai');
-const {ParsingError} = require('./../../../app/repo/error');
+const {ParsingError} = require('./../../app/repo/error');
 const {
     parse,
-    parseHistoneVariant,
-    parseContinuous
-} = require('./../../../app/parser/variant');
-const {EVENT_SUBTYPE} = require('./../../../app/repo/event');
+    EVENT_SUBTYPE
+} = require('./../../app/parser/variant');
 
 
 describe('parse', () => {
     describe('DNA variant:', () => {
         it('deletion single bp', () => {
             const result = parse('g.3del');
-            expect(result.prefix).to.equal('g');
-            expect(result.break1.pos).to.equal(3);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.DEL);
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DEL,
+                break1Start: {
+                    '@class': 'GenomicPosition',
+                    pos: 3
+                },
+                break1Repr: 'g.3'
+            };
+            expect(result).eql(exp);
         });
         it('deletion spans a range', () => {
             const result = parse('g.3_5del');
-            expect(result.prefix).to.equal('g');
-            expect(result.break1.pos).to.equal(3);
-            expect(result.break2.pos).to.equal(5);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DEL);
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DEL,
+                break1Start: {'@class': 'GenomicPosition', pos: 3},
+                break2Start: {'@class': 'GenomicPosition', pos: 5},
+                break1Repr: 'g.3',
+                break2Repr: 'g.5'
+            };
+            expect(result).eql(exp);
         });
         it('deletion has a reference sequence', () => {
             const result = parse('g.3_5delTAA');
-            expect(result.prefix).to.equal('g');
-            expect(result.break1.pos).to.equal(3);
-            expect(result.break2.pos).to.equal(5);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DEL);
-            expect(result.reference_seq).to.equal('TAA');
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DEL,
+                break1Start: {'@class': 'GenomicPosition', pos: 3},
+                break2Start: {'@class': 'GenomicPosition', pos: 5},
+                break1Repr: 'g.3',
+                break2Repr: 'g.5',
+                refSeq: 'TAA'
+            };
+            expect(result).eql(exp);
         });
         it('duplication spans a range uncertain start', () => {
             const result = parse('g.(3_4)_5dup');
-            expect(result.prefix).to.equal('g');
-            expect(result.break1.start.pos).to.equal(3);
-            expect(result.break1.end.pos).to.equal(4);
-            expect(result.break2.pos).to.equal(5);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DUP);
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'GenomicPosition', pos: 3},
+                break1End: {'@class': 'GenomicPosition', pos: 4},
+                break2Start: {'@class': 'GenomicPosition', pos: 5},
+                break1Repr: 'g.(3_4)',
+                break2Repr: 'g.5'
+            };
+            expect(result).eql(exp);
         });
         it('duplication spans a range uncertain end', () => {
             const result = parse('g.3_(5_7)dup');
-            expect(result.prefix).to.equal('g');
-            expect(result.break2.start.pos).to.equal(5);
-            expect(result.break2.end.pos).to.equal(7);
-            expect(result.break1.pos).to.equal(3);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DUP);
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'GenomicPosition', pos: 3},
+                break2Start: {'@class': 'GenomicPosition', pos: 5},
+                break2End: {'@class': 'GenomicPosition', pos: 7},
+                break1Repr: 'g.3',
+                break2Repr: 'g.(5_7)'
+            };
+            expect(result).eql(exp);
         });
         it('duplication spans a range uncertain start and end', () => {
             const result = parse('g.(1_3)_(5_7)dup');
-            expect(result.prefix).to.equal('g');
-            expect(result.break2.start.pos).to.equal(5);
-            expect(result.break2.end.pos).to.equal(7);
-            expect(result.break1.start.pos).to.equal(1);
-            expect(result.break1.end.pos).to.equal(3);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DUP);
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'GenomicPosition', pos: 1},
+                break1End: {'@class': 'GenomicPosition', pos: 3},
+                break2Start: {'@class': 'GenomicPosition', pos: 5},
+                break2End: {'@class': 'GenomicPosition', pos: 7},
+                break1Repr: 'g.(1_3)',
+                break2Repr: 'g.(5_7)'
+            };
+            expect(result).eql(exp);
         });
         it('duplication has a reference sequence', () => {
             const result = parse('g.3_5dupTAA');
-            expect(result.prefix).to.equal('g');
-            expect(result.break1.pos).to.equal(3);
-            expect(result.break2.pos).to.equal(5);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DUP);
-            expect(result.reference_seq).to.equal('TAA');
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'GenomicPosition', pos: 3},
+                break2Start: {'@class': 'GenomicPosition', pos: 5},
+                break1Repr: 'g.3',
+                break2Repr: 'g.5',
+                untemplatedSeq: 'TAA',
+                refSeq: 'TAA',
+                untemplatedSeqSize: 3
+            };
+            expect(result).eql(exp);
         });
         it('basic substitution', () => {
             const result = parse('g.4A>T');
-            expect(result.prefix).to.equal('g');
-            expect(result.break1.pos).to.equal(4);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.SUB);
-            expect(result.reference_seq).to.equal('A');
-            expect(result.untemplated_seq).to.equal('T');
+            const exp = {
+                type: EVENT_SUBTYPE.SUB,
+                break1Start: {'@class': 'GenomicPosition', pos: 4},
+                break1Repr: 'g.4',
+                untemplatedSeq: 'T',
+                refSeq: 'A',
+                untemplatedSeqSize: 1
+            };
+            expect(result).eql(exp);
         });
         it('substitution with uncertainty', () => {
             const result = parse('g.(4_7)A>T');
-            expect(result.prefix).to.equal('g');
-            expect(result.break1.start.pos).to.equal(4);
-            expect(result.break1.end.pos).to.equal(7);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.SUB);
-            expect(result.reference_seq).to.equal('A');
-            expect(result.untemplated_seq).to.equal('T');
+            const exp = {
+                type: EVENT_SUBTYPE.SUB,
+                break1Start: {'@class': 'GenomicPosition', pos: 4},
+                break1End: {'@class': 'GenomicPosition', pos: 7},
+                break1Repr: 'g.(4_7)',
+                untemplatedSeq: 'T',
+                refSeq: 'A',
+                untemplatedSeqSize: 1
+            };
+            expect(result).eql(exp);
         });
         it('indel spans a range uncertain start and end ref and alt specified', () => {
             const result = parse('g.(1_3)_(5_7)delTAAinsACG');
-            expect(result.prefix).to.equal('g');
-            expect(result.break2.start.pos).to.equal(5);
-            expect(result.break2.end.pos).to.equal(7);
-            expect(result.break1.start.pos).to.equal(1);
-            expect(result.break1.end.pos).to.equal(3);
-            expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.reference_seq).to.equal('TAA');
-            expect(result.untemplated_seq).to.equal('ACG');
+            const exp = {
+                type: EVENT_SUBTYPE.INDEL,
+                break1Start: {'@class': 'GenomicPosition', pos: 1},
+                break1End: {'@class': 'GenomicPosition', pos: 3},
+                break2Start: {'@class': 'GenomicPosition', pos: 5},
+                break2End: {'@class': 'GenomicPosition', pos: 7},
+                break1Repr: 'g.(1_3)',
+                break2Repr: 'g.(5_7)',
+                untemplatedSeq: 'ACG',
+                refSeq: 'TAA',
+                untemplatedSeqSize: 3
+            };
+            expect(result).eql(exp);
         });
         it('indel ref specified', () => {
             const result = parse('g.10delTins');
-            expect(result.prefix).to.equal('g');
-            expect(result.break1.pos).to.equal(10);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.reference_seq).to.equal('T');
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.INDEL,
+                break1Start: {'@class': 'GenomicPosition', pos: 10},
+                break1Repr: 'g.10',
+                refSeq: 'T'
+            };
+            expect(result).eql(exp);
         });
         it('indel alt specified', () => {
             const result = parse('g.10delinsACC');
-            expect(result.prefix).to.equal('g');
-            expect(result.break1.pos).to.equal(10);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.untemplated_seq).to.equal('ACC');
-            expect(result.reference_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.INDEL,
+                break1Start: {'@class': 'GenomicPosition', pos: 10},
+                break1Repr: 'g.10',
+                untemplatedSeq: 'ACC',
+                untemplatedSeqSize: 3
+            };
+            expect(result).eql(exp);
         });
         it('errors on protein style missense', () => {
-            expect(() => { parseContinuous('g', '15T'); }).to.throw(ParsingError);
+            expect(() => { parse('g.15T'); }).to.throw(ParsingError);
         });
     });
     describe('cds variant:', () => {
         it('deletion single bp', () => {
             const result = parse('c.3+1del');
-            expect(result.prefix).to.equal('c');
-            expect(result.break1.pos).to.equal(3);
-            expect(result.break1.offset).to.equal(1);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.DEL);
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DEL,
+                break1Start: {'@class': 'CdsPosition', pos: 3, offset: 1},
+                break1Repr: 'c.3+1'
+            };
+            expect(result).eql(exp);
         });
         it('deletion spans a range', () => {
             const result = parse('c.3+1_5-2del');
-            expect(result.prefix).to.equal('c');
-            expect(result.break1.pos).to.equal(3);
-            expect(result.break1.offset).to.equal(1);
-            expect(result.break2.pos).to.equal(5);
-            expect(result.break2.offset).to.equal(-2);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DEL);
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DEL,
+                break1Start: {'@class': 'CdsPosition', pos: 3, offset: 1},
+                break2Start: {'@class': 'CdsPosition', pos: 5, offset: -2},
+                break1Repr: 'c.3+1',
+                break2Repr: 'c.5-2'
+            };
+            expect(result).eql(exp);
         });
         it('deletion has a reference sequence', () => {
             const result = parse('c.3_5delTAA');
-            expect(result.prefix).to.equal('c');
-            expect(result.break1.pos).to.equal(3);
-            expect(result.break2.pos).to.equal(5);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DEL);
-            expect(result.reference_seq).to.equal('TAA');
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DEL,
+                break1Start: {'@class': 'CdsPosition', pos: 3, offset: 0},
+                break2Start: {'@class': 'CdsPosition', pos: 5, offset: 0},
+                break1Repr: 'c.3',
+                break2Repr: 'c.5',
+                refSeq: 'TAA'
+            };
+            expect(result).eql(exp);
         });
         it('duplication spans a range uncertain start', () => {
             const result = parse('c.(3+1_4-1)_10dup');
-            expect(result.prefix).to.equal('c');
-            expect(result.break1.start.pos).to.equal(3);
-            expect(result.break1.start.offset).to.equal(1);
-            expect(result.break1.end.pos).to.equal(4);
-            expect(result.break1.end.offset).to.equal(-1);
-            expect(result.break2.pos).to.equal(10);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DUP);
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CdsPosition', pos: 3, offset: 1},
+                break1End: {'@class': 'CdsPosition', pos: 4, offset: -1},
+                break2Start: {'@class': 'CdsPosition', pos: 10, offset: 0},
+                break1Repr: 'c.(3+1_4-1)',
+                break2Repr: 'c.10'
+            };
+            expect(result).eql(exp);
         });
         it('duplication spans a range uncertain end', () => {
             const result = parse('c.3_(5+1_55-1)dup');
-            expect(result.prefix).to.equal('c');
-            expect(result.break2.start.pos).to.equal(5);
-            expect(result.break2.end.pos).to.equal(55);
-            expect(result.break1.pos).to.equal(3);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DUP);
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CdsPosition', pos: 3, offset: 0},
+                break2Start: {'@class': 'CdsPosition', pos: 5, offset: 1},
+                break2End: {'@class': 'CdsPosition', pos: 55, offset: -1},
+                break1Repr: 'c.3',
+                break2Repr: 'c.(5+1_55-1)'
+            };
+            expect(result).eql(exp);
         });
         it('duplication spans a range uncertain start and end', () => {
             const result = parse('c.(1_3)_(5_7)dup');
-            expect(result.prefix).to.equal('c');
-            expect(result.break2.start.pos).to.equal(5);
-            expect(result.break2.end.pos).to.equal(7);
-            expect(result.break1.start.pos).to.equal(1);
-            expect(result.break1.end.pos).to.equal(3);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DUP);
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CdsPosition', pos: 1, offset: 0},
+                break1End: {'@class': 'CdsPosition', pos: 3, offset: 0},
+                break2Start: {'@class': 'CdsPosition', pos: 5, offset: 0},
+                break2End: {'@class': 'CdsPosition', pos: 7, offset: 0},
+                break1Repr: 'c.(1_3)',
+                break2Repr: 'c.(5_7)'
+            };
+            expect(result).eql(exp);
         });
         it('duplication has a reference sequence', () => {
             const result = parse('c.3_5dupTAA');
-            expect(result.prefix).to.equal('c');
-            expect(result.break1.pos).to.equal(3);
-            expect(result.break2.pos).to.equal(5);
-            expect(result.type).to.equal(EVENT_SUBTYPE.DUP);
-            expect(result.reference_seq).to.equal('TAA');
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CdsPosition', pos: 3, offset: 0},
+                break2Start: {'@class': 'CdsPosition', pos: 5, offset: 0},
+                break1Repr: 'c.3',
+                break2Repr: 'c.5',
+                refSeq: 'TAA',
+                untemplatedSeq: 'TAA',
+                untemplatedSeqSize: 3
+            };
+            expect(result).eql(exp);
         });
         it('basic substitution', () => {
             const result = parse('c.4A>T');
-            expect(result.prefix).to.equal('c');
-            expect(result.break1.pos).to.equal(4);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.SUB);
-            expect(result.reference_seq).to.equal('A');
-            expect(result.untemplated_seq).to.equal('T');
+            const exp = {
+                type: EVENT_SUBTYPE.SUB,
+                break1Start: {'@class': 'CdsPosition', pos: 4, offset: 0},
+                break1Repr: 'c.4',
+                refSeq: 'A',
+                untemplatedSeq: 'T',
+                untemplatedSeqSize: 1
+            };
+            expect(result).eql(exp);
         });
         it('substitution with uncertainty', () => {
             const result = parse('c.(4_7)A>T');
-            expect(result.prefix).to.equal('c');
-            expect(result.break1.start.pos).to.equal(4);
-            expect(result.break1.end.pos).to.equal(7);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.SUB);
-            expect(result.reference_seq).to.equal('A');
-            expect(result.untemplated_seq).to.equal('T');
+            const exp = {
+                type: EVENT_SUBTYPE.SUB,
+                break1Start: {'@class': 'CdsPosition', pos: 4, offset: 0},
+                break1End: {'@class': 'CdsPosition', pos: 7, offset: 0},
+                break1Repr: 'c.(4_7)',
+                refSeq: 'A',
+                untemplatedSeq: 'T',
+                untemplatedSeqSize: 1
+            };
+            expect(result).eql(exp);
         });
         it('indel spans a range uncertain start and end ref and alt specified', () => {
             const result = parse('c.(1_3)_(5_7)delTAAinsACG');
-            expect(result.prefix).to.equal('c');
-            expect(result.break2.start.pos).to.equal(5);
-            expect(result.break2.end.pos).to.equal(7);
-            expect(result.break1.start.pos).to.equal(1);
-            expect(result.break1.end.pos).to.equal(3);
-            expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.reference_seq).to.equal('TAA');
-            expect(result.untemplated_seq).to.equal('ACG');
+            const exp = {
+                type: EVENT_SUBTYPE.INDEL,
+                break1Start: {'@class': 'CdsPosition', pos: 1, offset: 0},
+                break1End: {'@class': 'CdsPosition', pos: 3, offset: 0},
+                break2Start: {'@class': 'CdsPosition', pos: 5, offset: 0},
+                break2End: {'@class': 'CdsPosition', pos: 7, offset: 0},
+                break1Repr: 'c.(1_3)',
+                break2Repr: 'c.(5_7)',
+                refSeq: 'TAA',
+                untemplatedSeq: 'ACG',
+                untemplatedSeqSize: 3
+            };
+            expect(result).eql(exp);
         });
         it('indel ref specified', () => {
             const result = parse('c.10delTins');
-            expect(result.prefix).to.equal('c');
-            expect(result.break1.pos).to.equal(10);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.reference_seq).to.equal('T');
-            expect(result.untemplated_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.INDEL,
+                break1Start: {'@class': 'CdsPosition', pos: 10, offset: 0},
+                break1Repr: 'c.10',
+                refSeq: 'T'
+            };
+            expect(result).eql(exp);
         });
         it('indel alt specified', () => {
             const result = parse('c.10delinsACC');
-            expect(result.prefix).to.equal('c');
-            expect(result.break1.pos).to.equal(10);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.INDEL);
-            expect(result.untemplated_seq).to.equal('ACC');
-            expect(result.reference_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.INDEL,
+                break1Start: {'@class': 'CdsPosition', pos: 10, offset: 0},
+                break1Repr: 'c.10',
+                untemplatedSeq: 'ACC',
+                untemplatedSeqSize: 3
+            };
+            expect(result).eql(exp);
         });
     });
     describe('exon variants', () => {
@@ -263,58 +319,90 @@ describe('parse', () => {
         });
         it('duplication single exon', () => {
             const result = parse('e.1dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
+            expect(result).to.eql({
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'ExonicPosition', pos: 1},
+                break1Repr: 'e.1'
+            });
         });
         it('duplication single exon with uncertainty', () => {
             const result = parse('e.(1_2)dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({start: {pos: 1, prefix: 'e'}, end: {pos: 2, prefix: 'e'}});
+            expect(result).to.eql({
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'ExonicPosition', pos: 1},
+                break1End: {'@class': 'ExonicPosition', pos: 2},
+                break1Repr: 'e.(1_2)'
+            });
         });
         it('duplication of multiple exons', () => {
             const result = parse('e.1_3dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
-            expect(result.break2).to.eql({pos: 3, prefix: 'e'});
+            expect(result).to.eql({
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'ExonicPosition', pos: 1},
+                break2Start: {'@class': 'ExonicPosition', pos: 3},
+                break1Repr: 'e.1',
+                break2Repr: 'e.3'
+            });
         });
         it('duplication of multiple exons with uncertainty', () => {
             const result = parse('e.(1_2)_(3_4)dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({start: {pos: 1, prefix: 'e'}, end: {pos: 2, prefix: 'e'}});
-            expect(result.break2).to.eql({start: {pos: 3, prefix: 'e'}, end: {pos: 4, prefix: 'e'}});
+            expect(result).to.eql({
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'ExonicPosition', pos: 1},
+                break1End: {'@class': 'ExonicPosition', pos: 2},
+                break1Repr: 'e.(1_2)',
+                break2Start: {'@class': 'ExonicPosition', pos: 3},
+                break2End: {'@class': 'ExonicPosition', pos: 4},
+                break2Repr: 'e.(3_4)'
+            });
         });
         it('duplication of multiple exons with uncertainty', () => {
             const result = parse('e.(1_2)_4dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({start: {pos: 1, prefix: 'e'}, end: {pos: 2, prefix: 'e'}});
-            expect(result.break2).to.eql({pos: 4, prefix: 'e'});
+            expect(result).to.eql({
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'ExonicPosition', pos: 1},
+                break1End: {'@class': 'ExonicPosition', pos: 2},
+                break1Repr: 'e.(1_2)',
+                break2Start: {'@class': 'ExonicPosition', pos: 4},
+                break2Repr: 'e.4'
+            });
         });
         it('duplication of multiple exons with uncertainty', () => {
             const result = parse('e.2_(3_4)dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({pos: 2, prefix: 'e'});
-            expect(result.break2).to.eql({start: {pos: 3, prefix: 'e'}, end: {pos: 4, prefix: 'e'}});
+            expect(result).to.eql({
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'ExonicPosition', pos: 2},
+                break1Repr: 'e.2',
+                break2Start: {'@class': 'ExonicPosition', pos: 3},
+                break2End: {'@class': 'ExonicPosition', pos: 4},
+                break2Repr: 'e.(3_4)'
+            });
         });
     });
     describe('protein variants', () => {
         it('frameshift alt specified', () => {
             const result = parse('p.R10Kfs');
-            expect(result.prefix).to.equal('p');
-            expect(result.break1.pos).to.equal(10);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.FS);
-            expect(result.untemplated_seq).to.equal('K');
-            expect(result.reference_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.FS,
+                break1Start: {'@class': 'ProteinPosition', pos: 10, refAA: 'R'},
+                untemplatedSeq: 'K',
+                break1Repr: 'p.R10',
+                refSeq: 'R',
+                untemplatedSeqSize: 1
+            };
+            expect(result).to.eql(exp);
         });
         it('frameshift alt specified and truncation point', () => {
             const result = parse('p.R10Kfs*10');
-            expect(result.prefix).to.equal('p');
-            expect(result.break1.pos).to.equal(10);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.FS);
-            expect(result.untemplated_seq).to.equal('K');
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.truncation).to.equal(10);
+            expect(result).to.eql({
+                type: EVENT_SUBTYPE.FS,
+                break1Start: {'@class': 'ProteinPosition', pos: 10, refAA: 'R'},
+                untemplatedSeq: 'K',
+                untemplatedSeqSize: 1,
+                truncation: 10,
+                refSeq: 'R',
+                break1Repr: 'p.R10'
+            });
         });
         it('frameshift errors on truncation point without position', () => {
             expect(() => { parse('p.R10Kfs*'); }).to.throw(ParsingError);
@@ -324,43 +412,50 @@ describe('parse', () => {
         });
         it('frameshift allows uncertain range', () => {
             const result = parse('p.(R10_M11)fs*10');
-            expect(result.prefix).to.equal('p');
-            expect(result.break1.start).to.have.property('pos', 10);
-            expect(result.break1.start).to.have.property('ref_aa', 'R');
-            expect(result.break1.end).to.have.property('pos', 11);
-            expect(result.break1.end).to.have.property('ref_aa', 'M');
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.FS);
-            expect(result.untemplated_seq).to.be.undefined;
-            expect(result.truncation).to.equal(10);
-            expect(result.reference_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.FS,
+                break1Start: {'@class': 'ProteinPosition', pos: 10, refAA: 'R'},
+                break1End: {'@class': 'ProteinPosition', pos: 11, refAA: 'M'},
+                break1Repr: 'p.(R10_M11)',
+                truncation: 10
+            };
+            expect(result).to.eql(exp);
         });
         it('frameshift no alt but truncation point specified', () => {
             const result = parse('p.R10fs*10');
-            expect(result.prefix).to.equal('p');
-            expect(result.break1).to.have.property('pos', 10);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.FS);
-            expect(result.untemplated_seq).to.be.undefined;
-            expect(result.reference_seq).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.FS,
+                break1Start: {'@class': 'ProteinPosition', pos: 10, refAA: 'R'},
+                break1Repr: 'p.R10',
+                truncation: 10,
+                refSeq: 'R'
+            };
+            expect(result).to.eql(exp);
         });
         it('frameshift no alt or truncation point', () => {
             const result = parse('p.R10fs');
-            expect(result.prefix).to.equal('p');
-            expect(result.break1).to.have.property('pos', 10);
-            expect(result.break2).to.be.undefined;
-            expect(result.type).to.equal(EVENT_SUBTYPE.FS);
-            expect(result.untemplated_seq).to.be.undefined;
-            expect(result.reference_seq).to.be.undefined;
-            expect(result.truncation).to.be.undefined;
+            const exp = {
+                type: EVENT_SUBTYPE.FS,
+                break1Start: {'@class': 'ProteinPosition', pos: 10, refAA: 'R'},
+                break1Repr: 'p.R10',
+                refSeq: 'R'
+            };
+            expect(result).to.eql(exp);
         });
         it('missense mutation', () => {
             const result = parse('p.F12G');
-            expect(result.prefix).to.equal('p');
-            expect(result.type).to.equal(EVENT_SUBTYPE.SUB);
+            const exp = {
+                type: EVENT_SUBTYPE.SUB,
+                break1Start: {'@class': 'ProteinPosition', pos: 12, refAA: 'F'},
+                break1Repr: 'p.F12',
+                untemplatedSeq: 'G',
+                untemplatedSeqSize: 1,
+                refSeq: 'F'
+            };
+            expect(result).to.eql(exp);
         });
         it('errors on genomic style missense', () => {
-            expect(() => { parseContinuous('p', 'G12G>T'); }).to.throw(ParsingError);
+            expect(() => { parse('p.G12G>T'); }).to.throw(ParsingError);
         });
     });
     describe('cytoband variants', () => {
@@ -382,68 +477,117 @@ describe('parse', () => {
         });
         it('duplication of whole p arm', () => {
             const result = parse('y.pdup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({arm: 'p', major_band: null, minor_band: null, prefix: 'y'});
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CytobandPosition', arm: 'p'},
+                type: EVENT_SUBTYPE.DUP,
+                break1Repr: 'y.p'
+            };
+            expect(result).to.eql(exp);
         });
         it('duplication of range on p major band', () => {
             const result = parse('y.p11dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({arm: 'p', major_band: 11, minor_band: null, prefix: 'y'});
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11},
+                type: EVENT_SUBTYPE.DUP,
+                break1Repr: 'y.p11'
+            };
+            expect(result).to.eql(exp);
         });
         it('duplication of range on p minor band', () => {
             const result = parse('y.p11.1dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({arm: 'p', major_band: 11, minor_band: 1, prefix: 'y'});
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1},
+                type: EVENT_SUBTYPE.DUP,
+                break1Repr: 'y.p11.1'
+            };
+            expect(result).to.eql(exp);
         });
         it('duplication of range on p arm', () => {
             const result = parse('y.p11.1_p13.3dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({arm: 'p', major_band: 11, minor_band: 1, prefix: 'y'});
-            expect(result.break2).to.eql({arm: 'p', major_band: 13, minor_band: 3, prefix: 'y'});
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1},
+                type: EVENT_SUBTYPE.DUP,
+                break1Repr: 'y.p11.1',
+                break2Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3},
+                break2Repr: 'y.p13.3'
+            };
+            expect(result).to.eql(exp);
         });
         it('duplication on p arm uncertain positions', () => {
             const result = parse('y.(p11.1_p11.2)_(p13.4_p14)dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1.start).to.eql({arm: 'p', major_band: 11, minor_band: 1, prefix: 'y'});
-            expect(result.break1.end).to.eql({arm: 'p', major_band: 11, minor_band: 2, prefix: 'y'});
-            expect(result.break2.start).to.eql({arm: 'p', major_band: 13, minor_band: 4, prefix: 'y'});
-            expect(result.break2.end).to.eql({arm: 'p', major_band: 14, minor_band: null, prefix: 'y'});
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1},
+                break1End: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 2},
+                type: EVENT_SUBTYPE.DUP,
+                break1Repr: 'y.(p11.1_p11.2)',
+                break2Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 4},
+                break2End: {'@class': 'CytobandPosition', arm: 'p', majorBand: 14},
+                break2Repr: 'y.(p13.4_p14)'
+            };
+            expect(result).to.eql(exp);
         });
         it('duplication on p arm uncertain start', () => {
             const result = parse('y.(p11.1_p11.2)_p13.3dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1.start).to.eql({arm: 'p', major_band: 11, minor_band: 1, prefix: 'y'});
-            expect(result.break1.end).to.eql({arm: 'p', major_band: 11, minor_band: 2, prefix: 'y'});
-            expect(result.break2).to.eql({arm: 'p', major_band: 13, minor_band: 3, prefix: 'y'});
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1},
+                break1End: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 2},
+                type: EVENT_SUBTYPE.DUP,
+                break1Repr: 'y.(p11.1_p11.2)',
+                break2Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3},
+                break2Repr: 'y.p13.3'
+            };
+            expect(result).to.eql(exp);
         });
         it('duplication on p arm uncertain end', () => {
             const result = parse('y.p13.3_(p15.1_p15.2)dup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({arm: 'p', major_band: 13, minor_band: 3, prefix: 'y'});
-            expect(result.break2.start).to.eql({arm: 'p', major_band: 15, minor_band: 1, prefix: 'y'});
-            expect(result.break2.end).to.eql({arm: 'p', major_band: 15, minor_band: 2, prefix: 'y'});
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3},
+                break1Repr: 'y.p13.3',
+                type: EVENT_SUBTYPE.DUP,
+                break2Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 15, minorBand: 1},
+                break2End: {'@class': 'CytobandPosition', arm: 'p', majorBand: 15, minorBand: 2},
+                break2Repr: 'y.(p15.1_p15.2)'
+            };
+            expect(result).to.eql(exp);
         });
         it('duplication of whole q arm', () => {
             const result = parse('y.qdup');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({arm: 'q', major_band: null, minor_band: null, prefix: 'y'});
+            const exp = {
+                type: EVENT_SUBTYPE.DUP,
+                break1Start: {'@class': 'CytobandPosition', arm: 'q'},
+                break1Repr: 'y.q',
+                type: EVENT_SUBTYPE.DUP
+            };
+            expect(result).to.eql(exp);
         });
         it('deletion of whole p arm', () => {
             const result = parse('y.pdel');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DEL);
-            expect(result.break1).to.eql({arm: 'p', major_band: null, minor_band: null, prefix: 'y'});
+            const exp = {
+                type: EVENT_SUBTYPE.DEL,
+                break1Start: {'@class': 'CytobandPosition', arm: 'p'},
+                break1Repr: 'y.p'
+            };
+            expect(result).to.eql(exp);
         });
         it('inversion of a range on the p arm', () => {
             const result = parse('y.p11.1_p13.3inv');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.INV);
-            expect(result.break1).to.eql({arm: 'p', major_band: 11, minor_band: 1, prefix: 'y'});
-            expect(result.break2).to.eql({arm: 'p', major_band: 13, minor_band: 3, prefix: 'y'});
+            const exp = {
+                type: EVENT_SUBTYPE.INV,
+                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1},
+                break2Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3},
+                break1Repr: 'y.p11.1',
+                break2Repr: 'y.p13.3'
+            };
+            expect(result).to.eql(exp);
         });
     });
-});
-
-
-describe('parse', () => {
     it('error on short string', () => {
         expect(() => { parse(''); }).to.throw(ParsingError);
     });
@@ -452,196 +596,5 @@ describe('parse', () => {
     });
     it('errors on missing . delimiter after prefix', () => {
         expect(() => { parse('pG12D'); }).to.throw(ParsingError);
-    });
-    describe('exon variants', () => {
-        it('single gene fusion', () => {
-            const result = parse('e.fusion(GENE1)(1,3)');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE1');
-            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
-            expect(result.break2).to.eql({pos: 3, prefix: 'e'});
-        });
-        it('two gene fusion', () => {
-            const result = parse('e.fusion(GENE1,GENE2)(1,2)');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE2');
-            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
-            expect(result.break2).to.eql({pos: 2, prefix: 'e'});
-        });
-        it('two gene inversion', () => {
-            const result = parse('e.inv(GENE1,GENE2)(1,2)');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.INV);
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE2');
-            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
-            expect(result.break2).to.eql({pos: 2, prefix: 'e'});
-        });
-        it('single gene inversion', () => {
-            const result = parse('e.inv(GENE1)(4, 7)');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.INV);
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE1');
-            expect(result.break1).to.eql({pos: 4, prefix: 'e'});
-            expect(result.break2).to.eql({pos: 7, prefix: 'e'});
-        });
-        it('two gene duplication', () => {
-            const result = parse('e.dup(GENE1,GENE2)(1,2)');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE2');
-            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
-            expect(result.break2).to.eql({pos: 2, prefix: 'e'});
-        });
-        it('single gene duplication', () => {
-            const result = parse('e.dup(GENE1)(1,8)');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE1');
-            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
-            expect(result.break2).to.eql({pos: 8, prefix: 'e'});
-        });
-        it('deletion two gene fusion', () => {
-            const result = parse('e.del(GENE1,GENE2)(1,2)');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DEL);
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE2');
-            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
-            expect(result.break2).to.eql({pos: 2, prefix: 'e'});
-        });
-        it('deletion single gene fusion', () => {
-            const result = parse('e.del(GENE1)(1,8)');
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE1');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DEL);
-            expect(result.break1).to.eql({pos: 1, prefix: 'e'});
-            expect(result.break2).to.eql({pos: 8, prefix: 'e'});
-        });
-    });
-    describe('protein variants', () => {
-        it('allows single gene fusion', () => {
-            const result = parse('p.fusion(GENE1)(R12,K15)');
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE1');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
-            expect(result.break1).to.eql({ref_aa: 'R', pos: 12, prefix: 'p'});
-            expect(result.break2).to.eql({ref_aa: 'K', pos: 15, prefix: 'p'});
-        });
-        it('allows two gene fusion', () => {
-            const result = parse('p.fusion(GENE1,GENE2)(R12,K15)');
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE2');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
-            expect(result.break1).to.eql({ref_aa: 'R', pos: 12, prefix: 'p'});
-            expect(result.break2).to.eql({ref_aa: 'K', pos: 15, prefix: 'p'});
-        });
-        it('allows deletion', () => {
-            const result = parse('p.del(GENE1,GENE2)(R12,K15)');
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE2');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DEL);
-            expect(result.break1).to.eql({ref_aa: 'R', pos: 12, prefix: 'p'});
-            expect(result.break2).to.eql({ref_aa: 'K', pos: 15, prefix: 'p'});
-        });
-        it('errors on insertion', () => {
-            expect(() => { parse('p.ins(GENE1,GENE2)(R12,K15)'); }).to.throw(ParsingError);
-        });
-        it('errors on indel', () => {
-            expect(() => { parse('p.delins(GENE1,GENE2)(R12,K15)'); }).to.throw(ParsingError);
-        });
-        it('allows duplication', () => {
-            const result = parse('p.dup(GENE1,GENE2)(R12,K15)');
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE2');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({ref_aa: 'R', pos: 12, prefix: 'p'});
-            expect(result.break2).to.eql({ref_aa: 'K', pos: 15, prefix: 'p'});
-        });
-        it('allows inversion', () => {
-            const result = parse('p.inv(GENE1,GENE2)(R12,K15)');
-            expect(result.feature1).to.have.property('name', 'GENE1');
-            expect(result.feature2).to.have.property('name', 'GENE2');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.INV);
-            expect(result.break1).to.eql({ref_aa: 'R', pos: 12, prefix: 'p'});
-            expect(result.break2).to.eql({ref_aa: 'K', pos: 15, prefix: 'p'});
-        });
-        it('errors on missense', () => {
-            expect(() => { parse('p.>(GENE1,GENE2)(R12,K15)'); }).to.throw(ParsingError);
-        });
-        it('errors on frameshift', () => {
-            expect(() => { parse('p.fs(GENE1,GENE2)(R12,K15)'); }).to.throw(ParsingError);
-        });
-    });
-    describe('cytoband variants', () => {
-        it('allows single gene fusion', () => {
-            const result = parse('y.fusion(chr1)(p12.1,q11)');
-            expect(result.feature1).to.have.property('name', 'chr1');
-            expect(result.feature2).to.have.property('name', 'chr1');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
-            expect(result.break1).to.eql({arm: 'p', major_band: 12, minor_band: 1, prefix: 'y'});
-            expect(result.break2).to.eql({arm: 'q', major_band: 11, minor_band: null, prefix: 'y'});
-        });
-        it('allows two gene fusion', () => {
-            const result = parse('y.fusion(chr1,chr2)(p12.1,q11)');
-            expect(result.feature1).to.have.property('name', 'chr1');
-            expect(result.feature2).to.have.property('name', 'chr2');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.FUSION);
-            expect(result.break1).to.eql({arm: 'p', major_band: 12, minor_band: 1, prefix: 'y'});
-            expect(result.break2).to.eql({arm: 'q', major_band: 11, minor_band: null, prefix: 'y'});
-        });
-        it('allows deletion', () => {
-            const result = parse('y.del(chr1,chr2)(p12.1,q11)');
-            expect(result.feature1).to.have.property('name', 'chr1');
-            expect(result.feature2).to.have.property('name', 'chr2');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DEL);
-            expect(result.break1).to.eql({arm: 'p', major_band: 12, minor_band: 1, prefix: 'y'});
-            expect(result.break2).to.eql({arm: 'q', major_band: 11, minor_band: null, prefix: 'y'});
-        });
-        it('errors on insertion', () => {
-            expect(() => { parse('y.ins(chr1,chr2)(p12.1,q11)'); }).to.throw(ParsingError);
-        });
-        it('errors on indel', () => {
-            expect(() => { parse('y.delins(chr1,chr2)(p12.1,q11)'); }).to.throw(ParsingError);
-        });
-        it('allows duplication', () => {
-            const result = parse('y.dup(chr1,chr2)(p12.1,q11)');
-            expect(result.feature1).to.have.property('name', 'chr1');
-            expect(result.feature2).to.have.property('name', 'chr2');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.DUP);
-            expect(result.break1).to.eql({arm: 'p', major_band: 12, minor_band: 1, prefix: 'y'});
-            expect(result.break2).to.eql({arm: 'q', major_band: 11, minor_band: null, prefix: 'y'});
-        });
-        it('allows inversion', () => {
-            const result = parse('y.inv(chr1,chr2)(p12.1,q11)');
-            expect(result.feature1).to.have.property('name', 'chr1');
-            expect(result.feature2).to.have.property('name', 'chr2');
-            expect(result).to.have.property('type', EVENT_SUBTYPE.INV);
-            expect(result.break1).to.eql({arm: 'p', major_band: 12, minor_band: 1, prefix: 'y'});
-            expect(result.break2).to.eql({arm: 'q', major_band: 11, minor_band: null, prefix: 'y'});
-        });
-        it('errors on missense', () => {
-            expect(() => { parse('y.>(chr1,chr2)(p12.1,q11)'); }).to.throw(ParsingError);
-        });
-        it('errors on frameshift', () => {
-            expect(() => { parse('y.fs(chr1,chr2)(p12.1,q11)'); }).to.throw(ParsingError);
-        });
-    });
-});
-
-
-describe('parseHistoneVariant', () => {
-    it('ubiquitination', () => {
-        const result = parseHistoneVariant('H2BK123ub1');
-        expect(result).to.have.property('histone', 'H2B');
-        expect(result.protein_position).to.eql({ref_aa: 'K', pos: 123, prefix: 'p'});
-        expect(result.modification).to.eql({type: 'ub', count: 1});
-    });
-    it('methylation', () => {
-        const result = parseHistoneVariant('H3.3K4me3');
-        expect(result).to.have.property('histone', 'H3');
-        expect(result).to.have.property('subtype', '3');
-        expect(result.protein_position).to.eql({ref_aa: 'K', pos: 4, prefix: 'p'});
-        expect(result.modification).to.eql({type: 'me', count: 3});
     });
 });
