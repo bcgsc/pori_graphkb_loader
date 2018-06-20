@@ -7,13 +7,13 @@ const auth = require('./app/middleware/auth');
 const fs = require('fs');
 const {createSchema, loadSchema} = require('./app/repo/schema');
 const {createUser} = require('./app/repo/base');
-const {RecordExistsError} = require('./app/repo/error');
 const OrientDB  = require('orientjs');
+const packageDetails = require('./package.json');
 
 
 //process.on('uncaughtException', app.close);
 let app;
-conf.db.name = 'api_test_v0.0.3';
+conf.db.name = `api_test_v${packageDetails.version}`;
 delete conf.port;
 
 (async () => {

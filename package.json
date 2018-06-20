@@ -1,7 +1,7 @@
 {
   "name": "knowledgebase-api",
   "main": "index.js",
-  "version": "0.0.1",
+  "version": "0.0.4",
   "dependencies": {
     "bluebird": "^3.5.0",
     "body-parser": "^1.15.2",
