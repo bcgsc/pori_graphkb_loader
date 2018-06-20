@@ -75,7 +75,11 @@ class AppServer {
 
         // set up the routes
         this.router = express.Router();
-        this.app.use(`/api/v${process.env.npm_package_version || 'test'}`, this.router);
+        this.prefix = `/api/v${process.env.npm_package_version || 'test'}`;
+        if (VERBOSE) {
+            console.log('AppServer prefix', this.prefix);
+        }
+        this.app.use(this.prefix, this.router);
 
         this.router.route('/token').post(async (req, res) => {
             // generate a token to return to the user

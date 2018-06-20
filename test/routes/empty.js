@@ -38,7 +38,7 @@ describe('schema', () => {
     let source;
     beforeEach(async () => {
         const res = await chai.request(app.app)
-            .post('/api/sources')
+            .post(`${app.prefix}/sources`)
             .type('json')
             .send({
                 name: 'bcgsc',
@@ -50,7 +50,7 @@ describe('schema', () => {
     describe('GET /users', () => {
         it('name', async () => {
             const res = await chai.request(app.app)
-                .get('/api/users?name=admin')
+                .get(`${app.prefix}/users?name=admin`)
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
             expect(res.body.result).to.be.a('array');
@@ -61,7 +61,7 @@ describe('schema', () => {
     describe('POST /users', () => {
         it('OK', async () => {
             const res = await chai.request(app.app)
-                .post('/api/users')
+                .post(`${app.prefix}/users`)
                 .type('json')
                 .send({
                     name: 'blargh monkeys'
@@ -75,7 +75,7 @@ describe('schema', () => {
             let res;
             try {
                 res = await chai.request(app.app)
-                    .post('/api/users')
+                    .post(`${app.prefix}/users`)
                     .type('json')
                     .send({
                     })
@@ -90,7 +90,7 @@ describe('schema', () => {
             let res;
             try {
                 res = await chai.request(app.app)
-                    .post('/api/users')
+                    .post(`${app.prefix}/users`)
                     .type('json')
                     .send({
                         name: 'blargh monkeys'
@@ -104,7 +104,7 @@ describe('schema', () => {
             let res;
             try {
                 res = await chai.request(app.app)
-                    .post('/api/users')
+                    .post(`${app.prefix}/users`)
                     .type('json')
                     .set('Authorization', mockToken)
                     .send({
@@ -120,7 +120,7 @@ describe('schema', () => {
 
         it('OK', async () => {
             const res = await chai.request(app.app)
-                .post('/api/diseases')
+                .post(`${app.prefix}/diseases`)
                 .type('json')
                 .send({
                     sourceId: 'cancer',
@@ -136,7 +136,7 @@ describe('schema', () => {
             let res;
             try {
                 res = await chai.request(app.app)
-                    .post('/api/diseases')
+                    .post(`${app.prefix}/diseases`)
                     .type('json')
                     .send({
                         sourceId: 'cancer'
@@ -152,7 +152,7 @@ describe('schema', () => {
             let res;
             try {
                 res = await chai.request(app.app)
-                    .post('/api/diseases')
+                    .post(`${app.prefix}/diseases`)
                     .type('json')
                     .send({
                         source: source
@@ -168,7 +168,7 @@ describe('schema', () => {
             let res;
             try {
                 res = await chai.request(app.app)
-                    .post('/api/diseases')
+                    .post(`${app.prefix}/diseases`)
                     .type('json')
                     .send({
                         sourceId: 'cancer',
@@ -182,7 +182,7 @@ describe('schema', () => {
         it('CONFLICT', async () => {
             let res;
             res = await chai.request(app.app)
-                .post('/api/diseases')
+                .post(`${app.prefix}/diseases`)
                 .type('json')
                 .send({
                     sourceId: 'cancer',
@@ -192,7 +192,7 @@ describe('schema', () => {
             expect(res).to.have.status(HTTP_STATUS.OK);
             try {
                 res = await chai.request(app.app)
-                    .post('/api/diseases')
+                    .post(`${app.prefix}/diseases`)
                     .type('json')
                     .send({
                         sourceId: 'cancer',
@@ -209,7 +209,7 @@ describe('schema', () => {
         let disease, diseaseId;
         beforeEach(async () => {
             const res = await chai.request(app.app)
-                .post('/api/diseases')
+                .post(`${app.prefix}/diseases`)
                 .type('json')
                 .send({
                     sourceId: 'cancer',
@@ -221,7 +221,7 @@ describe('schema', () => {
         });
         it('OK', async () => {
             const res = await chai.request(app.app)
-                .patch(`/api/diseases/${diseaseId}`)
+                .patch(`${app.prefix}/diseases/${diseaseId}`)
                 .type('json')
                 .send({
                     sourceId: 'carcinoma'
@@ -239,7 +239,7 @@ describe('schema', () => {
             let res;
             try {
                 res = await chai.request(app.app)
-                    .patch('/api/diseases/456:0')
+                    .patch(`${app.prefix}/diseases/456:0`)
                     .type('json')
                     .send({
                         sourceId: 'cancer'
@@ -255,7 +255,7 @@ describe('schema', () => {
             let res;
             try {
                 res = await chai.request(app.app)
-                    .patch(`/api/diseases/${diseaseId}`)
+                    .patch(`${app.prefix}/diseases/${diseaseId}`)
                     .type('json')
                     .send({
                         sourceId: 'cancer',
@@ -269,7 +269,7 @@ describe('schema', () => {
         it('CONFLICT', async () => {
             let res;
             res = await chai.request(app.app)
-                .post('/api/diseases')
+                .post(`${app.prefix}/diseases`)
                 .type('json')
                 .send({
                     sourceId: 'carcinoma',
@@ -279,7 +279,7 @@ describe('schema', () => {
             expect(res).to.have.status(HTTP_STATUS.OK);
             try {
                 res = await chai.request(app.app)
-                    .patch(`/api/diseases/${diseaseId}`)
+                    .patch(`${app.prefix}/diseases/${diseaseId}`)
                     .type('json')
                     .send({
                         sourceId: 'carcinoma'
@@ -295,7 +295,7 @@ describe('schema', () => {
         let disease, diseaseId;
         beforeEach(async () => {
             const res = await chai.request(app.app)
-                .post('/api/diseases')
+                .post(`${app.prefix}/diseases`)
                 .type('json')
                 .send({
                     sourceId: 'cancer',
@@ -307,7 +307,7 @@ describe('schema', () => {
         });
         it('OK', async () => {
             const res = await chai.request(app.app)
-                .delete(`/api/diseases/${diseaseId}`)
+                .delete(`${app.prefix}/diseases/${diseaseId}`)
                 .type('json')
                 .set('Authorization', mockToken);
             expect(res).to.have.status(HTTP_STATUS.OK);
@@ -323,7 +323,7 @@ describe('schema', () => {
             let res;
             try {
                 res = await chai.request(app.app)
-                    .delete('/api/diseases/456:0')
+                    .delete(`${app.prefix}/diseases/456:0`)
                     .type('json')
                     .set('Authorization', mockToken);
             } catch (err) {
@@ -336,7 +336,7 @@ describe('schema', () => {
             let res;
             try {
                 res = await chai.request(app.app)
-                    .delete(`/api/diseases/${diseaseId}`)
+                    .delete(`${app.prefix}/diseases/${diseaseId}`)
                     .type('json');
             } catch (err) {
                 res = err;
@@ -349,7 +349,7 @@ describe('schema', () => {
         let disease;
         beforeEach(async () => {
             const res1 = await chai.request(app.app)
-                .post('/api/diseases')
+                .post(`${app.prefix}/diseases`)
                 .type('json')
                 .send({
                     sourceId: 'cancer',
@@ -358,7 +358,7 @@ describe('schema', () => {
                 .set('Authorization', mockToken);
             disease = res1.body.result;
             const res2 = await chai.request(app.app)
-                .post('/api/diseases')
+                .post(`${app.prefix}/diseases`)
                 .type('json')
                 .send({
                     sourceId: 'carcinoma',
@@ -366,7 +366,7 @@ describe('schema', () => {
                 })
                 .set('Authorization', mockToken);
             await chai.request(app.app)
-                .post('/api/aliasof')
+                .post(`${app.prefix}/aliasof`)
                 .type('json')
                 .send({
                     out: res1.body.result['@rid'],
@@ -375,7 +375,7 @@ describe('schema', () => {
                 })
                 .set('Authorization', mockToken);
             let res3 = await chai.request(app.app)
-                .post('/api/diseases')
+                .post(`${app.prefix}/diseases`)
                 .type('json')
                 .send({
                     sourceId: 'disease of cellular proliferation',
@@ -383,7 +383,7 @@ describe('schema', () => {
                 })
                 .set('Authorization', mockToken);
             const res4 = await chai.request(app.app)
-                .post('/api/aliasof')
+                .post(`${app.prefix}/aliasof`)
                 .type('json')
                 .send({
                     out: res1.body.result['@rid'],
@@ -392,15 +392,15 @@ describe('schema', () => {
                 })
                 .set('Authorization', mockToken);
             await chai.request(app.app)
-                .delete(`/api/diseases/${res2.body.result['@rid'].slice(1)}`)
+                .delete(`${app.prefix}/diseases/${res2.body.result['@rid'].slice(1)}`)
                 .set('Authorization', mockToken);
             await chai.request(app.app)
-                .delete(`/api/aliasof/${res4.body.result['@rid'].slice(1)}`)
+                .delete(`${app.prefix}/aliasof/${res4.body.result['@rid'].slice(1)}`)
                 .set('Authorization', mockToken);
         });
         it('default limits to active records', async () => {
             const res = await chai.request(app.app)
-                .get(`/api/diseases/${disease['@rid'].slice(1)}`)
+                .get(`${app.prefix}/diseases/${disease['@rid'].slice(1)}`)
                 .set('Authorization', mockToken)
                 .query({neighbors: 2});
             expect(res.body.result).to.have.property('sourceId', 'cancer');
@@ -409,7 +409,7 @@ describe('schema', () => {
         });
         it('includes deleted when not limited to active', async () => {
             const res = await chai.request(app.app)
-                .get(`/api/diseases/${disease['@rid'].slice(1)}`)
+                .get(`${app.prefix}/diseases/${disease['@rid'].slice(1)}`)
                 .set('Authorization', mockToken)
                 .query({neighbors: 2, activeOnly: false});
             expect(res.body.result).to.have.property('sourceId', 'cancer');
@@ -420,7 +420,7 @@ describe('schema', () => {
     describe('GET /diseases query FULLTEXT index', () => {
         beforeEach(async () => {
             await chai.request(app.app)
-                .post('/api/diseases')
+                .post(`${app.prefix}/diseases`)
                 .type('json')
                 .send({
                     sourceId: '2',
@@ -429,7 +429,7 @@ describe('schema', () => {
                 })
                 .set('Authorization', mockToken);
             await chai.request(app.app)
-                .post('/api/diseases')
+                .post(`${app.prefix}/diseases`)
                 .type('json')
                 .send({
                     sourceId: '3',
@@ -438,7 +438,7 @@ describe('schema', () => {
                 })
                 .set('Authorization', mockToken);
             await chai.request(app.app)
-                .post('/api/diseases')
+                .post(`${app.prefix}/diseases`)
                 .type('json')
                 .send({
                     sourceId: '1',
@@ -449,7 +449,7 @@ describe('schema', () => {
         });
         it('requires all terms', async() => {
             const res = await chai.request(app.app)
-                .get('/api/diseases')
+                .get(`${app.prefix}/diseases`)
                 .type('json')
                 .query({name: '~liver cancer'})
                 .set('Authorization', mockToken);
@@ -459,7 +459,7 @@ describe('schema', () => {
         });
         it('ignores case (due to cast)', async() => {
             const res = await chai.request(app.app)
-                .get('/api/diseases')
+                .get(`${app.prefix}/diseases`)
                 .type('json')
                 .query({name: '~CAncer'})
                 .set('Authorization', mockToken);

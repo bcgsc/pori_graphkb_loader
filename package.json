@@ -49,7 +49,7 @@
     "start": "node server.js",
     "unit": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=coverconfig.json --recursive test/repo/unit.js",
     "sample": "nyc --reporter=html --reporter=text mocha test/routes/sample.js --timeout 100000",
-    "test": "NODE_ENV=test nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=coverconfig.json --recursive --exit --timeout 100000 test/repo test/routes/empty.js ",
+    "test": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=coverconfig.json --recursive --exit --timeout 100000 test/repo test/routes/empty.js ",
     "lint": "eslint -c .eslintrc.json app test",
     "jsdoc": "jsdoc -r app -R README.md"
   }
