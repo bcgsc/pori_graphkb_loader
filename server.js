@@ -8,12 +8,11 @@ const fs = require('fs');
 const {createSchema, loadSchema} = require('./app/repo/schema');
 const {createUser} = require('./app/repo/base');
 const OrientDB  = require('orientjs');
-const packageDetails = require('./package.json');
 
 
 //process.on('uncaughtException', app.close);
 let app;
-conf.db.name = `api_test_v${packageDetails.version}`;
+conf.db.name = `api_test_v${process.env.npm_package_version || 'test'}`;
 delete conf.port;
 
 (async () => {
@@ -53,7 +52,7 @@ delete conf.port;
         console.log('creating certificate');
         auth.keys.private = fs.readFileSync(conf.private_key);
         //conf.disableCats = true;
-        app = new AppServer(conf, true, false);
+        app = new AppServer(conf);
         await app.listen();
 
         // if the user starting the server does not exist, add them as an admin

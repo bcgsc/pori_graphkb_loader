@@ -75,7 +75,7 @@ class AppServer {
 
         // set up the routes
         this.router = express.Router();
-        this.app.use('/api', this.router);
+        this.app.use(`/api/v${process.env.npm_package_version || 'test'}`, this.router);
 
         this.router.route('/token').post(async (req, res) => {
             // generate a token to return to the user
@@ -115,7 +115,7 @@ class AppServer {
         this.schema = schema;
         // set up the swagger docs
         this.spec = generateSwaggerSpec(schema);
-        this.router.use('/docs/spec', swaggerUi.serve, swaggerUi.setup(this.spec, {swaggerOptions: {
+        this.router.use('/spec', swaggerUi.serve, swaggerUi.setup(this.spec, {swaggerOptions: {
             deepLinking: true,
             displayOperationId: true,
             defaultModelRendering: 'model',
@@ -123,12 +123,6 @@ class AppServer {
             tagsSorter: 'alpha',
             docExpansion: 'none'
         }}));
-        // serve the user manual related files
-        const docsDir = path.join(__dirname, './../doc');
-        this.router.use('/docs', express.static(docsDir));
-        this.router.use('/docs', (req, res, next) => {
-            res.sendFile(path.join(docsDir, 'index.md'));
-        });
 
         this.router.use(checkToken);
 
@@ -147,7 +141,7 @@ class AppServer {
             return res.status(err.code || HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
         });
         // last catch any errors for undefined routes. all actual routes should be defined above
-        this.router.use((req, res, next) => {
+        this.app.use((req, res) => {
             return res.status(HTTP_STATUS.NOT_FOUND).json({
                 error: 'Not Found',
                 name: 'UrlNotFound',

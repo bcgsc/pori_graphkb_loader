@@ -39,6 +39,9 @@ Query all diseases where the name contains *'pancreatic'*
 /api/diseases?name=~pancreatic
 \`\`\`
 
+It is worth noting that when the contains operator is applied to fields using a full text index (i.e. ontology names) that the
+query will check for starting prefixes and may not find substrings which are in the middle of a word.
+
 ### Combining the Contains and NOT Operators
 
 Query all diseases where the name does not contain *'breast'*
