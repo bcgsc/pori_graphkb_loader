@@ -48,8 +48,8 @@ It should be noted that `e` and `y` prefixed notation is an extension on [HGVS v
 The expected variant types are given below. Some types are only applicable to certain coordinate systems (i.e. frameshifts are protein only)
 
 | Variant Type | Description | Notes |
-|---|--|--|
-| `>` | substitutions | Protein notation does not use the `>`|
+|--------------|-------------|-------|
+| > | substitutions | Protein notation does not use the >|
 | del|deletions||
 |delins| indels||
 |dup|duplications||
