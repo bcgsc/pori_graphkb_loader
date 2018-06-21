@@ -1,19 +1,23 @@
 # Variant Notation
 
-- [Variant Notation](#variant-notation)
-    - [Introduction](#introduction)
-    - [General Notation](#general-notation)
-        - [Prefixes](#prefixes)
-        - [Variant Types](#variant-types)
-        - [Currently Unsupported HGVS Features](#currently-unsupported-hgvs-features)
-    - [Continuous Notation](#continuous-notation)
-        - [Examples](#examples)
-            - [Substitution](#substitution)
-            - [Indel](#indel)
-            - [Insertion](#insertion)
-            - [Deletion](#deletion)
-            - [Duplication](#duplication)
-            - [Frameshift](#frameshifthttp---varnomenhgvsorg-recommendations-protein-variant-frameshift)
+- [Introduction](#introduction)
+- [General Notation](#general-notation)
+    - [Prefixes](#prefixes)
+    - [Variant Types](#variant-types)
+    - [Currently Unsupported HGVS Features](#currently-unsupported-hgvs-features)
+- [Continuous Notation](#continuous-notation)
+    - [Examples](#examples)
+        - [Substitution](#substitution)
+        - [Indel](#indel)
+        - [Insertion](#insertion)
+        - [Deletion](#deletion)
+        - [Duplication](#duplication)
+        - [Frameshift](#frameshifthttp---varnomenhgvsorg-recommendations-protein-variant-frameshift)
+- [CytoBand Coordinates](#cytoband-coordinates)
+    - [Deletion Example](#deletion-example)
+- [Multi-Feature Notation](#multi-feature-notation)
+    - [Exon Gene Fusion Example](#exon-gene-fusion-example)
+    - [Genomic Translocation Example](#genomic-translocation-example)
 
 ## Introduction
 
@@ -57,6 +61,9 @@ The expected variant types are given below. Some types are only applicable to ce
 |ext|extensions|Applicable to protein variants only|
 |ins|insertions||
 |inv|inversions||
+|fusion|gene fusion|this is general notation to be used when the underlying variant type was not specified|
+|trans|translocation||
+|itrans|inverted translocation||
 
 
 ### Currently Unsupported HGVS Features
@@ -75,7 +82,7 @@ There are a few elements of the [HGVS v15.11](http://varnomen.hgvs.org/) notatio
 All continuous notation follows a similar pattern that is loosely defined as:
 
 ```text
-<reference feature>:<prefix>.<range><variant type><untemplated sequence>
+<reference feature>:<prefix>.<range><variant type><untemplated seq>
 ```
 
 The `reference feature` would be the gene (chromosome, transcript, etc.)  name that the variant
@@ -168,4 +175,62 @@ PTEN:p.G123fs*10
 PTEN:p.G123Afs
 PTEN:p.G123Afs*10
 ```
+
+## CytoBand Coordinates
+
+CytoBand coordinates (`y`) are not a feature of HGVS, however variants using this system follow much the same patterns as the other types. Since this coordinate system is not very specific, the types of variants one can describe is more limited. Generally only duplications/gains, deletions/losses, inversions, and translocations can be described. Additionally sequence is never included. Any position in the CytoBand coordinate system is described by the pattern
+
+```text
+<arm><majorBand>.<minorBand>
+```
+
+The minor band number is optional.
+
+### Deletion Example
+
+A deletion spanniing p11.1 to p12.
+
+```text
+chr1:p11.1_p12del
+```
+
+## Multi-Feature Notation
+
+Multi-Feature notation will use the same positions and coordinate systems as continuous notation. However parentheses are used to divide features and positions. All multi-feature variants should following the pattern below
+
+```text
+(<reference feature 1>,<reference feature 2>):<prefix><variant type>(<range 1>,<range2>)<untemplated seq>
+```
+
+Untemplated sequence should only be included for sequence specific coordinate types such as genomic, CDS, and protein.
+
+### Exon Gene Fusion Example
+
+Using exon coordinates we could describe a gene fusion of exon 4 of EWSR1 to exon 7 of FLI1 as follows
+
+```text
+(EWSR1,FLI1):e.fusion(4,7)
+```
+
+A range can also be used here. When a range of positions is given it indicates uncertainty. Since
+the range is already separated by a comma it is not necessary to enclose the uncertainty in parentheses (as you would for continuous notation).
+
+For example, if we wanted to express a fusion of any exon from 4-6 of EWSR1 to any exon from 7-10 of FLI1
+
+```text
+(ESWR1,FLI1):e.fusion(4_6,7_10)
+```
+
+### Genomic Translocation Example
+
+Multi-feature variants can also be described using the genomic coordinate system (`g`). For example a translocation might be described
+
+```text
+(chr8,chr7):g.trans(1234,4567)
+(chr8,chr7):g.trans(1234,4567)AAT
+```
+
+Above we are describing a translocation from chr8:1234 to chr7:4567 where AAT is the untemplated sequence inserted between the breakpoints.
+
+
 
