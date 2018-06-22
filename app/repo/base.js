@@ -1,4 +1,8 @@
 'use strict';
+/**
+ * Contains all functions for directly interacting with the database
+ * @module app/repo/base
+ */
 const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError} = require('./error');
 const cache = require('./cache');
 const {timeStampNow, quoteWrap, looksLikeRID, VERBOSE} = require('./util');
@@ -105,6 +109,9 @@ class Follow {
         this.depth = depth === null ? null : Number(depth);
         this.activeOnly = activeOnly;
     }
+    /**
+     * Converts the follow clause into an SQL statement
+     */
     toString() {
         const classesString = Array.from(this.classnames, quoteWrap).join(', ');
         if (this.depth === null) {

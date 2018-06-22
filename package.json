@@ -47,10 +47,10 @@
   },
   "scripts": {
     "start": "node server.js",
-    "unit": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=coverconfig.json --recursive test/repo/unit.js",
+    "unit": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive test/repo/unit.js test/parser",
     "sample": "nyc --reporter=html --reporter=text mocha test/routes/sample.js --timeout 100000",
-    "test": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=coverconfig.json --recursive --exit --timeout 100000 test/repo test/routes/empty.js test/parser/variant.js",
+    "test": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive --exit --timeout 100000 test/repo test/routes/empty.js test/parser/variant.js",
     "lint": "eslint -c .eslintrc.json app test",
-    "jsdoc": "jsdoc -r app -R README.md"
+    "jsdoc": "jsdoc -r app -R README.md -d jsdoc --package package.json -c config/jsdoc.config.js"
   }
 }

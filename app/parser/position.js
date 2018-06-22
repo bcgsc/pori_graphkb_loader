@@ -1,4 +1,5 @@
 'use strict';
+/** @module app/parser/position */
 const {ParsingError} = require('./../repo/error');
 
 const PREFIX_CLASS = {
@@ -37,16 +38,41 @@ const _positionString = (breakpoint) => {
     };
 }
 
-
-const breakRepr = (prefix, break1, break2) => {
-    if (break2) {  // range
-        return `${prefix}.(${_positionString(break1)}_${_positionString(break2)})`;
+/**
+ * Convert parsed breakpoints into a string representing the breakpoint range
+ *
+ * @param {string} prefix the prefix denoting the coordinate system being used
+ * @param {string} start the start of the breakpoint range
+ * @param {string} [end=null] the end of the breakpoint range (if the breakpoint is a range)
+ *
+ * @example
+ * > break1Repr('g', {pos: 1}, {pos: 10});
+ * 'g.(1_10)'
+ *
+ * @example
+ * > break1Repr('g', {pos: 1})
+ * 'g.1'
+ */
+const breakRepr = (prefix, start, end=null) => {
+    if (end) {  // range
+        return `${prefix}.(${_positionString(start)}_${_positionString(end)})`;
     }
-    return `${prefix}.${_positionString(break1)}`;
+    return `${prefix}.${_positionString(start)}`;
 };
 
 
-
+/**
+ * Given a prefix and string, parse a position
+ *
+ * @param {string} prefix the prefix type which defines the type of position to be parsed
+ * @param {string} string the string the position information is being parsed from
+ *
+ * @example
+ * > parsePosition('c', '100+2');
+ * {'@class': 'CdsPosition', pos: 100, offset: 2}
+ *
+ * @returns {object} the parsed position
+ */
 const parsePosition = (prefix, string) => {
     let result = {'@class': PREFIX_CLASS[prefix]};
     switch(prefix) {
@@ -62,11 +88,10 @@ const parsePosition = (prefix, string) => {
         }
         case 'g': {
             if (string !== '?') {
-                const pos = parseInt(string);
-                if (isNaN(pos)) {
+                if (! /^\d+$/.exec(string)) {
                     throw new ParsingError(`expected integer but found: ${string}`);
                 }
-                result.pos = pos;
+                result.pos = parseInt(string);
             }
             return result;
         }
@@ -107,7 +132,7 @@ const parsePosition = (prefix, string) => {
             return result;
         }
         default: {
-            throw new ParsingError(`Prefix not recognized: ${prefix} from ${string}`);
+            throw new ParsingError({message: `Prefix not recognized: ${prefix}`, input: string});
         }
     }
 };

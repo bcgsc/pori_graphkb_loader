@@ -1,4 +1,5 @@
 'use strict';
+/** @module app/repo/error */
 const jc = require('json-cycle');
 
 

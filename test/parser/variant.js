@@ -18,12 +18,12 @@ describe('parseMultiFeature', () => {
         });
         it('missing opening bracket', () => {
             expect(() => {
-                parseMultiFeature('e.del1,2)');
+                parseMultiFeature('e.trans1,2)');
             }).to.throw('Missing opening');
         });
         it('missing closing bracket', () => {
             expect(() => {
-                parseMultiFeature('e.del(1,2');
+                parseMultiFeature('e.trans(1,2');
             }).to.throw('Missing closing');
         });
         it('missing variant type', () => {
@@ -38,31 +38,121 @@ describe('parseMultiFeature', () => {
         });
         it('missing prefix', () => {
             expect(() => {
-                parseMultiFeature('del(1,2)');
+                parseMultiFeature('trans(1,2)');
             }).to.throw('Error in parsing the prefix');
         });
         it('invalid prefix', () => {
             expect(() => {
-                parseMultiFeature('k.del(1,2)');
+                parseMultiFeature('k.trans(1,2)');
             }).to.throw('Error in parsing the prefix');
         });
         it('multiple commas', () => {
             expect(() => {
-                parseMultiFeature('e.del(1,2,3)');
+                parseMultiFeature('e.trans(1,2,3)');
             }).to.throw('Single comma expected');
         });
         it('missing comma', () => {
             expect(() => {
-                parseMultiFeature('e.del(123)');
+                parseMultiFeature('e.trans(123)');
             }).to.throw('Missing comma');
         });
-        it('bad first breakpoint');
-        it('bad second breakpoint');
-        it('insertion types');
-        it('indel types');
+        it('bad first breakpoint', () => {
+            expect(() => {
+                const result = parseMultiFeature('e.trans(123k,1234)');
+                console.log(result);
+            }).to.throw('Error in parsing the first breakpoint');
+        });
+        it('bad second breakpoint', () => {
+            expect(() => {
+                const result = parseMultiFeature('e.fusion(123,123k)');
+            }).to.throw('Error in parsing the second breakpoint');
+        });
+        it('insertion types', () => {
+            expect(() => {
+                parseMultiFeature('e.ins(123,124)');
+            }).to.throw('Continuous notation is preferred');
+        });
+        it('indel types', () => {
+            expect(() => {
+                parseMultiFeature('e.delins(123,123)');
+            }).to.throw('Continuous notation is preferred');
+        });
+        it('inversion types', () => {
+            expect(() => {
+                parseMultiFeature('e.inv(123,123)');
+            }).to.throw('Continuous notation is preferred');
+        });
+        it('deletion types', () => {
+            expect(() => {
+                parseMultiFeature('e.del(123,123)');
+            }).to.throw('Continuous notation is preferred');
+        });
+        it('duplication types', () => {
+            expect(() => {
+                parseMultiFeature('e.dup(123,123)');
+            }).to.throw('Continuous notation is preferred');
+        });
     });
-    it('parses exon gene fusion');
-    it('parses genomic translocation');
+    it('parses exon gene fusion', () => {
+        const parsed = parseMultiFeature('e.fusion(1,2)');
+        expect(parsed).to.eql({
+            break1Repr: 'e.1',
+            break2Repr: 'e.2',
+            break1Start: {'@class': 'ExonicPosition', pos: 1},
+            break2Start: {'@class': 'ExonicPosition', pos: 2},
+            type: EVENT_SUBTYPE.FUSION,
+            prefix: 'e'
+        });
+    });
+    it('parses genomic translocation', () => {
+        const parsed = parseMultiFeature('g.trans(1,2)');
+        expect(parsed).to.eql({
+            break1Repr: 'g.1',
+            break2Repr: 'g.2',
+            break1Start: {'@class': 'GenomicPosition', pos: 1},
+            break2Start: {'@class': 'GenomicPosition', pos: 2},
+            type: EVENT_SUBTYPE.TRANS,
+            prefix: 'g'
+        });
+    });
+    it('parses untemplated sequence', () => {
+        const parsed = parseMultiFeature('e.fusion(1,2)ATGC');
+        expect(parsed).to.eql({
+            break1Repr: 'e.1',
+            break2Repr: 'e.2',
+            break1Start: {'@class': 'ExonicPosition', pos: 1},
+            break2Start: {'@class': 'ExonicPosition', pos: 2},
+            type: EVENT_SUBTYPE.FUSION,
+            prefix: 'e',
+            untemplatedSeq: 'ATGC',
+            untemplatedSeqSize: 4
+        });
+    });
+    it('parses non-specific untemplated sequence', () => {
+        const parsed = parseMultiFeature('e.fusion(1,2)5');
+        expect(parsed).to.eql({
+            break1Repr: 'e.1',
+            break2Repr: 'e.2',
+            break1Start: {'@class': 'ExonicPosition', pos: 1},
+            break2Start: {'@class': 'ExonicPosition', pos: 2},
+            type: EVENT_SUBTYPE.FUSION,
+            prefix: 'e',
+            untemplatedSeqSize: 5
+        });
+    });
+    it('parses breakpoint ranges', () => {
+        const parsed = parseMultiFeature('e.fusion(1_17,20_28)');
+        expect(parsed).to.eql({
+            break1Repr: 'e.(1_17)',
+            break2Repr: 'e.(20_28)',
+            break1Start: {'@class': 'ExonicPosition', pos: 1},
+            break1End: {'@class': 'ExonicPosition', pos: 17},
+            break2Start: {'@class': 'ExonicPosition', pos: 20},
+            break2End: {'@class': 'ExonicPosition', pos: 28},
+            type: EVENT_SUBTYPE.FUSION,
+            prefix: 'e'
+        });
+    });
 });
 
 

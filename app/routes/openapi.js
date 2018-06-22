@@ -1,5 +1,6 @@
 /**
  * Generates the openAPI specification for the Graph KB
+ * @module app/routes/openapi
  */
 'use strict';
 
@@ -81,6 +82,11 @@ Query all diseases created by the user with the username *'blargh'*
 
 /**
  * Create a OneOf statement to show that links can be the expanded object or just the @rid
+ *
+ * @param {string} model the model/table name
+ * @param {boolean} nullable indicates if the value can be null
+ *
+ * @returns {object} the swagger parameter schema description
  */
 const linkOrModel = (model, nullable=false) => {
     const param = {
@@ -230,6 +236,11 @@ const PARAMETERS = {
 
 /**
  * Generates the JSON object that represents the openapi specification for this API
+ *
+ * @param {object} schema the database schema loaded from loadSchema
+ * @see loadSchema
+ *
+ * @returns {object} the JSON object representing the swagger API specification
  */
 const generateSwaggerSpec = (schema) => {
     const docs = {

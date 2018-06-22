@@ -1,3 +1,4 @@
+/** @module app/repo/util */
 const moment = require('moment');
 const {RID}  = require('orientjs');
 const uuidValidate = require('uuid-validate');

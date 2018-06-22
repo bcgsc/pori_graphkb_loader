@@ -1,4 +1,5 @@
 'use strict';
+/** @module app/parser/variant */
 const nRegex = require('named-js-regexp');
 const {ParsingError} = require('./../repo/error');
 const {parsePosition, breakRepr} = require('./position');
@@ -25,9 +26,6 @@ const EVENT_SUBTYPE = {
 
 
 const NOTATION_TO_SUBTYPE = new Map([
-    ['ub', EVENT_SUBTYPE.UB],
-    ['me', EVENT_SUBTYPE.ME],
-    ['ac', EVENT_SUBTYPE.AC],
     ['fs', EVENT_SUBTYPE.FS],
     ['>', EVENT_SUBTYPE.SUB],
     ['delins', EVENT_SUBTYPE.INDEL],
@@ -38,12 +36,19 @@ const NOTATION_TO_SUBTYPE = new Map([
     ['ins', EVENT_SUBTYPE.INS],
     ['copygain', EVENT_SUBTYPE.GAIN],
     ['copyloss', EVENT_SUBTYPE.LOSS],
-    ['t', EVENT_SUBTYPE.TRANS],
+    ['trans', EVENT_SUBTYPE.TRANS],
+    ['itrans', EVENT_SUBTYPE.ITRANS],
     ['spl', EVENT_SUBTYPE.SPL],
     ['fusion', EVENT_SUBTYPE.FUSION]
 ]);
 
-
+/**
+ * Given a string, check that it contains a valid prefix
+ *
+ * @param {string} string
+ *
+ * @returns {string} the prefix
+ */
 const getPrefix = (string) => {
     const prefix = string[0];
     const expectedPrefix = ['g', 'c', 'e', 'y', 'p'];
@@ -63,10 +68,19 @@ const getPrefix = (string) => {
     return prefix;
 };
 
-
+/**
+ * Parse variant shorthand. Checks and validates notation
+ *
+ * @param {string} string the variant to be parsed
+ *
+ * @returns {object} the parsed content
+ */
 const parse = (string) => {
     if (string.length < 4) {
-        throw new ParsingError(`Too short. Must be a minimum of four characters: ${string}`);
+        throw new ParsingError({
+            message: 'Too short. Must be a minimum of four characters',
+            input: string
+        });
     }
     let split = string.split(':');
     if (split.length !== 2) {
@@ -119,12 +133,25 @@ const parse = (string) => {
     } else {
         // continuous notation
         result.feature1 = featureString;
+        const variant = parseContinuous(variantString);
+        Object.assign(result, variant);
     }
     delete result.prefix; // only kept until now to make debugging easier when an error is thrown
     return result;
 };
 
-
+/**
+ * Given a string representing a multi-feature variant. Parse and checks the format returning meaningful
+ * error messages.
+ *
+ * @param {string} string the string to be parsed
+ *
+ * @returns {pbject} the parsed variant information
+ *
+ * @example
+ * > parseMultiFeature('e.fusion(1,10)');
+ * {type: 'fusion', prefix: 'e', break1Start: {'@class': 'ExonicPosition', pos: 1}, break1Repr: 'e.1', break2Start: {'@class': 'ExonicPosition', pos: 10}, break2Repr: 'e.10}
+ */
 const parseMultiFeature = (string) => {
     if (string.length < 6) {
         throw new ParsingError(`Too short. Multi-feature notation must be a minimum of six characters: ${string}`);
@@ -154,13 +181,24 @@ const parseMultiFeature = (string) => {
     if (! NOTATION_TO_SUBTYPE.has(parsed.type)) {
         throw new ParsingError({message: 'Variant type not recognized', parsed, input: string});
     }
-    //string = string.slice(string.indexOf('(') + 1);
+    if (! ['fusion', 'trans', 'itrans'].includes(parsed.type)) {
+        throw new ParsingError({
+            message: `Continuous notation is preferred over multi-feature notation for ${parsed.type} variant types`,
+            parsed, input: string
+        });
+    }
+    parsed.type = NOTATION_TO_SUBTYPE.get(parsed.type);
     if (string.indexOf(')') < 0) {
         throw new ParsingError({message: 'Missing closing parentheses', parsed, input: string});
     }
     const untemplatedSeq = string.slice(string.indexOf(')') + 1);
     if (untemplatedSeq.length > 0) {
-        parsed.untemplatedSeq = untemplatedSeq;
+        if (parseInt(untemplatedSeq)) {
+            parsed.untemplatedSeqSize = parseInt(untemplatedSeq);
+        } else {
+            parsed.untemplatedSeq = untemplatedSeq;
+            parsed.untemplatedSeqSize = untemplatedSeq.length;
+        }
     }
     const positions = string.slice(string.indexOf('(') + 1, string.indexOf(')')).split(',');
     if (positions.length > 2) {
@@ -170,38 +208,48 @@ const parseMultiFeature = (string) => {
     }
     try {
         if (positions[0].includes('_')) {
-            let [break1Start, break1End] = positions[0].split('_', 1);
-            parsed.break1Start = parsePosition(prefix, break1Start);
-            parsed.break1End = parsePosition(prefix, break1End);
+            const splitPos = positions[0].indexOf('_');
+            parsed.break1Start = parsePosition(parsed.prefix, positions[0].slice(0, splitPos));
+            parsed.break1End = parsePosition(parsed.prefix, positions[0].slice(splitPos + 1));
         } else {
-            parsed.break1Start = parsePosition(prefix, positions[0]);
+            parsed.break1Start = parsePosition(parsed.prefix, positions[0]);
         }
+        parsed.break1Repr = breakRepr(parsed.prefix, parsed.break1Start, parsed.break1End);
     } catch (err) {
         throw new ParsingError({
-            message: `Error in parsing the first breakpoint position/range`,
+            message: 'Error in parsing the first breakpoint position/range',
             input: string, parsed, subParserError: err
         });
     }
     try {
-        if (positions[0].includes('_')) {
-            let [break2Start, break2End] = positions[0].split('_', 1);
-            parsed.break2Start = parsePosition(prefix, break2Start);
-            parsed.break2End = parsePosition(prefix, break2End);
+        if (positions[1].includes('_')) {
+            const splitPos = positions[1].indexOf('_');
+            parsed.break2Start = parsePosition(parsed.prefix, positions[1].slice(0, splitPos));
+            parsed.break2End = parsePosition(parsed.prefix, positions[1].slice(splitPos + 1));
         } else {
-            parsed.break2Start = parsePosition(prefix, positions[0]);
+            parsed.break2Start = parsePosition(parsed.prefix, positions[1]);
         }
+        parsed.break2Repr = breakRepr(parsed.prefix, parsed.break2Start, parsed.break2End);
     } catch (err) {
         throw new ParsingError({
-            message: `Error in parsing the second breakpoint position/range`,
+            message: 'Error in parsing the second breakpoint position/range',
             input: string, parsed, subParserError: err
         });
     }
     return parsed;
 };
 
-
-
-
+/**
+ * Given a string representing a continuous variant, parses and checks the content
+ *
+ * @param {string} string the variant to be parsed
+ *
+ * @returns {object} the parsed content
+ *
+ * @example
+ * > parseContinuous('p.G12D')
+ * {type: 'substitution', prefix: 'p', break1Start: {'@class': 'ProteinPosition', pos: 12, refAA: 'G'}, untemplatedSeq: 'D'}
+ */
 const parseContinuous = (string) => {
     if (string.length < 3) {
         throw new ParsingError(`Too short. Must be a minimum of three characters: ${string}`);
