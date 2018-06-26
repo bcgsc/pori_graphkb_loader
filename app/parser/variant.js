@@ -83,42 +83,46 @@ const parse = (string) => {
         });
     }
     let split = string.split(':');
-    if (split.length !== 2) {
+    if (split.length > 2) {
         throw new ParsingError({message: 'Variant notation must contain a single colon', input: string});
+    } else if (split.length === 1) {
+        split = [null, split[0]];
     }
     const result = {};
     const [featureString, variantString] = split;
-    if (featureString.includes(',') || variantString.includes(',') || featureString.startsWith('(') || featureString.endsWith(')')) {
+    if (variantString.includes(',') || (featureString && (featureString.startsWith('(') || featureString.endsWith(')') || featureString.includes(',')))) {
         // multi-feature notation
-        if (! featureString.includes(',')) {
-            throw new ParsingError({
-                message: 'Multi-feature notation must contain two reference features separated by a comma',
-                parsed: {featureString, variantString},
-                input: string
-            });
-        } else if (! featureString.startsWith('(')) {
-            throw new ParsingError({
-                message: 'Missing opening parentheses surrounding the reference features',
-                parsed: {featureString, variantString},
-                input: string
-            });
-        } else if (! featureString.endsWith(')')) {
-            throw new ParsingError({
-                message: 'Missing closing parentheses surrounding the reference features',
-                parsed: {featureString, variantString},
-                input: string
-            });
+        if (featureString) {
+            if (featureString && ! featureString.includes(',')) {
+                throw new ParsingError({
+                    message: 'Multi-feature notation must contain two reference features separated by a comma',
+                    parsed: {featureString, variantString},
+                    input: string
+                });
+            } else if (! featureString.startsWith('(')) {
+                throw new ParsingError({
+                    message: 'Missing opening parentheses surrounding the reference features',
+                    parsed: {featureString, variantString},
+                    input: string
+                });
+            } else if (! featureString.endsWith(')')) {
+                throw new ParsingError({
+                    message: 'Missing closing parentheses surrounding the reference features',
+                    parsed: {featureString, variantString},
+                    input: string
+                });
+            }
+            let features = featureString.slice(1, featureString.length - 1).split(',');
+            if (features.length > 2) {
+                throw new ParsingError({
+                    message: 'May only specify two features. Found more than a single comma',
+                    parsed: {featureString, variantString},
+                    input: string
+                });
+            }
+            result.feature1 = features[0];
+            result.feature2 = features[1];
         }
-        let features = featureString.slice(1, featureString.length - 1).split(',');
-        if (features.length > 2) {
-            throw new ParsingError({
-                message: 'May only specify two features. Found more than a single comma',
-                parsed: {featureString, variantString},
-                input: string
-            });
-        }
-        result.feature1 = features[0];
-        result.feature2 = features[1];
         try {
             const variant = parseMultiFeature(variantString);
             result = Object.assign(result, variant);
@@ -132,9 +136,20 @@ const parse = (string) => {
         }
     } else {
         // continuous notation
-        result.feature1 = featureString;
-        const variant = parseContinuous(variantString);
-        Object.assign(result, variant);
+        if (featureString) {
+            result.feature1 = featureString;
+        }
+        try {
+            const variant = parseContinuous(variantString);
+            Object.assign(result, variant);
+        } catch (err) {
+            throw new ParsingError({
+                message: 'Error in parsing the continuous variant',
+                parsed: Object.assign({variantString}, result),
+                input: string,
+                subParserError: err
+            });
+        }
     }
     delete result.prefix; // only kept until now to make debugging easier when an error is thrown
     return result;
