@@ -16,6 +16,7 @@ const HTTP_STATUS = require('http-status-codes');
 const swaggerUi = require('swagger-ui-express');
 const path = require('path');
 const {parse} = require('./parser/variant');
+const jc = require('json-cycle');
 
 const logRequests = (req, res, next) => {
     console.log(`[${req.method}] ${req.url}`);
@@ -138,6 +139,10 @@ class AppServer {
             tagsSorter: 'alpha',
             docExpansion: 'none'
         }}));
+
+        this.router.get('/schema', async (req, res) => {
+            res.status(HTTP_STATUS.OK).json({schema: jc.decycle(schema)});
+        });
 
         this.router.use(checkToken);
 

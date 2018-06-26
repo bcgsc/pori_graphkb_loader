@@ -20,16 +20,6 @@ const printAllRoutes = (router) => {
 
 const addRoutes = (opt) => {
     const {router, schema, db} = opt;
-    // main route (useful to be able to ping)
-    router.route('/')
-        .get((req, res) => {
-            res.send('welcome to the knowledgebase api');
-        });
-    // returns a json representing the current schema
-    router.route('/schema')
-        .get((req, res) => {
-            res.json(jc.decycle(schema));
-        });
     addResourceRoutes({
         router: router,
         model: schema.User,

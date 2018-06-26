@@ -247,7 +247,7 @@ const generateSwaggerSpec = (schema) => {
         openapi: '3.0.0',
         info: {
             title: 'Graph KB',
-            version: '0.0.2',
+            version: process.env.npm_package_version,
             description: ABOUT
         },
         servers: [{
@@ -290,6 +290,26 @@ const generateSwaggerSpec = (schema) => {
                         401: {
                             description: 'The credentials were incorrect or not found'
                         }
+                    }
+                }
+            },
+            '/schema': {
+                get: {
+                    summary: 'Returns a JSON representation of the current database schema',
+                    tags: ['Metadata'],
+                    responses: {
+                        200: {
+                            content: {'application/json': {schema: {type: 'object'}}}
+                        }
+                    }
+                }
+            },
+            '/spec': {
+                get: {
+                    summary: 'Returns this specification',
+                    tags: ['Metadata'],
+                    responses: {
+                        200: { }
                     }
                 }
             }
