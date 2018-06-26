@@ -7,6 +7,7 @@
     "body-parser": "^1.15.2",
     "command-line-args": "^5.0.2",
     "command-line-usage": "^5.0.4",
+    "cors": "^2.8.4",
     "csv-parse": "^2.2.0",
     "es6-promise-pool": "^2.5.0",
     "escape-string-regexp": "^1.0.5",

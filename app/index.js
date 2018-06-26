@@ -17,6 +17,7 @@ const swaggerUi = require('swagger-ui-express');
 const path = require('path');
 const {parse} = require('./parser/variant');
 const jc = require('json-cycle');
+const cors = require('cors');
 
 const logRequests = (req, res, next) => {
     console.log(`[${req.method}] ${req.url}`);
@@ -66,6 +67,7 @@ class AppServer {
         // set up middleware parser to deal with jsons
         this.app.use(bodyParser.urlencoded({extended: true}));
         this.app.use(bodyParser.json());
+        this.app.options(cors());
         // add some basic logging
         if (VERBOSE) {
             this.app.use(logRequests);

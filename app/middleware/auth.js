@@ -58,6 +58,9 @@ const generateToken = async (db, username, exp) => {
  * - check the user is allowed permission to the given endpoint
  */
 const checkToken = async (req, res, next) => {
+    if (req.method === 'OPTIONS') {
+        return next();
+    }
     const token = req.header('Authorization');
     if (token === undefined) {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json({message: 'did not find authorized token', type: 'PermissionError'});
