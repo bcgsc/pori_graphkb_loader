@@ -25,10 +25,6 @@ const validateParams = async (opt) => {
     const allowNone = opt.allowNone !== undefined ? opt.allowNone : true;
     const params = [];
 
-    for (let param of Array.from(opt.params) || []) {
-        const {prefix} = getParameterPrefix(param);
-        params.push(prefix ? prefix : param);
-    }
     if (Object.keys(params).length == 0 && ! allowNone) {
         throw new InputValidationError('no parameters were specified');
     }

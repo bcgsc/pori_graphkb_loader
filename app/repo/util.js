@@ -20,15 +20,6 @@ const timeStampNow = () => {
 };
 
 
-const getParameterPrefix = (param) => {
-    const match = /^([^\.]+)\.([^\.]+)$/.exec(param);
-    if (match) {
-        return {prefix: match[1], suffix: match[2]};
-    } else {
-        return {prefix: param};
-    }
-};
-
 /**
  * Given an input object/estring, attemps to return the RID equivalent
  * @param string the input object
@@ -93,4 +84,4 @@ const quoteWrap = (string) => {
     return `'${string}'`;
 };
 
-module.exports = {timeStampNow, castUUID, getParameterPrefix, quoteWrap, looksLikeRID, castToRID, VERBOSE};
+module.exports = {timeStampNow, castUUID, quoteWrap, looksLikeRID, castToRID, VERBOSE};
