@@ -30,7 +30,8 @@ const PRED_MAP = {
     SUBCLASSOF: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
     SUBSETOF: 'http://www.geneontology.org/formats/oboInOwl#inSubset',
     LABEL: 'http://www.w3.org/2000/01/rdf-schema#label',
-    DESCRIPTION: 'http://purl.obolibrary.org/obo/IAO_0000115'
+    DESCRIPTION: 'http://purl.obolibrary.org/obo/IAO_0000115',
+    DEPRECATED: 'http://www.w3.org/2002/07/owl#deprecated'
 };
 
 
@@ -76,6 +77,9 @@ const uploadUberon = async ({filename, conn}) => {
                     ncitLinks.push({src: node.code, tgt: aliasCode, source: source['@rid']});
                 }
             }
+        }
+        if (node[PRED_MAP.DEPRECATED] && node[PRED_MAP.DEPRECATED][0] === 'true') {
+            body.deprecated = true;
         }
         const dbEntry = await addRecord('anatomicalentities', body, conn, true);
         records[dbEntry.sourceId] = dbEntry;

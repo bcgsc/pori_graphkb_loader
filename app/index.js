@@ -67,7 +67,7 @@ class AppServer {
         // set up middleware parser to deal with jsons
         this.app.use(bodyParser.urlencoded({extended: true}));
         this.app.use(bodyParser.json());
-        this.app.options(cors());
+        this.app.use(cors());
         // add some basic logging
         if (VERBOSE) {
             this.app.use(logRequests);
@@ -132,7 +132,7 @@ class AppServer {
         this.db = db;
         this.schema = schema;
         // set up the swagger docs
-        this.spec = generateSwaggerSpec(schema);
+        this.spec = generateSwaggerSpec(schema, {port: this.conf.app.port});
         this.router.use('/spec', swaggerUi.serve, swaggerUi.setup(this.spec, {swaggerOptions: {
             deepLinking: true,
             displayOperationId: true,

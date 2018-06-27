@@ -56,21 +56,23 @@ const uploadHugoGenes = async (opt) => {
         if (gene.longName && gene.longName.toLowerCase().trim() === 'entry withdrawn') {
             continue;
         }
-        const record = await addRecord('independantfeatures', body, conn, true);
+        const record = await addRecord('features', body, conn, true);
         records[record.sourceId] = record;
 
         if (gene.ensembl_gene_id) {
             try {
-                const ensembl = await getRecordBy('independantfeatures', {source: 'ensembl', biotype: 'gene', sourceId: gene.ensembl_gene_id}, conn);
+                const ensembl = await getRecordBy('features', {source: 'ensembl', biotype: 'gene', sourceId: gene.ensembl_gene_id}, conn);
                 ensemblLinks.push({src: record['@rid'], tgt: ensembl['@rid']});
             } catch (err) {
                 process.stdout.write('x');
             }
         }
         for (let symbol of gene.prev_symbol || []) {
-            const related = await addRecord('independantfeatures', {
+            const related = await addRecord('features', {
                 source: record.source,
                 sourceId: record.sourceId,
+                dependency: record['@rid'],
+                deprecated: true,
                 biotype: record.biotype,
                 name: symbol
             }, conn, true);
@@ -78,7 +80,7 @@ const uploadHugoGenes = async (opt) => {
         }
         for (let symbol of gene.alias_symbol || []) {
             try {
-                const related = await addRecord('independantfeatures', {source: 'hgnc', name: symbol, sourceId: record.sourceId, biotype: record.biotype}, conn, true);
+                const related = await addRecord('features', {source: 'hgnc', name: symbol, sourceId: record.sourceId, biotype: record.biotype}, conn, true);
                 aliasOf.push({src: record['@rid'], tgt: related['@rid']});
             } catch (err) {
                 process.stdout.write('x');

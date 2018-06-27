@@ -3,6 +3,7 @@
  * @module app/routes/openapi
  */
 'use strict';
+const _ = require('lodash');
 
 const ABOUT = `
 
@@ -93,7 +94,7 @@ const linkOrModel = (model, nullable=false) => {
         type: 'object',
         oneOf: [
             {
-                $ref: '#/components/schemas/RID'
+                $ref: '#/components/schemas/@rid'
             },
             {
                 $ref: `#/components/schemas/${model}`
@@ -107,19 +108,7 @@ const linkOrModel = (model, nullable=false) => {
 };
 
 
-const PARAMETERS = {
-    in: {
-        in: 'query',
-        name: 'in',
-        schema: {$ref: '#/components/schemas/RID'},
-        description: 'the record ID of the vertex the edge goes into, the target/destination vertex'
-    },
-    out: {
-        in: 'query',
-        name: 'out',
-        schema: {$ref: '#/components/schemas/RID'},
-        description: 'the record ID of the vertex the edge comes from, the source vertex'
-    },
+const GENERAL_QUERY_PARAMS = {
     neighbors: {
         in: 'query',
         name: 'neighbors',
@@ -128,7 +117,7 @@ const PARAMETERS = {
             minimum: 0,
             maximum: 4
         },
-        description: 'return neighbors of the selected node(s) up to \'n\' edges away. If this is set to 0, no neighbors will be returned. To collect all immediate neighbors this must be set to 2.'
+        description: 'Return neighbors of the selected node(s) up to \'n\' edges away. If this is set to 0, no neighbors will be returned. To collect all immediate neighbors this must be set to 2.'
     },
     returnProperties: {
         in: 'query',
@@ -136,7 +125,7 @@ const PARAMETERS = {
         schema: {
             type: 'string'
         },
-        description: 'csv list of attributes to return. Returns the whole record if not specified'
+        description: 'CSV list of attributes to return. Returns the whole record if not specified'
     },
     limit: {
         in: 'query',
@@ -146,7 +135,7 @@ const PARAMETERS = {
             minimum: 1,
             maximum: 1000
         },
-        description: 'limits the number of records to return (useful for paginating queries)',
+        description: 'Limits the number of records to return (useful for paginating queries)',
         default: 100
     },
     skip: {
@@ -156,7 +145,7 @@ const PARAMETERS = {
             type: 'integer',
             minimum: 1
         },
-        description: 'number of records to skip (useful for paginating queries)'
+        description: 'Number of records to skip (useful for paginating queries)'
     },
     fuzzyMatch: {
         in: 'query',
@@ -166,7 +155,7 @@ const PARAMETERS = {
             minimum: 0,
             maximum: 4
         },
-        description: 'indicates that aliasof and deprecatedby links should be followed when matching ontology terms to \'n\' degrees away'
+        description: 'Indicates that aliasof and deprecatedby links should be followed when matching ontology terms to \'n\' degrees away'
     },
     ancestors: {
         in: 'query',
@@ -174,7 +163,7 @@ const PARAMETERS = {
         schema: {
             type: 'string'
         },
-        description: 'csv list of edge class names for which to get all ancestors (follows ingoing edges) of any matched nodes'
+        description: 'CSV list of edge class names for which to get all ancestors (follows ingoing edges) of any matched nodes'
     },
     descendants: {
         in: 'query',
@@ -182,8 +171,26 @@ const PARAMETERS = {
         schema: {
             type: 'string'
         },
-        description: 'csv list of edge class names for which to get all descendants (follows outgoing edges) of any matched nodes'
+        description: 'CSV list of edge class names for which to get all descendants (follows outgoing edges) of any matched nodes'
     },
+    deletedAt: {
+        in: 'query',
+        name: 'deletedAt',
+        schema: {type: 'integer'},
+        nullable: true,
+        description: 'The timestamp when the record was deleted'
+    },
+    createdAt: {
+        in: 'query',
+        name: 'createdAt',
+        schema: {type: 'integer'},
+        nullable: false,
+        description: 'The timestamp when the record was created'
+    }
+};
+
+
+const BASIC_HEADER_PARAMS = {
     Authorization: {
         in: 'header',
         name: 'Authorization',
@@ -191,45 +198,28 @@ const PARAMETERS = {
             type: 'string',
             format: 'token'
         },
-        description: 'token containing the user information/authentication'
+        required: true,
+        description: 'Token containing the user information/authentication'
     },
-    sourceId: {
-        in: 'query',
-        name: 'sourceId',
-        schema: {type: 'string'},
-        description: 'the identifier of the record/term in the external source database/system'
+    Accept: {
+        in: 'header',
+        name: 'Accept',
+        schema: {
+            type: 'string',
+            default: 'application/json'
+        },
+        required: true,
+        description: 'The content type you expect to recieve. Currently only supports application/json',
     },
-    sourceIdVersion: {
-        in: 'query',
-        name: 'sourceIdVersion',
-        schema: {type: 'string'},
-        description: 'the version of the identifier based on the external database/system'
-    },
-    history: {
-        in: 'query',
-        name: 'history',
-        description: 'previous version of this record',
-        schema: {$ref: '#/components/schemas/RecordLink'}
-    },
-    deletedBy: {
-        in: 'query',
-        name: 'deletedBy',
-        description: 'the user who deleted the record',
-        schema: linkOrModel('User', true)
-    },
-    deletedAt: {
-        in: 'query',
-        name: 'deletedAt',
-        schema: {type: 'integer'},
-        nullable: true,
-        description: 'the timestamp when the record was deleted'
-    },
-    createdAt: {
-        in: 'query',
-        name: 'createdAt',
-        schema: {type: 'integer'},
-        nullable: false,
-        description: 'the timestamp when the record was created'
+    'Content-Type': {
+        in: 'header',
+        name: 'Content-Type',
+        schema: {
+            type: 'string',
+            default: 'application/json'
+        },
+        required: true,
+        description: 'The content type you expect to send. Currently only supports application/json'
     }
 };
 
@@ -242,7 +232,8 @@ const PARAMETERS = {
  *
  * @returns {object} the JSON object representing the swagger API specification
  */
-const generateSwaggerSpec = (schema) => {
+const generateSwaggerSpec = (schema, metadata) => {
+    metadata = Object.assign({port: 8088, host: process.env.HOSTNAME}, metadata);
     const docs = {
         openapi: '3.0.0',
         info: {
@@ -251,20 +242,24 @@ const generateSwaggerSpec = (schema) => {
             description: ABOUT
         },
         servers: [{
-            url: 'http://kbapi01:8088/api'
+            url: `http://${metadata.host}:${metadata.port}/api/v${process.env.npm_package_version}`
         }],
         paths: {
             '/token': {
                 post: {
                     summary: 'Generate an authentication token to be used for requests to the KB API server',
                     tags: ['Authentication'],
+                    parameters: [
+                        {$ref: '#/components/parameters/Content-Type'},
+                        {$ref: '#/components/parameters/Accept'}
+                    ],
                     requestBody: {
                         required: true,
                         content: {'application/json': {schema: {
                             type: 'object',
                             properties: {
-                                username: {type: 'string', description: 'the username'},
-                                password: {type: 'string', description: 'the password associated with this username'}
+                                username: {type: 'string', description: 'The username'},
+                                password: {type: 'string', description: 'The password associated with this username'}
                             }
                         }}}
                     },
@@ -277,12 +272,12 @@ const generateSwaggerSpec = (schema) => {
                                     kbToken: {
                                         type: 'string',
                                         format: 'token',
-                                        description: 'the token for KB API requests'
+                                        description: 'The token for KB API requests'
                                     },
                                     catsToken: {
                                         type: 'string',
                                         format: 'token',
-                                        description: 'the token from CATS'
+                                        description: 'The token from CATS'
                                     }
                                 }
                             }}}
@@ -297,6 +292,9 @@ const generateSwaggerSpec = (schema) => {
                 get: {
                     summary: 'Returns a JSON representation of the current database schema',
                     tags: ['Metadata'],
+                    parameters: [
+                        {$ref: '#/components/parameters/Accept'}
+                    ],
                     responses: {
                         200: {
                             content: {'application/json': {schema: {type: 'object'}}}
@@ -309,28 +307,89 @@ const generateSwaggerSpec = (schema) => {
                     summary: 'Returns this specification',
                     tags: ['Metadata'],
                     responses: {
-                        200: { }
+                        200: {}
                     }
                 }
             }
         },
         components: {
             schemas: {
-                RID: {
+                '@rid': {
                     type: 'string',
                     pattern: '^#\\d+:\\d+$',
                     description: 'Record ID',
                     example: '#44:0'
                 },
-                RecordLink: {
-                    type: 'object',
+                dependency: {
+                    $ref: '#/components/schemas/RecordLink',
+                    nullable: true,
+                    description: 'For an ontology term, a dependency is defined if the information defining the term was collected as a side-effect of creating another term.'
+                },
+                deprecated: {
+                    type: 'boolean',
+                    description: 'For an ontology term, indicates that according to the source, the current term is deprecated',
+                    nullable: false,
+                    default: false
+                },
+                source: {
+                    $ref: '#/components/schemas/SourceLink',
+                    description: 'The link to the source which is responsible for contributing this ontology term'
+                },
+                SourceLink: {
+                    description: 'A direct link to source record. Can be the record ID of the linked source record in the form of a string or the record itself',
                     oneOf: [
                         {
-                            $ref: '#/components/schemas/RID'
+                            $ref: '#/components/schemas/@rid'
                         },
                         {
                             type: 'object',
-                            properties: {'@rid': {$ref: '#/components/schemas/RID'}}
+                            $ref: '#/components/schemas/Source'
+                        }
+                    ]
+                },
+                RecordLink: {
+                    description: 'A direct link to another record. Can be the record ID of the linked record in the form of a string or the record itself',
+                    oneOf: [
+                        {
+                            $ref: '#/components/schemas/@rid'
+                        },
+                        {
+                            type: 'object',
+                            properties: {'@rid': {$ref: '#/components/schemas/@rid'}},
+                            additionalProperties: true
+                        }
+                    ]
+                },
+                UserLink: {
+                    description: 'A direct link to user record. Can be the record ID of the linked user record in the form of a string or the record itself',
+                    oneOf: [
+                        {
+                            $ref: '#/components/schemas/@rid'
+                        },
+                        {
+                            $ref: '#/components/schemas/User'
+                        }
+                    ]
+                },
+                OntologyLink: {
+                    description: 'A direct link to ontology term record. Can be the record ID of the linked ontology record in the form of a string or the record itself',
+                    oneOf: [
+                        {
+                            $ref: '#/components/schemas/@rid'
+                        },
+                        {
+                            $ref: '#/components/schemas/Ontology'
+                        }
+                    ]
+                },
+                FeatureLink: {
+                    description: 'A direct link to feature record. Can be the record ID of the linked feature record in the form of a string or the record itself',
+                    oneOf: [
+                        {
+                            $ref: '#/components/schemas/@rid'
+                        },
+                        {
+                            $ref: '#/components/schemas/Feature'
                         }
                     ]
                 },
@@ -342,13 +401,38 @@ const generateSwaggerSpec = (schema) => {
                 Error: {
                     type: 'object',
                     properties: {
-                        message: {type: 'string', description: 'the error message'},
-                        name: {type: 'string', description: 'the name of the type of error'},
-                        stacktrace: {type: 'string', description: 'optionally the error may include a stack trace to aid in debugging'}
+                        message: {type: 'string', description: 'The error message'},
+                        name: {type: 'string', description: 'The name of the type of error'},
+                        stacktrace: {type: 'string', description: 'Optionally the error may include a stack trace to aid in debugging'}
                     }
                 }
             },
-            parameters: Object.assign({}, PARAMETERS),
+            parameters: Object.assign({
+                sourceId: {
+                    in: 'query',
+                    name: 'sourceId',
+                    schema: {type: 'string'},
+                    description: 'The identifier of the record/term in the external source database/system'
+                },
+                sourceIdVersion: {
+                    in: 'query',
+                    name: 'sourceIdVersion',
+                    schema: {type: 'string'},
+                    description: 'The version of the identifier based on the external database/system'
+                },
+                in: {
+                    in: 'query',
+                    name: 'in',
+                    schema: {$ref: '#/components/schemas/RID'},
+                    description: 'The record ID of the vertex the edge goes into, the target/destination vertex'
+                },
+                out: {
+                    in: 'query',
+                    name: 'out',
+                    schema: {$ref: '#/components/schemas/RID'},
+                    description: 'The record ID of the vertex the edge comes from, the source vertex'
+                }
+            }, GENERAL_QUERY_PARAMS, BASIC_HEADER_PARAMS),
             responses: {
                 NotAuthorized: {
                     description: 'Authorization failed or insufficient permissions were found',
@@ -366,7 +450,7 @@ const generateSwaggerSpec = (schema) => {
                     }}}
                 },
                 BadInput: {
-                    description: 'Bad request containts invalid input',
+                    description: 'Bad request contains invalid input',
                     content: {'application/json': {schema: {
                         type: 'object',
                         $ref: '#/components/schemas/Error',
@@ -403,9 +487,9 @@ const generateSwaggerSpec = (schema) => {
             docs.paths[model.routeName].post = {
                 summary: `create a new ${model.name} record`,
                 tags: [model.name],
-                parameters: [
-                    {$ref: '#/components/parameters/Authorization'}
-                ],
+                parameters: Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
+                    return {$ref: `#/components/parameters/${p.name}`};
+                }),
                 requestBody: {
                     required: true,
                     content: {'application/json': {schema: {$ref: `#/components/schemas/${model.name}`}}}
@@ -445,8 +529,8 @@ const generateSwaggerSpec = (schema) => {
             docs.paths[model.routeName].get = {
                 summary: `get a list of ${model.name} records`,
                 tags: [model.name],
-                parameters: Array.from(['limit', 'fuzzyMatch', 'ancestors', 'descendants', 'skip', 'neighbors', 'returnProperties', 'Authorization'], (p) => {
-                    return {$ref: `#/components/parameters/${p}`};
+                parameters: Array.from(_.concat(Object.values(GENERAL_QUERY_PARAMS), Object.values(BASIC_HEADER_PARAMS)), (p) => {
+                    return {$ref: `#/components/parameters/${p.name}`};
                 }),
                 responses: {
                     200: {
@@ -465,7 +549,7 @@ const generateSwaggerSpec = (schema) => {
                             },
                             patchById: {
                                 parameters: {rid: '$response.body#/result[].@rid'},
-                                operationId: `get${model.routeName}__rid_`,
+                                operationId: `patch${model.routeName}__rid_`,
                                 description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`${model.routeName}/{rid}\`](.#/${model.name}/patch${model.routeName}__rid_) requests`
                             },
                             deleteById: {
@@ -483,16 +567,17 @@ const generateSwaggerSpec = (schema) => {
             docs.paths[`${model.routeName}/{rid}`].patch = {
                 summary: `update an existing ${model.name} record`,
                 tags: [model.name],
-                parameters: [
-                    {$ref: '#/components/parameters/Authorization'},
-                    {
+                parameters: _.concat(Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
+                    return {$ref: `#/components/parameters/${p.name}`};
+                }),
+                    [{
                         in: 'path',
                         name: 'rid',
-                        schema: {$ref: '#/components/schemas/RID'},
-                        description: 'the record identifier',
-                        example: '#34:1'
-                    }
-                ],
+                        schema: {$ref: '#/components/schemas/@rid'},
+                        description: 'The record identifier',
+                        example: '#34:1',
+                        required: true
+                    }]),
                 responses: {
                     200: {content: {'application/json': {schema: {
                         type: 'object',
@@ -509,16 +594,17 @@ const generateSwaggerSpec = (schema) => {
             docs.paths[`${model.routeName}/{rid}`].delete = {
                 summary: `delete an existing ${model.name} record`,
                 tags: [model.name],
-                parameters: [
-                    {$ref: '#/components/parameters/Authorization'},
-                    {
+                parameters: _.concat(Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
+                    return {$ref: `#/components/parameters/${p.name}`};
+                }),
+                    [{
                         in: 'path',
                         name: 'rid',
-                        schema: {$ref: '#/components/schemas/RID'},
-                        description: 'the record identifier',
-                        example: '#34:1'
-                    }
-                ],
+                        schema: {$ref: '#/components/schemas/@rid'},
+                        description: 'The record identifier',
+                        example: '#34:1',
+                        required: true
+                    }]),
                 responses: {
                     200: {content: {'application/json': {schema: {
                         type: 'object',
@@ -534,17 +620,20 @@ const generateSwaggerSpec = (schema) => {
             docs.paths[`${model.routeName}/{rid}`].get = {
                 summary: `get a particular ${model.name} record`,
                 tags: [model.name],
-                parameters: [
-                    {$ref: '#/components/parameters/Authorization'},
-                    {$ref: '#/components/parameters/neighbors'},
-                    {
+                parameters: _.concat(Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
+                    return {$ref: `#/components/parameters/${p.name}`};
+                }), [{
                         in: 'path',
                         name: 'rid',
-                        schema: {$ref: '#/components/schemas/RID'},
-                        description: 'the record identifier',
-                        example: '#34:1'
+                        schema: {$ref: '#/components/schemas/@rid'},
+                        description: 'The record identifier',
+                        example: '#34:1',
+                        required: true
+                    },
+                    {
+                        $ref: '#/components/parameters/neighbors'
                     }
-                ],
+                ]),
                 responses: {
                     200: {content: {'application/json': {schema: {
                         type: 'object',
@@ -559,6 +648,7 @@ const generateSwaggerSpec = (schema) => {
                 }
             };
         }
+        // for all model properties add a query parameter to the main GET request. Also add to the model components spec
         for (let prop of Object.values(model.properties)) {
             const isList = /(list|set)/g.exec(prop.type) ? true : false;
             const isLink = prop.type.includes('link') ? true : false;
@@ -567,13 +657,19 @@ const generateSwaggerSpec = (schema) => {
                 if (docs.components.parameters[prop.name] !== undefined) {
                     docs.paths[model.routeName].get.parameters.push({$ref: `#/components/parameters/${prop.name}`});
                 } else {
+                    const schemaDefn = docs.components.schemas[prop.name];
                     const param = {
                         name: prop.name,
                         in: 'query',
                         schema: {}
                     };
                     docs.paths[model.routeName].get.parameters.push(param);
-                    if (isLink && isList) {
+                    if (schemaDefn) {
+                        param.schema.$ref = `#/components/schemas/${prop.name}`;
+                        if (schemaDefn.description) {
+                            param.description = schemaDefn.description;
+                        }
+                    } else if (isLink && isList) {
                         param.schema.$ref = '#/components/schemas/RecordList';
                     } else if (isLink) {
                         param.schema.$ref = '#/components/schemas/RecordLink';
@@ -588,6 +684,10 @@ const generateSwaggerSpec = (schema) => {
                 }
                 docs.components.schemas[model.name].required.push(prop.name);
             }
+            if (docs.components.schemas[prop.name]) {
+                docs.components.schemas[model.name].properties[prop.name] = {$ref: `#/components/schemas/${prop.name}`};
+                continue;
+            }
             let propDefn = {};
             docs.components.schemas[model.name].properties[prop.name] = propDefn;
 
@@ -601,14 +701,49 @@ const generateSwaggerSpec = (schema) => {
             } else if (prop.linkedModel) {
                 if (prop.type.includes('embedded')) {
                     propDefn.$ref = `#/components/schemas/${prop.linkedModel.name}`;
+                } else if (docs.components.schemas[`${prop.linkedModel.name}Link`]) {
+                    propDefn.$ref = `#/components/schemas/${prop.linkedModel.name}Link`;
                 } else {
+                    console.log('unlinked', prop.linkedModel.name);
                     Object.assign(propDefn, linkOrModel(prop.linkedModel.name));
                 }
             } else if (prop.type.includes('link')) {
-                propDefn.$ref = '#/components/schemas/RID';
+                propDefn.$ref = '#/components/schemas/RecordLink';
+                propDefn.description = docs.components.schemas.RecordLink.description;
             } else {
                 propDefn.type = prop.type === 'long' ? 'integer' : prop.type;
             }
+        }
+    }
+    // sort the route parameters, first by required and then alpha numerically
+    for (let route of Object.keys(docs.paths)) {
+        for (let defn of Object.values(docs.paths[route])) {
+            if (! defn.parameters) {
+                continue;
+            }
+            defn.parameters.sort((p1, p2) => {
+                if (p1.$ref) {
+                    let pname = p1.$ref.split('/');
+                    pname = pname[pname.length - 1];
+                    p1 = Object.assign({}, docs.components.parameters[pname], p1);
+                }
+                if (p2.$ref) {
+                    let pname = p2.$ref.split('/');
+                    pname = pname[pname.length - 1];
+                    p2 = Object.assign({}, docs.components.parameters[pname], p2);
+                }
+                if (p1.required && ! p2.required) {
+                    return -1
+                } else if (! p1.required && p2.required) {
+                    return 1;
+                } else if (p1.name < p2.name) {
+                    return -1;
+                } else if (p1.name > p2.name) {
+                    return 1;
+                } else {
+                    return 0;
+                }
+            });
         }
     }
     return docs;

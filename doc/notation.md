@@ -202,7 +202,7 @@ Multi-Feature notation will use the same positions and coordinate systems as con
 (<reference feature 1>,<reference feature 2>):<prefix><variant type>(<range 1>,<range2>)<untemplated seq>
 ```
 
-Untemplated sequence should only be included for sequence specific coordinate types such as genomic, CDS, and protein.
+Untemplated sequence should only be included for sequence specific coordinate types such as genomic, CDS, and protein. Where possible, continuous notation is preferred to multi-feature.
 
 ### Exon Gene Fusion Example
 

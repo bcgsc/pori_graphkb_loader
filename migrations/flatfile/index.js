@@ -145,7 +145,7 @@ for (let opt of optionDefinitions) {
  */
 class ApiRequest {
     constructor(options) {
-        this.baseUrl = `http://${options.host}:${options.port}/api`;
+        this.baseUrl = `http://${options.host}:${options.port}/api/v${process.env.npm_package_version}`;
         this.headers = {};
     }
     async setAuth({username, password}) {
@@ -178,7 +178,7 @@ const apiConnection = new ApiRequest(options);
 
 const upload = async () => {
     await apiConnection.setAuth(options);
-    console.log('Authorization', apiConnection.headers);
+    console.log('Login Succeeded\n');
     if (options['disease-ontology']) {
         await uploadDiseaseOntology({conn: apiConnection, filename: options['disease-ontology']});
     }

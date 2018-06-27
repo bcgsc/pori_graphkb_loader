@@ -66,7 +66,8 @@ const PRED_MAP = {
     SUBSETOF: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#A8',
     SYNONYM: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P90',
     HASPARENT: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#A11',
-    SUBCLASSOF: 'http://www.w3.org/2000/01/rdf-schema#subClassOf'
+    SUBCLASSOF: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
+    DEPRECATED: 'http://www.w3.org/2002/07/owl#deprecated'
 };
 
 
@@ -96,6 +97,9 @@ const subclassTree = (nodesByCode, roots) => {
 };
 
 
+/**
+ * Given some list of OWL records, convert to json format and upload to KB through the API
+ */
 const createRecords = async (inputRecords, dbClassName, conn, source) => {
     const records = {};
     console.log(`\nLoading ${Object.keys(inputRecords).length} ${dbClassName} nodes`);
@@ -113,6 +117,9 @@ const createRecords = async (inputRecords, dbClassName, conn, source) => {
         }
         if (node[PRED_MAP.SUBSETOF]) {
             body.subsets = node[PRED_MAP.SUBSETOF];
+        }
+        if (node[PRED_MAP.DEPRECATED] && node[PRED_MAP.DEPRECATED][0] === 'true') {
+            body.deprecated = true;
         }
         const dbEntry = await addRecord(dbClassName, body, conn, true);
         records[dbEntry.sourceId] = dbEntry;
@@ -174,10 +181,6 @@ const uploadNCIT = async ({filename, conn}) => {
             process.stdout.write('x');
         }
     }
-    const tempjson = 'ncit_temp.json';
-    console.log(`\nwriting: ${tempjson}`);
-    jsonfile.writeFileSync(tempjson, nodesByCode);
-    console.log('json file has', Object.keys(nodesByCode).length, 'entries');
     return nodesByCode;
 
 };

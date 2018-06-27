@@ -1,5 +1,5 @@
 /**
- * Reposonsible for defining and loading the database schema
+ * Repsonsible for defining and loading the database schema.
  * @module app/repo/schema
  */
 const {types}  = require('orientjs');
@@ -525,18 +525,20 @@ const createSchema = async (db) => {
         properties: [
             {name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source'},
             {name: 'sourceId', type: 'string', mandatory: true, notNull: true},
+            {name: 'dependency', type: 'link'},
             {name: 'name', type: 'string'},
             {name: 'sourceIdVersion', type: 'string'},
             {name: 'description', type: 'string'},
             {name: 'longName', type: 'string'},
-            {name: 'subsets', type: 'embeddedset', linkedType: 'string'}
+            {name: 'subsets', type: 'embeddedset', linkedType: 'string'},
+            {name: 'deprecated', type: 'boolean', default: false, notNull: true, mandatory: true}
         ],
         indices: [
             {
                 name: 'Ontology.active',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['source', 'sourceId', 'name', 'deletedAt', 'sourceIdVersion'],
+                properties: ['source', 'sourceId', 'name', 'deletedAt', 'sourceIdVersion', 'dependency'],
                 class:  'Ontology'
             },
             {

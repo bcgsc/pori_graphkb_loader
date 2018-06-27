@@ -10,7 +10,7 @@ const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
 
 
 const uploadOncoTree = async (conn) => {
-    console.log('\nretrieving the oncotree metadata');
+    console.log('\nRetrieving the oncotree metadata');
     const versions = await request({
         method: 'GET',
         uri: `${ONCOTREE_API}/versions`,
@@ -27,7 +27,7 @@ const uploadOncoTree = async (conn) => {
         throw new Error('Could not find the latest stable release metadata information');
     }
     const sourceVersion = stable.release_date;
-    console.log(`retrieving the entries for version: ${sourceVersion}`);
+    console.log(`Retrieving the entries for version: ${sourceVersion}`);
     const records = await request({
         method: 'GET',
         uri: `${ONCOTREE_API}/tumorTypes`,

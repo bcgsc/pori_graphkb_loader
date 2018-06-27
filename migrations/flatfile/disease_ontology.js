@@ -40,15 +40,17 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
     const ncitAliases = {};
 
     const doVersion = parseDoVersion(DOID.graphs[0].meta.version);
-    const source = await addRecord('sources', {
+    let source = await addRecord('sources', {
         name: SOURCE_NAME,
         version: doVersion
     }, conn, true);
+    source = source['@rid'].toString();
     console.log('\nAdding/getting the disease nodes');
 
     let ncitSource;
     try {
         ncitSource = await getRecordBy('sources', {name: 'ncit'}, conn);
+        ncitSource = ncitSource['@rid'].toString();
     } catch (err) {}
 
     for (let node of DOID.graphs[0].nodes) {
@@ -64,7 +66,8 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         nodesByName[node.lbl] = {
             source: source,
             sourceId: node.id,
-            name: node.lbl
+            name: node.lbl,
+            deprecated: node.meta && node.meta.deprecated ? true : false
         };
         synonymsByName[node.lbl] = [];
         if (node.meta === undefined) {
@@ -105,7 +108,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
             }
         }
     }
-    console.log(`\nparsed ncit links: ${Object.keys(ncitAliases).length}`);
+    console.log(`\nParsed ncit links: ${Object.keys(ncitAliases).length}`);
 
     const diseaseRecords = {};
     for (let name of Object.keys(nodesByName)) {
@@ -126,12 +129,14 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         for (let synonym of synonymsByName[record.name]) {
             // get the synonym record
             try {
-                synonym = await getRecordBy('diseases', {name: synonym, deletedAt: 'null', source: record.source}, conn);
+                synonym = await getRecordBy('diseases', {name: synonym, deletedAt: 'null', source: record.source, sourceId: record.sourceId, dependency: record['@rid'].toString()}, conn);
             } catch (err) {
                 synonym = await addRecord('diseases', {
                     name: synonym,
+                    source: source,
+                    dependency: record['@rid'].toString(),
                     sourceId: record.sourceId,
-                    source: source
+                    deprecated: record.deprecated
                 }, conn);
                 process.stdout.write('.');
             }
