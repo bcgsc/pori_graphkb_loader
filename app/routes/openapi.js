@@ -119,6 +119,15 @@ const GENERAL_QUERY_PARAMS = {
         },
         description: 'Return neighbors of the selected node(s) up to \'n\' edges away. If this is set to 0, no neighbors will be returned. To collect all immediate neighbors this must be set to 2.'
     },
+    activeOnly: {
+        in: 'query',
+        name: 'activeOnly',
+        schema: {
+            type: 'boolean',
+            default: true
+        },
+        description: 'Limit the query to active records only (records that have not been deleted)'
+    },
     returnProperties: {
         in: 'query',
         name: 'returnProperties',
@@ -147,6 +156,32 @@ const GENERAL_QUERY_PARAMS = {
         },
         description: 'Number of records to skip (useful for paginating queries)'
     },
+    deletedAt: {
+        in: 'query',
+        name: 'deletedAt',
+        schema: {type: 'integer'},
+        nullable: true,
+        description: 'The timestamp when the record was deleted'
+    },
+    createdAt: {
+        in: 'query',
+        name: 'createdAt',
+        schema: {type: 'integer'},
+        nullable: false,
+        description: 'The timestamp when the record was created'
+    }
+};
+
+
+const ONTOLOGY_QUERY_PARAMS = {
+    subsets: {
+        in: 'query',
+        name: 'subsets',
+        schema: {
+            type: 'string'
+        },
+        description: 'Check if an ontology term belongs to a given subset'
+    },
     fuzzyMatch: {
         in: 'query',
         name: 'fuzzyMatch',
@@ -172,20 +207,6 @@ const GENERAL_QUERY_PARAMS = {
             type: 'string'
         },
         description: 'CSV list of edge class names for which to get all descendants (follows outgoing edges) of any matched nodes'
-    },
-    deletedAt: {
-        in: 'query',
-        name: 'deletedAt',
-        schema: {type: 'integer'},
-        nullable: true,
-        description: 'The timestamp when the record was deleted'
-    },
-    createdAt: {
-        in: 'query',
-        name: 'createdAt',
-        schema: {type: 'integer'},
-        nullable: false,
-        description: 'The timestamp when the record was created'
     }
 };
 
@@ -432,7 +453,7 @@ const generateSwaggerSpec = (schema, metadata) => {
                     schema: {$ref: '#/components/schemas/RID'},
                     description: 'The record ID of the vertex the edge comes from, the source vertex'
                 }
-            }, GENERAL_QUERY_PARAMS, BASIC_HEADER_PARAMS),
+            }, GENERAL_QUERY_PARAMS, BASIC_HEADER_PARAMS, ONTOLOGY_QUERY_PARAMS),
             responses: {
                 NotAuthorized: {
                     description: 'Authorization failed or insufficient permissions were found',
@@ -529,7 +550,11 @@ const generateSwaggerSpec = (schema, metadata) => {
             docs.paths[model.routeName].get = {
                 summary: `get a list of ${model.name} records`,
                 tags: [model.name],
-                parameters: Array.from(_.concat(Object.values(GENERAL_QUERY_PARAMS), Object.values(BASIC_HEADER_PARAMS)), (p) => {
+                parameters: Array.from(_.concat(
+                    model.inherits.includes('Ontology') || model.name === 'Ontology' ? Object.values(ONTOLOGY_QUERY_PARAMS) : [],
+                    Object.values(GENERAL_QUERY_PARAMS),
+                    Object.values(BASIC_HEADER_PARAMS)
+                ), (p) => {
                     return {$ref: `#/components/parameters/${p.name}`};
                 }),
                 responses: {
