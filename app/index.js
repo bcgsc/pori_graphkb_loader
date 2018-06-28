@@ -21,6 +21,9 @@ const cors = require('cors');
 
 const logRequests = (req, res, next) => {
     console.log(`[${req.method}] ${req.url}`);
+    if (process.env.DEBUG === '1') {
+        console.log(req.headers);
+    }
     return next();
 };
 
@@ -67,11 +70,14 @@ class AppServer {
         // set up middleware parser to deal with jsons
         this.app.use(bodyParser.urlencoded({extended: true}));
         this.app.use(bodyParser.json());
-        this.app.use(cors());
         // add some basic logging
         if (VERBOSE) {
             this.app.use(logRequests);
         }
+        this.app.use(cors({
+            origin: true
+        }));
+
 
         this.db = null;
         this.server = null;
