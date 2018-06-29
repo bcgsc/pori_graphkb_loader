@@ -718,9 +718,14 @@ const remove = async (db, opt) => {
  * @param {Object} opt.user the user updating the record
  */
 const update = async (db, opt) => {
-    const {content, model, user, where} = opt;
+    const {model, user, where} = opt;
+    const content = Object.assign({}, model.formatRecord(opt.content, {
+        dropExtra: false,
+        addDefaults: false,
+        ignoreMissing: true,
+        ignoreExtra: false}));
     const original = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
-    const originalWhere = Object.assign(model.formatRecord(original, {dropExtra: true, addDefaults: false}));
+    const originalWhere = Object.assign({}, model.formatRecord(original, {dropExtra: true, addDefaults: false}));
     delete originalWhere.createdBy;
     delete originalWhere.history;
     const copy = Object.assign({}, _.omit(originalWhere, ['@rid', '@version']), {deletedAt: timeStampNow()});
@@ -756,11 +761,15 @@ const update = async (db, opt) => {
         }).let('updated', (tx) => {
             return tx.select().from('$updatedRID').fetch({'*': 1});
         }).commit();
-    if (VERBOSE || process.env.DEBUG === '1') {
+    if (process.env.DEBUG === '1') {
         console.log(`update: ${commit.buildStatement()}`);
     }
     try {
-        return await commit.return('$updated').one();
+        const result = await commit.return('$updated').one();
+        if (result == undefined) {
+            throw new Error('Failed to update');
+        }
+        return result;
     } catch (err) {
         err.sql = commit.buildStatement();
         throw wrapIfTypeError(err);

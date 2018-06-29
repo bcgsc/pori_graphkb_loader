@@ -36,6 +36,7 @@ const PRED_MAP = {
 
 
 const uploadUberon = async ({filename, conn}) => {
+    console.log('Loading the external uberon data');
     console.log(`reading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
     const graph = rdf.graph();
@@ -114,10 +115,7 @@ const uploadUberon = async ({filename, conn}) => {
             process.stdout.write('x');
         }
     }
-
-    /*console.log('writing: uberon.tmp.json');
-    jsonfile.writeFileSync('uberon.tmp.json', nodesByUberonId);
-    console.log('json file has', Object.keys(nodesByUberonId).length, 'entries');*/
+    console.log();
 };
 
 module.exports = {uploadUberon};

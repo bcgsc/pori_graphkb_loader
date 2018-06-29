@@ -31,9 +31,11 @@ const {getRecordBy, addRecord} = require('./util');
 */
 
 
-const SOURCE = 'hgnc';
+const SOURCE_NAME = 'hgnc';
+const CLASS_NAME = 'features';
 
 const uploadHugoGenes = async (opt) => {
+    console.log('Loading the external HGNC data');
     const {filename, conn} = opt;
     console.log(`loading: ${filename}`);
     const hgnc = require(filename);
@@ -42,11 +44,19 @@ const uploadHugoGenes = async (opt) => {
     const ensemblLinks = [];
     const deprecatedBy = [];
     const records = {};
+    let source = await addRecord('sources', {name: SOURCE_NAME}, conn, true);
+    source = source['@rid'].toString();
+    let ensemblSource;
+    try {
+        let ensemblSource = getRecordBy('sources', {name: 'ensembl'}, conn);
+    } catch (err) {
+        console.log('Unable to fetch ensembl source for llinking records:', err);
+    }
 
     console.log(`\nAdding ${genes.length} feature records`);
     for (let gene of genes) {
         let body = {
-            source: SOURCE,
+            source,
             sourceIdVersion: gene.date_modified,
             sourceId: gene.hgnc_id,
             name: gene.symbol,
@@ -56,22 +66,22 @@ const uploadHugoGenes = async (opt) => {
         if (gene.longName && gene.longName.toLowerCase().trim() === 'entry withdrawn') {
             continue;
         }
-        const record = await addRecord('features', body, conn, true);
+        const record = await addRecord(CLASS_NAME, body, conn, true);
         records[record.sourceId] = record;
 
-        if (gene.ensembl_gene_id) {
+        if (gene.ensembl_gene_id && ensemblSource) {
             try {
-                const ensembl = await getRecordBy('features', {source: 'ensembl', biotype: 'gene', sourceId: gene.ensembl_gene_id}, conn);
+                const ensembl = await getRecordBy(CLASS_NAME, {source: 'ensembl', biotype: 'gene', sourceId: gene.ensembl_gene_id}, conn);
                 ensemblLinks.push({src: record['@rid'], tgt: ensembl['@rid']});
             } catch (err) {
                 process.stdout.write('x');
             }
         }
         for (let symbol of gene.prev_symbol || []) {
-            const related = await addRecord('features', {
-                source: record.source,
+            const related = await addRecord(CLASS_NAME, {
+                source,
                 sourceId: record.sourceId,
-                dependency: record['@rid'],
+                dependency: record['@rid'].toString(),
                 deprecated: true,
                 biotype: record.biotype,
                 name: symbol
@@ -80,25 +90,34 @@ const uploadHugoGenes = async (opt) => {
         }
         for (let symbol of gene.alias_symbol || []) {
             try {
-                const related = await addRecord('features', {source: 'hgnc', name: symbol, sourceId: record.sourceId, biotype: record.biotype}, conn, true);
+                const related = await addRecord(CLASS_NAME, {
+                    source,
+                    name: symbol,
+                    sourceId: record.sourceId,
+                    biotype: record.biotype,
+                    dependency: record['@rid'].toString()
+                }, conn, true);
                 aliasOf.push({src: record['@rid'], tgt: related['@rid']});
             } catch (err) {
                 process.stdout.write('x');
             }
         }
     }
-    console.log(`\nAdding the ${ensemblLinks.length} ensembl links`);
-    for (let {src, tgt} of ensemblLinks) {
-        await addRecord('aliasof', {out: src, in: tgt, source: SOURCE}, conn, true);
+    if (ensemblSource) {
+        console.log(`\nAdding the ${ensemblLinks.length} ensembl links`);
+        for (let {src, tgt} of ensemblLinks) {
+            await addRecord('aliasof', {out: src, in: tgt, source}, conn, true);
+        }
     }
     console.log(`\nAdding the ${aliasOf.length} aliasof links`);
     for (let {src, tgt} of aliasOf) {
-        await addRecord('aliasof', {out: src, in: tgt, source: SOURCE}, conn, true);
+        await addRecord('aliasof', {out: src, in: tgt, source}, conn, true);
     }
     console.log(`\nAdding the ${deprecatedBy.length} deprecatedby links`);
     for (let {src, tgt} of deprecatedBy) {
-        await addRecord('deprecatedby', {out: src, in: tgt, source: SOURCE}, conn, true);
+        await addRecord('deprecatedby', {out: src, in: tgt, source}, conn, true);
     }
+    console.log();
 };
 
 module.exports = {uploadHugoGenes};

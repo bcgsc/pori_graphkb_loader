@@ -31,6 +31,7 @@ const parseDoVersion = (version) => {
  */
 const uploadDiseaseOntology = async ({filename, conn}) => {
     // load the DOID JSON
+    console.log('Loading external disease ontology data');
     const DOID = require(filename);
 
     // build the disease ontology first
@@ -170,6 +171,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
     }
 
     await loadEdges({DOID, conn, records: diseaseRecords, source});
+    console.log();
 };
 
 /* now add the edges to the kb

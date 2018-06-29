@@ -32,8 +32,7 @@ Query all diseases where the name does not equal *'cancer'*
 
 ### Using the Contains Operator
 
-When applied to a string value this will look for a substring. If the attribute being
-queried is a list, then it will check if the value is in the list.
+When applied to a string value this will look for a substring, specifically prefixes or full words. This will not apply to suffixes.
 
 Query all diseases where the name contains *'pancreatic'*
 

@@ -98,6 +98,7 @@ const parseXML = (xmlContent) => {
 };
 
 const uploadDrugBank = async ({filename, conn}) => {
+    console.log('Loading the external drugbank data');
     console.log(`reading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
     console.log(`parsing: ${filename}`);
@@ -127,10 +128,7 @@ const uploadDrugBank = async ({filename, conn}) => {
             throw err;
         }
     }
-    /*
-    xml.drugbank.drug = xml.drugbank.drug.slice(0, 10);
-    console.log('writing: drugbank.tmp.json');
-    jsonfile.writeFileSync('drugbank.tmp.json', xml);*/
+    console.log();
 };
 
 module.exports = {uploadDrugBank};

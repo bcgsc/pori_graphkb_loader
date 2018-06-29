@@ -179,26 +179,26 @@ const apiConnection = new ApiRequest(options);
 const upload = async () => {
     await apiConnection.setAuth(options);
     console.log('Login Succeeded\n');
+    if (options.drugbank) {
+        await uploadDrugBank({conn: apiConnection, filename: options.drugbank});
+    }
+    if (options['ncit']) {
+        await uploadNCIT({conn: apiConnection, filename: options['ncit']});
+    }
     if (options['disease-ontology']) {
         await uploadDiseaseOntology({conn: apiConnection, filename: options['disease-ontology']});
     }
     if (options['hugo']) {
         await uploadHugoGenes({conn: apiConnection,  filename: options['hugo']});
     }
-    if (options['reference-flatfile']) {
-        await uploadKbFlatFile({conn: apiConnection, filename: options['reference-flatfile']});
-    }
     if (options['uberon']) {
         await uploadUberon({conn: apiConnection, filename: options['uberon']});
-    }
-    if (options['ncit']) {
-        await uploadNCIT({conn: apiConnection, filename: options['ncit']});
     }
     if (options.oncotree !== undefined) {
         await uploadOncoTree(apiConnection);
     }
-    if (options.drugbank) {
-        await uploadDrugBank({conn: apiConnection, filename: options.drugbank});
+    if (options['reference-flatfile']) {
+        await uploadKbFlatFile({conn: apiConnection, filename: options['reference-flatfile']});
     }
 };
 

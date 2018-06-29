@@ -129,6 +129,7 @@ const createRecords = async (inputRecords, dbClassName, conn, source) => {
 
 
 const uploadNCIT = async ({filename, conn}) => {
+    console.log('Loading external NCIT data');
     console.log(`loading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
     console.log(`parsing: ${filename}`);
@@ -181,8 +182,8 @@ const uploadNCIT = async ({filename, conn}) => {
             process.stdout.write('x');
         }
     }
+    console.log();
     return nodesByCode;
-
 };
 
 

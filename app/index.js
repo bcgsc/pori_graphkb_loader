@@ -18,11 +18,13 @@ const path = require('path');
 const {parse} = require('./parser/variant');
 const jc = require('json-cycle');
 const cors = require('cors');
+const moment = require('moment');
+
 
 const logRequests = (req, res, next) => {
-    console.log(`[${req.method}] ${req.url}`);
+    console.log(`${moment().toISOString()} [${req.method}] ${req.url}`);
     if (process.env.DEBUG === '1') {
-        console.log(req.headers);
+        console.log(req.headers)
     }
     return next();
 };
