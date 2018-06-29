@@ -12,7 +12,7 @@ const OrientDB  = require('orientjs');
 
 //process.on('uncaughtException', app.close);
 let app;
-conf.db.name = `${process.env.DATABASE_NAME || 'api_test'}_v${process.env.npm_package_version || 'test'}`;
+conf.db.name = `kbapi_${process.env.DATABASE_NAME ? process.env.DATABASE_NAME : `v${process.env.npm_package_version}` }`;
 delete conf.port;
 
 (async () => {
