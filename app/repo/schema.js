@@ -161,7 +161,11 @@ class ClassModel {
             if (prop.type === 'integer') {
                 cast[prop.name] = (x) => parseInt(x, 10);
             } else if (prop.type === 'string') {
-                cast[prop.name] = (x) => x.toLowerCase();
+                if (prop.notNull) {
+                    cast[prop.name] = (x) => x.toLowerCase();
+                } else {
+                    cast[prop.name] = (x) => x === null ? null : x.toLowerCase();
+                }
             } else if (prop.type.includes('link')) {
                 if (prop.notNull) {
                     cast[prop.name] = castToRID;
@@ -418,28 +422,24 @@ const createSchema = async (db) => {
         ],
         isAbstract: true
     });
+    await createClassModel(db, {
+        name: 'Source',
+        inherits: 'Evidence',
+        properties: [
+            {name: 'name', type: 'string', mandatory: true, notNull: true},
+            {name: 'version', type: 'string'}
+        ],
+        indices: [
+            {
+                name: 'Source.active',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['name', 'version', 'deletedAt'],
+                class: 'Source'
+            }
+        ]
+    });
     await Promise.all([
-        createClassModel(db, {
-            name: 'Publication',
-            inherits: 'Evidence',
-            properties: [
-                {name: 'journalName', type: 'string'},
-                {name: 'title', type: 'string', mandatory: true, notNull: true},
-                {name: 'year', type: 'integer'},
-                {name: 'pubmed', type: 'integer'},
-                {name: 'pmcid', type: 'string'},
-                {name: 'doi', type: 'string'}
-            ],
-            indices: [
-                {
-                    name: 'Publication.activeTitle',
-                    type: 'unique',
-                    metadata: {ignoreNullValues: false},
-                    properties: ['deletedAt', 'title', 'year'],
-                    class: 'Publication'
-                }
-            ]
-        }),
         createClassModel(db, {
             name: 'ClinicalTrial',
             inherits: 'Evidence',
@@ -502,23 +502,7 @@ const createSchema = async (db) => {
     if (VERBOSE) {
         console.log('defining schema for Ontology class');
     }
-    await createClassModel(db, {
-        name: 'Source',
-        inherits: 'Evidence',
-        properties: [
-            {name: 'name', type: 'string', mandatory: true, notNull: true},
-            {name: 'version', type: 'string'}
-        ],
-        indices: [
-            {
-                name: 'Source.active',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: ['name', 'version', 'deletedAt'],
-                class: 'Source'
-            }
-        ]
-    });
+
     await createClassModel(db, {
         name: 'Ontology',
         inherits: 'V,Biomarker',
@@ -566,6 +550,14 @@ const createSchema = async (db) => {
     if (VERBOSE) {
         console.log('defining schema for Ontology subclasses');
     }
+    await createClassModel(db, {
+        name: 'Publication',
+        inherits: 'Ontology,Evidence',
+        properties: [
+            {name: 'journalName', type: 'string'},
+            {name: 'year', type: 'integer'}
+        ]
+    });
     await createClassModel(db, {
         name: 'Therapy',
         inherits: 'Ontology',
@@ -865,6 +857,7 @@ const loadSchema = async (db) => {
     for (let cls of ['Variant', 'Ontology']) {
         schema[cls]._inherits.push(schema.Biomarker);
     }
+    schema.Publication._inherits.push(schema.Evidence);
 
     // defines the source/target classes allowed for each type of edge/relationship
     const edgeRestrictions = {
