@@ -18,130 +18,126 @@ describe('parseMultiFeature', () => {
         });
         it('missing opening bracket', () => {
             expect(() => {
-                parseMultiFeature('e.trans1,2)');
+                parseMultiFeature('transe.1,e.2)');
             }).to.throw('Missing opening');
         });
         it('missing closing bracket', () => {
             expect(() => {
-                parseMultiFeature('e.trans(1,2');
+                parseMultiFeature('trans(e.1,e.2');
             }).to.throw('Missing closing');
         });
         it('missing variant type', () => {
             expect(() => {
-                parseMultiFeature('e.(1,2)');
+                parseMultiFeature('(e.1,e.2)');
             }).to.throw('Variant type was not specified');
         });
         it('invalid variant type', () => {
             expect(() => {
-                parseMultiFeature('e.blargh(1,2)');
+                parseMultiFeature('blargh(e.1,e.2)');
             }).to.throw('Variant type not recognized');
         });
         it('missing prefix', () => {
             expect(() => {
                 parseMultiFeature('trans(1,2)');
-            }).to.throw('Error in parsing the prefix');
+            }).to.throw('Error in parsing the first breakpoint');
         });
         it('invalid prefix', () => {
             expect(() => {
-                parseMultiFeature('k.trans(1,2)');
-            }).to.throw('Error in parsing the prefix');
+                parseMultiFeature('trans(k.1,e.2)');
+            }).to.throw('Error in parsing the first breakpoint');
         });
         it('multiple commas', () => {
             expect(() => {
-                parseMultiFeature('e.trans(1,2,3)');
+                parseMultiFeature('trans(e.1,e.2,e.3)');
             }).to.throw('Single comma expected');
         });
         it('missing comma', () => {
             expect(() => {
-                parseMultiFeature('e.trans(123)');
+                parseMultiFeature('trans(e.123)');
             }).to.throw('Missing comma');
         });
         it('bad first breakpoint', () => {
             expect(() => {
-                const result = parseMultiFeature('e.trans(123k,1234)');
+                const result = parseMultiFeature('trans(e.123k,e.1234)');
                 console.log(result);
             }).to.throw('Error in parsing the first breakpoint');
         });
         it('bad second breakpoint', () => {
             expect(() => {
-                const result = parseMultiFeature('e.fusion(123,123k)');
+                const result = parseMultiFeature('fusion(e.123,e.123k)');
             }).to.throw('Error in parsing the second breakpoint');
         });
         it('insertion types', () => {
             expect(() => {
-                parseMultiFeature('e.ins(123,124)');
+                parseMultiFeature('ins(e.123,e.124)');
             }).to.throw('Continuous notation is preferred');
         });
         it('indel types', () => {
             expect(() => {
-                parseMultiFeature('e.delins(123,123)');
+                parseMultiFeature('delins(e.123,e.123)');
             }).to.throw('Continuous notation is preferred');
         });
         it('inversion types', () => {
             expect(() => {
-                parseMultiFeature('e.inv(123,123)');
+                parseMultiFeature('inv(e.123,e.123)');
             }).to.throw('Continuous notation is preferred');
         });
         it('deletion types', () => {
             expect(() => {
-                parseMultiFeature('e.del(123,123)');
+                parseMultiFeature('del(e.123,e.123)');
             }).to.throw('Continuous notation is preferred');
         });
         it('duplication types', () => {
             expect(() => {
-                parseMultiFeature('e.dup(123,123)');
+                parseMultiFeature('dup(e.123,e.123)');
             }).to.throw('Continuous notation is preferred');
         });
     });
     it('parses exon gene fusion', () => {
-        const parsed = parseMultiFeature('e.fusion(1,2)');
+        const parsed = parseMultiFeature('fusion(e.1,e.2)');
         expect(parsed).to.eql({
             break1Repr: 'e.1',
             break2Repr: 'e.2',
             break1Start: {'@class': 'ExonicPosition', pos: 1},
             break2Start: {'@class': 'ExonicPosition', pos: 2},
-            type: EVENT_SUBTYPE.FUSION,
-            prefix: 'e'
+            type: EVENT_SUBTYPE.FUSION
         });
     });
     it('parses genomic translocation', () => {
-        const parsed = parseMultiFeature('g.trans(1,2)');
+        const parsed = parseMultiFeature('trans(g.1,g.2)');
         expect(parsed).to.eql({
             break1Repr: 'g.1',
             break2Repr: 'g.2',
             break1Start: {'@class': 'GenomicPosition', pos: 1},
             break2Start: {'@class': 'GenomicPosition', pos: 2},
-            type: EVENT_SUBTYPE.TRANS,
-            prefix: 'g'
+            type: EVENT_SUBTYPE.TRANS
         });
     });
     it('parses untemplated sequence', () => {
-        const parsed = parseMultiFeature('e.fusion(1,2)ATGC');
+        const parsed = parseMultiFeature('fusion(e.1,e.2)ATGC');
         expect(parsed).to.eql({
             break1Repr: 'e.1',
             break2Repr: 'e.2',
             break1Start: {'@class': 'ExonicPosition', pos: 1},
             break2Start: {'@class': 'ExonicPosition', pos: 2},
             type: EVENT_SUBTYPE.FUSION,
-            prefix: 'e',
             untemplatedSeq: 'ATGC',
             untemplatedSeqSize: 4
         });
     });
     it('parses non-specific untemplated sequence', () => {
-        const parsed = parseMultiFeature('e.fusion(1,2)5');
+        const parsed = parseMultiFeature('fusion(e.1,e.2)5');
         expect(parsed).to.eql({
             break1Repr: 'e.1',
             break2Repr: 'e.2',
             break1Start: {'@class': 'ExonicPosition', pos: 1},
             break2Start: {'@class': 'ExonicPosition', pos: 2},
             type: EVENT_SUBTYPE.FUSION,
-            prefix: 'e',
             untemplatedSeqSize: 5
         });
     });
     it('parses breakpoint ranges', () => {
-        const parsed = parseMultiFeature('e.fusion(1_17,20_28)');
+        const parsed = parseMultiFeature('fusion(e.1_17,e.20_28)');
         expect(parsed).to.eql({
             break1Repr: 'e.(1_17)',
             break2Repr: 'e.(20_28)',
@@ -149,8 +145,7 @@ describe('parseMultiFeature', () => {
             break1End: {'@class': 'ExonicPosition', pos: 17},
             break2Start: {'@class': 'ExonicPosition', pos: 20},
             break2End: {'@class': 'ExonicPosition', pos: 28},
-            type: EVENT_SUBTYPE.FUSION,
-            prefix: 'e'
+            type: EVENT_SUBTYPE.FUSION
         });
     });
 });

@@ -76,7 +76,7 @@ const getPrefix = (string) => {
  * @returns {object} the parsed content
  */
 const parse = (string) => {
-    if (string.length < 4) {
+    if (! string || string.length < 4) {
         throw new ParsingError({
             message: 'Too short. Must be a minimum of four characters',
             input: string
@@ -88,7 +88,7 @@ const parse = (string) => {
     } else if (split.length === 1) {
         split = [null, split[0]];
     }
-    const result = {};
+    let result = {};
     const [featureString, variantString] = split;
     if (variantString.includes(',') || (featureString && (featureString.startsWith('(') || featureString.endsWith(')') || featureString.includes(',')))) {
         // multi-feature notation
@@ -120,8 +120,8 @@ const parse = (string) => {
                     input: string
                 });
             }
-            result.feature1 = features[0];
-            result.feature2 = features[1];
+            result.reference1 = features[0];
+            result.reference2 = features[1];
         }
         try {
             const variant = parseMultiFeature(variantString);
@@ -137,7 +137,7 @@ const parse = (string) => {
     } else {
         // continuous notation
         if (featureString) {
-            result.feature1 = featureString;
+            result.reference1 = featureString;
         }
         try {
             const variant = parseContinuous(variantString);
@@ -172,7 +172,7 @@ const parseMultiFeature = (string) => {
         throw new ParsingError(`Too short. Multi-feature notation must be a minimum of six characters: ${string}`);
     }
     const parsed = {};
-    try {
+    /*try {
         parsed.prefix = getPrefix(string);
     } catch (err) {
         throw new ParsingError({
@@ -180,12 +180,12 @@ const parseMultiFeature = (string) => {
             input: string,
             subParserError: err
         });
-    }
+    }*/
 
     if (string.indexOf('(') < 0) {
         throw new ParsingError({message: 'Missing opening parentheses', input: string});
     }
-    parsed.type = string.slice(2, string.indexOf('('));
+    parsed.type = string.slice(0, string.indexOf('('));
     if (parsed.type.length === 0) {
         throw new ParsingError({
             message: 'Variant type was not specified. It is expected to immediately follow the coordinate prefix',
@@ -221,15 +221,18 @@ const parseMultiFeature = (string) => {
     } else if (positions.length < 2) {
         throw new ParsingError({message: 'Missing comma separator between breakpoints/ranges', parsed, input: string});
     }
+    let prefix;
     try {
+        prefix = getPrefix(positions[0]);
+        positions[0] = positions[0].slice(2);
         if (positions[0].includes('_')) {
             const splitPos = positions[0].indexOf('_');
-            parsed.break1Start = parsePosition(parsed.prefix, positions[0].slice(0, splitPos));
-            parsed.break1End = parsePosition(parsed.prefix, positions[0].slice(splitPos + 1));
+            parsed.break1Start = parsePosition(prefix, positions[0].slice(0, splitPos));
+            parsed.break1End = parsePosition(prefix, positions[0].slice(splitPos + 1));
         } else {
-            parsed.break1Start = parsePosition(parsed.prefix, positions[0]);
+            parsed.break1Start = parsePosition(prefix, positions[0]);
         }
-        parsed.break1Repr = breakRepr(parsed.prefix, parsed.break1Start, parsed.break1End);
+        parsed.break1Repr = breakRepr(prefix, parsed.break1Start, parsed.break1End);
     } catch (err) {
         throw new ParsingError({
             message: 'Error in parsing the first breakpoint position/range',
@@ -237,14 +240,16 @@ const parseMultiFeature = (string) => {
         });
     }
     try {
+        prefix = getPrefix(positions[1]);
+        positions[1] = positions[1].slice(2);
         if (positions[1].includes('_')) {
             const splitPos = positions[1].indexOf('_');
-            parsed.break2Start = parsePosition(parsed.prefix, positions[1].slice(0, splitPos));
-            parsed.break2End = parsePosition(parsed.prefix, positions[1].slice(splitPos + 1));
+            parsed.break2Start = parsePosition(prefix, positions[1].slice(0, splitPos));
+            parsed.break2End = parsePosition(prefix, positions[1].slice(splitPos + 1));
         } else {
-            parsed.break2Start = parsePosition(parsed.prefix, positions[1]);
+            parsed.break2Start = parsePosition(prefix, positions[1]);
         }
-        parsed.break2Repr = breakRepr(parsed.prefix, parsed.break2Start, parsed.break2End);
+        parsed.break2Repr = breakRepr(prefix, parsed.break2Start, parsed.break2End);
     } catch (err) {
         throw new ParsingError({
             message: 'Error in parsing the second breakpoint position/range',
@@ -378,7 +383,7 @@ const parseContinuous = (string) => {
     } else if (tail == 'spl'){
         result.type = 'spl';
     } else {
-        throw new ParsingError(`Did not recognize type: ${tail}`);
+        result.type = tail;
     }
     if (! NOTATION_TO_SUBTYPE.has(result.type)) {
         throw new ParsingError(`unsupported event type: ${result.type}`);

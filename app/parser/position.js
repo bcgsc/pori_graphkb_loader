@@ -13,6 +13,10 @@ const PREFIX_CLASS = {
 
 
 const _positionString = (breakpoint) => {
+    breakpoint = Object.assign({}, breakpoint);
+    if (breakpoint.pos === undefined) {
+        breakpoint.pos = '?';
+    }
     switch(breakpoint['@class']) {
         case PREFIX_CLASS.c: {
             if (breakpoint.offset) {
