@@ -82,7 +82,7 @@ There are a few elements of the [HGVS v15.11](http://varnomen.hgvs.org/) notatio
 All continuous notation follows a similar pattern that is loosely defined as:
 
 ```text
-<reference feature>:<prefix>.<range><variant type><untemplated seq>
+<feature>:<prefix>.<pos><type><seq>
 ```
 
 The `reference feature` would be the gene (chromosome, transcript, etc.)  name that the variant
@@ -164,7 +164,7 @@ EGFR:p.R10_G14dupRSTGG
 [Frameshifts](http://varnomen.hgvs.org/recommendations/protein/variant/frameshift/) are only applicable to variants denoted with protein coordinates. Frameshift notation follows the pattern below
 
 ```text
-<reference feature>:p.<position><first alternate AA>fs*<position of next truncating AA>
+<feature>:p.<pos><first alternate AA>fs*<position of next truncating AA>
 ```
 
 The `first alternate AA`, and `position of next truncating AA` are both optional elements. For example the protein frameshift variant might be noted multiple ways
@@ -199,7 +199,7 @@ chr1:p11.1_p12del
 Multi-Feature notation will use the same positions and coordinate systems as continuous notation. However parentheses are used to divide features and positions. All multi-feature variants should following the pattern below
 
 ```text
-(<reference feature 1>,<reference feature 2>):<prefix><variant type>(<range 1>,<range2>)<untemplated seq>
+(<feature>,<feature>):<type>(<prefix>.<pos>,<prefix>.<pos>)<seq>
 ```
 
 Untemplated sequence should only be included for sequence specific coordinate types such as genomic, CDS, and protein. Where possible, continuous notation is preferred to multi-feature.
@@ -209,7 +209,7 @@ Untemplated sequence should only be included for sequence specific coordinate ty
 Using exon coordinates we could describe a gene fusion of exon 4 of EWSR1 to exon 7 of FLI1 as follows
 
 ```text
-(EWSR1,FLI1):e.fusion(4,7)
+(EWSR1,FLI1):fusion(e.4,e.7)
 ```
 
 A range can also be used here. When a range of positions is given it indicates uncertainty. Since
@@ -218,7 +218,7 @@ the range is already separated by a comma it is not necessary to enclose the unc
 For example, if we wanted to express a fusion of any exon from 4-6 of EWSR1 to any exon from 7-10 of FLI1
 
 ```text
-(ESWR1,FLI1):e.fusion(4_6,7_10)
+(ESWR1,FLI1):fusion(e.4_6,e.7_10)
 ```
 
 ### Genomic Translocation Example
@@ -226,8 +226,8 @@ For example, if we wanted to express a fusion of any exon from 4-6 of EWSR1 to a
 Multi-feature variants can also be described using the genomic coordinate system (`g`). For example a translocation might be described
 
 ```text
-(chr8,chr7):g.trans(1234,4567)
-(chr8,chr7):g.trans(1234,4567)AAT
+(chr8,chr7):trans(g.1234,g.4567)
+(chr8,chr7):trans(g.1234,g.4567)AAT
 ```
 
 Above we are describing a translocation from chr8:1234 to chr7:4567 where AAT is the untemplated sequence inserted between the breakpoints.
