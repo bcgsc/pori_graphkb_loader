@@ -158,7 +158,7 @@ const parseQueryLanguage = (inputQuery) => {
  *      router.route('/feature') = resource({model: <ClassModel>, db: <OrientDB conn>, reqQueryParams: ['source', 'name', 'biotype']});
  */
 const addResourceRoutes = (opt) => {
-    const {router, model, db, cacheUpdate} = opt;
+    const {router, model, db} = opt;
     const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
     const reqQueryParams = opt.reqQueryParams || [];
     let route = opt.route || model.routeName;
@@ -211,9 +211,6 @@ const addResourceRoutes = (opt) => {
             }
             try {
                 const result = await create(db, {model: model, content: req.body, user: req.user});
-                if (cacheUpdate) {
-                    await cacheUpdate(db);
-                }
                 res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
@@ -295,9 +292,6 @@ const addResourceRoutes = (opt) => {
                     where: {'@rid': req.params.rid, deletedAt: null},
                     user: req.user
                 });
-                if (cacheUpdate) {
-                    await cacheUpdate(db);
-                }
                 res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
@@ -326,9 +320,6 @@ const addResourceRoutes = (opt) => {
             }
             try {
                 const result = await remove(db, {model: model, where: {'@rid': req.params.rid, deletedAt: null}, user: req.user});
-                if (cacheUpdate) {
-                    await cacheUpdate(db);
-                }
                 res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {

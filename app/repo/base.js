@@ -4,7 +4,6 @@
  * @module app/repo/base
  */
 const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError} = require('./error');
-const cache = require('./cache');
 const {timeStampNow, quoteWrap, looksLikeRID, VERBOSE} = require('./util');
 const {RID, RIDBag} = require('orientjs');
 const _ = require('lodash');
@@ -494,43 +493,6 @@ const createUser = async (db, opt) => {
 };
 
 
-const populateCache = async (db, schema) => {
-    // load the user groups
-    const groups = await select(db, {model: schema.UserGroup});
-    for (let group of groups) {
-        cache.userGroups[group.name] = group;
-    }
-    // load the individual users
-    const users = await select(db, {model: schema.User});
-    for (let user of users) {
-        cache.users[user.name] = user;
-    }
-    // load the vocabulary
-    await cacheVocabulary(db, schema.Vocabulary);
-};
-
-const cacheVocabulary = async (db, model) => {
-    // load the vocabulary
-    if (VERBOSE) {
-        console.log('updating the vocabulary cache');
-    }
-    const rows = await select(db, {model: model});
-    // reformats the rows to fit with the cache expected structure
-    cache.vocabulary = {};  // remove old vocabulary
-    for (let row of rows) {
-        if (cache.vocabulary[row.class] === undefined) {
-            cache.vocabulary[row.class] = {};
-        }
-        if (cache.vocabulary[row.class][row.property] === undefined) {
-            cache.vocabulary[row.class][row.property] = [];
-        }
-        cache.vocabulary[row.class][row.property].push(row);
-    }
-    if (VERBOSE) {
-        console.log(cache.vocabulary);
-    }
-};
-
 /**
  * create new record in the database
  *
@@ -573,6 +535,9 @@ const createEdge = async (db, opt) => {
     const {content, model, user} = opt;
     content.createdBy = user['@rid'];
     const record = model.formatRecord(content, {dropExtra: false, addDefaults: true});
+    if (VERBOSE) {
+        console.log('create:', record);
+    }
     const from = record.out;
     const to = record.in;
     delete record.out;
@@ -776,4 +741,4 @@ const update = async (db, opt) => {
     }
 };
 
-module.exports = {select, create, update, remove, checkAccess, createUser, populateCache, cacheVocabulary, QUERY_LIMIT, SelectionQuery, Follow, RELATED_NODE_DEPTH, Comparison, Clause, getUserByName};
+module.exports = {select, create, update, remove, checkAccess, createUser, QUERY_LIMIT, SelectionQuery, Follow, RELATED_NODE_DEPTH, Comparison, Clause, getUserByName};

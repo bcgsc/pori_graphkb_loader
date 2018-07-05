@@ -9,7 +9,6 @@ const _ = require('lodash');
 const {PERMISSIONS} = require('./constants');
 const {createRepoFunctions} = require('./functions');
 const {castUUID, timeStampNow, castToRID, VERBOSE} = require('./util');
-const cache = require('./cache');
 const {populateCache} = require('./base');
 const {AttributeError} = require('./error');
 
@@ -19,6 +18,370 @@ const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 const INDEX_SEP_CHARS = ' \r\n\t:;,.|+*/\\=!?[]()';  // default separator chars for orientdb full text hash: https://github.com/orientechnologies/orientdb/blob/2.2.x/core/src/main/java/com/orientechnologies/orient/core/index/OIndexFullText.java
 
 
+const SCHEMA = {
+    V: {
+        properties: [
+            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+            {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
+            {name: 'deletedAt', type: 'long'},
+            {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User'},
+            {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true},
+            {name: 'history', type: 'link', notNull: true},
+            {name: 'comment', type: 'string'}
+        ]
+    },
+    E: {
+        properties: [
+            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+            {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
+            {name: 'deletedAt', type: 'long'},
+            {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User'},
+            {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true},
+            {name: 'history', type: 'link', notNull: true},
+            {name: 'comment', type: 'string'}
+        ]
+    },
+    UserGroup: {
+        properties: [
+            {name: 'name', type: 'string', mandatory: true, notNull: true},
+            {name: 'permissions', type: 'embedded', linkedClass: 'Permissions'}
+        ],
+        indices: [
+            {
+                name: 'ActiveUserGroup',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['name'],
+                'class':  'UserGroup'
+            }
+        ]
+    },
+    Permissions: {},
+    Evidence: {isAbstract: true},
+    Biomarker: {isAbstract: true},
+    User: {
+        properties: [
+            {name: 'name', type: 'string', mandatory: true, notNull: true},
+            {name: 'groups', type: 'linkset', linkedClass: 'UserGroup'},
+            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
+            {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
+            {name: 'deletedAt', type: 'long'},
+            {name: 'history', type: 'link', notNull: true},
+            {name: 'createdBy', type: 'link', notNull: true, mandatory: false}
+        ],
+        indices: [
+            {
+                name: 'ActiveUserName',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['name', 'deletedAt'],
+                'class':  'User'
+            }
+        ]
+    },
+    Source: {
+        inherits: ['Evidence', 'V'],
+        properties: [
+            {name: 'name', type: 'string', mandatory: true, notNull: true},
+            {name: 'version', type: 'string'},
+            {name: 'url', type: 'string'},
+            {name: 'description', type: 'string'}
+        ],
+        indices: [
+            {
+                name: 'Source.active',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['name', 'version', 'deletedAt'],
+                class: 'Source'
+            }
+        ]
+    },
+    Ontology: {
+        inherits: ['V', 'Biomarker'],
+        properties: [
+            {name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source'},
+            {name: 'sourceId', type: 'string', mandatory: true, notNull: true},
+            {name: 'dependency', type: 'link'},
+            {name: 'name', type: 'string'},
+            {name: 'sourceIdVersion', type: 'string'},
+            {name: 'description', type: 'string'},
+            {name: 'longName', type: 'string'},
+            {name: 'subsets', type: 'embeddedset', linkedType: 'string'},
+            {name: 'deprecated', type: 'boolean', default: false, notNull: true, mandatory: true}
+        ],
+        indices: [
+            {
+                name: 'Ontology.active',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['source', 'sourceId', 'name', 'deletedAt', 'sourceIdVersion', 'dependency'],
+                class:  'Ontology'
+            },
+            {
+                name: 'Ontology.name',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                properties: ['name'],
+                class: 'Ontology'
+            },
+            {
+                name: 'Ontology.sourceId',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                properties: ['sourceId'],
+                class: 'Ontology'
+            },
+            {
+                name: 'Ontology.full',
+                type: 'FULLTEXT_HASH_INDEX',
+                properties: ['name'],
+                class: 'Ontology',
+                metadata: {separatorChars: INDEX_SEP_CHARS}
+            }
+        ],
+        isAbstract: true
+    },
+    EvidenceLevel: {inherits: ['Ontology', 'Evidence']},
+    ClinicalTrial: {
+        inherits: ['Ontology', 'Evidence'],
+        properties: [
+            {name: 'phase', type: 'string'},
+            {name: 'size', type: 'integer'},
+            {name: 'startYear', type: 'integer'},
+            {name: 'completionYear', type: 'integer'},
+            {name: 'country', type: 'string'},
+            {name: 'city', type: 'string'}
+        ]
+    },
+    Publication: {
+        inherits: ['Ontology', 'Evidence'],
+        properties: [
+            {name: 'journalName', type: 'string'},
+            {name: 'year', type: 'integer'}
+        ]
+    },
+    Therapy: {
+        inherits: ['Ontology'],
+        properties: [
+            {name: 'mechanismOfAction', type: 'string'}
+        ]
+    },
+    Feature: {
+        inherits: ['Ontology'],
+        properties: [
+            {name: 'start', type: 'integer'},
+            {name: 'end', type: 'integer'},
+            {name: 'biotype', type: 'string', mandatory: true, notNull: true}
+        ]
+    },
+
+    Position: {isAbstract: true},
+    ProteinPosition: {
+        inherits: ['Position'],
+        properties: [
+            {name: 'pos', type: 'integer', min: 1},
+            {name: 'refAA', type: 'string'}
+        ]
+    },
+    CytobandPosition: {
+        inherits: ['Position'],
+        properties: [
+            {name: 'arm', type: 'string', mandatory: true, notNull: true},
+            {name: 'majorBand', type: 'integer', min: 1},
+            {name: 'minorBand', type: 'integer'}
+        ]
+    },
+    GenomicPosition: {
+        inherits: ['Position'],
+        properties: [{name: 'pos', type: 'integer', min: 1}]
+    },
+    ExonicPosition: {
+        inherits: ['Position'],
+        properties: [{name: 'pos', type: 'integer', min: 1}]
+    },
+    CdsPosition: {
+        inherits: ['Position'],
+        properties: [
+            {name: 'pos', type: 'integer', min: 1},
+            {name: 'offset', type: 'integer'}
+        ]
+    },
+    Variant: {
+        inherits: ['V', 'Biomarker'],
+        properties: [
+            {name: 'type', mandatory: true, type: 'string', notNull: true},
+            {name: 'subtype', type: 'string'},
+            {name: 'zygosity', type: 'string'},
+            {name: 'germline', type: 'boolean'}
+        ],
+        isAbstract: true
+    },
+    PositionalVariant: {
+        inherits: ['Variant'],
+        properties: [
+            {name: 'reference', mandatory: true, type: 'link', linkedClass: 'Feature', notNull: true},
+            {name: 'reference2', type: 'link', linkedClass: 'Feature', notNull: true},
+            {name: 'break1Start', type: 'embedded', linkedClass: 'Position'},
+            {name: 'break1End', type: 'embedded', linkedClass: 'Position'},
+            {name: 'break1Repr', type: 'string'},
+            {name: 'break2Start', type: 'embedded', linkedClass: 'Position'},
+            {name: 'break2End', type: 'embedded', linkedClass: 'Position'},
+            {name: 'break2Repr', type: 'string'},
+            {name: 'refSeq', type: 'string'},
+            {name: 'untemplatedSeq', type: 'string'},
+            {name: 'untemplatedSeqSize', type: 'integer'},  // for when we know the number of bases inserted but not what they are
+            {name: 'truncation', type: 'integer'}
+        ],
+        indices: [
+            {
+                name: 'PositionalVariant.active',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: [
+                    'break1Repr',
+                    'break2Repr',
+                    'deletedAt',
+                    'germline',
+                    'refSeq',
+                    'reference',
+                    'reference2',
+                    'subtype',
+                    'type',
+                    'untemplatedSeq',
+                    'untemplatedSeqSize',
+                    'zygosity',
+                    'truncation'
+                ],
+                class: 'PositionalVariant'
+            },
+            {
+                name: 'PositionalVariant.reference',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                metadata: {ignoreNullValues: true},
+                properties: [
+                    'reference'
+                ],
+                class: 'PositionalVariant'
+            },
+            {
+                name: 'PositionalVariant.reference2',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                metadata: {ignoreNullValues: true},
+                properties: [
+                    'reference2'
+                ],
+                class: 'PositionalVariant'
+            }
+        ]
+    },
+    CategoryVariant: {
+        inherits: ['Variant'],
+        properties: [
+            {name: 'reference', mandatory: true, type: 'link', linkedClass: 'Ontology', notNull: true},
+            {name: 'reference2', type: 'link', linkedClass: 'Ontology', notNull: true},
+            {name: 'value', type: 'string', mandatory: true, notNull: true},
+            {name: 'method', type: 'string'}
+        ],
+        indices: [
+            {
+                name: 'CategoryVariant.active',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: [
+                    'deletedAt',
+                    'germline',
+                    'method',
+                    'reference',
+                    'reference2',
+                    'subtype',
+                    'type',
+                    'value',
+                    'zygosity'
+                ],
+                class: 'CategoryVariant'
+            },
+            {
+                name: 'CategoryVariant.reference',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                metadata: {ignoreNullValues: true},
+                properties: [
+                    'reference'
+                ],
+                class: 'CategoryVariant'
+            },
+            {
+                name: 'CategoryVariant.reference2',
+                type: 'NOTUNIQUE_HASH_INDEX',
+                metadata: {ignoreNullValues: true},
+                properties: [
+                    'reference2'
+                ],
+                class: 'CategoryVariant'
+            }
+        ]
+    },
+    OntologyEdge: {
+        inherits: ['E'],
+        properties: [{name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source'}]
+    },
+    Statement: {
+        inherits: ['V'],
+        properties: [
+            {name: 'relevance', type: 'link', linkedClass: 'Relevance', mandatory: true, notNull: true},
+            {name: 'appliesTo', type: 'link', linkedClass: 'Ontology', mandatory: true, notNull: true},
+            {name: 'reviewStatus', type: 'string'},
+            {name: 'reviewedBy', type: 'link', linkedClass: 'User'},
+            {name: 'reviewedAt', type: 'long'},
+            {name: 'reviewComment', type: 'string'}
+        ]
+    }
+};
+
+// Add the simple ontology subclasses
+for (let name of [
+    'AnatomicalEntity',
+    'Disease',
+    'Pathway',
+    'Relevance',
+    'Signature'
+]) {
+    SCHEMA[name] = {inherits: ['Ontology']};
+}
+
+// Add the other edge classes
+for (let name of [
+    'AliasOf',
+    'Cites',
+    'DeprecatedBy',
+    'ElementOf',
+    'Implies',
+    'Infers',
+    'SubClassOf',
+    'SupportedBy',
+    'TargetOf'
+]) {
+    const inheritFrom = ['Implies', 'SupportedBy', 'Infers'].includes(name) ? 'E' : 'OntologyEdge';
+    SCHEMA[name] = {
+        inherits: [inheritFrom],
+        properties: [
+            {name: 'in', type: 'link'},
+            {name: 'out', type: 'link'}
+        ],
+        indices: [ // add index on the class so it doesn't apply across classes
+            {
+                name: `${name}.restrictMultiplicity`,
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['deletedAt', 'in', 'out'],
+                class: name
+            }
+        ]
+    };
+}
+
+// Set the name to match the key
+for (let name of Object.keys(SCHEMA)) {
+    SCHEMA[name].name = name;
+}
 
 class ClassModel {
     /**
@@ -273,23 +636,6 @@ class ClassModel {
                 }
             }
         }
-        // check any controlled vocabulary
-        const name = this.name.toLowerCase();
-        if (cache.vocabulary[name]) {
-            for (let attr of Object.keys(formattedRecord)) {
-                if (cache.vocabulary[name][attr]) {
-                    let accepted = false;
-                    for (let term of cache.vocabulary[name][attr]) {
-                        if (term.term === formattedRecord[attr]) {
-                            accepted = true;
-                        }
-                    }
-                    if (! accepted) {
-                        throw new AttributeError(`Attribute violates controlled vocabulary stipulation ${formattedRecord[attr]}`);
-                    }
-                }
-            }
-        }
         return formattedRecord;
     }
 }
@@ -303,7 +649,7 @@ const createClassModel = async (db, model) => {
     model.properties = model.properties || [];
     model.indices = model.indices || [];
     model.isAbstract = model.isAbstract || false;
-    model.inherits = model.inherits || null;
+    model.inherits = model.inherits ? model.inherits.join(',') : null;
 
     if (model.name === undefined) {
         throw new AttributeError(`required attribute was not defined: clsname=${model.name}`);
@@ -319,6 +665,46 @@ const createProperties = async (cls, props) => {
     return await Promise.all(Array.from(props, (prop) => cls.property.create(prop)));
 };
 
+
+/**
+ * Split class models into an array or arrays such that any model with dependencies
+ * will be in an array after the array containing the class models it depends on
+ */
+const splitSchemaClassLevels = (schema) => {
+    const ranks = {};
+    const queue = Object.values(schema);
+    while (queue.length > 0) {
+        const curr = queue.shift();
+        let dependencies = Array.from(curr.inherits || []);
+        for (let prop of curr.properties || []) {
+            if (prop.linkedClass) {
+                dependencies.push(prop.linkedClass);
+            }
+        }
+        dependencies = dependencies.filter(name => schema[name] !== undefined);
+
+        if (dependencies.length > 0) {
+            if (dependencies.some((name) => ranks[name] === undefined)) {
+                queue.push(curr);
+            } else {
+                ranks[curr.name] = Math.max(...Array.from(dependencies, (name) => ranks[name])) + 1;
+            }
+        } else {
+            ranks[curr.name] = 0;
+        }
+    }
+    const split = [];
+
+    for (let [clsName, rank] of Object.entries(ranks)) {
+        if (split[rank] === undefined) {
+            split[rank] = [];
+        }
+        split[rank].push(schema[clsName]);
+    }
+    return split;
+}
+
+
 /**
  * Defines and uilds the schema in the database
  *
@@ -326,76 +712,21 @@ const createProperties = async (cls, props) => {
  */
 const createSchema = async (db) => {
     // create the permissions class
-    const Permissions = await db.class.create('Permissions', null, null, false); // (name, extends, clusters, abstract)
+    const Permissions = await createClassModel(db, SCHEMA.Permissions);; // (name, extends, clusters, abstract)
     // create the user class
-    await createClassModel(db, {
-        name: 'UserGroup',
-        properties: [
-            {name: 'name', type: 'string', mandatory: true, notNull: true},
-            {name: 'permissions', type: 'embedded', linkedClass: 'Permissions'}
-        ],
-        indices: [
-            {
-                name: 'ActiveUserGroup',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: ['name'],
-                'class':  'UserGroup'
-            }
-        ]
-    });
+    await createClassModel(db, SCHEMA.UserGroup);
     const defaultGroups = [
         {name: 'admin', permissions: {V: PERMISSIONS.ALL, E: PERMISSIONS.ALL, User: PERMISSIONS.ALL, UserGroup: PERMISSIONS.ALL}},
         {name: 'regular', permissions: {V: PERMISSIONS.ALL, E: PERMISSIONS.ALL, User: PERMISSIONS.READ, UserGroup: PERMISSIONS.READ}},
         {name: 'readOnly', permissions: {V: PERMISSIONS.READ, E: PERMISSIONS.READ, User: PERMISSIONS.READ, UserGroup: PERMISSIONS.READ}}
     ];
     const groups = await Promise.all(Array.from(defaultGroups, x => db.insert().into('UserGroup').set(x).one()));
-    cache.userGroups = {};
-    for (let group of groups) {
-        cache.userGroups[group.name] = group;
-    }
-    await createClassModel(db, {
-        name: 'User',
-        properties: [
-            {name: 'name', type: 'string', mandatory: true, notNull: true},
-            {name: 'groups', type: 'linkset', linkedClass: 'UserGroup'},
-            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
-            {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
-            {name: 'deletedAt', type: 'long'},
-            {name: 'history', type: 'link', notNull: true},
-            {name: 'createdBy', type: 'link', notNull: true, mandatory: false}
-        ],
-        indices: [
-            {
-                name: 'ActiveUserName',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: ['name', 'deletedAt'],
-                'class':  'User'
-            }
-        ]
-    });
+    await createClassModel(db, SCHEMA.User);
     // modify the existing vertex and edge classes to add the minimum required attributes for tracking etc
     const V = await db.class.get('V');
-    await createProperties(V, [
-        {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
-        {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
-        {name: 'deletedAt', type: 'long'},
-        {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User'},
-        {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true},
-        {name: 'history', type: 'link', notNull: true},
-        {name: 'comment', type: 'string'}
-    ]);
+    await createProperties(V, SCHEMA.V.properties);
     const E = await db.class.get('E');
-    await createProperties(E, [
-        {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
-        {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
-        {name: 'deletedAt', type: 'long'},
-        {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User'},
-        {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true},
-        {name: 'history', type: 'link', notNull: true},
-        {name: 'comment', type: 'string'}
-    ]);
+    await createProperties(E, SCHEMA.E.properties);
 
     for (let cls of ['E', 'V', 'User']) {
         await db.index.create({
@@ -409,426 +740,34 @@ const createSchema = async (db) => {
     if (VERBOSE) {
         console.log('defined schema for the major base classes');
     }
+    // create the other schema classes
+    const classesByLevel = splitSchemaClassLevels(_.omit(SCHEMA, ['Permissions', 'User', 'UserGroup', 'V', 'E']));
 
-    await db.class.create('Biomarker', null, null, true);  // purely for selection purposes
-
-    // create the evidence classes
-    await createClassModel(db, {
-        name: 'Evidence',
-        inherits: 'V',
-        properties: [
-            {name: 'url', type: 'string'},
-            {name: 'description', type: 'string'}
-        ],
-        isAbstract: true
-    });
-    await createClassModel(db, {
-        name: 'Source',
-        inherits: 'Evidence',
-        properties: [
-            {name: 'name', type: 'string', mandatory: true, notNull: true},
-            {name: 'version', type: 'string'}
-        ],
-        indices: [
-            {
-                name: 'Source.active',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: ['name', 'version', 'deletedAt'],
-                class: 'Source'
-            }
-        ]
-    });
-    await Promise.all([
-        createClassModel(db, {
-            name: 'ClinicalTrial',
-            inherits: 'Evidence',
-            properties: [
-                {name: 'nctID', type: 'string'},
-                {name: 'name', type: 'string', mandatory: true, notNull: true},
-                {name: 'phase', type: 'string'},
-                {name: 'size', type: 'integer'},
-                {name: 'startYear', type: 'integer'},
-                {name: 'completionYear', type: 'integer'},
-                {name: 'country', type: 'string'},
-                {name: 'city', type: 'string'}
-            ],
-            indices: [
-                {
-                    name: 'ClinicalTrial.activeName',
-                    type: 'unique',
-                    metadata: {ignoreNullValues: false},
-                    properties: ['deletedAt', 'name'],
-                    class: 'ClinicalTrial'
-                }
-            ]
-        }),
-        createClassModel(db, {
-            name: 'Statement',
-            inherits: 'V',
-            properties: [
-                {name: 'type', type: 'string', mandatory: true, notNull: true},
-                {name: 'subtype', type: 'string'},
-                {name: 'relevance', type: 'string'},
-                {name: 'reviewBy', type: 'link', linkedClass: 'User', notNull: true},
-                {name: 'reviewAt', type: 'long'},
-                {name: 'reviewStatus', type: 'string'},
-                {name: 'appliesTo', type: 'link', linkedClass: 'Biomarker', notNull: true}
-            ]
-        }),
-        createClassModel(db, {
-            name: 'Vocabulary',
-            inherits: 'V',
-            properties: [
-                {name: 'class', type: 'string', mandatory: true, notNull: true},
-                {name: 'property', type: 'string', mandatory: true, notNull: true},
-                {name: 'term', type: 'string', mandatory: true, notNull: true},
-                {name: 'definition', type: 'string'},
-                {name: 'conditionalProperty', type: 'string'},
-                {name: 'conditionalValue', type: 'string'}
-            ],
-            indices: [
-                {
-                    name: 'Vocabulary.activeTerm',
-                    type: 'unique',
-                    metadata: {ignoreNullValues: false},
-                    properties: ['deletedAt', 'class', 'property', 'term', 'conditionalProperty', 'conditionalValue'],
-                    class:  'Vocabulary'
-                }
-            ]
-        })
-    ]);
-
-    if (VERBOSE) {
-        console.log('defining schema for Ontology class');
-    }
-
-    await createClassModel(db, {
-        name: 'Ontology',
-        inherits: 'V,Biomarker',
-        properties: [
-            {name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source'},
-            {name: 'sourceId', type: 'string', mandatory: true, notNull: true},
-            {name: 'dependency', type: 'link'},
-            {name: 'name', type: 'string'},
-            {name: 'sourceIdVersion', type: 'string'},
-            {name: 'description', type: 'string'},
-            {name: 'longName', type: 'string'},
-            {name: 'subsets', type: 'embeddedset', linkedType: 'string'},
-            {name: 'deprecated', type: 'boolean', default: false, notNull: true, mandatory: true}
-        ],
-        indices: [
-            {
-                name: 'Ontology.active',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: ['source', 'sourceId', 'name', 'deletedAt', 'sourceIdVersion', 'dependency'],
-                class:  'Ontology'
-            },
-            {
-                name: 'Ontology.name',
-                type: 'NOTUNIQUE_HASH_INDEX',
-                properties: ['name'],
-                class: 'Ontology'
-            },
-            {
-                name: 'Ontology.sourceId',
-                type: 'NOTUNIQUE_HASH_INDEX',
-                properties: ['sourceId'],
-                class: 'Ontology'
-            },
-            {
-                name: 'Ontology.full',
-                type: 'FULLTEXT_HASH_INDEX',
-                properties: ['name'],
-                class: 'Ontology',
-                metadata: {separatorChars: INDEX_SEP_CHARS}
-            }
-        ],
-        isAbstract: true
-    });
-    if (VERBOSE) {
-        console.log('defining schema for Ontology subclasses');
-    }
-    await createClassModel(db, {
-        name: 'Publication',
-        inherits: 'Ontology,Evidence',
-        properties: [
-            {name: 'journalName', type: 'string'},
-            {name: 'year', type: 'integer'}
-        ]
-    });
-    await createClassModel(db, {
-        name: 'Therapy',
-        inherits: 'Ontology',
-        properties: [
-            {name: 'mechanismOfAction', type: 'string'}
-        ]
-    });
-     // now create the custom data related classes
-    await createClassModel(db, {
-        name: 'Feature',
-        inherits: 'Ontology',
-        properties: [
-            {name: 'start', type: 'integer'},
-            {name: 'end', type: 'integer'},
-            {name: 'biotype', type: 'string', mandatory: true, notNull: true}
-        ]
-    });
-    await Promise.all(Array.from(['MutationSignature', 'Disease', 'Pathway', 'AnatomicalEntity'], (name) => {
-        db.class.create(name, 'Ontology', null, false);
-    }));
-
-    await db.class.create('Position', null, null, true);
-    await createClassModel(db, {
-        name: 'GenomicPosition',
-        inherits: 'Position',
-        properties: [{name: 'pos', type: 'integer', min: 1}]
-    });
-    await createClassModel(db, {
-        name: 'ProteinPosition',
-        inherits: 'Position',
-        properties: [
-            {name: 'pos', type: 'integer', min: 1},
-            {name: 'refAA', type: 'string'}
-        ]
-    });
-    await createClassModel(db, {
-        name: 'CdsPosition',
-        inherits: 'Position',
-        properties: [
-            {name: 'pos', type: 'integer', min: 1},
-            {name: 'offset', type: 'integer'}
-        ]
-    });
-    await createClassModel(db, {
-        name: 'ExonicPosition',
-        inherits: 'Position',
-        properties: [{name: 'pos', type: 'integer', min: 1}]
-    });
-    await createClassModel(db, {
-        name: 'CytobandPosition',
-        inherits: 'Position',
-        properties: [
-            {name: 'arm', type: 'string', mandatory: true, notNull: true},
-            {name: 'majorBand', type: 'integer', min: 1},
-            {name: 'minorBand', type: 'integer'}
-        ]
-    });
-    await createClassModel(db, {
-        name: 'Variant',
-        inherits: 'V,Biomarker',
-        properties: [
-            {name: 'type', mandatory: true, type: 'string', notNull: true},
-            {name: 'subtype', type: 'string'},
-            {name: 'zygosity', type: 'string'},
-            {name: 'germline', type: 'boolean'}
-        ],
-        isAbstract: true
-    });
-    await createClassModel(db, {
-        name: 'PositionalVariant',
-        inherits: 'Variant',
-        properties: [
-            {name: 'reference', mandatory: true, type: 'link', linkedClass: 'Feature', notNull: true},
-            {name: 'reference2', type: 'link', linkedClass: 'Feature', notNull: true},
-            {name: 'break1Start', type: 'embedded', linkedClass: 'Position'},
-            {name: 'break1End', type: 'embedded', linkedClass: 'Position'},
-            {name: 'break1Repr', type: 'string'},
-            {name: 'break2Start', type: 'embedded', linkedClass: 'Position'},
-            {name: 'break2End', type: 'embedded', linkedClass: 'Position'},
-            {name: 'break2Repr', type: 'string'},
-            {name: 'refSeq', type: 'string'},
-            {name: 'untemplatedSeq', type: 'string'},
-            {name: 'untemplatedSeqSize', type: 'integer'},  // for when we know the number of bases inserted but not what they are
-            {name: 'truncation', type: 'integer'}
-        ],
-        indices: [
-            {
-                name: 'PositionalVariant.active',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: [
-                    'break1Repr',
-                    'break2Repr',
-                    'deletedAt',
-                    'germline',
-                    'refSeq',
-                    'reference',
-                    'reference2',
-                    'subtype',
-                    'type',
-                    'untemplatedSeq',
-                    'untemplatedSeqSize',
-                    'zygosity',
-                    'truncation'
-                ],
-                class: 'PositionalVariant'
-            },
-            {
-                name: 'PositionalVariant.reference',
-                type: 'NOTUNIQUE_HASH_INDEX',
-                metadata: {ignoreNullValues: true},
-                properties: [
-                    'reference'
-                ],
-                class: 'PositionalVariant'
-            },
-            {
-                name: 'PositionalVariant.reference2',
-                type: 'NOTUNIQUE_HASH_INDEX',
-                metadata: {ignoreNullValues: true},
-                properties: [
-                    'reference2'
-                ],
-                class: 'PositionalVariant'
-            }
-        ]
-    });
-    await createClassModel(db, {
-        name: 'CategoryVariant',
-        inherits: 'Variant',
-        properties: [
-            {name: 'reference', mandatory: true, type: 'link', linkedClass: 'Ontology', notNull: true},
-            {name: 'reference2', type: 'link', linkedClass: 'Ontology', notNull: true},
-            {name: 'value', type: 'string', mandatory: true, notNull: true},
-            {name: 'method', type: 'string'}
-        ],
-        indices: [
-            {
-                name: 'CategoryVariant.active',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: [
-                    'deletedAt',
-                    'germline',
-                    'method',
-                    'reference',
-                    'reference2',
-                    'subtype',
-                    'type',
-                    'value',
-                    'zygosity'
-                ],
-                class: 'CategoryVariant'
-            },
-            {
-                name: 'CategoryVariant.reference',
-                type: 'NOTUNIQUE_HASH_INDEX',
-                metadata: {ignoreNullValues: true},
-                properties: [
-                    'reference'
-                ],
-                class: 'CategoryVariant'
-            },
-            {
-                name: 'CategoryVariant.reference2',
-                type: 'NOTUNIQUE_HASH_INDEX',
-                metadata: {ignoreNullValues: true},
-                properties: [
-                    'reference2'
-                ],
-                class: 'CategoryVariant'
-            }
-        ]
-    });
-    await createClassModel(db, {
-        name: 'OntologyEdge',
-        inherits: 'E',
-        properties: [
-            {name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source'}
-        ]
-    });
-    // create all the ontology based edge classes
-    await Promise.all(Array.from(['ElementOf', 'SubClassOf', 'DeprecatedBy', 'AliasOf', 'TargetOf'], (name) => {
+    for (let classList of classesByLevel) {
         if (VERBOSE) {
-            console.log(`defining schema for class: ${name}`);
+            console.log(`creating the classes: ${Array.from(classList, cls => cls.name).join(', ')}`);
         }
-        createClassModel(db, {
-            name: name,
-            inherits: 'OntologyEdge',
-            properties: [
-                {name: 'in', type: 'link'},
-                {name: 'out', type: 'link'}
-            ],
-            indices: [ // add index on the class so it doesn't apply across classes
-                {
-                    name: `${name}.restrictMulti`,
-                    type: 'unique',
-                    metadata: {ignoreNullValues: false},
-                    properties: ['deletedAt', 'in', 'out'],
-                    class: name
-                }
-            ]
-        });
-    }));
-    // create all the edge classes
-    await Promise.all(Array.from(['Infers', 'SupportedBy', 'Implies', 'Cites'], (name) => {
-        if (VERBOSE) {
-            console.log(`defining schema for class: ${name}`);
-        }
-        createClassModel(db, {
-            name: name,
-            inherits: 'E',
-            properties: [
-                {name: 'in', type: 'link'},
-                {name: 'out', type: 'link'}
-            ],
-            indices: [
-                {
-                    name: `${name}.restrictMulti`,
-                    type: 'unique',
-                    metadata: {ignoreNullValues: false},
-                    properties: ['deletedAt', 'in', 'out'],
-                    class: name
-                }
-            ]
-        });
-    }));
+        await Promise.all(Array.from(classList, (cls) => { return createClassModel(db, cls); }));
+    }
 
     const properties = [];
-    for (let name of [
-        'AliasOf',
-        'AnatomicalEntity',
-        'Biomarker',
-        'CategoryVariant',
-        'Cites',
-        'ClinicalTrial',
-        'DeprecatedBy',
-        'Disease',
-        'E',
-        'ElementOf',
-        'Feature',
-        'Implies',
-        'Infers',
-        'MutationSignature',
-        'Ontology',
-        'Pathway',
-        'PositionalVariant',
-        'Publication',
-        'Statement',
-        'SubClassOf',
-        'SupportedBy',
-        'Therapy',
-        'User',
-        'UserGroup',
-        'V',
-        'Variant'
-    ]) {
-        properties.push({min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', notNull: true, readOnly: false, name: name});
+    for (let name of Object.keys(SCHEMA)) {
+        if (name !== 'Permissions') {
+            properties.push({min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', notNull: true, readOnly: false, name: name});
+        }
     }
     await createProperties(Permissions, properties);
+
     if (VERBOSE) {
-        console.log('create the custom server functions');
+        console.log('Schema is Complete');
     }
-    // now load the custom functions. MUST be es5 or straight sql
-    await createRepoFunctions(db);
 };
 
 
 
 /**
- * loads the schema from the database and then adds additional checks. returns the object of models
+ * Loads the schema from the database and then adds additional checks. returns the object of models.
+ * Checks that the schema loaded from the databases matches the schema defined here
  *
  * @param {object} db the orientjs database connection
  */
@@ -837,7 +776,6 @@ const loadSchema = async (db) => {
     const schema = {};
 
     const classes = await db.class.list();
-    const inheritanceMap = {};
 
     for (let cls of classes) {
         if (/^(O[A-Z]|_)/.exec(cls.name)) {  // orientdb builtin classes
@@ -845,19 +783,18 @@ const loadSchema = async (db) => {
         }
         const model = ClassModel.parseOClass(cls);
         schema[model.name] = model;
-        if (cls.superClass) {
-            inheritanceMap[model.name] = cls.superClass;
+        if (SCHEMA[model.name] === undefined) {
+            throw new Error(`The class loaded from the database (${model.name}) is not defined in the SCHEMA`);
         }
+        if (cls.superClass && ! SCHEMA[model.name].inherits.includes(cls.superClass)) {
+            throw new Error(`The class ${model.name} inherits according to the database (${cls.superClass}) does not match those defined by the schema definition: ${SCHEMA[model.name].inherits}`);
+        }
+
     }
 
-    for (let name of Object.keys(inheritanceMap)) {
-        const parent = inheritanceMap[name];
-        schema[name]._inherits.push(schema[parent]);
+    for (let model of Object.values(schema)) {
+        model._inherits = Array.from(SCHEMA[model.name].inherits || [], (parent) => schema[parent]);
     }
-    for (let cls of ['Variant', 'Ontology']) {
-        schema[cls]._inherits.push(schema.Biomarker);
-    }
-    schema.Publication._inherits.push(schema.Evidence);
 
     // defines the source/target classes allowed for each type of edge/relationship
     const edgeRestrictions = {
@@ -890,8 +827,7 @@ const loadSchema = async (db) => {
         ]
     };
 
-    // make the ontology base models
-    for (let name of ['Disease', 'Pathway', 'Pathway', 'Therapy', 'MutationSignature', 'Feature', 'AnatomicalEntity']) {
+    for (let name of ['Disease', 'Pathway', 'Pathway', 'Therapy', 'Signature', 'Feature', 'AnatomicalEntity']) {
         edgeRestrictions.AliasOf.push([name, name]);
         edgeRestrictions.DeprecatedBy.push([name, name]);
         edgeRestrictions.SubClassOf.push([name, name]);
@@ -911,7 +847,7 @@ const loadSchema = async (db) => {
     }
     // add the api-level checks?
     let ridProperty = {name: '@rid', type: 'string'};
-    for (let modelName of ['User', 'V', 'Vocabulary', 'E', 'UserGroup']) {
+    for (let modelName of ['User', 'V', 'E', 'UserGroup']) {
         schema[modelName]._properties['@rid'] = ridProperty;
         schema[modelName]._cast['@rid'] = castToRID;
         schema[modelName]._cast.uuid = castUUID;
@@ -931,11 +867,6 @@ const loadSchema = async (db) => {
             console.log(`loaded class: ${cls.name} [${cls.inherits}]`);
         }
     }
-    if (VERBOSE) {
-        console.log('populating the cache');
-    }
-    // load the vocabulary
-    await populateCache(db, schema);
     if(VERBOSE) {
         console.log('linking models');
     }

@@ -1,7 +1,6 @@
 const jc = require('json-cycle');
 
 const {addResourceRoutes} = require('./util');
-const {cacheVocabulary} = require('./../repo/base');
 
 
 
@@ -27,21 +26,12 @@ const addRoutes = (opt) => {
         optQueryParams: ['name']
     });
 
-    // vocabulary routes
-    addResourceRoutes({
-        router: router,
-        route: '/vocabulary',
-        model: schema.Vocabulary,
-        db: db,
-        cacheUpdate: cacheVocabulary
-    });
-
     // simple routes
     for (let model of Object.values(schema)) {
         if (model.isAbstract) {  // do not set up routes for abstract classes
             continue;
         }
-        if (['User', 'V', 'E', 'Vocabulary', 'Statement', 'Permissions'].includes(model.name)) {
+        if (['User', 'V', 'E', 'Statement', 'Permissions'].includes(model.name)) {
             continue;
         }
         if (process.env.VERBOSE === '1') {
