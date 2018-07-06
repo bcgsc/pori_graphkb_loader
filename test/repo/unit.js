@@ -2,7 +2,6 @@
 const {expect} = require('chai');
 const {castUUID, looksLikeRID} = require('./../../app/repo/util');
 const {parseQueryLanguage, MAX_JUMPS} = require('./../../app/routes/util');
-const cache = require('./../../app/repo/cache');
 const {ClassModel} = require('./../../app/repo/schema');
 const {checkAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH, Clause, Comparison, QUERY_LIMIT} = require('./../../app/repo/base');
 const {PERMISSIONS} = require('./../../app/repo/constants');
@@ -1167,23 +1166,6 @@ describe('ClassModel', () => {
                 defaults: {req2: () => 1, opt2: () => 2},
                 cast: {req1: (x) => x.toLowerCase()}
             });
-            cache.vocabulary = {example: {
-                req1: [{class: 'example', name: 'req1', term: 'term1'}, {class: 'example', name: 'req1', term: 2}]
-            }};
-        });
-        it('errors on bad vocabulary', () => {
-            expect(() => {
-                model.formatRecord({
-                    req1: 'badTerm'
-                }, {dropExtra: false, addDefaults: true});
-            }).to.throw();
-        });
-        it('allows expected vocabulary', () => {
-            expect(() => {
-                model.formatRecord({
-                    req1: 'term1'
-                }, {dropExtra: false, addDefaults: true});
-            }).to.not.throw();
         });
         it('errors on un-cast-able input', () => {
             expect(() => {
@@ -1256,9 +1238,6 @@ describe('ClassModel', () => {
             expect(record).to.have.property('req2', '1');
             expect(record).to.have.property('opt1', '1');
             expect(record).to.not.have.property('opt2');
-        });
-        after(() => {
-            cache.vocabularyByClass = {};
         });
     });
 
