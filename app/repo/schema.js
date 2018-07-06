@@ -18,7 +18,7 @@ const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 const INDEX_SEP_CHARS = ' \r\n\t:;,.|+*/\\=!?[]()';  // default separator chars for orientdb full text hash: https://github.com/orientechnologies/orientdb/blob/2.2.x/core/src/main/java/com/orientechnologies/orient/core/index/OIndexFullText.java
 
 
-const SCHEMA = {
+const SCHEMA_DEFN = {
     V: {
         properties: [
             {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
@@ -344,7 +344,7 @@ for (let name of [
     'Relevance',
     'Signature'
 ]) {
-    SCHEMA[name] = {inherits: ['Ontology']};
+    SCHEMA_DEFN[name] = {inherits: ['Ontology']};
 }
 
 // Add the other edge classes
@@ -360,7 +360,7 @@ for (let name of [
     'TargetOf'
 ]) {
     const inheritFrom = ['Implies', 'SupportedBy', 'Infers'].includes(name) ? 'E' : 'OntologyEdge';
-    SCHEMA[name] = {
+    SCHEMA_DEFN[name] = {
         inherits: [inheritFrom],
         properties: [
             {name: 'in', type: 'link'},
@@ -379,8 +379,8 @@ for (let name of [
 }
 
 // Set the name to match the key
-for (let name of Object.keys(SCHEMA)) {
-    SCHEMA[name].name = name;
+for (let name of Object.keys(SCHEMA_DEFN)) {
+    SCHEMA_DEFN[name].name = name;
 }
 
 class ClassModel {
@@ -646,6 +646,7 @@ class ClassModel {
  * @returns {object} the newly created class
  */
 const createClassModel = async (db, model) => {
+    model = Object.assign([], model);
     model.properties = model.properties || [];
     model.indices = model.indices || [];
     model.isAbstract = model.isAbstract || false;
@@ -712,21 +713,21 @@ const splitSchemaClassLevels = (schema) => {
  */
 const createSchema = async (db) => {
     // create the permissions class
-    const Permissions = await createClassModel(db, SCHEMA.Permissions);; // (name, extends, clusters, abstract)
+    const Permissions = await createClassModel(db, SCHEMA_DEFN.Permissions);; // (name, extends, clusters, abstract)
     // create the user class
-    await createClassModel(db, SCHEMA.UserGroup);
+    await createClassModel(db, SCHEMA_DEFN.UserGroup);
     const defaultGroups = [
         {name: 'admin', permissions: {V: PERMISSIONS.ALL, E: PERMISSIONS.ALL, User: PERMISSIONS.ALL, UserGroup: PERMISSIONS.ALL}},
         {name: 'regular', permissions: {V: PERMISSIONS.ALL, E: PERMISSIONS.ALL, User: PERMISSIONS.READ, UserGroup: PERMISSIONS.READ}},
         {name: 'readOnly', permissions: {V: PERMISSIONS.READ, E: PERMISSIONS.READ, User: PERMISSIONS.READ, UserGroup: PERMISSIONS.READ}}
     ];
     const groups = await Promise.all(Array.from(defaultGroups, x => db.insert().into('UserGroup').set(x).one()));
-    await createClassModel(db, SCHEMA.User);
+    await createClassModel(db, SCHEMA_DEFN.User);
     // modify the existing vertex and edge classes to add the minimum required attributes for tracking etc
     const V = await db.class.get('V');
-    await createProperties(V, SCHEMA.V.properties);
+    await createProperties(V, SCHEMA_DEFN.V.properties);
     const E = await db.class.get('E');
-    await createProperties(E, SCHEMA.E.properties);
+    await createProperties(E, SCHEMA_DEFN.E.properties);
 
     for (let cls of ['E', 'V', 'User']) {
         await db.index.create({
@@ -741,17 +742,17 @@ const createSchema = async (db) => {
         console.log('defined schema for the major base classes');
     }
     // create the other schema classes
-    const classesByLevel = splitSchemaClassLevels(_.omit(SCHEMA, ['Permissions', 'User', 'UserGroup', 'V', 'E']));
+    const classesByLevel = splitSchemaClassLevels(_.omit(SCHEMA_DEFN, ['Permissions', 'User', 'UserGroup', 'V', 'E']));
 
     for (let classList of classesByLevel) {
         if (VERBOSE) {
             console.log(`creating the classes: ${Array.from(classList, cls => cls.name).join(', ')}`);
         }
-        await Promise.all(Array.from(classList, (cls) => { return createClassModel(db, cls); }));
+        await Promise.all(Array.from(classList, async (cls) => { return await createClassModel(db, cls); }));
     }
 
     const properties = [];
-    for (let name of Object.keys(SCHEMA)) {
+    for (let name of Object.keys(SCHEMA_DEFN)) {
         if (name !== 'Permissions') {
             properties.push({min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', notNull: true, readOnly: false, name: name});
         }
@@ -783,17 +784,16 @@ const loadSchema = async (db) => {
         }
         const model = ClassModel.parseOClass(cls);
         schema[model.name] = model;
-        if (SCHEMA[model.name] === undefined) {
-            throw new Error(`The class loaded from the database (${model.name}) is not defined in the SCHEMA`);
+        if (SCHEMA_DEFN[model.name] === undefined) {
+            throw new Error(`The class loaded from the database (${model.name}) is not defined in the SCHEMA_DEFN`);
         }
-        if (cls.superClass && ! SCHEMA[model.name].inherits.includes(cls.superClass)) {
-            throw new Error(`The class ${model.name} inherits according to the database (${cls.superClass}) does not match those defined by the schema definition: ${SCHEMA[model.name].inherits}`);
+        if (cls.superClass && ! SCHEMA_DEFN[model.name].inherits.includes(cls.superClass)) {
+            throw new Error(`The class ${model.name} inherits according to the database (${cls.superClass}) does not match those defined by the schema definition: ${SCHEMA_DEFN[model.name].inherits}`);
         }
-
     }
 
     for (let model of Object.values(schema)) {
-        model._inherits = Array.from(SCHEMA[model.name].inherits || [], (parent) => schema[parent]);
+        model._inherits = Array.from(SCHEMA_DEFN[model.name].inherits || [], parent => schema[parent]);
     }
 
     // defines the source/target classes allowed for each type of edge/relationship
