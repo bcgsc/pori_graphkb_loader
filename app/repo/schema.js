@@ -210,8 +210,7 @@ const SCHEMA_DEFN = {
     Variant: {
         inherits: ['V', 'Biomarker'],
         properties: [
-            {name: 'type', mandatory: true, type: 'string', notNull: true},
-            {name: 'subtype', type: 'string'},
+            {name: 'type', type: 'link', mandatory: true, notNull: true, linkedClass: 'VariantClassification'},
             {name: 'zygosity', type: 'string'},
             {name: 'germline', type: 'boolean'}
         ],
@@ -246,7 +245,6 @@ const SCHEMA_DEFN = {
                     'refSeq',
                     'reference',
                     'reference2',
-                    'subtype',
                     'type',
                     'untemplatedSeq',
                     'untemplatedSeqSize',
@@ -279,9 +277,7 @@ const SCHEMA_DEFN = {
         inherits: ['Variant'],
         properties: [
             {name: 'reference', mandatory: true, type: 'link', linkedClass: 'Ontology', notNull: true},
-            {name: 'reference2', type: 'link', linkedClass: 'Ontology', notNull: true},
-            {name: 'value', type: 'string', mandatory: true, notNull: true},
-            {name: 'method', type: 'string'}
+            {name: 'reference2', type: 'link', linkedClass: 'Ontology', notNull: true}
         ],
         indices: [
             {
@@ -291,12 +287,9 @@ const SCHEMA_DEFN = {
                 properties: [
                     'deletedAt',
                     'germline',
-                    'method',
                     'reference',
                     'reference2',
-                    'subtype',
                     'type',
-                    'value',
                     'zygosity'
                 ],
                 class: 'CategoryVariant'
@@ -344,7 +337,8 @@ for (let name of [
     'Disease',
     'Pathway',
     'Relevance',
-    'Signature'
+    'Signature',
+    'VariantClassification'
 ]) {
     SCHEMA_DEFN[name] = {inherits: ['Ontology']};
 }
