@@ -2,28 +2,32 @@
 const {
     expect
 } = require('chai');
-
 const {
     create,
     update,
     remove,
     select
 } = require('./../../app/repo/base');
-
+const uuidV4 = require('uuid/v4');
 const {
     setUpEmptyDB
 } = require('./../util');
 
-const emptyConf = require('./../config/empty');
+const emptyConf = Object.assign({}, require('./../config/empty'));
+emptyConf.db = Object.assign({}, emptyConf.db);
 emptyConf.verbose = true;
+emptyConf.db.name = `test_${uuidV4()}`;
+
+
 
 describe('schema', () => {
-    let db, schema, admin, doSource, otherSource;
+    let db, schema, admin, doSource, otherSource, server;
     before(async () => {
         ({
             db,
             schema,
-            admin
+            admin,
+            server
         } = await setUpEmptyDB(emptyConf));
         if (process.env.VERBOSE == '1') {
             console.log('finished DB setup');
@@ -205,6 +209,7 @@ describe('schema', () => {
         await db.query('delete vertex v');
     });
     after(async () => {
-        await db.close();
+        await server.drop({name: emptyConf.db.name});
+        await server.close();
     });
 });

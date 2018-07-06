@@ -50,11 +50,6 @@ const setUpEmptyDB = async (conf=emptyConf) => {
 };
 
 
-const tearDownEmptyDB = async (server) => {
-    //await server.drop({name: emptyConf.db.name});
-    await server.close();
-};
-
 const setUpSampleDB = async () => {
     // set up the database server
     const server = OrientDB({
@@ -96,4 +91,4 @@ const tearDownSampleDB = async (server) => {
     await server.close();
 };
 
-module.exports = {setUpEmptyDB, tearDownEmptyDB, setUpSampleDB, tearDownSampleDB};
+module.exports = {setUpEmptyDB, setUpSampleDB, tearDownSampleDB};

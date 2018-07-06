@@ -7,25 +7,28 @@ const {
 } = require('./../util');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-
+const uuidV4 = require('uuid/v4');
 const HTTP_STATUS = require('http-status-codes');
 const conf = require('./../config/empty');
 const auth = require('./../../app/middleware/auth');
-
 
 chai.use(chaiHttp);
 
 const REALLY_LONG_TIME = 10000000000;
 conf.disableCats = true;
+conf.db = Object.assign({}, conf.db);
+conf.verbose = true;
+conf.db.name = `test_${uuidV4()}`;
 
 
 describe('API', () => {
-    let db, admin, app, mockToken;
+    let db, admin, app, mockToken, server;
     before(async () => {
         conf.verbose = true;
         ({
             db,
-            admin
+            admin,
+            server
         } = await setUpEmptyDB(conf));
 
         const {AppServer} = require('./../../app');
@@ -495,6 +498,7 @@ describe('API', () => {
         });
     });
     after(async () => {
-        await db.close();
+        await server.drop({name: conf.db.name});
+        await server.close();
     });
 });
