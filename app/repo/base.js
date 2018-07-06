@@ -477,9 +477,12 @@ const checkAccess = (user, model, permissionsRequired) => {
  */
 const createUser = async (db, opt) => {
     const {model, userName, groupNames} = opt;
+    const userGroups = await db.select().from('UserGroup').all();
+    const groupIds = Array.from(userGroups.filter(group => groupNames.includes(group.name)), group => group['@rid']);
+
     const record = model.formatRecord({
         name: userName,
-        groups: Array.from(groupNames, x => cache.userGroups[x]['@rid']),
+        groups: groupIds,
         deletedAt: null
     }, {dropExtra: false, addDefaults: true});
     await db.insert().into(model.name)
