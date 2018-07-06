@@ -85,7 +85,8 @@ const SCHEMA_DEFN = {
             {name: 'name', type: 'string', mandatory: true, notNull: true},
             {name: 'version', type: 'string'},
             {name: 'url', type: 'string'},
-            {name: 'description', type: 'string'}
+            {name: 'description', type: 'string'},
+            {name: 'usage', type: 'string'}
         ],
         indices: [
             {
@@ -108,7 +109,8 @@ const SCHEMA_DEFN = {
             {name: 'description', type: 'string'},
             {name: 'longName', type: 'string'},
             {name: 'subsets', type: 'embeddedset', linkedType: 'string'},
-            {name: 'deprecated', type: 'boolean', default: false, notNull: true, mandatory: true}
+            {name: 'deprecated', type: 'boolean', default: false, notNull: true, mandatory: true},
+            {name: 'url', type: 'string'}
         ],
         indices: [
             {
