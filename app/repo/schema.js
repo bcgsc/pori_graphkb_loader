@@ -2,7 +2,7 @@
  * Repsonsible for defining and loading the database schema.
  * @module app/repo/schema
  */
-const {types}  = require('orientjs');
+const orientjs = require('orientjs');
 const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
 
@@ -506,6 +506,17 @@ class ClassModel {
         const defaults = {};
         const cast = {};
         const properties = {};
+
+        const castString = (x) => x.toLowerCase();
+        const castNullableString = (x) => x === null ? null : x.toLowerCase();
+        const castNullableLink = (string) => {
+            try {
+                if (string === null || string.toLowerCase() == 'null') {
+                    return null;
+                }
+            } catch (err) {}
+            return castToRID(string);
+        };
         for (let prop of oclass.properties) {
             prop = _.omit(prop, ['class']);
             if (prop.name.startsWith('@') && ! ['@version', '@class', '@rid'].includes(prop.name)) {
@@ -516,27 +527,20 @@ class ClassModel {
             if (prop.defaultValue) {
                 defaults[prop.name] = () => prop.defaultValue;
             }
-            prop.type = types[prop.type].toLowerCase();  // human readable, defaults to number system from the db
+            prop.type = orientjs.types[prop.type].toLowerCase();  // human readable, defaults to number system from the db
             if (prop.type === 'integer') {
                 cast[prop.name] = (x) => parseInt(x, 10);
             } else if (prop.type === 'string') {
                 if (prop.notNull) {
-                    cast[prop.name] = (x) => x.toLowerCase();
+                    cast[prop.name] = castString;
                 } else {
-                    cast[prop.name] = (x) => x === null ? null : x.toLowerCase();
+                    cast[prop.name] = castNullableString;
                 }
             } else if (prop.type.includes('link')) {
                 if (prop.notNull) {
                     cast[prop.name] = castToRID;
                 } else {
-                    cast[prop.name] = (string) => {
-                        try {
-                            if (string === null || string.toLowerCase() == 'null') {
-                                return null;
-                            }
-                        } catch (err) {}
-                        return castToRID(string);
-                    };
+                    cast[prop.name] = castNullableLink;
                 }
             }
 
@@ -623,12 +627,16 @@ class ClassModel {
         // try the casting
         for (let attr of Object.keys(this.cast)) {
             if (formattedRecord[attr] != undefined) {
-                if (/(bag|set|list|map)/.exec(properties[attr].type)) {
-                    for (let i in formattedRecord[attr]) {
-                        formattedRecord[attr][i] = this.cast[attr](formattedRecord[attr][i]);
+                try {
+                    if (/(bag|set|list|map)/.exec(properties[attr].type)) {
+                        for (let i in formattedRecord[attr]) {
+                            formattedRecord[attr][i] = this.cast[attr](formattedRecord[attr][i]);
+                        }
+                    } else {
+                        formattedRecord[attr] = this.cast[attr](formattedRecord[attr]);
                     }
-                } else {
-                    formattedRecord[attr] = this.cast[attr](formattedRecord[attr]);
+                } catch (err) {
+                    throw new AttributeError({message: `Failed in casting (${this.cast[attr].name}) attribute (${attr}) with value (${formattedRecord[attr]}): ${err.message}`, castFunc: this.cast[attr]});
                 }
             }
         }
@@ -641,8 +649,8 @@ class ClassModel {
  *
  * @returns {object} the newly created class
  */
-const createClassModel = async (db, model) => {
-    model = Object.assign([], model);
+const createClassModel = async (db, schemaModel) => {
+    const model = Object.assign({}, schemaModel);
     model.properties = model.properties || [];
     model.indices = model.indices || [];
     model.isAbstract = model.isAbstract || false;
@@ -653,13 +661,15 @@ const createClassModel = async (db, model) => {
     }
 
     const cls = await db.class.create(model.name, model.inherits, null, model.isAbstract); // create the class first
-    await Promise.all(Array.from(model.properties, (prop) => cls.property.create(prop)));
+    await Promise.all(Array.from(model.properties, (prop) => cls.property.create(Object.assign({}, prop))));  // cls.property.create destroys the object it takes in
     await Promise.all(Array.from(model.indices, (i) => db.index.create(i)));
     return cls;
 };
 
 const createProperties = async (cls, props) => {
-    return await Promise.all(Array.from(props, (prop) => cls.property.create(prop)));
+    return await Promise.all(Array.from(props, (prop) => {
+        return cls.property.create(Object.assign({}, prop));
+    }));
 };
 
 
@@ -888,4 +898,4 @@ const loadSchema = async (db) => {
 };
 
 
-module.exports = {createSchema, loadSchema, ClassModel, FUZZY_CLASSES, INDEX_SEP_CHARS};
+module.exports = {createSchema, loadSchema, ClassModel, FUZZY_CLASSES, INDEX_SEP_CHARS, SCHEMA_DEFN};
