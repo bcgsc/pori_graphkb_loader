@@ -265,6 +265,37 @@ const generateSwaggerSpec = (schema, metadata) => {
             url: `http://${metadata.host}:${metadata.port}/api/v${process.env.npm_package_version}`
         }],
         paths: {
+            '/parser/variant': {
+                post: {
+                    summary: 'Given a variant description, check the formatting and return the pasred result where possible',
+                    tags: ['Parser'],
+                    parameters: [
+                        {$ref: '#/components/parameters/Content-Type'},
+                        {$ref: '#/components/parameters/Accept'}
+                    ],
+                    requestBody: {
+                        required: true,
+                        content: {'application/json': {schema: {
+                            type: 'object',
+                            properties: {
+                                content: {type: 'string', description: 'the variant description'}
+                            }
+                        }}}
+                    },
+                    responses: {
+                        200: {
+                            description: 'The variant is valid and has been parsed',
+                            content: {'application/json': {schema:{
+                                type: 'object',
+                                $ref: '#/components/schemas/PositionalVariant'
+                            }}}
+                        },
+                        400: {
+                            $ref: '#/components/responses/BadInput'
+                        }
+                    }
+                }
+            },
             '/token': {
                 post: {
                     summary: 'Generate an authentication token to be used for requests to the KB API server',
