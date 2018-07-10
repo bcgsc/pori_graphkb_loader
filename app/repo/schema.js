@@ -210,7 +210,7 @@ const SCHEMA_DEFN = {
     Variant: {
         inherits: ['V', 'Biomarker'],
         properties: [
-            {name: 'type', type: 'link', mandatory: true, notNull: true, linkedClass: 'VariantClassification'},
+            {name: 'type', type: 'link', mandatory: true, notNull: true, linkedClass: 'Vocabulary'},
             {name: 'zygosity', type: 'string'},
             {name: 'germline', type: 'boolean'}
         ],
@@ -219,7 +219,7 @@ const SCHEMA_DEFN = {
     PositionalVariant: {
         inherits: ['Variant'],
         properties: [
-            {name: 'reference', mandatory: true, type: 'link', linkedClass: 'Feature', notNull: true},
+            {name: 'reference1', mandatory: true, type: 'link', linkedClass: 'Feature', notNull: true},
             {name: 'reference2', type: 'link', linkedClass: 'Feature', notNull: true},
             {name: 'break1Start', type: 'embedded', linkedClass: 'Position'},
             {name: 'break1End', type: 'embedded', linkedClass: 'Position'},
@@ -243,7 +243,7 @@ const SCHEMA_DEFN = {
                     'deletedAt',
                     'germline',
                     'refSeq',
-                    'reference',
+                    'reference1',
                     'reference2',
                     'type',
                     'untemplatedSeq',
@@ -254,11 +254,11 @@ const SCHEMA_DEFN = {
                 class: 'PositionalVariant'
             },
             {
-                name: 'PositionalVariant.reference',
+                name: 'PositionalVariant.reference1',
                 type: 'NOTUNIQUE_HASH_INDEX',
                 metadata: {ignoreNullValues: true},
                 properties: [
-                    'reference'
+                    'reference1'
                 ],
                 class: 'PositionalVariant'
             },
@@ -276,7 +276,7 @@ const SCHEMA_DEFN = {
     CategoryVariant: {
         inherits: ['Variant'],
         properties: [
-            {name: 'reference', mandatory: true, type: 'link', linkedClass: 'Ontology', notNull: true},
+            {name: 'reference1', mandatory: true, type: 'link', linkedClass: 'Ontology', notNull: true},
             {name: 'reference2', type: 'link', linkedClass: 'Ontology', notNull: true}
         ],
         indices: [
@@ -287,7 +287,7 @@ const SCHEMA_DEFN = {
                 properties: [
                     'deletedAt',
                     'germline',
-                    'reference',
+                    'reference1',
                     'reference2',
                     'type',
                     'zygosity'
@@ -295,11 +295,11 @@ const SCHEMA_DEFN = {
                 class: 'CategoryVariant'
             },
             {
-                name: 'CategoryVariant.reference',
+                name: 'CategoryVariant.reference1',
                 type: 'NOTUNIQUE_HASH_INDEX',
                 metadata: {ignoreNullValues: true},
                 properties: [
-                    'reference'
+                    'reference1'
                 ],
                 class: 'CategoryVariant'
             },
@@ -316,12 +316,12 @@ const SCHEMA_DEFN = {
     },
     OntologyEdge: {
         inherits: ['E'],
-        properties: [{name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source'}]
+        properties: []
     },
     Statement: {
         inherits: ['V'],
         properties: [
-            {name: 'relevance', type: 'link', linkedClass: 'Relevance', mandatory: true, notNull: true},
+            {name: 'relevance', type: 'link', linkedClass: 'Vocabulary', mandatory: true, notNull: true},
             {name: 'appliesTo', type: 'link', linkedClass: 'Ontology', mandatory: true, notNull: true},
             {name: 'reviewStatus', type: 'string'},
             {name: 'reviewedBy', type: 'link', linkedClass: 'User'},
@@ -336,9 +336,8 @@ for (let name of [
     'AnatomicalEntity',
     'Disease',
     'Pathway',
-    'Relevance',
     'Signature',
-    'VariantClassification'
+    'Vocabulary'
 ]) {
     SCHEMA_DEFN[name] = {inherits: ['Ontology']};
 }
@@ -355,19 +354,24 @@ for (let name of [
     'SupportedBy',
     'TargetOf'
 ]) {
-    const inheritFrom = ['Implies', 'SupportedBy', 'Infers'].includes(name) ? 'E' : 'OntologyEdge';
+    let sourceProp = {name: 'source', type: 'link', linkedClass: 'Source'};
+    if (! ['SupportedBy', 'Implies'].includes(name)) {
+        sourceProp.mandatory = true;
+        sourceProp.notNull = true;
+    }
     SCHEMA_DEFN[name] = {
-        inherits: [inheritFrom],
+        inherits: ['E'],
         properties: [
             {name: 'in', type: 'link'},
-            {name: 'out', type: 'link'}
+            {name: 'out', type: 'link'},
+            sourceProp
         ],
         indices: [ // add index on the class so it doesn't apply across classes
             {
                 name: `${name}.restrictMultiplicity`,
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['deletedAt', 'in', 'out'],
+                properties: ['deletedAt', 'in', 'out', 'source'],
                 class: name
             }
         ]
