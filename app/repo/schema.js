@@ -350,6 +350,7 @@ for (let name of [
     'ElementOf',
     'Implies',
     'Infers',
+    'OppositeOf',
     'SubClassOf',
     'SupportedBy',
     'TargetOf'
@@ -416,7 +417,7 @@ class ClassModel {
     }
 
     get routeName() {
-        if (! this.isEdge) {
+        if (! this.isEdge && ! this.name.endsWith('ary')) {
             if (/.*[^aeiou]y$/.exec(this.name)) {
                 return `/${this.name.slice(0, this.name.length - 1)}ies`.toLowerCase();
             } else {
