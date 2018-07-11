@@ -296,6 +296,38 @@ const generateSwaggerSpec = (schema, metadata) => {
                     }
                 }
             },
+            '/statements': {
+                post: {
+                    summary: 'Add a new statement',
+                    tags: ['Statement'],
+                    parameters: [
+                        {$ref: '#/components/parameters/Content-Type'},
+                        {$ref: '#/components/parameters/Accept'},
+                        {$ref: '#/components/parameters/Authorization'}
+                    ],
+                    requestBody: {
+                        required: true,
+                        content: {'application/json': {schema: {
+                            type: 'object',
+                            required: ['impliedBy', 'appliesTo', 'relevance', 'supportedBy'],
+                            properties: {
+                                impliedBy: {
+                                    type: 'array',
+                                    items: {$ref: '#/components/schemas/PutativeEdge'},
+                                    description: 'A list of putative edges to be created'
+                                },
+                                supportedBy: {
+                                    type: 'array',
+                                    items: {$ref: '#/components/schemas/PutativeEdge'},
+                                    description: 'A list of putative edges to be created'
+                                },
+                                appliesTo: {$ref: '#/components/schemas/@rid'},
+                                relevance: {$ref: '#/components/schemas/@rid'}
+                            }
+                        }}}
+                    }
+                }
+            },
             '/token': {
                 post: {
                     summary: 'Generate an authentication token to be used for requests to the KB API server',
@@ -371,6 +403,16 @@ const generateSwaggerSpec = (schema, metadata) => {
                     description: 'Record ID',
                     example: '#44:0'
                 },
+                PutativeEdge: {
+                    type: 'object',
+                    properties: {
+                        target: {$ref: '#/components/schemas/@rid'}
+                    },
+                    additionalProperties: true,
+                    required: ['target'],
+                    description: 'An edge to be created',
+                    example: {target: '#41:2'}
+                },
                 dependency: {
                     $ref: '#/components/schemas/RecordLink',
                     nullable: true,
@@ -397,6 +439,9 @@ const generateSwaggerSpec = (schema, metadata) => {
                             $ref: '#/components/schemas/Source'
                         }
                     ]
+                },
+                EdgeList: {
+                    description: 'A mapping of record IDs to objects representing additional edge attributes'
                 },
                 RecordLink: {
                     description: 'A direct link to another record. Can be the record ID of the linked record in the form of a string or the record itself',

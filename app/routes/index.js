@@ -1,6 +1,7 @@
 const jc = require('json-cycle');
 
 const {addResourceRoutes} = require('./util');
+const {addStatement} = require('./statement');
 
 
 
@@ -25,13 +26,17 @@ const addRoutes = (opt) => {
         db: db,
         optQueryParams: ['name']
     });
+    addStatement({router, schema, db});
 
     // simple routes
     for (let model of Object.values(schema)) {
-        if (model.isAbstract) {  // do not set up routes for abstract classes
+        if (model.isAbstract && model.name !== 'Ontology') {  // do not set up routes for abstract classes
             continue;
         }
-        if (['User', 'V', 'E', 'Statement', 'Permissions'].includes(model.name)) {
+        if (model.inherits.includes('Position')) {
+            continue;
+        }
+        if (['User', 'V', 'E', 'Statement', 'Permissions', 'UserGroup', 'Position'].includes(model.name)) {
             continue;
         }
         if (process.env.VERBOSE === '1') {
