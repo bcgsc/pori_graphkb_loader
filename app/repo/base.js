@@ -303,12 +303,16 @@ class SelectionQuery {
                 if (typeof value == 'object' && value !== null && ! (value instanceof Array)) {
                     // subquery
                     if (this.properties[name].linkedModel) {
-                        value = new SelectionQuery(this.properties[name].linkedModel, value, {activeOnly: this.activeOnly});
+                        let subQueryModel = this.properties[name].linkedModel;
+                        if (value['@class'] && value['@class'].value !== subQueryModel.name) {
+                            subQueryModel = subQueryModel.subClassModel(value['@class'].value);
+                        }
+                        value = new SelectionQuery(subQueryModel, value, {activeOnly: this.activeOnly});
                         // can this subquery be flattened?
                         if (value.follow.length === 0) {
                             for (let [subqName, subqProp] of Object.entries(value.conditions)) {
                                 const combinedName = `${name}.${subqName}`;
-                                this.properties[combinedName] = this.properties[name].linkedModel.properties[subqName];
+                                this.properties[combinedName] = subQueryModel.properties[subqName];
                                 this.conditions[combinedName] = subqProp;
                             }
                         } else {

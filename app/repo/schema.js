@@ -399,6 +399,7 @@ class ClassModel {
         this._cast = opt.cast || {};
         this._defaults = opt.defaults || {};
         this._inherits = opt.inherits || [];
+        this._subclasses = opt.subclasses || [];
         this.isEdge = opt.isEdge ? true : false;
         this._edgeRestrictions = opt.edgeRestrictions || null;
         if (this._edgeRestrictions) {
@@ -437,6 +438,21 @@ class ClassModel {
             parents.push(...model.inherits);
         }
         return parents;
+    }
+
+    /**
+     * Given the name of a subclass, retrieve the subclass model or throw an error if it is not found
+     */
+    subClassModel(modelName) {
+        for (let subclass of this._subclasses) {
+            if (subclass.name === modelName) {
+                return subclass;
+            }
+            try {
+                return subclass.subClassModel(modelName);
+            } catch (err) {}
+        }
+        throw new Error(`The subclass (${modelName}) was not found as a subclass of the current model (${this.name})`);
     }
 
     /**
@@ -645,6 +661,17 @@ class ClassModel {
                 }
             }
         }
+        // look for linked models
+        for (let [attr, value] of Object.entries(formattedRecord)) {
+            let linkedModel = properties[attr].linkedModel;
+            if (properties[attr].type === 'embedded' && linkedModel && typeof value === 'object') {
+                if (value && value['@class'] && value['@class'] !== linkedModel.name) {
+                    linkedModel = linkedModel.subClassModel(value['@class']);
+                }
+                value = linkedModel.formatRecord(value);
+            }
+            formattedRecord[attr] = value;
+        }
         return formattedRecord;
     }
 }
@@ -804,7 +831,11 @@ const loadSchema = async (db) => {
     }
 
     for (let model of Object.values(schema)) {
-        model._inherits = Array.from(SCHEMA_DEFN[model.name].inherits || [], parent => schema[parent]);
+        for (let parentName of SCHEMA_DEFN[model.name].inherits || []) {
+            const parentModel = schema[parentName];
+            model._inherits.push(parentModel);
+            parentModel._subclasses.push(model);
+        }
     }
 
     // defines the source/target classes allowed for each type of edge/relationship
@@ -862,6 +893,9 @@ const loadSchema = async (db) => {
         schema[modelName]._properties['@rid'] = ridProperty;
         schema[modelName]._cast['@rid'] = castToRID;
         schema[modelName]._cast.uuid = castUUID;
+    }
+    for (let modelName of ['User', 'V', 'E', 'UserGroup', 'Position']) {
+        schema[modelName]._properties['@class'] = {name: '@class', type: 'string'};
     }
 
     schema.Ontology._cast.subsets = item => item.trim().toLowerCase();

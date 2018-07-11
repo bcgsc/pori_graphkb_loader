@@ -175,7 +175,7 @@ class AppServer {
             return res.status(HTTP_STATUS.NOT_FOUND).json({
                 error: 'Not Found',
                 name: 'UrlNotFound',
-                message: 'The requested url does not exist',
+                message: `The requested url does not exist: ${req.url}`,
                 url: req.url,
                 method: req.method
             });
