@@ -112,34 +112,6 @@ const SCHEMA_DEFN = {
             {name: 'deprecated', type: 'boolean', default: false, notNull: true, mandatory: true},
             {name: 'url', type: 'string'}
         ],
-        indices: [
-            {
-                name: 'Ontology.active',
-                type: 'unique',
-                metadata: {ignoreNullValues: false},
-                properties: ['source', 'sourceId', 'name', 'deletedAt', 'sourceIdVersion', 'dependency'],
-                class:  'Ontology'
-            },
-            {
-                name: 'Ontology.name',
-                type: 'NOTUNIQUE_HASH_INDEX',
-                properties: ['name'],
-                class: 'Ontology'
-            },
-            {
-                name: 'Ontology.sourceId',
-                type: 'NOTUNIQUE_HASH_INDEX',
-                properties: ['sourceId'],
-                class: 'Ontology'
-            },
-            {
-                name: 'Ontology.full',
-                type: 'FULLTEXT_HASH_INDEX',
-                properties: ['name'],
-                class: 'Ontology',
-                metadata: {separatorChars: INDEX_SEP_CHARS}
-            }
-        ],
         isAbstract: true
     },
     EvidenceLevel: {inherits: ['Ontology', 'Evidence']},
@@ -328,18 +300,51 @@ const SCHEMA_DEFN = {
             {name: 'reviewedAt', type: 'long'},
             {name: 'reviewComment', type: 'string'}
         ]
-    }
+    },
+    AnatomicalEntity: {inherits: ['Ontology']},
+    Disease: {inherits: ['Ontology']},
+    Pathway: {inherits: ['Ontology']},
+    Signature: {inherits: ['Ontology']},
+    Vocabulary: {inherits: ['Ontology']}
 };
 
-// Add the simple ontology subclasses
-for (let name of [
-    'AnatomicalEntity',
-    'Disease',
-    'Pathway',
-    'Signature',
-    'Vocabulary'
-]) {
-    SCHEMA_DEFN[name] = {inherits: ['Ontology']};
+// Add the indicies to the ontology subclasses
+for (let [name, defn] of Object.entries(SCHEMA_DEFN)) {
+    if (! defn.inherits || ! defn.inherits.includes('Ontology')) {
+        continue;
+    }
+    if (SCHEMA_DEFN[name].indices === undefined) {
+        SCHEMA_DEFN[name].indices = [];
+    }
+    SCHEMA_DEFN[name].indices.push(...[
+        {
+            name: `${name}.active`,
+            type: 'unique',
+            metadata: {ignoreNullValues: false},
+            properties: ['source', 'sourceId', 'name', 'deletedAt', 'sourceIdVersion'],
+            class: name
+        },
+        {
+            name: `${name}.name`,
+            type: 'NOTUNIQUE_HASH_INDEX',
+            properties: ['name'],
+            class: name
+        },
+        {
+            name: `${name}.sourceId`,
+            type: 'NOTUNIQUE_HASH_INDEX',
+            properties: ['sourceId'],
+            class: name
+        },
+        {
+            name: `${name}.full`,
+            type: 'FULLTEXT_HASH_INDEX',
+            properties: ['name'],
+            class: name,
+            metadata: {separatorChars: INDEX_SEP_CHARS}
+        }
+    ]);
+    console.log('Added indicies', defn)
 }
 
 // Add the other edge classes
@@ -528,8 +533,8 @@ class ClassModel {
         const cast = {};
         const properties = {};
 
-        const castString = (x) => x.toLowerCase();
-        const castNullableString = (x) => x === null ? null : x.toLowerCase();
+        const castString = (x) => x.toLowerCase().trim();
+        const castNullableString = (x) => x === null ? null : x.toLowerCase().trim();
         const castNullableLink = (string) => {
             try {
                 if (string === null || string.toLowerCase() == 'null') {
