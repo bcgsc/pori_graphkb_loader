@@ -116,6 +116,7 @@ const parseQueryLanguage = (inputQuery) => {
                         operator = '~';
                         value = value.slice(1);
                         if (INDEX_SEP_REGEX.exec(value)) {
+                            INDEX_SEP_REGEX.lastIndex = 0;  // https://siderite.blogspot.com/2011/11/careful-when-reusing-javascript-regexp.html
                             // contains a separator char, should split into AND clause
                             const andClause = new Clause('AND', Array.from(value.split(INDEX_SEP_REGEX), (word) => {
                                 return new Comparison(word, '~', negate);
