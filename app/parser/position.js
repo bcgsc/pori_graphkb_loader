@@ -109,7 +109,7 @@ const parsePosition = (prefix, string) => {
             return result;
         }
         case 'p': {
-            const m = /^([A-Z\?\*])?(\d+|\?)$/.exec(string);
+            const m = /^([A-Za-z\?\*])?(\d+|\?)$/.exec(string);
             if (m === null) {
                 throw new ParsingError(`input string '${string}' did not match the expected pattern for 'p' prefixed positions`);
             }

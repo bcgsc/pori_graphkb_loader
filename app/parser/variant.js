@@ -276,11 +276,11 @@ const parseContinuous = (string) => {
     }
 
     const prefix = getPrefix(string);
-    const p = '([A-Z0-9\\*\\?\\+\\-]*[0-9\\?]|[pq][0-9\\.\?]*)';
+    const p = '([a-zA-Z0-9\\*\\?\\+\\-]*[0-9\\?]|[pq][0-9\\.\?]*)';
     let regex = nRegex(
         `^(?<break1>${p}|(\\(${p}_${p}\\)))`
         + `(_(?<break2>${p}|(\\(${p}_${p}\\))))?`
-        + '(?<tail>[^_\\(\\)]+)$'
+        + '(?<tail>[^_\\(\\)]*)$'
     );
     let match = regex.exec(string.slice(prefix.length + 1));
     if (match === null) {
@@ -354,12 +354,14 @@ const parseContinuous = (string) => {
                 result.refSeq = match[2];
             }
         }
-    } else if (match = /^[A-Z\?\*]$/.exec(tail)) {
+    } else if (match = /^[A-Z\?\*]$/.exec(tail) || tail.length === 0) {
         if (prefix !== 'p') {
             throw new ParsingError('only protein notation does not use ">" for a substitution');
         }
         result.type = '>';
-        result.untemplatedSeq = tail;
+        if (tail.length > 0 && tail !== '?') {
+            result.untemplatedSeq = tail;
+        }
     } else if (match = /^([A-Z\?])>([A-Z\?])$/.exec(tail)) {
         if (prefix === 'p') {
             throw new ParsingError('protein notation does not use ">" for a substitution');
