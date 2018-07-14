@@ -1,7 +1,6 @@
 const HTTP_STATUS = require('http-status-codes');
 const jc = require('json-cycle');
 const _ = require('lodash');
-const {errorToJSONd} = require('./util');
 const {castToRID} = require('./../repo/util');
 const {AttributeError} = require('./../repo/error');
 const {create} = require('./../repo/base');
@@ -102,12 +101,13 @@ const addStatement = (opt) => {
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else {
-                    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
+                    console.error(err)
+                    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({message: err.message, type: typeof err});
                 }
             }
             try {
                 // link to the dependencies
-                await Promise.all(Array.from(edges, async (edge) => {
+                const edges = await Promise.all(Array.from(edges, async (edge) => {
                     if (edge.out === undefined) {
                         edge.out = statement['@rid'];
                     } else {
@@ -116,9 +116,10 @@ const addStatement = (opt) => {
                     return await create(db, {model: schema[edge['@class']], content: _.omit(edge, '@class'), user: req.user});
                 }));
             } catch (err) {
-                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(errorToJSON(err));
+                console.error(err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({message: err.message, type: typeof err});
             }
-            res.status(HTTP_STATUS.CREATED).json(jc.decycle(statement));
+            res.status(HTTP_STATUS.CREATED).json(jc.decycle({result: statement}));
         }
     );
 };

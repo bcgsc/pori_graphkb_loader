@@ -23,7 +23,7 @@ class ErrorMixin extends Error {
         return jc.decycle(Object.assign(this.content, {
             message: this.message,
             name: this.name,
-            stacktrace: this.stack
+            stacktrace: this.stack.split('\n')
         }));
     }
 }

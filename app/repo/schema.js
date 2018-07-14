@@ -136,7 +136,8 @@ const SCHEMA_DEFN = {
     Therapy: {
         inherits: ['Ontology'],
         properties: [
-            {name: 'mechanismOfAction', type: 'string'}
+            {name: 'mechanismOfAction', type: 'string'},
+            {name: 'molecularFormula', type: 'string'}
         ]
     },
     Feature: {
@@ -295,6 +296,7 @@ const SCHEMA_DEFN = {
         properties: [
             {name: 'relevance', type: 'link', linkedClass: 'Vocabulary', mandatory: true, notNull: true},
             {name: 'appliesTo', type: 'link', linkedClass: 'Ontology', mandatory: true, notNull: true},
+            {name: 'description', type: 'string'},
             {name: 'reviewStatus', type: 'string'},
             {name: 'reviewedBy', type: 'link', linkedClass: 'User'},
             {name: 'reviewedAt', type: 'long'},
@@ -344,7 +346,6 @@ for (let [name, defn] of Object.entries(SCHEMA_DEFN)) {
             metadata: {separatorChars: INDEX_SEP_CHARS}
         }
     ]);
-    console.log('Added indicies', defn)
 }
 
 // Add the other edge classes
@@ -382,6 +383,11 @@ for (let name of [
             }
         ]
     };
+    if (name === 'SupportedBy') {
+        SCHEMA_DEFN[name].properties.push({
+            name: 'level', type: 'link', linkedClass: 'EvidenceLevel'
+        });
+    }
 }
 
 // Set the name to match the key
