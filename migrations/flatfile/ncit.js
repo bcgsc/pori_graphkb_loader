@@ -9,6 +9,38 @@
 
 Example record
 
+
+    <owl:Class rdf:about="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C11570">
+        <rdfs:subClassOf rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C83481"/>
+        <NHC0>C11570</NHC0>
+        <P106>Therapeutic or Preventive Procedure</P106>
+        <P108>Doxorubicin/Monoclonal Antibody C225</P108>
+        <P200>Chemotherapy_Regimen</P200>
+        <P203>Chemotherapy_Regimen_Kind</P203>
+        <P204>Chemotherapy_Regimen_Has_Component|Cetuximab</P204>
+        <P204>Chemotherapy_Regimen_Has_Component|Doxorubicin</P204>
+        <P310>Retired_Concept</P310>
+        <P90>DOX/MOAB C225</P90>
+        <P90>Doxorubicin/Monoclonal Antibody C225</P90>
+        <rdfs:label>Doxorubicin/Monoclonal Antibody C225</rdfs:label>
+        <owl:deprecated rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</owl:deprecated>
+    </owl:Class>
+    <owl:Axiom>
+        <owl:annotatedSource rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C11570"/>
+        <owl:annotatedProperty rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P90"/>
+        <owl:annotatedTarget>DOX/MOAB C225</owl:annotatedTarget>
+        <P383>SY</P383>
+        <P384>NCI</P384>
+    </owl:Axiom>
+    <owl:Axiom>
+        <owl:annotatedSource rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C11570"/>
+        <owl:annotatedProperty rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P90"/>
+        <owl:annotatedTarget>Doxorubicin/Monoclonal Antibody C225</owl:annotatedTarget>
+        <P383>PT</P383>
+        <P384>NCI</P384>
+    </owl:Axiom>
+
+
 <!-- http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C100032 -->
 
 <owl:Class rdf:about="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C100032">
@@ -52,11 +84,11 @@ const jsonfile = require('jsonfile');
 const {addRecord, convertOwlGraphToJson} = require('./util');
 
 const ROOT_NODES = {
-    AGONIST: 'ncit:c1514',
-    CHEM_MOD: 'ncit:c1932',
-    PHARMA: 'ncit:c1909',
-    DISEASE: 'ncit:c2991',
-    ANATOMY: 'ncit:c12219'
+    AGONIST: 'c1514',
+    CHEM_MOD: 'c1932',
+    PHARMA: 'c1909',
+    DISEASE: 'c2991',
+    ANATOMY: 'c12219'
 };
 
 const PRED_MAP = {
@@ -74,14 +106,14 @@ const PRED_MAP = {
 const parseNcitID = (string) => {
     const match = /.*#(C\d+)$/.exec(string);
     if (match) {
-        return `ncit:${match[1].toLowerCase()}`;
+        return `${match[1].toLowerCase()}`;
     }
     throw new Error(`failed to parse: ${string}`);
 };
 
 
 const subclassTree = (nodesByCode, roots) => {
-    const queue = roots;
+    const queue = roots.filter(x => x !== undefined);
     const subtree = {};
     const subclassEdges = [];
 
@@ -122,6 +154,17 @@ const createRecords = async (inputRecords, dbClassName, conn, source) => {
             body.deprecated = true;
         }
         const dbEntry = await addRecord(dbClassName, body, conn, true);
+        // add the aliasof links
+        for (let alias of node[PRED_MAP.SYNONYM] || []) {
+            let aliasBody = {
+                source: source['@rid'],
+                sourceId: node.code,
+                dependency: dbEntry['@rid'],
+                name: alias
+            };
+            const aliasRecord = await addRecord(dbClassName, aliasBody, conn, true, ['dependency']);
+            await addRecord('aliasof', {source: source['@rid'], out: aliasRecord['@rid'], in: dbEntry['@rid']}, conn, true);
+        }
         records[dbEntry.sourceId] = dbEntry;
     }
     return records;

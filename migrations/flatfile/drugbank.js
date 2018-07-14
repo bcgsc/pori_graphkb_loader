@@ -75,7 +75,7 @@
 
 const xml2js = require('xml2js');
 const fs = require('fs');
-const {addRecord} = require('./util');
+const {addRecord, getRecordBy} = require('./util');
 const jsonfile = require('jsonfile');
 const SOURCE = 'drugbank';
 
@@ -103,12 +103,27 @@ const uploadDrugBank = async ({filename, conn}) => {
     const content = fs.readFileSync(filename).toString();
     console.log(`parsing: ${filename}`);
     const xml = await parseXML(content);
-    const source = await addRecord('sources', {name: 'drugbank'}, conn, true);
-    console.log('uploading records');
+    const source = await addRecord('sources', {name: 'drugbank', usage: 'https://www.drugbank.ca/legal/terms_of_use'}, conn, true, ['usage']);
+    console.log(`uploading ${xml.drugbank.drug.length} records`);
+
+    const ATC = {};
+    let FDA;
+    try {
+        FDA = await getRecordBy('sources', {name: 'FDA'}, conn);
+    } catch (err) {
+        process.stdout.write('?');
+    }
+
     for (let drug of xml.drugbank.drug) {
+        let atcLevels = [];
+        try {
+            atcLevels = Array.from(drug['atc-codes'][0]['atc-code'][0].level, (x) => {
+                return {name: x['_'], sourceId: x['$'].code.toLowerCase()};
+            });
+        } catch (err) {}
         try {
             let body = {
-                source: source,
+                source: source['@rid'],
                 sourceId: drug['drugbank-id'][0]['_'],
                 name: drug.name[0],
                 sourceIdVersion: drug['$'].updated,
@@ -121,10 +136,50 @@ const uploadDrugBank = async ({filename, conn}) => {
                     body.subsets.push(cat.category[0]);
                 }
             }
-            await addRecord('therapies', body, conn, true);
+            const record = await addRecord('therapies', body, conn, true, ['subsets', 'mechanismOfAction', 'description']);
+            // create the categories
+            for (let atcLevel of atcLevels) {
+                if (ATC[atcLevel.sourceId] === undefined) {
+                    const level = await addRecord('therapies', {
+                        source: source['@rid'],
+                        name: atcLevel.name,
+                        sourceId: atcLevel.sourceId
+                    }, conn, true);
+                    ATC[level.sourceId] = level;
+                }
+            }
+            if (atcLevels.length < 1) {
+                continue;
+            }
+            // link the current record to the lowest subclass
+            await addRecord('subclassof', {
+                source: source['@rid'],
+                out: record['@rid'],
+                in: ATC[atcLevels[0].sourceId]['@rid']
+            }, conn, true);
+            // link the subclassing
+            for (let i=0; i< atcLevels.length - 1; i++) {
+                await addRecord('subclassof', {
+                    source: source['@rid'],
+                    out: ATC[atcLevels[i].sourceId]['@rid'],
+                    in: ATC[atcLevels[i + 1].sourceId]['@rid']
+                }, conn, true);
+            }
+            // link to the FDA UNII
+            if (FDA) {
+                for (let unii of drug.unii) {
+                    let fdaRec;
+                    try {
+                        fdaRec = await getRecordBy('therapies', {source: FDA['@rid'], sourceId: unii}, conn);
+                    } catch (err) {
+                        process.stdout.write('?');
+                    }
+                    if (fdaRec) {
+                        await addRecord('aliasof', {source: source['@rid'], out: record['@rid'], in: fdaRec['@rid']}, conn, true);
+                    }
+                }
+            }
         } catch (err) {
-            console.log(err);
-            console.log(drug);
             throw err;
         }
     }
