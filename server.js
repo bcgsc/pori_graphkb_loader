@@ -55,11 +55,6 @@ delete conf.port;
         app = new AppServer(conf);
         await app.listen();
 
-        // if the user starting the server does not exist, add them as an admin
-        try {
-            await createUser(app.db, {model: app.schema.User, userName: process.env.USER || 'admin', groupNames: ['admin']});
-        } catch (err) {
-        }
         // cleanup
         process.on('SIGINT', async () => {
             if (app) {
