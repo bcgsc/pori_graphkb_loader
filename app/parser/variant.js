@@ -1,8 +1,7 @@
 'use strict';
 /** @module app/parser/variant */
-const nRegex = require('named-js-regexp');
 const {ParsingError} = require('./../repo/error');
-const {parsePosition, breakRepr} = require('./position');
+const {parsePosition, breakRepr, CDS_PATT, PROTEIN_PATT, CYTOBAND_PATT} = require('./position');
 
 const EVENT_SUBTYPE = {
     INS: 'insertion',
@@ -259,6 +258,48 @@ const parseMultiFeature = (string) => {
     return parsed;
 };
 
+
+/**
+ * Given an input string, assume it starts with a position range. Extract and return the position range
+ * @param {string} string
+ */
+const extractPositions = (prefix, string) => {
+    const result = {};
+
+    if (string.startsWith('(')) {
+        // expect the first breakpoint to be a range of two positions
+        if (string.indexOf(')') < 0) {
+            throw new ParsingError('Expected a range of positions. Missing the closing parenthesis');
+        }
+        if (string.indexOf('_') < 0) {
+            throw new ParsingError('Positions within a range must be separated by an underscore. Missing underscore');
+        }
+        result.input = string.slice(0, string.indexOf(')') + 1);
+        result.start = string.slice(1, string.indexOf('_'));
+        result.end = string.slice(string.indexOf('_') + 1, string.indexOf(')'));
+    } else {
+        let pattern;
+        switch (prefix) {
+            case 'y': { pattern = CYTOBAND_PATT; break; }
+            case 'c': { pattern = CDS_PATT; break; }
+            case 'p': { pattern = PROTEIN_PATT; break; }
+            default: { pattern = /\d+/; }
+        }
+        const match = new RegExp(`^(${pattern.source})`).exec(string);
+        if (! match) {
+            throw new ParsingError('Failed to parse the initial position');
+        }
+        result.input = match[0];
+        result.start = result.input.slice(0);
+    }
+    result.start = parsePosition(prefix, result.start);
+    if (result.end) {
+        result.end = parsePosition(prefix, result.end);
+    }
+    return result;
+}
+
+
 /**
  * Given a string representing a continuous variant, parses and checks the content
  *
@@ -270,64 +311,41 @@ const parseMultiFeature = (string) => {
  * > parseContinuous('p.G12D')
  * {type: 'substitution', prefix: 'p', break1Start: {'@class': 'ProteinPosition', pos: 12, refAA: 'G'}, untemplatedSeq: 'D'}
  */
-const parseContinuous = (string) => {
+const parseContinuous = (inputString) => {
+    let string = inputString.slice(0);
     if (string.length < 3) {
         throw new ParsingError(`Too short. Must be a minimum of three characters: ${string}`);
     }
 
     const prefix = getPrefix(string);
-    const p = '([a-zA-Z0-9\\*\\?\\+\\-]*[0-9\\?]|[pq][0-9\\.\?]*)';
-    let regex = nRegex(
-        `^(?<break1>${p}|(\\(${p}_${p}\\)))`
-        + `(_(?<break2>${p}|(\\(${p}_${p}\\))))?`
-        + '(?<tail>[^_\\(\\)]*)$'
-    );
-    let match = regex.exec(string.slice(prefix.length + 1));
-    if (match === null) {
-        throw new ParsingError(`Input string did not match the expected pattern: ${string}`);
-    }
-
-    let m;
     const result = {prefix: prefix};
-    try {
-        if (m = /\(([^_]+)_([^_]+)\)/.exec(match.group('break1'))) {
-            result.break1Start = parsePosition(prefix, m[1]);
-            result.break1End =  parsePosition(prefix, m[2]);
-        } else {
-            result.break1Start = parsePosition(prefix, match.group('break1'));
-        }
-    } catch (err) {
-        throw new ParsingError({
-            message: 'Error in parsing the first breakpoint position/range',
-            input: string,
-            parsed: result,
-            subParserError: err
-        });
+    string = string.slice(prefix.length + 1);
+    // get the first position
+    const break1 = extractPositions(prefix, string);
+    string = string.slice(break1.input.length);
+    result.break1Start = break1.start;
+    if (break1.end) {
+        result.break1End = break1.end;
     }
-    try {
-        if (match.group('break2') !== undefined) {
-            if (m = /\(([^_]+)_([^_]+)\)/.exec(match.group('break2'))) {
-                result.break2Start = parsePosition(prefix, m[1]);
-                result.break2End = parsePosition(prefix, m[2]);
-            } else {
-                result.break2Start = parsePosition(prefix, match.group('break2'));
-            }
+    let break2;
+
+    if (string.startsWith('_')) {
+        // expect a range. Extract more positions
+        string = string.slice(1);
+        break2 = extractPositions(prefix, string);
+        result.break2Start = break2.start;
+        if (break2.end) {
+            result.break2End = break2.end;
         }
-    } catch (err) {
-        throw new ParsingError({
-            message: 'Error in parsing the second breakpoint position/range',
-            input: string,
-            parsed: result,
-            subParserError: err
-        });
+        string = string.slice(break2.input.length);
     }
 
-    const tail = match.group('tail');
+    const tail = string;
     result.break1Repr = breakRepr(prefix, result.break1Start, result.break1End);
     if (result.break2Start) {
         result.break2Repr = breakRepr(prefix, result.break2Start, result.break2End);
     }
-
+    let match;
     if (match = /^del([A-Z\?\*]+)?ins([A-Z\?\*]+|\d+)?$/.exec(tail)) {  // indel
         result.type = 'delins';
         if (match[1]) {

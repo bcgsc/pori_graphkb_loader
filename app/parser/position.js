@@ -12,6 +12,11 @@ const PREFIX_CLASS = {
 };
 
 
+const CDS_PATT = /(\d+)([-\+]\d+)?/;
+const PROTEIN_PATT = /([A-Za-z\?\*])?(\d+|\?)/;
+const CYTOBAND_PATT = /[pq]((\d+|\?)(\.(\d+|\?))?)?/;
+
+
 const _positionString = (breakpoint) => {
     breakpoint = Object.assign({}, breakpoint);
     if (breakpoint.pos === undefined) {
@@ -100,7 +105,7 @@ const parsePosition = (prefix, string) => {
             return result;
         }
         case 'c': {
-            const m = /^(\d+)?([-\+]\d+)?$/.exec(string);
+            const m = new RegExp(`^${CDS_PATT.source}$`).exec(string);
             if (m === null) {
                 throw new ParsingError(`input '${string}' did not match the expected pattern for 'c' prefixed positions`);
             }
@@ -109,7 +114,7 @@ const parsePosition = (prefix, string) => {
             return result;
         }
         case 'p': {
-            const m = /^([A-Za-z\?\*])?(\d+|\?)$/.exec(string);
+            const m = new RegExp(`^${PROTEIN_PATT.source}$`).exec(string);
             if (m === null) {
                 throw new ParsingError(`input string '${string}' did not match the expected pattern for 'p' prefixed positions`);
             }
@@ -122,16 +127,16 @@ const parsePosition = (prefix, string) => {
             return result;
         }
         case 'y': {
-            const m = /^([pq])((\d+|\?)(\.(\d+|\?))?)?$/.exec(string);
+            const m = new RegExp(`^${CYTOBAND_PATT.source}$`).exec(string);
             if (m == null) {
                 throw new ParsingError(`input string '${string}' did not match the expected pattern for 'y' prefixed positions`);
             }
-            result.arm = m[1];
-            if (m[3] !== undefined && m[3] !== '?') {
-                result.majorBand = parseInt(m[3]);
+            result.arm = string[0];
+            if (m[2] !== undefined && m[2] !== '?') {
+                result.majorBand = parseInt(m[2]);
             }
-            if (m[5] !== undefined && m[5] !== '?') {
-                result.minorBand = parseInt(m[5]);
+            if (m[4] !== undefined && m[4] !== '?') {
+                result.minorBand = parseInt(m[4]);
             }
             return result;
         }
@@ -141,4 +146,4 @@ const parsePosition = (prefix, string) => {
     }
 };
 
-module.exports = {parsePosition, breakRepr};
+module.exports = {parsePosition, breakRepr, CYTOBAND_PATT, CDS_PATT, PROTEIN_PATT};

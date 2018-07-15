@@ -60,8 +60,8 @@ describe('parsePosition', () => {
             expect(result.refAA).to.equal('P');
             expect(result['@class']).to.equal('ProteinPosition');
         });
-        it('errors on lowercase reference AA', () => {
-            expect(() => { parsePosition('p', 'p1'); }).to.throw(ParsingError);
+        it('ok on lowercase reference AA', () => {
+            expect(() => { parsePosition('p', 'p1'); }).to.not.throw(ParsingError);
         });
         it('errors on position not given', () => {
             expect(() => { parsePosition('p', 'p'); }).to.throw(ParsingError);
