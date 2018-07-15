@@ -28,16 +28,17 @@ use JSON::Parse 'parse_json';
 my $registry;
 my $host = '10.9.202.242';
 my $port = 8080;
-my $token = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ1c2VyIjp7Im5hbWUiOiJhZG1pbiIsIkByaWQiOiIjNDE6MCJ9LCJpYXQiOjE1MjQyNDgwODgsImV4cCI6MTE1MjQyNDgwODh9.-PkTFeYCB7NyNs0XOap3ptPTp3icWxGbEBi2Hlku-kQ';
-my $server_endpoint = "http://$host:$port/api";
+my $server_endpoint = "http://$host:$port/api/v0.0.8";
 my $ua;
 
 main();
 
-sub getHugoFeatureByName
+sub getHugoFeature
 {
-    my ($name) = @_;
-    my $uri = "$server_endpoint/independantfeatures?name=$name&deletedAt=null&source=hgnc";
+    my ($token, $source, $sourceId, $name) = @_;
+    my $sourceRID = $source;
+    $sourceRID =~ s/#//;
+    my $uri = "$server_endpoint/features?deletedAt=null&source=$sourceRID&sourceId=$sourceId&name=$name";
     my $req = HTTP::Request->new(GET => $uri);
     $req->header('content-type' => 'application/json');
     $req->header('Authorization' => $token);
@@ -45,17 +46,25 @@ sub getHugoFeatureByName
     my $content = $resp->decoded_content;
     if ($resp->is_success) {
         my $message = parse_json($content);
-        return $message->[0];
+        my $resultSize = scalar @{ $message->{'result'} };
+        if ($resultSize == 0) {
+            print "?";
+        } elsif ($resultSize > 1) {
+            print "x";
+        } else {
+            return $message->{'result'}->[0];
+        }
     } else {
         print "failed request: $content from $uri\n";
-        return undef;
     }
 }
 
-sub getEnsemblFeatureByIdAndVersion
+sub getGeneBySourceId
 {
-    my ($name, $sourceVersion) = @_;
-    my $uri = "$server_endpoint/independantfeatures?sourceId=$name&deletedAt=null&source=ensembl&sourceVersion=$sourceVersion";
+    my ($token, $source, $sourceId) = @_;
+    my $sourceRID = $source;
+    $sourceRID =~ s/#//;
+    my $uri = "$server_endpoint/features?sourceId=$sourceId&deletedAt=null&source=$sourceRID&biotype=gene";
     my $req = HTTP::Request->new(GET => $uri);
     $req->header('content-type' => 'application/json');
     $req->header('Authorization' => $token);
@@ -63,7 +72,14 @@ sub getEnsemblFeatureByIdAndVersion
     my $content = $resp->decoded_content;
     if ($resp->is_success) {
         my $message = parse_json($content);
-        return $message->[0];
+        my $resultSize = scalar @{ $message->{'result'} };
+        if ($resultSize == 0) {
+            print "?";
+        } elsif ($resultSize > 1) {
+            print "x";
+        } else {
+            return $message->{'result'}->[0];
+        }
     } else {
         print "failed request: $content from $uri\n";
         return undef;
@@ -73,21 +89,22 @@ sub getEnsemblFeatureByIdAndVersion
 
 sub createAliasEdge
 {
-    my ($src, $tgt) = @_;
+    my ($token, $src, $tgt, $source) = @_;
     my $req = HTTP::Request->new(POST => "$server_endpoint/aliasof");
     $req->header('content-type' => 'application/json');
     $req->header('Authorization' => $token);
     my $content = <<"END_MESSAGE";
 {
     "in": "$tgt",
-    "out": "$src"
+    "out": "$src",
+    "source": "$source"
 }
 END_MESSAGE
     $req->content($content);
     my $resp = $ua->request($req);
     my $message = $resp->decoded_content;
     if ($resp->is_success) {
-        print "-";
+        print ".";
         return $message;
     } else {
         if (index($message, "Cannot index record") == -1) {
@@ -96,8 +113,126 @@ END_MESSAGE
             print "$message";
             return;
         } else {
-            print "=";
+            print "*";
         }
+    }
+}
+
+sub addEnsemblGene
+{
+    my ($token, $gene, $source) = @_;
+    my $sourceId = $gene->stable_id();
+    my $req = HTTP::Request->new(POST => "$server_endpoint/features");
+    $req->header('content-type' => 'application/json');
+    $req->header('Authorization' => $token);
+    my $start = $gene->start();
+    my $end = $gene->end();
+    my $strand = $gene->strand();
+    my $description = $gene->description();
+    if (! defined $description) {
+        $description = ""
+    } else {
+        $description =~ s/\s*\[.*$//;
+        $description = ",\n    \"longName\": \"$description\"\n";
+    }
+    my $content = <<"END_MESSAGE";
+{
+    "sourceId": "$sourceId",
+    "source": "$source",
+    "start": "$start",
+    "end": "$end",
+    "biotype": "gene"$description
+}
+END_MESSAGE
+    $req->content($content);
+    my $resp = $ua->request($req);
+    if ($resp->is_success) {
+        my $message = parse_json($resp->decoded_content);
+        print ".";
+        return $message;
+    } else {
+        return getGeneBySourceId($token, $source, $sourceId);
+    }
+}
+
+
+sub addSource
+{
+    my ($token, $name, $version) = @_;
+    my $req = HTTP::Request->new(POST => "$server_endpoint/sources");
+    $req->header('content-type' => 'application/json');
+    $req->header('Authorization' => $token);
+    if (defined $version) {
+        my $content = <<"END_MESSAGE";
+{
+    "name": "$name",
+    "version": "$version"
+}
+END_MESSAGE
+        $req->content($content);
+    } else {
+        my $content = <<"END_MESSAGE";
+{
+    "name": "$name"
+}
+END_MESSAGE
+        $req->content($content);
+    }
+    my $resp = $ua->request($req);
+    if ($resp->is_success) {
+        my $message = parse_json($resp->decoded_content);
+        return $message->{'result'};
+    } else {
+        return getSource($token, $name, $version);
+    }
+}
+
+
+sub getSource
+{
+    my ($token, $name, $version) = @_;
+    if (! defined $version) {
+        $version = "null";
+    }
+    my $uri = "$server_endpoint/sources?name=$name&version=$version";
+    print $uri . "\n";
+    my $req = HTTP::Request->new(GET => $uri);
+    $req->header('content-type' => 'application/json');
+    $req->header('Authorization' => $token);
+    my $resp = $ua->request($req);
+    if ($resp->is_success) {
+        my $message = parse_json($resp->decoded_content);
+        my $source = $message->{'result'}->[0];
+        return $source;
+    } else {
+        print "failed getting source\n";
+    }
+}
+
+
+sub getToken
+{
+    print "Getting the KB Token\n";
+    my $req = HTTP::Request->new(POST => "$server_endpoint/token");
+    $req->header('content-type' => 'application/json');
+    my $version = software_version();
+    my $username = $ENV{'USER'};
+    my $password = $ENV{'PASSWORD'};
+    my $content = <<"END_MESSAGE";
+{
+    "username": "$username",
+    "password": "$password"
+}
+END_MESSAGE
+    $req->content($content);
+    my $resp = $ua->request($req);
+    if ($resp->is_success) {
+        my $message = parse_json($resp->decoded_content);
+        return $message->{'kbToken'};
+        print "LOGIN OK\n";
+    } else {
+        print "Failed login\n$resp";
+        return undef;
     }
 }
 
@@ -121,7 +256,6 @@ sub main
 
     $registry = 'Bio::EnsEMBL::Registry';
     $registry->load_registry_from_db(%$database_information);
-
     # load all the different transcripts
     my $transcript_adaptor = $registry->get_adaptor('human', 'core', 'gene');
     my @glist = @{$transcript_adaptor->fetch_all()};
@@ -129,65 +263,30 @@ sub main
     print "connecting to the user agent\n";
     $ua = LWP::UserAgent->new;
 
+    my $token = getToken();
     print "loading $total genes\n";
+    my $version = software_version();
 
-    my $source = "ensembl";
-    my $sourceVersion = software_version();
+    my $source = addSource($token, "ensembl", $version)->{'@rid'};
+    my $hgncSource = addSource($token, "hgnc")->{'@rid'};
+    print "ensembl source node: $source\n";
+    print "hgnc source node: $hgncSource\n";
     while ( my $gene = shift @glist )
     {
-        my $name = $gene->stable_id();
-        my $req = HTTP::Request->new(POST => "$server_endpoint/independantfeatures");
-        $req->header('content-type' => 'application/json');
-        $req->header('Authorization' => $token);
-        my $start = $gene->start();
-        my $end = $gene->end();
-        my $strand = $gene->strand();
-        my $description = $gene->description();
-        if (! defined $description) {
-            $description = ""
-        } else {
-            $description =~ s/\s*\[.*$//;
-            $description = ",\n    \"longName\": \"$description\"\n";
+        my $node = addEnsemblGene($token, $gene, $source);
+        if (! defined $node) {
+            next;
         }
-        my $content = <<"END_MESSAGE";
-{
-    "sourceId": "$name",
-    "source": "$source",
-    "sourceVersion": "$sourceVersion",
-    "start": "$start",
-    "end": "$end",
-    "biotype": "gene"$description
-}
-END_MESSAGE
-        $req->content($content);
-        my $resp = $ua->request($req);
-        if ($resp->is_success) {
-            my $message = $resp->decoded_content;
-            print ".";
-        }
-        else {
-            my $temp = $resp->decoded_content;
-            if (index($temp, "Cannot index record") == -1) {
-                print "HTTP POST error code: ", $resp->code, "\n";
-                print "HTTP POST error message: ", $resp->message, "\n";
-                print "$req\n";
-                print "$temp";
-                last;
-            } else {
-                print "*";
-            }
-        }
-        # now add the relationships to other databases
-        if ($gene->external_db() eq 'HGNC') {
-            my $hugoname = $gene->external_name();
-            # get the hugo gene from the db
-            my $hugo = getHugoFeatureByName($hugoname);
-            if (! defined $hugo) {
-                next;
-            }
-            my $ensg = getEnsemblFeatureByIdAndVersion($name, $sourceVersion);
-            if (defined $ensg && defined $hugo) {
-                createAliasEdge($ensg->{'@rid'}, $hugo->{'@rid'});
+        # add the relationship to the hugo gene
+        my @xrefs = @{ $gene->get_all_object_xrefs() };
+        while ( my $xref  = shift @xrefs )
+        {
+            if ($xref->{'dbname'} eq "HGNC") {
+                my $hugo = getHugoFeature($token, $hgncSource, $xref->{'primary_id'}, $xref->{'display_id'});
+                if (ref $hugo ne ref {}) {
+                    next;
+                }
+                createAliasEdge($token, $node->{'@rid'}, $hugo->{'@rid'}, $source);
             }
         }
     }

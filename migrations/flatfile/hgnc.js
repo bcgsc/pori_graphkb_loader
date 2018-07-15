@@ -85,7 +85,7 @@ const uploadHugoGenes = async (opt) => {
                 deprecated: true,
                 biotype: record.biotype,
                 name: symbol
-            }, conn, true);
+            }, conn, true, ['dependency']);
             deprecatedBy.push({src: related['@rid'], tgt: record['@rid']});
         }
         for (let symbol of gene.alias_symbol || []) {
@@ -96,7 +96,7 @@ const uploadHugoGenes = async (opt) => {
                     sourceId: record.sourceId,
                     biotype: record.biotype,
                     dependency: record['@rid'].toString()
-                }, conn, true);
+                }, conn, true, ['dependency']);
                 aliasOf.push({src: record['@rid'], tgt: related['@rid']});
             } catch (err) {
                 process.stdout.write('x');
