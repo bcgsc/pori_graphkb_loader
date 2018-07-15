@@ -7,9 +7,7 @@ const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
 
 const {PERMISSIONS} = require('./constants');
-const {createRepoFunctions} = require('./functions');
 const {castUUID, timeStampNow, castToRID, VERBOSE} = require('./util');
-const {populateCache} = require('./base');
 const {AttributeError} = require('./error');
 
 
