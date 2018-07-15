@@ -5,6 +5,7 @@
 const _ = require('lodash');
 const request = require('request-promise');
 const {addRecord, getRecordBy} = require('./util');
+const {castToRID} = require('./../../app/repo/util');
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
 const SOURCE_NAME = 'disease ontology';
@@ -96,7 +97,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
             let match;
             if (match = /^NCI:(C\d+)$/.exec(other)) {
                 try {
-                    const ncitId = `ncit:${match[1].toLowerCase()}`;
+                    const ncitId = `${match[1].toLowerCase()}`;
                     const ncitNode = await getRecordBy('diseases', {source: ncitSource, sourceId: ncitId}, conn);
                     if (ncitAliases[node.id] === undefined) {
                         ncitAliases[node.id] = [];
@@ -104,7 +105,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                     ncitAliases[node.id].push(ncitNode);
                     process.stdout.write('.');
                 } catch (err) {
-                    process.stdout.write('x');
+                    process.stdout.write('?');
                 }
             }
         }
@@ -117,9 +118,6 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         let newRecord = await addRecord('diseases', node, conn, true);
 
         if (diseaseRecords[newRecord.sourceId] !== undefined) {
-            console.log(newRecord);
-            console.log(diseaseRecords[newRecord.sourceId]);
-            console.log(Object.keys(diseaseRecords));
             throw new Error(`expected source id to be unique for this load: ${newRecord.sourceId}`);
         }
         diseaseRecords[newRecord.sourceId] = newRecord;
@@ -130,7 +128,13 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         for (let synonym of synonymsByName[record.name]) {
             // get the synonym record
             try {
-                synonym = await getRecordBy('diseases', {name: synonym, deletedAt: 'null', source: record.source, sourceId: record.sourceId, dependency: record['@rid'].toString()}, conn);
+                synonym = await getRecordBy('diseases', {
+                    name: synonym,
+                    deletedAt: 'null',
+                    source: record.source['@rid'] ? record.source['@rid'] : record.source,
+                    sourceId: record.sourceId,
+                    dependency: record['@rid'].toString()
+                }, conn);
             } catch (err) {
                 synonym = await addRecord('diseases', {
                     name: synonym,
@@ -141,21 +145,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                 }, conn);
                 process.stdout.write('.');
             }
-            try {
-                await request(conn.request({
-                    method: 'POST',
-                    uri: 'aliasof',
-                    body: {out: synonym['@rid'], in: record['@rid'], source: source}
-                }));
-                process.stdout.write('.');
-            } catch (err) {
-                if (! err.error || ! err.error.message || ! err.error.message.startsWith('Cannot index')) {
-                    console.log({out: synonym['@rid'], in: record['@rid']});
-                    console.log(err.error);
-                } else {
-                    process.stdout.write('*');
-                }
-            }
+            await addRecord('aliasof', {out: synonym['@rid'], in: record['@rid'], source: source}, conn, true);
         }
     }
     // add the ncit edges

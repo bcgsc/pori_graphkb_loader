@@ -1,16 +1,20 @@
 const request = require('request-promise');
 const _ = require('lodash');
+const jc = require('json-cycle');
 
-const getRecordBy = async (className, where, conn) => {
+const getRecordBy = async (className, where, conn, sortFunc=(x, y) => 0) => {
     let newRecord = await request(conn.request({
         uri: className,
-        qs: where
+        qs: Object.assign({neighbors: 1}, where)
     }));
-    newRecord = newRecord.result;
+    newRecord = jc.retrocycle(newRecord.result);
+    newRecord.sort(sortFunc);
     if (newRecord.length > 1) {
-        throw new Error('expected a single record');
+        if (sortFunc(newRecord[0], newRecord[1]) == 0) {
+            throw new Error(`expected a single ${className} record: ${where.name || where.sourceId || where}`);
+        }
     } else if (newRecord.length == 0) {
-        throw new Error('missing record');
+        throw new Error(`missing ${className} record: ${where.name || where.sourceId || Object.entries(where)}`);
     }
     newRecord = newRecord[0];
     return newRecord;
@@ -39,6 +43,55 @@ const addRecord = async (className, where, conn, exists_ok=false, getIgnore=[]) 
         }
         throw err;
     }
+};
+
+
+const orderPreferredOntologyTerms = (term1, term2) => {
+    if (term1.deprecated && ! term2.deprecated) {
+        return 1;
+    } else if (term2.deprecated && ! term1.deprecated) {
+        return -1;
+    } else if (term1.dependency == null & term2.dependency != null) {
+        return -1;
+    } else if (term2.dependency == null & term1.dependency != null) {
+        return 1;
+    }
+    return 0;
+};
+
+
+const getPubmedArticle = async (pmid) => {
+
+    // try getting the title from the pubmed api
+    opt = {
+        method: 'GET',
+        uri: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi',
+        qs: {
+            id: pmid,
+            retmode: 'json',
+            db: 'pubmed'
+        },
+        headers: {Accept: 'application/json'},
+        json: true
+    }
+    try {
+        pubmedRecord = await request(opt);
+        if (pubmedRecord && pubmedRecord.result && pubmedRecord.result[pmid]) {
+            pubmedRecord = pubmedRecord.result[pmid];
+            let article = {
+                sourceId: pmid,
+                name: pubmedRecord.title,
+                journalName: pubmedRecord.fulljournalname
+            };
+            //sortpubdate: '1992/06/01 00:00'
+            let match = /^(\d\d\d\d)\//.exec(pubmedRecord.sortpubdate);
+            if (match) {
+                article.year = parseInt(match[1]);
+            }
+            return article;
+        }
+    } catch (err) {}
+    throw new Error(`failed to retrieve pubmed article (${pmid})`);
 };
 
 
@@ -83,4 +136,4 @@ const convertOwlGraphToJson = (graph, idParser) => {
     return nodesByCode;
 };
 
-module.exports = {addRecord, getRecordBy, convertOwlGraphToJson};
+module.exports = {addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, getPubmedArticle};

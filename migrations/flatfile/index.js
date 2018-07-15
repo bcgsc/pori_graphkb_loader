@@ -15,6 +15,10 @@ const {uploadOncoTree} = require('./oncotree');
 const {uploadDrugBank} = require('./drugbank');
 const path = require('path');
 const request = require('request-promise');
+const {uploadRefSeq} = require('./refseq');
+const {upload: uploadOncoKB} = require('./oncokb');
+const {upload: uploadFDA} = require('./fda');
+const {upload: uploadCivic} = require('./civic');
 
 const argumentError = (usage, msg) => {
     console.log(usage);
@@ -95,7 +99,6 @@ const optionDefinitions = [
     },
     {
         name: 'oncotree',
-        alias: 'o',
         description: 'flag to indicate upload of oncotree latest stable release from their web API'
     },
     {
@@ -103,6 +106,25 @@ const optionDefinitions = [
         alias: 'b',
         description: 'path tp the drugbank xml file',
         type: fileExists
+    },
+    {
+        name: 'refseq',
+        description: 'path to the tab delmited refseq file',
+        type: fileExists
+    },
+    {
+        name: 'oncokb',
+        description: 'path to the actionable variants JSON from oncokb'
+    },
+    {
+        name: 'fda',
+        alias: 'f',
+        description: 'path to the FDA UNII list with NCIT linking metadata',
+        type: fileExists
+    },
+    {
+        name: 'civic',
+        description: 'upload civic using their api'
     }
 ];
 
@@ -179,17 +201,23 @@ const apiConnection = new ApiRequest(options);
 const upload = async () => {
     await apiConnection.setAuth(options);
     console.log('Login Succeeded\n');
-    if (options.drugbank) {
-        await uploadDrugBank({conn: apiConnection, filename: options.drugbank});
-    }
     if (options['ncit']) {
         await uploadNCIT({conn: apiConnection, filename: options['ncit']});
+    }
+    if (options['fda']) {
+        await uploadFDA({conn: apiConnection, filename: options['fda']});
+    }
+    if (options.drugbank) {
+        await uploadDrugBank({conn: apiConnection, filename: options.drugbank});
     }
     if (options['disease-ontology']) {
         await uploadDiseaseOntology({conn: apiConnection, filename: options['disease-ontology']});
     }
     if (options['hugo']) {
         await uploadHugoGenes({conn: apiConnection,  filename: options['hugo']});
+    }
+    if (options['refseq']) {
+        await uploadRefSeq({conn: apiConnection, filename: options['refseq']});
     }
     if (options['uberon']) {
         await uploadUberon({conn: apiConnection, filename: options['uberon']});
@@ -199,6 +227,12 @@ const upload = async () => {
     }
     if (options['reference-flatfile']) {
         await uploadKbFlatFile({conn: apiConnection, filename: options['reference-flatfile']});
+    }
+    if (options.oncokb !== undefined) {
+        await uploadOncoKB(apiConnection);
+    }
+    if (options.civic !== undefined) {
+        await uploadCivic(apiConnection);
     }
 };
 

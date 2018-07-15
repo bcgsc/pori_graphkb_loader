@@ -75,7 +75,7 @@ const uploadUberon = async ({filename, conn}) => {
             for (let aliasCode of node[PRED_MAP.CROSS_REF]) {
                 aliasCode = aliasCode.toLowerCase();
                 if (/^ncit:c\d+$/.exec(aliasCode)) {
-                    ncitLinks.push({src: node.code, tgt: aliasCode, source: source['@rid']});
+                    ncitLinks.push({src: node.code, tgt: aliasCode.slice('ncit:'.length), source: source['@rid']});
                 }
             }
         }
