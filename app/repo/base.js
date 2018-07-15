@@ -700,7 +700,10 @@ const update = async (db, opt) => {
     const originalWhere = Object.assign({}, model.formatRecord(original, {dropExtra: true, addDefaults: false}));
     delete originalWhere.createdBy;
     delete originalWhere.history;
-    const copy = Object.assign({}, _.omit(originalWhere, ['@rid', '@version']), {deletedAt: timeStampNow()});
+    const copy = Object.assign({}, _.omit(
+        originalWhere,
+        Object.keys(originalWhere).filter(x => x.startsWith('@'))
+    ), {deletedAt: timeStampNow()});
 
     const originalUserRID = original.createdBy instanceof RID ? original.createdBy : original.createdBy['@rid'];
     let historyRID = null;
