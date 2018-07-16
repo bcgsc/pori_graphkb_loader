@@ -554,6 +554,11 @@ describe('parseContinuous', () => {
         });
     });
     describe('protein variants', () => {
+        it('case insensitive frameshift', () => {
+            // civic example
+            const result = parse('p.W288FS');
+            expect(result.type).to.equal('frameshift');
+        })
         it('lowercase substitution', () => {
             const result = parse('p.d816n');
             expect(result.untemplatedSeq).to.equal('n');

@@ -21,30 +21,38 @@ const upload = async (opt) => {
         process.stdout.write('?');
     }
     console.log(`\nloading ${jsonList.length} records`);
+    let skipCount = 0;
 
     for (let record of jsonList) {
-        if (record.NCIT.length && record.PT.length && record.UNII.length) {
-            // only load records with at min these 3 values filled out
-            const drug = await addRecord('therapies', {
-                name: record.PT, sourceId: record.UNII, source: source['@rid']
-            }, conn, true);
-            if (NCIT) {
-                let ncitRec;
-                try {
-                    ncitRec = await getRecordBy('therapies', {source: {name: 'ncit'}, sourceId: record.NCIT}, conn);
-                } catch (err) {
-                    process.stdout.write('?');
-                }
-                if (ncitRec) {
-                    await addRecord('aliasof', {
-                        source: source['@rid'],
-                        out: drug['@rid'],
-                        in: ncitRec['@rid']
-                    }, conn, true);
-                }
+        if (record.NCIT.length === 0 && ! /[mn][ia]b$/i.exec(record.PT)) {
+            skipCount++;
+            continue;
+        }
+        if (! record.PT.length || ! record.UNII.length) {
+            skipCount++;
+            continue;
+        }
+        // only load records with at min these 3 values filled out
+        const drug = await addRecord('therapies', {
+            name: record.PT, sourceId: record.UNII, source: source['@rid']
+        }, conn, true);
+        if (NCIT && record.NCIT.length) {
+            let ncitRec;
+            try {
+                ncitRec = await getRecordBy('therapies', {source: {name: 'ncit'}, sourceId: record.NCIT}, conn);
+            } catch (err) {
+                process.stdout.write('?');
+            }
+            if (ncitRec) {
+                await addRecord('aliasof', {
+                    source: source['@rid'],
+                    out: drug['@rid'],
+                    in: ncitRec['@rid']
+                }, conn, true);
             }
         }
     }
+    console.log(`\nskipped ${skipCount} records`);
 };
 
 module.exports = {upload};
