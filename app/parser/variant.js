@@ -143,7 +143,7 @@ const parse = (string) => {
             Object.assign(result, variant);
         } catch (err) {
             throw new ParsingError({
-                message: 'Error in parsing the continuous variant',
+                message: `Error in parsing the continuous variant: ${variantString}`,
                 parsed: Object.assign({variantString}, result),
                 input: string,
                 subParserError: err
@@ -346,7 +346,7 @@ const parseContinuous = (inputString) => {
         result.break2Repr = breakRepr(prefix, result.break2Start, result.break2End);
     }
     let match;
-    if (match = /^del([A-Z\?\*]+)?ins([A-Z\?\*]+|\d+)?$/.exec(tail)) {  // indel
+    if (match = /^del([A-Za-z\?\*]+)?ins([A-Za-z\?\*]+|\d+)?$/.exec(tail)) {  // indel
         result.type = 'delins';
         if (match[1]) {
             result.refSeq = match[1];
@@ -356,7 +356,7 @@ const parseContinuous = (inputString) => {
         } else if (match[2] && match[2] !== '?') {
             result.untemplatedSeq = match[2];
         }
-    } else if (match = /^(del|inv|ins|dup)([A-Z\?\*]+|\d+)?$/.exec(tail)) {  // deletion
+    } else if (match = /^(del|inv|ins|dup)([A-Za-z\?\*]+|\d+)?$/.exec(tail)) {  // deletion
         result.type = match[1];
         if (parseInt(match[2])) {
             if (result.type === 'ins' || result.type === 'dup') {
@@ -372,7 +372,7 @@ const parseContinuous = (inputString) => {
                 result.refSeq = match[2];
             }
         }
-    } else if (match = /^[A-Z\?\*]$/.exec(tail) || tail.length === 0) {
+    } else if (match = /^[A-Za-z\?\*]$/.exec(tail) || tail.length === 0) {
         if (prefix !== 'p') {
             throw new ParsingError('only protein notation does not use ">" for a substitution');
         }
@@ -380,7 +380,7 @@ const parseContinuous = (inputString) => {
         if (tail.length > 0 && tail !== '?') {
             result.untemplatedSeq = tail;
         }
-    } else if (match = /^([A-Z\?])>([A-Z\?])$/.exec(tail)) {
+    } else if (match = /^([A-Za-z\?])>([A-Za-z\?])$/.exec(tail)) {
         if (prefix === 'p') {
             throw new ParsingError('protein notation does not use ">" for a substitution');
         } else if (prefix === 'e') {
@@ -389,7 +389,7 @@ const parseContinuous = (inputString) => {
         result.type = '>';
         result.refSeq = match[1];
         result.untemplatedSeq = match[2];
-    } else if (match = /^([A-Z\?])?fs(\*(\d+))?$/.exec(tail)) {
+    } else if (match = /^([A-Za-z\?])?fs(\*(\d+))?$/.exec(tail)) {
         if (prefix !== 'p') {
             throw new ParsingError('only protein notation can notate frameshift variants');
         }

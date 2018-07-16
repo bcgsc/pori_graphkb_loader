@@ -554,6 +554,17 @@ describe('parseContinuous', () => {
         });
     });
     describe('protein variants', () => {
+        it('lowercase substitution', () => {
+            const result = parse('p.d816n');
+            expect(result.untemplatedSeq).to.equal('n');
+            expect(result.type).to.equal('substitution');
+            expect(result.refSeq).to.equal('d');
+        });
+        it('substitution no alt', () => {
+            const result = parse('p.d816');
+            expect(result.refSeq).to.equal('d');
+            expect(result.type).to.equal('substitution');
+        })
         it('frameshift alt specified', () => {
             const result = parseContinuous('p.R10Kfs');
             const exp = {
