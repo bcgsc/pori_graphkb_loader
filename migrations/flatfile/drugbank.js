@@ -148,22 +148,21 @@ const uploadDrugBank = async ({filename, conn}) => {
                     ATC[level.sourceId] = level;
                 }
             }
-            if (atcLevels.length < 1) {
-                continue;
-            }
-            // link the current record to the lowest subclass
-            await addRecord('subclassof', {
-                source: source['@rid'],
-                out: record['@rid'],
-                in: ATC[atcLevels[0].sourceId]['@rid']
-            }, conn, true);
-            // link the subclassing
-            for (let i=0; i< atcLevels.length - 1; i++) {
+            if (atcLevels.length > 0) {
+                // link the current record to the lowest subclass
                 await addRecord('subclassof', {
                     source: source['@rid'],
-                    out: ATC[atcLevels[i].sourceId]['@rid'],
-                    in: ATC[atcLevels[i + 1].sourceId]['@rid']
+                    out: record['@rid'],
+                    in: ATC[atcLevels[0].sourceId]['@rid']
                 }, conn, true);
+                // link the subclassing
+                for (let i=0; i< atcLevels.length - 1; i++) {
+                    await addRecord('subclassof', {
+                        source: source['@rid'],
+                        out: ATC[atcLevels[i].sourceId]['@rid'],
+                        in: ATC[atcLevels[i + 1].sourceId]['@rid']
+                    }, conn, true);
+                }
             }
             // link to the FDA UNII
             if (FDA) {
