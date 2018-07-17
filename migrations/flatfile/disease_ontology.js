@@ -103,7 +103,6 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                         ncitAliases[node.id] = [];
                     }
                     ncitAliases[node.id].push(ncitNode);
-                    process.stdout.write('.');
                 } catch (err) {
                     process.stdout.write('?');
                 }
@@ -125,7 +124,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
     console.log('\nAdding the aliasof and deprecatedby links');
 
     for (let record of _.values(diseaseRecords)) {
-        for (let synonym of synonymsByName[record.name]) {
+        for (let synonym of synonymsByName[record.name] || []) {
             // get the synonym record
             try {
                 synonym = await getRecordBy('diseases', {
@@ -184,24 +183,12 @@ const loadEdges = async ({DOID, records, conn, source}) => {
             } catch (err) {
                 continue;
             }
-            if (! records[src] || ! records[tgt]) {
-                //console.log(`missing entries for ${src} ==is_a=> ${tgt}`);
-            } else {
-                try {
-                    await request(conn.request({
-                        method: 'POST',
-                        uri: 'subclassof',
-                        body: {out: records[src]['@rid'], in: records[tgt]['@rid'], source: source}
-                    }));
-                    process.stdout.write('.');
-                } catch (err) {
-                    if (! err.error || ! err.error.message || ! err.error.message.startsWith('Cannot index')) {
-                        console.log({out: records[src]['@rid'], in: records[tgt]['@rid']});
-                        console.log(err.error);
-                    } else {
-                        process.stdout.write('*');
-                    }
-                }
+            if (records[src] && records[tgt]) {
+                await addRecord('subclassof', {
+                    out: records[src]['@rid'],
+                    in: records[tgt]['@rid'],
+                    source: source['@rid']
+                }, conn, true);
             }
         } else {
             relationshipTypes[pred] = null;
