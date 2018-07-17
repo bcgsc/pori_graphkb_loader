@@ -48,6 +48,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
     }, conn, true);
     source = source['@rid'].toString();
     console.log('\nAdding/getting the disease nodes');
+    const recordsBySourceId = {};
 
     let ncitSource;
     try {
@@ -65,101 +66,91 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
             continue;
         }
         node.lbl = node.lbl.toLowerCase();
-        nodesByName[node.lbl] = {
+        if (nodesByName[node.lbl] !== undefined) {
+            throw new Error(`name is not unique ${node.lbl}`);
+        }
+        const body = {
             source: source,
             sourceId: node.id,
             name: node.lbl,
             deprecated: node.meta && node.meta.deprecated ? true : false
         };
         synonymsByName[node.lbl] = [];
+        if (node.meta !== undefined) {
+            if (node.meta.definition && node.meta.definition.val) {
+                body.description = node.meta.definition.val;
+            }
+            if (node.meta.subsets) {
+                body.subsets = Array.from(node.meta.subsets, (subset) => {return subset.replace(PREFIX_TO_STRIP, '');});
+            }
+        }
+        // create the database entry
+        const record = await addRecord('diseases', body, conn, true, ['description', 'subsets']);
+
+        if (recordsBySourceId[record.sourceId] !== undefined) {
+            throw new Error(`sourceID is not unique: ${record.sourceId}`);
+        }
+        recordsBySourceId[record.sourceId] = record;
+
         if (node.meta === undefined) {
             continue;
         }
-        if (node.meta.definition && node.meta.definition.val) {
-            nodesByName[node.lbl].description = node.meta.definition.val;
-        }
-        if (node.meta.subsets) {
-            nodesByName[node.lbl].subsets = Array.from(node.meta.subsets, (subset) => {return subset.replace(PREFIX_TO_STRIP, '');});
-        }
-        deprecatedNodes[node.lbl] = node.meta.deprecated;
-        if (node.meta && node.meta.synonyms) {
+
+        // create synonyms and links
+        if (node.meta.synonyms) {
             for (let {val: alias} of node.meta.synonyms) {
                 alias = alias.toLowerCase();
-                if (alias !== node.lbl) {
-                    synonymsByName[node.lbl].push(alias.toLowerCase());
+                if (alias === record.name) {
+                    continue;
+                }
+                const synonym = await addRecord('diseases', {
+                    sourceId: body.sourceId,
+                    name: alias,
+                    dependency: record['@rid'],
+                    source
+                }, conn, true);
+                await addRecord('aliasof', {
+                    out: synonym['@rid'],
+                    in: record['@rid'],
+                    source
+                }, conn, true);
+            }
+        }
+        // create deprecatedBy links for the old sourceIDs
+        if (! node.meta.deprecated) {
+            for (let {val, pred} of node.meta.basicPropertyValues || []) {
+                if (pred.toLowerCase().endsWith('#hasalternativeid')) {
+                    const alternate = await addRecord('diseases', {
+                        sourceId: val,
+                        name: record.name,
+                        deprecated: true,
+                        dependency: record['@rid'],
+                        source
+                    }, conn, true);
+                    await addRecord('deprecatedby', {out: alternate['@rid'], in: record['@rid'], source}, conn, true);
                 }
             }
         }
-        if (ncitSource == undefined) {
-            continue;
-        }
-        for (let {val: other} of (node.meta.xrefs || [])) {
-            let match;
-            if (match = /^NCI:(C\d+)$/.exec(other)) {
-                try {
-                    const ncitId = `${match[1].toLowerCase()}`;
-                    const ncitNode = await getRecordBy('diseases', {source: ncitSource, sourceId: ncitId}, conn);
-                    if (ncitAliases[node.id] === undefined) {
-                        ncitAliases[node.id] = [];
+        if (ncitSource !== undefined) {
+            for (let {val: other} of (node.meta.xrefs || [])) {
+                let match;
+                if (match = /^NCI:(C\d+)$/.exec(other)) {
+                    let ncitNode;
+                    try {
+                        const ncitId = `${match[1].toLowerCase()}`;
+                        ncitNode = await getRecordBy('diseases', {source: ncitSource, sourceId: ncitId}, conn);
+                    } catch (err) {
+                        process.stdout.write('?');
                     }
-                    ncitAliases[node.id].push(ncitNode);
-                } catch (err) {
-                    process.stdout.write('?');
+                    if (ncitNode) {
+                        await addRecord('aliasof', {out: record['@rid'], in: ncitNode['@rid'], source}, conn, true);
+                    }
                 }
             }
         }
     }
-    console.log(`\nParsed ncit links: ${Object.keys(ncitAliases).length}`);
 
-    const diseaseRecords = {};
-    for (let name of Object.keys(nodesByName)) {
-        const node = nodesByName[name];
-        let newRecord = await addRecord('diseases', node, conn, true);
-
-        if (diseaseRecords[newRecord.sourceId] !== undefined) {
-            throw new Error(`expected source id to be unique for this load: ${newRecord.sourceId}`);
-        }
-        diseaseRecords[newRecord.sourceId] = newRecord;
-    }
-    console.log('\nAdding the aliasof and deprecatedby links');
-
-    for (let record of _.values(diseaseRecords)) {
-        for (let synonym of synonymsByName[record.name] || []) {
-            // get the synonym record
-            try {
-                synonym = await getRecordBy('diseases', {
-                    name: synonym,
-                    deletedAt: 'null',
-                    source: record.source['@rid'] ? record.source['@rid'] : record.source,
-                    sourceId: record.sourceId,
-                    dependency: record['@rid'].toString()
-                }, conn);
-            } catch (err) {
-                synonym = await addRecord('diseases', {
-                    name: synonym,
-                    source: source,
-                    dependency: record['@rid'].toString(),
-                    sourceId: record.sourceId,
-                    deprecated: record.deprecated
-                }, conn);
-                process.stdout.write('.');
-            }
-            await addRecord('aliasof', {out: synonym['@rid'], in: record['@rid'], source: source}, conn, true);
-        }
-    }
-    // add the ncit edges
-    console.log('\nadding the doid => ncit aliasof links', Object.keys(ncitAliases).length);
-    for (let nodeLbl of Object.keys(ncitAliases)) {
-        if (! diseaseRecords[nodeLbl]) {
-            continue;
-        }
-        const curr = diseaseRecords[nodeLbl]['@rid'];
-        for (let other of ncitAliases[nodeLbl]) {
-            await addRecord('aliasof', {out: curr, in: other['@rid'], source: source}, conn, true);
-        }
-    }
-
-    await loadEdges({DOID, conn, records: diseaseRecords, source});
+    await loadEdges({DOID, conn, records: recordsBySourceId, source});
     console.log();
 };
 
@@ -187,7 +178,7 @@ const loadEdges = async ({DOID, records, conn, source}) => {
                 await addRecord('subclassof', {
                     out: records[src]['@rid'],
                     in: records[tgt]['@rid'],
-                    source: source['@rid']
+                    source
                 }, conn, true);
             }
         } else {
