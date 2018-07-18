@@ -293,7 +293,7 @@ const SCHEMA_DEFN = {
         inherits: ['V'],
         properties: [
             {name: 'relevance', type: 'link', linkedClass: 'Vocabulary', mandatory: true, notNull: true},
-            {name: 'appliesTo', type: 'link', linkedClass: 'Ontology', mandatory: true, notNull: true},
+            {name: 'appliesTo', type: 'link', linkedClass: 'Ontology', mandatory: true, notNull: false},
             {name: 'description', type: 'string'},
             {name: 'reviewStatus', type: 'string'},
             {name: 'reviewedBy', type: 'link', linkedClass: 'User'},
