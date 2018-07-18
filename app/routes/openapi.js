@@ -804,7 +804,6 @@ const generateSwaggerSpec = (schema, metadata) => {
                 } else if (docs.components.schemas[`${prop.linkedModel.name}Link`]) {
                     propDefn.$ref = `#/components/schemas/${prop.linkedModel.name}Link`;
                 } else {
-                    console.log('unlinked', prop.linkedModel.name);
                     Object.assign(propDefn, linkOrModel(prop.linkedModel.name));
                 }
             } else if (prop.type.includes('link')) {
