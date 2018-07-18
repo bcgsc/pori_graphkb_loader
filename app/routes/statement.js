@@ -63,9 +63,12 @@ const addStatement = (opt) => {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'statement must have the appliesTo property'});
             }
             try {
-                req.body.appliesTo = castToRID(req.body.appliesTo);
+                if (req.body.appliesTo !== null) {
+                    req.body.appliesTo = castToRID(req.body.appliesTo);
+                    dependencies.push(req.body.appliesTo);
+                }
             } catch (err) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'statement appliesTo record ID does not look like a valid record ID'});
+                return res.status(HTTP_STATUS.BAD_REQUEST).json({message: `statement appliesTo record ID does not look like a valid record ID: ${req.body.appliesTo}`});
             }
             if (req.body.relevance === undefined) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'statement must have the relevance property'});
@@ -73,11 +76,10 @@ const addStatement = (opt) => {
             try {
                 req.body.relevance = castToRID(req.body.relevance);
             } catch (err) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'statement relevance record ID does not look like a valid record ID'});
+                return res.status(HTTP_STATUS.BAD_REQUEST).json({message: `statement relevance record ID does not look like a valid record ID: ${req.body.relevance}`});
             }
 
             // check the DB to ensure all dependencies already exist
-            dependencies.push(req.body.appliesTo);
             dependencies.push(req.body.relevance);
             try {
                 // ensure that the dependency records are valid
@@ -107,7 +109,7 @@ const addStatement = (opt) => {
             }
             try {
                 // link to the dependencies
-                const edges = await Promise.all(Array.from(edges, async (edge) => {
+                await Promise.all(Array.from(edges, async (edge) => {
                     if (edge.out === undefined) {
                         edge.out = statement['@rid'];
                     } else {
