@@ -19,25 +19,27 @@ const INDEX_SEP_CHARS = ' \r\n\t:;,.|+*/\\=!?[]()';  // default separator chars 
 const SCHEMA_DEFN = {
     V: {
         properties: [
-            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
-            {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
-            {name: 'deletedAt', type: 'long'},
-            {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User'},
-            {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true},
-            {name: 'history', type: 'link', notNull: true},
+            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, description: 'Internal identifier for tracking record history'},
+            {name: 'createdAt', type: 'long', mandatory: true, notNull: true, description: 'The timestamp at which the record was created'},
+            {name: 'deletedAt', type: 'long', description: 'The timestamp at which the record was deleted'},
+            {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User', description: 'The user who created the record'},
+            {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true, description: 'The user who deleted the record'},
+            {name: 'history', type: 'link', notNull: true, description: 'Link to the previous version of this record'},
             {name: 'comment', type: 'string'}
-        ]
+        ],
+        expose: false
     },
     E: {
         properties: [
-            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
-            {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
-            {name: 'deletedAt', type: 'long'},
-            {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User'},
-            {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true},
-            {name: 'history', type: 'link', notNull: true},
+            {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, description: 'Internal identifier for tracking record history'},
+            {name: 'createdAt', type: 'long', mandatory: true, notNull: true, description: 'The timestamp at which the record was created'},
+            {name: 'deletedAt', type: 'long', description: 'The timestamp at which the record was deleted'},
+            {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User', description: 'The user who created the record'},
+            {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true, description: 'The user who deleted the record'},
+            {name: 'history', type: 'link', notNull: true, description: 'Link to the previous version of this record'},
             {name: 'comment', type: 'string'}
-        ]
+        ],
+        expose: false
     },
     UserGroup: {
         properties: [
@@ -52,15 +54,22 @@ const SCHEMA_DEFN = {
                 properties: ['name'],
                 'class':  'UserGroup'
             }
-        ]
+        ],
+        expose: false
     },
-    Permissions: {},
+    Permissions: {
+        properties: [],
+        expose: false
+    },
     Evidence: {isAbstract: true},
-    Biomarker: {isAbstract: true},
+    Biomarker: {
+        expose: false,
+        isAbstract: true
+    },
     User: {
         properties: [
-            {name: 'name', type: 'string', mandatory: true, notNull: true},
-            {name: 'groups', type: 'linkset', linkedClass: 'UserGroup'},
+            {name: 'name', type: 'string', mandatory: true, notNull: true, description: 'The username'},
+            {name: 'groups', type: 'linkset', linkedClass: 'UserGroup', description: 'Groups this user belongs to. Defines permissions for the user'},
             {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
             {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
             {name: 'deletedAt', type: 'long'},
@@ -80,11 +89,11 @@ const SCHEMA_DEFN = {
     Source: {
         inherits: ['Evidence', 'V'],
         properties: [
-            {name: 'name', type: 'string', mandatory: true, notNull: true},
-            {name: 'version', type: 'string'},
+            {name: 'name', type: 'string', mandatory: true, notNull: true, description: 'Name of the evidence or source'},
+            {name: 'version', type: 'string', description: 'The evidence version'},
             {name: 'url', type: 'string'},
             {name: 'description', type: 'string'},
-            {name: 'usage', type: 'string'}
+            {name: 'usage', type: 'string', description: 'Link to the usage/licensing information associated with this evidence'}
         ],
         indices: [
             {
@@ -99,15 +108,15 @@ const SCHEMA_DEFN = {
     Ontology: {
         inherits: ['V', 'Biomarker'],
         properties: [
-            {name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source'},
-            {name: 'sourceId', type: 'string', mandatory: true, notNull: true},
-            {name: 'dependency', type: 'link'},
-            {name: 'name', type: 'string'},
-            {name: 'sourceIdVersion', type: 'string'},
+            {name: 'source', type: 'link', mandatory: true, notNull: true, linkedClass: 'Source', description: 'Link to the source from which this record is defined'},
+            {name: 'sourceId', type: 'string', mandatory: true, notNull: true, description: 'The identifier of the record/term in the external source database/system'},
+            {name: 'dependency', type: 'link', description: 'Mainly for alias records. If this term is defined as a part of another term, this should link to the original term'},
+            {name: 'name', type: 'string', description: 'Name of the term'},
+            {name: 'sourceIdVersion', type: 'string', description: 'The version of the identifier based on the external database/system'},
             {name: 'description', type: 'string'},
             {name: 'longName', type: 'string'},
-            {name: 'subsets', type: 'embeddedset', linkedType: 'string'},
-            {name: 'deprecated', type: 'boolean', default: false, notNull: true, mandatory: true},
+            {name: 'subsets', type: 'embeddedset', linkedType: 'string', description: 'A list of names of subsets this term belongs to'},
+            {name: 'deprecated', type: 'boolean', default: false, notNull: true, mandatory: true, description: 'True when the term was deprecated by the external source'},
             {name: 'url', type: 'string'}
         ],
         isAbstract: true
@@ -127,7 +136,7 @@ const SCHEMA_DEFN = {
     Publication: {
         inherits: ['Ontology', 'Evidence'],
         properties: [
-            {name: 'journalName', type: 'string'},
+            {name: 'journalName', type: 'string', description: 'Name of the journal where the article was published'},
             {name: 'year', type: 'integer'}
         ]
     },
@@ -143,12 +152,16 @@ const SCHEMA_DEFN = {
         properties: [
             {name: 'start', type: 'integer'},
             {name: 'end', type: 'integer'},
-            {name: 'biotype', type: 'string', mandatory: true, notNull: true}
+            {name: 'biotype', type: 'string', mandatory: true, notNull: true, description: 'The biological type of the feature', choices: ['gene', 'protein', 'transcript', 'exon', 'chromosome']}
         ]
     },
 
-    Position: {isAbstract: true},
+    Position: {
+        isAbstract: true,
+        expose: false
+    },
     ProteinPosition: {
+        expose: false,
         inherits: ['Position'],
         properties: [
             {name: 'pos', type: 'integer', min: 1},
@@ -156,6 +169,7 @@ const SCHEMA_DEFN = {
         ]
     },
     CytobandPosition: {
+        expose: false,
         inherits: ['Position'],
         properties: [
             {name: 'arm', type: 'string', mandatory: true, notNull: true},
@@ -164,14 +178,17 @@ const SCHEMA_DEFN = {
         ]
     },
     GenomicPosition: {
+        expose: false,
         inherits: ['Position'],
         properties: [{name: 'pos', type: 'integer', min: 1}]
     },
     ExonicPosition: {
+        expose: false,
         inherits: ['Position'],
         properties: [{name: 'pos', type: 'integer', min: 1}]
     },
     CdsPosition: {
+        expose: false,
         inherits: ['Position'],
         properties: [
             {name: 'pos', type: 'integer', min: 1},
@@ -183,7 +200,7 @@ const SCHEMA_DEFN = {
         properties: [
             {name: 'type', type: 'link', mandatory: true, notNull: true, linkedClass: 'Vocabulary'},
             {name: 'zygosity', type: 'string'},
-            {name: 'germline', type: 'boolean'}
+            {name: 'germline', type: 'boolean', description: 'Flag to indicate if the variant is germline (vs somatic)'}
         ],
         isAbstract: true
     },
@@ -367,8 +384,8 @@ for (let name of [
     SCHEMA_DEFN[name] = {
         inherits: ['E'],
         properties: [
-            {name: 'in', type: 'link'},
-            {name: 'out', type: 'link'},
+            {name: 'in', type: 'link', description: 'The record ID of the vertex the edge goes into, the target/destination vertex'},
+            {name: 'out', type: 'link', description: 'The record ID of the vertex the edge comes from, the source vertex'},
             sourceProp
         ],
         indices: [ // add index on the class so it doesn't apply across classes
@@ -393,6 +410,13 @@ for (let name of Object.keys(SCHEMA_DEFN)) {
     SCHEMA_DEFN[name].name = name;
 }
 
+// Add the permissions properties based on the other classes in the schema
+for (let name of Object.keys(SCHEMA_DEFN)) {
+    if (name !== 'Permissions') {
+        SCHEMA_DEFN.Permissions.properties.push({min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', notNull: true, readOnly: false, name: name});
+    }
+}
+
 class ClassModel {
     /**
      * @param {Object} opt
@@ -411,6 +435,7 @@ class ClassModel {
         this._subclasses = opt.subclasses || [];
         this.isEdge = opt.isEdge ? true : false;
         this._edgeRestrictions = opt.edgeRestrictions || null;
+        this.expose = opt.expose === undefined ? true : opt.expose;
         if (this._edgeRestrictions) {
             this.isEdge = true;
         }
@@ -427,7 +452,7 @@ class ClassModel {
     }
 
     get routeName() {
-        if (! this.isEdge && ! this.name.endsWith('ary')) {
+        if (! this.isEdge && ! this.name.endsWith('ary') && this.name.toLowerCase() !== 'evidence') {
             if (/.*[^aeiou]y$/.exec(this.name)) {
                 return `/${this.name.slice(0, this.name.length - 1)}ies`.toLowerCase();
             } else {
@@ -521,18 +546,23 @@ class ClassModel {
      * returns a partial json representation of the current class model
      */
     toJSON() {
-        return {
+        const json = {
             properties: this.properties,
             inherits: this.inherits,
             edgeRestrictions: this._edgeRestrictions
         };
+        if (this.expose) {
+            json.route = this.routeName;
+        }
+        return json;
     }
     /**
-     * Given some orientjs class object, convert it to the current model
+     * Given some orientjs class object, convert it to the current model. Compare the model to the schema definition expected
      * @param {object} oclass
+     * @param {object} schemaDefn the expected schema definition for this model
      * @returns {ClassModel} the parsed class
      */
-    static parseOClass(oclass) {
+    static parseOClass(oclass, schemaDefn) {
         const defaults = {};
         const cast = {};
         const properties = {};
@@ -548,16 +578,30 @@ class ClassModel {
             return castToRID(string);
         };
         for (let prop of oclass.properties) {
-            prop = _.omit(prop, ['class']);
+            prop = _.omit(prop, ['class', 'custom', 'originalName', 'collate']);
             if (prop.name.startsWith('@') && ! ['@version', '@class', '@rid'].includes(prop.name)) {
                 continue;
             }
-            properties[prop.name] = prop;
+            // get the property definition from the schema
+            let schemaProp;
+            for (let sprop of schemaDefn.properties || []) {
+                if (sprop.name === prop.name) {
+                    schemaProp = sprop;
+                    break;
+                }
+            }
+            if (! schemaProp) {
+                throw new Error(`failed to find the property ${prop.name} on the schema definition`);
+            }
+            const dbPropType = orientjs.types[prop.type].toLowerCase();
+            if (dbPropType !== schemaProp.type) {
+                throw new Error(`The type defined on the schema model (${schemaProp.type}) does not match the type loaded from the database (${dbPropType})`);
+            }
+            properties[prop.name] = Object.assign(prop, schemaProp);
 
             if (prop.defaultValue) {
                 defaults[prop.name] = () => prop.defaultValue;
             }
-            prop.type = orientjs.types[prop.type].toLowerCase();  // human readable, defaults to number system from the db
             if (prop.type === 'integer') {
                 cast[prop.name] = (x) => parseInt(x, 10);
             } else if (prop.type === 'string') {
@@ -585,6 +629,7 @@ class ClassModel {
             properties: properties,
             defaults: defaults,
             cast: cast,
+            expose: schemaDefn.expose,
             isAbstract: oclass.defaultClusterId === -1 ? true : false
         });
     }
@@ -798,13 +843,6 @@ const createSchema = async (db) => {
         await Promise.all(Array.from(classList, async (cls) => { return await createClassModel(db, cls); }));
     }
 
-    const properties = [];
-    for (let name of Object.keys(SCHEMA_DEFN)) {
-        if (name !== 'Permissions') {
-            properties.push({min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', notNull: true, readOnly: false, name: name});
-        }
-    }
-    await createProperties(Permissions, properties);
 
     if (VERBOSE) {
         console.log('Schema is Complete');
@@ -829,7 +867,7 @@ const loadSchema = async (db) => {
         if (/^(O[A-Z]|_)/.exec(cls.name)) {  // orientdb builtin classes
             continue;
         }
-        const model = ClassModel.parseOClass(cls);
+        const model = ClassModel.parseOClass(cls, SCHEMA_DEFN[cls.name]);
         schema[model.name] = model;
         if (SCHEMA_DEFN[model.name] === undefined) {
             throw new Error(`The class loaded from the database (${model.name}) is not defined in the SCHEMA_DEFN`);

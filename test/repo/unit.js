@@ -1058,7 +1058,7 @@ describe('ClassModel', () => {
                 defaultClusterId: 65,
                 properties: [],
                 superClass: 'Ontology'
-            });
+            }, {});
             expect(parsed).to.have.property('name', 'Pathway');
             expect(parsed).to.have.property('isAbstract', false);
             expect(parsed.required).to.eql([]);
@@ -1074,7 +1074,7 @@ describe('ClassModel', () => {
                 defaultClusterId: -1,
                 properties: [{name: 'prop1', mandatory: true, type: OJS_TYPES.any}],
                 superClass: null
-            });
+            }, {properties: [{type: 'any', name: 'prop1'}]});
             expect(parsed).to.have.property('name', 'name');
             expect(parsed).to.have.property('isAbstract', true);
             expect(parsed.required).to.eql(['prop1']);
@@ -1089,7 +1089,7 @@ describe('ClassModel', () => {
                 shortName: null,
                 properties: [{name: 'prop1', mandatory: false, type: OJS_TYPES.any}],
                 superClass: null
-            });
+            }, {properties: [{type: 'any', name: 'prop1'}]});
             expect(parsed.optional).to.eql(['prop1']);
         });
         it('parses default values', () => {
@@ -1098,7 +1098,7 @@ describe('ClassModel', () => {
                 shortName: null,
                 properties: [{name: 'prop1', mandatory: false, defaultValue: 1, type: OJS_TYPES.integer}],
                 superClass: null
-            });
+            }, {properties: [{type: 'integer', name: 'prop1'}]});
             expect(parsed.defaults).to.have.property('prop1');
         });
         it('parses integer cast', () => {
@@ -1107,7 +1107,7 @@ describe('ClassModel', () => {
                 shortName: null,
                 properties: [{name: 'prop1', mandatory: false, defaultValue: 1, type: OJS_TYPES.string}],
                 superClass: null
-            });
+            }, {properties: [{type: 'string', name: 'prop1'}]});
             expect(parsed.cast).to.have.property('prop1');
         });
     });
