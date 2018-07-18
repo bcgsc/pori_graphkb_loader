@@ -222,7 +222,7 @@ const uploadNCIT = async ({filename, conn}) => {
     const diseaseNodes = subclassTree(nodesByCode, [nodesByCode[ROOT_NODES.DISEASE]]);
     for (let node of Object.values(nodesByCode)) {
         if (diseaseNodes.tree[node.code] === undefined) {
-            if (node[PRED_MAP.CLASS][0] === 'Neoplastic Process') {
+            if (node[PRED_MAP.CLASS] && node[PRED_MAP.CLASS][0] === 'Neoplastic Process') {
                 diseaseNodes[node.code] = node;
             }
         }
