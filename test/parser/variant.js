@@ -481,10 +481,6 @@ describe('parseContinuous', () => {
             expect(() => { parseContinuous('e.1C>T'); }).to.throw(ParsingError);
             expect(() => { parseContinuous('e.C1T'); }).to.throw(ParsingError);
         });
-        it('errors because exon cannot have insertion type', () => {
-            expect(() => { parseContinuous('e.1_2ins'); }).to.throw(ParsingError);
-            expect(() => { parseContinuous('e.2ins'); }).to.throw(ParsingError);
-        });
         it('duplication single exon', () => {
             const result = parseContinuous('e.1dup');
             expect(result).to.eql({
