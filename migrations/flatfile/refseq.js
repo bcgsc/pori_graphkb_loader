@@ -6,7 +6,7 @@
 const parse = require('csv-parse/lib/sync');
 const fs = require('fs');
 const request = require('request-promise');
-const {getRecordBy, addRecord} = require('./util');
+const {getRecordBy, addRecord, orderPreferredOntologyTerms} = require('./util');
 
 
 const uploadRefSeq = async (opt) => {
@@ -21,7 +21,7 @@ const uploadRefSeq = async (opt) => {
         const transcript = await addRecord('features', {biotype: 'transcript', source: source['@rid'].toString(), sourceId: record.RNA}, conn, true);
         let hgnc;
         try {
-            hgnc = await getRecordBy('features', {source: {name: 'hgnc'}, name: record.Symbol}, conn);
+            hgnc = await getRecordBy('features', {source: {name: 'hgnc'}, name: record.Symbol}, conn, orderPreferredOntologyTerms);
         } catch (err) {
             process.stdout.write('?');
             continue;
