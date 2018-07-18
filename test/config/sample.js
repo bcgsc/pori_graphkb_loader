@@ -22,5 +22,6 @@ const db = {
 module.exports = {
     server, db,
     app: {port: process.env.PORT || 8080},
-    private_key: `${process.env.HOME}/.ssh/id_dsa`
+    private_key: `${process.env.HOME}/.ssh/id_dsa`,
+    disableCats: process.env.DISABLE_CATS === '1' ? true :false
 };

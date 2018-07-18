@@ -18,4 +18,4 @@ const db = {
     port: server.port
 };
 
-module.exports = {server, db, app: {port: process.env.PORT || 8080}, private_key: 'id_rsa'};
+module.exports = {server, db, app: {port: process.env.PORT || 8080}, private_key: 'id_rsa', disableCats: process.env.DISABLE_CATS === '1' ? true :false};
