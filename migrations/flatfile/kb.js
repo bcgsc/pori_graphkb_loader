@@ -7,6 +7,7 @@ const {getRecordBy, addRecord, orderPreferredOntologyTerms} = require('./util');
 const {VOCABULARY} = require('./vocab');
 
 
+const SOURCE_NAME = 'bcgsc';
 const TYPE_MAPPING = {
     MUT: 'mutation',
     SV: 'structural',

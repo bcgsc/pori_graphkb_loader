@@ -11,28 +11,57 @@ const {ParsingError} = require('./../../app/repo/error');
 
 const SOURCE_NAME = 'oncokb';
 
-const preferredDiseases = (disease1, disease2) => {
-    if (orderPreferredOntologyTerms(disease1, disease2) === 0) {
-        if (disease1.source.name !== disease2.source.name) {
-            if (disease1.source.name === 'oncotree') {
-                return -1;
-            } else if (disease2.source.name === 'oncotree') {
-                return 1;
+const VOCABULARY_MAPPING = {
+    'oncogenic mutations': 'oncogenic mutation',
+    fusions: 'fusion',
+    'truncating mutations': 'truncating',
+    'microsatellite instability-high': 'high microsatellite instability'
+
+};
+
+const DISEASE_MAPPING = {
+    'all tumors': 'disease of cellular proliferation',
+    'cns cancer': 'central nervous system cancer',
+    'non-langerhans cell histiocytosis/erdheim-chester disease': 'non-langerhans-cell histiocytosis'
+};
+
+const THERAPY_MAPPING = {
+    debio1347: 'debio-1347'
+};
+
+
+const preferredDiseases = (term1, term2) => {
+    const sourceRank = {
+        oncotree: 0,
+        'disease ontology': 1
+    };
+
+    if (orderPreferredOntologyTerms(term1, term2) === 0) {
+        if (term1.source.name !== term2.source.name) {
+            const rank1 = sourceRank[term1.source.name] === undefined ?  2 : sourceRank[term1.source.name];
+            const rank2 = sourceRank[term2.source.name] === undefined ?  2 : sourceRank[term2.source.name];
+            if (rank1 != rank2) {
+                return rank1 < rank2 ? -1 : 1;
             }
         }
         return 0;
     } else {
-        return orderPreferredOntologyTerms(disease1, disease2);
+        return orderPreferredOntologyTerms(term1, term2);
     }
 };
 
 const preferredDrugs = (term1, term2) => {
+    const sourceRank = {
+        drugbank: 0,
+        ncit: 1
+    };
+
     if (orderPreferredOntologyTerms(term1, term2) === 0) {
         if (term1.source.name !== term2.source.name) {
-            if (term1.source.name === 'drugbank') {
-                return -1;
-            } else if (term2.source.name === 'drugbank') {
-                return 1;
+            const rank1 = sourceRank[term1.source.name] === undefined ?  2 : sourceRank[term1.source.name];
+            const rank2 = sourceRank[term2.source.name] === undefined ?  2 : sourceRank[term2.source.name];
+            if (rank1 != rank2) {
+                return rank1 < rank2 ? -1 : 1;
             }
         }
         return 0;
@@ -79,7 +108,11 @@ const addTherapyCombination = async (conn, source, name) => {
  * Parses an actionable record from OncoKB and querys the GraphKB for existing terms
  * Converts this record into a GraphKB statement (where possible) and uploads the statement to the GraphKB
  *
- * @param rawRecord {object} the actionable variant JSON record from oncoKB
+ * @param opt {object} options
+ * @param opt.conn {ApiConnection} the connection object for sending requests to the GraphKB server
+ * @param opt.rawRecord {object} the record directly from OncoKB
+ * @param opt.source {object} the oncokb source object
+ * @param opt.pubmedSource {object} the source object for pubmed entries
  *
  * Expected types:
  * - Oncogenic Mutations
@@ -95,17 +128,96 @@ const addTherapyCombination = async (conn, source, name) => {
  */
 const processActionableRecord = async (opt) => {
     // first try to retrieve the gene rawRecord
-    const {conn, rawRecord, source, terms, pubmedSource} = opt;
+    const {conn, rawRecord, source, pubmedSource} = opt;
     rawRecord.gene = rawRecord.gene.toLowerCase().trim();
-    const gene = await getRecordBy('features', {
-        biotype: 'gene',
-        name: rawRecord.gene,
-        source: {name: 'hgnc'}
-    }, conn, orderPreferredOntologyTerms);
+    let variant;
+    if (rawRecord.gene === 'other biomarkers') {
+        try {
+            variant = await getRecordBy('vocabulary', {name: rawRecord.variant}, conn);
+        } catch (err) {}
+    }
+    if (! variant) {
+        let gene1 = await getRecordBy('features', {
+            biotype: 'gene',
+            name: rawRecord.gene,
+            source: {name: 'hgnc'}
+        }, conn, orderPreferredOntologyTerms);
+        let gene2 = null;
+
+        // determine the type of variant we are dealing with
+        variant = rawRecord.variant.toLowerCase();
+        let match = /^([a-z])?(\d+)_([a-z])?(\d+)splice$/.exec(variant);
+        if (match) {
+            variant = `(${match[1] || '?'}${match[2]}_${match[3] || '?'}${match[4]})spl`;
+        } else if (variant.endsWith('_splice')) {
+            variant = variant.replace('_splice', 'spl');
+        } else if (match = /^([^-\s]+)-([^-\s]+) fusion$/.exec(variant)) {
+            if (match[1].toLowerCase() === gene1.name) {
+                gene2 = await getRecordBy('features', {
+                    name: match[2],
+                    biotype: 'gene',
+                    source: {name: 'hgnc'}}, conn, orderPreferredOntologyTerms);
+            } else if (match[2].toLowerCase() === gene1.name) {
+                gene2 = gene1;
+                gene1 = await getRecordBy('features', {
+                    name: match[1],
+                    biotype: 'gene',
+                    source: {name: 'hgnc'}}, conn, orderPreferredOntologyTerms);
+            } else {
+                throw new Error(`the fusion in the variant ${variant} does not match the name of the gene feature ${gene1.name}`);
+            }
+            variant = 'fusion';
+        } else if (match = /^exon (\d+) (mutation|insertion|deletion|deletion\/insertion)s?$/.exec(variant)) {
+            if (match[2] === 'deletion/insertion') {
+                variant = `e.${match[1]}delins`;
+            } else {
+                variant = `e.${match[1]}${match[2].slice(0, 3)}`;
+            }
+        }
+        if (VOCABULARY_MAPPING[variant] !== undefined) {
+            variant = VOCABULARY_MAPPING[variant];
+        }
+
+        // if it fits one of the known term types usethat, otherwise attempt to parse as if protein notation
+        let variantUrl;
+        let variantType;
+        try {
+            variantType = await getRecordBy('vocabulary', {name: variant}, conn);
+            variantUrl = 'categoryvariants';
+            variant = {};
+        } catch (err) {
+            variant = await request(conn.request({
+                method: 'POST',
+                uri: 'parser/variant',
+                body: {content: `${variant.startsWith('e.') ? '' : 'p.'}${variant}`}
+            }));
+            variant = variant.result;
+            variantUrl = 'positionalvariants';
+            variantType = await getRecordBy('vocabulary', {name: variant.type}, conn);
+        }
+        variant.reference1 = gene1['@rid'];
+        if (gene2) {
+            variant.reference2 = gene2['@rid'];
+        }
+        variant.type = variantType['@rid'];
+        // create the variant
+        variant = await addRecord(variantUrl, variant, conn, true);
+    }
     // next attempt to find the cancer type (oncotree?)
-    const disease = await getRecordBy('diseases', {
-        name: rawRecord.cancerType,
-    }, conn, preferredDiseases);
+    let disease;
+    try {
+        disease = await getRecordBy('diseases', {
+            name: rawRecord.cancerType,
+        }, conn, preferredDiseases);
+    } catch (err) {
+        if (rawRecord.cancerType.includes('/')) {
+            disease = await getRecordBy('diseases', {
+                name: rawRecord.cancerType.split('/')[0].trim(),
+            }, conn, preferredDiseases);
+        } else {
+            throw err;
+        }
+    }
 
     // find the drug
     let drug;
@@ -113,43 +225,14 @@ const processActionableRecord = async (opt) => {
         drug = await getRecordBy('therapies', {name: rawRecord.drug}, conn, preferredDrugs);
     } catch (err) {
         if (rawRecord.drug.includes('+')) {
+            // add the combination therapy as a new therapy defined by oncokb
             drug = await addTherapyCombination(conn, source, rawRecord.drug);
         } else {
             throw err;
         }
     }
 
-    // determine the type of variant we are dealing with
-    let variant = rawRecord.variant;
-    let match = /^([A-Z])?(\d+)_([A-Z])?(\d+)splice$/.exec(variant);
-    if (match) {
-        variant = `(${match[1] || '?'}${match[2]}_${match[3] || '?'}${match[4]})spl`;
-    } else if (variant.endsWith('_splice')) {
-        variant = variant.replace('_splice', 'spl');
-    } else if (match = /^([a-z0-9]+)-([a-z0-9]+) fusion$/.exec(variant)) {
-    }
 
-    // if it fits one of the known term types usethat, otherwise attempt to parse as if protein notation
-    let variantUrl;
-    if (terms[variant.toLowerCase()] !== undefined) {
-        variant = {
-            type: variant.toLowerCase()
-        };
-        variantUrl = 'categoryvariants'
-    } else {
-        variant = await request(conn.request({
-            method: 'POST',
-            uri: 'parser/variant',
-            body: {content: `p.${variant}`}
-        }));
-        variant = variant.result;
-        variantUrl = 'positionalvariants';
-    }
-    variant.reference1 = gene['@rid'];
-    variant.type = await getRecordBy('vocabulary', {sourceId: variant.type}, conn, preferredVocabulary);
-    variant.type = variant.type['@rid'];
-    // create the variant
-    variant = await addRecord(variantUrl, variant, conn, true);
 
     // get the evidence level and determine the relevance
     const level = await getRecordBy('evidencelevels', {sourceId: rawRecord.level, source: source['@rid']}, conn);
@@ -221,29 +304,6 @@ const addEvidenceLevels = async (conn, source) => {
     return result;
 }
 
-/**
- * Pull the variant classifications from oncokb to add as potential terms
- */
-const addClassificationTerms = async (conn, source) => {
-    const URL = 'http://oncokb.org/api/v1/classification/variants';
-    const records = await request({
-        method: 'GET',
-        uri: URL,
-        json: true
-    });
-    const result = {};
-    for (let classification of records) {
-        const record = await addRecord('vocabulary', {
-            source: source['@rid'],
-            sourceId: classification,
-            name: classification,
-            url: URL
-        }, conn, true);
-        result[record.name] = record;
-    }
-    return result;
-};
-
 
 const upload = async (conn) => {
     const URL = 'http://oncokb.org/api/v1/utils/allActionableVariants';
@@ -264,24 +324,35 @@ const upload = async (conn) => {
 
     const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, true);
     let errorCount = 0;
+    let successCount = 0;
     const levels = await addEvidenceLevels(conn, source);
-    const terms = await addClassificationTerms(conn, source);
     //console.log(Object.keys(terms));
     for (let rawRecord of records) {
-        for (let drug of Array.from(rawRecord.drugs.split(','), x => x.trim()).filter(x => x.length > 0)) {
-            rawRecord.drug = drug;
+        for (let drug of Array.from(rawRecord.drugs.split(','), x => x.trim().toLowerCase()).filter(x => x.length > 0)) {
+            rawRecord.drug = THERAPY_MAPPING[drug] === undefined
+                ? drug
+                : THERAPY_MAPPING[drug];
+            rawRecord.cancerType = rawRecord.cancerType.toLowerCase().trim();
+            rawRecord.cancerType = DISEASE_MAPPING[rawRecord.cancerType] === undefined
+                ? rawRecord.cancerType
+                : DISEASE_MAPPING[rawRecord.cancerType];
+
+            rawRecord.variant = VOCABULARY_MAPPING[rawRecord.variant] === undefined
+                ? rawRecord.variant
+                : VOCABULARY_MAPPING[rawRecord.variant];
 
             try {
                 await processActionableRecord({
-                    conn, rawRecord, source, terms, pubmedSource
+                    conn, rawRecord, source, pubmedSource
                 });
+                successCount++;
             } catch(err) {
-                console.log(err.error ? err.error.message : err.message || err);
+                console.log('\n', err.error ? err.error.message : err.message || err, `variant: ${rawRecord.variant}`);
                 errorCount++;
             }
         }
     }
-    console.log('\nerrors:', errorCount);
+    console.log('\n', {successCount, errorCount, total: errorCount + successCount});
 };
 
-module.exports = {upload, preferredDrugs};
+module.exports = {upload, preferredDrugs, preferredDiseases};

@@ -4,7 +4,7 @@
  * https://civicdb.org/api/evidence_items
  */
 const {addRecord, getRecordBy, getPubmedArticle, orderPreferredOntologyTerms} = require('./util');
-const {preferredDrugs} = require('./oncokb');
+const {preferredDrugs, preferredDiseases} = require('./oncokb');
 const request = require('request-promise');
 const _ = require('lodash');
 const SOURCE_NAME = 'civic';
@@ -27,6 +27,19 @@ const VOCAB = {
 };
 
 const VARIANT_CACHE = {};  // cache variants from CIViC by CIVic ID
+const THERAPY_MAPPING = {
+    ch5132799: 'ch-5132799',
+    ag1296: 'ag 1296',
+    'hormone therapy': 'hormone therapy agent',
+    taxane: 'taxanes',
+    chemotherapy: 'chemotherapeutic agent',
+    cp724714: 'cp-724714',
+    'mk-2206': 'mk2206',
+    'trametinib dmso': 'trametinib dimethyl sulfoxide',
+    'pd-1 inhibitor': 'pd1 inhibitor',
+    'pf 00299804': 'pf-00299804',
+    'pd184352': 'pd-184352'
+};
 
 /**
  * Convert the CIViC relevance types to GraphKB terms
@@ -36,6 +49,7 @@ const getRelevance = (evidenceType, clinicalSignificance) => {
         case 'Predictive': {
             switch (clinicalSignificance) {
                 case 'Sensitivity':
+                case 'Adverse Response':
                 case 'Resistance': {
                     return clinicalSignificance.toLowerCase();
                 }
@@ -63,11 +77,14 @@ const getRelevance = (evidenceType, clinicalSignificance) => {
 
 
 const getDrug = async (conn, name) => {
+    if (THERAPY_MAPPING[name] !== undefined) {
+        name = THERAPY_MAPPING[name];
+    }
     try {
-        const drug = await getRecordBy('therapies', {name: name}, conn, preferredDrugs);
+        const drug = await getRecordBy('therapies', {name}, conn, preferredDrugs);
         return drug;
     } catch (err) {
-        const match = /^\s*(\S+)\s*\([^\)]+\)$/.exec(name);
+        let match = /^\s*(\S+)\s*\([^\)]+\)$/.exec(name);
         if (match) {
             return getRecordBy('therapies', {name: match[1]}, conn, preferredDrugs);
         }
@@ -86,7 +103,10 @@ const parseVariant = (string) => {
         case 'mutation': {
             return string.replace('-', ' ');
         }
+        case 'frameshift truncation': { return 'frameshift'; }
+        case 'itd': { return 'internal tandem duplication (itd)'; }
     }
+    return string;
 }
 
 
@@ -121,29 +141,39 @@ const processEvidenceRecord = async (opt) => {
     // get the feature (entrez name appears to be synonymous with hugo symbol)
     const feature = await getRecordBy('features', {name: variantRec.entrez_name, source: {name: 'hgnc'}}, conn, orderPreferredOntologyTerms);
     // parse the variant record
-    if (variantRec.name.toLowerCase().includes('expression'))
-        console.log(variantRec.name, variantRec.description);
-    let variant = await request(conn.request({
-        method: 'POST',
-        uri: 'parser/variant',
-        body: {content: `p.${variantRec.name}`}
-    }));
-    const variantClass = await getRecordBy('vocabulary', {name: variant.result.type, source: {name: 'bc gsc'}}, conn);
-    variant = await addRecord('positionalvariants', Object.assign(variant.result, {
-        reference1: feature['@rid'],
-        type: variantClass['@rid']
-    }), conn, true);
+    let variant = parseVariant(variantRec.name);
+    try {
+        const variantClass = await getRecordBy('vocabulary', {name: variant}, conn);
+        variant = await addRecord('categoryvariants', {type: variantClass['@rid'], reference1: feature['@rid']}, conn, true);
+    } catch (err) {
+        variant = await request(conn.request({
+            method: 'POST',
+            uri: 'parser/variant',
+            body: {content: `p.${variant}`}
+        }));
+        if (variant.result.untemplatedSeq === undefined) {
+            variant.result.untemplatedSeq = null;
+        }
+        const variantClass = await getRecordBy('vocabulary', {name: variant.result.type}, conn);
+        variant = await addRecord('positionalvariants', Object.assign(variant.result, {
+            reference1: feature['@rid'],
+            type: variantClass['@rid']
+        }), conn, true);
+    }
 
     // get the disease by doid
-    const disease = await getRecordBy('diseases', {
-        sourceId: `doid:${rawRecord.disease.doid}`,
-        name: rawRecord.disease.name,
-        source: {name: 'disease ontology'}
-    }, conn);
+    let disease = {};
+    if (rawRecord.disease.doid) {
+        disease.sourceId = `doid:${rawRecord.disease.doid}`;
+        disease.source = {name: 'disease ontology'};
+    } else {
+        disease.name = rawRecord.disease.name;
+    }
+    disease = await getRecordBy('diseases', disease, conn, preferredDiseases);
     // get the drug(s) by name
     let drug;
     if (rawRecord.drug) {
-        drug = await getDrug(conn, rawRecord.drug.name);
+        drug = await getDrug(conn, rawRecord.drug.name.toLowerCase().trim());
     }
     // get the publication by pubmed ID
     let publication;
@@ -181,7 +211,7 @@ const processEvidenceRecord = async (opt) => {
             description: rawRecord.description
         }, conn);
     }
-    throw new Error('unable to make statment', relevance.name);
+    throw new Error('unable to make statement', relevance.name);
 };
 
 const upload = async (conn) => {
@@ -189,6 +219,7 @@ const upload = async (conn) => {
     // load directly from their api
     let errorCount = 0;
     let totalCount = 0;
+    let successCount = 0;
     let skipCount = 0;
     let expectedPages = 1;
     let currentPage = 1;
@@ -215,7 +246,7 @@ const upload = async (conn) => {
 
 
         for (let record of resp.records) {
-            if (record.evidence_direction === 'Does Not Support') {
+            if (record.evidence_direction === 'Does Not Support' || record.evidence_type === 'Predisposing') {
                 skipCount++;
                 continue;
             }
@@ -229,16 +260,21 @@ const upload = async (conn) => {
                         conn, source, pubmedSource,
                         rawRecord: Object.assign({drug}, _.omit(record, ['drugs']))
                     });
+                    successCount++;
                 } catch (err) {
-                    console.log('error:', err.message.slice(0, 80));
+                    if (! err.error || err.error.name != 'ParsingError') {
+                        console.log();
+                        console.error(err.error || err);
+                    }
                     errorCount++;
                 }
             }
         }
+        console.log({errorCount, successCount, skipCount, totalCount});
         currentPage++;
     }
     console.log();
-    console.log({errorCount, totalCount, skipCount});
+    console.log({errorCount, totalCount, skipCount, successCount});
 };
 
 module.exports = {upload};

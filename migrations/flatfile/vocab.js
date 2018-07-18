@@ -1,3 +1,7 @@
+const {addRecord} = require('./util');
+
+const SOURCE_NAME = 'bcgsc';
+
 const VOCABULARY = [
     {name: 'acquired resistance', subclassof: ['resistance'], oppositeof: ['innate resistance']},
     {name: 'amplification', subclassof: ['copy gain']},
@@ -6,8 +10,8 @@ const VOCABULARY = [
     {name: 'copy gain', subclassof: ['copy variant']},
     {name: 'copy loss', subclassof: ['copy variant']},
     {name: 'copy variant', subclassof: ['mutation']},
-    {name: 'decreased dosage', subclassof: ['dosage']},
-    {name: 'decreased metabolism', subclassof: ['metabolism']},
+    {name: 'decreased dosage', subclassof: ['dosage'], oppositeof: ['increased dosage'], description: 'requires decreased dosage'},
+    {name: 'decreased metabolism', subclassof: ['metabolism'], oppositeof: ['increased metabolism'], description: 'decreased clearance of a drug'},
     {name: 'decreased toxicity', subclassof: ['toxicity']},
     {name: 'deletion', subclassof: ['indel', 'copy loss']},
     {name: 'diagnostic indicator', description: 'evidence is diagnostic for a specific disease type, disease subtype or disease state'},
@@ -28,16 +32,16 @@ const VOCABULARY = [
     {name: 'gain of function', subclassof: ['increased function'], oppositeof: ['loss of function'], description: 'event imparts an acquired function on the product leading to a specific observable phenotype'},
     {name: 'haploinsufficient', subclassof: ['tumour suppressive'], description: 'an event leading to loss of function in a product that is dosage dependant such that the incomplete loss of function leads to an observable phenotype when event is in a heterozygous state'},
     {name: 'in-frame deletion', subclassof: ['deletion']},
-    {name: 'in-frameshift insertion', subclassof: ['insertion']},
-    {name: 'increased dosage', subclassof: ['dosage']},
+    {name: 'in-frame insertion', subclassof: ['insertion']},
+    {name: 'increased dosage', subclassof: ['dosage'], description: 'requires increased dosage'},
     {name: 'increased expression', subclassof: ['expression variant'], aliasof: ['overexpression', 'up-regulated expression']},
     {name: 'increased function', subclassof: ['functional effect'], oppositeof: ['reduced function'], description: 'the efficacy or frequency of the existing functionality is increased'},
-    {name: 'increased metabolism', subclassof: ['metabolism']},
+    {name: 'increased metabolism', subclassof: ['metabolism'], description: 'increased clearance of a drug'},
     {name: 'increased metastasis', subclassof: ['unfavourable prognosis']},
     {name: 'increased protein expression', subclassof: ['protein expression variant', 'increased expression'], aliasof: ['protein overexpression', 'up-regulated protein expression']},
     {name: 'increased rna expression', subclassof: ['rna expression variant', 'increased expression'], aliasof: ['rna overexpression', 'up-regulated rna expression']},
     {name: 'increased survival', subclassof: ['favourable prognosis']},
-    {name: 'increased toxicity', subclassof: ['toxicity']},
+    {name: 'increased toxicity', subclassof: ['toxicity'], aliasof: ['adverse response']},
     {name: 'indel', subclassof: ['mutation']},
     {name: 'innate resistance', subclassof: ['resistance']},
     {name: 'insertion', subclassof: ['indel']},
@@ -58,6 +62,7 @@ const VOCABULARY = [
     {name: 'missense mutation', subclassof: ['substitution']},
     {name: 'mutation hotspot', subclassof: ['recurrent'], description: 'the specific residue noted has been observed to be recurrently and commonly mutated at some signifiant frequency above random in numerrous independent observations'},
     {name: 'mutation', subclassof: ['biological'], description: 'generally small mutations or intra-chromosomal rearrangements'},
+    {name: 'no expression', subclassof: ['expression variant']},
     {name: 'no functional effect', subclassof: ['biological'], description: 'does not result in altered functionality as compared to the wild-type'},
     {name: 'no gain of function', subclassof: ['no functional effect'], oppositeof: ['gain of function'], description: 'does not result in gain-of-function'},
     {name: 'no loss of function', subclassof: ['no functional effect'], oppositeof: ['loss of function'], description: 'does not result in loss-of-function'},
@@ -68,6 +73,7 @@ const VOCABULARY = [
     {name: 'no sensitivity', subclassof: ['therapeutic efficacy'], oppositeof: ['sensitivity'], description: 'does not confer increased sensitivity as compared to wild-type state'},
     {name: 'no switch of function', subclassof: ['no functional effect'], oppositeof: ['switch of function']},
     {name: 'oncogenic fusion', subclassof: ['oncogenic', 'fusion'], description: 'fusion whose product promotes cancer'},
+    {name: 'oncogenic mutation', subclassof: ['mutation', 'oncogenic']},
     {name: 'oncogenic', subclassof: ['tumourigenesis'], description: 'having the potential to cause a normal cell to become cancerous'},
     {name: 'opposes diagnosis', subclassof: ['diagnostic indicator']},
     {name: 'pathogenic', subclassof: ['biological']},
@@ -98,7 +104,68 @@ const VOCABULARY = [
     {name: 'truncating', subclassof: ['mutation']},
     {name: 'tumour suppressive', subclassof: ['tumourigenesis'], description: 'suppresses or blocks the development of cancer'},
     {name: 'tumourigenesis', subclassof: ['biological']},
-    {name: 'unfavourable prognosis', subclassof: ['prognostic indicator'], description: 'event is associated with a specifed, unfavouable outcome'}
+    {name: 'phenotype', subclassof: ['biological']},
+    {name: 'microsatellite phenotype', subclassof: ['phenotype']},
+    {name: 'microsatellite stable', subclassof: ['microsatellite phenotype'], aliasof: ['MSS']},
+    {name: 'microsatellite instability', subclassof: ['microsatellite phenotype']},
+    {name: 'low microsatellite instability', subclassof: ['microsatellite instability'], aliasof: ['MSI-low']},
+    {name: 'high microsatellite instability', subclassof: ['microsatellite instability'], aliasof: ['MSI-high']},
+    {name: 'unfavourable prognosis', subclassof: ['prognostic indicator'], description: 'event is associated with a specifed, unfavouable outcome'},
+    {name: 'wildtype', subclassof: ['no functional effect']}
 ];
 
-module.exports = {VOCABULARY};
+
+const upload = async (conn) => {
+    console.log('Loading custom vocabulary terms');
+    const termsByName = {};
+    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, true);
+    // add the records
+    for (let term of VOCABULARY) {
+        term.name = term.name.toLowerCase();
+        const content = {
+            name: term.name,
+            sourceId: term.name,
+            source: source['@rid']
+        };
+        if (term.description) {
+            content.description = term.description;
+        }
+        const record = await addRecord('vocabulary', content, conn, true, ['description']);
+        termsByName[record.name] = record;
+    }
+    // now add the edge links
+    console.log('\nRelating custom vocabulary');
+    for (let term of VOCABULARY) {
+        term.name = term.name.toLowerCase();
+        for (let parent of term.subclassof || []) {
+            await addRecord('subclassof', {
+                out: termsByName[term.name]['@rid'],
+                in: termsByName[parent.toLowerCase()]['@rid'],
+                source: source['@rid']
+            }, conn, true);
+        }
+        for (let parent of term.aliasof || []) {
+            parent = await addRecord('vocabulary', {
+                name: parent,
+                sourceId: parent,
+                source: source['@rid']
+            }, conn, true);
+            await addRecord('aliasof', {
+                out: termsByName[term.name]['@rid'],
+                in: parent['@rid'],
+                source: source['@rid']
+            }, conn, true);
+        }
+        for (let parent of term.oppositeof || []) {
+            await addRecord('oppositeof', {
+                out: termsByName[term.name]['@rid'],
+                in: termsByName[parent.toLowerCase()]['@rid'],
+                source: source['@rid']
+            }, conn, true);
+        }
+    }
+    console.log();
+    return termsByName;
+};
+
+module.exports = {VOCABULARY, upload, SOURCE_NAME};

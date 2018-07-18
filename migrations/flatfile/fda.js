@@ -24,7 +24,7 @@ const upload = async (opt) => {
     let skipCount = 0;
 
     for (let record of jsonList) {
-        if (record.NCIT.length === 0 && ! /[mn][ia]b$/i.exec(record.PT)) {
+        if (record.NCIT.length === 0 && ! /\S+[mn][ia]b\b/i.exec(record.PT)) {
             skipCount++;
             continue;
         }

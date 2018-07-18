@@ -99,7 +99,9 @@ const PRED_MAP = {
     SYNONYM: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P90',
     HASPARENT: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#A11',
     SUBCLASSOF: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
-    DEPRECATED: 'http://www.w3.org/2002/07/owl#deprecated'
+    DEPRECATED: 'http://www.w3.org/2002/07/owl#deprecated',
+    UNII: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P319',
+    CLASS: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P106'
 };
 
 
@@ -132,7 +134,7 @@ const subclassTree = (nodesByCode, roots) => {
 /**
  * Given some list of OWL records, convert to json format and upload to KB through the API
  */
-const createRecords = async (inputRecords, dbClassName, conn, source) => {
+const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource) => {
     const records = {};
     console.log(`\nLoading ${Object.keys(inputRecords).length} ${dbClassName} nodes`);
     for (let node of Object.values(inputRecords)) {
@@ -165,6 +167,22 @@ const createRecords = async (inputRecords, dbClassName, conn, source) => {
             const aliasRecord = await addRecord(dbClassName, aliasBody, conn, true, ['dependency']);
             await addRecord('aliasof', {source: source['@rid'], out: aliasRecord['@rid'], in: dbEntry['@rid']}, conn, true);
         }
+        // add the link to the FDA
+        if (fdaSource && node[PRED_MAP.FDA] && node[PRED_MAP.FDA].length) {
+            let fdaRec;
+            try {
+                fdaRec = await getRecordBy(dbClassName, {source: fdaSource['@rid'], name: node[PRED_MAP.FDA][0]}, conn);
+            } catch (err) {
+                process.write('?');
+            }
+            if (fdaRec) {
+                await addRecord('aliasof', {
+                    source: source['@rid'],
+                    out: dbEntry['@rid'],
+                    in: fdaRec['@rid']
+                }, conn, true);
+            }
+        }
         records[dbEntry.sourceId] = dbEntry;
     }
     return records;
@@ -181,6 +199,12 @@ const uploadNCIT = async ({filename, conn}) => {
     const nodesByCode = convertOwlGraphToJson(graph, parseNcitID);
 
     const source = await addRecord('sources', {name: 'ncit'}, conn, true);
+    let fdaSource;
+    try {
+        fdaSource = await getRecordBy('sources', {name: 'fda'}, conn);
+    } catch (err) {
+        process.stdout.write('?');
+    }
 
     // for the given source nodes, include all descendents Has_NICHD_Parentdants/subclasses
     for (let node of Object.values(nodesByCode)) {
@@ -196,6 +220,13 @@ const uploadNCIT = async ({filename, conn}) => {
     }
 
     const diseaseNodes = subclassTree(nodesByCode, [nodesByCode[ROOT_NODES.DISEASE]]);
+    for (let node of Object.values(nodesByCode)) {
+        if (diseaseNodes.tree[node.code] === undefined) {
+            if (node[PRED_MAP.CLASS][0] === 'Neoplastic Process') {
+                diseaseNodes[node.code] = node;
+            }
+        }
+    }
     const therapyNodes = subclassTree(nodesByCode, [
         nodesByCode[ROOT_NODES.PHARMA],
         nodesByCode[ROOT_NODES.CHEM_MOD],
@@ -208,13 +239,13 @@ const uploadNCIT = async ({filename, conn}) => {
     subclassEdges.push(...anatomyNodes.edges);
 
     const records = {};
-    let result = await createRecords(anatomyNodes.tree, 'anatomicalentities', conn, source);
+    let result = await createRecords(anatomyNodes.tree, 'anatomicalentities', conn, source, fdaSource);
     Object.assign(records, result);
 
-    result = await createRecords(therapyNodes.tree, 'therapies', conn, source);
+    result = await createRecords(therapyNodes.tree, 'therapies', conn, source, fdaSource);
     Object.assign(records, result);
 
-    result = await createRecords(diseaseNodes.tree, 'diseases', conn, source);
+    result = await createRecords(diseaseNodes.tree, 'diseases', conn, source, fdaSource);
     Object.assign(records, result);
 
     console.log(`\nLoading ${subclassEdges.length} subclassof relationships`);

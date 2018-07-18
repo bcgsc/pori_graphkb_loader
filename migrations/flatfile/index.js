@@ -19,6 +19,7 @@ const {uploadRefSeq} = require('./refseq');
 const {upload: uploadOncoKB} = require('./oncokb');
 const {upload: uploadFDA} = require('./fda');
 const {upload: uploadCivic} = require('./civic');
+const {upload: uploadVocab} = require('./vocab');
 
 const argumentError = (usage, msg) => {
     console.log(usage);
@@ -125,6 +126,10 @@ const optionDefinitions = [
     {
         name: 'civic',
         description: 'upload civic using their api'
+    },
+    {
+        name: 'vocab',
+        description: 'load the custom vocabulary terms and descriptions'
     }
 ];
 
@@ -201,6 +206,9 @@ const apiConnection = new ApiRequest(options);
 const upload = async () => {
     await apiConnection.setAuth(options);
     console.log('Login Succeeded\n');
+    if (options.vocab !== undefined) {
+        await uploadVocab(apiConnection);
+    }
     if (options['ncit']) {
         await uploadNCIT({conn: apiConnection, filename: options['ncit']});
     }

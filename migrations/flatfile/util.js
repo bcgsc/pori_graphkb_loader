@@ -3,18 +3,29 @@ const _ = require('lodash');
 const jc = require('json-cycle');
 
 const getRecordBy = async (className, where, conn, sortFunc=(x, y) => 0) => {
+    const queryParams = {};
+    for (let param of Object.keys(where)) {
+        if (where[param] === null) {
+            queryParams[param] = 'null';
+        } else {
+            queryParams[param] = where[param];
+        }
+    }
     let newRecord = await request(conn.request({
         uri: className,
-        qs: Object.assign({neighbors: 1}, where)
+        qs: Object.assign({neighbors: 1}, queryParams)
     }));
     newRecord = jc.retrocycle(newRecord.result);
     newRecord.sort(sortFunc);
     if (newRecord.length > 1) {
         if (sortFunc(newRecord[0], newRecord[1]) == 0) {
+            console.log(where);
+            console.log(newRecord[0].sourceId, newRecord[0].name);
+            console.log(newRecord[1].sourceId, newRecord[1].name);
             throw new Error(`expected a single ${className} record: ${where.name || where.sourceId || where}`);
         }
     } else if (newRecord.length == 0) {
-        throw new Error(`missing ${className} record: ${where.name || where.sourceId || Object.entries(where)}`);
+        throw new Error(`missing ${className} record: ${where.name || where.sourceId || Object.entries(where)} (${where.sourceId})`);
     }
     newRecord = newRecord[0];
     return newRecord;
@@ -34,11 +45,11 @@ const addRecord = async (className, where, conn, exists_ok=false, getIgnore=[]) 
     });
     try {
         const newRecord = await request(opt);
-        process.stdout.write('.');
+        process.stdout.write(where.out && where.in ? '-' : '.');
         return newRecord.result;
     } catch (err) {
         if (exists_ok && err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
-            process.stdout.write('*');
+            process.stdout.write(where.out && where.in ? '=' : '*');
             return await getRecordBy(className, _.omit(where, getIgnore), conn);
         }
         throw err;
