@@ -20,7 +20,8 @@ const EVENT_SUBTYPE = {
     ME: 'methylation',
     AC: 'acetylation',
     UB: 'ubiquitination',
-    SPL: 'splice-site'
+    SPL: 'splice-site',
+    MUT: 'mutation'
 };
 
 
@@ -38,7 +39,8 @@ const NOTATION_TO_SUBTYPE = new Map([
     ['trans', EVENT_SUBTYPE.TRANS],
     ['itrans', EVENT_SUBTYPE.ITRANS],
     ['spl', EVENT_SUBTYPE.SPL],
-    ['fusion', EVENT_SUBTYPE.FUSION]
+    ['fusion', EVENT_SUBTYPE.FUSION],
+    ['mut', EVENT_SUBTYPE.MUT]
 ]);
 
 /**
@@ -419,15 +421,6 @@ const parseContinuous = (inputString) => {
         } else if (! [EVENT_SUBTYPE.DUP, EVENT_SUBTYPE.DEL, EVENT_SUBTYPE.GAIN, EVENT_SUBTYPE.LOSS, EVENT_SUBTYPE.INV].includes(result.type)) {
             throw new ParsingError({
                 message: 'Invalid type for cytoband level event notation',
-                parsed: result
-            });
-        }
-    } else if (prefix === 'e') {
-        if (result.refSeq || result.untemplatedSeq) {
-            throw new ParsingError('cannot define sequence elements at the exon level');
-        } else if (! [EVENT_SUBTYPE.DUP, EVENT_SUBTYPE.DEL].includes(result.type)) {
-            throw new ParsingError({
-                message: 'only duplication and deletion events can be declared at the exon level',
                 parsed: result
             });
         }
