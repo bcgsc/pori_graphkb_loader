@@ -38,7 +38,8 @@ const THERAPY_MAPPING = {
     'trametinib dmso': 'trametinib dimethyl sulfoxide',
     'pd-1 inhibitor': 'pd1 inhibitor',
     'pf 00299804': 'pf-00299804',
-    'pd184352': 'pd-184352'
+    'pd184352': 'pd-184352',
+    'trichostatin a (tsa)': 'trichostatin a'
 };
 
 /**
