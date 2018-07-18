@@ -4,7 +4,7 @@
 
 const _ = require('lodash');
 const request = require('request-promise');
-const {addRecord, getRecordBy} = require('./util');
+const {addRecord, getRecordBy, orderPreferredOntologyTerms} = require('./util');
 const {castToRID} = require('./../../app/repo/util');
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
@@ -138,7 +138,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                     let ncitNode;
                     try {
                         const ncitId = `${match[1].toLowerCase()}`;
-                        ncitNode = await getRecordBy('diseases', {source: ncitSource, sourceId: ncitId}, conn);
+                        ncitNode = await getRecordBy('diseases', {source: ncitSource, sourceId: ncitId}, conn, orderPreferredOntologyTerms);
                     } catch (err) {
                         process.stdout.write('?');
                     }

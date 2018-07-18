@@ -3,7 +3,7 @@
  */
 const rdf = require('rdflib');
 const fs = require('fs');
-const {addRecord, getRecordBy, convertOwlGraphToJson} = require('./util');
+const {addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms} = require('./util');
 
 
 const parseUberonId = (string) => {
@@ -104,7 +104,7 @@ const uploadUberon = async ({filename, conn}) => {
             continue;
         }
         try {
-            const ncitRecord = await getRecordBy('anatomicalentities', {source: {name: 'ncit'}, sourceId: tgt}, conn);
+            const ncitRecord = await getRecordBy('anatomicalentities', {source: {name: 'ncit'}, sourceId: tgt}, conn, orderPreferredOntologyTerms);
             await addRecord('aliasof', {
                 out: records[src]['@rid'],
                 in: ncitRecord['@rid'],
