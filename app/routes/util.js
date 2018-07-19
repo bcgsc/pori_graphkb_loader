@@ -5,11 +5,12 @@ const HTTP_STATUS = require('http-status-codes');
 const jc = require('json-cycle');
 const _ = require('lodash');
 
-const {ErrorMixin, AttributeError, NoRecordFoundError,  RecordExistsError} = require('./../repo/error');
+const {ErrorMixin, AttributeError, NoRecordFoundError,  RecordExistsError, PermissionError} = require('./../repo/error');
 const {select, create, update, remove, QUERY_LIMIT, SPEICAL_QUERY_ARGS, Clause, Comparison} = require('./../repo/base');
 const {getParameterPrefix, looksLikeRID, VERBOSE} = require('./../repo/util');
 const {INDEX_SEP_CHARS} = require('./../repo/schema');
 const escapeStringRegexp = require('escape-string-regexp');
+const {PERMISSIONS} = require('./../repo/constants');
 
 //const SPEICAL_QUERY_ARGS = new Set(['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip']);
 const MAX_JUMPS = 4;  // fetchplans beyond 6 are very slow
@@ -42,6 +43,27 @@ const validateParams = async (opt) => {
         }
     }
     return true;
+};
+
+
+const validateRoutePermissions = (operation, model, user) => {
+    const mapping = {
+        GET: PERMISSIONS.READ,
+        UPDATE: PERMISSIONS.UPDATE,
+        DELETE: PERMISSIONS.DELETE,
+        POST: PERMISSIONS.CREATE,
+        PATCH: PERMISSIONS.UPDATE
+    };
+    for (let group of user.groups) {
+        // Default to no permissions
+        const permissions = group.permissions[model.name] === undefined
+            ? PERMISSIONS.NONE
+            : group.permissions[model.name];
+        if (mapping[operation] & permissions) {
+            return;
+        }
+    }
+    throw new PermissionError(`The user ${user.name} does not have sufficient permissions to perform a ${operation} operation on class ${model.name}`);
 };
 
 
@@ -167,6 +189,11 @@ const addResourceRoutes = (opt) => {
     router.get(route,
         async (req, res) => {
             try {
+                validateRoutePermissions(req.method, model, req.user);
+            } catch (err) {
+                return res.status(HTTP_STATUS.FORBIDDEN).json(err);
+            }
+            try {
                 req.query = parseQueryLanguage(req.query);
             } catch (err) {
                 if (err instanceof InputValidationError) {
@@ -212,6 +239,11 @@ const addResourceRoutes = (opt) => {
 
     router.post(route,
         async (req, res) => {
+            try {
+                validateRoutePermissions(req.method, model, req.user);
+            } catch (err) {
+                return res.status(HTTP_STATUS.FORBIDDEN).json(err);
+            }
             if (! _.isEmpty(req.query)) {
                 res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type', params: req.query}));
                 return;
@@ -237,6 +269,11 @@ const addResourceRoutes = (opt) => {
     // Add the rid routes
     router.get(`${route}/:rid`,
         async (req, res) => {
+            try {
+                validateRoutePermissions(req.method, model, req.user);
+            } catch (err) {
+                return res.status(HTTP_STATUS.FORBIDDEN).json(err);
+            }
             try {
                 req.query = parseQueryLanguage(req.query);
             } catch (err) {
@@ -285,6 +322,11 @@ const addResourceRoutes = (opt) => {
         });
     router.patch(`${route}/:rid`,
         async (req, res) => {
+            try {
+                validateRoutePermissions(req.method, model, req.user);
+            } catch (err) {
+                return res.status(HTTP_STATUS.FORBIDDEN).json(err);
+            }
             if (! looksLikeRID(req.params.rid, false)) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.rid}`}));
             }
@@ -318,6 +360,11 @@ const addResourceRoutes = (opt) => {
     );
     router.delete(`${route}/:rid`,
         async (req, res) => {
+            try {
+                validateRoutePermissions(req.method, model, req.user);
+            } catch (err) {
+                return res.status(HTTP_STATUS.FORBIDDEN).json(err);
+            }
             if (! looksLikeRID(req.params.rid, false)) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.rid}`}));
             }

@@ -369,17 +369,22 @@ const STUB = {
             }
         },
         responses: {
+            Forbidden: {
+                description: 'The current user does not have the required permissions to access this content',
+                content: {'application/json': {schema: {
+                    $ref: '#/components/schemas/Error',
+                    properties: {name: {example: 'PermissionError'}}
+                }}}
+            },
             NotAuthorized: {
                 description: 'Authorization failed or insufficient permissions were found',
                 content: {'application/json': {schema: {
-                    type: 'object',
                     $ref: '#/components/schemas/Error'
                 }}}
             },
             RecordExistsError: {
                 description: 'The record cannot be created, the record already exists',
                 content: {'application/json': {schema: {
-                    type: 'object',
                     $ref: '#/components/schemas/Error',
                     properties: {name: {example: 'RecordExistsError'}}
                 }}}
@@ -387,7 +392,6 @@ const STUB = {
             BadInput: {
                 description: 'Bad request contains invalid input',
                 content: {'application/json': {schema: {
-                    type: 'object',
                     $ref: '#/components/schemas/Error',
                     properties: {name: {example: 'AttributeError'}}
                 }}}
@@ -613,7 +617,8 @@ const describePost = (model) => {
             },
             401: {$ref: '#/components/responses/NotAuthorized'},
             400: {$ref: '#/components/responses/BadInput'},
-            409: {$ref: '#/components/responses/RecordExistsError'}
+            409: {$ref: '#/components/responses/RecordExistsError'},
+            403: {$ref: '#/components/responses/Forbidden'}
         }
     };
     return post;
@@ -644,7 +649,8 @@ const describeGet = (model) => {
                 }}}
             },
             401: {$ref: '#/components/responses/NotAuthorized'},
-            400: {$ref: '#/components/responses/BadInput'}
+            400: {$ref: '#/components/responses/BadInput'},
+            403: {$ref: '#/components/responses/Forbidden'}
         }
     };
     if (! model.isAbstract) {
@@ -721,7 +727,8 @@ const describeOperationByID = (model, operation='delete') => {
             }}}},
             401: {$ref: '#/components/responses/NotAuthorized'},
             400: {$ref: '#/components/responses/BadInput'},
-            404: {$ref: '#/components/responses/RecordNotFound'}
+            404: {$ref: '#/components/responses/RecordNotFound'},
+            403: {$ref: '#/components/responses/Forbidden'}
         }
     };
     if (operation !== 'delete') {

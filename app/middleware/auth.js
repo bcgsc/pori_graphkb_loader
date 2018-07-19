@@ -63,7 +63,7 @@ const checkToken = async (req, res, next) => {
     }
     const token = req.header('Authorization');
     if (token === undefined) {
-        return res.status(HTTP_STATUS.UNAUTHORIZED).json({message: 'did not find authorized token', type: 'PermissionError'});
+        return res.status(HTTP_STATUS.UNAUTHORIZED).json({message: 'did not find authorized token', name: 'PermissionError'});
     }
     try {
         const decoded = jwt.verify(token, keys.private);

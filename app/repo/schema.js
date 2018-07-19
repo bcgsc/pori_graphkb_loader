@@ -761,7 +761,7 @@ const createClassModel = async (db, schemaModel) => {
     }
 
     const cls = await db.class.create(model.name, model.inherits, null, model.isAbstract); // create the class first
-    await createProperties(model.name, model.properties);
+    await createProperties(cls, model.properties);
     await Promise.all(Array.from(model.indices, (i) => db.index.create(i)));
     return cls;
 };
