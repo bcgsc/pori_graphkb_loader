@@ -19,6 +19,8 @@ const INDEX_SEP_CHARS = ' \r\n\t:;,.|+*/\\=!?[]()';  // default separator chars 
 const SCHEMA_DEFN = {
     V: {
         properties: [
+            {name: '@rid', type: 'string', pattern: '^#\d+:\d+$', description: 'The record identifier'},
+            {name: '@class', type: 'string', description: 'The database class this record belongs to'},
             {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, description: 'Internal identifier for tracking record history'},
             {name: 'createdAt', type: 'long', mandatory: true, notNull: true, description: 'The timestamp at which the record was created'},
             {name: 'deletedAt', type: 'long', description: 'The timestamp at which the record was deleted'},
@@ -31,6 +33,8 @@ const SCHEMA_DEFN = {
     },
     E: {
         properties: [
+            {name: '@rid', type: 'string', pattern: '^#\d+:\d+$', description: 'The record identifier'},
+            {name: '@class', type: 'string', description: 'The database class this record belongs to'},
             {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, description: 'Internal identifier for tracking record history'},
             {name: 'createdAt', type: 'long', mandatory: true, notNull: true, description: 'The timestamp at which the record was created'},
             {name: 'deletedAt', type: 'long', description: 'The timestamp at which the record was deleted'},
@@ -43,6 +47,8 @@ const SCHEMA_DEFN = {
     },
     UserGroup: {
         properties: [
+            {name: '@rid', type: 'string', pattern: '^#\d+:\d+$', description: 'The record identifier'},
+            {name: '@class', type: 'string', description: 'The database class this record belongs to'},
             {name: 'name', type: 'string', mandatory: true, notNull: true},
             {name: 'permissions', type: 'embedded', linkedClass: 'Permissions'}
         ],
@@ -68,6 +74,8 @@ const SCHEMA_DEFN = {
     },
     User: {
         properties: [
+            {name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier'},
+            {name: '@class', type: 'string', description: 'The database class this record belongs to'},
             {name: 'name', type: 'string', mandatory: true, notNull: true, description: 'The username'},
             {name: 'groups', type: 'linkset', linkedClass: 'UserGroup', description: 'Groups this user belongs to. Defines permissions for the user'},
             {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true},
@@ -155,8 +163,10 @@ const SCHEMA_DEFN = {
             {name: 'biotype', type: 'string', mandatory: true, notNull: true, description: 'The biological type of the feature', choices: ['gene', 'protein', 'transcript', 'exon', 'chromosome']}
         ]
     },
-
     Position: {
+        properties: [
+            {name: '@class', type: 'string', description: 'The database class this record belongs to'}
+        ],
         isAbstract: true,
         expose: false
     },
@@ -567,6 +577,10 @@ class ClassModel {
         const cast = {};
         const properties = {};
 
+        for (let prop of schemaDefn.properties || []) {
+            properties[prop.name] = prop;
+        }
+
         const castString = (x) => x.toLowerCase().trim();
         const castNullableString = (x) => x === null ? null : x.toLowerCase().trim();
         const castNullableLink = (string) => {
@@ -747,15 +761,16 @@ const createClassModel = async (db, schemaModel) => {
     }
 
     const cls = await db.class.create(model.name, model.inherits, null, model.isAbstract); // create the class first
-    await Promise.all(Array.from(model.properties, (prop) => cls.property.create(Object.assign({}, prop))));  // cls.property.create destroys the object it takes in
+    await createProperties(model.name, model.properties);
     await Promise.all(Array.from(model.indices, (i) => db.index.create(i)));
     return cls;
 };
 
 const createProperties = async (cls, props) => {
-    return await Promise.all(Array.from(props, (prop) => {
-        return cls.property.create(Object.assign({}, prop));
-    }));
+    return await Promise.all(Array.from(
+        props.filter(prop => ! prop.name.startsWith('@')),
+        async (prop) => { return await cls.property.create(Object.assign({}, prop)); })
+    );
 };
 
 
@@ -808,12 +823,7 @@ const createSchema = async (db) => {
     const Permissions = await createClassModel(db, SCHEMA_DEFN.Permissions);; // (name, extends, clusters, abstract)
     // create the user class
     await createClassModel(db, SCHEMA_DEFN.UserGroup);
-    const defaultGroups = [
-        {name: 'admin', permissions: {V: PERMISSIONS.ALL, E: PERMISSIONS.ALL, User: PERMISSIONS.ALL, UserGroup: PERMISSIONS.ALL}},
-        {name: 'regular', permissions: {V: PERMISSIONS.ALL, E: PERMISSIONS.ALL, User: PERMISSIONS.READ, UserGroup: PERMISSIONS.READ}},
-        {name: 'readOnly', permissions: {V: PERMISSIONS.READ, E: PERMISSIONS.READ, User: PERMISSIONS.READ, UserGroup: PERMISSIONS.READ}}
-    ];
-    const groups = await Promise.all(Array.from(defaultGroups, x => db.insert().into('UserGroup').set(x).one()));
+
     await createClassModel(db, SCHEMA_DEFN.User);
     // modify the existing vertex and edge classes to add the minimum required attributes for tracking etc
     const V = await db.class.get('V');
@@ -843,6 +853,28 @@ const createSchema = async (db) => {
         await Promise.all(Array.from(classList, async (cls) => { return await createClassModel(db, cls); }));
     }
 
+    // create the default user groups
+    const adminPermissions = {};
+    const regularPermissions = {};
+    const readOnlyPermissions = {};
+
+    for (let model of Object.values(SCHEMA_DEFN)) {
+        if (! model.isAbstract) {
+            adminPermissions[model.name] = PERMISSIONS.ALL;
+            if (['Permissions', 'UserGroup', 'User'].includes(model.name)) {
+                regularPermissions[model.name] = PERMISSIONS.READ;
+            } else {
+                regularPermissions[model.name] = PERMISSIONS.ALL;
+            }
+            readOnlyPermissions[model.name] = PERMISSIONS.READ;
+        }
+    }
+    const defaultGroups = [
+        {name: 'admin', permissions: adminPermissions},
+        {name: 'regular', permissions: regularPermissions},
+        {name: 'readOnly', permissions: readOnlyPermissions}
+    ];
+    const groups = await Promise.all(Array.from(defaultGroups, x => db.insert().into('UserGroup').set(x).one()));
 
     if (VERBOSE) {
         console.log('Schema is Complete');
@@ -935,14 +967,9 @@ const loadSchema = async (db) => {
         }
     }
     // add the api-level checks?
-    let ridProperty = {name: '@rid', type: 'string'};
     for (let modelName of ['User', 'V', 'E', 'UserGroup']) {
-        schema[modelName]._properties['@rid'] = ridProperty;
         schema[modelName]._cast['@rid'] = castToRID;
         schema[modelName]._cast.uuid = castUUID;
-    }
-    for (let modelName of ['User', 'V', 'E', 'UserGroup', 'Position']) {
-        schema[modelName]._properties['@class'] = {name: '@class', type: 'string'};
     }
 
     schema.Ontology._cast.subsets = item => item.trim().toLowerCase();

@@ -204,6 +204,12 @@ const addResourceRoutes = (opt) => {
                 res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
+
+    // abstract classes only have a search endpoint
+    if (model.isAbstract || model.name === 'Statement') {
+        return;
+    }
+
     router.post(route,
         async (req, res) => {
             if (! _.isEmpty(req.query)) {

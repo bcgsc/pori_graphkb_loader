@@ -30,13 +30,7 @@ const addRoutes = (opt) => {
 
     // simple routes
     for (let model of Object.values(schema)) {
-        if (model.isAbstract && model.name !== 'Ontology') {  // do not set up routes for abstract classes
-            continue;
-        }
-        if (model.inherits.includes('Position')) {
-            continue;
-        }
-        if (['User', 'V', 'E', 'Statement', 'Permissions', 'UserGroup', 'Position'].includes(model.name)) {
+        if (! model.expose) {  // do not set up routes for abstract classes
             continue;
         }
         if (process.env.VERBOSE === '1') {

@@ -79,6 +79,332 @@ Query all diseases created by the user with the username *'blargh'*
 \`\`\`
 `;
 
+const STUB = {
+    openapi: '3.0.0',
+    info: {
+        title: 'Graph KB',
+        version: process.env.npm_package_version,
+        description: ABOUT
+    },
+    paths: {
+        '/parser/variant': {
+            post: {
+                summary: 'Given a variant description, check the formatting and return the pasred result where possible',
+                tags: ['Parser'],
+                parameters: [
+                    {$ref: '#/components/parameters/Content-Type'},
+                    {$ref: '#/components/parameters/Accept'}
+                ],
+                requestBody: {
+                    required: true,
+                    content: {'application/json': {schema: {
+                        type: 'object',
+                        properties: {
+                            content: {type: 'string', description: 'the variant description'}
+                        }
+                    }}}
+                },
+                responses: {
+                    200: {
+                        description: 'The variant is valid and has been parsed',
+                        content: {'application/json': {schema:{
+                            type: 'object',
+                            $ref: '#/components/schemas/PositionalVariant'
+                        }}}
+                    },
+                    400: {
+                        $ref: '#/components/responses/BadInput'
+                    }
+                }
+            }
+        },
+        '/statements': {
+            post: {
+                summary: 'Add a new statement',
+                tags: ['Statement'],
+                parameters: [
+                    {$ref: '#/components/parameters/Content-Type'},
+                    {$ref: '#/components/parameters/Accept'},
+                    {$ref: '#/components/parameters/Authorization'}
+                ],
+                requestBody: {
+                    required: true,
+                    content: {'application/json': {schema: {
+                        type: 'object',
+                        required: ['impliedBy', 'appliesTo', 'relevance', 'supportedBy'],
+                        properties: {
+                            impliedBy: {
+                                type: 'array',
+                                items: {$ref: '#/components/schemas/PutativeEdge'},
+                                description: 'A list of putative edges to be created'
+                            },
+                            supportedBy: {
+                                type: 'array',
+                                items: {$ref: '#/components/schemas/PutativeEdge'},
+                                description: 'A list of putative edges to be created'
+                            },
+                            appliesTo: {
+                                $ref: '#/components/schemas/@rid',
+                                description: 'The record ID of the Ontology term this statement applies to'
+                            },
+                            relevance: {
+                                description: 'The record ID of the Vocabulary term used to give meaning/relevance to this statement',
+                                $ref: '#/components/schemas/@rid'
+                            }
+                        }
+                    }}}
+                }
+            }
+        },
+        '/token': {
+            post: {
+                summary: 'Generate an authentication token to be used for requests to the KB API server',
+                tags: ['Authentication'],
+                parameters: [
+                    {$ref: '#/components/parameters/Content-Type'},
+                    {$ref: '#/components/parameters/Accept'}
+                ],
+                requestBody: {
+                    required: true,
+                    content: {'application/json': {schema: {
+                        type: 'object',
+                        properties: {
+                            username: {type: 'string', description: 'The username'},
+                            password: {type: 'string', description: 'The password associated with this username'}
+                        }
+                    }}}
+                },
+                responses: {
+                    200: {
+                        description: 'The user is valid and a token has been generated',
+                        content: {'application/json': {schema:{
+                            type: 'object',
+                            properties: {
+                                kbToken: {
+                                    type: 'string',
+                                    format: 'token',
+                                    description: 'The token for KB API requests'
+                                },
+                                catsToken: {
+                                    type: 'string',
+                                    format: 'token',
+                                    description: 'The token from CATS'
+                                }
+                            }
+                        }}}
+                    },
+                    401: {
+                        description: 'The credentials were incorrect or not found'
+                    }
+                }
+            }
+        },
+        '/schema': {
+            get: {
+                summary: 'Returns a JSON representation of the current database schema',
+                tags: ['Metadata'],
+                parameters: [
+                    {$ref: '#/components/parameters/Accept'}
+                ],
+                responses: {
+                    200: {
+                        content: {'application/json': {schema: {type: 'object'}}}
+                    }
+                }
+            }
+        },
+        '/spec': {
+            get: {
+                summary: 'Returns this specification',
+                tags: ['Metadata'],
+                responses: {
+                    200: {}
+                }
+            }
+        }
+    },
+    components: {
+        schemas: {
+            '@rid': {
+                type: 'string',
+                pattern: '^#\\d+:\\d+$',
+                description: 'Record ID',
+                example: '#44:0'
+            },
+            PutativeEdge: {
+                type: 'object',
+                properties: {
+                    target: {$ref: '#/components/schemas/@rid'}
+                },
+                additionalProperties: true,
+                required: ['target'],
+                description: 'An edge to be created',
+                example: {target: '#41:2'}
+            },
+            dependency: {
+                $ref: '#/components/schemas/RecordLink',
+                nullable: true,
+                description: 'For an ontology term, a dependency is defined if the information defining the term was collected as a side-effect of creating another term.'
+            },
+            deprecated: {
+                type: 'boolean',
+                description: 'For an ontology term, indicates that according to the source, the current term is deprecated',
+                nullable: false,
+                default: false
+            },
+            source: {
+                $ref: '#/components/schemas/SourceLink',
+                description: 'The link to the source which is responsible for contributing this ontology term'
+            },
+            SourceLink: {
+                description: 'A direct link to source record. Can be the record ID of the linked source record in the form of a string or the record itself',
+                oneOf: [
+                    {
+                        $ref: '#/components/schemas/@rid'
+                    },
+                    {
+                        type: 'object',
+                        $ref: '#/components/schemas/Source'
+                    }
+                ]
+            },
+            EdgeList: {
+                description: 'A mapping of record IDs to objects representing additional edge attributes'
+            },
+            RecordLink: {
+                description: 'A direct link to another record. Can be the record ID of the linked record in the form of a string or the record itself',
+                oneOf: [
+                    {
+                        $ref: '#/components/schemas/@rid'
+                    },
+                    {
+                        type: 'object',
+                        properties: {'@rid': {$ref: '#/components/schemas/@rid'}},
+                        additionalProperties: true
+                    }
+                ]
+            },
+            UserLink: {
+                description: 'A direct link to user record. Can be the record ID of the linked user record in the form of a string or the record itself',
+                oneOf: [
+                    {
+                        $ref: '#/components/schemas/@rid'
+                    },
+                    {
+                        $ref: '#/components/schemas/User'
+                    }
+                ]
+            },
+            OntologyLink: {
+                description: 'A direct link to ontology term record. Can be the record ID of the linked ontology record in the form of a string or the record itself',
+                oneOf: [
+                    {
+                        $ref: '#/components/schemas/@rid'
+                    },
+                    {
+                        $ref: '#/components/schemas/Ontology'
+                    }
+                ]
+            },
+            VocabularyLink: {
+                description: 'A direct link to vocabulary term record. Can be the record ID of the linked vocabulary record in the form of a string or the record itself',
+                oneOf: [
+                    {
+                        $ref: '#/components/schemas/@rid'
+                    },
+                    {
+                        $ref: '#/components/schemas/vocabulary'
+                    }
+                ]
+            },
+            FeatureLink: {
+                description: 'A direct link to feature record. Can be the record ID of the linked feature record in the form of a string or the record itself',
+                oneOf: [
+                    {
+                        $ref: '#/components/schemas/@rid'
+                    },
+                    {
+                        $ref: '#/components/schemas/Feature'
+                    }
+                ]
+            },
+            RecordList: {
+                type: 'array',
+                description: 'A list of record IDs',
+                items: {$ref: '#/components/schemas/RecordLink'}
+            },
+            Error: {
+                type: 'object',
+                properties: {
+                    message: {type: 'string', description: 'The error message'},
+                    name: {type: 'string', description: 'The name of the type of error'},
+                    stacktrace: {type: 'string', description: 'Optionally the error may include a stack trace to aid in debugging'}
+                }
+            }
+        },
+        parameters: {
+            sourceId: {
+                in: 'query',
+                name: 'sourceId',
+                schema: {type: 'string'},
+                description: 'The identifier of the record/term in the external source database/system'
+            },
+            sourceIdVersion: {
+                in: 'query',
+                name: 'sourceIdVersion',
+                schema: {type: 'string'},
+                description: 'The version of the identifier based on the external database/system'
+            },
+            in: {
+                in: 'query',
+                name: 'in',
+                schema: {$ref: '#/components/schemas/RID'},
+                description: 'The record ID of the vertex the edge goes into, the target/destination vertex'
+            },
+            out: {
+                in: 'query',
+                name: 'out',
+                schema: {$ref: '#/components/schemas/RID'},
+                description: 'The record ID of the vertex the edge comes from, the source vertex'
+            }
+        },
+        responses: {
+            NotAuthorized: {
+                description: 'Authorization failed or insufficient permissions were found',
+                content: {'application/json': {schema: {
+                    type: 'object',
+                    $ref: '#/components/schemas/Error'
+                }}}
+            },
+            RecordExistsError: {
+                description: 'The record cannot be created, the record already exists',
+                content: {'application/json': {schema: {
+                    type: 'object',
+                    $ref: '#/components/schemas/Error',
+                    properties: {name: {example: 'RecordExistsError'}}
+                }}}
+            },
+            BadInput: {
+                description: 'Bad request contains invalid input',
+                content: {'application/json': {schema: {
+                    type: 'object',
+                    $ref: '#/components/schemas/Error',
+                    properties: {name: {example: 'AttributeError'}}
+                }}}
+            },
+            RecordNotFound: {
+                description: 'The record does not exist',
+                content: {'application/json': {schema: {
+                    $ref: '#/components/schemas/Error'
+                }}}
+            },
+        }
+    },
+    tags: [
+        {name: 'User', description: 'Administrative operations for adding, editing, and removing users'}
+    ]
+};
+
 
 /**
  * Create a OneOf statement to show that links can be the expanded object or just the @rid
@@ -245,6 +571,172 @@ const BASIC_HEADER_PARAMS = {
 
 
 /**
+ * Given a class model, generate the swagger documentation for the POST route
+ */
+const describePost = (model) => {
+    const post = {
+        summary: `create a new ${model.name} record`,
+        tags: [model.name],
+        parameters: Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
+            return {$ref: `#/components/parameters/${p.name}`};
+        }),
+        requestBody: {
+            required: true,
+            content: {'application/json': {schema: {$ref: `#/components/schemas/${model.name}`}}}
+        },
+        responses: {
+            201: {
+                description: 'A new record was created',
+                content: {'application/json': {schema: {
+                    type: 'object',
+                    properties: {
+                        result: {$ref: `#/components/schemas/${model.name}`}
+                    }
+                }}},
+                links: {
+                    getById: {
+                        parameters: {rid: '$response.body#/result.@rid'},
+                        operationId: `get${model.routeName}__rid_`,
+                        description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`${model.routeName}/{rid}\`](.#/${model.name}/get${model.routeName}__rid_) requests`
+                    },
+                    patchById: {
+                        parameters: {rid: '$response.body#/result.@rid'},
+                        operationId: `get${model.routeName}__rid_`,
+                        description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`${model.routeName}/{rid}\`](.#/${model.name}/patch${model.routeName}__rid_) requests`
+                    },
+                    deleteById: {
+                        parameters: {rid: '$response.body#/result.@rid'},
+                        operationId: `delete${model.routeName}__rid_`,
+                        description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`${model.routeName}/{rid}\`](.#/${model.name}/delete${model.routeName}__rid_) requests`
+                    }
+                }
+            },
+            401: {$ref: '#/components/responses/NotAuthorized'},
+            400: {$ref: '#/components/responses/BadInput'},
+            409: {$ref: '#/components/responses/RecordExistsError'}
+        }
+    };
+    return post;
+};
+
+/**
+ * Given a class model, generate the swagger documentation for the GET route
+ */
+const describeGet = (model) => {
+    const get = {
+        summary: `get a list of ${model.name} records`,
+        tags: [model.name],
+        parameters: Array.from(_.concat(
+            model.inherits.includes('Ontology') || model.name === 'Ontology' ? Object.values(ONTOLOGY_QUERY_PARAMS) : [],
+            Object.values(GENERAL_QUERY_PARAMS),
+            Object.values(BASIC_HEADER_PARAMS)
+        ), (p) => {
+            return {$ref: `#/components/parameters/${p.name}`};
+        }),
+        responses: {
+            200: {
+                content: {'application/json': {schema: {
+                    type: 'object',
+                    properties: {result: {
+                        type: 'array',
+                        items: {$ref: `#/components/schemas/${model.name}`}
+                    }}
+                }}}
+            },
+            401: {$ref: '#/components/responses/NotAuthorized'},
+            400: {$ref: '#/components/responses/BadInput'}
+        }
+    };
+    if (! model.isAbstract) {
+        get.responses[200].links = {
+            getById: {
+                parameters: {rid: '$response.body#/result[].@rid'},
+                operationId: `get${model.routeName}__rid_`,
+                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`${model.routeName}/{rid}\`](.#/${model.name}/get${model.routeName}__rid_) requests`
+            },
+            patchById: {
+                parameters: {rid: '$response.body#/result[].@rid'},
+                operationId: `patch${model.routeName}__rid_`,
+                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`${model.routeName}/{rid}\`](.#/${model.name}/patch${model.routeName}__rid_) requests`
+            },
+            deleteById: {
+                parameters: {rid: '$response.body#/result[].@rid'},
+                operationId: `delete${model.routeName}__rid_`,
+                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`${model.routeName}/{rid}\`](.#/${model.name}/delete${model.routeName}__rid_) requests`
+            }
+        };
+    }
+    for (let prop of Object.values(model.properties)) {
+        const isList = /(list|set)/g.exec(prop.type) ? true : false;
+        const isLink = prop.type.includes('link') ? true : false;
+
+        const param = {
+            name: prop.name,
+            in: 'query',
+            schema: {}
+        };
+        if (prop.description) {
+            param.description = prop.description;
+        }
+        get.parameters.push(param);
+        if (isLink && isList) {
+            param.schema.$ref = '#/components/schemas/RecordList';
+        } else if (isLink) {
+            param.schema.$ref = '#/components/schemas/RecordLink';
+        } else if (prop.name === '@rid') {
+            param.schema.$ref = '#/components/schemas/@rid';
+        } else {
+            param.schema.type = prop.type;
+        }
+
+    }
+
+    return get;
+};
+
+/**
+ * Given a class model, generate the swagger documentation for the OPERATION/:id route where OPERATION can be delete, patch, etc.
+ */
+const describeOperationByID = (model, operation='delete') => {
+    const description = {
+        summary: `${operation} an existing ${model.name} record`,
+        tags: [model.name],
+        parameters: _.concat(Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
+            return {$ref: `#/components/parameters/${p.name}`};
+        }),
+            [{
+                in: 'path',
+                name: 'rid',
+                schema: {$ref: '#/components/schemas/@rid'},
+                description: 'The record identifier',
+                example: '#34:1',
+                required: true
+            }]),
+        responses: {
+            200: {content: {'application/json': {schema: {
+                type: 'object',
+                properties: {result: {
+                    $ref: `#/components/schemas/${model.name}`
+                }}
+            }}}},
+            401: {$ref: '#/components/responses/NotAuthorized'},
+            400: {$ref: '#/components/responses/BadInput'},
+            404: {$ref: '#/components/responses/RecordNotFound'}
+        }
+    };
+    if (operation !== 'delete') {
+        description.responses[409] = {$ref: '#/components/responses/RecordExistsError'};
+    }
+    if (operation === 'get') {
+        description.parameters.push({$ref: '#/components/parameters/neighbors'});
+    }
+    return description;
+}
+
+
+
+
+/**
  * Generates the JSON object that represents the openapi specification for this API
  *
  * @param {object} schema the database schema loaded from loadSchema
@@ -254,530 +746,38 @@ const BASIC_HEADER_PARAMS = {
  */
 const generateSwaggerSpec = (schema, metadata) => {
     metadata = Object.assign({port: 8088, host: process.env.HOSTNAME}, metadata);
-    const docs = {
-        openapi: '3.0.0',
-        info: {
-            title: 'Graph KB',
-            version: process.env.npm_package_version,
-            description: ABOUT
-        },
-        servers: [{
-            url: `http://${metadata.host}:${metadata.port}/api/v${process.env.npm_package_version}`
-        }],
-        paths: {
-            '/parser/variant': {
-                post: {
-                    summary: 'Given a variant description, check the formatting and return the pasred result where possible',
-                    tags: ['Parser'],
-                    parameters: [
-                        {$ref: '#/components/parameters/Content-Type'},
-                        {$ref: '#/components/parameters/Accept'}
-                    ],
-                    requestBody: {
-                        required: true,
-                        content: {'application/json': {schema: {
-                            type: 'object',
-                            properties: {
-                                content: {type: 'string', description: 'the variant description'}
-                            }
-                        }}}
-                    },
-                    responses: {
-                        200: {
-                            description: 'The variant is valid and has been parsed',
-                            content: {'application/json': {schema:{
-                                type: 'object',
-                                $ref: '#/components/schemas/PositionalVariant'
-                            }}}
-                        },
-                        400: {
-                            $ref: '#/components/responses/BadInput'
-                        }
-                    }
-                }
-            },
-            '/statements': {
-                post: {
-                    summary: 'Add a new statement',
-                    tags: ['Statement'],
-                    parameters: [
-                        {$ref: '#/components/parameters/Content-Type'},
-                        {$ref: '#/components/parameters/Accept'},
-                        {$ref: '#/components/parameters/Authorization'}
-                    ],
-                    requestBody: {
-                        required: true,
-                        content: {'application/json': {schema: {
-                            type: 'object',
-                            required: ['impliedBy', 'appliesTo', 'relevance', 'supportedBy'],
-                            properties: {
-                                impliedBy: {
-                                    type: 'array',
-                                    items: {$ref: '#/components/schemas/PutativeEdge'},
-                                    description: 'A list of putative edges to be created'
-                                },
-                                supportedBy: {
-                                    type: 'array',
-                                    items: {$ref: '#/components/schemas/PutativeEdge'},
-                                    description: 'A list of putative edges to be created'
-                                },
-                                appliesTo: {$ref: '#/components/schemas/@rid'},
-                                relevance: {$ref: '#/components/schemas/@rid'}
-                            }
-                        }}}
-                    }
-                }
-            },
-            '/token': {
-                post: {
-                    summary: 'Generate an authentication token to be used for requests to the KB API server',
-                    tags: ['Authentication'],
-                    parameters: [
-                        {$ref: '#/components/parameters/Content-Type'},
-                        {$ref: '#/components/parameters/Accept'}
-                    ],
-                    requestBody: {
-                        required: true,
-                        content: {'application/json': {schema: {
-                            type: 'object',
-                            properties: {
-                                username: {type: 'string', description: 'The username'},
-                                password: {type: 'string', description: 'The password associated with this username'}
-                            }
-                        }}}
-                    },
-                    responses: {
-                        200: {
-                            description: 'The user is valid and a token has been generated',
-                            content: {'application/json': {schema:{
-                                type: 'object',
-                                properties: {
-                                    kbToken: {
-                                        type: 'string',
-                                        format: 'token',
-                                        description: 'The token for KB API requests'
-                                    },
-                                    catsToken: {
-                                        type: 'string',
-                                        format: 'token',
-                                        description: 'The token from CATS'
-                                    }
-                                }
-                            }}}
-                        },
-                        401: {
-                            description: 'The credentials were incorrect or not found'
-                        }
-                    }
-                }
-            },
-            '/schema': {
-                get: {
-                    summary: 'Returns a JSON representation of the current database schema',
-                    tags: ['Metadata'],
-                    parameters: [
-                        {$ref: '#/components/parameters/Accept'}
-                    ],
-                    responses: {
-                        200: {
-                            content: {'application/json': {schema: {type: 'object'}}}
-                        }
-                    }
-                }
-            },
-            '/spec': {
-                get: {
-                    summary: 'Returns this specification',
-                    tags: ['Metadata'],
-                    responses: {
-                        200: {}
-                    }
-                }
-            }
-        },
-        components: {
-            schemas: {
-                '@rid': {
-                    type: 'string',
-                    pattern: '^#\\d+:\\d+$',
-                    description: 'Record ID',
-                    example: '#44:0'
-                },
-                PutativeEdge: {
-                    type: 'object',
-                    properties: {
-                        target: {$ref: '#/components/schemas/@rid'}
-                    },
-                    additionalProperties: true,
-                    required: ['target'],
-                    description: 'An edge to be created',
-                    example: {target: '#41:2'}
-                },
-                dependency: {
-                    $ref: '#/components/schemas/RecordLink',
-                    nullable: true,
-                    description: 'For an ontology term, a dependency is defined if the information defining the term was collected as a side-effect of creating another term.'
-                },
-                deprecated: {
-                    type: 'boolean',
-                    description: 'For an ontology term, indicates that according to the source, the current term is deprecated',
-                    nullable: false,
-                    default: false
-                },
-                source: {
-                    $ref: '#/components/schemas/SourceLink',
-                    description: 'The link to the source which is responsible for contributing this ontology term'
-                },
-                SourceLink: {
-                    description: 'A direct link to source record. Can be the record ID of the linked source record in the form of a string or the record itself',
-                    oneOf: [
-                        {
-                            $ref: '#/components/schemas/@rid'
-                        },
-                        {
-                            type: 'object',
-                            $ref: '#/components/schemas/Source'
-                        }
-                    ]
-                },
-                EdgeList: {
-                    description: 'A mapping of record IDs to objects representing additional edge attributes'
-                },
-                RecordLink: {
-                    description: 'A direct link to another record. Can be the record ID of the linked record in the form of a string or the record itself',
-                    oneOf: [
-                        {
-                            $ref: '#/components/schemas/@rid'
-                        },
-                        {
-                            type: 'object',
-                            properties: {'@rid': {$ref: '#/components/schemas/@rid'}},
-                            additionalProperties: true
-                        }
-                    ]
-                },
-                UserLink: {
-                    description: 'A direct link to user record. Can be the record ID of the linked user record in the form of a string or the record itself',
-                    oneOf: [
-                        {
-                            $ref: '#/components/schemas/@rid'
-                        },
-                        {
-                            $ref: '#/components/schemas/User'
-                        }
-                    ]
-                },
-                OntologyLink: {
-                    description: 'A direct link to ontology term record. Can be the record ID of the linked ontology record in the form of a string or the record itself',
-                    oneOf: [
-                        {
-                            $ref: '#/components/schemas/@rid'
-                        },
-                        {
-                            $ref: '#/components/schemas/Ontology'
-                        }
-                    ]
-                },
-                FeatureLink: {
-                    description: 'A direct link to feature record. Can be the record ID of the linked feature record in the form of a string or the record itself',
-                    oneOf: [
-                        {
-                            $ref: '#/components/schemas/@rid'
-                        },
-                        {
-                            $ref: '#/components/schemas/Feature'
-                        }
-                    ]
-                },
-                RecordList: {
-                    type: 'array',
-                    description: 'A list of record IDs',
-                    items: {$ref: '#/components/schemas/RecordLink'}
-                },
-                Error: {
-                    type: 'object',
-                    properties: {
-                        message: {type: 'string', description: 'The error message'},
-                        name: {type: 'string', description: 'The name of the type of error'},
-                        stacktrace: {type: 'string', description: 'Optionally the error may include a stack trace to aid in debugging'}
-                    }
-                }
-            },
-            parameters: Object.assign({
-                sourceId: {
-                    in: 'query',
-                    name: 'sourceId',
-                    schema: {type: 'string'},
-                    description: 'The identifier of the record/term in the external source database/system'
-                },
-                sourceIdVersion: {
-                    in: 'query',
-                    name: 'sourceIdVersion',
-                    schema: {type: 'string'},
-                    description: 'The version of the identifier based on the external database/system'
-                },
-                in: {
-                    in: 'query',
-                    name: 'in',
-                    schema: {$ref: '#/components/schemas/RID'},
-                    description: 'The record ID of the vertex the edge goes into, the target/destination vertex'
-                },
-                out: {
-                    in: 'query',
-                    name: 'out',
-                    schema: {$ref: '#/components/schemas/RID'},
-                    description: 'The record ID of the vertex the edge comes from, the source vertex'
-                }
-            }, GENERAL_QUERY_PARAMS, BASIC_HEADER_PARAMS, ONTOLOGY_QUERY_PARAMS),
-            responses: {
-                NotAuthorized: {
-                    description: 'Authorization failed or insufficient permissions were found',
-                    content: {'application/json': {schema: {
-                        type: 'object',
-                        $ref: '#/components/schemas/Error'
-                    }}}
-                },
-                RecordExistsError: {
-                    description: 'The record cannot be created, the record already exists',
-                    content: {'application/json': {schema: {
-                        type: 'object',
-                        $ref: '#/components/schemas/Error',
-                        properties: {name: {example: 'RecordExistsError'}}
-                    }}}
-                },
-                BadInput: {
-                    description: 'Bad request contains invalid input',
-                    content: {'application/json': {schema: {
-                        type: 'object',
-                        $ref: '#/components/schemas/Error',
-                        properties: {name: {example: 'AttributeError'}}
-                    }}}
-                },
-                RecordNotFound: {
-                    description: 'The record does not exist',
-                    content: {'application/json': {schema: {
-                        $ref: '#/components/schemas/Error'
-                    }}}
-                },
-            }
-        },
-        tags: [
-            {name: 'User', description: 'Administrative operations for adding, editing, and removing users'}
-        ]
-    };
+    const docs = Object.assign({}, STUB);
+    docs.servers = [{
+        url: `http://${metadata.host}:${metadata.port}/api/v${process.env.npm_package_version}`
+    }];
+    docs.components.parameters = Object.assign(docs.components.parameters, GENERAL_QUERY_PARAMS, BASIC_HEADER_PARAMS, ONTOLOGY_QUERY_PARAMS);
+
     // simple routes
     for (let model of Object.values(schema)) {
-
-        let specOnly = false;
-        if (model.isAbstract || model.name === 'Position' || model.inherits.includes('Position') || ['UserGroup', 'V', 'E', 'Vocabulary', 'Statement', 'Permissions'].includes(model.name)) {
-            specOnly = true;
-        }
         // create the model in the schemas section
         docs.components.schemas[model.name] = {
             type: 'object',
             properties: {}
         };
 
-        if (! specOnly) {
-            docs.paths[model.routeName] = {};
-            docs.paths[model.routeName].post = {
-                summary: `create a new ${model.name} record`,
-                tags: [model.name],
-                parameters: Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
-                    return {$ref: `#/components/parameters/${p.name}`};
-                }),
-                requestBody: {
-                    required: true,
-                    content: {'application/json': {schema: {$ref: `#/components/schemas/${model.name}`}}}
-                },
-                responses: {
-                    201: {
-                        description: 'A new record was created',
-                        content: {'application/json': {schema: {
-                            type: 'object',
-                            properties: {
-                                result: {$ref: `#/components/schemas/${model.name}`}
-                            }
-                        }}},
-                        links: {
-                            getById: {
-                                parameters: {rid: '$response.body#/result.@rid'},
-                                operationId: `get${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`${model.routeName}/{rid}\`](.#/${model.name}/get${model.routeName}__rid_) requests`
-                            },
-                            patchById: {
-                                parameters: {rid: '$response.body#/result.@rid'},
-                                operationId: `get${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`${model.routeName}/{rid}\`](.#/${model.name}/patch${model.routeName}__rid_) requests`
-                            },
-                            deleteById: {
-                                parameters: {rid: '$response.body#/result.@rid'},
-                                operationId: `delete${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`${model.routeName}/{rid}\`](.#/${model.name}/delete${model.routeName}__rid_) requests`
-                            }
-                        }
-                    },
-                    401: {$ref: '#/components/responses/NotAuthorized'},
-                    400: {$ref: '#/components/responses/BadInput'},
-                    409: {$ref: '#/components/responses/RecordExistsError'}
-                }
-            };
-            docs.paths[model.routeName].get = {
-                summary: `get a list of ${model.name} records`,
-                tags: [model.name],
-                parameters: Array.from(_.concat(
-                    model.inherits.includes('Ontology') || model.name === 'Ontology' ? Object.values(ONTOLOGY_QUERY_PARAMS) : [],
-                    Object.values(GENERAL_QUERY_PARAMS),
-                    Object.values(BASIC_HEADER_PARAMS)
-                ), (p) => {
-                    return {$ref: `#/components/parameters/${p.name}`};
-                }),
-                responses: {
-                    200: {
-                        content: {'application/json': {schema: {
-                            type: 'object',
-                            properties: {result: {
-                                type: 'array',
-                                items: {$ref: `#/components/schemas/${model.name}`}
-                            }}
-                        }}},
-                        links: {
-                            getById: {
-                                parameters: {rid: '$response.body#/result[].@rid'},
-                                operationId: `get${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`${model.routeName}/{rid}\`](.#/${model.name}/get${model.routeName}__rid_) requests`
-                            },
-                            patchById: {
-                                parameters: {rid: '$response.body#/result[].@rid'},
-                                operationId: `patch${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`${model.routeName}/{rid}\`](.#/${model.name}/patch${model.routeName}__rid_) requests`
-                            },
-                            deleteById: {
-                                parameters: {rid: '$response.body#/result[].@rid'},
-                                operationId: `delete${model.routeName}__rid_`,
-                                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`${model.routeName}/{rid}\`](.#/${model.name}/delete${model.routeName}__rid_) requests`
-                            }
-                        }
-                    },
-                    401: {$ref: '#/components/responses/NotAuthorized'},
-                    400: {$ref: '#/components/responses/BadInput'}
-                }
-            };
-            docs.paths[`${model.routeName}/{rid}`] = {};
-            docs.paths[`${model.routeName}/{rid}`].patch = {
-                summary: `update an existing ${model.name} record`,
-                tags: [model.name],
-                parameters: _.concat(Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
-                    return {$ref: `#/components/parameters/${p.name}`};
-                }),
-                    [{
-                        in: 'path',
-                        name: 'rid',
-                        schema: {$ref: '#/components/schemas/@rid'},
-                        description: 'The record identifier',
-                        example: '#34:1',
-                        required: true
-                    }]),
-                responses: {
-                    200: {content: {'application/json': {schema: {
-                        type: 'object',
-                        properties: {result: {
-                            $ref: `#/components/schemas/${model.name}`
-                        }}
-                    }}}},
-                    401: {$ref: '#/components/responses/NotAuthorized'},
-                    400: {$ref: '#/components/responses/BadInput'},
-                    404: {$ref: '#/components/responses/RecordNotFound'},
-                    409: {$ref: '#/components/responses/RecordExistsError'}
-                }
-            };
-            docs.paths[`${model.routeName}/{rid}`].delete = {
-                summary: `delete an existing ${model.name} record`,
-                tags: [model.name],
-                parameters: _.concat(Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
-                    return {$ref: `#/components/parameters/${p.name}`};
-                }),
-                    [{
-                        in: 'path',
-                        name: 'rid',
-                        schema: {$ref: '#/components/schemas/@rid'},
-                        description: 'The record identifier',
-                        example: '#34:1',
-                        required: true
-                    }]),
-                responses: {
-                    200: {content: {'application/json': {schema: {
-                        type: 'object',
-                        properties: {result: {
-                            $ref: `#/components/schemas/${model.name}`
-                        }}
-                    }}}},
-                    401: {$ref: '#/components/responses/NotAuthorized'},
-                    400: {$ref: '#/components/responses/BadInput'},
-                    404: {$ref: '#/components/responses/RecordNotFound'},
-                }
-            };
-            docs.paths[`${model.routeName}/{rid}`].get = {
-                summary: `get a particular ${model.name} record`,
-                tags: [model.name],
-                parameters: _.concat(Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
-                    return {$ref: `#/components/parameters/${p.name}`};
-                }), [{
-                        in: 'path',
-                        name: 'rid',
-                        schema: {$ref: '#/components/schemas/@rid'},
-                        description: 'The record identifier',
-                        example: '#34:1',
-                        required: true
-                    },
-                    {
-                        $ref: '#/components/parameters/neighbors'
-                    }
-                ]),
-                responses: {
-                    200: {content: {'application/json': {schema: {
-                        type: 'object',
-                        properties: {result: {
-                            $ref: `#/components/schemas/${model.name}`
-                        }}
-                    }}}},
-                    401: {$ref: '#/components/responses/NotAuthorized'},
-                    400: {$ref: '#/components/responses/BadInput'},
-                    404: {$ref: '#/components/responses/RecordNotFound'},
-                    409: {$ref: '#/components/responses/RecordExistsError'}
-                }
-            };
+        if (model.expose) {
+            if (docs.paths[model.routeName] === undefined) {
+                docs.paths[model.routeName] = {};
+            }
+            docs.paths[model.routeName].get = describeGet(model);
+            if (! model.isAbstract && model.name !== 'Statement') {
+                docs.paths[model.routeName].post = describePost(model);
+                docs.paths[`${model.routeName}/{rid}`] = {};
+                docs.paths[`${model.routeName}/{rid}`].patch = describeOperationByID(model, 'patch');
+                docs.paths[`${model.routeName}/{rid}`].delete = describeOperationByID(model, 'delete');
+                docs.paths[`${model.routeName}/{rid}`].get = describeOperationByID(model, 'get');
+            }
         }
         // for all model properties add a query parameter to the main GET request. Also add to the model components spec
         for (let prop of Object.values(model.properties)) {
             const isList = /(list|set)/g.exec(prop.type) ? true : false;
             const isLink = prop.type.includes('link') ? true : false;
 
-            if (! specOnly) {
-                if (docs.components.parameters[prop.name] !== undefined) {
-                    docs.paths[model.routeName].get.parameters.push({$ref: `#/components/parameters/${prop.name}`});
-                } else {
-                    const schemaDefn = docs.components.schemas[prop.name];
-                    const param = {
-                        name: prop.name,
-                        in: 'query',
-                        schema: {}
-                    };
-                    docs.paths[model.routeName].get.parameters.push(param);
-                    if (schemaDefn) {
-                        param.schema.$ref = `#/components/schemas/${prop.name}`;
-                        if (schemaDefn.description) {
-                            param.description = schemaDefn.description;
-                        }
-                    } else if (isLink && isList) {
-                        param.schema.$ref = '#/components/schemas/RecordList';
-                    } else if (isLink) {
-                        param.schema.$ref = '#/components/schemas/RecordLink';
-                    } else {
-                        param.schema.type = prop.type;
-                    }
-                }
-            }
             if (prop.mandatory && !model.defaults[prop.name] && (!['deletedBy', 'createdBy'].includes(prop.name))) {
                 if (docs.components.schemas[model.name].required === undefined) {
                     docs.components.schemas[model.name].required = [];
@@ -791,7 +791,7 @@ const generateSwaggerSpec = (schema, metadata) => {
             let propDefn = {};
             docs.components.schemas[model.name].properties[prop.name] = propDefn;
 
-            if (/(list|set)/g.exec(prop.type)) {
+            if (isList) {
                 propDefn.type = 'array';
                 propDefn.items = {};
                 propDefn = propDefn.items;
