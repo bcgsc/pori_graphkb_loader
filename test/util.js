@@ -42,11 +42,11 @@ const setUpEmptyDB = async (conf=emptyConf) => {
     if (VERBOSE) {
         console.log('creating the admin user');
     }
-    const user = await createUser(db, {model: schema.User, userName: 'admin', groupNames: ['admin']});
+    const user = (await createUser(db, {model: schema.User, userName: 'admin', groupNames: ['admin']}))[0];
     if (VERBOSE) {
         console.log('created the user:', user);
     }
-    return {server, db, schema, admin: user[0]};
+    return {server, db, schema, admin: user};
 };
 
 

@@ -13,7 +13,7 @@ const addStatement = (opt) => {
     const {router, schema, db} = opt;
     const model = schema.Statement;
 
-    router.post('/statements',
+    router.post(model.routeName,
         async (req, res) => {
             if (! _.isEmpty(req.query)) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});

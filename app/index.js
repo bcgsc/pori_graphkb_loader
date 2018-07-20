@@ -8,7 +8,7 @@ const OrientDB  = require('orientjs');
 const {loadSchema} = require('./repo/schema');
 const auth = require('./middleware/auth');
 const {generateSwaggerSpec} = require('./routes/openapi');
-const {checkToken, generateToken, catsToken} = require('./middleware/auth');  // WARNING: middleware fails if function is not imported by itself
+const {checkToken, generateToken, catsToken, checkClassPermissions} = require('./middleware/auth');  // WARNING: middleware fails if function is not imported by itself
 const fs = require('fs');
 const http = require('http');
 const {VERBOSE} = require('./repo/util');
@@ -19,6 +19,7 @@ const {parse} = require('./parser/variant');
 const jc = require('json-cycle');
 const cors = require('cors');
 const moment = require('moment');
+const {select} = require('./repo/base');
 
 
 const logRequests = (req, res, next) => {

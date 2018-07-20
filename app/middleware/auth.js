@@ -2,8 +2,9 @@ const HTTP_STATUS = require('http-status-codes');
 const jwt = require('jsonwebtoken');
 const request = require('request-promise');
 const moment = require('moment');
-const {AuthenticationError} = require('./../repo/error');
+const {AuthenticationError, PermissionError} = require('./../repo/error');
 const {getUserByName} = require('./../repo/base');
+const {PERMISSIONS} = require('./../repo/constants');
 
 const keys = {};
 const SERVICE_NAME = 'kb';
@@ -75,4 +76,33 @@ const checkToken = async (req, res, next) => {
 };
 
 
-module.exports = {generateToken, checkToken, keys, catsToken};
+/**
+ * Check that the user has permissions for the intended operation on a given route
+ * Note that to do this, model and user need to already be assigned to the request
+ */
+const checkClassPermissions = async (req, res, next) => {
+    const model = req.model;
+    const user = req.user;
+    const operation = req.method;
+    const mapping = {
+        GET: PERMISSIONS.READ,
+        UPDATE: PERMISSIONS.UPDATE,
+        DELETE: PERMISSIONS.DELETE,
+        POST: PERMISSIONS.CREATE,
+        PATCH: PERMISSIONS.UPDATE
+    };
+    for (let group of user.groups) {
+        // Default to no permissions
+        const permissions = group.permissions[model.name] === undefined
+            ? PERMISSIONS.NONE
+            : group.permissions[model.name];
+        if (mapping[operation] & permissions) {
+            return next();
+        }
+    }
+    return res.status(HTTP_STATUS.FORBIDDEN).json(new PermissionError(
+        `The user ${user.name} does not have sufficient permissions to perform a ${operation} operation on class ${model.name}`
+    ));
+};
+
+module.exports = {generateToken, checkToken, keys, catsToken, checkClassPermissions};

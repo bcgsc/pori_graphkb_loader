@@ -8,6 +8,7 @@ const _ = require('lodash');
 
 const {PERMISSIONS} = require('./constants');
 const {castUUID, timeStampNow, castToRID, VERBOSE} = require('./util');
+const {select} = require('./base');
 const {AttributeError} = require('./error');
 
 
@@ -19,7 +20,7 @@ const INDEX_SEP_CHARS = ' \r\n\t:;,.|+*/\\=!?[]()';  // default separator chars 
 const SCHEMA_DEFN = {
     V: {
         properties: [
-            {name: '@rid', type: 'string', pattern: '^#\d+:\d+$', description: 'The record identifier'},
+            {name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier'},
             {name: '@class', type: 'string', description: 'The database class this record belongs to'},
             {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, description: 'Internal identifier for tracking record history'},
             {name: 'createdAt', type: 'long', mandatory: true, notNull: true, description: 'The timestamp at which the record was created'},
@@ -27,13 +28,14 @@ const SCHEMA_DEFN = {
             {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User', description: 'The user who created the record'},
             {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true, description: 'The user who deleted the record'},
             {name: 'history', type: 'link', notNull: true, description: 'Link to the previous version of this record'},
-            {name: 'comment', type: 'string'}
+            {name: 'comment', type: 'string'},
+            {name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup'}
         ],
         expose: false
     },
     E: {
         properties: [
-            {name: '@rid', type: 'string', pattern: '^#\d+:\d+$', description: 'The record identifier'},
+            {name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier'},
             {name: '@class', type: 'string', description: 'The database class this record belongs to'},
             {name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, description: 'Internal identifier for tracking record history'},
             {name: 'createdAt', type: 'long', mandatory: true, notNull: true, description: 'The timestamp at which the record was created'},
@@ -41,13 +43,14 @@ const SCHEMA_DEFN = {
             {name: 'createdBy', type: 'link', mandatory: true, notNull: true,  linkedClass: 'User', description: 'The user who created the record'},
             {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true, description: 'The user who deleted the record'},
             {name: 'history', type: 'link', notNull: true, description: 'Link to the previous version of this record'},
-            {name: 'comment', type: 'string'}
+            {name: 'comment', type: 'string'},
+            {name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup'}
         ],
         expose: false
     },
     UserGroup: {
         properties: [
-            {name: '@rid', type: 'string', pattern: '^#\d+:\d+$', description: 'The record identifier'},
+            {name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier'},
             {name: '@class', type: 'string', description: 'The database class this record belongs to'},
             {name: 'name', type: 'string', mandatory: true, notNull: true},
             {name: 'permissions', type: 'embedded', linkedClass: 'Permissions'}
@@ -82,7 +85,8 @@ const SCHEMA_DEFN = {
             {name: 'createdAt', type: 'long', mandatory: true, notNull: true},
             {name: 'deletedAt', type: 'long'},
             {name: 'history', type: 'link', notNull: true},
-            {name: 'createdBy', type: 'link', notNull: true, mandatory: false}
+            {name: 'createdBy', type: 'link', notNull: true, mandatory: false},
+            {name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup'}
         ],
         indices: [
             {
@@ -1004,6 +1008,7 @@ const loadSchema = async (db) => {
             model.isEdge = true;
         }
     }
+    // set the default record group
     if (VERBOSE) {
         console.log('schema loading complete');
     }

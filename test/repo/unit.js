@@ -3,7 +3,7 @@ const {expect} = require('chai');
 const {castUUID, looksLikeRID} = require('./../../app/repo/util');
 const {parseQueryLanguage, MAX_JUMPS} = require('./../../app/routes/util');
 const {ClassModel} = require('./../../app/repo/schema');
-const {checkAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH, Clause, Comparison, QUERY_LIMIT} = require('./../../app/repo/base');
+const {hasRecordAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH, Clause, Comparison, QUERY_LIMIT, trimRecords} = require('./../../app/repo/base');
 const {PERMISSIONS} = require('./../../app/repo/constants');
 const {types, RID}  = require('orientjs');
 const qs = require('qs'); // to simulate express query parameter pparsing for tests
@@ -50,26 +50,107 @@ describe('util.looksLikeRID', () => {
 });
 
 
-describe('checkAccess', () => {
-    it('user with no permissions', () => {
-        const access = checkAccess({});
+describe('hasRecordAccess', () => {
+    it('user with no groups', () => {
+        const access = hasRecordAccess({groups: []}, {groupRestrictions: [{'@rid': '#2:0'}]})
         expect(access).to.be.false;
     });
-    it('inherits permission', () => {
-        const access = checkAccess({permissions: {V: PERMISSIONS.ALL}}, {name: 'name', inherits: ['V']}, PERMISSIONS.ALL);
+    it('record with no groups', () => {
+        const access = hasRecordAccess({groups: []}, {})
         expect(access).to.be.true;
     });
-    it('does not inherit permission', () => {
-        const access = checkAccess({permissions: {V: PERMISSIONS.WRITE}}, {name: 'name', inherits: ['V']}, PERMISSIONS.ALL);
-        expect(access).to.be.false;
-    });
-    it('has permission on the current class', () => {
-        const access = checkAccess({permissions: {name: PERMISSIONS.ALL}}, {name: 'name'}, PERMISSIONS.ALL);
+    it('record with no groups but admin user', () => {
+        const access = hasRecordAccess({groups: [{'@rid': '#2:0'}]}, {})
         expect(access).to.be.true;
     });
-    it('has permissions for read requires write', () => {
-        const access = checkAccess({permissions: {name: PERMISSIONS.READ}}, {name: 'name', inherits: []}, PERMISSIONS.WRITE);
+    it('record with different group', () => {
+        const access = hasRecordAccess({groups: [{'@rid': '#3:0'}]}, {groupRestrictions: [{'@rid': '#4:0'}]});
         expect(access).to.be.false;
+    });
+    it('record with different group and admin user', () => {
+        const access = hasRecordAccess({groups: [{'@rid': '#2:0'}]}, {groupRestrictions: [{'@rid': '#4:0'}]});
+        expect(access).to.be.false;
+    });
+    it('record with the correct group', () => {
+        const access = hasRecordAccess({groups: [{'@rid': '#2:0'}, {'@rid': '#4:0'}]}, {groupRestrictions: [{'@rid': '#2:0'}]});
+        expect(access).to.be.true;
+    })
+});
+
+
+describe('trimRecords', () => {
+    it('removes deleted records', () => {
+        const records = [
+            {name: 'bob'},
+            {name: 'alice', deletedAt: 1}
+        ];
+        const trimmed = trimRecords(records, {activeOnly: true});
+        expect(trimmed).to.eql([{name: 'bob'}]);
+    });
+    it('removes nested deleted records', () => {
+        const records = [
+            {name: 'bob'},
+            {name: 'alice', link: {name: 'george', deletedAt: 1, '@rid': '#44:1'}}
+        ];
+        const trimmed = trimRecords(records, {activeOnly: true});
+        expect(trimmed).to.eql([{name: 'bob'}, {name: 'alice'}]);
+    });
+    it('removes deleted edges', () => {
+        const records = [
+            {name: 'bob'},
+            {name: 'alice', out_link: {name: 'george', deletedAt: 1, in: {name: 'george the 2nd', '@rid': '44:2'}, '@rid': '44:1'}}
+        ];
+        const trimmed = trimRecords(records, {activeOnly: true});
+        expect(trimmed).to.eql([{name: 'bob'}, {name: 'alice'}]);
+    });
+    it('removes protected records (default ok)', () => {
+        const records = [
+            {name: 'bob'},
+            {name: 'alice', link: {name: 'george', '@rid': '#44:0'}}
+        ];
+        const trimmed = trimRecords(records, {activeOnly: false, user: {groups: [{'@rid': '#1:0'}]}});
+        expect(trimmed).to.eql(records);
+    });
+    it('removes protected records (explicit group)', () => {
+        const records = [
+            {name: 'bob', groupRestrictions: [{'@rid': '#2:0'}]},
+            {name: 'alice', groupRestrictions: [{'@rid': '#1:0'}]}
+        ];
+        const trimmed = trimRecords(records, {activeOnly: false, user: {groups: [{'@rid': '#1:0'}]}});
+        expect(trimmed).to.eql([{name: 'alice', groupRestrictions: [{'@rid': '#1:0'}]}]);
+    });
+    it('removes protected edges (default ok)', () => {
+        const records = [
+            {name: 'bob', groupRestrictions: [{'@rid': '#1:0'}]},
+            {name: 'alice', out_link: {'@rid': '44:1', groupRestrictions: [{'@rid': '#2:2'}]}, groupRestrictions: [{'@rid': '#1:0'}]}
+        ];
+        const trimmed = trimRecords(records, {activeOnly: false, user: {groups: [{'@rid': '#1:0'}]}});
+        expect(trimmed).to.eql([
+            {name: 'bob', groupRestrictions: [{'@rid': '#1:0'}]},
+            {name: 'alice', groupRestrictions: [{'@rid': '#1:0'}]}
+        ]);
+    });
+    it('removes protected edges (explicit group)', () => {
+        const records = [
+            {name: 'bob', groupRestrictions: [{'@rid': '#1:0'}]},
+            {name: 'alice', out_link: {'@rid': '44:1', groupRestrictions: [{'@rid': '#2:0'}]}, groupRestrictions: [{'@rid': '#1:0'}]}
+        ];
+        const trimmed = trimRecords(records, {activeOnly: false, user: {groups: [{'@rid': '#1:0'}]}});
+        expect(trimmed).to.eql([
+            {name: 'bob', groupRestrictions: [{'@rid': '#1:0'}]},
+            {name: 'alice', groupRestrictions: [{'@rid': '#1:0'}]}
+        ]);
+    });
+    it('removes nested protected records', () => {
+        const records = [
+            {name: 'bob'},
+            {name: 'alice', link: {name: 'george', '@rid': '#44:1', groupRestrictions: [{'@rid': '#55:5'}]}, groupRestrictions: [{'@rid': '#2:1'}]}
+        ];
+        const trimmed = trimRecords(records, {user: {groups: [{'@rid': '#2:1'}]}});
+        expect(trimmed).to.eql([
+            {name: 'bob'},
+            {name: 'alice', groupRestrictions: [{'@rid': '#2:1'}]}
+        ]);
     });
 });
 

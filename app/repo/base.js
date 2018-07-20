@@ -3,8 +3,9 @@
  * Contains all functions for directly interacting with the database
  * @module app/repo/base
  */
-const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError} = require('./error');
-const {timeStampNow, quoteWrap, looksLikeRID, VERBOSE} = require('./util');
+const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError, PermissionError} = require('./error');
+const {timeStampNow, quoteWrap, looksLikeRID, VERBOSE, castToRID} = require('./util');
+const {PERMISSIONS} = require('./constants');
 const {RID, RIDBag} = require('orientjs');
 const _ = require('lodash');
 
@@ -13,6 +14,8 @@ const RELATED_NODE_DEPTH = 3;
 const QUERY_LIMIT = 1000;
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 const SPECIAL_QUERY_ARGS = new Set(['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip', 'neighbors', 'activeOnly']);
+const FETCH_OMIT = -2;
+const FETCH_ALL = -1;
 
 
 /**
@@ -31,10 +34,52 @@ const wrapIfTypeError = (err) => {
 
 /**
  * Given a list of records, removes any object which contains a non-null deletedAt property
+ *
+ * @param {object} opt options
+ * @param {boolean} activeOnly trim deleted records
+ * @param {User} user if the user object is given, will check record-level permissions and trim any non-permitted content
  */
-const trimDeletedRecords = (recordList, activeOnly=true) => {
+const trimRecords = (recordList, opt={}) => {
+    const {activeOnly, user} = Object.assign({
+        activeOnly: true,
+        user: null
+    }, opt);
     const queue = recordList.slice();
     const visited = new Set();
+    const readableClasses = new Set();
+    const allGroups = new Set();
+
+    if (user) {
+        for (let group of user.groups) {
+            allGroups.add(castToRID(group).toString());
+            for (let [cls, permissions] of Object.entries(group.permissions || {})) {
+                if (permissions & PERMISSIONS.READ) {
+                    readableClasses.add(cls);
+                }
+            }
+        }
+    }
+
+    const accessOk = (record) => {
+        if (user) {
+            const cls = record['@class'];
+            if (cls && ! readableClasses.has(cls)) {
+                return false;
+            }
+            if (! record.groupRestrictions || record.groupRestrictions.length === 0) {
+                return true;
+            }
+            for (let group of record.groupRestrictions || []) {
+                group = castToRID(group).toString();
+                if (allGroups.has(group)) {
+                    return true;
+                }
+            }
+            return false;
+        }
+        return true;
+    }
+
     while (queue.length > 0) {
         const curr = queue.shift(); // remove the first element from the list
 
@@ -61,8 +106,8 @@ const trimDeletedRecords = (recordList, activeOnly=true) => {
                     }
                 }
                 curr[attr] = arr;
-            } else if (typeof value === 'object' && value !== null) {
-                if (value.deletedAt != null && activeOnly) {
+            } else if (typeof value === 'object' && value && value['@rid'] !== undefined) {
+                if (value.deletedAt != null && activeOnly || ! accessOk(value)) {
                     delete curr[attr];
                 } else {
                     queue.push(value);
@@ -73,7 +118,7 @@ const trimDeletedRecords = (recordList, activeOnly=true) => {
     // remove the top level elements last
     const result = [];
     for (let record of recordList) {
-        if (record.deletedAt == null || ! activeOnly) {
+        if ((record.deletedAt == null || ! activeOnly) && accessOk(record)) {
             result.push(record);
         }
     }
@@ -437,7 +482,7 @@ class SelectionQuery {
      * Returns the query as a string but substitutes all parameters to make the results more readable.
      *
      * @warning
-     *      use the toString and params to query the db. This method is for VERBOSEging/logging only
+     *      use the toString and params to query the db. This method is for VERBOSE/logging only
      */
     displayString() {
         let {query: statement, params} = this.toString();
@@ -453,16 +498,18 @@ class SelectionQuery {
 }
 
 
-const checkAccess = (user, model, permissionsRequired) => {
-    if (! user.permissions) {
-        return false;
-    }
-    if (user.permissions[model.name] !== undefined && (permissionsRequired & user.permissions[model.name])) {
+/**
+ * Check if the user has sufficient access
+ */
+const hasRecordAccess = (user, record) => {
+    if (! record.groupRestrictions || record.groupRestrictions.length === 0) {
         return true;
     }
-    for (let name of model.inherits) {
-        if (user.permissions[name] !== undefined) {
-            if (permissionsRequired & user.permissions[name]) {
+    for (let rgroup of record.groupRestrictions) {
+        rgroup = castToRID(rgroup).toString();
+        for (let ugroup of user.groups) {
+            ugroup = castToRID(ugroup).toString();
+            if (rgroup === ugroup) {
                 return true;
             }
         }
@@ -493,7 +540,7 @@ const createUser = async (db, opt) => {
         .set(record)
         .one();
     try {
-        return await select(db, {where: {name: userName}, model: model, exactlyN: 1});
+        return await select(db, {where: {name: userName}, model: model, exactlyN: 1, fetchPlan: 'groups:1'});
     } catch (err) {
         throw wrapIfTypeError(err);
     }
@@ -586,6 +633,9 @@ const getUserByName = async (db, username) => {
  * @param {?number} [opt.limit=QUERY_LIMIT] the maximum number of records to return
  * @param {number} [opt.skip=0] the number of records to skip (for pagination)
  *
+ *
+ * Add support for permissions base-d fetch plans
+ * SELECT * FROM statement fetchPlan appliesTo:-2 *:1
  */
 const select = async (db, opt) => {
     // set the default options
@@ -610,12 +660,19 @@ const select = async (db, opt) => {
     if (opt.fetchPlan) {
         queryOpt.fetchPlan = opt.fetchPlan;
     }
+    if (opt.activeOnly) {
+        if (! queryOpt.fetchPlan) {
+            queryOpt.fetchPlan = `history:${FETCH_OMIT}`;
+        } else if (! queryOpt.fetchPlan.includes(`history:${FETCH_OMIT}`)) {
+            queryOpt.fetchPlan = `${queryOpt.fetchPlan} history:${FETCH_OMIT}`;
+        }
+    }
     let recordList = await db.query(`${statement}`, queryOpt).all();
 
     if (process.env.DEBUG == '1') {
         console.log(`selected ${recordList.length} records`);
     }
-    recordList = trimDeletedRecords(recordList, opt.activeOnly);
+    recordList = trimRecords(recordList, {activeOnly: opt.activeOnly, user: opt.user});
 
     if (opt.exactlyN !== null) {
         if (recordList.length === 0) {
@@ -648,12 +705,12 @@ const select = async (db, opt) => {
  */
 const remove = async (db, opt) => {
     const {model, user, where} = opt;
-    let rid = where['@rid'];
-    if (rid === undefined) {
-        const rec = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
-        rid = rec['@rid'];
-        where['createdAt'] = rec['createdAt'];
+    const rec = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
+    if (! hasRecordAccess(user, rec)) {
+        throw new PermissionError(`The user '${user.name}' does not have sufficient permissions to interact with record ${rec['@rid']}`);
     }
+    let rid = rec['@rid'];
+    where['createdAt'] = rec['createdAt'];
     delete where['@rid'];
     const commit = db.let(
         'updatedRID', (tx) => {
@@ -697,6 +754,9 @@ const update = async (db, opt) => {
         ignoreMissing: true,
         ignoreExtra: false}));
     const original = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
+    if (! hasRecordAccess(user, original)) {
+        throw new PermissionError(`The user '${user.name}' does not have sufficient permissions to interact with record ${original['@rid']}`);
+    }
     const originalWhere = Object.assign({}, model.formatRecord(original, {dropExtra: true, addDefaults: false}));
     delete originalWhere.createdBy;
     delete originalWhere.history;
@@ -751,4 +811,19 @@ const update = async (db, opt) => {
     }
 };
 
-module.exports = {select, create, update, remove, checkAccess, createUser, QUERY_LIMIT, SelectionQuery, Follow, RELATED_NODE_DEPTH, Comparison, Clause, getUserByName};
+module.exports = {
+    Clause,
+    Comparison,
+    create,
+    createUser,
+    Follow,
+    getUserByName,
+    hasRecordAccess,
+    QUERY_LIMIT,
+    RELATED_NODE_DEPTH,
+    remove,
+    select,
+    SelectionQuery,
+    trimRecords,
+    update
+};
