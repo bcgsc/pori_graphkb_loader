@@ -24,9 +24,6 @@ const {select} = require('./repo/base');
 
 const logRequests = (req, res, next) => {
     console.log(`${moment().toISOString()} [${req.method}] ${req.url}`);
-    if (process.env.DEBUG === '1') {
-        console.log(req.headers)
-    }
     return next();
 };
 

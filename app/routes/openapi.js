@@ -338,7 +338,11 @@ const STUB = {
                 properties: {
                     message: {type: 'string', description: 'The error message'},
                     name: {type: 'string', description: 'The name of the type of error'},
-                    stacktrace: {type: 'string', description: 'Optionally the error may include a stack trace to aid in debugging'}
+                    stacktrace: {
+                        type: 'array',
+                        description: 'Optionally, the error may include a stack trace to aid in debugging',
+                        items: {type: 'string'}
+                    }
                 }
             }
         },
@@ -556,7 +560,7 @@ const BASIC_HEADER_PARAMS = {
         name: 'Accept',
         schema: {
             type: 'string',
-            default: 'application/json'
+            enum: ['application/json']
         },
         required: true,
         description: 'The content type you expect to recieve. Currently only supports application/json',
@@ -566,7 +570,7 @@ const BASIC_HEADER_PARAMS = {
         name: 'Content-Type',
         schema: {
             type: 'string',
-            default: 'application/json'
+            enum: ['application/json']
         },
         required: true,
         description: 'The content type you expect to send. Currently only supports application/json'
@@ -694,6 +698,9 @@ const describeGet = (model) => {
         } else {
             param.schema.type = prop.type;
         }
+        if (prop.choices) {
+            param.schema.enum = prop.choices;
+        }
 
     }
 
@@ -818,6 +825,9 @@ const generateSwaggerSpec = (schema, metadata) => {
                 propDefn.description = docs.components.schemas.RecordLink.description;
             } else {
                 propDefn.type = prop.type === 'long' ? 'integer' : prop.type;
+            }
+            if (prop.choices) {
+                propDefn.enum = prop.choices;
             }
         }
     }

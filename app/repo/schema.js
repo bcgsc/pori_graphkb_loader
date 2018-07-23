@@ -29,7 +29,7 @@ const SCHEMA_DEFN = {
             {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true, description: 'The user who deleted the record'},
             {name: 'history', type: 'link', notNull: true, description: 'Link to the previous version of this record'},
             {name: 'comment', type: 'string'},
-            {name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup'}
+            {name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup', description: 'user groups allowed to interact with this record'}
         ],
         expose: false
     },
@@ -44,7 +44,7 @@ const SCHEMA_DEFN = {
             {name: 'deletedBy', type: 'link', linkedClass: 'User', notNull: true, description: 'The user who deleted the record'},
             {name: 'history', type: 'link', notNull: true, description: 'Link to the previous version of this record'},
             {name: 'comment', type: 'string'},
-            {name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup'}
+            {name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup', description: 'user groups allowed to interact with this record'}
         ],
         expose: false
     },
@@ -86,7 +86,7 @@ const SCHEMA_DEFN = {
             {name: 'deletedAt', type: 'long'},
             {name: 'history', type: 'link', notNull: true},
             {name: 'createdBy', type: 'link', notNull: true, mandatory: false},
-            {name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup'}
+            {name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup', description: 'user groups allowed to interact with this record'}
         ],
         indices: [
             {
@@ -213,7 +213,7 @@ const SCHEMA_DEFN = {
         inherits: ['V', 'Biomarker'],
         properties: [
             {name: 'type', type: 'link', mandatory: true, notNull: true, linkedClass: 'Vocabulary'},
-            {name: 'zygosity', type: 'string'},
+            {name: 'zygosity', type: 'string', choices: ['heterozygous', 'homozygous']},
             {name: 'germline', type: 'boolean', description: 'Flag to indicate if the variant is germline (vs somatic)'}
         ],
         isAbstract: true
@@ -585,11 +585,11 @@ class ClassModel {
             properties[prop.name] = prop;
         }
 
-        const castString = (x) => x.toLowerCase().trim();
-        const castNullableString = (x) => x === null ? null : x.toLowerCase().trim();
+        const castString = (x) => x.toString().toLowerCase().trim();
+        const castNullableString = (x) => x === null ? null : x.toString().toLowerCase().trim();
         const castNullableLink = (string) => {
             try {
-                if (string === null || string.toLowerCase() == 'null') {
+                if (string.toString().toLowerCase() == 'null') {
                     return null;
                 }
             } catch (err) {}

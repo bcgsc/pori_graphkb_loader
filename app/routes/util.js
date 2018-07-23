@@ -220,22 +220,19 @@ const addResourceRoutes = (opt) => {
     router.post(route,
         async (req, res) => {
             if (! _.isEmpty(req.query)) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type', params: req.query}));
-                return;
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type', params: req.query}));
             }
             try {
                 const result = await create(db, {model: model, content: req.body, user: req.user});
-                res.json({result: jc.decycle(result)});
+                return res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } else if (err instanceof RecordExistsError) {
-                    res.status(HTTP_STATUS.CONFLICT).json(err);
+                    return res.status(HTTP_STATUS.CONFLICT).json(err);
                 } else {
-                    if (VERBOSE) {
-                        console.error('INTERNAL_SERVER_ERROR', err);
-                    }
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                    console.log(err);
+                    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
             }
         }
