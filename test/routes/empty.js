@@ -82,6 +82,21 @@ describe('API', () => {
                 expect(res.body.result[0].name).to.equal('admin');
             });
         });
+        describe('GET /features', () => {
+            it('BAD REQUEST on invalid biotype', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .get(`${app.prefix}/features?biotype=blargh`)
+                        .type('json')
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('name', 'AttributeError');
+            });
+        });
         describe('POST /users', () => {
             it('OK', async () => {
                 const res = await chai.request(app.app)

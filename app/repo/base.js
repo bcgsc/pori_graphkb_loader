@@ -255,6 +255,14 @@ class Clause {
         let query = components.join(` ${this.type} `);
         return {query, params};
     }
+    validateEnum(arr) {
+        for (let comp of this.comparisons) {
+            if (! comp.validateEnum(arr)) {
+                return false;
+            }
+        }
+        return true;
+    }
 }
 
 
@@ -274,6 +282,12 @@ class Comparison {
     }
     applyCast(cast) {
         this.value = cast(this.value);
+    }
+    /**
+     * Given some array, check that the value exists in it
+     */
+    validateEnum(arr) {
+        return arr.includes(this.value);
     }
     /**
      * @param {string} name the name of the attribute we are comparing to
@@ -377,6 +391,11 @@ class SelectionQuery {
         for (let [name, condition] of Object.entries(this.conditions)) {
             if (! (condition instanceof SelectionQuery) && this.cast[name]) {
                 condition.applyCast(this.cast[name]);
+            }
+            if (this.properties[name] && this.properties[name].choices) {
+                if (! condition.validateEnum(this.properties[name].choices)) {
+                    throw new AttributeError(`The attribute ${name} violates the expected controlled vocabulary`);
+                }
             }
         }
     }

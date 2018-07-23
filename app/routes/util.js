@@ -104,7 +104,6 @@ const parseQueryLanguage = (inputQuery) => {
                 valueList = [valueList];
             }
             const clauseList = [];
-
             for (let i in valueList) {
                 const orList = new Clause('OR');
                 for (let value of valueList[i].split('|')) {
@@ -123,11 +122,13 @@ const parseQueryLanguage = (inputQuery) => {
                             const andClause = new Clause('AND', Array.from(value.split(INDEX_SEP_REGEX), (word) => {
                                 return new Comparison(word, '~', negate);
                             }));
-                            if (andClause.comparisons.some((value) => { return value.length < MIN_WORD_SIZE; })) {
-                                throw new InputValidationError(`Word is too short to query. Must be at least ${MIN_WORD_SIZE} letters after splitting on separator characters: ${INDEX_SEP_CHARS}`);
+                            if (andClause.comparisons.some((comp) => { return comp.value.length < MIN_WORD_SIZE; })) {
+                                throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters after splitting on separator characters: ${INDEX_SEP_CHARS}`);
                             }
                             orList.push(andClause);
                             continue;
+                        } else if (value.length < MIN_WORD_SIZE) {
+                            throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters`);
                         }
                     }
                     if (value === 'null') {

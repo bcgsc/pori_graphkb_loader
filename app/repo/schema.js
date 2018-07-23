@@ -733,6 +733,14 @@ class ClassModel {
                 }
             }
         }
+        // check the properties with enum values
+        for (let [attr, value] of Object.entries(formattedRecord)) {
+            if (properties[attr] !== undefined && properties[attr].choices !== undefined) {
+                if (! properties[attr].choices.includes(value)) {
+                    throw new AttributeError(`Expected controlled vocabulary choices. ${value} is not in the list of valid choices`);
+                }
+            }
+        }
         // look for linked models
         for (let [attr, value] of Object.entries(formattedRecord)) {
             let linkedModel = properties[attr].linkedModel;

@@ -938,6 +938,26 @@ describe('parseQueryLanguage', () => {
         const result = parseQueryLanguage(qs.parse('thing=2|3'));
         expect(result).to.eql({thing: new Clause('OR', ['2', '3'])});
     });
+    it('minimum word size', () => {
+        expect(() => {
+            parseQueryLanguage(qs.parse('name=~th'));
+        }).to.throw('Word is too short');
+    });
+    it('split minimum word size', () => {
+        expect(() => {
+            parseQueryLanguage(qs.parse('name=~th andt'));
+        }).to.throw('Word is too short');
+    });
+    it('splits words with spaces', () => {
+        const result = parseQueryLanguage(qs.parse('name=~other thing'));
+        expect(result).to.eql({name: new Clause('AND', [
+            new Comparison('other', '~'), new Comparison('thing', '~')
+        ])});
+    });
+    it('parses null string', () => {
+        const result = parseQueryLanguage(qs.parse('name=null'));
+        expect(result).to.eql({name: new Comparison(null)});
+    })
     describe('fuzzyMatch', () => {
         it('error on non-number', () => {
             expect(() => {
