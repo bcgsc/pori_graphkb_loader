@@ -20,6 +20,7 @@ const {upload: uploadOncoKB} = require('./oncokb');
 const {upload: uploadFDA} = require('./fda');
 const {upload: uploadCivic} = require('./civic');
 const {upload: uploadVocab} = require('./vocab');
+const {upload: uploadCosmic} = require('./cosmic');
 
 const argumentError = (usage, msg) => {
     console.log(usage);
@@ -130,6 +131,11 @@ const optionDefinitions = [
     {
         name: 'vocab',
         description: 'load the custom vocabulary terms and descriptions'
+    },
+    {
+        name: 'cosmic',
+        description: 'load the resistance mutations from cosmic (i.e. CosmicResitanceMutations.tsv)',
+        type: fileExists
     }
 ];
 
@@ -232,6 +238,9 @@ const upload = async () => {
     }
     if (options.oncotree !== undefined) {
         await uploadOncoTree(apiConnection);
+    }
+    if (options.cosmic) {
+        await uploadCosmic({conn: apiConnection, filename: options.cosmic});
     }
     if (options['reference-flatfile']) {
         await uploadKbFlatFile({conn: apiConnection, filename: options['reference-flatfile']});

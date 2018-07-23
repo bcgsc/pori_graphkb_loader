@@ -5,7 +5,7 @@
 
 const parse = require('csv-parse/lib/sync');
 const fs = require('fs');
-const {addRecord} = require('./util');
+const {addRecord, getRecordBy, orderPreferredOntologyTerms} = require('./util');
 
 const upload = async (opt) => {
     const {filename, conn} = opt;
@@ -18,6 +18,7 @@ const upload = async (opt) => {
     try {
         NCIT = await getRecordBy('sources', {name: 'NCIT'}, conn);
     } catch (err) {
+        console.log(err);
         process.stdout.write('?');
     }
     console.log(`\nloading ${jsonList.length} records`);
@@ -39,7 +40,7 @@ const upload = async (opt) => {
         if (NCIT && record.NCIT.length) {
             let ncitRec;
             try {
-                ncitRec = await getRecordBy('therapies', {source: {name: 'ncit'}, sourceId: record.NCIT}, conn);
+                ncitRec = await getRecordBy('therapies', {source: {name: 'ncit'}, sourceId: record.NCIT}, conn, orderPreferredOntologyTerms);
             } catch (err) {
                 process.stdout.write('?');
             }

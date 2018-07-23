@@ -11,17 +11,19 @@ const getRecordBy = async (className, where, conn, sortFunc=(x, y) => 0) => {
             queryParams[param] = where[param];
         }
     }
-    let newRecord = await request(conn.request({
-        uri: className,
-        qs: Object.assign({neighbors: 1}, queryParams)
-    }));
-    newRecord = jc.retrocycle(newRecord.result);
+    let newRecord;
+    try {
+        newRecord = await request(conn.request({
+            uri: className,
+            qs: Object.assign({neighbors: 1}, queryParams)
+        }));
+        newRecord = jc.retrocycle(newRecord.result);
+    } catch (err) {
+        throw err;
+    }
     newRecord.sort(sortFunc);
     if (newRecord.length > 1) {
         if (sortFunc(newRecord[0], newRecord[1]) == 0) {
-            console.log(where);
-            console.log(newRecord[0].sourceId, newRecord[0].name);
-            console.log(newRecord[1].sourceId, newRecord[1].name);
             throw new Error(`expected a single ${className} record: ${where.name || where.sourceId || where}`);
         }
     } else if (newRecord.length == 0) {
@@ -68,6 +70,47 @@ const orderPreferredOntologyTerms = (term1, term2) => {
         return 1;
     }
     return 0;
+};
+
+
+const preferredDiseases = (term1, term2) => {
+    const sourceRank = {
+        oncotree: 0,
+        'disease ontology': 1
+    };
+
+    if (orderPreferredOntologyTerms(term1, term2) === 0) {
+        if (term1.source.name !== term2.source.name) {
+            const rank1 = sourceRank[term1.source.name] === undefined ?  2 : sourceRank[term1.source.name];
+            const rank2 = sourceRank[term2.source.name] === undefined ?  2 : sourceRank[term2.source.name];
+            if (rank1 != rank2) {
+                return rank1 < rank2 ? -1 : 1;
+            }
+        }
+        return 0;
+    } else {
+        return orderPreferredOntologyTerms(term1, term2);
+    }
+};
+
+const preferredDrugs = (term1, term2) => {
+    const sourceRank = {
+        drugbank: 0,
+        ncit: 1
+    };
+
+    if (orderPreferredOntologyTerms(term1, term2) === 0) {
+        if (term1.source.name !== term2.source.name) {
+            const rank1 = sourceRank[term1.source.name] === undefined ?  2 : sourceRank[term1.source.name];
+            const rank2 = sourceRank[term2.source.name] === undefined ?  2 : sourceRank[term2.source.name];
+            if (rank1 != rank2) {
+                return rank1 < rank2 ? -1 : 1;
+            }
+        }
+        return 0;
+    } else {
+        return orderPreferredOntologyTerms(term1, term2);
+    }
 };
 
 
@@ -147,4 +190,4 @@ const convertOwlGraphToJson = (graph, idParser) => {
     return nodesByCode;
 };
 
-module.exports = {addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, getPubmedArticle};
+module.exports = {addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs};

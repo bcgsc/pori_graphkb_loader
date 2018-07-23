@@ -3,8 +3,7 @@
  * http://griffithlab.org/civic-api-docs/#endpoint-types
  * https://civicdb.org/api/evidence_items
  */
-const {addRecord, getRecordBy, getPubmedArticle, orderPreferredOntologyTerms} = require('./util');
-const {preferredDrugs, preferredDiseases} = require('./oncokb');
+const {addRecord, getRecordBy, getPubmedArticle, orderPreferredOntologyTerms, preferredDrugs, preferredDiseases} = require('./util');
 const request = require('request-promise');
 const _ = require('lodash');
 const SOURCE_NAME = 'civic';

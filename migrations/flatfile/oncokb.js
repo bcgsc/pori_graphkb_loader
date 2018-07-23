@@ -6,7 +6,7 @@
  * @module oncokb
  */
 const request = require('request-promise');
-const {addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle} = require('./util');
+const {addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs} = require('./util');
 const {ParsingError} = require('./../../app/repo/error');
 
 const SOURCE_NAME = 'oncokb';
@@ -29,46 +29,6 @@ const THERAPY_MAPPING = {
     debio1347: 'debio-1347'
 };
 
-
-const preferredDiseases = (term1, term2) => {
-    const sourceRank = {
-        oncotree: 0,
-        'disease ontology': 1
-    };
-
-    if (orderPreferredOntologyTerms(term1, term2) === 0) {
-        if (term1.source.name !== term2.source.name) {
-            const rank1 = sourceRank[term1.source.name] === undefined ?  2 : sourceRank[term1.source.name];
-            const rank2 = sourceRank[term2.source.name] === undefined ?  2 : sourceRank[term2.source.name];
-            if (rank1 != rank2) {
-                return rank1 < rank2 ? -1 : 1;
-            }
-        }
-        return 0;
-    } else {
-        return orderPreferredOntologyTerms(term1, term2);
-    }
-};
-
-const preferredDrugs = (term1, term2) => {
-    const sourceRank = {
-        drugbank: 0,
-        ncit: 1
-    };
-
-    if (orderPreferredOntologyTerms(term1, term2) === 0) {
-        if (term1.source.name !== term2.source.name) {
-            const rank1 = sourceRank[term1.source.name] === undefined ?  2 : sourceRank[term1.source.name];
-            const rank2 = sourceRank[term2.source.name] === undefined ?  2 : sourceRank[term2.source.name];
-            if (rank1 != rank2) {
-                return rank1 < rank2 ? -1 : 1;
-            }
-        }
-        return 0;
-    } else {
-        return orderPreferredOntologyTerms(term1, term2);
-    }
-};
 
 const preferredVocabulary = (term1, term2) => {
     if (term1.source.name !== term2.source.name) {
