@@ -21,6 +21,7 @@ const {upload: uploadFDA} = require('./fda');
 const {upload: uploadCivic} = require('./civic');
 const {upload: uploadVocab} = require('./vocab');
 const {upload: uploadCosmic} = require('./cosmic');
+const {upload: uploadDocm} = require('./docm');
 
 const argumentError = (usage, msg) => {
     console.log(usage);
@@ -136,6 +137,10 @@ const optionDefinitions = [
         name: 'cosmic',
         description: 'load the resistance mutations from cosmic (i.e. CosmicResitanceMutations.tsv)',
         type: fileExists
+    },
+    {
+        name: 'docm',
+        description: 'load mutations from DOCM database api'
     }
 ];
 
@@ -250,6 +255,9 @@ const upload = async () => {
     }
     if (options.civic !== undefined) {
         await uploadCivic(apiConnection);
+    }
+    if (options.docm !== undefined) {
+        await uploadDocm(apiConnection);
     }
 };
 
