@@ -391,7 +391,7 @@ const parseContinuous = (inputString) => {
         result.type = '>';
         result.refSeq = match[1];
         result.untemplatedSeq = match[2];
-    } else if (match = /^([A-Z\?])?fs(\*(\d+))?$/i.exec(tail)) {
+    } else if (match = /^([A-Z\?\*])?fs((\*)(\d+)?)?$/i.exec(tail)) {
         if (prefix !== 'p') {
             throw new ParsingError('only protein notation can notate frameshift variants');
         }
@@ -400,7 +400,19 @@ const parseContinuous = (inputString) => {
             result.untemplatedSeq = match[1];
         }
         if (match[3] !== undefined) {
-            result.truncation = parseInt(match[3]);
+            if (match[4] === undefined) {
+                result.truncation = match[1] === '*' ? 1 : null;
+            } else {
+                result.truncation = parseInt(match[4]);
+                if (match[1] === '*' && result.truncation !== 1) {
+                    throw new ParsingError('invalid framshift specifies a non-immeadiate truncation which conflicts with the terminating alt seqeuence');
+                }
+            }
+        } else if (match[1] === '*') {
+            result.truncation = 1;
+        }
+        if (result.break2Start !== undefined) {
+            throw new ParsingError('frameshifts cannot span a range');
         }
     } else if (tail.toLowerCase() === 'spl'){
         result.type = 'spl';

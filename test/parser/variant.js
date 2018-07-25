@@ -592,11 +592,34 @@ describe('parseContinuous', () => {
                 prefix: 'p'
             });
         });
-        it('frameshift errors on truncation point without position', () => {
-            expect(() => { parseContinuous('p.R10Kfs*'); }).to.throw(ParsingError);
+        it('frameshift set null on truncation point without position', () => {
+            const result = parseContinuous('p.R10Kfs*');
+            expect(result).to.eql({
+                type: EVENT_SUBTYPE.FS,
+                break1Start: {'@class': 'ProteinPosition', pos: 10, refAA: 'R'},
+                untemplatedSeq: 'K',
+                untemplatedSeqSize: 1,
+                truncation: null,
+                refSeq: 'R',
+                break1Repr: 'p.R10',
+                prefix: 'p'
+            });
+        });
+        it('frameshift immeadiate truncation', () => {
+            const result = parseContinuous('p.R10*fs');
+            expect(result).to.eql({
+                type: EVENT_SUBTYPE.FS,
+                break1Start: {'@class': 'ProteinPosition', pos: 10, refAA: 'R'},
+                untemplatedSeq: '*',
+                untemplatedSeqSize: 1,
+                truncation: 1,
+                refSeq: 'R',
+                break1Repr: 'p.R10',
+                prefix: 'p'
+            });
         });
         it('frameshift errors on range', () => {
-            expect(() => { parseContinuous('p.R10_M11Kfs*'); }).to.throw(ParsingError);
+            expect(() => { const result = parseContinuous('p.R10_M11Kfs*'); console.log(result); }).to.throw(ParsingError);
         });
         it('frameshift allows uncertain range', () => {
             const result = parseContinuous('p.(R10_M11)fs*10');
