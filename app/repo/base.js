@@ -281,12 +281,17 @@ class Comparison {
         }
     }
     applyCast(cast) {
-        this.value = cast(this.value);
+        if (this.value !== null) {
+            this.value = cast(this.value);
+        }
     }
     /**
      * Given some array, check that the value exists in it
      */
     validateEnum(arr) {
+        if (this.value === null) {
+            return true;
+        }
         return arr.includes(this.value);
     }
     /**
