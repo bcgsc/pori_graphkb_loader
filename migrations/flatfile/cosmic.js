@@ -24,10 +24,17 @@
  * Genome Coordinates (GRCh38)
  * Tier
  */
-const {addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, preferredDrugs, preferredDiseases} = require('./util');
 const parse = require('csv-parse/lib/sync');
 const fs = require('fs');
 const request = require('request-promise');
+const {
+    addRecord,
+    getRecordBy,
+    orderPreferredOntologyTerms,
+    getPubmedArticle,
+    preferredDrugs,
+    preferredDiseases
+} = require('./util');
 
 const THERAPY_MAPPING = {
     'tyrosine kinase inhibitor - ns': 'tyrosine kinase inhibitor',
@@ -66,7 +73,7 @@ const processCosmicRecord = async (conn, record, source) => {
     const drug = await getRecordBy('therapies', {name: record['Drug Name']}, conn, preferredDrugs);
     // get the disease by name
     let diseaseName = record['Histology Subtype 1'] === 'NS'
-        ? record['Histology']
+        ? record.Histology
         : record['Histology Subtype 1'];
     diseaseName = diseaseName.replace(/_/g, ' ');
     diseaseName = diseaseName.replace('leukaemia', 'leukemia');
@@ -74,10 +81,12 @@ const processCosmicRecord = async (conn, record, source) => {
     const disease = await getRecordBy('diseases', {name: diseaseName}, conn, preferredDiseases);
     // create the resistance statement
     const relevance = await getRecordBy('vocabulary', {name: 'resistance'}, conn);
-    const statement = await addRecord('statements', {
-        relevance, appliesTo: drug, impliedBy: [{target: variant['@rid']}], supportedBy: [{target: record.publication['@rid'], source}]
+    await addRecord('statements', {
+        relevance,
+        appliesTo: drug,
+        impliedBy: [{target: variant['@rid']}, {target: disease['@rid']}],
+        supportedBy: [{target: record.publication['@rid'], source}]
     }, conn);
-
 };
 
 const upload = async (opt) => {
@@ -85,7 +94,9 @@ const upload = async (opt) => {
     console.log(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
     console.log('parsing into json');
-    const jsonList = parse(content, {delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true});
+    const jsonList = parse(content, {
+        delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true
+    });
     // get the dbID for the source
     const source = (await addRecord('sources', {
         name: 'cosmic',
@@ -96,7 +107,7 @@ const upload = async (opt) => {
     const counts = {success: 0, error: 0, skip: 0};
     const errorCache = {};
     console.log(`Processing ${jsonList.length} records`);
-    for (let record of jsonList) {
+    for (const record of jsonList) {
         if (record['AA Mutation'] === 'p.?') {
             counts.skip++;
             continue;

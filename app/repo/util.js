@@ -1,11 +1,11 @@
 /** @module app/repo/util */
 const moment = require('moment');
-const {RID}  = require('orientjs');
+const {RID} = require('orientjs');
 const uuidValidate = require('uuid-validate');
 const {AttributeError} = require('./error');
 
 
-const VERBOSE = (process.env.VERBOSE === '1' ? true : false);
+const VERBOSE = (process.env.VERBOSE === '1');
 
 const castUUID = (uuid) => {
     if (uuidValidate(uuid, 4)) {
@@ -15,9 +15,7 @@ const castUUID = (uuid) => {
 };
 
 
-const timeStampNow = () => {
-    return moment().valueOf();
-};
+const timeStampNow = () => moment().valueOf();
 
 
 /**
@@ -31,9 +29,9 @@ const castToRID = (string) => {
     }
     if (string instanceof RID) {
         return string;
-    } else if (typeof string === 'object' && string['@rid'] !== undefined) {
+    } if (typeof string === 'object' && string['@rid'] !== undefined) {
         return castToRID(string['@rid']);
-    } else if (looksLikeRID(string)) {
+    } if (looksLikeRID(string)) {
         string = `#${string.replace(/^#/, '')}`;
         return new RID(string);
     }
@@ -60,13 +58,15 @@ const castToRID = (string) => {
  * >>> looksLikeRID('4:0', false);
  * true
  */
-const looksLikeRID = (rid, requireHash=false) => {
+const looksLikeRID = (rid, requireHash = false) => {
     try {
-        const pattern = requireHash ? /^#\d+:\d+$/ : /^#?\d+:\d+$/;
+        const pattern = requireHash
+            ? /^#\d+:\d+$/
+            : /^#?\d+:\d+$/;
         if (pattern.exec(rid.trim())) {
             return true;
         }
-    } catch (err) {}  // eslint-disable-line no-empty
+    } catch (err) {} // eslint-disable-line no-empty
     return false;
 };
 
@@ -80,8 +80,8 @@ const looksLikeRID = (rid, requireHash=false) => {
  *  "'thing'"
  *
  */
-const quoteWrap = (string) => {
-    return `'${string}'`;
-};
+const quoteWrap = string => `'${string}'`;
 
-module.exports = {timeStampNow, castUUID, quoteWrap, looksLikeRID, castToRID, VERBOSE};
+module.exports = {
+    timeStampNow, castUUID, quoteWrap, looksLikeRID, castToRID, VERBOSE
+};

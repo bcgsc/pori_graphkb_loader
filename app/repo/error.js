@@ -1,6 +1,8 @@
-'use strict';
+
+
 /** @module app/repo/error */
 const jc = require('json-cycle');
+const _ = require('lodash');
 
 
 class ErrorMixin extends Error {
@@ -8,17 +10,16 @@ class ErrorMixin extends Error {
         let message;
         if (typeof content === 'object' && content !== null) {
             message = content.message;
-            delete content.message;
         } else {
             message = content;
-            content = {};
         }
         super(message);
         this.message = message;
         this.name = this.constructor.name;
         Error.captureStackTrace(this);
-        this.content = content;
+        this.content = _.omit(content, ['message']);
     }
+
     toJSON() {
         return jc.decycle(Object.assign(this.content, {
             message: this.message,

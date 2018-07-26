@@ -2,17 +2,14 @@
  * Given the DOID JSON file. Upload the diseases and relationships to the knowledgebase using the REST API
  */
 
-const _ = require('lodash');
-const request = require('request-promise');
 const {addRecord, getRecordBy, orderPreferredOntologyTerms} = require('./util');
-const {castToRID} = require('./../../app/repo/util');
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
 const SOURCE_NAME = 'disease ontology';
 
 const parseDoid = (ident) => {
     const match = /.*(DOID_\d+)$/.exec(ident);
-    if (! match) {
+    if (!match) {
         throw new Error(`invalid DOID: ${ident}`);
     }
     ident = match[1].replace('_', ':').toLowerCase();
@@ -33,13 +30,11 @@ const parseDoVersion = (version) => {
 const uploadDiseaseOntology = async ({filename, conn}) => {
     // load the DOID JSON
     console.log('Loading external disease ontology data');
-    const DOID = require(filename);
+    const DOID = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
 
     // build the disease ontology first
-    const nodesByName = {};  // store by name
-    const deprecatedNodes = {};
+    const nodesByName = {}; // store by name
     const synonymsByName = {};
-    const ncitAliases = {};
 
     const doVersion = parseDoVersion(DOID.graphs[0].meta.version);
     let source = await addRecord('sources', {
@@ -56,7 +51,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         ncitSource = ncitSource['@rid'].toString();
     } catch (err) {}
 
-    for (let node of DOID.graphs[0].nodes) {
+    for (const node of DOID.graphs[0].nodes) {
         if (node.id === undefined || node.lbl === undefined) {
             continue;
         }
@@ -70,10 +65,10 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
             throw new Error(`name is not unique ${node.lbl}`);
         }
         const body = {
-            source: source,
+            source,
             sourceId: node.id,
             name: node.lbl,
-            deprecated: node.meta && node.meta.deprecated ? true : false
+            deprecated: !!(node.meta && node.meta.deprecated)
         };
         synonymsByName[node.lbl] = [];
         if (node.meta !== undefined) {
@@ -81,7 +76,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                 body.description = node.meta.definition.val;
             }
             if (node.meta.subsets) {
-                body.subsets = Array.from(node.meta.subsets, (subset) => {return subset.replace(PREFIX_TO_STRIP, '');});
+                body.subsets = Array.from(node.meta.subsets, subset => subset.replace(PREFIX_TO_STRIP, ''));
             }
         }
         // create the database entry
@@ -117,8 +112,8 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
             }
         }
         // create deprecatedBy links for the old sourceIDs
-        if (! node.meta.deprecated) {
-            for (let {val, pred} of node.meta.basicPropertyValues || []) {
+        if (!node.meta.deprecated) {
+            for (const {val, pred} of node.meta.basicPropertyValues || []) {
                 if (pred.toLowerCase().endsWith('#hasalternativeid')) {
                     const alternate = await addRecord('diseases', {
                         sourceId: val,
@@ -132,7 +127,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
             }
         }
         if (ncitSource !== undefined) {
-            for (let {val: other} of (node.meta.xrefs || [])) {
+            for (const {val: other} of (node.meta.xrefs || [])) {
                 let match;
                 if (match = /^NCI:(C\d+)$/.exec(other)) {
                     let ncitNode;
@@ -150,7 +145,9 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         }
     }
 
-    await loadEdges({DOID, conn, records: recordsBySourceId, source});
+    await loadEdges({
+        DOID, conn, records: recordsBySourceId, source
+    });
     console.log();
 };
 
@@ -161,13 +158,16 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
   "obj" : "http://purl.obolibrary.org/obo/DOID_461"
 }
 */
-const loadEdges = async ({DOID, records, conn, source}) => {
+const loadEdges = async ({
+    DOID, records, conn, source
+}) => {
     const relationshipTypes = {};
     console.log('\nAdding the subclass relationships');
-    for (let edge of DOID.graphs[0].edges) {
+    for (const edge of DOID.graphs[0].edges) {
         const {sub, pred, obj} = edge;
-        if (pred === 'is_a') {  // currently only loading this class type
-            let src, tgt;
+        if (pred === 'is_a') { // currently only loading this class type
+            let src;
+            let tgt;
             try {
                 src = parseDoid(sub).toLowerCase();
                 tgt = parseDoid(obj).toLowerCase();

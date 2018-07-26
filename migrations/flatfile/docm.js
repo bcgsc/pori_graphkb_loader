@@ -2,7 +2,9 @@
  * Module to import variant information from http://www.docm.info/api
  */
 const request = require('request-promise');
-const {addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs} = require('./util');
+const {
+    addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle
+} = require('./util');
 
 const SOURCE_NAME = 'database of curated mutations (docm)';
 const BASE_URL = 'http://www.docm.info/api/v1/variants';
@@ -14,19 +16,18 @@ const BASE_URL = 'http://www.docm.info/api/v1/variants';
 const parseDocmVariant = (variant) => {
     let match;
     if (match = /^p\.([A-Z]+)(\d+)-$/.exec(variant)) {
-        const seq = match[1];
-        const pos = parseInt(match[2]);
+        const [, seq] = match;
+        const pos = parseInt(match[2], 10);
         if (seq.length === 1) {
             return `p.${seq}${pos}del${seq}`;
         }
         return `p.${seq[0]}${pos}_${seq[seq.length - 1]}${pos + seq.length - 1}del${seq}`;
-    } else if (match = /^p\.([A-Z][A-Z]+)(\d+)([A-WYZ]+)$/.exec(variant)) {  // ignore X since DOCM appears to use it to mean frameshift
-        let refseq = match[1];
-        let pos = parseInt(match[2]);
-        let altSeq = match[3];
-        let prefix = 0
-        for (let i in refseq) {
-            if (i >= altSeq.length || altSeq[i] !== refseq[i]) {
+    } if (match = /^p\.([A-Z][A-Z]+)(\d+)([A-WYZ]+)$/.exec(variant)) { // ignore X since DOCM appears to use it to mean frameshift
+        let [, refseq, pos, altSeq] = match;
+        pos = parseInt(match[2], 10);
+        let prefix = 0;
+        for (let i = 0; i < refseq.length && i < altSeq.length; i++) {
+            if (altSeq[i] !== refseq[i]) {
                 break;
             }
             prefix++;
@@ -37,16 +38,17 @@ const parseDocmVariant = (variant) => {
         if (refseq.length !== 0 && altSeq.length !== 0) {
             if (refseq.length > 1) {
                 return `p.${refseq[0]}${pos}_${refseq[refseq.length - 1]}${pos + refseq.length - 1}del${refseq}ins${altSeq}`;
-            } else {
-               return `p.${refseq[0]}${pos}del${refseq}ins${altSeq}`;
             }
+            return `p.${refseq[0]}${pos}del${refseq}ins${altSeq}`;
         }
     }
     return variant;
-}
+};
 
 const processRecord = async (opt) => {
-    const {conn, pubmedSource, source, record} = opt;
+    const {
+        conn, pubmedSource, source, record
+    } = opt;
     // get the feature by name
     const gene = await getRecordBy('features', {source: {name: 'hgnc'}, name: record.gene}, conn, orderPreferredOntologyTerms);
     // get the record details
@@ -80,8 +82,8 @@ const processRecord = async (opt) => {
     // create the variant
     variant = await addRecord('positionalvariants', variant, conn, true, Object.assign(defaults, variant));
 
-    for (let diseaseRec of details.diseases) {
-        if (! diseaseRec.tags || diseaseRec.tags.length != 1) {
+    for (const diseaseRec of details.diseases) {
+        if (!diseaseRec.tags || diseaseRec.tags.length !== 1) {
             counts.skip++;
             continue;
         }
@@ -113,7 +115,9 @@ const processRecord = async (opt) => {
             }, conn, true);
             counts.success++;
         } catch (err) {
-            console.log(err.error ? err.error.message :  err.message);
+            console.log(err.error
+                ? err.error.message
+                : err.message);
             counts.error++;
         }
     }
@@ -140,18 +144,22 @@ const upload = async (conn) => {
 
     const counts = {error: 0, success: 0, skip: 0};
 
-    for (let record of recordsList) {
+    for (const record of recordsList) {
         if (record.drug_interactions) {
             console.log(record);
         }
         try {
-            const updates = await processRecord({conn, source, record, pubmedSource});
+            const updates = await processRecord({
+                conn, source, record, pubmedSource
+            });
             counts.success += updates.success;
             counts.error += updates.error;
             counts.skip += updates.skip;
         } catch (err) {
             counts.error++;
-            console.log(err.error ? err.error.message :  err.message);
+            console.log(err.error
+                ? err.error.message
+                : err.message);
         }
     }
     console.log('\n', counts);

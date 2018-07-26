@@ -2,7 +2,8 @@
  * Generates the openAPI specification for the Graph KB
  * @module app/routes/openapi
  */
-'use strict';
+
+
 const _ = require('lodash');
 
 const ABOUT = `
@@ -97,20 +98,28 @@ const STUB = {
                 ],
                 requestBody: {
                     required: true,
-                    content: {'application/json': {schema: {
-                        type: 'object',
-                        properties: {
-                            content: {type: 'string', description: 'the variant description'}
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                properties: {
+                                    content: {type: 'string', description: 'the variant description'}
+                                }
+                            }
                         }
-                    }}}
+                    }
                 },
                 responses: {
                     200: {
                         description: 'The variant is valid and has been parsed',
-                        content: {'application/json': {schema:{
-                            type: 'object',
-                            $ref: '#/components/schemas/PositionalVariant'
-                        }}}
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    $ref: '#/components/schemas/PositionalVariant'
+                                }
+                            }
+                        }
                     },
                     400: {
                         $ref: '#/components/responses/BadInput'
@@ -129,30 +138,34 @@ const STUB = {
                 ],
                 requestBody: {
                     required: true,
-                    content: {'application/json': {schema: {
-                        type: 'object',
-                        required: ['impliedBy', 'appliesTo', 'relevance', 'supportedBy'],
-                        properties: {
-                            impliedBy: {
-                                type: 'array',
-                                items: {$ref: '#/components/schemas/PutativeEdge'},
-                                description: 'A list of putative edges to be created'
-                            },
-                            supportedBy: {
-                                type: 'array',
-                                items: {$ref: '#/components/schemas/PutativeEdge'},
-                                description: 'A list of putative edges to be created'
-                            },
-                            appliesTo: {
-                                $ref: '#/components/schemas/@rid',
-                                description: 'The record ID of the Ontology term this statement applies to'
-                            },
-                            relevance: {
-                                description: 'The record ID of the Vocabulary term used to give meaning/relevance to this statement',
-                                $ref: '#/components/schemas/@rid'
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                required: ['impliedBy', 'appliesTo', 'relevance', 'supportedBy'],
+                                properties: {
+                                    impliedBy: {
+                                        type: 'array',
+                                        items: {$ref: '#/components/schemas/PutativeEdge'},
+                                        description: 'A list of putative edges to be created'
+                                    },
+                                    supportedBy: {
+                                        type: 'array',
+                                        items: {$ref: '#/components/schemas/PutativeEdge'},
+                                        description: 'A list of putative edges to be created'
+                                    },
+                                    appliesTo: {
+                                        $ref: '#/components/schemas/@rid',
+                                        description: 'The record ID of the Ontology term this statement applies to'
+                                    },
+                                    relevance: {
+                                        description: 'The record ID of the Vocabulary term used to give meaning/relevance to this statement',
+                                        $ref: '#/components/schemas/@rid'
+                                    }
+                                }
                             }
                         }
-                    }}}
+                    }
                 }
             }
         },
@@ -166,32 +179,40 @@ const STUB = {
                 ],
                 requestBody: {
                     required: true,
-                    content: {'application/json': {schema: {
-                        type: 'object',
-                        properties: {
-                            username: {type: 'string', description: 'The username'},
-                            password: {type: 'string', description: 'The password associated with this username'}
+                    content: {
+                        'application/json': {
+                            schema: {
+                                type: 'object',
+                                properties: {
+                                    username: {type: 'string', description: 'The username'},
+                                    password: {type: 'string', description: 'The password associated with this username'}
+                                }
+                            }
                         }
-                    }}}
+                    }
                 },
                 responses: {
                     200: {
                         description: 'The user is valid and a token has been generated',
-                        content: {'application/json': {schema:{
-                            type: 'object',
-                            properties: {
-                                kbToken: {
-                                    type: 'string',
-                                    format: 'token',
-                                    description: 'The token for KB API requests'
-                                },
-                                catsToken: {
-                                    type: 'string',
-                                    format: 'token',
-                                    description: 'The token from CATS'
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        kbToken: {
+                                            type: 'string',
+                                            format: 'token',
+                                            description: 'The token for KB API requests'
+                                        },
+                                        catsToken: {
+                                            type: 'string',
+                                            format: 'token',
+                                            description: 'The token from CATS'
+                                        }
+                                    }
                                 }
                             }
-                        }}}
+                        }
                     },
                     401: {
                         description: 'The credentials were incorrect or not found'
@@ -375,37 +396,57 @@ const STUB = {
         responses: {
             Forbidden: {
                 description: 'The current user does not have the required permissions to access this content',
-                content: {'application/json': {schema: {
-                    $ref: '#/components/schemas/Error',
-                    properties: {name: {example: 'PermissionError'}}
-                }}}
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/Error',
+                            properties: {name: {example: 'PermissionError'}}
+                        }
+                    }
+                }
             },
             NotAuthorized: {
                 description: 'Authorization failed or insufficient permissions were found',
-                content: {'application/json': {schema: {
-                    $ref: '#/components/schemas/Error'
-                }}}
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/Error'
+                        }
+                    }
+                }
             },
             RecordExistsError: {
                 description: 'The record cannot be created, the record already exists',
-                content: {'application/json': {schema: {
-                    $ref: '#/components/schemas/Error',
-                    properties: {name: {example: 'RecordExistsError'}}
-                }}}
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/Error',
+                            properties: {name: {example: 'RecordExistsError'}}
+                        }
+                    }
+                }
             },
             BadInput: {
                 description: 'Bad request contains invalid input',
-                content: {'application/json': {schema: {
-                    $ref: '#/components/schemas/Error',
-                    properties: {name: {example: 'AttributeError'}}
-                }}}
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/Error',
+                            properties: {name: {example: 'AttributeError'}}
+                        }
+                    }
+                }
             },
             RecordNotFound: {
                 description: 'The record does not exist',
-                content: {'application/json': {schema: {
-                    $ref: '#/components/schemas/Error'
-                }}}
-            },
+                content: {
+                    'application/json': {
+                        schema: {
+                            $ref: '#/components/schemas/Error'
+                        }
+                    }
+                }
+            }
         }
     },
     tags: [
@@ -422,7 +463,7 @@ const STUB = {
  *
  * @returns {object} the swagger parameter schema description
  */
-const linkOrModel = (model, nullable=false) => {
+const linkOrModel = (model, nullable = false) => {
     const param = {
         type: 'object',
         oneOf: [
@@ -563,7 +604,7 @@ const BASIC_HEADER_PARAMS = {
             enum: ['application/json']
         },
         required: true,
-        description: 'The content type you expect to recieve. Currently only supports application/json',
+        description: 'The content type you expect to recieve. Currently only supports application/json'
     },
     'Content-Type': {
         in: 'header',
@@ -585,9 +626,7 @@ const describePost = (model) => {
     const post = {
         summary: `create a new ${model.name} record`,
         tags: [model.name],
-        parameters: Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
-            return {$ref: `#/components/parameters/${p.name}`};
-        }),
+        parameters: Array.from(Object.values(BASIC_HEADER_PARAMS), p => ({$ref: `#/components/parameters/${p.name}`})),
         requestBody: {
             required: true,
             content: {'application/json': {schema: {$ref: `#/components/schemas/${model.name}`}}}
@@ -595,12 +634,16 @@ const describePost = (model) => {
         responses: {
             201: {
                 description: 'A new record was created',
-                content: {'application/json': {schema: {
-                    type: 'object',
-                    properties: {
-                        result: {$ref: `#/components/schemas/${model.name}`}
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                result: {$ref: `#/components/schemas/${model.name}`}
+                            }
+                        }
                     }
-                }}},
+                },
                 links: {
                     getById: {
                         parameters: {rid: '$response.body#/result.@rid'},
@@ -636,28 +679,34 @@ const describeGet = (model) => {
         summary: `get a list of ${model.name} records`,
         tags: [model.name],
         parameters: Array.from(_.concat(
-            model.inherits.includes('Ontology') || model.name === 'Ontology' ? Object.values(ONTOLOGY_QUERY_PARAMS) : [],
+            model.inherits.includes('Ontology') || model.name === 'Ontology'
+                ? Object.values(ONTOLOGY_QUERY_PARAMS)
+                : [],
             Object.values(GENERAL_QUERY_PARAMS),
             Object.values(BASIC_HEADER_PARAMS)
-        ), (p) => {
-            return {$ref: `#/components/parameters/${p.name}`};
-        }),
+        ), p => ({$ref: `#/components/parameters/${p.name}`})),
         responses: {
             200: {
-                content: {'application/json': {schema: {
-                    type: 'object',
-                    properties: {result: {
-                        type: 'array',
-                        items: {$ref: `#/components/schemas/${model.name}`}
-                    }}
-                }}}
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                result: {
+                                    type: 'array',
+                                    items: {$ref: `#/components/schemas/${model.name}`}
+                                }
+                            }
+                        }
+                    }
+                }
             },
             401: {$ref: '#/components/responses/NotAuthorized'},
             400: {$ref: '#/components/responses/BadInput'},
             403: {$ref: '#/components/responses/Forbidden'}
         }
     };
-    if (! model.isAbstract) {
+    if (!model.isAbstract) {
         get.responses[200].links = {
             getById: {
                 parameters: {rid: '$response.body#/result[].@rid'},
@@ -676,9 +725,9 @@ const describeGet = (model) => {
             }
         };
     }
-    for (let prop of Object.values(model.properties)) {
-        const isList = /(list|set)/g.exec(prop.type) ? true : false;
-        const isLink = prop.type.includes('link') ? true : false;
+    for (const prop of Object.values(model.properties)) {
+        const isList = !!/(list|set)/g.exec(prop.type);
+        const isLink = !!prop.type.includes('link');
 
         const param = {
             name: prop.name,
@@ -701,22 +750,20 @@ const describeGet = (model) => {
         if (prop.choices) {
             param.schema.enum = prop.choices;
         }
-
     }
 
     return get;
 };
 
 /**
- * Given a class model, generate the swagger documentation for the OPERATION/:id route where OPERATION can be delete, patch, etc.
+ * Given a class model, generate the swagger documentation for the OPERATION/:id route where
+ * OPERATION can be delete, patch, etc.
  */
-const describeOperationByID = (model, operation='delete') => {
+const describeOperationByID = (model, operation = 'delete') => {
     const description = {
         summary: `${operation} an existing ${model.name} record`,
         tags: [model.name],
-        parameters: _.concat(Array.from(Object.values(BASIC_HEADER_PARAMS), (p) => {
-            return {$ref: `#/components/parameters/${p.name}`};
-        }),
+        parameters: _.concat(Array.from(Object.values(BASIC_HEADER_PARAMS), p => ({$ref: `#/components/parameters/${p.name}`})),
             [{
                 in: 'path',
                 name: 'rid',
@@ -726,12 +773,20 @@ const describeOperationByID = (model, operation='delete') => {
                 required: true
             }]),
         responses: {
-            200: {content: {'application/json': {schema: {
-                type: 'object',
-                properties: {result: {
-                    $ref: `#/components/schemas/${model.name}`
-                }}
-            }}}},
+            200: {
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                result: {
+                                    $ref: `#/components/schemas/${model.name}`
+                                }
+                            }
+                        }
+                    }
+                }
+            },
             401: {$ref: '#/components/responses/NotAuthorized'},
             400: {$ref: '#/components/responses/BadInput'},
             404: {$ref: '#/components/responses/RecordNotFound'},
@@ -745,9 +800,7 @@ const describeOperationByID = (model, operation='delete') => {
         description.parameters.push({$ref: '#/components/parameters/neighbors'});
     }
     return description;
-}
-
-
+};
 
 
 /**
@@ -764,10 +817,15 @@ const generateSwaggerSpec = (schema, metadata) => {
     docs.servers = [{
         url: `http://${metadata.host}:${metadata.port}/api/v${process.env.npm_package_version}`
     }];
-    docs.components.parameters = Object.assign(docs.components.parameters, GENERAL_QUERY_PARAMS, BASIC_HEADER_PARAMS, ONTOLOGY_QUERY_PARAMS);
+    docs.components.parameters = Object.assign(
+        docs.components.parameters,
+        GENERAL_QUERY_PARAMS,
+        BASIC_HEADER_PARAMS,
+        ONTOLOGY_QUERY_PARAMS
+    );
 
     // simple routes
-    for (let model of Object.values(schema)) {
+    for (const model of Object.values(schema)) {
         // create the model in the schemas section
         docs.components.schemas[model.name] = {
             type: 'object',
@@ -779,7 +837,7 @@ const generateSwaggerSpec = (schema, metadata) => {
                 docs.paths[model.routeName] = {};
             }
             docs.paths[model.routeName].get = describeGet(model);
-            if (! model.isAbstract && model.name !== 'Statement') {
+            if (!model.isAbstract && model.name !== 'Statement') {
                 docs.paths[model.routeName].post = describePost(model);
                 docs.paths[`${model.routeName}/{rid}`] = {};
                 docs.paths[`${model.routeName}/{rid}`].patch = describeOperationByID(model, 'patch');
@@ -788,9 +846,8 @@ const generateSwaggerSpec = (schema, metadata) => {
             }
         }
         // for all model properties add a query parameter to the main GET request. Also add to the model components spec
-        for (let prop of Object.values(model.properties)) {
-            const isList = /(list|set)/g.exec(prop.type) ? true : false;
-            const isLink = prop.type.includes('link') ? true : false;
+        for (const prop of Object.values(model.properties)) {
+            const isList = !!/(list|set)/g.exec(prop.type);
 
             if (prop.mandatory && !model.defaults[prop.name] && (!['deletedBy', 'createdBy'].includes(prop.name))) {
                 if (docs.components.schemas[model.name].required === undefined) {
@@ -824,7 +881,9 @@ const generateSwaggerSpec = (schema, metadata) => {
                 propDefn.$ref = '#/components/schemas/RecordLink';
                 propDefn.description = docs.components.schemas.RecordLink.description;
             } else {
-                propDefn.type = prop.type === 'long' ? 'integer' : prop.type;
+                propDefn.type = prop.type === 'long'
+                    ? 'integer'
+                    : prop.type;
             }
             if (prop.choices) {
                 propDefn.enum = prop.choices;
@@ -832,9 +891,9 @@ const generateSwaggerSpec = (schema, metadata) => {
         }
     }
     // sort the route parameters, first by required and then alpha numerically
-    for (let route of Object.keys(docs.paths)) {
-        for (let defn of Object.values(docs.paths[route])) {
-            if (! defn.parameters) {
+    for (const route of Object.keys(docs.paths)) {
+        for (const defn of Object.values(docs.paths[route])) {
+            if (!defn.parameters) {
                 continue;
             }
             defn.parameters.sort((p1, p2) => {
@@ -848,17 +907,16 @@ const generateSwaggerSpec = (schema, metadata) => {
                     pname = pname[pname.length - 1];
                     p2 = Object.assign({}, docs.components.parameters[pname], p2);
                 }
-                if (p1.required && ! p2.required) {
-                    return -1
-                } else if (! p1.required && p2.required) {
-                    return 1;
-                } else if (p1.name < p2.name) {
+                if (p1.required && !p2.required) {
                     return -1;
-                } else if (p1.name > p2.name) {
+                } if (!p1.required && p2.required) {
                     return 1;
-                } else {
-                    return 0;
+                } if (p1.name < p2.name) {
+                    return -1;
+                } if (p1.name > p2.name) {
+                    return 1;
                 }
+                return 0;
             });
         }
     }

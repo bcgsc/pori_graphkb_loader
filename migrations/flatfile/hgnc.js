@@ -38,7 +38,7 @@ const uploadHugoGenes = async (opt) => {
     console.log('Loading the external HGNC data');
     const {filename, conn} = opt;
     console.log(`loading: ${filename}`);
-    const hgnc = require(filename);
+    const hgnc = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
     const genes = hgnc.response.docs;
     const aliasOf = [];
     const ensemblLinks = [];
@@ -48,14 +48,14 @@ const uploadHugoGenes = async (opt) => {
     source = source['@rid'].toString();
     let ensemblSource;
     try {
-        let ensemblSource = getRecordBy('sources', {name: 'ensembl'}, conn);
+        ensemblSource = getRecordBy('sources', {name: 'ensembl'}, conn);
     } catch (err) {
         console.log('Unable to fetch ensembl source for llinking records:', err);
     }
 
     console.log(`\nAdding ${genes.length} feature records`);
-    for (let gene of genes) {
-        let body = {
+    for (const gene of genes) {
+        const body = {
             source,
             sourceIdVersion: gene.date_modified,
             sourceId: gene.hgnc_id,
@@ -77,7 +77,7 @@ const uploadHugoGenes = async (opt) => {
                 process.stdout.write('x');
             }
         }
-        for (let symbol of gene.prev_symbol || []) {
+        for (const symbol of gene.prev_symbol || []) {
             const related = await addRecord(CLASS_NAME, {
                 source,
                 sourceId: record.sourceId,
@@ -88,7 +88,7 @@ const uploadHugoGenes = async (opt) => {
             }, conn, true, ['dependency']);
             deprecatedBy.push({src: related['@rid'], tgt: record['@rid']});
         }
-        for (let symbol of gene.alias_symbol || []) {
+        for (const symbol of gene.alias_symbol || []) {
             try {
                 const related = await addRecord(CLASS_NAME, {
                     source,
@@ -105,16 +105,16 @@ const uploadHugoGenes = async (opt) => {
     }
     if (ensemblSource) {
         console.log(`\nAdding the ${ensemblLinks.length} ensembl links`);
-        for (let {src, tgt} of ensemblLinks) {
+        for (const {src, tgt} of ensemblLinks) {
             await addRecord('aliasof', {out: src, in: tgt, source}, conn, true);
         }
     }
     console.log(`\nAdding the ${aliasOf.length} aliasof links`);
-    for (let {src, tgt} of aliasOf) {
+    for (const {src, tgt} of aliasOf) {
         await addRecord('aliasof', {out: src, in: tgt, source}, conn, true);
     }
     console.log(`\nAdding the ${deprecatedBy.length} deprecatedby links`);
-    for (let {src, tgt} of deprecatedBy) {
+    for (const {src, tgt} of deprecatedBy) {
         await addRecord('deprecatedby', {out: src, in: tgt, source}, conn, true);
     }
     console.log();

@@ -3,25 +3,25 @@
  */
 const rdf = require('rdflib');
 const fs = require('fs');
-const {addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms} = require('./util');
+const {
+    addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms
+} = require('./util');
 
 
 const parseUberonId = (string) => {
-    let match = /.*\/UBERON_(\d+)$/.exec(string);
+    const match = /.*\/UBERON_(\d+)$/.exec(string);
     if (match) {
         return `uberon:${match[1]}`;
-    } else {
-        throw new Error(`failed to parser ID from ${string}`);
     }
+    throw new Error(`failed to parser ID from ${string}`);
 };
 
 const parseSubsetName = (string) => {
-    let match = /.*\/([^\/]+)$/.exec(string);
+    const match = /.*\/([^/]+)$/.exec(string);
     if (match) {
         return match[1];
-    } else {
-        return string;
     }
+    return string;
 };
 
 
@@ -51,8 +51,8 @@ const uploadUberon = async ({filename, conn}) => {
     const source = await addRecord('sources', {name: 'uberon'}, conn, true);
 
     console.log(`Adding the uberon ${Object.keys(nodesByCode).length} entity nodes`);
-    for (let node of Object.values(nodesByCode)) {
-        if (! node[PRED_MAP.LABEL] || ! node.code) {
+    for (const node of Object.values(nodesByCode)) {
+        if (!node[PRED_MAP.LABEL] || !node.code) {
             continue;
         }
         const body = {
@@ -67,7 +67,7 @@ const uploadUberon = async ({filename, conn}) => {
             body.subsets = Array.from(node[PRED_MAP.SUBSETOF], parseSubsetName);
         }
         if (node[PRED_MAP.SUBCLASSOF]) {
-            for (let parentCode of node[PRED_MAP.SUBCLASSOF]) {
+            for (const parentCode of node[PRED_MAP.SUBCLASSOF]) {
                 subclassEdges.push({src: node.code, tgt: parentCode});
             }
         }
@@ -86,7 +86,7 @@ const uploadUberon = async ({filename, conn}) => {
         records[dbEntry.sourceId] = dbEntry;
     }
     console.log(`\nAdding the ${subclassEdges.length} subclassof relationships`);
-    for (let {src, tgt} of subclassEdges) {
+    for (const {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
             await addRecord('subclassof', {
                 out: records[src]['@rid'],
@@ -99,7 +99,7 @@ const uploadUberon = async ({filename, conn}) => {
     }
 
     console.log(`\nAdding the ${ncitLinks.length} uberon/ncit aliasof relationships`);
-    for (let {src, tgt} of ncitLinks) {
+    for (const {src, tgt} of ncitLinks) {
         if (records[src] === undefined) {
             continue;
         }

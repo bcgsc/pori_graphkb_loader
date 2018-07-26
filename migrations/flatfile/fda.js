@@ -12,7 +12,9 @@ const upload = async (opt) => {
     console.log(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
     console.log('parsing into json');
-    const jsonList = parse(content, {delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true});
+    const jsonList = parse(content, {
+        delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true
+    });
     const source = await addRecord('sources', {name: 'FDA', url: 'https://fdasis.nlm.nih.gov/srs'}, conn, true);
     let NCIT;
     try {
@@ -24,12 +26,12 @@ const upload = async (opt) => {
     console.log(`\nloading ${jsonList.length} records`);
     let skipCount = 0;
 
-    for (let record of jsonList) {
-        if (record.NCIT.length === 0 && ! /\S+[mn][ia]b\b/i.exec(record.PT)) {
+    for (const record of jsonList) {
+        if (record.NCIT.length === 0 && !/\S+[mn][ia]b\b/i.exec(record.PT)) {
             skipCount++;
             continue;
         }
-        if (! record.PT.length || ! record.UNII.length) {
+        if (!record.PT.length || !record.UNII.length) {
             skipCount++;
             continue;
         }

@@ -1,4 +1,5 @@
-'use strict';
+
+
 /** @module app/parser/position */
 const {ParsingError} = require('./../repo/error');
 
@@ -12,17 +13,17 @@ const PREFIX_CLASS = {
 };
 
 
-const CDS_PATT = /(\d+)([-\+]\d+)?/;
-const PROTEIN_PATT = /([A-Za-z\?\*])?(\d+|\?)/;
+const CDS_PATT = /(\d+)([-+]\d+)?/;
+const PROTEIN_PATT = /([A-Za-z?*])?(\d+|\?)/;
 const CYTOBAND_PATT = /[pq]((\d+|\?)(\.(\d+|\?))?)?/;
 
 
-const _positionString = (breakpoint) => {
-    breakpoint = Object.assign({}, breakpoint);
+const positionString = (inputBreakpoint) => {
+    const breakpoint = Object.assign({}, inputBreakpoint);
     if (breakpoint.pos === undefined) {
         breakpoint.pos = '?';
     }
-    switch(breakpoint['@class']) {
+    switch (breakpoint['@class']) {
         case PREFIX_CLASS.c: {
             if (breakpoint.offset) {
                 return `${breakpoint.pos}${breakpoint.offset > 0 ? '+' : ''}${breakpoint.offset}`;
@@ -32,11 +33,10 @@ const _positionString = (breakpoint) => {
         case PREFIX_CLASS.y: {
             if (breakpoint.minorBand) {
                 return `${breakpoint.arm}${breakpoint.majorBand || '?'}.${breakpoint.minorBand}`;
-            } else if (breakpoint.majorBand) {
+            } if (breakpoint.majorBand) {
                 return `${breakpoint.arm}${breakpoint.majorBand || '?'}`;
-            } else {
-                return breakpoint.arm;
             }
+            return breakpoint.arm;
         }
         case PREFIX_CLASS.p: {
             return `${breakpoint.refAA || '?'}${breakpoint.pos || '?'}`;
@@ -44,8 +44,8 @@ const _positionString = (breakpoint) => {
         default: {
             return `${breakpoint.pos}`;
         }
-    };
-}
+    }
+};
 
 /**
  * Convert parsed breakpoints into a string representing the breakpoint range
@@ -62,11 +62,11 @@ const _positionString = (breakpoint) => {
  * > break1Repr('g', {pos: 1})
  * 'g.1'
  */
-const breakRepr = (prefix, start, end=null) => {
-    if (end) {  // range
-        return `${prefix}.(${_positionString(start)}_${_positionString(end)})`;
+const breakRepr = (prefix, start, end = null) => {
+    if (end) { // range
+        return `${prefix}.(${positionString(start)}_${positionString(end)})`;
     }
-    return `${prefix}.${_positionString(start)}`;
+    return `${prefix}.${positionString(start)}`;
 };
 
 
@@ -83,24 +83,26 @@ const breakRepr = (prefix, start, end=null) => {
  * @returns {object} the parsed position
  */
 const parsePosition = (prefix, string) => {
-    let result = {'@class': PREFIX_CLASS[prefix]};
-    switch(prefix) {
+    const result = {'@class': PREFIX_CLASS[prefix]};
+    switch (prefix) {
+        case 'i':
         case 'e': {
-            const match = /^intron\s*(\d+)\s*$/.exec(string);
-            if (match) {
-                result['@class'] = PREFIX_CLASS.i;
-                if (match[1] !== '?') {
-                    result['pos'] = parseInt(match[1]);
-                }
-                return result;
+            result['@class'] = PREFIX_CLASS[prefix];
+            if (string !== '?') {
+                result.pos = parseInt(string, 10);
+            } else {
+                result.pos = null;
             }
+            return result;
         }
         case 'g': {
             if (string !== '?') {
-                if (! /^\d+$/.exec(string)) {
+                if (!/^\d+$/.exec(string)) {
                     throw new ParsingError(`expected integer but found: ${string}`);
                 }
-                result.pos = parseInt(string);
+                result.pos = parseInt(string, 10);
+            } else {
+                result.pos = null;
             }
             return result;
         }
@@ -109,8 +111,8 @@ const parsePosition = (prefix, string) => {
             if (m === null) {
                 throw new ParsingError(`input '${string}' did not match the expected pattern for 'c' prefixed positions`);
             }
-            result.pos = m[1] ? parseInt(m[1]) : 1;
-            result.offset = m[2] === undefined ? 0 : parseInt(m[2]);
+            result.pos = m[1] ? parseInt(m[1], 10) : 1;
+            result.offset = m[2] === undefined ? 0 : parseInt(m[2], 10);
             return result;
         }
         case 'p': {
@@ -119,10 +121,12 @@ const parsePosition = (prefix, string) => {
                 throw new ParsingError(`input string '${string}' did not match the expected pattern for 'p' prefixed positions`);
             }
             if (m[2] !== '?') {
-                result.pos = parseInt(m[2]);
+                result.pos = parseInt(m[2], 10);
+            } else {
+                result.pos = null;
             }
             if (m[1] !== undefined && m[1] !== '?') {
-                result.refAA = m[1];
+                [, result.refAA] = m;
             }
             return result;
         }
@@ -131,12 +135,12 @@ const parsePosition = (prefix, string) => {
             if (m == null) {
                 throw new ParsingError(`input string '${string}' did not match the expected pattern for 'y' prefixed positions`);
             }
-            result.arm = string[0];
+            [result.arm] = string;
             if (m[2] !== undefined && m[2] !== '?') {
-                result.majorBand = parseInt(m[2]);
+                result.majorBand = parseInt(m[2], 10);
             }
             if (m[4] !== undefined && m[4] !== '?') {
-                result.minorBand = parseInt(m[4]);
+                result.minorBand = parseInt(m[4], 10);
             }
             return result;
         }
@@ -146,4 +150,6 @@ const parsePosition = (prefix, string) => {
     }
 };
 
-module.exports = {parsePosition, breakRepr, CYTOBAND_PATT, CDS_PATT, PROTEIN_PATT};
+module.exports = {
+    parsePosition, breakRepr, CYTOBAND_PATT, CDS_PATT, PROTEIN_PATT
+};

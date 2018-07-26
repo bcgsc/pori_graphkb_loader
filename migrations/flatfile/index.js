@@ -5,16 +5,17 @@
 const commandLineArgs = require('command-line-args');
 const commandLineUsage = require('command-line-usage');
 const fs = require('fs');
+const path = require('path');
+const request = require('request-promise');
+
 const {uploadDiseaseOntology} = require('./disease_ontology');
-//const ensHg19 = require('./../ensembl69_hg19_annotations');
+// const ensHg19 = require('./../ensembl69_hg19_annotations');
 const {uploadHugoGenes} = require('./hgnc');
-const {uploadKbFlatFile} = require('./kb');
+const {upload: uploadKbFlatFile} = require('./kb');
 const {uploadUberon} = require('./uberon');
 const {uploadNCIT} = require('./ncit');
 const {uploadOncoTree} = require('./oncotree');
 const {uploadDrugBank} = require('./drugbank');
-const path = require('path');
-const request = require('request-promise');
 const {uploadRefSeq} = require('./refseq');
 const {upload: uploadOncoKB} = require('./oncokb');
 const {upload: uploadFDA} = require('./fda');
@@ -31,7 +32,7 @@ const argumentError = (usage, msg) => {
 
 
 const fileExists = (fileName) => {
-    if (! fs.existsSync(fileName)) {
+    if (!fs.existsSync(fileName)) {
         throw new Error(`File does not exist: ${fileName}`);
     }
     return path.resolve(fileName);
@@ -45,8 +46,7 @@ const optionDefinitions = [
         description: 'Print this help menu'
     },
     {
-        name: 'reference-flatfile',
-        alias: 'r',
+        name: 'kb',
         description: 'The flatfile containing the kb entries',
         required: false,
         type: fileExists
@@ -168,7 +168,7 @@ if (options.help !== undefined) {
 }
 
 // check all required arguments
-for (let opt of optionDefinitions) {
+for (const opt of optionDefinitions) {
     if (options[opt.name] === undefined) {
         if (opt.default !== undefined) {
             options[opt.name] = opt.default;
@@ -182,10 +182,11 @@ for (let opt of optionDefinitions) {
  * wrapper to make requests less verbose
  */
 class ApiRequest {
-    constructor(options) {
-        this.baseUrl = `http://${options.host}:${options.port}/api/v${process.env.npm_package_version}`;
+    constructor(opt) {
+        this.baseUrl = `http://${opt.host}:${opt.port}/api/v${process.env.npm_package_version}`;
         this.headers = {};
     }
+
     async setAuth({username, password}) {
         const token = await request({
             method: 'POST',
@@ -195,6 +196,7 @@ class ApiRequest {
         });
         this.headers.Authorization = token.kbToken;
     }
+
     request(opt) {
         const req = {
             method: opt.method || 'GET',
@@ -220,11 +222,11 @@ const upload = async () => {
     if (options.vocab !== undefined) {
         await uploadVocab(apiConnection);
     }
-    if (options['ncit']) {
-        await uploadNCIT({conn: apiConnection, filename: options['ncit']});
+    if (options.ncit) {
+        await uploadNCIT({conn: apiConnection, filename: options.ncit});
     }
-    if (options['fda']) {
-        await uploadFDA({conn: apiConnection, filename: options['fda']});
+    if (options.fda) {
+        await uploadFDA({conn: apiConnection, filename: options.fda});
     }
     if (options.drugbank) {
         await uploadDrugBank({conn: apiConnection, filename: options.drugbank});
@@ -232,14 +234,14 @@ const upload = async () => {
     if (options['disease-ontology']) {
         await uploadDiseaseOntology({conn: apiConnection, filename: options['disease-ontology']});
     }
-    if (options['hugo']) {
-        await uploadHugoGenes({conn: apiConnection,  filename: options['hugo']});
+    if (options.hugo) {
+        await uploadHugoGenes({conn: apiConnection, filename: options.hugo});
     }
-    if (options['refseq']) {
-        await uploadRefSeq({conn: apiConnection, filename: options['refseq']});
+    if (options.refseq) {
+        await uploadRefSeq({conn: apiConnection, filename: options.refseq});
     }
-    if (options['uberon']) {
-        await uploadUberon({conn: apiConnection, filename: options['uberon']});
+    if (options.uberon) {
+        await uploadUberon({conn: apiConnection, filename: options.uberon});
     }
     if (options.oncotree !== undefined) {
         await uploadOncoTree(apiConnection);
@@ -247,8 +249,8 @@ const upload = async () => {
     if (options.cosmic) {
         await uploadCosmic({conn: apiConnection, filename: options.cosmic});
     }
-    if (options['reference-flatfile']) {
-        await uploadKbFlatFile({conn: apiConnection, filename: options['reference-flatfile']});
+    if (options.kb) {
+        await uploadKbFlatFile({conn: apiConnection, filename: options.kb});
     }
     if (options.oncokb !== undefined) {
         await uploadOncoKB(apiConnection);
@@ -262,6 +264,3 @@ const upload = async () => {
 };
 
 upload();
-
-
-

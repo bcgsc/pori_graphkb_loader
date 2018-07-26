@@ -3,9 +3,12 @@
  * http://griffithlab.org/civic-api-docs/#endpoint-types
  * https://civicdb.org/api/evidence_items
  */
-const {addRecord, getRecordBy, getPubmedArticle, orderPreferredOntologyTerms, preferredDrugs, preferredDiseases} = require('./util');
 const request = require('request-promise');
 const _ = require('lodash');
+const {
+    addRecord, getRecordBy, getPubmedArticle, orderPreferredOntologyTerms, preferredDrugs, preferredDiseases
+} = require('./util');
+
 const SOURCE_NAME = 'civic';
 
 /**
@@ -25,7 +28,7 @@ const VOCAB = {
     5: 'Strong, well supported evidence from a lab or journal with respected academic standing. Experiments are well controlled, and results are clean and reproducible across multiple replicates. Evidence confirmed using separate methods.'
 };
 
-const VARIANT_CACHE = {};  // cache variants from CIViC by CIVic ID
+const VARIANT_CACHE = {}; // cache variants from CIViC by CIVic ID
 const THERAPY_MAPPING = {
     ch5132799: 'ch-5132799',
     ag1296: 'ag 1296',
@@ -37,7 +40,7 @@ const THERAPY_MAPPING = {
     'trametinib dmso': 'trametinib dimethyl sulfoxide',
     'pd-1 inhibitor': 'pd1 inhibitor',
     'pf 00299804': 'pf-00299804',
-    'pd184352': 'pd-184352',
+    pd184352: 'pd-184352',
     'trichostatin a (tsa)': 'trichostatin a'
 };
 
@@ -45,9 +48,9 @@ const THERAPY_MAPPING = {
  * Convert the CIViC relevance types to GraphKB terms
  */
 const getRelevance = (evidenceType, clinicalSignificance) => {
-    switch (evidenceType) {
+    switch (evidenceType) { // eslint-disable-line default-case
         case 'Predictive': {
-            switch (clinicalSignificance) {
+            switch (clinicalSignificance) { // eslint-disable-line default-case
                 case 'Sensitivity':
                 case 'Adverse Response':
                 case 'Resistance': {
@@ -58,14 +61,14 @@ const getRelevance = (evidenceType, clinicalSignificance) => {
             break;
         }
         case 'Diagnostic': {
-            switch (clinicalSignificance) {
+            switch (clinicalSignificance) { // eslint-disable-line default-case
                 case 'Positive': { return 'favours diagnosis'; }
                 case 'Negative': { return 'opposes diagnosis'; }
             }
             break;
         }
         case 'Prognostic': {
-            switch (clinicalSignificance) {
+            switch (clinicalSignificance) { // eslint-disable-line default-case
                 case 'Poor Outcome': { return 'unfavourable prognosis'; }
                 case 'Better Outcome': { return 'favourable prognosis'; }
             }
@@ -84,7 +87,7 @@ const getDrug = async (conn, name) => {
         const drug = await getRecordBy('therapies', {name}, conn, preferredDrugs);
         return drug;
     } catch (err) {
-        let match = /^\s*(\S+)\s*\([^\)]+\)$/.exec(name);
+        const match = /^\s*(\S+)\s*\([^)]+\)$/.exec(name);
         if (match) {
             return getRecordBy('therapies', {name: match[1]}, conn, preferredDrugs);
         }
@@ -95,7 +98,7 @@ const getDrug = async (conn, name) => {
 
 const parseVariant = (string) => {
     string = string.toLowerCase().trim();
-    switch (string) {
+    switch (string) { // eslint-disable-line default-case
         case 'loss-of-function':
         case 'overexpression':
         case 'expression':
@@ -107,15 +110,16 @@ const parseVariant = (string) => {
         case 'itd': { return 'internal tandem duplication (itd)'; }
     }
     return string;
-}
+};
 
 
 /**
  * Transform a CIViC evidence record into a GraphKB statement
  */
 const processEvidenceRecord = async (opt) => {
-    const {conn, rawRecord, source, pubmedSource} = opt;
-    const result = {};
+    const {
+        conn, rawRecord, source, pubmedSource
+    } = opt;
     // get the evidenceLevel
     let level = `${rawRecord.evidence_level}${rawRecord.rating}`;
     level = await addRecord('evidencelevels', {
@@ -187,23 +191,23 @@ const processEvidenceRecord = async (opt) => {
     }
     // create the statement and connecting edges
     if (rawRecord.evidence_type === 'Diagnostic') {
-        return await addRecord('statements', {
+        return addRecord('statements', {
             impliedBy: [{target: variant['@rid']}],
             supportedBy: [{target: publication['@rid'], source: source['@rid'], level: level['@rid']}],
             relevance: relevance['@rid'],
             appliesTo: disease['@rid'],
             description: rawRecord.description
         }, conn);
-    } else if (rawRecord.evidence_type === 'Predictive' && drug) {
-        return await addRecord('statements', {
+    } if (rawRecord.evidence_type === 'Predictive' && drug) {
+        return addRecord('statements', {
             impliedBy: [{target: variant['@rid']}, {target: disease['@rid']}],
             supportedBy: [{target: publication['@rid'], source: source['@rid'], level: level['@rid']}],
             relevance: relevance['@rid'],
             appliesTo: drug['@rid'],
             description: rawRecord.description
         }, conn);
-    } else if (rawRecord.evidence_type === 'Prognostic') {
-        return await addRecord('statements', {
+    } if (rawRecord.evidence_type === 'Prognostic') {
+        return addRecord('statements', {
             impliedBy: [{target: variant['@rid']}, {target: disease['@rid']}],
             supportedBy: [{target: publication['@rid'], source: source['@rid'], level: level['@rid']}],
             relevance: relevance['@rid'],
@@ -215,7 +219,7 @@ const processEvidenceRecord = async (opt) => {
 };
 
 const upload = async (conn) => {
-    let urlTemplate = 'https://civicdb.org/api/evidence_items?count=500&status=accepted';
+    const urlTemplate = 'https://civicdb.org/api/evidence_items?count=500&status=accepted';
     // load directly from their api
     let errorCount = 0;
     let totalCount = 0;
@@ -245,7 +249,7 @@ const upload = async (conn) => {
         console.log(`loaded ${resp.records.length} records`);
 
 
-        for (let record of resp.records) {
+        for (const record of resp.records) {
             if (record.evidence_direction === 'Does Not Support' || record.evidence_type === 'Predisposing') {
                 skipCount++;
                 continue;
@@ -253,16 +257,18 @@ const upload = async (conn) => {
             if (record.drugs === undefined || record.drugs.length === 0) {
                 record.drugs = [null];
             }
-            for (let drug of record.drugs) {
+            for (const drug of record.drugs) {
                 totalCount++;
                 try {
-                    const parsed = await processEvidenceRecord({
-                        conn, source, pubmedSource,
+                    await processEvidenceRecord({
+                        conn,
+                        source,
+                        pubmedSource,
                         rawRecord: Object.assign({drug}, _.omit(record, ['drugs']))
                     });
                     successCount++;
                 } catch (err) {
-                    if (! err.error || err.error.name != 'ParsingError') {
+                    if (!err.error || err.error.name !== 'ParsingError') {
                         console.log();
                         console.error(err.error || err);
                     }
@@ -270,11 +276,15 @@ const upload = async (conn) => {
                 }
             }
         }
-        console.log({errorCount, successCount, skipCount, totalCount});
+        console.log({
+            errorCount, successCount, skipCount, totalCount
+        });
         currentPage++;
     }
     console.log();
-    console.log({errorCount, totalCount, skipCount, successCount});
+    console.log({
+        errorCount, totalCount, skipCount, successCount
+    });
 };
 
 module.exports = {upload};

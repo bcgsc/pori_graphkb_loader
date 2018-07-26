@@ -1,10 +1,8 @@
 const HTTP_STATUS = require('http-status-codes');
-const {parsePosition} = require('./../parser/position');
 const {parse} = require('./../parser/variant');
 
 
 const addParserRoutes = (router) => {
-
     router.post('/parser/variant', async (req, res) => {
         try {
             const parsed = parse(req.body.content);

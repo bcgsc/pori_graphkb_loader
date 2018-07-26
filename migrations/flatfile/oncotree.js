@@ -17,7 +17,7 @@ const uploadOncoTree = async (conn) => {
         json: true
     });
     let stable;
-    for (let version of versions) {
+    for (const version of versions) {
         if (version.api_identifier === 'oncotree_latest_stable') {
             stable = version;
             break;
@@ -47,7 +47,7 @@ const uploadOncoTree = async (conn) => {
         process.stdout.write('?');
     }
 
-    for (let record of records) {
+    for (const record of records) {
         const body = {
             source: source['@rid'],
             name: record.name,
@@ -59,8 +59,8 @@ const uploadOncoTree = async (conn) => {
             subclassof.push({src: record.code.toLowerCase(), tgt: record.parent.toLowerCase()});
         }
         if (ncitSource) {
-            if (record.externalReferences && record.externalReferences['NCI']) {
-                for (let ncitID of record.externalReferences['NCI']) {
+            if (record.externalReferences && record.externalReferences.NCI) {
+                for (let ncitID of record.externalReferences.NCI) {
                     ncitID = ncitID.toLowerCase();
                     try {
                         const ncitRec = await getRecordBy('diseases', {source: {name: 'ncit'}, sourceId: ncitID}, conn);

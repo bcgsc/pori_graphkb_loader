@@ -1,7 +1,10 @@
-'use strict';
+
+
 /** @module app/parser/variant */
 const {ParsingError} = require('./../repo/error');
-const {parsePosition, breakRepr, CDS_PATT, PROTEIN_PATT, CYTOBAND_PATT} = require('./position');
+const {
+    parsePosition, breakRepr, CDS_PATT, PROTEIN_PATT, CYTOBAND_PATT
+} = require('./position');
 
 const EVENT_SUBTYPE = {
     INS: 'insertion',
@@ -9,8 +12,8 @@ const EVENT_SUBTYPE = {
     SUB: 'substitution',
     INV: 'inversion',
     INDEL: 'indel',
-    GAIN: 'gain',
-    LOSS: 'loss',
+    GAIN: 'copy gain',
+    LOSS: 'copy loss',
     TRANS: 'translocation',
     ITRANS: 'inverted translocation',
     EXT: 'extension',
@@ -51,16 +54,16 @@ const NOTATION_TO_SUBTYPE = new Map([
  * @returns {string} the prefix
  */
 const getPrefix = (string) => {
-    const prefix = string[0];
-    const expectedPrefix = ['g', 'c', 'e', 'y', 'p'];
-    if (! expectedPrefix.includes(prefix)) {
+    const [prefix] = string;
+    const expectedPrefix = ['g', 'c', 'e', 'y', 'p', 'i'];
+    if (!expectedPrefix.includes(prefix)) {
         throw new ParsingError({
             message: `'${prefix}' is not an accepted prefix`,
             expected: expectedPrefix,
             input: string
         });
     }
-    if (string.length < 2 || string[1] != '.') {
+    if (string.length < 2 || string[1] !== '.') {
         throw new ParsingError({
             message: 'Missing \'.\' separator after prefix',
             input: string
@@ -77,7 +80,7 @@ const getPrefix = (string) => {
  * @returns {object} the parsed content
  */
 const parse = (string) => {
-    if (! string || string.length < 4) {
+    if (!string || string.length < 4) {
         throw new ParsingError({
             message: 'Too short. Must be a minimum of four characters',
             input: string
@@ -94,26 +97,26 @@ const parse = (string) => {
     if (variantString.includes(',') || (featureString && (featureString.startsWith('(') || featureString.endsWith(')') || featureString.includes(',')))) {
         // multi-feature notation
         if (featureString) {
-            if (featureString && ! featureString.includes(',')) {
+            if (featureString && !featureString.includes(',')) {
                 throw new ParsingError({
                     message: 'Multi-feature notation must contain two reference features separated by a comma',
                     parsed: {featureString, variantString},
                     input: string
                 });
-            } else if (! featureString.startsWith('(')) {
+            } else if (!featureString.startsWith('(')) {
                 throw new ParsingError({
                     message: 'Missing opening parentheses surrounding the reference features',
                     parsed: {featureString, variantString},
                     input: string
                 });
-            } else if (! featureString.endsWith(')')) {
+            } else if (!featureString.endsWith(')')) {
                 throw new ParsingError({
                     message: 'Missing closing parentheses surrounding the reference features',
                     parsed: {featureString, variantString},
                     input: string
                 });
             }
-            let features = featureString.slice(1, featureString.length - 1).split(',');
+            const features = featureString.slice(1, featureString.length - 1).split(',');
             if (features.length > 2) {
                 throw new ParsingError({
                     message: 'May only specify two features. Found more than a single comma',
@@ -121,8 +124,7 @@ const parse = (string) => {
                     input: string
                 });
             }
-            result.reference1 = features[0];
-            result.reference2 = features[1];
+            [result.reference1, result.reference2] = features;
         }
         try {
             const variant = parseMultiFeature(variantString);
@@ -157,8 +159,8 @@ const parse = (string) => {
 };
 
 /**
- * Given a string representing a multi-feature variant. Parse and checks the format returning meaningful
- * error messages.
+ * Given a string representing a multi-feature variant. Parse and checks the format returning
+ * meaningful error messages.
  *
  * @param {string} string the string to be parsed
  *
@@ -173,15 +175,6 @@ const parseMultiFeature = (string) => {
         throw new ParsingError(`Too short. Multi-feature notation must be a minimum of six characters: ${string}`);
     }
     const parsed = {};
-    /*try {
-        parsed.prefix = getPrefix(string);
-    } catch (err) {
-        throw new ParsingError({
-            message: 'Error in parsing the prefix',
-            input: string,
-            subParserError: err
-        });
-    }*/
 
     if (string.indexOf('(') < 0) {
         throw new ParsingError({message: 'Missing opening parentheses', input: string});
@@ -194,13 +187,14 @@ const parseMultiFeature = (string) => {
             input: string
         });
     }
-    if (! NOTATION_TO_SUBTYPE.has(parsed.type)) {
+    if (!NOTATION_TO_SUBTYPE.has(parsed.type)) {
         throw new ParsingError({message: 'Variant type not recognized', parsed, input: string});
     }
-    if (! ['fusion', 'trans', 'itrans'].includes(parsed.type)) {
+    if (!['fusion', 'trans', 'itrans'].includes(parsed.type)) {
         throw new ParsingError({
             message: `Continuous notation is preferred over multi-feature notation for ${parsed.type} variant types`,
-            parsed, input: string
+            parsed,
+            input: string
         });
     }
     parsed.type = NOTATION_TO_SUBTYPE.get(parsed.type);
@@ -209,8 +203,8 @@ const parseMultiFeature = (string) => {
     }
     const untemplatedSeq = string.slice(string.indexOf(')') + 1);
     if (untemplatedSeq.length > 0) {
-        if (parseInt(untemplatedSeq)) {
-            parsed.untemplatedSeqSize = parseInt(untemplatedSeq);
+        if (parseInt(untemplatedSeq, 10)) {
+            parsed.untemplatedSeqSize = parseInt(untemplatedSeq, 10);
         } else {
             parsed.untemplatedSeq = untemplatedSeq;
             parsed.untemplatedSeqSize = untemplatedSeq.length;
@@ -237,7 +231,9 @@ const parseMultiFeature = (string) => {
     } catch (err) {
         throw new ParsingError({
             message: 'Error in parsing the first breakpoint position/range',
-            input: string, parsed, subParserError: err
+            input: string,
+            parsed,
+            subParserError: err
         });
     }
     try {
@@ -254,7 +250,9 @@ const parseMultiFeature = (string) => {
     } catch (err) {
         throw new ParsingError({
             message: 'Error in parsing the second breakpoint position/range',
-            input: string, parsed, subParserError: err
+            input: string,
+            parsed,
+            subParserError: err
         });
     }
     return parsed;
@@ -262,7 +260,8 @@ const parseMultiFeature = (string) => {
 
 
 /**
- * Given an input string, assume it starts with a position range. Extract and return the position range
+ * Given an input string, assume it starts with a position range.
+ * Extract and return the position range
  * @param {string} string
  */
 const extractPositions = (prefix, string) => {
@@ -288,10 +287,10 @@ const extractPositions = (prefix, string) => {
             default: { pattern = /\d+/; }
         }
         const match = new RegExp(`^(${pattern.source})`).exec(string);
-        if (! match) {
+        if (!match) {
             throw new ParsingError('Failed to parse the initial position');
         }
-        result.input = match[0];
+        [result.input] = match;
         result.start = result.input.slice(0);
     }
     result.start = parsePosition(prefix, result.start);
@@ -299,7 +298,7 @@ const extractPositions = (prefix, string) => {
         result.end = parsePosition(prefix, result.end);
     }
     return result;
-}
+};
 
 
 /**
@@ -320,7 +319,7 @@ const parseContinuous = (inputString) => {
     }
 
     const prefix = getPrefix(string);
-    const result = {prefix: prefix};
+    const result = {prefix};
     string = string.slice(prefix.length + 1);
     // get the first position
     const break1 = extractPositions(prefix, string);
@@ -348,21 +347,21 @@ const parseContinuous = (inputString) => {
         result.break2Repr = breakRepr(prefix, result.break2Start, result.break2End);
     }
     let match;
-    if (match = /^del([A-Z\?\*]+)?ins([A-Z\?\*]+|\d+)?$/i.exec(tail)) {  // indel
+    if (match = /^del([A-Z?*]+)?ins([A-Z?*]+|\d+)?$/i.exec(tail)) { // indel
         result.type = 'delins';
         if (match[1]) {
             result.refSeq = match[1];
         }
-        if (parseInt(match[2])) {
-            result.untemplatedSeqSize = parseInt(match[2]);
+        if (parseInt(match[2], 10)) {
+            result.untemplatedSeqSize = parseInt(match[2], 10);
         } else if (match[2] && match[2] !== '?') {
             result.untemplatedSeq = match[2];
         }
-    } else if (match = /^(del|inv|ins|dup)([A-Z\?\*]+|\d+)?$/i.exec(tail)) {  // deletion
+    } else if (match = /^(del|inv|ins|dup)([A-Z?*]+|\d+)?$/i.exec(tail)) { // deletion
         result.type = match[1];
-        if (parseInt(match[2])) {
+        if (parseInt(match[2], 10)) {
             if (result.type === 'ins' || result.type === 'dup') {
-                result.untemplatedSeqSize = parseInt(match[2]);
+                result.untemplatedSeqSize = parseInt(match[2], 10);
             }
         } else if (match[2] && match[2] !== '?') {
             if (result.type === 'dup') {
@@ -374,7 +373,7 @@ const parseContinuous = (inputString) => {
                 result.refSeq = match[2];
             }
         }
-    } else if (match = /^[A-Z\?\*]$/i.exec(tail) || tail.length === 0) {
+    } else if (match = /^[A-Z?*]$/i.exec(tail) || tail.length === 0) {
         if (prefix !== 'p') {
             throw new ParsingError('only protein notation does not use ">" for a substitution');
         }
@@ -382,16 +381,15 @@ const parseContinuous = (inputString) => {
         if (tail.length > 0 && tail !== '?') {
             result.untemplatedSeq = tail;
         }
-    } else if (match = /^([A-Z\?])>([A-Z\?])$/i.exec(tail)) {
+    } else if (match = /^([A-Z?])>([A-Z?])$/i.exec(tail)) {
         if (prefix === 'p') {
             throw new ParsingError('protein notation does not use ">" for a substitution');
         } else if (prefix === 'e') {
             throw new ParsingError('Cannot defined substitutions at the exon coordinate level');
         }
         result.type = '>';
-        result.refSeq = match[1];
-        result.untemplatedSeq = match[2];
-    } else if (match = /^([A-Z\?\*])?fs((\*)(\d+)?)?$/i.exec(tail)) {
+        [, result.refSeq, result.untemplatedSeq] = match;
+    } else if (match = /^([A-Z?*])?fs((\*)(\d+)?)?$/i.exec(tail)) {
         if (prefix !== 'p') {
             throw new ParsingError('only protein notation can notate frameshift variants');
         }
@@ -403,7 +401,7 @@ const parseContinuous = (inputString) => {
             if (match[4] === undefined) {
                 result.truncation = match[1] === '*' ? 1 : null;
             } else {
-                result.truncation = parseInt(match[4]);
+                result.truncation = parseInt(match[4], 10);
                 if (match[1] === '*' && result.truncation !== 1) {
                     throw new ParsingError('invalid framshift specifies a non-immeadiate truncation which conflicts with the terminating alt seqeuence');
                 }
@@ -414,12 +412,12 @@ const parseContinuous = (inputString) => {
         if (result.break2Start !== undefined) {
             throw new ParsingError('frameshifts cannot span a range');
         }
-    } else if (tail.toLowerCase() === 'spl'){
+    } else if (tail.toLowerCase() === 'spl') {
         result.type = 'spl';
     } else {
         result.type = tail;
     }
-    if (! NOTATION_TO_SUBTYPE.has(result.type)) {
+    if (!NOTATION_TO_SUBTYPE.has(result.type)) {
         throw new ParsingError(`unsupported event type: ${result.type}`);
     }
     result.type = NOTATION_TO_SUBTYPE.get(result.type);
@@ -430,7 +428,13 @@ const parseContinuous = (inputString) => {
     if (prefix === 'y') {
         if (result.refSeq || result.untemplatedSeq) {
             throw new ParsingError('cannot define sequence elements at the cytoband level');
-        } else if (! [EVENT_SUBTYPE.DUP, EVENT_SUBTYPE.DEL, EVENT_SUBTYPE.GAIN, EVENT_SUBTYPE.LOSS, EVENT_SUBTYPE.INV].includes(result.type)) {
+        } else if (![
+            EVENT_SUBTYPE.DUP,
+            EVENT_SUBTYPE.DEL,
+            EVENT_SUBTYPE.GAIN,
+            EVENT_SUBTYPE.LOSS,
+            EVENT_SUBTYPE.INV
+        ].includes(result.type)) {
             throw new ParsingError({
                 message: 'Invalid type for cytoband level event notation',
                 parsed: result
@@ -438,11 +442,13 @@ const parseContinuous = (inputString) => {
         }
     }
     // special case refSeq protein substitutions
-    if (prefix === 'p' && ! result.break1End && ! result.break2Start && ! result.break2End && result.break1Start.refAA) {
+    if (prefix === 'p' && !result.break1End && !result.break2Start && !result.break2End && result.break1Start.refAA) {
         result.refSeq = result.break1Start.refAA;
     }
     return result;
 };
 
 
-module.exports = {parse, NOTATION_TO_SUBTYPE, EVENT_SUBTYPE, parseContinuous, parseMultiFeature};
+module.exports = {
+    parse, NOTATION_TO_SUBTYPE, EVENT_SUBTYPE, parseContinuous, parseMultiFeature
+};

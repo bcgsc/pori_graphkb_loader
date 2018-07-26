@@ -1,25 +1,27 @@
-'use strict';
+
 
 // required packages
 const express = require('express');
 const bodyParser = require('body-parser');
-const addRoutes = require('./routes');
-const OrientDB  = require('orientjs');
-const {loadSchema} = require('./repo/schema');
-const auth = require('./middleware/auth');
-const {generateSwaggerSpec} = require('./routes/openapi');
-const {checkToken, generateToken, catsToken, checkClassPermissions} = require('./middleware/auth');  // WARNING: middleware fails if function is not imported by itself
+const OrientDB = require('orientjs');
 const fs = require('fs');
 const http = require('http');
-const {VERBOSE} = require('./repo/util');
-const HTTP_STATUS = require('http-status-codes');
-const swaggerUi = require('swagger-ui-express');
-const path = require('path');
-const {parse} = require('./parser/variant');
 const jc = require('json-cycle');
 const cors = require('cors');
 const moment = require('moment');
-const {select} = require('./repo/base');
+const HTTP_STATUS = require('http-status-codes');
+const swaggerUi = require('swagger-ui-express');
+
+const auth = require('./middleware/auth');
+const {generateSwaggerSpec} = require('./routes/openapi');
+const {
+    checkToken, generateToken, catsToken
+} = require('./middleware/auth'); // WARNING: middleware fails if function is not imported by itself
+
+const {VERBOSE} = require('./repo/util');
+const {parse} = require('./parser/variant');
+const {loadSchema} = require('./repo/schema');
+const addRoutes = require('./routes');
 
 
 const logRequests = (req, res, next) => {
@@ -65,7 +67,7 @@ const connectDB = async (conf) => {
 
 
 class AppServer {
-    constructor(conf={app: {}}) {
+    constructor(conf = {app: {}}) {
         this.app = express();
         // set up middleware parser to deal with jsons
         this.app.use(bodyParser.urlencoded({extended: true}));
@@ -98,7 +100,7 @@ class AppServer {
             }
             // first level authentication
             let cats = {user: req.body.username, token: null};
-            if (! this.conf.disableCats) {  // FOR TESTING
+            if (!this.conf.disableCats) { // FOR TESTING
                 try {
                     cats = await catsToken(req.body.username, req.body.password);
                 } catch (err) {
@@ -139,14 +141,16 @@ class AppServer {
         this.schema = schema;
         // set up the swagger docs
         this.spec = generateSwaggerSpec(schema, {port: this.conf.app.port});
-        this.router.use('/spec', swaggerUi.serve, swaggerUi.setup(this.spec, {swaggerOptions: {
-            deepLinking: true,
-            displayOperationId: true,
-            defaultModelRendering: 'model',
-            operationsSorter: 'alpha',
-            tagsSorter: 'alpha',
-            docExpansion: 'none'
-        }}));
+        this.router.use('/spec', swaggerUi.serve, swaggerUi.setup(this.spec, {
+            swaggerOptions: {
+                deepLinking: true,
+                displayOperationId: true,
+                defaultModelRendering: 'model',
+                operationsSorter: 'alpha',
+                tagsSorter: 'alpha',
+                docExpansion: 'none'
+            }
+        }));
 
         this.router.get('/schema', async (req, res) => {
             res.status(HTTP_STATUS.OK).json({schema: jc.decycle(schema)});
@@ -155,40 +159,36 @@ class AppServer {
         this.router.use(checkToken);
 
         // create the authentication certificate for managing tokens
-        if (! auth.keys.private) {
+        if (!auth.keys.private) {
             auth.keys.private = fs.readFileSync(this.conf.private_key);
         }
         // add the db connection reference to the routes
-        addRoutes({router: this.router, db: this.db, schema: schema});
+        addRoutes({router: this.router, db: this.db, schema});
         if (VERBOSE) {
             console.log('Adding 404 capture');
         }
         // catch any other errors
-        this.router.use((err, req, res, next) => {  // error handling
+        this.router.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
             console.error(err.stack);
             return res.status(err.code || HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
         });
         // last catch any errors for undefined routes. all actual routes should be defined above
-        this.app.use((req, res) => {
-            return res.status(HTTP_STATUS.NOT_FOUND).json({
-                error: 'Not Found',
-                name: 'UrlNotFound',
-                message: `The requested url does not exist: ${req.url}`,
-                url: req.url,
-                method: req.method
-            });
-        });
+        this.app.use((req, res) => res.status(HTTP_STATUS.NOT_FOUND).json({
+            error: 'Not Found',
+            name: 'UrlNotFound',
+            message: `The requested url does not exist: ${req.url}`,
+            url: req.url,
+            method: req.method
+        }));
 
-        //appServer = await https.createServer({cert: keys.cert, key: keys.private, rejectUnauthorized: false}, app).listen(conf.app.port || defaultConf.app.port);
         this.server = await http.createServer(this.app).listen(this.conf.app.port);
-        //this.server = await this.app.listen(this.conf.app.port, this.conf.app.host);
         if (VERBOSE) {
             console.log('started application server at:', this.server.address().host, this.server.address().port);
         }
     }
+
     async close() {
-        if (VERBOSE)
-            console.log('cleaning up');
+        if (VERBOSE) { console.log('cleaning up'); }
         try {
             if (this.server) {
                 await this.server.close();

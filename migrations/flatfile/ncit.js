@@ -5,7 +5,7 @@
  * Additionally node v10 is required since the string size is too small in previous versions
  */
 
- /*
+/*
 
 Example record
 
@@ -80,8 +80,7 @@ tree head nodes to collect all subclasses from
 
 const rdf = require('rdflib');
 const fs = require('fs');
-const jsonfile = require('jsonfile');
-const {addRecord, convertOwlGraphToJson} = require('./util');
+const {addRecord, convertOwlGraphToJson, getRecordBy} = require('./util');
 
 const ROOT_NODES = {
     AGONIST: 'c1514',
@@ -122,7 +121,7 @@ const subclassTree = (nodesByCode, roots) => {
     while (queue.length > 0) {
         const currNode = queue.shift();
         subtree[currNode.code] = currNode;
-        for (let childCode of currNode.subclasses || []) {
+        for (const childCode of currNode.subclasses || []) {
             queue.push(nodesByCode[childCode]);
             subclassEdges.push({tgt: currNode.code, src: childCode});
         }
@@ -137,8 +136,8 @@ const subclassTree = (nodesByCode, roots) => {
 const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource) => {
     const records = {};
     console.log(`\nLoading ${Object.keys(inputRecords).length} ${dbClassName} nodes`);
-    for (let node of Object.values(inputRecords)) {
-        if (! node[PRED_MAP.CODE] || ! node[PRED_MAP.LABEL]) {  // do not include anything that does not have at minimum these values
+    for (const node of Object.values(inputRecords)) {
+        if (!node[PRED_MAP.CODE] || !node[PRED_MAP.LABEL]) { // do not include anything that does not have at minimum these values
             continue;
         }
         const body = {
@@ -157,8 +156,8 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
         }
         const dbEntry = await addRecord(dbClassName, body, conn, true);
         // add the aliasof links
-        for (let alias of node[PRED_MAP.SYNONYM] || []) {
-            let aliasBody = {
+        for (const alias of node[PRED_MAP.SYNONYM] || []) {
+            const aliasBody = {
                 source: source['@rid'],
                 sourceId: node.code,
                 dependency: dbEntry['@rid'],
@@ -207,12 +206,12 @@ const uploadNCIT = async ({filename, conn}) => {
     }
 
     // for the given source nodes, include all descendents Has_NICHD_Parentdants/subclasses
-    for (let node of Object.values(nodesByCode)) {
-        for (let parentCode of node[PRED_MAP.SUBCLASSOF] || []) {
-            if (! nodesByCode[parentCode]) {
+    for (const node of Object.values(nodesByCode)) {
+        for (const parentCode of node[PRED_MAP.SUBCLASSOF] || []) {
+            if (!nodesByCode[parentCode]) {
                 continue;
             }
-            if (! nodesByCode[parentCode].subclasses) {
+            if (!nodesByCode[parentCode].subclasses) {
                 nodesByCode[parentCode].subclasses = [];
             }
             nodesByCode[parentCode].subclasses.push(node.code);
@@ -220,7 +219,7 @@ const uploadNCIT = async ({filename, conn}) => {
     }
 
     const diseaseNodes = subclassTree(nodesByCode, [nodesByCode[ROOT_NODES.DISEASE]]);
-    for (let node of Object.values(nodesByCode)) {
+    for (const node of Object.values(nodesByCode)) {
         if (diseaseNodes.tree[node.code] === undefined) {
             if (node[PRED_MAP.CLASS] && node[PRED_MAP.CLASS][0] === 'Neoplastic Process') {
                 diseaseNodes[node.code] = node;
@@ -249,7 +248,7 @@ const uploadNCIT = async ({filename, conn}) => {
     Object.assign(records, result);
 
     console.log(`\nLoading ${subclassEdges.length} subclassof relationships`);
-    for (let {src, tgt} of subclassEdges) {
+    for (const {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
             await addRecord('subclassof', {out: records[src]['@rid'], in: records[tgt]['@rid'], source: source['@rid']}, conn, true);
         } else {

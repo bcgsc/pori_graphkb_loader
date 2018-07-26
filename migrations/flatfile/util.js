@@ -1,16 +1,22 @@
 const request = require('request-promise');
-const _ = require('lodash');
 const jc = require('json-cycle');
 
-const getRecordBy = async (className, where, conn, sortFunc=(x, y) => 0) => {
+const convertNulls = (where) => {
     const queryParams = {};
-    for (let param of Object.keys(where)) {
+    for (const param of Object.keys(where)) {
         if (where[param] === null) {
             queryParams[param] = 'null';
+        } else if (typeof where[param] === 'object') {
+            queryParams[param] = convertNulls(where[param]);
         } else {
             queryParams[param] = where[param];
         }
     }
+    return queryParams;
+};
+
+const getRecordBy = async (className, where, conn, sortFunc = () => 0) => {
+    const queryParams = convertNulls(where);
     let newRecord;
     try {
         newRecord = await request(conn.request({
@@ -23,11 +29,12 @@ const getRecordBy = async (className, where, conn, sortFunc=(x, y) => 0) => {
     }
     newRecord.sort(sortFunc);
     if (newRecord.length > 1) {
-        if (sortFunc(newRecord[0], newRecord[1]) == 0) {
-            throw new Error(`expected a single ${className} record: ${where.name || where.sourceId || where}`);
+        if (sortFunc(newRecord[0], newRecord[1]) === 0) {
+            throw new Error(`\nexpected a single ${className} record: ${
+                where.name || where.sourceId || Object.keys(where)}`);
         }
-    } else if (newRecord.length == 0) {
-        throw new Error(`missing ${className} record: ${where.name || where.sourceId || Object.entries(where)} (${where.sourceId})`);
+    } else if (newRecord.length === 0) {
+        throw new Error(`\nmissing ${className} record: ${where.name || where.sourceId || Object.entries(where)} (${where.sourceId})`);
     }
     newRecord = newRecord[0];
     return newRecord;
@@ -39,20 +46,24 @@ const getRecordBy = async (className, where, conn, sortFunc=(x, y) => 0) => {
  * @param {ApiRequest} conn
  * @param {boolean} exists_ok
  */
-const addRecord = async (className, where, conn, exists_ok=false, getIgnore=[]) => {
-    let opt = conn.request({
+const addRecord = async (className, where, conn, existsOk = false, getWhere = null) => {
+    const opt = conn.request({
         method: 'POST',
         uri: className,
         body: where
     });
     try {
         const newRecord = await request(opt);
-        process.stdout.write(where.out && where.in ? '-' : '.');
+        process.stdout.write(where.out && where.in
+            ? '-'
+            : '.');
         return newRecord.result;
     } catch (err) {
-        if (exists_ok && err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
-            process.stdout.write(where.out && where.in ? '=' : '*');
-            return await getRecordBy(className, _.omit(where, getIgnore), conn);
+        if (existsOk && err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
+            process.stdout.write(where.out && where.in
+                ? '='
+                : '*');
+            return getRecordBy(className, getWhere || where, conn);
         }
         throw err;
     }
@@ -60,13 +71,13 @@ const addRecord = async (className, where, conn, exists_ok=false, getIgnore=[]) 
 
 
 const orderPreferredOntologyTerms = (term1, term2) => {
-    if (term1.deprecated && ! term2.deprecated) {
+    if (term1.deprecated && !term2.deprecated) {
         return 1;
-    } else if (term2.deprecated && ! term1.deprecated) {
+    } if (term2.deprecated && !term1.deprecated) {
         return -1;
-    } else if (term1.dependency == null & term2.dependency != null) {
+    } if (term1.dependency == null & term2.dependency != null) {
         return -1;
-    } else if (term2.dependency == null & term1.dependency != null) {
+    } if (term2.dependency == null & term1.dependency != null) {
         return 1;
     }
     return 0;
@@ -81,16 +92,21 @@ const preferredDiseases = (term1, term2) => {
 
     if (orderPreferredOntologyTerms(term1, term2) === 0) {
         if (term1.source.name !== term2.source.name) {
-            const rank1 = sourceRank[term1.source.name] === undefined ?  2 : sourceRank[term1.source.name];
-            const rank2 = sourceRank[term2.source.name] === undefined ?  2 : sourceRank[term2.source.name];
-            if (rank1 != rank2) {
-                return rank1 < rank2 ? -1 : 1;
+            const rank1 = sourceRank[term1.source.name] === undefined
+                ? 2
+                : sourceRank[term1.source.name];
+            const rank2 = sourceRank[term2.source.name] === undefined
+                ? 2
+                : sourceRank[term2.source.name];
+            if (rank1 !== rank2) {
+                return rank1 < rank2
+                    ? -1
+                    : 1;
             }
         }
         return 0;
-    } else {
-        return orderPreferredOntologyTerms(term1, term2);
     }
+    return orderPreferredOntologyTerms(term1, term2);
 };
 
 const preferredDrugs = (term1, term2) => {
@@ -101,23 +117,27 @@ const preferredDrugs = (term1, term2) => {
 
     if (orderPreferredOntologyTerms(term1, term2) === 0) {
         if (term1.source.name !== term2.source.name) {
-            const rank1 = sourceRank[term1.source.name] === undefined ?  2 : sourceRank[term1.source.name];
-            const rank2 = sourceRank[term2.source.name] === undefined ?  2 : sourceRank[term2.source.name];
-            if (rank1 != rank2) {
-                return rank1 < rank2 ? -1 : 1;
+            const rank1 = sourceRank[term1.source.name] === undefined
+                ? 2
+                : sourceRank[term1.source.name];
+            const rank2 = sourceRank[term2.source.name] === undefined
+                ? 2
+                : sourceRank[term2.source.name];
+            if (rank1 !== rank2) {
+                return rank1 < rank2
+                    ? -1
+                    : 1;
             }
         }
         return 0;
-    } else {
-        return orderPreferredOntologyTerms(term1, term2);
     }
+    return orderPreferredOntologyTerms(term1, term2);
 };
 
 
 const getPubmedArticle = async (pmid) => {
-
     // try getting the title from the pubmed api
-    opt = {
+    const opt = {
         method: 'GET',
         uri: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi',
         qs: {
@@ -127,20 +147,20 @@ const getPubmedArticle = async (pmid) => {
         },
         headers: {Accept: 'application/json'},
         json: true
-    }
+    };
     try {
-        pubmedRecord = await request(opt);
+        let pubmedRecord = await request(opt);
         if (pubmedRecord && pubmedRecord.result && pubmedRecord.result[pmid]) {
             pubmedRecord = pubmedRecord.result[pmid];
-            let article = {
+            const article = {
                 sourceId: pmid,
                 name: pubmedRecord.title,
                 journalName: pubmedRecord.fulljournalname
             };
-            //sortpubdate: '1992/06/01 00:00'
-            let match = /^(\d\d\d\d)\//.exec(pubmedRecord.sortpubdate);
+            // sortpubdate: '1992/06/01 00:00'
+            const match = /^(\d\d\d\d)\//.exec(pubmedRecord.sortpubdate);
             if (match) {
-                article.year = parseInt(match[1]);
+                article.year = parseInt(match[1], 10);
             }
             return article;
         }
@@ -151,7 +171,7 @@ const getPubmedArticle = async (pmid) => {
 
 const convertOwlGraphToJson = (graph, idParser) => {
     const initialRecords = {};
-    for (let statement of graph.statements) {
+    for (const statement of graph.statements) {
         let src;
         try {
             src = idParser(statement.subject.value);
@@ -167,12 +187,12 @@ const convertOwlGraphToJson = (graph, idParser) => {
         initialRecords[src][statement.predicate.value].push(statement.object.value);
     }
     const nodesByCode = {};
-    //const initialRecords = require(filename);
+    // const initialRecords = require(filename);
 
     // transform all NCIT codes to std format
-    for (let record of Object.values(initialRecords)) {
+    for (const record of Object.values(initialRecords)) {
         nodesByCode[record.code] = record;
-        for (let predicate of Object.keys(record)) {
+        for (const predicate of Object.keys(record)) {
             if (typeof record[predicate] === 'object' && record[predicate] !== null) {
                 const formatted = [];
                 for (let item of record[predicate]) {
@@ -190,4 +210,6 @@ const convertOwlGraphToJson = (graph, idParser) => {
     return nodesByCode;
 };
 
-module.exports = {addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs};
+module.exports = {
+    addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs
+};

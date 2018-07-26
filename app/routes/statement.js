@@ -15,21 +15,21 @@ const addStatement = (opt) => {
 
     router.post(model.routeName,
         async (req, res) => {
-            if (! _.isEmpty(req.query)) {
+            if (!_.isEmpty(req.query)) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
             }
             // ensure the dependencies exist before attempting to create the statement
-            if (! req.body.impliedBy || req.body.impliedBy.length === 0) {
+            if (!req.body.impliedBy || req.body.impliedBy.length === 0) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'statement requires at minimum a single impliedBy relationship', params: req.body});
             }
 
-            if (! req.body.supportedBy || req.body.supportedBy.length === 0) {
+            if (!req.body.supportedBy || req.body.supportedBy.length === 0) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'statement requires at minimum a single supportedBy relationship', params: req.body});
             }
             let dependencies = [];
             // ensure the RIDs look valid for the support
-            let edges = [];
-            for (let edge of req.body.supportedBy) {
+            const edges = [];
+            for (const edge of req.body.supportedBy) {
                 if (edge.target === undefined) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'expected supportedBy edge object to have target attribute'});
                 }
@@ -44,7 +44,7 @@ const addStatement = (opt) => {
                 edges.push(Object.assign(edge, {'@class': 'SupportedBy', in: rid}));
             }
             // ensure the RIDs look valid for the impliedBy
-            for (let edge of req.body.impliedBy) {
+            for (const edge of req.body.impliedBy) {
                 if (edge.target === undefined) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'expected impliedBy edge object to have target attribute'});
                 }
@@ -83,9 +83,7 @@ const addStatement = (opt) => {
             dependencies.push(req.body.relevance);
             try {
                 // ensure that the dependency records are valid
-                dependencies = await Promise.all(Array.from(dependencies, async (rid) => {
-                    return await db.record.get(rid);
-                }));
+                dependencies = await Promise.all(Array.from(dependencies, async rid => db.record.get(rid)));
             } catch (err) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json({
                     message: 'error in retrieving one or more of the dependencies',
@@ -98,14 +96,13 @@ const addStatement = (opt) => {
             // create the main statement node
             let statement;
             try {
-                statement = await create(db, {model: model, content: req.body, user: req.user});
+                statement = await create(db, {model, content: req.body, user: req.user});
             } catch (err) {
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                } else {
-                    console.error(err)
-                    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({message: err.message, type: typeof err});
                 }
+                console.error(err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({message: err.message, type: typeof err});
             }
             try {
                 // link to the dependencies
@@ -115,15 +112,14 @@ const addStatement = (opt) => {
                     } else {
                         edge.in = statement['@rid'];
                     }
-                    return await create(db, {model: schema[edge['@class']], content: _.omit(edge, '@class'), user: req.user});
+                    return create(db, {model: schema[edge['@class']], content: _.omit(edge, '@class'), user: req.user});
                 }));
             } catch (err) {
                 console.error(err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({message: err.message, type: typeof err});
             }
-            res.status(HTTP_STATUS.CREATED).json(jc.decycle({result: statement}));
-        }
-    );
+            return res.status(HTTP_STATUS.CREATED).json(jc.decycle({result: statement}));
+        });
 };
 
 module.exports = {addStatement};

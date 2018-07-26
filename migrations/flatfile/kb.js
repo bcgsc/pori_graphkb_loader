@@ -1,10 +1,13 @@
 const parse = require('csv-parse/lib/sync');
 const fs = require('fs');
 const {parse: variantParser, NOTATION_TO_SUBTYPE} = require('./../../app/parser/variant');
+const {ParsingError} = require('./../../app/repo/error');
 const request = require('request-promise');
 const stringSimilarity = require('string-similarity');
-const {getRecordBy, addRecord, orderPreferredOntologyTerms} = require('./util');
-const {VOCABULARY} = require('./vocab');
+const {
+    getRecordBy, addRecord, orderPreferredOntologyTerms, getPubmedArticle
+} = require('./util');
+const _ = require('lodash');
 
 
 const SOURCE_NAME = 'bcgsc';
@@ -15,94 +18,22 @@ const TYPE_MAPPING = {
     'ELV-RNA': 'RNA expression',
     'ELV-PROT': 'protein expression'
 };
-
-
-const addOrGetPubmedArticle = async (opt) => {
-    const {conn, source, article} = opt;
-
-    let result;
-    try {
-        result = await getRecordBy('publications', {sourceId: article.pubmed, source: source['@rid']}, conn);
-        return result;
-    } catch (err) {}
-    // try getting the title from the pubmed api
-    opt = {
-        method: 'GET',
-        uri: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi',
-        qs: {
-            id: article.pubmed,
-            retmode: 'json',
-            db: 'pubmed'
-        },
-        headers: {Accept: 'application/json'},
-        json: true
-    }
-    try {
-        pubmedRecord = await request(opt);
-        if (pubmedRecord && pubmedRecord.result && pubmedRecord.result[article.pubmed]) {
-            pubmedRecord = pubmedRecord.result[article.pubmed];
-            if (article.title && stringSimilarity.compareTwoStrings(article.title, pubmedRecord.title) < 0.8 ) {
-                console.error(pubmedRecord.title);
-                console.error(article.title);
-                console.error(`disimilar titles: ${stringSimilarity.compareTwoStrings(article.title, pubmedRecord.title)}`);
-                return;
-            }
-            //sortpubdate: '1992/06/01 00:00'
-            let match = /^(\d\d\d\d)\//.exec(pubmedRecord.sortpubdate);
-            if (! match) {
-                console.error(pubmedRecord);
-                console.error(article);
-                console.error(`could not get year from sortpubdate ${pubmedRecord.sortpubdate}`);
-                return;
-            }
-            Object.assign(article, {
-                title: pubmedRecord.title,
-                journalName: pubmedRecord.fulljournalname,
-                year: parseInt(match[1])
-            });
-            // now post this to the kb
-            result = await addRecord('publications', {name: article.title, source: source['@rid'], sourceId: article.pubmed}, conn, true);
-            return result;
-        }
-    } catch (err) {
-        console.log(err.error);
-        throw err;
-    }
-    throw new Error(`failed to add or retrieve ${article.pubmed} (${article.title})`);
-}
-
-
-const uploadEvent = async (event, token) => {
-    let reference, reference2;
-    try {
-        reference = await getActiveFeature({name: event.reference}, token);
-        event.reference = reference['@rid'];
-
-        if (event.reference2) {
-            reference2 = await getActiveFeature({name: event.reference2}, token);
-            event.reference2 = reference2['@rid'];
-        }
-    } catch (err) {
-        throw err;
-    }
-    let opt = {
-        method: 'POST',
-        uri: `http://localhost:8080/api/${event.value ? 'category' : 'positional'}variants`,
-        headers: {
-            Authorization: token
-        },
-        body: event,
-        json: true
-    };
-    const record = await request(opt);
-    return record;
-
-}
+const FEATURE_CACHE = {};
+const PUBLICATION_CACHE = {};
+const RELEVANCE_MAP = {
+    favourable: 'favourable prognosis',
+    oncogene: 'oncogenic',
+    unfavourable: 'unfavourable prognosis',
+    diagnostic: 'favours diagnosis',
+    'putative tumour suppressor': 'likely tumour suppressive',
+    'tumour suppressor': 'tumour suppressive',
+    'putative oncogene': 'likely oncogenic'
+};
 
 
 const uploadChromosomes = async (conn) => {
     const grc = await addRecord('sources', {name: 'GRCh37'}, conn, true);
-    for (let chr of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 'X', 'Y']) {
+    for (const chr of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 'X', 'Y']) {
         await addRecord('features', {
             biotype: 'chromosome',
             source: grc['@rid'].toString(),
@@ -110,19 +41,17 @@ const uploadChromosomes = async (conn) => {
             name: `${chr}`
         }, conn, true);
     }
-}
+};
 
 
 /**
- * Parse CategoryVariants and convert deprecated PositionalVariant syntax
+ * Parse CategoryVariants and convert deprecated PositionalVariant syntax.
+ * Convert them to the current syntax and return them
  */
-const parseDeprecated = (string) => {
+const convertDeprecatedSyntax = (string) => {
     string = string.trim();
-    let result = {
-        '@class': 'PositionalVariant',
-        string: string
-    };
-    let zygosity = /.*(_(ns|heterozygous|homozygous|na|any)(\s*\(germline\))?)$/.exec(string);
+    const result = {};
+    const zygosity = /.*(_(ns|heterozygous|homozygous|na|any)(\s*\(germline\))?)$/.exec(string);
     if (zygosity) {
         if (zygosity[3]) {
             result.germline = true;
@@ -131,16 +60,14 @@ const parseDeprecated = (string) => {
             result.zygosity = zygosity[2];
         }
         string = string.slice(0, string.length - zygosity[1].length).trim();
-        result.string = string;
     }
     let match = null;
     if (string.startsWith('FANN_')) {
-        string = string.slice(5);
-    }
-    if (match = /^SV_e.([^\(]+)\(([^,]+)(,\s*([^\)]+))?\)\(([^,]+),([^\)]+)\)$/.exec(string)) {
+        Object.assign(result, {name: string.slice(5), isFeature: true});
+    } else if (match = /^SV_e.([^\(]+)\(([^,]+)(,\s*([^\)]+))?\)\(([^,]+),([^\)]+)\)$/.exec(string)) {
         // exon level structural variant
         result.type = 'structural variant';
-        let cytobandPattern = /^(1[0-9]|2[0-2]|[1-9]|X|Y)([pq]\d+(\.\d+)?)$/;
+        const cytobandPattern = /^(1[0-9]|2[0-2]|[1-9]|X|Y)([pq]\d+(\.\d+)?)$/;
         let submatch;
         match = {
             type: match[1],
@@ -169,31 +96,43 @@ const parseDeprecated = (string) => {
             match.pos1 = submatch[2];
             match.pos1Prefix = 'y';
         }
+        if (match.pos1.includes('intron')) {
+            match.pos1Prefix = 'i';
+            match.pos1 = match.pos1.replace('intron', '').trim();
+        }
+        if (match.pos2.includes('intron')) {
+            match.pos2Prefix = 'i';
+            match.pos2 = match.pos2.replace('intron', '').trim();
+        }
+        result.type = match.type;
         if (match.pos1 === '?' && match.pos2 === '?') {
-            result.subtype = match.type;
-            result.reference1 = match.reference1;
-            result.reference2 = match.reference2;
-            result['@class'] = 'CategoryVariant';
-        }
-        string = `(${match.reference1},${match.reference2}):${match.type}(${match.pos1Prefix}.${match.pos1},${match.pos2Prefix}.${match.pos2})`;
-    } else if (match = /^(SV|CNV|MUT)_([^_:]+)(_([^_]+))?$/.exec(string)) {
-        if (match[1] === 'CNV') {
-            result.type = 'copy variant';
-        } else if (match[1] === 'SV') {
-            result.type = 'structural variant';
+            if (match.reference1 === '?') {
+                result.reference1 = match.reference2;
+            } else if (match.reference2 === '?') {
+                result.reference1 = match.reference1;
+            } else {
+                result.reference1 = match.reference1;
+                result.reference2 = match.reference2;
+            }
         } else {
-            result.type = 'mutation';
+            result.positional = `(${match.reference1},${match.reference2}):${match.type}(${match.pos1Prefix}.${match.pos1},${match.pos2Prefix}.${match.pos2})`;
         }
-        result.reference1 = match[2];
-        if (match[3]) {
-            result.type = match[4];
+    } else if (match = /^(SV|CNV|MUT)_([^_:]+)(_([^_]+))?$/.exec(string)) {
+        let type;
+        if (match[1] === 'CNV') {
+            type = 'copy variant';
+        } else if (match[1] === 'SV') {
+            type = 'structural variant';
+        } else {
+            type = 'mutation';
         }
-        result['@class'] = 'CategoryVariant';
+        if (match[3] && !['not specified', 'any'].includes(match[4])) {
+            type = match[4];
+        }
+        Object.assign(result, {type, reference1: match[2]});
     } else if (match = /^ELV-(PROT|RNA)_([^_]+)_([^_]+)$/.exec(string)) {
-        result.type = match[1] === 'PROT' ? 'protein expression variant' : 'RNA expression variant';
-        result.term = match[3];
-        result.reference1 = match[2];
-        result['@class'] = 'CategoryVariant';
+        const type = match[1] === 'PROT' ? 'protein' : 'RNA';
+        Object.assign(result, {reference1: match[2], type: match[3].replace(' ', ` ${type} `)});
     } else if (string.startsWith('MUT_')) {
         string = string.slice(4);
         if (match = /(X\[(\d+|n)\])$/.exec(string)) {
@@ -203,43 +142,44 @@ const parseDeprecated = (string) => {
             }
         }
         if (match = /^([^_]+)_(not specified|any)$/.exec(string)) {
-            result['@class'] = 'CategoryVariant';
-            result.reference1 = match[1];
-        }
-        if (match = /^.+:([^:]+:[^:]+)$/.exec(string)) {  // if multiple features are defined, use the most specific
-            string = match[1];
-        }
-        if (string.endsWith(':p.Xnspl')) {
-            string = string.slice(0, string.length - 8);
-            result.reference1 = string;
-            result.type = 'splice-site';
-            result['@class'] = 'CategoryVariant';
-        } else if (string.endsWith(':p.Xn*')) {
-            string = string.slice(0, string.length - 6);
-            result.reference1 = string;
-            result.type = 'truncating';
-            result['@class'] = 'CategoryVariant';
-        } else if (string.endsWith(':p.Xnfs')) {
-            string = string.slice(0, string.length - ':p.Xnfs'.length);
-            result.reference1 = string;
-            result.type = 'frameshift';
-            result['@class'] = 'CategoryVariant';
+            Object.assign(result, {reference1: match[1], type: 'mutation'});
         } else {
-            result.type = 'mutation';
+            if (match = /^.+:([^:]+:[^:]+)$/.exec(string)) { // if multiple features are defined, use the most specific
+                string = match[1];
+            }
+            if (match = /(:p.[X\?][n\?](_[X\?][n\?])?(fs|\*|spl|dup))$/.exec(string)) {
+                result.reference1 = string.slice(0, string.length - match[1].length);
+                if (match[3] === 'spl') {
+                    result.type = 'splice-site';
+                } else if (match[3] === '*') {
+                    result.type = 'truncating';
+                } else if (match[3] === 'fs') {
+                    result.type = 'frameshift';
+                } else if (match[3] === 'dup') {
+                    result.type = 'duplication';
+                }
+            } else if (match = /(:p.[X\?]\*)$/.exec(string)) {
+                string = string.slice(0, string.length - match[1].length);
+                Object.assign(result, {reference1: string, type: 'truncating'});
+            } else if (match = /(:p.[X\?][n\?]fs)$/.exec(string)) {
+                string = string.slice(0, string.length - match[1].length);
+                Object.assign(result, {reference1: string, type: 'frameshift'});
+            } else {
+                const [ref, variant] = string.split(':', 2);
+                Object.assign(result, {positional: variant, reference1: ref});
+            }
         }
-    } else if (! string.includes('_')) {
-        result.reference1 = string;
-        result['@class'] = 'Feature';
-    } else if (string.startsWith('SV_')) {
-        string = string.slice(3);
-        if (string.startsWith('e.fusion')) {
-            result.type = 'fusion';
-        }
-    } else if (string.startsWith('CNV_')) {
-        string = string.slice(4);
-        result.type = 'copy variant';
+    } else if (!string.includes('_')) {
+        Object.assign(result, {name: string, isFeature: true});
+    } else {
+        throw new ParsingError(`unrecognized syntax: ${string}`);
     }
-    result.string = string;
+    if (result.reference1) {
+        result.reference1 = stripRefSeqVersion(result.reference1.toLowerCase().trim());
+    }
+    if (result.reference2) {
+        result.reference2 = stripRefSeqVersion(result.reference2.toLowerCase().trim());
+    }
     return result;
 };
 
@@ -250,156 +190,170 @@ const stripRefSeqVersion = (name) => {
 };
 
 
-const loadVocabulary = async (vocab, conn, source) => {
-    const termsByName = {};
-    // add the records
-    for (let term of vocab) {
-        const content = {
-            name: term.name,
-            sourceId: term.name,
-            source: source['@rid']
-        };
-        const record = await addRecord('vocabulary', content, conn, true);
-        termsByName[record.name] = record;
+const getRecordByOr = async (className, where1, where2, conn, sortFunc = (x, y) => 0) => {
+    let result;
+    try {
+        result = await getRecordBy(className, where1, conn, sortFunc);
+    } catch (err) {
+        result = await getRecordBy(className, where2, conn, sortFunc);
     }
-    // now add the edge links
-    for (let term of vocab) {
-        term.name = term.name.toLowerCase();
-        for (let parent of term.subclassof || []) {
-            await addRecord('subclassof', {
-                out: termsByName[term.name]['@rid'],
-                in: termsByName[parent.toLowerCase()]['@rid'],
-                source: source['@rid']
-            }, conn, true);
-        }
-        for (let parent of term.oppositeof || []) {
-            await addRecord('oppositeof', {
-                out: termsByName[term.name]['@rid'],
-                in: termsByName[parent.toLowerCase()]['@rid'],
-                source: source['@rid']
-            }, conn, true);
-        }
-    }
-    return termsByName;
+    return result;
 };
 
 
-
-const uploadKbFlatFile = async (opt) => {
+const upload = async (opt) => {
     const {filename, conn} = opt;
     console.log(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
     console.log('parsing into json');
-    const json = parse(content, {delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true});
+    const json = parse(content, {
+        delimiter: ',', escape: null, quote: '"', comment: '##', columns: true, auto_parse: true
+    });
     const featuresByName = {};
     await uploadChromosomes(conn);
-    let errorCount = 0;
-    let skipCount = 0;
+    const counts = {error: 0, skip: 0, success: 0};
     const skipped = {};
-    const currentSource = await addRecord('sources', {name: 'bc gsc'}, conn, true);
+    const source = await addRecord('sources', {name: 'bc gsc'}, conn, true);
     const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, true);
-    const terms = await loadVocabulary(VOCABULARY, conn, currentSource);
 
-    for (let record of json) {
-        const variants = [];
-        const features = [];
+    for (const record of json) {
+        let relevance = record.relevance.replace(/-/g, ' ');
+        if (['observed', 'not specified', 'test target', 'not determined', 'inconclusive'].includes(relevance)) {
+            counts.skip++;
+            continue;
+        }
+        relevance = relevance.replace('inferred', 'likely');
+        if (RELEVANCE_MAP[relevance]) {
+            relevance = RELEVANCE_MAP[relevance];
+        }
+        try {
+            relevance = await getRecordBy('vocabulary', {name: relevance}, conn);
+        } catch (err) {
+            console.log(err.message);
+            counts.error++;
+            continue;
+        }
+        record.ref_id = record.ref_id.toString().trim();
+        // now get the publication/statement information
+        const publications = [];
+        if (record.id_type != 'pubmed') {
+            const notification = `SKIP ${record.id_type} ${record.ref_id}`;
+            if (skipped[notification] === undefined) {
+                console.log(notification);
+                skipped[notification] = notification;
+            }
+            counts.skip++;
+            continue;
+        } else if (!/^\d+([\s;]+\d+)*$/.exec(record.ref_id)) {
+            const notification = `SKIP ${record.id_type} ${record.ref_id}`;
+            if (skipped[notification] === undefined) {
+                console.log(notification);
+                skipped[notification] = notification;
+            }
+            counts.skip++;
+            continue;
+        }
+        record.ref_id = record.ref_id.toString();
+        try {
+            for (const pmid of Array.from(record.ref_id.split(/[;\s]+/)).filter(x => x !== '')) {
+                let publication;
+                if (PUBLICATION_CACHE[pmid]) {
+                    publication = PUBLICATION_CACHE[pmid];
+                } else {
+                    try {
+                        publication = await getRecordBy('publications', {sourceId: pmid, source: {name: 'pubmed'}}, conn);
+                    } catch (err) {
+                        publication = await getPubmedArticle(pmid);
+                        publication = await addRecord('publications', Object.assign(publication, {
+                            source: pubmedSource['@rid']
+                        }), conn, true);
+                    }
+                }
+                PUBLICATION_CACHE[pmid] = publication;
+                publications.push(publication);
+            }
+        } catch (err) {
+            console.log(err.message);
+            counts.error++;
+        }
+        const impliedby = [];
         for (let event of record.events_expression.split(/[\|&]/)) {
             const absence = /(^\s*!\s*)/.exec(event);
             if (absence) {
                 event = event.slice(absence[0].length);
             }
-            let parsed = parseDeprecated(event);
+            let parsed;
             try {
-                if (parsed['@class'] === 'PositionalVariant') {
-                    Object.assign(parsed, variantParser(parsed.string));
-                }
+                parsed = convertDeprecatedSyntax(event);
             } catch (err) {
-                console.log(err.content.subParserError ? err.content.subParserError.message : err.message);
-                errorCount++;
+                console.log(err.message);
+                counts.error++;
+                continue;
+            }
+            const positional = parsed.positional;
+            const defaults = {
+                zygosity: null,
+                germline: null,
+                reference2: null
+            };
+            if (positional) {
+                Object.assign(defaults, {
+                    untemplatedSeq: null,
+                    refSeq: null,
+                    break2Repr: null
+                });
+            }
+            if (parsed.isFeature) {
+                try {
+                    impliedby.push(await getRecordBy('features', {name: parsed.name}, conn, orderPreferredOntologyTerms));
+                } catch (err) {
+                    console.log(err.message);
+                    counts.error++;
+                }
+                continue;
+            } else if (positional) {
+                try {
+                    parsed = Object.assign(_.omit(parsed, ['positional']), variantParser(positional));
+                } catch (err) {
+                    console.log(err.message);
+                    counts.error++;
+                }
+            }
+            try {
+                parsed.type = (await getRecordBy('vocabulary', {name: parsed.type}, conn))['@rid'];
+            } catch (err) {
+                console.log(err.message);
+                console.log(parsed);
+                counts.error++;
                 continue;
             }
             try {
-                parsed.reference1 = stripRefSeqVersion(parsed.reference1.toLowerCase());
+                parsed.reference1 = (await getRecordByOr('features', {name: parsed.reference1}, {sourceId: parsed.reference1}, conn, orderPreferredOntologyTerms))['@rid'];
                 if (parsed.reference2) {
-                    parsed.reference2 = stripRefSeqVersion(parsed.reference2.toLowerCase());
+                    parsed.reference2 = (await getRecordByOr('features', {name: parsed.reference2}, {sourceId: parsed.reference2}, conn, orderPreferredOntologyTerms))['@rid'];
                 }
-                if (parsed.reference1 === '?') {
-                    delete parsed.reference1;
-                }
-                if (parsed.reference2 === '?') {
-                    delete parsed.reference2;
-                }
-                if (parsed.reference2 && ! parsed.reference1) {
-                    parsed.reference1 = parsed.reference2;
-                    delete parsed.reference2;
-                }
-                if (featuresByName[parsed.reference1] === undefined) {
-                    let feature;
-                    try {
-                        feature = await getRecordBy('features', {name: parsed.reference1}, conn, orderPreferredOntologyTerms);
-                    } catch (err) {
-                        feature = await getRecordBy('features', {sourceId: parsed.reference1}, conn, orderPreferredOntologyTerms);
-                    }
-                    featuresByName[parsed.reference1] = feature;
-                }
-                if (parsed.reference2 && featuresByName[parsed.reference2] === undefined) {
-                    let feature;
-                    try {
-                        feature = await getRecordBy('features', {name: parsed.reference2}, conn, orderPreferredOntologyTerms);
-                    } catch (err) {
-                        feature = await getRecordBy('features', {sourceId: parsed.reference2}, conn, orderPreferredOntologyTerms);
-                    }
-                    featuresByName[parsed.reference2] = feature;
-                }
-            } catch(err) {
-                console.log(err.message, parsed.reference1, parsed.reference2);
-                errorCount++;
-            }
-        }
-        // now get the publication/statement information
-        let evidence;
-        if (record.id_type != 'pubmed') {
-            let notification = `SKIP ${record.id_type} ${record.id}`;
-            if (skipped[notification] === undefined){
-                console.log(notification);
-                skipped[notification] = notification;
-            }
-            skipCount++;
-            continue;
-        }
-        record.id = `${record.id}`;
-        try {
-            for (let pubmed of Array.from(record.id.split(/[;\s]+/)).filter(x => x !== '')) {
-                evidence = await addOrGetPubmedArticle({conn, source: pubmedSource, article: {title: record.id_title, pubmed}});
-            }
-        } catch(err) {
-            console.log(err.message);
-            errorCount++;
-        }
-        continue;
-        // now try to create the events
-        for (let variant of variants) {
-            //if (variant.type == 'mutation' || variant.type == 'structural') {
-            //    continue;
-            //}
-            try {
-                const varRec = await uploadEvent(variant, token);
-                process.stdout.write('.');
             } catch (err) {
-                if (err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
-                    process.stdout.write('*');
-                } else {
-                    console.error(err.message);
-                    console.error(variant);
-                }
+                counts.error++;
+                continue;
             }
+            impliedby.push(await addRecord(
+                positional
+                    ? 'positionalvariants'
+                    : 'categoryvariants',
+                parsed, conn, true, Object.assign(defaults, parsed)
+            ));
         }
+        // figure out what the 'appliesTo' is based on the relevance and all the elements in impliedBy
+        // make the actual statement
+        const statement = {
+            uuid: record.ident, // copy the record ID from IPR to make back tracking easier
+            relevance: relevance['@rid'],
+            impliedBy: Array.from(impliedby, r => ({target: r['@rid']})),
+            supportedBy: Array.from(publications, r => ({target: r['@rid']}))
+        };
     }
-    console.log('total entries', json.length);
-    console.log('parsing errorCount', errorCount);
-    console.log('skipped', skipCount);
-}
+    console.log(counts);
+};
 
 
-
-module.exports = {uploadKbFlatFile};
+module.exports = {upload, convertDeprecatedSyntax};

@@ -4,17 +4,19 @@
 const HTTP_STATUS = require('http-status-codes');
 const jc = require('json-cycle');
 const _ = require('lodash');
-
-const {ErrorMixin, AttributeError, NoRecordFoundError,  RecordExistsError, PermissionError} = require('./../repo/error');
-const {select, create, update, remove, QUERY_LIMIT, SPEICAL_QUERY_ARGS, Clause, Comparison} = require('./../repo/base');
-const {getParameterPrefix, looksLikeRID, VERBOSE} = require('./../repo/util');
-const {INDEX_SEP_CHARS} = require('./../repo/schema');
 const escapeStringRegexp = require('escape-string-regexp');
-const {PERMISSIONS} = require('./../repo/constants');
+
+const {
+    ErrorMixin, AttributeError, NoRecordFoundError, RecordExistsError
+} = require('./../repo/error');
+const {
+    select, create, update, remove, QUERY_LIMIT, SPEICAL_QUERY_ARGS, Clause, Comparison
+} = require('./../repo/base');
+const {looksLikeRID, VERBOSE} = require('./../repo/util');
+const {INDEX_SEP_CHARS} = require('./../repo/schema');
 const {checkClassPermissions} = require('./../middleware/auth');
 
-//const SPEICAL_QUERY_ARGS = new Set(['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip']);
-const MAX_JUMPS = 4;  // fetchplans beyond 6 are very slow
+const MAX_JUMPS = 4; // fetchplans beyond 6 are very slow
 const INDEX_SEP_REGEX = new RegExp(`[${escapeStringRegexp(INDEX_SEP_CHARS)}]+`, 'g');
 const MIN_WORD_SIZE = 4;
 
@@ -25,20 +27,22 @@ class InputValidationError extends ErrorMixin {}
 const validateParams = async (opt) => {
     const required = opt.required || [];
     const optional = opt.optional || [];
-    const allowNone = opt.allowNone !== undefined ? opt.allowNone : true;
+    const allowNone = opt.allowNone !== undefined
+        ? opt.allowNone
+        : true;
     const params = [];
 
-    if (Object.keys(params).length == 0 && ! allowNone) {
+    if (Object.keys(params).length === 0 && !allowNone) {
         throw new InputValidationError('no parameters were specified');
     }
     // check that the required parameters are present
-    for (let attr of required) {
+    for (const attr of required) {
         if (params.indexOf(attr) < 0) {
             throw new InputValidationError(`missing required parameter: ${attr}. Found ${params}`);
         }
     }
     // check that all parameters are expected
-    for (let attr of params) {
+    for (const attr of params) {
         if (required.indexOf(attr) < 0 && optional.indexOf(attr) < 0) {
             throw new InputValidationError(`unexpected parameter: ${attr}`);
         }
@@ -55,7 +59,8 @@ const validateParams = async (opt) => {
 const parseQueryLanguage = (inputQuery) => {
     /**
      * parse any query parameters based on the expected operator syntax. The final result will be
-     * an object of attribute names as keys and arrays (AND) or arrays (OR) or clauses {value,operator}
+     * an object of attribute names as keys and arrays (AND) or arrays (OR) or
+     * clauses {value,operator}
      *
      * @example
      * > parseQueryLanguage({'name': ['~cancer', '~pancreas|~pancreatic']})
@@ -69,25 +74,28 @@ const parseQueryLanguage = (inputQuery) => {
     const query = {};
     for (let [name, valueList] of Object.entries(inputQuery)) {
         if (name === 'fuzzyMatch' || name === 'limit' || name === 'skip' || name === 'neighbors') {
-            if (isNaN(Number(valueList))) {
+            if (isNaN(Number(valueList))) { // eslint-disable-line no-restricted-globals
                 throw new InputValidationError(`Expected ${name} to be a number, but found ${valueList}`);
             }
             valueList = Number(valueList);
-            if ((name === 'fuzzyMatch' || name === 'neighbors') && (valueList < 0 || valueList > MAX_JUMPS)) {
+            if (
+                (name === 'fuzzyMatch' || name === 'neighbors')
+                && (valueList < 0 || valueList > MAX_JUMPS)
+            ) {
                 throw new InputValidationError(`${name} must be a number between 0 and ${MAX_JUMPS}`);
             }
             if ((name === 'skip' || name === 'limit') && (valueList < 1)) {
                 throw new InputValidationError(`${name} must be a positive integer greater than zero`);
             }
-            if (name == 'limit' && valueList > QUERY_LIMIT) {
+            if (name === 'limit' && valueList > QUERY_LIMIT) {
                 throw new InputValidationError(`${name} must be a number between 1 and ${QUERY_LIMIT}. Please use skip and limit to paginate larger queries`);
             }
             query[name] = valueList;
-        } else if (name == 'descendants' || name == 'ancestors' || name == 'returnProperties') {
-            if (typeof(valueList) !== 'string') {
+        } else if (name === 'descendants' || name === 'ancestors' || name === 'returnProperties') {
+            if (typeof (valueList) !== 'string') {
                 throw new InputValidationError(`Query parameter ${name} cannot be specified multiple times`);
             }
-            query[name] = valueList.split(',').filter(x => x.length > 0);  // empty string should give an empty list
+            query[name] = valueList.split(',').filter(x => x.length > 0); // empty string should give an empty list
         } else if (name === 'activeOnly') {
             valueList = valueList.trim().toLowerCase();
             if (['0', 'false', 'f'].includes(valueList)) {
@@ -95,16 +103,16 @@ const parseQueryLanguage = (inputQuery) => {
             } else {
                 query.activeOnly = true;
             }
-        } else if (valueList !== null && typeof valueList == 'object' && ! (valueList instanceof Array)) {
+        } else if (valueList !== null && typeof valueList === 'object' && !(valueList instanceof Array)) {
             // subqueries
             valueList = parseQueryLanguage(valueList);
             query[name] = valueList;
         } else {
-            if (! (valueList instanceof Array)) {
+            if (!(valueList instanceof Array)) {
                 valueList = [valueList];
             }
             const clauseList = [];
-            for (let i in valueList) {
+            for (let i = 0; i < valueList.length; i++) {
                 const orList = new Clause('OR');
                 for (let value of valueList[i].split('|')) {
                     let negate = false;
@@ -117,12 +125,12 @@ const parseQueryLanguage = (inputQuery) => {
                         operator = '~';
                         value = value.slice(1);
                         if (INDEX_SEP_REGEX.exec(value)) {
-                            INDEX_SEP_REGEX.lastIndex = 0;  // https://siderite.blogspot.com/2011/11/careful-when-reusing-javascript-regexp.html
+                            INDEX_SEP_REGEX.lastIndex = 0; // https://siderite.blogspot.com/2011/11/careful-when-reusing-javascript-regexp.html
                             // contains a separator char, should split into AND clause
-                            const andClause = new Clause('AND', Array.from(value.split(INDEX_SEP_REGEX), (word) => {
-                                return new Comparison(word, '~', negate);
-                            }));
-                            if (andClause.comparisons.some((comp) => { return comp.value.length < MIN_WORD_SIZE; })) {
+                            const andClause = new Clause('AND', Array.from(
+                                value.split(INDEX_SEP_REGEX), word => new Comparison(word, '~', negate)
+                            ));
+                            if (andClause.comparisons.some(comp => comp.value.length < MIN_WORD_SIZE)) {
                                 throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters after splitting on separator characters: ${INDEX_SEP_CHARS}`);
                             }
                             orList.push(andClause);
@@ -165,7 +173,7 @@ const addResourceRoutes = (opt) => {
     const {router, model, db} = opt;
     const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
     const reqQueryParams = opt.reqQueryParams || [];
-    let route = opt.route || model.routeName;
+    const route = opt.route || model.routeName;
     router.use(route, (req, res, next) => {
         req.model = model;
         next();
@@ -178,20 +186,21 @@ const addResourceRoutes = (opt) => {
                 req.query = parseQueryLanguage(req.query);
             } catch (err) {
                 if (err instanceof InputValidationError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                } else {
-                    if (VERBOSE) {
-                        console.error('INTERNAL_SERVER_ERROR', err);
-                    }
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
-                return;
+                if (VERBOSE) {
+                    console.error('INTERNAL_SERVER_ERROR', err);
+                }
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
             try {
-                validateParams({params: _.omit(req.query, SPEICAL_QUERY_ARGS), required: reqQueryParams, optional: optQueryParams});
+                validateParams({
+                    params: _.omit(req.query, SPEICAL_QUERY_ARGS),
+                    required: reqQueryParams,
+                    optional: optQueryParams
+                });
             } catch (err) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                return;
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
             }
             let fetchPlan = null;
             if (req.query.neighbors !== undefined) {
@@ -199,17 +208,18 @@ const addResourceRoutes = (opt) => {
                 delete req.query.neighbors;
             }
             try {
-                const result = await select(db, {model: model, where: req.query, fetchPlan: fetchPlan, user: req.user});
+                const result = await select(db, {
+                    model, where: req.query, fetchPlan, user: req.user
+                });
                 return res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                    return;
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
                 if (VERBOSE) {
                     console.error('INTERNAL_SERVER_ERROR', err);
                 }
-                res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
 
@@ -220,24 +230,24 @@ const addResourceRoutes = (opt) => {
 
     router.post(route,
         async (req, res) => {
-            if (! _.isEmpty(req.query)) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type', params: req.query}));
+            if (!_.isEmpty(req.query)) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
+                    {message: 'No query parameters are allowed for this query type', params: req.query}
+                ));
             }
             try {
-                const result = await create(db, {model: model, content: req.body, user: req.user});
+                const result = await create(db, {model, content: req.body, user: req.user});
                 return res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                } else if (err instanceof RecordExistsError) {
+                } if (err instanceof RecordExistsError) {
                     return res.status(HTTP_STATUS.CONFLICT).json(err);
-                } else {
-                    console.log(err);
-                    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
+                console.log(err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
-        }
-    );
+        });
 
     // Add the rid routes
     router.get(`${route}/:rid`,
@@ -250,15 +260,16 @@ const addResourceRoutes = (opt) => {
                         console.log(err.stack);
                     }
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                } else {
-                    if (VERBOSE) {
-                        console.error('INTERNAL_SERVER_ERROR', err);
-                    }
-                    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
                 }
+                if (VERBOSE) {
+                    console.error('INTERNAL_SERVER_ERROR', err);
+                }
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
-            if (! looksLikeRID(req.params.rid, false)) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `rid does not look like a valid record ID: ${req.params.rid}`}));
+            if (!looksLikeRID(req.params.rid, false)) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
+                    {message: `rid does not look like a valid record ID: ${req.params.rid}`}
+                ));
             }
             req.params.rid = `#${req.params.rid.replace(/^#/, '')}`;
 
@@ -269,85 +280,98 @@ const addResourceRoutes = (opt) => {
             }
 
             try {
-                validateParams({params: _.omit(req.query, ['activeOnly']), required: reqQueryParams, optional: optQueryParams});
+                validateParams({
+                    params: _.omit(req.query, ['activeOnly']),
+                    required: reqQueryParams,
+                    optional: optQueryParams
+                });
             } catch (err) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
             }
 
             try {
-                const result = await select(db, Object.assign(req.query, {model: model, where: {'@rid': req.params.rid}, exactlyN: 1, fetchPlan: fetchPlan, user: req.user}));
-                res.json({result: jc.decycle(result[0])});
+                const result = await select(db, Object.assign(req.query, {
+                    model, where: {'@rid': req.params.rid}, exactlyN: 1, fetchPlan, user: req.user
+                }));
+                return res.json({result: jc.decycle(result[0])});
             } catch (err) {
                 if (err instanceof NoRecordFoundError) {
-                    res.status(HTTP_STATUS.NOT_FOUND).json(err);
-                } else {
-                    if (VERBOSE) {
-                        console.error('INTERNAL_SERVER_ERROR', err);
-                    }
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                    return res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 }
+                if (VERBOSE) {
+                    console.error('INTERNAL_SERVER_ERROR', err);
+                }
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
     router.patch(`${route}/:rid`,
         async (req, res) => {
-            if (! looksLikeRID(req.params.rid, false)) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.rid}`}));
+            if (!looksLikeRID(req.params.rid, false)) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
+                    {message: `ID does not look like a valid record ID: ${req.params.rid}`}
+                ));
             }
             req.params.rid = `#${req.params.rid.replace(/^#/, '')}`;
-            if (! _.isEmpty(req.query)) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'Query parameters are allowed for this query type', params: req.query}));
+            if (!_.isEmpty(req.query)) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
+                    {message: 'Query parameters are allowed for this query type', params: req.query}
+                ));
             }
             try {
                 const result = await update(db, {
-                    model: model,
+                    model,
                     content: req.body,
                     where: {'@rid': req.params.rid, deletedAt: null},
                     user: req.user
                 });
-                res.json({result: jc.decycle(result)});
+                return res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                } else if (err instanceof NoRecordFoundError) {
-                    res.status(HTTP_STATUS.NOT_FOUND).json(err);
-                } else if (err instanceof RecordExistsError) {
-                    res.status(HTTP_STATUS.CONFLICT).json(err);
-                } else {
-                    if (VERBOSE) {
-                        console.error(err);
-                    }
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } if (err instanceof NoRecordFoundError) {
+                    return res.status(HTTP_STATUS.NOT_FOUND).json(err);
+                } if (err instanceof RecordExistsError) {
+                    return res.status(HTTP_STATUS.CONFLICT).json(err);
                 }
+                if (VERBOSE) {
+                    console.error(err);
+                }
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
-        }
-    );
+        });
     router.delete(`${route}/:rid`,
         async (req, res) => {
-            if (! looksLikeRID(req.params.rid, false)) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: `ID does not look like a valid record ID: ${req.params.rid}`}));
+            if (!looksLikeRID(req.params.rid, false)) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
+                    {message: `ID does not look like a valid record ID: ${req.params.rid}`}
+                ));
             }
             req.params.rid = `#${req.params.rid.replace(/^#/, '')}`;
-            if (! _.isEmpty(req.query)) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError({message: 'No query parameters are allowed for this query type'}));
+            if (!_.isEmpty(req.query)) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
+                    {message: 'No query parameters are allowed for this query type'}
+                ));
             }
             try {
-                const result = await remove(db, {model: model, where: {'@rid': req.params.rid, deletedAt: null}, user: req.user});
-                res.json({result: jc.decycle(result)});
+                const result = await remove(
+                    db, {model, where: {'@rid': req.params.rid, deletedAt: null}, user: req.user}
+                );
+                return res.json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
-                    res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                } else if (err instanceof NoRecordFoundError) {
-                    res.status(HTTP_STATUS.NOT_FOUND).json(err);
-                } else {
-                    if (VERBOSE) {
-                        console.error(err);
-                    }
-                    res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } if (err instanceof NoRecordFoundError) {
+                    return res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 }
+                if (VERBOSE) {
+                    console.error(err);
+                }
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
-        }
-    );
+        });
 };
 
 
-module.exports = {validateParams, addResourceRoutes, InputValidationError, parseQueryLanguage, MAX_JUMPS};
+module.exports = {
+    validateParams, addResourceRoutes, InputValidationError, parseQueryLanguage, MAX_JUMPS
+};

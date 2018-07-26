@@ -9,25 +9,26 @@ const {PERMISSIONS} = require('./../repo/constants');
 const keys = {};
 const SERVICE_NAME = 'kb';
 const CATS_URI = 'https://cats01.bcgsc.ca:8001/api/1.0/authentication' || process.env.KB_CATS_URI;
-const TOKEN_TIMEOUT = 60 * 60 * 8;  // default timeout is 8 hours
+const TOKEN_TIMEOUT = 60 * 60 * 8; // default timeout is 8 hours
 
 
 /**
- * Retrieve a token from the central authentication server (CATS) which is used to verify the username and password exist in our ldap system
+ * Retrieve a token from the central authentication server (CATS) which is used to verify the
+ * username and password exist in our ldap system
  */
 const catsToken = async (username, password) => {
     try {
         const response = await request({
             uri: CATS_URI,
             method: 'POST',
-            body: {username: username, password: password, service: SERVICE_NAME},
+            body: {username, password, service: SERVICE_NAME},
             json: true,
             headers: {
                 'Content-type': 'application/json',
-                'Accept': 'application/json'
+                Accept: 'application/json'
             }
         });
-        if (response === undefined) {  // happens with ldap timeout error
+        if (response === undefined) { // happens with ldap timeout error
             throw new AuthenticationError('no body was returned');
         }
         // check if the token has expired
@@ -44,13 +45,12 @@ const catsToken = async (username, password) => {
 /**
  * Look up a username in the database and generate a token for this user
  */
-const generateToken = async (db, username, exp) => {
+const generateToken = async (db, username, exp = null) => {
     const user = await getUserByName(db, username);
-    if (exp == undefined) {
-        return await jwt.sign({user}, keys.private, {expiresIn: TOKEN_TIMEOUT});
-    } else {
-        return await jwt.sign({user, exp}, keys.private);
+    if (exp === null) {
+        return jwt.sign({user}, keys.private, {expiresIn: TOKEN_TIMEOUT});
     }
+    return jwt.sign({user, exp}, keys.private);
 };
 
 /*
@@ -68,7 +68,7 @@ const checkToken = async (req, res, next) => {
     }
     try {
         const decoded = jwt.verify(token, keys.private);
-        req.user = decoded.user;
+        req.user = decoded.user; // eslint-disable-line no-param-reassign
         return next();
     } catch (err) {
         return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
@@ -81,8 +81,7 @@ const checkToken = async (req, res, next) => {
  * Note that to do this, model and user need to already be assigned to the request
  */
 const checkClassPermissions = async (req, res, next) => {
-    const model = req.model;
-    const user = req.user;
+    const {model, user} = req;
     const operation = req.method;
     const mapping = {
         GET: PERMISSIONS.READ,
@@ -91,7 +90,7 @@ const checkClassPermissions = async (req, res, next) => {
         POST: PERMISSIONS.CREATE,
         PATCH: PERMISSIONS.UPDATE
     };
-    for (let group of user.groups) {
+    for (const group of user.groups) {
         // Default to no permissions
         const permissions = group.permissions[model.name] === undefined
             ? PERMISSIONS.NONE
@@ -105,4 +104,6 @@ const checkClassPermissions = async (req, res, next) => {
     ));
 };
 
-module.exports = {generateToken, checkToken, keys, catsToken, checkClassPermissions};
+module.exports = {
+    generateToken, checkToken, keys, catsToken, checkClassPermissions
+};

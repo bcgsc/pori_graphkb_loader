@@ -1,13 +1,23 @@
-'use strict';
+
+
 /**
  * Contains all functions for directly interacting with the database
  * @module app/repo/base
  */
-const {AttributeError, MultipleRecordsFoundError, NoRecordFoundError, RecordExistsError, PermissionError} = require('./error');
-const {timeStampNow, quoteWrap, looksLikeRID, VERBOSE, castToRID} = require('./util');
-const {PERMISSIONS} = require('./constants');
-const {RID, RIDBag} = require('orientjs');
 const _ = require('lodash');
+const {RID, RIDBag} = require('orientjs');
+
+const {
+    AttributeError,
+    MultipleRecordsFoundError,
+    NoRecordFoundError,
+    RecordExistsError,
+    PermissionError
+} = require('./error');
+const {
+    timeStampNow, quoteWrap, looksLikeRID, VERBOSE, castToRID
+} = require('./util');
+const {PERMISSIONS} = require('./constants');
 
 
 const RELATED_NODE_DEPTH = 3;
@@ -15,17 +25,17 @@ const QUERY_LIMIT = 1000;
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 const SPECIAL_QUERY_ARGS = new Set(['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip', 'neighbors', 'activeOnly']);
 const FETCH_OMIT = -2;
-const FETCH_ALL = -1;
 
 
 /**
- * Check if the error is a particular type (expected from orientdb) and return an instance of the corresponding error class
+ * Check if the error is a particular type (expected from orientdb) and return an instance of the
+ * corresponding error class
  */
 const wrapIfTypeError = (err) => {
     if (err && err.type) {
         if (err.type.toLowerCase().includes('orecordduplicatedexception')) {
             return new RecordExistsError(err);
-        } else if (err.type.toLowerCase().includes('orecordnotfoundexception')) {
+        } if (err.type.toLowerCase().includes('orecordnotfoundexception')) {
             return new NoRecordFoundError(err);
         }
     }
@@ -39,7 +49,7 @@ const wrapIfTypeError = (err) => {
  * @param {boolean} activeOnly trim deleted records
  * @param {User} user if the user object is given, will check record-level permissions and trim any non-permitted content
  */
-const trimRecords = (recordList, opt={}) => {
+const trimRecords = (recordList, opt = {}) => {
     const {activeOnly, user} = Object.assign({
         activeOnly: true,
         user: null
@@ -50,9 +60,9 @@ const trimRecords = (recordList, opt={}) => {
     const allGroups = new Set();
 
     if (user) {
-        for (let group of user.groups) {
+        for (const group of user.groups) {
             allGroups.add(castToRID(group).toString());
-            for (let [cls, permissions] of Object.entries(group.permissions || {})) {
+            for (const [cls, permissions] of Object.entries(group.permissions || {})) {
                 if (permissions & PERMISSIONS.READ) {
                     readableClasses.add(cls);
                 }
@@ -63,10 +73,10 @@ const trimRecords = (recordList, opt={}) => {
     const accessOk = (record) => {
         if (user) {
             const cls = record['@class'];
-            if (cls && ! readableClasses.has(cls)) {
+            if (cls && !readableClasses.has(cls)) {
                 return false;
             }
-            if (! record.groupRestrictions || record.groupRestrictions.length === 0) {
+            if (!record.groupRestrictions || record.groupRestrictions.length === 0) {
                 return true;
             }
             for (let group of record.groupRestrictions || []) {
@@ -78,28 +88,31 @@ const trimRecords = (recordList, opt={}) => {
             return false;
         }
         return true;
-    }
+    };
 
     while (queue.length > 0) {
         const curr = queue.shift(); // remove the first element from the list
 
-        if (visited.has(curr)) {  // avoid infinite look from cycles
+        if (visited.has(curr)) { // avoid infinite look from cycles
             continue;
         }
         visited.add(curr);
         const keys = Array.from(Object.keys(curr));
-        for (let attr of keys) {
+        for (const attr of keys) {
             const value = curr[attr];
             if (attr === '@type' || attr === '@version') {
                 delete curr[attr];
             } else if (value instanceof RID) {
-                if (value.cluster < 0) {  // abstract, remove
+                if (value.cluster < 0) { // abstract, remove
                     delete curr[attr];
                 }
             } else if (value instanceof RIDBag) {
                 const arr = [];
-                for (let edge of value.all()) {
-                    if (! activeOnly || (edge.deletedAt == null && (! edge.in || edge.in.deletedAt == null) && (! edge.out || edge.out.deletedAt == null))) {
+                for (const edge of value.all()) {
+                    if (!activeOnly || (edge.deletedAt == null
+                        && (!edge.in || edge.in.deletedAt == null)
+                        && (!edge.out || edge.out.deletedAt == null)
+                    )) {
                         // remove edges where the edge is deleted or either node it connects is deleted
                         queue.push(edge);
                         arr.push(edge);
@@ -107,7 +120,7 @@ const trimRecords = (recordList, opt={}) => {
                 }
                 curr[attr] = arr;
             } else if (typeof value === 'object' && value && value['@rid'] !== undefined) {
-                if (value.deletedAt != null && activeOnly || ! accessOk(value)) {
+                if ((value.deletedAt != null && activeOnly) || !accessOk(value)) {
                     delete curr[attr];
                 } else {
                     queue.push(value);
@@ -117,8 +130,8 @@ const trimRecords = (recordList, opt={}) => {
     }
     // remove the top level elements last
     const result = [];
-    for (let record of recordList) {
-        if ((record.deletedAt == null || ! activeOnly) && accessOk(record)) {
+    for (const record of recordList) {
+        if ((record.deletedAt == null || !activeOnly) && accessOk(record)) {
             result.push(record);
         }
     }
@@ -141,7 +154,7 @@ class Follow {
      * '.out('blargh', 'monkeys'){while: ($matched.out('blargh', 'monkeys').size() > 0)}'
      *
      */
-    constructor(classnames=[], type='both', depth=RELATED_NODE_DEPTH, activeOnly=true) {
+    constructor(classnames = [], type = 'both', depth = RELATED_NODE_DEPTH, activeOnly = true) {
         if (!['both', 'in', 'out'].includes(type)) {
             throw new AttributeError(`expected type to be: in, out, or both. But was given: ${type}`);
         }
@@ -150,9 +163,12 @@ class Follow {
         }
         this.classnames = classnames;
         this.type = type;
-        this.depth = depth === null ? null : Number(depth);
+        this.depth = depth === null
+            ? null
+            : Number(depth);
         this.activeOnly = activeOnly;
     }
+
     /**
      * Converts the follow clause into an SQL statement
      */
@@ -162,17 +178,15 @@ class Follow {
             // follow until out of edge types
             if (this.activeOnly) {
                 return `.${this.type}(${classesString}){while: (${this.type}(${classesString}).size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}`;
-            } else {
-                return `.${this.type}(${classesString}){while: (${this.type}(${classesString}).size() > 0)}`;
             }
-        } else {
-            if (this.activeOnly) {
-                return `.${this.type}(${classesString}){while: ($depth < ${this.depth} AND deletedAt IS NULL), where: (deletedAt IS NULL)}`;
-            } else {
-                return `.${this.type}(${classesString}){while: ($depth < ${this.depth})}`;
-            }
+            return `.${this.type}(${classesString}){while: (${this.type}(${classesString}).size() > 0)}`;
         }
+        if (this.activeOnly) {
+            return `.${this.type}(${classesString}){while: ($depth < ${this.depth} AND deletedAt IS NULL), where: (deletedAt IS NULL)}`;
+        }
+        return `.${this.type}(${classesString}){while: ($depth < ${this.depth})}`;
     }
+
     /**
      * Based on the input query, create the follow statement (part of a match expresion)
      * @param {object} query
@@ -184,7 +198,9 @@ class Follow {
      * @returns {Follow} the follow statement
      */
     static parse(query) {
-        const activeOnly = query.activeOnly === undefined ? true: query.activeOnly;
+        const activeOnly = query.activeOnly === undefined
+            ? true
+            : query.activeOnly;
         const follow = [];
         // translate the fuzzyMatch/ancestors/descendants into proper follow statements
         if (query.ancestors) {
@@ -198,7 +214,7 @@ class Follow {
             if (follow.length === 0) {
                 follow.push([fuzzy]);
             } else {
-                for (let followArr of follow) {
+                for (const followArr of follow) {
                     followArr.unshift(fuzzy);
                     followArr.push(fuzzy);
                 }
@@ -214,37 +230,44 @@ class Clause {
      * @param {string} type can be OR or AND
      * @param {Array.<(Comparison|Clause)>} comparisons the array of comparisons (or clauses) which make up the clause
      */
-    constructor(type='OR', comparisons=[]) {
+    constructor(type = 'OR', comparisons = []) {
         this.type = type;
         this.comparisons = Array.from(comparisons, (comp) => {
             if (comp instanceof Clause || comp instanceof Comparison) {
                 return comp;
-            } else {
-                return new Comparison(comp);
             }
+            return new Comparison(comp);
         });
     }
+
     push(item) {
         this.comparisons.push(item);
     }
+
     get length() {
         return this.comparisons.length;
     }
+
     applyCast(cast) {
-        for (let item of this.comparisons) {
+        for (const item of this.comparisons) {
             item.applyCast(cast);
         }
     }
+
     /**
      * @param {string} name the name of the attribute we are comparing to
      * @param {int} [paramIndex=0] the number to append to parameter names
      * @param {bool} [listableType=false] indicates if the attribute being compared to is a set/list/bag/map etc.
      */
-    toString(name, paramIndex=0, listableType=false) {
+    toString(name, paramIndex = 0, listableType = false) {
         const params = {};
-        let components = [];
-        for (let comp of this.comparisons) {
-            const result = comp.toString(name, paramIndex + (Object.keys(params).length), listableType);
+        const components = [];
+        for (const comp of this.comparisons) {
+            const result = comp.toString(
+                name,
+                paramIndex + (Object.keys(params).length),
+                listableType
+            );
             if (comp instanceof Clause && comp.length > 1) {
                 // wrap in brackets
                 result.query = `(${result.query})`;
@@ -252,12 +275,13 @@ class Clause {
             Object.assign(params, result.params);
             components.push(result.query);
         }
-        let query = components.join(` ${this.type} `);
+        const query = components.join(` ${this.type} `);
         return {query, params};
     }
+
     validateEnum(arr) {
-        for (let comp of this.comparisons) {
-            if (! comp.validateEnum(arr)) {
+        for (const comp of this.comparisons) {
+            if (!comp.validateEnum(arr)) {
                 return false;
             }
         }
@@ -272,7 +296,7 @@ class Comparison {
      * @param {string} operator the operator to use for the comparison
      * @param {bool} negate if true then surround the comparison with a negation
      */
-    constructor(value, operator='=', negate=false) {
+    constructor(value, operator = '=', negate = false) {
         this.value = value;
         this.operator = operator;
         this.negate = negate;
@@ -280,11 +304,13 @@ class Comparison {
             throw new AttributeError('Invalid operator. Only = and ~ are supported operators');
         }
     }
+
     applyCast(cast) {
         if (this.value !== null) {
             this.value = cast(this.value);
         }
     }
+
     /**
      * Given some array, check that the value exists in it
      */
@@ -294,12 +320,13 @@ class Comparison {
         }
         return arr.includes(this.value);
     }
+
     /**
      * @param {string} name the name of the attribute we are comparing to
      * @param {int} [paramIndex=0] the number to append to parameter names
      * @param {bool} [listableType=false] indicates if the attribute being compared to is a set/list/bag/map etc.
      */
-    toString(name, paramIndex=0, listableType=false) {
+    toString(name, paramIndex = 0, listableType = false) {
         const params = {};
         let query;
         const pname = `param${paramIndex}`;
@@ -312,7 +339,9 @@ class Comparison {
             }
         } else if (this.value !== null) {
             params[pname] = this.value;
-            query = `${name} ${this.operator === '~' ? 'CONTAINSTEXT' : '=' } :${pname}`;
+            query = `${name} ${this.operator === '~'
+                ? 'CONTAINSTEXT'
+                : '='} :${pname}`;
         } else {
             query = `${name} IS NULL`;
         }
@@ -334,18 +363,24 @@ class SelectionQuery {
      * @param {Object} [inputQuery={}] object of property names linked to values, comparisons, or clauses
      *
      */
-    constructor(model, inputQuery={}, opt={}) {
+    constructor(model, inputQuery = {}, opt = {}) {
         this.model = model;
         this.conditions = {};
         this.follow = [];
-        this.skip = opt.skip ? opt.skip : null;
-        this.activeOnly = opt.activeOnly === undefined ? true : opt.activeOnly;
+        this.skip = opt.skip
+            ? opt.skip
+            : null;
+        this.activeOnly = opt.activeOnly === undefined
+            ? true
+            : opt.activeOnly;
         this.properties = Object.assign({}, model.properties);
-        this.returnProperties = inputQuery.returnProperties ? inputQuery.returnProperties : null;
-        const propertyNames = this.model.propertyNames;
+        this.returnProperties = inputQuery.returnProperties
+            ? inputQuery.returnProperties
+            : null;
+        const {propertyNames} = this.model;
         // can only return properties which belong to this class
-        for (let propName of this.returnProperties || []) {
-            if (! propertyNames.includes(propName)) {
+        for (const propName of this.returnProperties || []) {
+            if (!propertyNames.includes(propName)) {
                 throw new AttributeError(`invalid return property '${propName}' is not a valid member of class '${this.model.name}'`);
             }
         }
@@ -356,15 +391,15 @@ class SelectionQuery {
         this.cast = Object.assign({}, this.model.cast);
         // split the original query into subqueries where appropriate
         for (let [name, value] of Object.entries(inputQuery)) {
-            if (SPECIAL_QUERY_ARGS.has(name) || name == 'deletedAt') {
+            if (SPECIAL_QUERY_ARGS.has(name) || name === 'deletedAt') {
                 continue;
             }
             if (this.properties[name] === undefined) {
                 throw new AttributeError(`unexpected attribute '${name}' is not defined on this class model '${this.model.name}'`);
             }
 
-            if (! (value instanceof Comparison || value instanceof Clause || value instanceof SelectionQuery)) {
-                if (typeof value == 'object' && value !== null && ! (value instanceof Array)) {
+            if (!(value instanceof Comparison || value instanceof Clause || value instanceof SelectionQuery)) {
+                if (typeof value === 'object' && value !== null && !(value instanceof Array)) {
                     // subquery
                     if (this.properties[name].linkedModel) {
                         let subQueryModel = this.properties[name].linkedModel;
@@ -374,7 +409,7 @@ class SelectionQuery {
                         value = new SelectionQuery(subQueryModel, value, {activeOnly: this.activeOnly});
                         // can this subquery be flattened?
                         if (value.follow.length === 0) {
-                            for (let [subqName, subqProp] of Object.entries(value.conditions)) {
+                            for (const [subqName, subqProp] of Object.entries(value.conditions)) {
                                 const combinedName = `${name}.${subqName}`;
                                 this.properties[combinedName] = subQueryModel.properties[subqName];
                                 this.conditions[combinedName] = subqProp;
@@ -387,18 +422,18 @@ class SelectionQuery {
                         throw new AttributeError(`cannot subquery the non-linked attribute '${name}'`);
                     }
                 }
-                value = new Comparison(value);  // default to basic equals
+                value = new Comparison(value); // default to basic equals
             }
             this.conditions[name] = value;
         }
         this.follow = Follow.parse(Object.assign({activeOnly: this.activeOnly}, inputQuery));
 
-        for (let [name, condition] of Object.entries(this.conditions)) {
-            if (! (condition instanceof SelectionQuery) && this.cast[name]) {
+        for (const [name, condition] of Object.entries(this.conditions)) {
+            if (!(condition instanceof SelectionQuery) && this.cast[name]) {
                 condition.applyCast(this.cast[name]);
             }
             if (this.properties[name] && this.properties[name].choices) {
-                if (! condition.validateEnum(this.properties[name].choices)) {
+                if (!condition.validateEnum(this.properties[name].choices)) {
                     throw new AttributeError(`The attribute ${name} violates the expected controlled vocabulary`);
                 }
             }
@@ -418,14 +453,14 @@ class SelectionQuery {
      *  >>> query.OrClause('thing', new Comparison(2))
      *  {query: 'thing = :param0', params: {param0: 2}}
      */
-    conditionClause(name, value, paramIndex=0) {
+    conditionClause(name, value, paramIndex = 0) {
         let property = this.properties[name];
-        if (! property && value.value === null) {
-            property = {type: 'null'};  // Ignore null not exist b/c will be the same as null
+        if (!property && value.value === null) {
+            property = {type: 'null'}; // Ignore null not exist b/c will be the same as null
         }
 
         let isList = false;
-        if (! property || ! property.type) {
+        if (!property || !property.type) {
             throw new AttributeError(`property '${name}' with value '${value.value}' is not defined on this model '${this.model.name}'`);
         }
         if (/^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
@@ -434,10 +469,10 @@ class SelectionQuery {
 
         const {query, params} = value.toString(name, paramIndex, isList);
         if (property.type.includes('link')) {
-            for (let pname of Object.keys(params)) {
+            for (const pname of Object.keys(params)) {
                 if (params[pname] instanceof RID) {
                     continue;
-                } else if (params[pname] !== null && ! looksLikeRID(params[pname])) {
+                } else if (params[pname] !== null && !looksLikeRID(params[pname])) {
                     throw new AttributeError(`'${name}' expects an RID or null but saw '${params[pname]}'`);
                 } else if (params[pname] !== null) {
                     params[pname] = new RID(`#${params[pname].replace(/^#/, '')}`);
@@ -446,6 +481,7 @@ class SelectionQuery {
         }
         return {query, params};
     }
+
     /**
      * print the selection query as a string with SQL paramters.
      *
@@ -453,14 +489,16 @@ class SelectionQuery {
      *
      * @returns {object} an object containing the SQL query statment (query) and the parameters (params)
      */
-    toString(paramStartIndex=0) {
+    toString(paramStartIndex = 0) {
         let queryString;
-        const selectionElements = this.returnProperties ? this.returnProperties.join(', ') : '*';
+        const selectionElements = this.returnProperties
+            ? this.returnProperties.join(', ')
+            : '*';
         const conditions = [];
         const params = {};
         const conditionNames = Object.keys(this.conditions);
-        conditionNames.sort();  // parameters will have the same aliases
-        for (let attr of conditionNames) {
+        conditionNames.sort(); // parameters will have the same aliases
+        for (const attr of conditionNames) {
             let clause;
             if (this.conditions[attr] instanceof SelectionQuery) {
                 clause = this.conditions[attr].toString(paramStartIndex);
@@ -484,10 +522,10 @@ class SelectionQuery {
                 prefix = `{class: ${this.model.name}}`;
             }
             const expressions = [];
-            for (let arr of this.follow) {
+            for (const arr of this.follow) {
                 expressions.push(`${prefix}${Array.from(arr, x => x.toString()).join('')}`);
             }
-            queryString = `MATCH ${expressions.join(', ')} RETURN \$pathElements`;
+            queryString = `MATCH ${expressions.join(', ')} RETURN $pathElements`;
             if (selectionElements !== '*') {
                 queryString = `SELECT ${selectionElements} FROM (${queryString})`;
             }
@@ -500,22 +538,24 @@ class SelectionQuery {
         if (this.skip != null) {
             queryString = `${queryString} skip ${this.skip}`;
         }
-        return {query: queryString, params: params};
+        return {query: queryString, params};
     }
+
     /**
-     * Returns the query as a string but substitutes all parameters to make the results more readable.
+     * Returns the query as a string but substitutes all parameters to make the results more
+     * readable.
      *
      * @warning
      *      use the toString and params to query the db. This method is for VERBOSE/logging only
      */
     displayString() {
         let {query: statement, params} = this.toString();
-        for (let key of Object.keys(params)) {
+        for (const key of Object.keys(params)) {
             let value = params[key];
             if (typeof value === 'string') {
                 value = `'${value}'`;
             }
-            statement = statement.replace(new RegExp(':' + key, 'g'), `${value}`);
+            statement = statement.replace(new RegExp(`:${key}`, 'g'), `${value}`);
         }
         return statement;
     }
@@ -526,7 +566,7 @@ class SelectionQuery {
  * Check if the user has sufficient access
  */
 const hasRecordAccess = (user, record) => {
-    if (! record.groupRestrictions || record.groupRestrictions.length === 0) {
+    if (!record.groupRestrictions || record.groupRestrictions.length === 0) {
         return true;
     }
     for (let rgroup of record.groupRestrictions) {
@@ -553,7 +593,9 @@ const hasRecordAccess = (user, record) => {
 const createUser = async (db, opt) => {
     const {model, userName, groupNames} = opt;
     const userGroups = await db.select().from('UserGroup').all();
-    const groupIds = Array.from(userGroups.filter(group => groupNames.includes(group.name)), group => group['@rid']);
+    const groupIds = Array.from(userGroups.filter(
+        group => groupNames.includes(group.name)
+    ), group => group['@rid']);
 
     const record = model.formatRecord({
         name: userName,
@@ -564,7 +606,9 @@ const createUser = async (db, opt) => {
         .set(record)
         .one();
     try {
-        return await select(db, {where: {name: userName}, model: model, exactlyN: 1, fetchPlan: 'groups:1'});
+        return await select(db, {
+            where: {name: userName}, model, exactlyN: 1, fetchPlan: 'groups:1'
+        });
     } catch (err) {
         throw wrapIfTypeError(err);
     }
@@ -583,11 +627,12 @@ const createUser = async (db, opt) => {
 const create = async (db, opt) => {
     const {content, model, user} = opt;
     if (model.isEdge) {
-        return await createEdge(db, opt);
+        return createEdge(db, opt);
     }
     const record = model.formatRecord(
         Object.assign({}, content, {createdBy: user['@rid']}),
-        {dropExtra: false, addDefaults: true});
+        {dropExtra: false, addDefaults: true},
+    );
     if (VERBOSE) {
         console.log('create:', record);
     }
@@ -621,18 +666,26 @@ const createEdge = async (db, opt) => {
     delete record.out;
     delete record.in;
     try {
-        return await db.create('EDGE', model.name).from(from).to(to).set(record).one();
+        return await db.create('EDGE', model.name).from(from).to(to).set(record)
+            .one();
     } catch (err) {
         throw wrapIfTypeError(err);
     }
 };
 
 /**
- * Given a user name return the active record. Groups will be returned in full so that table level permissions can be checked
+ * Given a user name return the active record. Groups will be returned in full so that table level
+ * permissions can be checked
  */
 const getUserByName = async (db, username) => {
     // raw SQL to avoid having to load db models in the middleware
-    const user = await db.query('SELECT * from User where name = :param0 AND deletedAt IS NULL', {params: {param0: username}, fetchPlan: 'groups:1'}).all();
+    const user = await db.query(
+        'SELECT * from User where name = :param0 AND deletedAt IS NULL',
+        {
+            params: {param0: username},
+            fetchPlan: 'groups:1'
+        }
+    ).all();
     if (user.length > 1) {
         throw new MultipleRecordsFoundError(`username '${username} is not unique and returned multiple records`);
     } else if (user.length === 0) {
@@ -672,28 +725,30 @@ const select = async (db, opt) => {
     }, opt.where, opt);
     const query = new SelectionQuery(opt.model, opt.where || {}, opt);
     if (VERBOSE) {
-        console.log('select query statement:', query.displayString(), {limit: opt.limit, fetchPlan: opt.fetchPlan, skip: opt.skip});
+        console.log('select query statement:',
+            query.displayString(),
+            {limit: opt.limit, fetchPlan: opt.fetchPlan, skip: opt.skip});
     }
 
     // send the query statement to the database
     const {params, query: statement} = query.toString();
     const queryOpt = {
-        params: params,
+        params,
         limit: opt.limit
     };
     if (opt.fetchPlan) {
         queryOpt.fetchPlan = opt.fetchPlan;
     }
     if (opt.activeOnly) {
-        if (! queryOpt.fetchPlan) {
+        if (!queryOpt.fetchPlan) {
             queryOpt.fetchPlan = `history:${FETCH_OMIT}`;
-        } else if (! queryOpt.fetchPlan.includes(`history:${FETCH_OMIT}`)) {
+        } else if (!queryOpt.fetchPlan.includes(`history:${FETCH_OMIT}`)) {
             queryOpt.fetchPlan = `${queryOpt.fetchPlan} history:${FETCH_OMIT}`;
         }
     }
     let recordList = await db.query(`${statement}`, queryOpt).all();
 
-    if (process.env.DEBUG == '1') {
+    if (process.env.DEBUG === '1') {
         console.log(`selected ${recordList.length} records`);
     }
     recordList = trimRecords(recordList, {activeOnly: opt.activeOnly, user: opt.user});
@@ -702,12 +757,11 @@ const select = async (db, opt) => {
         if (recordList.length === 0) {
             if (opt.exactlyN === 0) {
                 return [];
-            } else {
-                throw new NoRecordFoundError({
-                    message: 'query expected results but returned an empty list',
-                    sql: query.displayString()
-                });
             }
+            throw new NoRecordFoundError({
+                message: 'query expected results but returned an empty list',
+                sql: query.displayString()
+            });
         } else if (opt.exactlyN !== recordList.length) {
             throw new MultipleRecordsFoundError({
                 message: `query returned unexpected number of results. Found ${recordList.length} results but expected ${opt.exactlyN} results`,
@@ -729,24 +783,21 @@ const select = async (db, opt) => {
  */
 const remove = async (db, opt) => {
     const {model, user, where} = opt;
-    const rec = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
-    if (! hasRecordAccess(user, rec)) {
+    const [rec] = (await select(db, {model, where, exactlyN: 1}));
+    if (!hasRecordAccess(user, rec)) {
         throw new PermissionError(`The user '${user.name}' does not have sufficient permissions to interact with record ${rec['@rid']}`);
     }
-    let rid = rec['@rid'];
-    where['createdAt'] = rec['createdAt'];
+    const rid = rec['@rid'];
+    where.createdAt = rec.createdAt;
     delete where['@rid'];
     const commit = db.let(
-        'updatedRID', (tx) => {
-            // update the original record and set the history link to link to the copy
-            return tx.update(`${rid}`)
-                .set({deletedAt: timeStampNow()})
-                .set(`deletedBy = ${user['@rid']}`)
-                .return('AFTER @rid')
-                .where(where);
-        }).let('updated', (tx) => {
-            return tx.select().from('$updatedRID').fetch({'*': 1});
-        }).commit();
+        'updatedRID', tx => tx.update(`${rid}`)
+            .set({deletedAt: timeStampNow()})
+            .set(`deletedBy = ${user['@rid']}`)
+            .return('AFTER @rid')
+            .where(where),
+
+    ).let('updated', tx => tx.select().from('$updatedRID').fetch({'*': 1})).commit();
     if (VERBOSE) {
         console.log('remove:', commit.buildStatement());
     }
@@ -776,56 +827,63 @@ const update = async (db, opt) => {
         dropExtra: false,
         addDefaults: false,
         ignoreMissing: true,
-        ignoreExtra: false}));
-    const original = (await select(db, {model: model, where: where, exactlyN: 1}))[0];
-    if (! hasRecordAccess(user, original)) {
+        ignoreExtra: false
+    }));
+    const original = (await select(db, {model, where, exactlyN: 1}))[0];
+    if (!hasRecordAccess(user, original)) {
         throw new PermissionError(`The user '${user.name}' does not have sufficient permissions to interact with record ${original['@rid']}`);
     }
-    const originalWhere = Object.assign({}, model.formatRecord(original, {dropExtra: true, addDefaults: false}));
+    const originalWhere = Object.assign({}, model.formatRecord(
+        original, {dropExtra: true, addDefaults: false}
+    ));
     delete originalWhere.createdBy;
     delete originalWhere.history;
     const copy = Object.assign({}, _.omit(
         originalWhere,
-        Object.keys(originalWhere).filter(x => x.startsWith('@'))
+        Object.keys(originalWhere).filter(x => x.startsWith('@')),
     ), {deletedAt: timeStampNow()});
 
-    const originalUserRID = original.createdBy instanceof RID ? original.createdBy : original.createdBy['@rid'];
+    const originalUserRID = original.createdBy instanceof RID
+        ? original.createdBy
+        : original.createdBy['@rid'];
     let historyRID = null;
     if (original.history) {
-        historyRID = original.history instanceof RID ? original.history : original.history['@rid'];
+        historyRID = original.history instanceof RID
+            ? original.history
+            : original.history['@rid'];
     }
 
     const commit = db.let(
         'copy', (tx) => {
             // create the copy of the original record with a deletion time
             if (original.history !== undefined) {
-                return tx.create(model.isEdge ? 'EDGE' : 'VERTEX', model.name)
+                return tx.create(model.isEdge
+                    ? 'EDGE'
+                    : 'VERTEX', model.name)
                     .set(copy)
                     .set(`createdBy = ${originalUserRID}`)
                     .set(`deletedBy = ${user['@rid']}`)
                     .set(`history = ${historyRID}`);
-            } else {
-                return tx.create(model.isEdge ? 'EDGE' : 'VERTEX', model.name)
-                    .set(copy)
-                    .set(`createdBy = ${originalUserRID}`)
-                    .set(`deletedBy = ${user['@rid']}`);
             }
-        }).let('updatedRID', (tx) => {
-            // update the original record and set the history link to link to the copy
-            return tx.update(`${original['@rid']}`)
-                .set(content)
-                .set('history = $copy')
-                .return('AFTER @rid')
-                .where(originalWhere);
-        }).let('updated', (tx) => {
-            return tx.select().from('$updatedRID').fetch({'*': 1});
-        }).commit();
+            return tx.create(model.isEdge
+                ? 'EDGE'
+                : 'VERTEX', model.name)
+                .set(copy)
+                .set(`createdBy = ${originalUserRID}`)
+                .set(`deletedBy = ${user['@rid']}`);
+        },
+    ).let('updatedRID', tx => tx.update(`${original['@rid']}`)
+        .set(content)
+        .set('history = $copy')
+        .return('AFTER @rid')
+        .where(originalWhere)).let('updated', tx => tx.select().from('$updatedRID').fetch({'*': 1}))
+        .commit();
     if (process.env.DEBUG === '1') {
         console.log(`update: ${commit.buildStatement()}`);
     }
     try {
         const result = await commit.return('$updated').one();
-        if (result == undefined) {
+        if (!result) {
             throw new Error('Failed to update');
         }
         return result;
