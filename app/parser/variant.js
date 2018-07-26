@@ -399,7 +399,9 @@ const parseContinuous = (inputString) => {
         }
         if (match[3] !== undefined) {
             if (match[4] === undefined) {
-                result.truncation = match[1] === '*' ? 1 : null;
+                result.truncation = match[1] === '*'
+                    ? 1
+                    : null;
             } else {
                 result.truncation = parseInt(match[4], 10);
                 if (match[1] === '*' && result.truncation !== 1) {

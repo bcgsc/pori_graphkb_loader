@@ -13,20 +13,22 @@ const PREFIX_CLASS = {
 };
 
 
-const CDS_PATT = /(\d+)([-+]\d+)?/;
+const CDS_PATT = /(\d+)?([-+]\d+)?/;
 const PROTEIN_PATT = /([A-Za-z?*])?(\d+|\?)/;
 const CYTOBAND_PATT = /[pq]((\d+|\?)(\.(\d+|\?))?)?/;
 
 
 const positionString = (inputBreakpoint) => {
     const breakpoint = Object.assign({}, inputBreakpoint);
-    if (breakpoint.pos === undefined) {
+    if (breakpoint.pos === undefined || breakpoint.pos === null) {
         breakpoint.pos = '?';
     }
     switch (breakpoint['@class']) {
         case PREFIX_CLASS.c: {
             if (breakpoint.offset) {
-                return `${breakpoint.pos}${breakpoint.offset > 0 ? '+' : ''}${breakpoint.offset}`;
+                return `${breakpoint.pos}${breakpoint.offset > 0
+                    ? '+'
+                    : ''}${breakpoint.offset}`;
             }
             return `${breakpoint.pos}`;
         }
@@ -89,7 +91,11 @@ const parsePosition = (prefix, string) => {
         case 'e': {
             result['@class'] = PREFIX_CLASS[prefix];
             if (string !== '?') {
-                result.pos = parseInt(string, 10);
+                if (/^\d+$/.exec(string.toString().trim())) {
+                    result.pos = parseInt(string, 10);
+                } else {
+                    throw new ParsingError(`expected integer but found: ${string}`);
+                }
             } else {
                 result.pos = null;
             }
@@ -97,7 +103,7 @@ const parsePosition = (prefix, string) => {
         }
         case 'g': {
             if (string !== '?') {
-                if (!/^\d+$/.exec(string)) {
+                if (!/^\d+$/.exec(string.toString().trim())) {
                     throw new ParsingError(`expected integer but found: ${string}`);
                 }
                 result.pos = parseInt(string, 10);
@@ -108,11 +114,15 @@ const parsePosition = (prefix, string) => {
         }
         case 'c': {
             const m = new RegExp(`^${CDS_PATT.source}$`).exec(string);
-            if (m === null) {
+            if (m === null || (!m[1] && !m[2])) {
                 throw new ParsingError(`input '${string}' did not match the expected pattern for 'c' prefixed positions`);
             }
-            result.pos = m[1] ? parseInt(m[1], 10) : 1;
-            result.offset = m[2] === undefined ? 0 : parseInt(m[2], 10);
+            result.pos = m[1]
+                ? parseInt(m[1], 10)
+                : 1;
+            result.offset = m[2] === undefined
+                ? 0
+                : parseInt(m[2], 10);
             return result;
         }
         case 'p': {

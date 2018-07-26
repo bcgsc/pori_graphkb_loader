@@ -65,7 +65,7 @@ describe('parseMultiFeature', () => {
         });
         it('bad second breakpoint', () => {
             expect(() => {
-                const result = parseMultiFeature('fusion(e.123,e.123k)');
+                parseMultiFeature('fusion(e.123,e.123k)');
             }).to.throw('Error in parsing the second breakpoint');
         });
         it('insertion types', () => {
@@ -481,8 +481,9 @@ describe('parseContinuous', () => {
             const exp = {
                 type: EVENT_SUBTYPE.SUB,
                 break1Start: {'@class': 'CdsPosition', pos: 1, offset: -124},
-                break1Repr: 'c.-124',
+                break1Repr: 'c.1-124',
                 untemplatedSeq: 'T',
+                untemplatedSeqSize: 1,
                 refSeq: 'C',
                 prefix: 'c'
             };
