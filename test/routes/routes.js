@@ -1,12 +1,13 @@
 const chai = require('chai');
 const chatHttp = require('chai-http');
-const expect = chai.expect;
+
+const {expect} = chai;
 const HTTP_STATUS = require('http-status-codes');
 const server = require('./../../app');
 
 chai.use(chatHttp);
 
-let app = server.app;
+const {app} = server;
 
 describe('GET', () => {
     before(async () => {
@@ -35,12 +36,6 @@ describe('GET', () => {
         });
     });
     describe('/feature/:id', () => {
-        it('exists'/*, async () => { // TODO: changes when we change the db
-            const res = await chai.request(app).get('/api/feature/468b05b9-9047-4c9e-93d3-1457024f26ab');
-            expect(res).to.have.status(HTTP_STATUS.OK);
-            expect(res.body).to.be.a('object');
-            expect(res.body).to.have.property('name', 'abcc1');
-        }*/);
         it('bad id', async () => {
             let res;
             try {
@@ -62,7 +57,7 @@ describe('GET', () => {
     });
     describe('/disease', () => {});
     describe('/disease/:id', () => {});
-    after(async function() {
+    after(async () => {
         await server.close();
     });
 });

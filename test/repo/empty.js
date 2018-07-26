@@ -1,27 +1,33 @@
-'use strict';
+
+
 const {
     expect
 } = require('chai');
+const uuidV4 = require('uuid/v4');
+
 const {
     create,
     update,
     remove,
     select
 } = require('./../../app/repo/base');
-const uuidV4 = require('uuid/v4');
 const {
     setUpEmptyDB
 } = require('./../util');
 
 const emptyConf = Object.assign({}, require('./../config/empty'));
+
 emptyConf.db = Object.assign({}, emptyConf.db);
 emptyConf.verbose = true;
 emptyConf.db.name = `test_${uuidV4()}`;
 
 
-
 describe('schema', () => {
-    let db, schema, admin, doSource, otherSource, server;
+    let db,
+        schema,
+        admin,
+        doSource,
+        server;
     before(async () => {
         ({
             db,
@@ -29,7 +35,7 @@ describe('schema', () => {
             admin,
             server
         } = await setUpEmptyDB(emptyConf));
-        if (process.env.VERBOSE == '1') {
+        if (process.env.VERBOSE === '1') {
             console.log('finished DB setup');
         }
         // create the source
@@ -40,7 +46,7 @@ describe('schema', () => {
             },
             user: admin
         });
-        otherSource = await create(db, {
+        await create(db, {
             model: schema.Source,
             content: {
                 name: 'some other source',
@@ -50,7 +56,6 @@ describe('schema', () => {
         });
     });
     describe('create', () => {
-
         it('error on source not specified', async () => {
             try {
                 const record = await create(db, {
@@ -80,7 +85,6 @@ describe('schema', () => {
         });
     });
     describe('remove', () => {
-
         it('an existing node', async () => {
             const record = await create(db, {
                 model: schema.Disease,
@@ -110,7 +114,7 @@ describe('schema', () => {
             };
             const record = await create(db, {
                 model: schema.Disease,
-                content: content,
+                content,
                 user: admin
             });
             expect(record).to.have.property('sourceId', 'cancer');
@@ -138,13 +142,14 @@ describe('schema', () => {
                 fetchPlan: '*:1'
             });
             originalNode = originalNode[0];
-            expect(updated['history']).to.eql(originalNode['@rid']);
-            expect(originalNode['deletedBy']['@rid']).to.eql(admin['@rid']);
-            expect(updated['createdBy']).to.eql(admin['@rid']);
+            expect(updated.history).to.eql(originalNode['@rid']);
+            expect(originalNode.deletedBy['@rid']).to.eql(admin['@rid']);
+            expect(updated.createdBy).to.eql(admin['@rid']);
         });
     });
     describe('select', () => {
-        let cancer, carcinoma;
+        let cancer,
+            carcinoma;
         beforeEach(async () => {
             cancer = await create(db, {
                 model: schema.Disease,

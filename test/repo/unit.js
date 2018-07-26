@@ -1,23 +1,31 @@
-'use strict';
+
+
 const {expect} = require('chai');
+const {types, RID} = require('orientjs');
+const qs = require('qs'); // to simulate express query parameter pparsing for tests
+
 const {castUUID, looksLikeRID} = require('./../../app/repo/util');
 const {parseQueryLanguage, MAX_JUMPS} = require('./../../app/routes/util');
 const {ClassModel} = require('./../../app/repo/schema');
-const {hasRecordAccess, SelectionQuery, Follow, RELATED_NODE_DEPTH, Clause, Comparison, QUERY_LIMIT, trimRecords} = require('./../../app/repo/base');
-const {PERMISSIONS} = require('./../../app/repo/constants');
-const {types, RID}  = require('orientjs');
-const qs = require('qs'); // to simulate express query parameter pparsing for tests
+const {
+    hasRecordAccess,
+    SelectionQuery,
+    Follow,
+    RELATED_NODE_DEPTH,
+    Clause,
+    Comparison,
+    QUERY_LIMIT,
+    trimRecords
+} = require('./../../app/repo/base');
 
 
 const OJS_TYPES = {};
-for (let num of Object.keys(types)) {
+for (const num of Object.keys(types)) {
     const name = types[num].toLowerCase();
     OJS_TYPES[name] = num;
 }
 
-const stripSQL = (string) => {
-    return string.replace(/\s+\./g, '.').replace(/\s+/g, ' ');
-};
+const stripSQL = string => string.replace(/\s+\./g, '.').replace(/\s+/g, ' ');
 
 describe('util.castUUID', () => {
     it('returns valid uuid', () => {
@@ -52,15 +60,15 @@ describe('util.looksLikeRID', () => {
 
 describe('hasRecordAccess', () => {
     it('user with no groups', () => {
-        const access = hasRecordAccess({groups: []}, {groupRestrictions: [{'@rid': '#2:0'}]})
+        const access = hasRecordAccess({groups: []}, {groupRestrictions: [{'@rid': '#2:0'}]});
         expect(access).to.be.false;
     });
     it('record with no groups', () => {
-        const access = hasRecordAccess({groups: []}, {})
+        const access = hasRecordAccess({groups: []}, {});
         expect(access).to.be.true;
     });
     it('record with no groups but admin user', () => {
-        const access = hasRecordAccess({groups: [{'@rid': '#2:0'}]}, {})
+        const access = hasRecordAccess({groups: [{'@rid': '#2:0'}]}, {});
         expect(access).to.be.true;
     });
     it('record with different group', () => {
@@ -74,7 +82,7 @@ describe('hasRecordAccess', () => {
     it('record with the correct group', () => {
         const access = hasRecordAccess({groups: [{'@rid': '#2:0'}, {'@rid': '#4:0'}]}, {groupRestrictions: [{'@rid': '#2:0'}]});
         expect(access).to.be.true;
-    })
+    });
 });
 
 
@@ -98,7 +106,15 @@ describe('trimRecords', () => {
     it('removes deleted edges', () => {
         const records = [
             {name: 'bob'},
-            {name: 'alice', out_link: {name: 'george', deletedAt: 1, in: {name: 'george the 2nd', '@rid': '44:2'}, '@rid': '44:1'}}
+            {
+                name: 'alice',
+                out_link: {
+                    name: 'george',
+                    deletedAt: 1,
+                    in: {name: 'george the 2nd', '@rid': '44:2'},
+                    '@rid': '44:1'
+                }
+            }
         ];
         const trimmed = trimRecords(records, {activeOnly: true});
         expect(trimmed).to.eql([{name: 'bob'}, {name: 'alice'}]);
@@ -122,7 +138,11 @@ describe('trimRecords', () => {
     it('removes protected edges (default ok)', () => {
         const records = [
             {name: 'bob', groupRestrictions: [{'@rid': '#1:0'}]},
-            {name: 'alice', out_link: {'@rid': '44:1', groupRestrictions: [{'@rid': '#2:2'}]}, groupRestrictions: [{'@rid': '#1:0'}]}
+            {
+                name: 'alice',
+                out_link: {'@rid': '44:1', groupRestrictions: [{'@rid': '#2:2'}]},
+                groupRestrictions: [{'@rid': '#1:0'}]
+            }
         ];
         const trimmed = trimRecords(records, {activeOnly: false, user: {groups: [{'@rid': '#1:0'}]}});
         expect(trimmed).to.eql([
@@ -223,7 +243,7 @@ describe('Follow', () => {
         expect(follow.toString()).to.equal(`.both(){while: ($depth < ${RELATED_NODE_DEPTH} AND deletedAt IS NULL), where: (deletedAt IS NULL)}`);
     });
     it('throws error for null depth and both type', () => {
-        expect(() => { new Follow([], 'both', null);}).to.throw();
+        expect(() => { new Follow([], 'both', null); }).to.throw();
     });
     it('allows multiple edge classes', () => {
         const follow = new Follow(['thing1', 'thing2'], 'in', RELATED_NODE_DEPTH, false);
@@ -271,13 +291,13 @@ describe('SelectionQuery', () => {
             requiredVar: {name: 'requiredVar', mandatory: true, type: 'string'},
             defaultVar: {name: 'defaultVar', type: 'string'},
             castable: {name: 'castable', type: 'string'},
-            linkVar: {name: 'linkVar', linkedModel: linkedModel, type: 'link'},
+            linkVar: {name: 'linkVar', linkedModel, type: 'link'},
             embeddedSetVar: {name: 'embeddedSetVar', type: 'embeddedset'}
         },
         defaults: {defaultVar: () => 'default'},
         cast: {
-            castable: (x) => x.toLowerCase(),
-            embeddedSetVar: (x) => x.toLowerCase().trim()
+            castable: x => x.toLowerCase(),
+            embeddedSetVar: x => x.toLowerCase().trim()
         }
     });
     it('errors on unexpected parameter', () => {
@@ -414,15 +434,16 @@ describe('SelectionQuery', () => {
             requiredVar: new Comparison('vocab1'),
             linkVar: new SelectionQuery(linkedModel, {
                 thing: new Comparison('thing'),
-                fuzzyMatch: 4}, {activeOnly: false}
-            )
+                fuzzyMatch: 4
+            }, {activeOnly: false})
         });
         const {query: statement, params} = query.toString();
         expect(statement).to.equal(stripSQL(
             `SELECT * FROM example WHERE linkVar IN
                 (SELECT @rid FROM
                     (MATCH {class: other, where: (thing = :param0)}.both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)} RETURN $pathElements))
-                    AND requiredVar = :param1`));
+                    AND requiredVar = :param1`
+        ));
         expect(params).to.eql({param1: 'vocab1', param0: 'thing'});
     });
     it('parses subquery with fuzzyMatch (activeOnly)', () => {
@@ -440,7 +461,8 @@ describe('SelectionQuery', () => {
             `SELECT * FROM example WHERE deletedAt IS NULL AND linkVar IN
                 (SELECT @rid FROM
                     (MATCH {class: other, where: (deletedAt IS NULL AND thing = :param0)}.both('AliasOf', 'DeprecatedBy'){while: ($depth < 4 AND deletedAt IS NULL), where: (deletedAt IS NULL)} RETURN $pathElements))
-                    AND requiredVar = :param1`));
+                    AND requiredVar = :param1`
+        ));
         expect(params).to.eql({param1: 'vocab1', param0: 'thing'});
     });
     it('parses subquery with fuzzyMatch and ancestors');
@@ -669,14 +691,15 @@ describe('SelectionQuery', () => {
             fuzzyMatch: 4
         }, {activeOnly: false});
         expect(query.conditions).to.eql({
-            requiredVar: new Comparison('vocab1'),
+            requiredVar: new Comparison('vocab1')
         });
         expect(query.follow).to.eql([[new Follow(['AliasOf', 'DeprecatedBy'], 'both', 4, false)]]);
         const {query: statement, params} = query.toString();
         expect(params).to.eql({param0: 'vocab1'});
         expect(statement).to.eql(stripSQL(
             `MATCH {class: example, where: (requiredVar = :param0)}
-            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)} RETURN $pathElements`));
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)} RETURN $pathElements`
+        ));
     });
     it('parses query with fuzzyMatch (activeOnly)', () => {
         const query = new SelectionQuery(restrictiveModel, {
@@ -693,7 +716,8 @@ describe('SelectionQuery', () => {
         expect(params).to.eql({param0: 'vocab1'});
         expect(statement).to.eql(stripSQL(
             `MATCH {class: example, where: (deletedAt IS NULL AND requiredVar = :param0)}
-            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4 AND deletedAt IS NULL), where: (deletedAt IS NULL)} RETURN $pathElements`));
+            .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4 AND deletedAt IS NULL), where: (deletedAt IS NULL)} RETURN $pathElements`
+        ));
     });
     it('parses query with fuzzyMatch and ancestors (activeOnly', () => {
         const query = new SelectionQuery(restrictiveModel, {
@@ -714,7 +738,8 @@ describe('SelectionQuery', () => {
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
             .in(){while: (in().size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
-            RETURN $pathElements`));
+            RETURN $pathElements`
+        ));
     });
     it('parses query with fuzzyMatch and ancestors', () => {
         const query = new SelectionQuery(restrictiveModel, {
@@ -735,7 +760,8 @@ describe('SelectionQuery', () => {
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
             .in(){while: (in().size() > 0)}
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
-            RETURN $pathElements`));
+            RETURN $pathElements`
+        ));
     });
     it('parses query with fuzzyMatch and descendants', () => {
         const query = new SelectionQuery(restrictiveModel, {
@@ -756,7 +782,8 @@ describe('SelectionQuery', () => {
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
             .out(){while: (out().size() > 0)}
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 4)}
-            RETURN $pathElements`));
+            RETURN $pathElements`
+        ));
     });
     it('parses query with fuzzyMatch and both ancestors and descendants');
     it('parses query with ancestors');
@@ -771,7 +798,8 @@ describe('SelectionQuery', () => {
         expect(params).to.eql({param0: 'vocab1', param1: 'vocab2'});
         expect(statement).to.eql(stripSQL(
             `SELECT * FROM example WHERE
-            (requiredVar = :param0 OR requiredVar = :param1)`));
+            (requiredVar = :param0 OR requiredVar = :param1)`
+        ));
     });
     it('parses and flattens subquery list', () => {
         const query = new SelectionQuery(restrictiveModel, {
@@ -780,11 +808,14 @@ describe('SelectionQuery', () => {
         }, {activeOnly: false});
         expect(query.conditions).to.eql({requiredVar: new Clause('OR', ['vocab1', 'vocab2']), 'linkVar.thing': new Clause('OR', ['thing1', 'thing2'])});
         const {query: statement, params} = query.toString();
-        expect(params).to.eql({param2: 'vocab1', param3: 'vocab2', param0: 'thing1', param1: 'thing2'});
+        expect(params).to.eql({
+            param2: 'vocab1', param3: 'vocab2', param0: 'thing1', param1: 'thing2'
+        });
         expect(statement).to.eql(stripSQL(
             `SELECT * FROM example WHERE
             (linkVar.thing = :param0 OR linkVar.thing = :param1)
-            AND (requiredVar = :param2 OR requiredVar = :param3)`));
+            AND (requiredVar = :param2 OR requiredVar = :param3)`
+        ));
     });
     it('cast for single attr', () => {
         const query = new SelectionQuery(restrictiveModel, {
@@ -808,7 +839,8 @@ describe('SelectionQuery', () => {
         expect(statement).to.eql(stripSQL(
             `SELECT * FROM example WHERE
             (castable = :param0 OR castable = :param1)
-            AND requiredVar = :param2`));
+            AND requiredVar = :param2`
+        ));
     });
     it('cast for list values to be compared against list attr', () => {
         const query = new SelectionQuery(restrictiveModel, {
@@ -824,21 +856,20 @@ describe('SelectionQuery', () => {
         expect(statement).to.eql(stripSQL(
             `SELECT * FROM example WHERE
             (embeddedSetVar CONTAINS :param0 OR embeddedSetVar CONTAINS :param1)
-            AND requiredVar = :param2`));
+            AND requiredVar = :param2`
+        ));
     });
     it('error on cast for dict attr', () => {
-        expect(() => {
-            return restrictiveModel.formatQuery({
-                requiredVar: 'vocab1',
-                'castable': {MixedCase: 1, UPPERCASE: 2}
-            });
-        }).to.throw(TypeError);
+        expect(() => restrictiveModel.formatQuery({
+            requiredVar: 'vocab1',
+            castable: {MixedCase: 1, UPPERCASE: 2}
+        })).to.throw(TypeError);
     });
     describe('conditionClause', () => {
         it('defaults a string to an RID object if the expected property is a link', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
-                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                formatQuery: () => ({subqueries: {}, where: {}}),
                 properties: {blargh: {type: 'link'}},
                 propertyNames: ['blargh']
             });
@@ -849,7 +880,7 @@ describe('SelectionQuery', () => {
         it('defaults to OR statement', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
-                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                formatQuery: () => ({subqueries: {}, where: {}}),
                 properties: {blargh: {type: 'any'}},
                 propertyNames: ['blargh']
             });
@@ -860,7 +891,7 @@ describe('SelectionQuery', () => {
         it('allows mix of AND and OR', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
-                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                formatQuery: () => ({subqueries: {}, where: {}}),
                 properties: {blargh: {type: 'any'}, name: {type: 'string'}},
                 propertyNames: ['blargh', 'name']
             });
@@ -871,7 +902,7 @@ describe('SelectionQuery', () => {
         it('containstext operator', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
-                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                formatQuery: () => ({subqueries: {}, where: {}}),
                 properties: {blargh: {type: 'string'}, name: {type: 'string'}},
                 propertyNames: ['blargh', 'name']
             });
@@ -882,7 +913,7 @@ describe('SelectionQuery', () => {
         it('not operator', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
-                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                formatQuery: () => ({subqueries: {}, where: {}}),
                 properties: {blargh: {type: 'string'}, name: {type: 'string'}},
                 propertyNames: ['blargh', 'name']
             });
@@ -893,7 +924,7 @@ describe('SelectionQuery', () => {
         it('not and containstext operators', () => {
             const selectionQuery = new SelectionQuery({
                 name: 'model',
-                formatQuery: () => { return {subqueries: {}, where: {}}; },
+                formatQuery: () => ({subqueries: {}, where: {}}),
                 properties: {blargh: {type: 'string'}, name: {type: 'string'}},
                 propertyNames: ['blargh', 'name']
             });
@@ -950,14 +981,16 @@ describe('parseQueryLanguage', () => {
     });
     it('splits words with spaces', () => {
         const result = parseQueryLanguage(qs.parse('name=~other thing'));
-        expect(result).to.eql({name: new Clause('AND', [
-            new Comparison('other', '~'), new Comparison('thing', '~')
-        ])});
+        expect(result).to.eql({
+            name: new Clause('AND', [
+                new Comparison('other', '~'), new Comparison('thing', '~')
+            ])
+        });
     });
     it('parses null string', () => {
         const result = parseQueryLanguage(qs.parse('name=null'));
         expect(result).to.eql({name: new Comparison(null)});
-    })
+    });
     describe('fuzzyMatch', () => {
         it('error on non-number', () => {
             expect(() => {
@@ -1021,7 +1054,7 @@ describe('parseQueryLanguage', () => {
             }).to.throw('must be a number between 1 and');
         });
         it('ok for valid number', () => {
-            let result = parseQueryLanguage(qs.parse('limit=1'));
+            const result = parseQueryLanguage(qs.parse('limit=1'));
             expect(result).to.eql({limit: 1});
         });
     });
@@ -1037,7 +1070,7 @@ describe('parseQueryLanguage', () => {
             }).to.throw('must be a positive');
         });
         it('ok for valid number', () => {
-            let result = parseQueryLanguage(qs.parse('skip=1'));
+            const result = parseQueryLanguage(qs.parse('skip=1'));
             expect(result).to.eql({skip: 1});
         });
     });
@@ -1197,7 +1230,9 @@ describe('ClassModel', () => {
             const parsed = ClassModel.parseOClass({
                 name: 'name',
                 shortName: null,
-                properties: [{name: 'prop1', mandatory: false, defaultValue: 1, type: OJS_TYPES.integer}],
+                properties: [{
+                    name: 'prop1', mandatory: false, defaultValue: 1, type: OJS_TYPES.integer
+                }],
                 superClass: null
             }, {properties: [{type: 'integer', name: 'prop1'}]});
             expect(parsed.defaults).to.have.property('prop1');
@@ -1206,7 +1241,9 @@ describe('ClassModel', () => {
             const parsed = ClassModel.parseOClass({
                 name: 'name',
                 shortName: null,
-                properties: [{name: 'prop1', mandatory: false, defaultValue: 1, type: OJS_TYPES.string}],
+                properties: [{
+                    name: 'prop1', mandatory: false, defaultValue: 1, type: OJS_TYPES.string
+                }],
                 superClass: null
             }, {properties: [{type: 'string', name: 'prop1'}]});
             expect(parsed.cast).to.have.property('prop1');
@@ -1219,7 +1256,7 @@ describe('ClassModel', () => {
                 gender: {name: 'gender'},
                 name: {name: 'name', mandatory: true}
             },
-            defaults: {'gender': () => 'not specified'}
+            defaults: {gender: () => 'not specified'}
         });
         const child = new ClassModel({
             name: 'child',
@@ -1227,8 +1264,9 @@ describe('ClassModel', () => {
                 mom: {name: 'mom', mandatory: true},
                 age: {name: 'age'}
             },
-            cast: {'mom': (x) => x.toLowerCase()},
-            inherits: [person], edgeRestrictions: []
+            cast: {mom: x => x.toLowerCase()},
+            inherits: [person],
+            edgeRestrictions: []
         });
 
         it('child required returns person attr', () => {
@@ -1265,7 +1303,7 @@ describe('ClassModel', () => {
                     opt2: {name: 'opt2'}
                 },
                 defaults: {req2: () => 1, opt2: () => 2},
-                cast: {req1: (x) => x.toLowerCase()}
+                cast: {req1: x => x.toLowerCase()}
             });
         });
         it('errors on un-cast-able input', () => {
@@ -1290,7 +1328,7 @@ describe('ClassModel', () => {
                 properties: {
                     thing: {name: 'thing', type: 'embeddedset'}
                 },
-                cast: {thing: (x) => x.toLowerCase().trim()}
+                cast: {thing: x => x.toLowerCase().trim()}
             });
             const record = model.formatRecord({
                 thing: ['aThinNG', 'another THING']
@@ -1304,7 +1342,7 @@ describe('ClassModel', () => {
                 properties: {
                     thing: {name: 'thing', type: 'embeddedset'}
                 },
-                cast: {thing: (x) => x.toLowerCase().trim()}
+                cast: {thing: x => x.toLowerCase().trim()}
             });
             const childModel = new ClassModel({
                 name: 'child',
@@ -1341,5 +1379,4 @@ describe('ClassModel', () => {
             expect(record).to.not.have.property('opt2');
         });
     });
-
 });

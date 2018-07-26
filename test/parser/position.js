@@ -1,4 +1,5 @@
-'use strict';
+
+
 const {expect} = require('chai');
 const {ParsingError} = require('./../../app/repo/error');
 const {parsePosition} = require('./../../app/parser/position');

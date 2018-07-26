@@ -56,6 +56,9 @@
             "props": true,
             "ignorePropertyModificationsFor": ["opt"]
         }],
+        "one-var": ["error", {
+            "let": "consecutive"
+        }],
         "no-plusplus": "off",
         "max-len": "warn",
         "multiline-ternary": ["error", "always"],
@@ -64,6 +67,7 @@
             "allowEmptyCatch": true
         }],
         "react/destructuring-assignment": "off",
-        "no-await-in-loop": "warn"
+        "no-await-in-loop": "warn",
+        "no-unused-expressions": "off"
     }
 }

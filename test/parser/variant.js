@@ -1,4 +1,5 @@
-'use strict';
+
+
 const {expect} = require('chai');
 const {ParsingError} = require('./../../app/repo/error');
 const {
@@ -475,6 +476,18 @@ describe('parseContinuous', () => {
             };
             expect(result).eql(exp);
         });
+        it('substitution before the coding sequence', () => {
+            const result = parseContinuous('c.-124C>T');
+            const exp = {
+                type: EVENT_SUBTYPE.SUB,
+                break1Start: {'@class': 'CdsPosition', pos: 1, offset: -124},
+                break1Repr: 'c.-124',
+                untemplatedSeq: 'T',
+                refSeq: 'C',
+                prefix: 'c'
+            };
+            expect(result).to.eql(exp);
+        });
     });
     describe('exon variants', () => {
         it('errors because exon cannot have substitution type', () => {
@@ -554,7 +567,7 @@ describe('parseContinuous', () => {
             // civic example
             const result = parse('p.W288FS');
             expect(result.type).to.equal('frameshift');
-        })
+        });
         it('lowercase substitution', () => {
             const result = parse('p.d816n');
             expect(result.untemplatedSeq).to.equal('n');
@@ -565,7 +578,7 @@ describe('parseContinuous', () => {
             const result = parse('p.d816');
             expect(result.refSeq).to.equal('d');
             expect(result.type).to.equal('substitution');
-        })
+        });
         it('frameshift alt specified', () => {
             const result = parseContinuous('p.R10Kfs');
             const exp = {
@@ -695,7 +708,6 @@ describe('parseContinuous', () => {
             const exp = {
                 type: EVENT_SUBTYPE.DUP,
                 break1Start: {'@class': 'CytobandPosition', arm: 'p'},
-                type: EVENT_SUBTYPE.DUP,
                 break1Repr: 'y.p',
                 prefix: 'y'
             };
@@ -706,7 +718,6 @@ describe('parseContinuous', () => {
             const exp = {
                 type: EVENT_SUBTYPE.DUP,
                 break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11},
-                type: EVENT_SUBTYPE.DUP,
                 break1Repr: 'y.p11',
                 prefix: 'y'
             };
@@ -716,8 +727,9 @@ describe('parseContinuous', () => {
             const result = parseContinuous('y.p11.1dup');
             const exp = {
                 type: EVENT_SUBTYPE.DUP,
-                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1},
-                type: EVENT_SUBTYPE.DUP,
+                break1Start: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1
+                },
                 break1Repr: 'y.p11.1',
                 prefix: 'y'
             };
@@ -727,10 +739,13 @@ describe('parseContinuous', () => {
             const result = parseContinuous('y.p11.1_p13.3dup');
             const exp = {
                 type: EVENT_SUBTYPE.DUP,
-                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1},
-                type: EVENT_SUBTYPE.DUP,
+                break1Start: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1
+                },
                 break1Repr: 'y.p11.1',
-                break2Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3},
+                break2Start: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3
+                },
                 break2Repr: 'y.p13.3',
                 prefix: 'y'
             };
@@ -740,11 +755,16 @@ describe('parseContinuous', () => {
             const result = parseContinuous('y.(p11.1_p11.2)_(p13.4_p14)dup');
             const exp = {
                 type: EVENT_SUBTYPE.DUP,
-                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1},
-                break1End: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 2},
-                type: EVENT_SUBTYPE.DUP,
+                break1Start: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1
+                },
+                break1End: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 2
+                },
                 break1Repr: 'y.(p11.1_p11.2)',
-                break2Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 4},
+                break2Start: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 4
+                },
                 break2End: {'@class': 'CytobandPosition', arm: 'p', majorBand: 14},
                 break2Repr: 'y.(p13.4_p14)',
                 prefix: 'y'
@@ -755,11 +775,16 @@ describe('parseContinuous', () => {
             const result = parseContinuous('y.(p11.1_p11.2)_p13.3dup');
             const exp = {
                 type: EVENT_SUBTYPE.DUP,
-                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1},
-                break1End: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 2},
-                type: EVENT_SUBTYPE.DUP,
+                break1Start: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1
+                },
+                break1End: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 2
+                },
                 break1Repr: 'y.(p11.1_p11.2)',
-                break2Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3},
+                break2Start: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3
+                },
                 break2Repr: 'y.p13.3',
                 prefix: 'y'
             };
@@ -769,11 +794,16 @@ describe('parseContinuous', () => {
             const result = parseContinuous('y.p13.3_(p15.1_p15.2)dup');
             const exp = {
                 type: EVENT_SUBTYPE.DUP,
-                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3},
+                break1Start: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3
+                },
                 break1Repr: 'y.p13.3',
-                type: EVENT_SUBTYPE.DUP,
-                break2Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 15, minorBand: 1},
-                break2End: {'@class': 'CytobandPosition', arm: 'p', majorBand: 15, minorBand: 2},
+                break2Start: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 15, minorBand: 1
+                },
+                break2End: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 15, minorBand: 2
+                },
                 break2Repr: 'y.(p15.1_p15.2)',
                 prefix: 'y'
             };
@@ -785,7 +815,6 @@ describe('parseContinuous', () => {
                 type: EVENT_SUBTYPE.DUP,
                 break1Start: {'@class': 'CytobandPosition', arm: 'q'},
                 break1Repr: 'y.q',
-                type: EVENT_SUBTYPE.DUP,
                 prefix: 'y'
             };
             expect(result).to.eql(exp);
@@ -804,8 +833,12 @@ describe('parseContinuous', () => {
             const result = parseContinuous('y.p11.1_p13.3inv');
             const exp = {
                 type: EVENT_SUBTYPE.INV,
-                break1Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1},
-                break2Start: {'@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3},
+                break1Start: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 11, minorBand: 1
+                },
+                break2Start: {
+                    '@class': 'CytobandPosition', arm: 'p', majorBand: 13, minorBand: 3
+                },
                 break1Repr: 'y.p11.1',
                 break2Repr: 'y.p13.3',
                 prefix: 'y'
