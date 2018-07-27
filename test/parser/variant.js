@@ -260,6 +260,19 @@ describe('parseContinuous', () => {
             };
             expect(result).eql(exp);
         });
+        it('substitution with alt seq options', () => {
+            const result = parseContinuous('g.4A>T^C');
+            const exp = {
+                type: EVENT_SUBTYPE.SUB,
+                break1Start: {'@class': 'GenomicPosition', pos: 4},
+                break1Repr: 'g.4',
+                untemplatedSeq: 'T^C',
+                refSeq: 'A',
+                untemplatedSeqSize: 1,
+                prefix: 'g'
+            };
+            expect(result).eql(exp);
+        });
         it('substitution with uncertainty', () => {
             const result = parseContinuous('g.(4_7)A>T');
             const exp = {
@@ -564,6 +577,10 @@ describe('parseContinuous', () => {
         });
     });
     describe('protein variants', () => {
+        it('splice site variant', () => {
+            const result = parse('p.W288spl');
+            expect(result.type).to.equal('splice-site');
+        });
         it('case insensitive frameshift', () => {
             // civic example
             const result = parse('p.W288FS');
@@ -605,6 +622,11 @@ describe('parseContinuous', () => {
                 break1Repr: 'p.R10',
                 prefix: 'p'
             });
+        });
+        it('frameshift truncation conflict error', () => {
+            expect(() => {
+                parseContinuous('p.R10*fs*10');
+            }).to.throw('conflict');
         });
         it('frameshift set null on truncation point without position', () => {
             const result = parseContinuous('p.R10Kfs*');

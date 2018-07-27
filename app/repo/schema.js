@@ -213,7 +213,8 @@ const SCHEMA_DEFN = {
         inherits: ['Ontology'],
         properties: [
             {name: 'mechanismOfAction', type: 'string'},
-            {name: 'molecularFormula', type: 'string'}
+            {name: 'molecularFormula', type: 'string'},
+            {name: 'iupacName', type: 'string'}
         ]
     },
     Feature: {
@@ -426,7 +427,8 @@ const SCHEMA_DEFN = {
     Disease: {inherits: ['Ontology']},
     Pathway: {inherits: ['Ontology']},
     Signature: {inherits: ['Ontology']},
-    Vocabulary: {inherits: ['Ontology']}
+    Vocabulary: {inherits: ['Ontology']},
+    CatalogueVariant: {inherits: ['Ontology']}
 };
 
 // Add the indicies to the ontology subclasses

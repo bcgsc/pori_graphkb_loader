@@ -7,11 +7,21 @@ const SOURCE_NAME = 'bcgsc';
 const VOCABULARY = [
     {name: 'acquired resistance', subclassof: ['resistance'], oppositeof: ['innate resistance']},
     {name: 'amplification', subclassof: ['copy gain']},
+    {
+        name: 'any expression', subclassof: ['expression variant'], aliasof: ['expression'], oppositeof: ['no expression']
+    },
+    {
+        name: 'any protein expression', subclassof: ['any expression'], aliasof: ['protein expression'], oppositeof: ['no protein expression']
+    },
+    {
+        name: 'any rna expression', subclassof: ['any expression'], aliasof: ['rna expression'], oppositeof: ['no rna expression']
+    },
     {name: 'associated with'},
     {name: 'biological'},
     {name: 'copy gain', subclassof: ['copy variant'], aliasof: ['copy number gain']},
     {name: 'copy loss', subclassof: ['copy variant'], aliasof: ['copy number loss']},
     {name: 'copy variant', subclassof: ['structural variant'], aliasof: ['copy number variant']},
+    {name: 'cytoplasmic protein expression', subclassof: ['any protein expression'], aliasof: ['cytoplasmic expression']},
     {
         name: 'decreased dosage', subclassof: ['dosage'], oppositeof: ['increased dosage'], description: 'requires decreased dosage'
     },
@@ -27,12 +37,14 @@ const VOCABULARY = [
     {name: 'dosage', subclassof: ['therapeutic indicator']},
     {name: 'duplication', subclassof: ['structural variant']},
     {name: 'eligibility'},
+    {name: 'epigenetic modification', subclassof: ['biological']},
+    {name: 'epigenetic silencing', subclassof: ['epigenetic modification', 'no RNA expression']},
     {name: 'expression variant', subclassof: ['biological']},
     {name: 'extension', subclassof: ['mutation']},
     {name: 'favourable prognosis', subclassof: ['prognostic indicator'], description: 'event imparts a favourable outcome'},
     {name: 'favours diagnosis', subclassof: ['diagnostic indicator']},
     {name: 'focal amplification', subclassof: ['amplification']},
-    {name: 'frameshift', subclassof: ['mutation']},
+    {name: 'frameshift', subclassof: ['mutation'], aliasof: ['frameshift mutation']},
     {name: 'functional effect', oppositeof: ['no functional effect'], subclassof: ['biological']},
     {name: 'fusion', subclassof: ['structural variant']},
     {
@@ -40,17 +52,19 @@ const VOCABULARY = [
     },
     {name: 'haploinsufficient', subclassof: ['tumour suppressive'], description: 'an event leading to loss of function in a product that is dosage dependant such that the incomplete loss of function leads to an observable phenotype when event is in a heterozygous state'},
     {name: 'high microsatellite instability', subclassof: ['microsatellite instability'], aliasof: ['MSI-high']},
+    {name: 'hypermethylation', subclassof: ['methylation variant']},
+    {name: 'hypomethylation', subclassof: ['methylation variant']},
     {name: 'in-frame deletion', subclassof: ['deletion']},
     {name: 'in-frame insertion', subclassof: ['insertion']},
     {name: 'increased dosage', subclassof: ['dosage'], description: 'requires increased dosage'},
-    {name: 'increased expression', subclassof: ['expression variant'], aliasof: ['overexpression', 'up-regulated expression']},
+    {name: 'increased expression', subclassof: ['any expression'], aliasof: ['overexpression', 'up-regulated expression']},
     {
         name: 'increased function', subclassof: ['functional effect'], aliasof: ['activating'], oppositeof: ['reduced function'], description: 'the efficacy or frequency of the existing functionality is increased'
     },
     {name: 'increased metabolism', subclassof: ['metabolism'], description: 'increased clearance of a drug'},
     {name: 'increased metastasis', subclassof: ['unfavourable prognosis']},
-    {name: 'increased protein expression', subclassof: ['protein expression variant', 'increased expression'], aliasof: ['protein overexpression', 'up-regulated protein expression']},
-    {name: 'increased rna expression', subclassof: ['rna expression variant', 'increased expression'], aliasof: ['rna overexpression', 'up-regulated rna expression']},
+    {name: 'increased protein expression', subclassof: ['any protein expression', 'increased expression'], aliasof: ['protein overexpression', 'up-regulated protein expression']},
+    {name: 'increased rna expression', subclassof: ['any rna expression', 'increased expression'], aliasof: ['rna overexpression', 'up-regulated rna expression']},
     {name: 'increased survival', subclassof: ['favourable prognosis']},
     {name: 'increased toxicity', subclassof: ['toxicity'], aliasof: ['adverse response']},
     {name: 'indel', subclassof: ['structural variant']},
@@ -65,13 +79,18 @@ const VOCABULARY = [
     {name: 'likely no functional effect', subclassof: ['no functional effect'], aliasof: ['likely neutral']},
     {name: 'likely oncogenic', subclassof: ['oncogenic']},
     {name: 'likely pathogenic', subclassof: ['pathogenic']},
+    {name: 'likely predisposing', subclassof: ['predisposing']},
     {name: 'likely resistance', subclassof: ['resistance']},
     {name: 'likely sensitivity', subclassof: ['sensitivity']},
     {name: 'likely switch of function', subclassof: ['switch of function']},
     {name: 'likely tumour suppressive', subclassof: ['tumour suppressive']},
-    {name: 'loss of function', subclassof: ['reduced function'], description: 'some normal functionality has been lost'},
+    {
+        name: 'loss of function', subclassof: ['reduced function'], aliasof: ['deletrious'], description: 'some normal functionality has been lost'
+    },
     {name: 'low microsatellite instability', subclassof: ['microsatellite instability'], aliasof: ['MSI-low']},
     {name: 'metabolism', subclassof: ['therapeutic indicator']},
+    {name: 'methylation', subclassof: ['methylation variant']},
+    {name: 'methylation variant', subclassof: ['epigenetic modification']},
     {name: 'microsatellite instability', subclassof: ['microsatellite phenotype']},
     {name: 'microsatellite phenotype', subclassof: ['phenotype']},
     {name: 'microsatellite stable', subclassof: ['microsatellite phenotype'], aliasof: ['MSS']},
@@ -98,32 +117,38 @@ const VOCABULARY = [
         name: 'no sensitivity', subclassof: ['therapeutic efficacy'], oppositeof: ['sensitivity'], description: 'does not confer increased sensitivity as compared to wild-type state'
     },
     {name: 'no switch of function', subclassof: ['no functional effect'], oppositeof: ['switch of function']},
+    {name: 'nuclear protein expression', subclassof: ['any protein expression'], aliasof: ['nuclear expression']},
     {name: 'oncogenic fusion', subclassof: ['oncogenic', 'fusion'], description: 'fusion whose product promotes cancer'},
     {name: 'oncogenic mutation', subclassof: ['mutation', 'oncogenic']},
     {name: 'oncogenic', subclassof: ['tumourigenesis'], description: 'having the potential to cause a normal cell to become cancerous'},
     {name: 'opposes diagnosis', subclassof: ['diagnostic indicator']},
-    {name: 'pathogenic', subclassof: ['biological']},
+    {name: 'pathogenic', subclassof: ['predisposing']},
     {name: 'phenotype', subclassof: ['biological']},
+    {name: 'phosphorylation', subclassof: ['post-translational modification']},
+    {name: 'polymorphism', subclassof: ['mutation']},
+    {name: 'post-translational modification', subclassof: ['biological']},
+    {name: 'predisposing', subclassof: ['biological']},
     {name: 'prognostic indicator'},
     {name: 'protein expression variant', subclassof: ['expression variant']},
     {name: 'recurrent', subclassof: ['biological'], description: 'commonly observed'},
-    {name: 'reduced expression', subclassof: ['expression variant'], aliasof: ['underexpression', 'down-regulated expression']},
+    {name: 'reduced expression', subclassof: ['any expression'], aliasof: ['underexpression', 'down-regulated expression']},
     {
         name: 'reduced function', subclassof: ['functional effect'], aliasof: ['inactivating'], description: 'the efficacy or frequency of the existing functionality is reduced'
     },
-    {name: 'reduced protein expression', subclassof: ['protein expression variant'], aliasof: ['down-regulated protein expression', 'protein underexpression']},
-    {name: 'reduced rna expression', subclassof: ['rna expression variant'], aliasof: ['down-regulated rna expression', 'rna underexpression']},
+    {name: 'reduced protein expression', subclassof: ['any protein expression'], aliasof: ['down-regulated protein expression', 'protein underexpression']},
+    {name: 'reduced rna expression', subclassof: ['any rna expression'], aliasof: ['down-regulated rna expression', 'rna underexpression']},
     {name: 'reduced sensitivity', subclassof: ['resistance']},
     {name: 'relapse', subclassof: ['unfavourable prognosis']},
     {name: 'resistance', subclassof: ['no response']},
     {name: 'response', subclassof: ['no resistance', 'targetable']},
     {name: 'rna expression variant', subclassof: ['expression variant']},
     {name: 'sensitivity', subclassof: ['response']},
+    {name: 'single nucleotide polymorphism', subclassof: ['substitution', 'polymorphism']},
     {name: 'splice-site', subclassof: ['mutation']},
     {name: 'start gain', subclassof: ['extension']},
     {name: 'stop loss', subclassof: ['extension']},
     {name: 'substitution', subclassof: ['mutation']},
-    {name: 'structural variant', subclassof: ['mutation']},
+    {name: 'structural variant', subclassof: ['mutation'], aliasof: ['rearrangement']},
     {name: 'switch of function', subclassof: ['functional effect'], description: 'some wild-type/normal functionality is lost and some novel functionality is gained'},
     {name: 'tandem duplication', subclassof: ['duplication']},
     {name: 'targetable', subclassof: ['therapeutic efficacy'], description: 'therapy can be used given some event or combination of event'},
@@ -137,7 +162,7 @@ const VOCABULARY = [
     {name: 'unfavourable prognosis', subclassof: ['prognostic indicator'], description: 'event is associated with a specifed, unfavouable outcome'},
     {name: 'weakly reduced function', subclassof: ['reduced function']},
     {name: 'weakly increased function', subclassof: ['increased function']},
-    {name: 'wildtype', subclassof: ['no functional effect']}
+    {name: 'wild type', subclassof: ['no functional effect']}
 ];
 
 

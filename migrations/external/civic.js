@@ -6,10 +6,16 @@
 const request = require('request-promise');
 const _ = require('lodash');
 const {
-    addRecord, getRecordBy, getPubmedArticle, orderPreferredOntologyTerms, preferredDrugs, preferredDiseases
+    addRecord,
+    getRecordBy,
+    getPubmedArticle,
+    orderPreferredOntologyTerms,
+    preferredDrugs,
+    preferredDiseases
 } = require('./util');
 
 const SOURCE_NAME = 'civic';
+const BASE_URL = 'https://civicdb.org/api';
 
 /**
  * https://civicdb.org/glossary
@@ -28,7 +34,6 @@ const VOCAB = {
     5: 'Strong, well supported evidence from a lab or journal with respected academic standing. Experiments are well controlled, and results are clean and reproducible across multiple replicates. Evidence confirmed using separate methods.'
 };
 
-const VARIANT_CACHE = {}; // cache variants from CIViC by CIVic ID
 const THERAPY_MAPPING = {
     ch5132799: 'ch-5132799',
     ag1296: 'ag 1296',
@@ -43,6 +48,10 @@ const THERAPY_MAPPING = {
     pd184352: 'pd-184352',
     'trichostatin a (tsa)': 'trichostatin a'
 };
+
+const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evidence levels
+const RELEVANCE_CACHE = {};
+const FEATURE_CACHE = {}; // store features by name
 
 /**
  * Convert the CIViC relevance types to GraphKB terms
@@ -69,13 +78,31 @@ const getRelevance = (evidenceType, clinicalSignificance) => {
         }
         case 'Prognostic': {
             switch (clinicalSignificance) { // eslint-disable-line default-case
-                case 'Poor Outcome': { return 'unfavourable prognosis'; }
-                case 'Better Outcome': { return 'favourable prognosis'; }
+                case 'Negative':
+                case 'Poor Outcome': {
+                    return 'unfavourable prognosis';
+                }
+                case 'Positive':
+                case 'Better Outcome': {
+                    return 'favourable prognosis';
+                }
+            }
+            break;
+        }
+        case 'Predisposing': {
+            if (['Positive', null, 'null'].includes(clinicalSignificance)) {
+                return 'Predisposing';
+            } if (clinicalSignificance.includes('Pathogenic')) {
+                return clinicalSignificance;
+            } if (clinicalSignificance === 'Uncertain Significance') {
+                return 'likely predisposing';
             }
             break;
         }
     }
-    throw new Error(`unrecognized evidence type (${evidenceType}) or clinical significance (${clinicalSignificance})`);
+    throw new Error(
+        `unrecognized evidence type (${evidenceType}) or clinical significance (${clinicalSignificance})`
+    );
 };
 
 
@@ -98,18 +125,67 @@ const getDrug = async (conn, name) => {
 
 const parseVariant = (string) => {
     string = string.toLowerCase().trim();
-    switch (string) { // eslint-disable-line default-case
-        case 'loss-of-function':
-        case 'overexpression':
-        case 'expression':
-        case 'amplification':
-        case 'mutation': {
-            return string.replace('-', ' ');
-        }
-        case 'frameshift truncation': { return 'frameshift'; }
-        case 'itd': { return 'internal tandem duplication (itd)'; }
+    if ([
+        'loss-of-function',
+        'overexpression',
+        'expression',
+        'amplification',
+        'mutation'].includes(string)
+    ) {
+        return string.replace(/-/g, ' ');
+    }
+    const SUBS = {
+        'frameshift truncation': 'frameshift',
+        itd: 'internal tandem duplication (itd)',
+        loss: 'copy loss',
+        'copy number variation': 'copy variant',
+        gain: 'copy gain',
+        'g12/g13': '(G12_G13)mut',
+        'di842-843vm': 'D842_I843delDIinsVM',
+        'del 755-759': '?755_?759del'
+    };
+    if (SUBS[string] !== undefined) {
+        return SUBS[string];
+    }
+
+    let match;
+    if (match = /^(intron|exon) (\d+)(-(\d+))? (mutation|deletion|frameshift|insertion)$/i.exec(string)) {
+        const break2 = match[4]
+            ? `_${match[4]}`
+            : '';
+        const type = match[5] === 'frameshift'
+            ? 'fs'
+            : match[5].slice(0, 3);
+        const prefix = match[1] === 'exon'
+            ? 'e'
+            : 'i';
+        return `${prefix}.${match[2]}${break2}${type}`;
+    } if (match = /^([A-Z][^-\s]*)-([A-Z][^-\s]*)/i.exec(string)) {
+        return 'fusion';
+    } if (match = /^[A-Z][^-\s]* fusions?$/i.exec(string)) {
+        return 'fusion';
+    } if (match = /^\s*c\.\d+\s*[a-z]\s*>[a-z]\s*$/i.exec(string)) {
+        return string.replace(/\s+/g, '');
+    } if (string !== 'mutation' && string.endsWith('mutation')) {
+        string = string.replace(/\s*mutation$/i, '');
     }
     return string;
+};
+
+
+const getFeature = async (conn, name) => {
+    name = name.toString().toLowerCase().trim();
+    if (FEATURE_CACHE[name] !== undefined) {
+        return FEATURE_CACHE[name];
+    }
+    const feature = await getRecordBy(
+        'features',
+        {name, source: {name: 'hgnc'}},
+        conn,
+        orderPreferredOntologyTerms
+    );
+    FEATURE_CACHE[feature.name] = feature;
+    return feature;
 };
 
 
@@ -121,48 +197,98 @@ const processEvidenceRecord = async (opt) => {
         conn, rawRecord, source, pubmedSource
     } = opt;
     // get the evidenceLevel
-    let level = `${rawRecord.evidence_level}${rawRecord.rating}`;
-    level = await addRecord('evidencelevels', {
-        name: level,
-        sourceId: level,
-        source: source['@rid'],
-        description: `${VOCAB[rawRecord.evidence_level]} ${VOCAB[rawRecord.rating]}`,
-        url: VOCAB.url
-    }, conn, true, ['url', 'description']);
-    // translate the type to a GraphKB vocabulary term
-    let relevance = getRelevance(rawRecord.evidence_type, rawRecord.clinical_significance);
-    relevance = await getRecordBy('vocabulary', {name: relevance}, conn);
-
-    // get the variant record by ID
-    if (VARIANT_CACHE[rawRecord.variant_id] === undefined) {
-        VARIANT_CACHE[rawRecord.variant_id] = await request({
-            method: 'GET',
-            json: true,
-            uri: `https://civicdb.org/api/variants/${rawRecord.variant_id}`
-        });
+    let level = `${rawRecord.evidence_level}${rawRecord.rating}`.toLowerCase();
+    if (EVIDENCE_LEVEL_CACHE[level] === undefined) {
+        level = await addRecord('evidencelevels', {
+            name: level,
+            sourceId: level,
+            source: source['@rid'],
+            description: `${VOCAB[rawRecord.evidence_level]} ${VOCAB[rawRecord.rating]}`,
+            url: VOCAB.url
+        }, conn, true, {sourceId: level, name: level, source: source['@rid']});
+        EVIDENCE_LEVEL_CACHE[level.sourceId] = level;
+    } else {
+        level = EVIDENCE_LEVEL_CACHE[level];
     }
-    const variantRec = VARIANT_CACHE[rawRecord.variant_id];
+    // translate the type to a GraphKB vocabulary term
+    let relevance = getRelevance(rawRecord.evidence_type, rawRecord.clinical_significance).toLowerCase();
+    if (RELEVANCE_CACHE[relevance] === undefined) {
+        relevance = await getRecordBy('vocabulary', {name: relevance}, conn);
+        RELEVANCE_CACHE[relevance.name] = relevance;
+    } else {
+        relevance = RELEVANCE_CACHE[relevance];
+    }
+
+    const variantRec = rawRecord.variant;
     // get the feature (entrez name appears to be synonymous with hugo symbol)
-    const feature = await getRecordBy('features', {name: variantRec.entrez_name, source: {name: 'hgnc'}}, conn, orderPreferredOntologyTerms);
+    const feature = await getFeature(conn, variantRec.entrez_name);
     // parse the variant record
-    let variant = parseVariant(variantRec.name);
+    let variant = parseVariant(variantRec.name),
+        reference2 = null,
+        reference1;
+    if (variant === 'fusion' && variantRec.name.includes('-')) {
+        [reference1, reference2] = variantRec.name.toLowerCase().split('-');
+        if (feature.name !== reference1) {
+            [reference1, reference2] = [reference2, reference1];
+        }
+        reference1 = feature;
+        reference2 = await getFeature(conn, reference2);
+    } else {
+        reference1 = feature;
+    }
     try {
         const variantClass = await getRecordBy('vocabulary', {name: variant}, conn);
-        variant = await addRecord('categoryvariants', {type: variantClass['@rid'], reference1: feature['@rid']}, conn, true);
+        const body = {
+            type: variantClass['@rid'],
+            reference1: reference1['@rid']
+        };
+        if (reference2) {
+            body.reference2 = reference2['@rid'];
+        }
+        variant = await addRecord(
+            'categoryvariants',
+            body,
+            conn,
+            true,
+            Object.assign({
+                zygosity: null,
+                reference2: null,
+                germline: null
+            }, body)
+        );
     } catch (err) {
         variant = await request(conn.request({
             method: 'POST',
             uri: 'parser/variant',
-            body: {content: `p.${variant}`}
+            body: {
+                content: `${variant.startsWith('e.')
+                    ? ''
+                    : 'p.'}${variant}`
+            }
         }));
         if (variant.result.untemplatedSeq === undefined) {
             variant.result.untemplatedSeq = null;
         }
         const variantClass = await getRecordBy('vocabulary', {name: variant.result.type}, conn);
-        variant = await addRecord('positionalvariants', Object.assign(variant.result, {
+        variant = Object.assign(variant.result, {
             reference1: feature['@rid'],
             type: variantClass['@rid']
-        }), conn, true);
+        });
+        if (reference2) {
+            variant.reference2 = reference2['@rid'];
+        }
+        variant = await addRecord(
+            'positionalvariants',
+            variant,
+            conn,
+            true,
+            Object.assign({
+                germline: null,
+                zygosity: null,
+                reference2: null,
+                break2Repr: null
+            }, variant)
+        );
     }
 
     // get the disease by doid
@@ -218,15 +344,40 @@ const processEvidenceRecord = async (opt) => {
     throw new Error('unable to make statement', relevance.name);
 };
 
+
+const downloadVariantRecords = async () => {
+    const varById = {};
+    let expectedPages = 1,
+        currentPage = 1;
+    const urlTemplate = `${BASE_URL}/variants?count=500`;
+    while (currentPage <= expectedPages) {
+        const url = `${urlTemplate}&page=${currentPage}`;
+        console.log(`\nloading: ${url}`);
+        const resp = await request({
+            method: 'GET',
+            json: true,
+            uri: url
+        });
+        expectedPages = resp._meta.total_pages;
+        console.log(`loaded ${resp.records.length} records`);
+        for (const record of resp.records) {
+            if (varById[record.id] !== undefined) {
+                throw new Error('variant record ID is not unique', record);
+            }
+            varById[record.id] = record;
+        }
+        currentPage++;
+    }
+    return varById;
+};
+
+
 const upload = async (conn) => {
-    const urlTemplate = 'https://civicdb.org/api/evidence_items?count=500&status=accepted';
+    const urlTemplate = `${BASE_URL}/evidence_items?count=500&status=accepted`;
     // load directly from their api
-    let errorCount = 0;
-    let totalCount = 0;
-    let successCount = 0;
-    let skipCount = 0;
-    let expectedPages = 1;
-    let currentPage = 1;
+    const counts = {error: 0, success: 0, skip: 0};
+    let expectedPages = 1,
+        currentPage = 1;
 
     // add the source node
     const source = await addRecord('sources', {
@@ -236,6 +387,7 @@ const upload = async (conn) => {
     }, conn, true);
 
     const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, true);
+    const varById = await downloadVariantRecords();
 
     while (currentPage <= expectedPages) {
         const url = `${urlTemplate}&page=${currentPage}`;
@@ -248,17 +400,17 @@ const upload = async (conn) => {
         expectedPages = resp._meta.total_pages;
         console.log(`loaded ${resp.records.length} records`);
 
-
         for (const record of resp.records) {
-            if (record.evidence_direction === 'Does Not Support' || record.evidence_type === 'Predisposing') {
-                skipCount++;
+            if (record.evidence_direction === 'Does Not Support' || (record.clinical_significance === null && record.evidence_type === 'Predictive')) {
+                counts.skip++;
                 continue;
             }
+            record.variant = varById[record.variant_id];
             if (record.drugs === undefined || record.drugs.length === 0) {
                 record.drugs = [null];
             }
+            let anyErr = false;
             for (const drug of record.drugs) {
-                totalCount++;
                 try {
                     await processEvidenceRecord({
                         conn,
@@ -266,25 +418,23 @@ const upload = async (conn) => {
                         pubmedSource,
                         rawRecord: Object.assign({drug}, _.omit(record, ['drugs']))
                     });
-                    successCount++;
+                    counts.success++;
                 } catch (err) {
-                    if (!err.error || err.error.name !== 'ParsingError') {
-                        console.log();
-                        console.error(err.error || err);
-                    }
-                    errorCount++;
+                    console.error((err.error || err).message);
+                    counts.error++;
+                    anyErr = true;
                 }
             }
+            if (false && anyErr) {
+                console.log();
+                console.log(record);
+            }
         }
-        console.log({
-            errorCount, successCount, skipCount, totalCount
-        });
+        console.log(counts);
         currentPage++;
     }
     console.log();
-    console.log({
-        errorCount, totalCount, skipCount, successCount
-    });
+    console.log(counts);
 };
 
 module.exports = {upload};

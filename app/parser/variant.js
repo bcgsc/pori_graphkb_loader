@@ -373,7 +373,7 @@ const parseContinuous = (inputString) => {
                 result.refSeq = match[2];
             }
         }
-    } else if (match = /^[A-Z?*]$/i.exec(tail) || tail.length === 0) {
+    } else if (match = /^[A-Z?*](\^[A-Z?*])*$/i.exec(tail) || tail.length === 0) {
         if (prefix !== 'p') {
             throw new ParsingError('only protein notation does not use ">" for a substitution');
         }
@@ -381,7 +381,7 @@ const parseContinuous = (inputString) => {
         if (tail.length > 0 && tail !== '?') {
             result.untemplatedSeq = tail;
         }
-    } else if (match = /^([A-Z?])>([A-Z?])$/i.exec(tail)) {
+    } else if (match = /^([A-Z?])>([A-Z?](\^[A-Z?])*)$/i.exec(tail)) {
         if (prefix === 'p') {
             throw new ParsingError('protein notation does not use ">" for a substitution');
         } else if (prefix === 'e') {
@@ -420,11 +420,18 @@ const parseContinuous = (inputString) => {
         result.type = tail;
     }
     if (!NOTATION_TO_SUBTYPE.has(result.type)) {
-        throw new ParsingError(`unsupported event type: ${result.type}`);
+        throw new ParsingError(`unsupported event type: '${result.type}'`);
     }
     result.type = NOTATION_TO_SUBTYPE.get(result.type);
-    if (result.untemplatedSeq && result.untemplatedSeqSize === undefined) {
-        result.untemplatedSeqSize = result.untemplatedSeq.length;
+    if (result.untemplatedSeq && result.untemplatedSeqSize === undefined && result.untemplatedSeq !== '') {
+        const altSeqs = result.untemplatedSeq.split('^');
+        result.untemplatedSeqSize = altSeqs[0].length;
+        for (const alt of altSeqs) {
+            if (alt.length !== result.untemplatedSeqSize) {
+                delete result.untemplatedSeqSize;
+                break;
+            }
+        }
     }
     // check for innapropriate types
     if (prefix === 'y') {
