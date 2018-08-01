@@ -9,14 +9,13 @@ const {parseQueryLanguage, MAX_JUMPS} = require('./../../app/routes/util');
 const {ClassModel} = require('./../../app/repo/schema');
 const {
     hasRecordAccess,
-    SelectionQuery,
-    Follow,
     RELATED_NODE_DEPTH,
-    Clause,
-    Comparison,
     QUERY_LIMIT,
     trimRecords
 } = require('./../../app/repo/base');
+const {
+    Clause, Comparison, SelectionQuery, Follow
+} = require('./../../app/repo/query');
 
 
 const OJS_TYPES = {};

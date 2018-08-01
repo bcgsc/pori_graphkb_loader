@@ -10,8 +10,11 @@ const {
     ErrorMixin, AttributeError, NoRecordFoundError, RecordExistsError
 } = require('./../repo/error');
 const {
-    select, create, update, remove, QUERY_LIMIT, SPEICAL_QUERY_ARGS, Clause, Comparison
+    select, create, update, remove, QUERY_LIMIT
 } = require('./../repo/base');
+const {
+    SPECIAL_QUERY_ARGS, Clause, Comparison
+} = require('./../repo/query');
 const {looksLikeRID, VERBOSE} = require('./../repo/util');
 const {INDEX_SEP_CHARS} = require('./../repo/schema');
 const {checkClassPermissions} = require('./../middleware/auth');
@@ -179,7 +182,9 @@ const parseQueryLanguage = (inputQuery) => {
  *      router.route('/feature') = resource({model: <ClassModel>, db: <OrientDB conn>, reqQueryParams: ['source', 'name', 'biotype']});
  */
 const addResourceRoutes = (opt) => {
-    const {router, model, db} = opt;
+    const {
+        router, model, db, schema
+    } = opt;
     const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
     const reqQueryParams = opt.reqQueryParams || [];
     const route = opt.route || model.routeName;
@@ -207,7 +212,7 @@ const addResourceRoutes = (opt) => {
             }
             try {
                 validateParams({
-                    params: _.omit(req.query, SPEICAL_QUERY_ARGS),
+                    params: _.omit(req.query, SPECIAL_QUERY_ARGS),
                     required: reqQueryParams,
                     optional: optQueryParams
                 });
@@ -221,7 +226,7 @@ const addResourceRoutes = (opt) => {
             }
             try {
                 const result = await select(db, {
-                    model, where: req.query, fetchPlan, user: req.user
+                    model, where: req.query, fetchPlan, user: req.user, schema
                 });
                 return res.json({result: jc.decycle(result)});
             } catch (err) {
@@ -303,7 +308,12 @@ const addResourceRoutes = (opt) => {
 
             try {
                 const result = await select(db, Object.assign(req.query, {
-                    model, where: {'@rid': req.params.rid}, exactlyN: 1, fetchPlan, user: req.user
+                    model,
+                    where: {'@rid': req.params.rid},
+                    exactlyN: 1,
+                    fetchPlan,
+                    user: req.user,
+                    schema
                 }));
                 return res.json({result: jc.decycle(result[0])});
             } catch (err) {
@@ -316,41 +326,45 @@ const addResourceRoutes = (opt) => {
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
-    router.patch(`${route}/:rid`,
-        async (req, res) => {
-            if (!looksLikeRID(req.params.rid, false)) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
-                    {message: `ID does not look like a valid record ID: ${req.params.rid}`}
-                ));
-            }
-            req.params.rid = `#${req.params.rid.replace(/^#/, '')}`;
-            if (!_.isEmpty(req.query)) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
-                    {message: 'Query parameters are allowed for this query type', params: req.query}
-                ));
-            }
-            try {
-                const result = await update(db, {
-                    model,
-                    content: req.body,
-                    where: {'@rid': req.params.rid, deletedAt: null},
-                    user: req.user
-                });
-                return res.json({result: jc.decycle(result)});
-            } catch (err) {
-                if (err instanceof AttributeError) {
-                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                } if (err instanceof NoRecordFoundError) {
-                    return res.status(HTTP_STATUS.NOT_FOUND).json(err);
-                } if (err instanceof RecordExistsError) {
-                    return res.status(HTTP_STATUS.CONFLICT).json(err);
+    if (!model.isEdge) {
+        // disable update for edges (currently unable to work with using created edges inside a transaction)
+        router.patch(`${route}/:rid`,
+            async (req, res) => {
+                if (!looksLikeRID(req.params.rid, false)) {
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
+                        {message: `ID does not look like a valid record ID: ${req.params.rid}`}
+                    ));
                 }
-                if (VERBOSE) {
-                    console.error(err);
+                req.params.rid = `#${req.params.rid.replace(/^#/, '')}`;
+                if (!_.isEmpty(req.query)) {
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
+                        {message: 'Query parameters are allowed for this query type', params: req.query}
+                    ));
                 }
-                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
-            }
-        });
+                try {
+                    const result = await update(db, {
+                        model,
+                        changes: req.body,
+                        where: {'@rid': req.params.rid, deletedAt: null},
+                        user: req.user,
+                        schema
+                    });
+                    return res.json({result: jc.decycle(result)});
+                } catch (err) {
+                    if (err instanceof AttributeError) {
+                        return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                    } if (err instanceof NoRecordFoundError) {
+                        return res.status(HTTP_STATUS.NOT_FOUND).json(err);
+                    } if (err instanceof RecordExistsError) {
+                        return res.status(HTTP_STATUS.CONFLICT).json(err);
+                    }
+                    if (VERBOSE) {
+                        console.error(err);
+                    }
+                    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+                }
+            });
+    }
     router.delete(`${route}/:rid`,
         async (req, res) => {
             if (!looksLikeRID(req.params.rid, false)) {
@@ -366,7 +380,9 @@ const addResourceRoutes = (opt) => {
             }
             try {
                 const result = await remove(
-                    db, {model, where: {'@rid': req.params.rid, deletedAt: null}, user: req.user}
+                    db, {
+                        model, schema, where: {'@rid': req.params.rid, deletedAt: null}, user: req.user
+                    }
                 );
                 return res.json({result: jc.decycle(result)});
             } catch (err) {

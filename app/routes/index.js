@@ -20,7 +20,9 @@ const addRoutes = (opt) => {
         if (process.env.VERBOSE === '1') {
             console.log(`route: ${model.name} as ${model.routeName}`);
         }
-        addResourceRoutes({router, model, db});
+        addResourceRoutes({
+            router, model, db, schema
+        });
     }
 };
 

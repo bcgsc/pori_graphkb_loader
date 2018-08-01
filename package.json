@@ -52,7 +52,7 @@
   },
   "scripts": {
     "start": "node server.js",
-    "import": "node --stack-size=8192  --max-old-space-size=20000 migrations/flatfile/index.js",
+    "import": "node --stack-size=8192  --max-old-space-size=20000 migrations/external/index.js",
     "unit": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive test/repo/unit.js test/migrations test/parser",
     "sample": "nyc --reporter=html --reporter=text mocha test/routes/sample.js --timeout 100000",
     "test": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive --exit --timeout 100000 test/repo test/routes/empty.js test/parser/variant.js",

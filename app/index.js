@@ -163,7 +163,7 @@ class AppServer {
             auth.keys.private = fs.readFileSync(this.conf.private_key);
         }
         // add the db connection reference to the routes
-        addRoutes({router: this.router, db: this.db, schema});
+        addRoutes({router: this.router, db, schema});
         if (VERBOSE) {
             console.log('Adding 404 capture');
         }
