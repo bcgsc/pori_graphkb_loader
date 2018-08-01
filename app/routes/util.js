@@ -103,6 +103,15 @@ const parseQueryLanguage = (inputQuery) => {
             } else {
                 query.activeOnly = true;
             }
+        } else if (name === 'direction') {
+            valueList = valueList.toString().toLowerCase().trim();
+            if (valueList === 'out') {
+                query.direction = 'out';
+            } else if (valueList === 'in') {
+                query.direction = 'in';
+            } else {
+                throw new InputValidationError(`direction must be 'out' or 'in' but found: ${valueList}`);
+            }
         } else if (valueList !== null && typeof valueList === 'object' && !(valueList instanceof Array)) {
             // subqueries
             valueList = parseQueryLanguage(valueList);
@@ -174,12 +183,15 @@ const addResourceRoutes = (opt) => {
     const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
     const reqQueryParams = opt.reqQueryParams || [];
     const route = opt.route || model.routeName;
+
+    // attach the db model required for checking class permissions
     router.use(route, (req, res, next) => {
         req.model = model;
         next();
     });
     router.use(route, checkClassPermissions);
 
+    // add the get multiple / search route
     router.get(route,
         async (req, res) => {
             try {

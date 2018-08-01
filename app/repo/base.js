@@ -21,9 +21,21 @@ const {PERMISSIONS} = require('./constants');
 
 
 const RELATED_NODE_DEPTH = 3;
+const PARAM_PREFIX = 'param';
 const QUERY_LIMIT = 1000;
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
-const SPECIAL_QUERY_ARGS = new Set(['fuzzyMatch', 'ancestors', 'descendants', 'returnProperties', 'limit', 'skip', 'neighbors', 'activeOnly']);
+const SPECIAL_QUERY_ARGS = new Set([
+    'fuzzyMatch',
+    'ancestors',
+    'descendants',
+    'returnProperties',
+    'limit',
+    'skip',
+    'neighbors',
+    'activeOnly',
+    'v',
+    'direction'
+]);
 const FETCH_OMIT = -2;
 
 
@@ -102,6 +114,8 @@ const trimRecords = (recordList, opt = {}) => {
             const value = curr[attr];
             if (attr === '@type' || attr === '@version') {
                 delete curr[attr];
+            } else if (attr === 'history' && activeOnly) {
+                curr[attr] = castToRID(value);
             } else if (value instanceof RID) {
                 if (value.cluster < 0) { // abstract, remove
                     delete curr[attr];
@@ -109,18 +123,12 @@ const trimRecords = (recordList, opt = {}) => {
             } else if (value instanceof RIDBag) {
                 const arr = [];
                 for (const edge of value.all()) {
-                    if (!activeOnly || (edge.deletedAt == null
-                        && (!edge.in || edge.in.deletedAt == null)
-                        && (!edge.out || edge.out.deletedAt == null)
-                    )) {
-                        // remove edges where the edge is deleted or either node it connects is deleted
-                        queue.push(edge);
-                        arr.push(edge);
-                    }
+                    queue.push(edge);
+                    arr.push(edge);
                 }
                 curr[attr] = arr;
             } else if (typeof value === 'object' && value && value['@rid'] !== undefined) {
-                if ((value.deletedAt != null && activeOnly) || !accessOk(value)) {
+                if (!accessOk(value)) {
                     delete curr[attr];
                 } else {
                     queue.push(value);
@@ -131,7 +139,7 @@ const trimRecords = (recordList, opt = {}) => {
     // remove the top level elements last
     const result = [];
     for (const record of recordList) {
-        if ((record.deletedAt == null || !activeOnly) && accessOk(record)) {
+        if (accessOk(record)) {
             result.push(record);
         }
     }
@@ -329,7 +337,7 @@ class Comparison {
     toString(name, paramIndex = 0, listableType = false) {
         const params = {};
         let query;
-        const pname = `param${paramIndex}`;
+        const pname = `${PARAM_PREFIX}${paramIndex}`;
         if (listableType) {
             if (this.value === null) {
                 query = `${name} CONTAINS NULL`;
@@ -363,7 +371,8 @@ class SelectionQuery {
      * @param {Object} [inputQuery={}] object of property names linked to values, comparisons, or clauses
      *
      */
-    constructor(model, inputQuery = {}, opt = {}) {
+    constructor(schema, model, inputQuery = {}, opt = {}) {
+        this.schema = schema;
         this.model = model;
         this.conditions = {};
         this.follow = [];
@@ -378,6 +387,13 @@ class SelectionQuery {
             ? inputQuery.returnProperties
             : null;
         const {propertyNames} = this.model;
+        // get the names of the edge classes for checking queries on edge 'properties'
+        const edgeClasses = {};
+        for (const mod of Object.values(schema)) {
+            if (mod.isEdge) {
+                edgeClasses[mod.name.toLowerCase()] = mod;
+            }
+        }
         // can only return properties which belong to this class
         for (const propName of this.returnProperties || []) {
             if (!propertyNames.includes(propName)) {
@@ -394,37 +410,87 @@ class SelectionQuery {
             if (SPECIAL_QUERY_ARGS.has(name) || name === 'deletedAt') {
                 continue;
             }
-            if (this.properties[name] === undefined) {
-                throw new AttributeError(`unexpected attribute '${name}' is not defined on this class model '${this.model.name}'`);
-            }
+            if (edgeClasses[name.toLowerCase()] !== undefined) {
+                const edgeModel = edgeClasses[name.toLowerCase()];
+                value = Object.assign({direction: 'both'}, value);
+                const edgePropName = `${value.direction}E('${name}')`;
 
-            if (!(value instanceof Comparison || value instanceof Clause || value instanceof SelectionQuery)) {
-                if (typeof value === 'object' && value !== null && !(value instanceof Array)) {
-                    // subquery
-                    if (this.properties[name].linkedModel) {
-                        let subQueryModel = this.properties[name].linkedModel;
-                        if (value['@class'] && value['@class'].value !== subQueryModel.name) {
-                            subQueryModel = subQueryModel.subClassModel(value['@class'].value);
-                        }
-                        value = new SelectionQuery(subQueryModel, value, {activeOnly: this.activeOnly});
-                        // can this subquery be flattened?
-                        if (value.follow.length === 0) {
-                            for (const [subqName, subqProp] of Object.entries(value.conditions)) {
-                                const combinedName = `${name}.${subqName}`;
-                                this.properties[combinedName] = subQueryModel.properties[subqName];
-                                this.conditions[combinedName] = subqProp;
-                            }
-                        } else {
-                            this.conditions[name] = value;
-                        }
-                        continue;
+                if (value.size !== undefined) {
+                    this.conditions[`${edgePropName}.size()`] = new Comparison(value.size);
+                }
+                if (value.v) {
+                    let targetVertexName;
+                    if (value.direction === 'out') {
+                        targetVertexName = `${edgePropName}.inV()`;
+                    } else if (value.direction === 'in') {
+                        targetVertexName = `${edgePropName}.outV()`;
                     } else {
-                        throw new AttributeError(`cannot subquery the non-linked attribute '${name}'`);
+                        targetVertexName = `${edgePropName}.bothV()`;
+                    }
+                    for (let [vProp, vValue] of Object.entries(value.v)) {
+                        if (!(vValue instanceof Comparison) && !(vValue instanceof Clause)) {
+                            if (vValue === null || typeof vValue !== 'object') {
+                                if (vValue instanceof 'string') {
+                                    // without a model we need to manually cast values
+                                    vValue = vValue.toLowerCase().trim();
+                                    if (looksLikeRID(vValue, true)) {
+                                        vValue = castToRID(value);
+                                    }
+                                }
+                                vValue = new Comparison(vValue);
+                            } else {
+                                throw new AttributeError(`cannot nest queries after an edge-based selection: ${name}.v.${vProp}`);
+                            }
+                        }
+                        this.conditions[`${targetVertexName}.${vProp}`] = vValue;
                     }
                 }
-                value = new Comparison(value); // default to basic equals
+                // now cast the edge attribute values themselves
+                const edgeProps = _.omit(value, ['v', 'direction', 'size']);
+                if (Object.keys(edgeProps).length) {
+                    const subquery = new SelectionQuery(
+                        schema,
+                        edgeModel, _.omit(value, ['v', 'direction', 'size']),
+                        {activeOnly: this.activeOnly}
+                    );
+                    // can this subquery be flattened?
+                    try {
+                        const result = subquery.flattenAs(edgePropName);
+                        Object.assign(this.conditions, result.conditions);
+                        Object.assign(this.properties, result.properties);
+                    } catch (err) {
+                        this.conditions[edgePropName] = value;
+                    }
+                }
+            } else if (this.properties[name] === undefined) {
+                throw new AttributeError(`unexpected attribute '${name}' is not defined on this class model '${this.model.name}'`);
+            } else {
+                if (!(value instanceof Comparison || value instanceof Clause || value instanceof SelectionQuery)) {
+                    if (typeof value === 'object' && value !== null && !(value instanceof Array)) {
+                        // subquery
+                        if (this.properties[name].linkedModel) {
+                            let subQueryModel = this.properties[name].linkedModel;
+                            if (value['@class'] && value['@class'].value !== subQueryModel.name) {
+                                subQueryModel = subQueryModel.subClassModel(value['@class'].value);
+                            }
+                            const subquery = new SelectionQuery(schema, subQueryModel, value, {activeOnly: this.activeOnly});
+                            // can this subquery be flattened?
+                            try {
+                                const result = subquery.flattenAs(name);
+                                Object.assign(this.conditions, result.conditions);
+                                Object.assign(this.properties, result.properties);
+                            } catch (err) {
+                                this.conditions[name] = subquery;
+                            }
+                            continue;
+                        } else {
+                            throw new AttributeError(`cannot subquery the non-linked attribute '${name}'`);
+                        }
+                    }
+                    value = new Comparison(value); // default to basic equals
+                }
+                this.conditions[name] = value;
             }
-            this.conditions[name] = value;
         }
         this.follow = Follow.parse(Object.assign({activeOnly: this.activeOnly}, inputQuery));
 
@@ -438,6 +504,25 @@ class SelectionQuery {
                 }
             }
         }
+    }
+
+    /**
+     * Convert the current query into an object to be used as linked query properties on some
+     * parent query
+     */
+    flattenAs(asProp) {
+        if (this.follow.length > 0) {
+            throw new AttributeError('cannot flatten a selection query with a non-zero follow statment');
+        }
+        const result = {
+            properties: {}, conditions: {}
+        };
+        for (const [name, prop] of Object.entries(this.conditions)) {
+            const combinedName = `${asProp}.${name}`;
+            result.properties[combinedName] = this.properties[name];
+            result.conditions[combinedName] = prop;
+        }
+        return result;
     }
 
     /**
@@ -455,14 +540,11 @@ class SelectionQuery {
      */
     conditionClause(name, value, paramIndex = 0) {
         let property = this.properties[name];
-        if (!property && value.value === null) {
-            property = {type: 'null'}; // Ignore null not exist b/c will be the same as null
+        if (!property) {
+            property = {type: 'null'};
         }
 
         let isList = false;
-        if (!property || !property.type) {
-            throw new AttributeError(`property '${name}' with value '${value.value}' is not defined on this model '${this.model.name}'`);
-        }
         if (/^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
             isList = true;
         }
@@ -591,7 +673,9 @@ const hasRecordAccess = (user, record) => {
  * @param {string[]} opt.groupNames the list of group names for which to add the new user to
  */
 const createUser = async (db, opt) => {
-    const {model, userName, groupNames} = opt;
+    const {
+        schema, model, userName, groupNames
+    } = opt;
     const userGroups = await db.select().from('UserGroup').all();
     const groupIds = Array.from(userGroups.filter(
         group => groupNames.includes(group.name)
@@ -607,7 +691,11 @@ const createUser = async (db, opt) => {
         .one();
     try {
         return await select(db, {
-            where: {name: userName}, model, exactlyN: 1, fetchPlan: 'groups:1'
+            schema,
+            where: {name: userName},
+            model,
+            exactlyN: 1,
+            fetchPlan: 'groups:1'
         });
     } catch (err) {
         throw wrapIfTypeError(err);
@@ -704,6 +792,7 @@ const getUserByName = async (db, username) => {
  * @param {Object} opt Selection options
  * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
  * @param {ClassModel} opt.model the model to be selected from
+ * @param {object.<string,ClassModel>} opt.schema the schema of all models
  * @param {string} [opt.fetchPlan='*:0'] key value mapping of class names to depths of edges to follow or '*' for any class
  * @param {Array} [opt.where=[]] the query requirements
  * @param {?number} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
@@ -723,7 +812,7 @@ const select = async (db, opt) => {
         limit: QUERY_LIMIT,
         skip: 0
     }, opt.where, opt);
-    const query = new SelectionQuery(opt.model, opt.where || {}, opt);
+    const query = new SelectionQuery(opt.schema, opt.model, opt.where || {}, opt);
     if (VERBOSE) {
         console.log('select query statement:',
             query.displayString(),
@@ -739,7 +828,8 @@ const select = async (db, opt) => {
     if (opt.fetchPlan) {
         queryOpt.fetchPlan = opt.fetchPlan;
     }
-    if (opt.activeOnly) {
+    // add history if not explicity specified already
+    if (opt.activeOnly && (!queryOpt.fetchPlan || !queryOpt.fetchPlan.includes('history'))) {
         if (!queryOpt.fetchPlan) {
             queryOpt.fetchPlan = `history:${FETCH_OMIT}`;
         } else if (!queryOpt.fetchPlan.includes(`history:${FETCH_OMIT}`)) {
@@ -776,39 +866,180 @@ const select = async (db, opt) => {
 };
 
 
-/**
- * Mark a particular record as deleted
- *
- *
- */
-const remove = async (db, opt) => {
-    const {model, user, where} = opt;
-    const [rec] = (await select(db, {model, where, exactlyN: 1}));
-    if (!hasRecordAccess(user, rec)) {
-        throw new PermissionError(`The user '${user.name}' does not have sufficient permissions to interact with record ${rec['@rid']}`);
-    }
-    const rid = rec['@rid'];
-    where.createdAt = rec.createdAt;
-    delete where['@rid'];
-    const commit = db.let(
-        'updatedRID', tx => tx.update(`${rid}`)
-            .set({deletedAt: timeStampNow()})
-            .set(`deletedBy = ${user['@rid']}`)
-            .return('AFTER @rid')
-            .where(where),
+const omitDBAttributes = rec => _.omit(rec, Object.keys(rec).filter(
+    k => k.startsWith('@')
+        || k.startsWith('out_')
+        || k.startsWith('in_')
+        || k.startsWith('_')
+));
 
-    ).let('updated', tx => tx.select().from('$updatedRID').fetch({'*': 1})).commit();
-    if (VERBOSE) {
-        console.log('remove:', commit.buildStatement());
-    }
-    try {
-        return await commit.return('$updated').one();
-    } catch (err) {
-        err.sql = commit.buildStatement();
-        throw wrapIfTypeError(err);
-    }
+/**
+ * Create the transaction to copy the current node as history and then update the current node
+ * with the changes
+ */
+const updateNodeTx = async (db, opt) => {
+    const {original, changes} = opt;
+    const userRID = castToRID(opt.user);
+
+    const content = omitDBAttributes(original);
+    content.deletedAt = timeStampNow();
+    content.deletedBy = userRID;
+
+    changes.createdBy = userRID;
+    changes.createdAt = timeStampNow();
+
+    const commit = db
+        .let('copy', tx => tx.create('VERTEX', original['@class'])
+            .set(content))
+        .let('updated', tx => tx.update(original['@rid'])
+            .set(changes)
+            .set('history = $copy')
+            .where({createdAt: original.createdAt})
+            .return('AFTER @rid'))
+        .let('result', tx => tx.select()
+            .from(original['@class']).where({'@rid': original['@rid']}));
+    return commit.commit();
 };
 
+/**
+ * Update or delete an existing edge and its source/target nodes
+ * Creates the transaction to update/copy and relink nodes/edges when an edge requires updating
+ * 1. copy src node as srcCopy
+ * 2. link srcCopy to src as history
+ * 3. copy tgt node as tgtCopy
+ * 4. link tgtCopy to tgt as history
+ * 5. copy e as eCopy from srcCopy to tgtCopy
+ * 6. link eCopy to e as history
+ *
+ * @param {object} opt.changes the changes to the edge properties. Null for deletions
+ * @param {object} opt.original the original edge record to be updated
+ * @param {object} opt.user the user performing the record update
+ */
+const modifyEdgeTx = async (db, opt) => {
+    const {original, changes} = opt;
+    const userRID = castToRID(opt.user);
+    const [src, tgt] = await Promise.all(Array.from(
+        [original.out, original.in],
+        async rid => db.record.get(rid)
+    ));
+    const srcCopy = omitDBAttributes(src);
+    srcCopy.deletedAt = timeStampNow();
+    srcCopy.deletedBy = userRID;
+
+    const tgtCopy = omitDBAttributes(tgt);
+    tgtCopy.deletedAt = timeStampNow();
+    tgtCopy.deletedBy = userRID;
+
+    const edgeCopy = _.omit(omitDBAttributes(original), ['in', 'out']);
+    edgeCopy.deletedAt = timeStampNow();
+    edgeCopy.deletedBy = userRID;
+
+    if (changes) {
+        changes.createdAt = timeStampNow();
+        changes.createdBy = userRID;
+    }
+
+    // create the transaction to update the edge. Uses the createdAt stamp to avoid concurrency errors
+    const commit = db
+        .let('srcCopy', tx => tx.create('VERTEX', src['@class'])
+            .set(srcCopy))
+        .let('src', tx => tx.update(src['@rid'])
+            .set('history = $srcCopy')
+            .set({createdBy: userRID, createdAt: timeStampNow()})
+            .where({createdAt: src.createdAt})
+            .return('AFTER @rid'))
+        .let('tgtCopy', tx => tx.create('VERTEX', tgt['@class'])
+            .set(tgtCopy))
+        .let('tgt', tx => tx.update(tgt['@rid'])
+            .set('history = $tgtCopy')
+            .set({createdBy: userRID, createdAt: timeStampNow()})
+            .where({createdAt: tgt.createdAt})
+            .return('AFTER @rid'))
+        .let('edgeCopy', tx => tx.create('EDGE', original['@class'])
+            .set(edgeCopy).from('$srcCopy').to('$tgtCopy'));
+
+    if (changes === null) {
+        // deletion
+        commit
+            .let('deleted', tx => tx.delete('EDGE', original['@class'])
+                .from('$src').to('$tgt')
+                .where({createdAt: original.createdAt, '@rid': original['@rid']}))
+            .let('result', tx => tx.select().from('$edgeCopy').fetch({'*': 1}));
+    } else {
+        // edge update
+        console.log(original['@rid']);
+        commit
+            .let('updatedRID', tx => tx.update(original['@rid'])
+                .set(changes).set('history = $edgeCopy').set(changes)
+                .where({createdAt: original.createdAt})
+                .return('AFTER @rid'))
+            .let('result', tx => tx.select().from('$updatedRID').fetch({'*': 1}));
+    }
+    return commit.commit();
+};
+
+/**
+ * Creates the transaction to delete a node and all of its surrounding edges
+ * This requires copy all neighbors and modifying any immediate edges in
+ * addition to the modifying the current node
+ */
+const deleteNodeTx = async (db, opt) => {
+    const {original} = opt;
+    const userRID = castToRID(opt.user);
+    const commit = db
+        .let('deleted', tx => tx.update(original['@rid'])
+            .set({deletedAt: timeStampNow(), deletedBy: userRID})
+            .where({createdAt: original.createdAt}));
+    const updatedVertices = {}; // mapping of rid string to let variable name
+    let edgeCount = 0;
+    for (const attr of Object.keys(original)) {
+        let direction;
+        if (attr.startsWith('out_')) {
+            direction = 'in';
+        } else if (attr.startsWith('in_')) {
+            direction = 'out';
+        } else {
+            continue;
+        }
+        // back up the target vetex
+        for (const value of original[attr]) {
+            const targetNode = value[direction];
+            const target = castToRID(targetNode);
+            const targetContent = omitDBAttributes(targetNode);
+            targetContent.deletedAt = timeStampNow();
+            targetContent.deletedBy = userRID;
+            // clean any nested content
+            for (const [subAttr, subValue] of Object.entries(targetContent)) {
+                if (subValue['@rid'] !== undefined) {
+                    targetContent[subAttr] = castToRID(subValue);
+                }
+            }
+
+            // if the vertex has already been copied do not recopy it
+            if (updatedVertices[target.toString()] === undefined) {
+                const name = `newVertex${Object.keys(updatedVertices).length}`;
+                commit
+                    .let(name, tx => tx.create('VERTEX', targetNode['@class'])
+                        .set(targetContent))
+                    .let(`vertex${Object.keys(updatedVertices).length}`, tx => tx.update(target)
+                        .set(`history = $${name}`)
+                        .set({createdBy: userRID, createdAt: timeStampNow()})
+                        .where({createdAt: targetContent.createdAt})
+                        .return('AFTER @rid'));
+                updatedVertices[target.toString()] = name;
+            }
+
+            // move the current edge to point to the copied node
+            commit.let(`edge${edgeCount++}`, tx => tx.update(castToRID(value))
+                .set({deletedAt: timeStampNow(), deletedBy: userRID})
+                .set(`${direction} = $${updatedVertices[target.toString()]}`)
+                .where({createdAt: value.createdAt})
+                .return('AFTER @rid'));
+        }
+    }
+    commit.let('result', tx => tx.select().from(original['@class']).where({'@rid': original['@rid']}));
+    return commit.commit();
+};
 
 /**
  * uses a transaction to copy the current record into a new record
@@ -821,68 +1052,48 @@ const remove = async (db, opt) => {
  * @param {Array} opt.where the selection criteria for the original node
  * @param {Object} opt.user the user updating the record
  */
-const update = async (db, opt) => {
-    const {model, user, where} = opt;
-    const content = Object.assign({}, model.formatRecord(opt.content, {
-        dropExtra: false,
-        addDefaults: false,
-        ignoreMissing: true,
-        ignoreExtra: false
-    }));
-    const original = (await select(db, {model, where, exactlyN: 1}))[0];
+const modify = async (db, opt) => {
+    const {
+        model, user, where, schema
+    } = opt;
+    const changes = opt.changes === null
+        ? null
+        : Object.assign({}, model.formatRecord(opt.changes, {
+            dropExtra: false,
+            addDefaults: false,
+            ignoreMissing: true,
+            ignoreExtra: false
+        }));
+    // select the original record and check permissions
+    // select will also throw an error when the user attempts to modify a deleted record
+    const [original] = await select(db, {
+        schema,
+        model,
+        where,
+        exactlyN: 1,
+        activeOnly: true,
+        fetchPlan: 'in_*:2 out_*:2 history:0'
+    });
     if (!hasRecordAccess(user, original)) {
         throw new PermissionError(`The user '${user.name}' does not have sufficient permissions to interact with record ${original['@rid']}`);
     }
-    const originalWhere = Object.assign({}, model.formatRecord(
-        original, {dropExtra: true, addDefaults: false}
-    ));
-    delete originalWhere.createdBy;
-    delete originalWhere.history;
-    const copy = Object.assign({}, _.omit(
-        originalWhere,
-        Object.keys(originalWhere).filter(x => x.startsWith('@')),
-    ), {deletedAt: timeStampNow()});
 
-    const originalUserRID = original.createdBy instanceof RID
-        ? original.createdBy
-        : original.createdBy['@rid'];
-    let historyRID = null;
-    if (original.history) {
-        historyRID = original.history instanceof RID
-            ? original.history
-            : original.history['@rid'];
+    let commit;
+    if (model.isEdge) {
+        commit = await modifyEdgeTx(db, {original, user, changes});
+    } else if (changes === null) {
+        // vertex deletion
+        commit = await deleteNodeTx(db, {original, user});
+    } else {
+        // vertex update
+        commit = await updateNodeTx(db, {original, user, changes});
     }
-
-    const commit = db.let(
-        'copy', (tx) => {
-            // create the copy of the original record with a deletion time
-            if (original.history !== undefined) {
-                return tx.create(model.isEdge
-                    ? 'EDGE'
-                    : 'VERTEX', model.name)
-                    .set(copy)
-                    .set(`createdBy = ${originalUserRID}`)
-                    .set(`deletedBy = ${user['@rid']}`)
-                    .set(`history = ${historyRID}`);
-            }
-            return tx.create(model.isEdge
-                ? 'EDGE'
-                : 'VERTEX', model.name)
-                .set(copy)
-                .set(`createdBy = ${originalUserRID}`)
-                .set(`deletedBy = ${user['@rid']}`);
-        },
-    ).let('updatedRID', tx => tx.update(`${original['@rid']}`)
-        .set(content)
-        .set('history = $copy')
-        .return('AFTER @rid')
-        .where(originalWhere)).let('updated', tx => tx.select().from('$updatedRID').fetch({'*': 1}))
-        .commit();
     if (process.env.DEBUG === '1') {
-        console.log(`update: ${commit.buildStatement()}`);
+        console.log('modify transaction');
+        console.log(commit.buildStatement());
     }
     try {
-        const result = await commit.return('$updated').one();
+        const result = await commit.return('$result').one();
         if (!result) {
             throw new Error('Failed to update');
         }
@@ -892,6 +1103,16 @@ const update = async (db, opt) => {
         throw wrapIfTypeError(err);
     }
 };
+
+const update = async (db, opt) => {
+    if (opt.changes === null) {
+        throw new AttributeError('opt.changes is a required argument');
+    }
+    return modify(db, opt);
+};
+
+const remove = async (db, opt) => modify(db, Object.assign({}, opt, {changes: null}));
+
 
 module.exports = {
     Clause,
@@ -907,5 +1128,7 @@ module.exports = {
     select,
     SelectionQuery,
     trimRecords,
-    update
+    update,
+    modify,
+    modifyEdgeTx
 };
