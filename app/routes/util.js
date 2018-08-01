@@ -172,32 +172,20 @@ const parseQueryLanguage = (inputQuery) => {
     return query;
 };
 
-
-/*
- * add basic CRUD methods for any standard db class
- *
- * can add get/post/delete methods to a router
- *
- * example:
- *      router.route('/feature') = resource({model: <ClassModel>, db: <OrientDB conn>, reqQueryParams: ['source', 'name', 'biotype']});
+/**
+ * Query a record class
  */
-const addResourceRoutes = (opt) => {
+const queryRoute = (opt) => {
     const {
         router, model, db, schema
     } = opt;
     const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
     const reqQueryParams = opt.reqQueryParams || [];
-    const route = opt.route || model.routeName;
+    if (process.env.VERBOSE === '1') {
+        console.log(`NEW ROUTE [QUERY] ${model.routeName}`);
+    }
 
-    // attach the db model required for checking class permissions
-    router.use(route, (req, res, next) => {
-        req.model = model;
-        next();
-    });
-    router.use(route, checkClassPermissions);
-
-    // add the get multiple / search route
-    router.get(route,
+    router.get(model.routeName,
         async (req, res) => {
             try {
                 req.query = parseQueryLanguage(req.query);
@@ -239,35 +227,19 @@ const addResourceRoutes = (opt) => {
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
+};
 
-    // abstract classes only have a search endpoint
-    if (model.isAbstract || model.name === 'Statement') {
-        return;
+/**
+ * Get a record by RID
+ */
+const getRoute = (opt) => {
+    const {
+        router, schema, db, model
+    } = opt;
+    if (process.env.VERBOSE === '1') {
+        console.log(`NEW ROUTE [GET] ${model.routeName}`);
     }
-
-    router.post(route,
-        async (req, res) => {
-            if (!_.isEmpty(req.query)) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
-                    {message: 'No query parameters are allowed for this query type', params: req.query}
-                ));
-            }
-            try {
-                const result = await create(db, {model, content: req.body, user: req.user});
-                return res.json({result: jc.decycle(result)});
-            } catch (err) {
-                if (err instanceof AttributeError) {
-                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                } if (err instanceof RecordExistsError) {
-                    return res.status(HTTP_STATUS.CONFLICT).json(err);
-                }
-                console.log(err);
-                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
-            }
-        });
-
-    // Add the rid routes
-    router.get(`${route}/:rid`,
+    router.get(`${model.routeName}/:rid`,
         async (req, res) => {
             try {
                 req.query = parseQueryLanguage(req.query);
@@ -298,9 +270,7 @@ const addResourceRoutes = (opt) => {
 
             try {
                 validateParams({
-                    params: _.omit(req.query, ['activeOnly']),
-                    required: reqQueryParams,
-                    optional: optQueryParams
+                    params: _.omit(req.query, ['activeOnly'])
                 });
             } catch (err) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
@@ -326,46 +296,100 @@ const addResourceRoutes = (opt) => {
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
-    if (!model.isEdge) {
-        // disable update for edges (currently unable to work with using created edges inside a transaction)
-        router.patch(`${route}/:rid`,
-            async (req, res) => {
-                if (!looksLikeRID(req.params.rid, false)) {
-                    return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
-                        {message: `ID does not look like a valid record ID: ${req.params.rid}`}
-                    ));
-                }
-                req.params.rid = `#${req.params.rid.replace(/^#/, '')}`;
-                if (!_.isEmpty(req.query)) {
-                    return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
-                        {message: 'Query parameters are allowed for this query type', params: req.query}
-                    ));
-                }
-                try {
-                    const result = await update(db, {
-                        model,
-                        changes: req.body,
-                        where: {'@rid': req.params.rid, deletedAt: null},
-                        user: req.user,
-                        schema
-                    });
-                    return res.json({result: jc.decycle(result)});
-                } catch (err) {
-                    if (err instanceof AttributeError) {
-                        return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                    } if (err instanceof NoRecordFoundError) {
-                        return res.status(HTTP_STATUS.NOT_FOUND).json(err);
-                    } if (err instanceof RecordExistsError) {
-                        return res.status(HTTP_STATUS.CONFLICT).json(err);
-                    }
-                    if (VERBOSE) {
-                        console.error(err);
-                    }
-                    return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
-                }
-            });
+};
+
+/**
+ * POST route to create new records
+ */
+const postRoute = (opt) => {
+    const {
+        router, db, model
+    } = opt;
+    if (process.env.VERBOSE === '1') {
+        console.log(`NEW ROUTE [POST] ${model.routeName}`);
     }
-    router.delete(`${route}/:rid`,
+    router.post(model.routeName,
+        async (req, res) => {
+            if (!_.isEmpty(req.query)) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
+                    {message: 'No query parameters are allowed for this query type', params: req.query}
+                ));
+            }
+            try {
+                const result = await create(db, {model, content: req.body, user: req.user});
+                return res.json({result: jc.decycle(result)});
+            } catch (err) {
+                if (err instanceof AttributeError) {
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } if (err instanceof RecordExistsError) {
+                    return res.status(HTTP_STATUS.CONFLICT).json(err);
+                }
+                console.log(err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+            }
+        });
+};
+
+
+/**
+ * Route to update a record given its RID
+ */
+const updateRoute = (opt) => {
+    const {
+        router, schema, db, model
+    } = opt;
+    if (process.env.VERBOSE === '1') {
+        console.log(`NEW ROUTE [UPDATE] ${model.routeName}`);
+    }
+    router.patch(`${model.routeName}/:rid`,
+        async (req, res) => {
+            if (!looksLikeRID(req.params.rid, false)) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
+                    {message: `ID does not look like a valid record ID: ${req.params.rid}`}
+                ));
+            }
+            req.params.rid = `#${req.params.rid.replace(/^#/, '')}`;
+            if (!_.isEmpty(req.query)) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
+                    {message: 'Query parameters are allowed for this query type', params: req.query}
+                ));
+            }
+            try {
+                const result = await update(db, {
+                    model,
+                    changes: req.body,
+                    where: {'@rid': req.params.rid, deletedAt: null},
+                    user: req.user,
+                    schema
+                });
+                return res.json({result: jc.decycle(result)});
+            } catch (err) {
+                if (err instanceof AttributeError) {
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                } if (err instanceof NoRecordFoundError) {
+                    return res.status(HTTP_STATUS.NOT_FOUND).json(err);
+                } if (err instanceof RecordExistsError) {
+                    return res.status(HTTP_STATUS.CONFLICT).json(err);
+                }
+                if (VERBOSE) {
+                    console.error(err);
+                }
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+            }
+        });
+};
+
+/**
+ * Route to delete/remove a resource
+ */
+const deleteRoute = (opt) => {
+    const {
+        router, schema, db, model
+    } = opt;
+    if (process.env.VERBOSE === '1') {
+        console.log(`NEW ROUTE [DELETE] ${model.routeName}`);
+    }
+    router.delete(`${model.routeName}/:rid`,
         async (req, res) => {
             if (!looksLikeRID(req.params.rid, false)) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json(new InputValidationError(
@@ -397,6 +421,45 @@ const addResourceRoutes = (opt) => {
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
+};
+
+
+/*
+ * add basic CRUD methods for any standard db class
+ *
+ * can add get/post/delete methods to a router
+ *
+ * example:
+ *      router.route('/feature') = resource({model: <ClassModel>, db: <OrientDB conn>, reqQueryParams: ['source', 'name', 'biotype']});
+ */
+const addResourceRoutes = (opt) => {
+    const {
+        router, model
+    } = opt;
+
+    // attach the db model required for checking class permissions
+    router.use(model.routeName, (req, res, next) => {
+        req.model = model;
+        next();
+    });
+    router.use(model.routeName, checkClassPermissions);
+    console.log(model.name, model.expose);
+
+    if (model.expose.QUERY) {
+        queryRoute(opt);
+    }
+    if (model.expose.GET) {
+        getRoute(opt);
+    }
+    if (model.expose.POST) {
+        postRoute(opt);
+    }
+    if (model.expose.DELETE) {
+        deleteRoute(opt);
+    }
+    if (model.expose.PATCH) {
+        updateRoute(opt);
+    }
 };
 
 

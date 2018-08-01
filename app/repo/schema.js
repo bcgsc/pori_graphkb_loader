@@ -16,10 +16,16 @@ const {AttributeError} = require('./error');
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 
 const INDEX_SEP_CHARS = ' \r\n\t:;,.|+*/\\=!?[]()'; // default separator chars for orientdb full text hash: https://github.com/orientechnologies/orientdb/blob/2.2.x/core/src/main/java/com/orientechnologies/orient/core/index/OIndexFullText.java
-
+const EXPOSE_ALL = {
+    QUERY: true, PATCH: true, DELETE: true, POST: true, GET: true
+};
+const EXPOSE_NONE = {
+    QUERY: false, PATCH: false, DELETE: false, POST: false, GET: false
+};
 
 const SCHEMA_DEFN = {
     V: {
+        expose: EXPOSE_NONE,
         properties: [
             {
                 name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier'
@@ -45,10 +51,10 @@ const SCHEMA_DEFN = {
             {
                 name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup', description: 'user groups allowed to interact with this record'
             }
-        ],
-        expose: false
+        ]
     },
     E: {
+        expose: EXPOSE_NONE,
         properties: [
             {
                 name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier'
@@ -74,8 +80,7 @@ const SCHEMA_DEFN = {
             {
                 name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup', description: 'user groups allowed to interact with this record'
             }
-        ],
-        expose: false
+        ]
     },
     UserGroup: {
         properties: [
@@ -96,16 +101,14 @@ const SCHEMA_DEFN = {
                 properties: ['name'],
                 class: 'UserGroup'
             }
-        ],
-        expose: false
+        ]
     },
     Permissions: {
-        properties: [],
-        expose: false
+        expose: EXPOSE_NONE,
+        properties: []
     },
     Evidence: {isAbstract: true},
     Biomarker: {
-        expose: false,
         isAbstract: true
     },
     User: {
@@ -167,6 +170,9 @@ const SCHEMA_DEFN = {
         ]
     },
     Ontology: {
+        expose: {
+            QUERY: true, GET: true
+        },
         inherits: ['V', 'Biomarker'],
         properties: [
             {
@@ -231,11 +237,10 @@ const SCHEMA_DEFN = {
         properties: [
             {name: '@class', type: 'string', description: 'The database class this record belongs to'}
         ],
-        isAbstract: true,
-        expose: false
+        isAbstract: true
     },
     ProteinPosition: {
-        expose: false,
+        expose: EXPOSE_NONE,
         inherits: ['Position'],
         properties: [
             {
@@ -245,7 +250,7 @@ const SCHEMA_DEFN = {
         ]
     },
     CytobandPosition: {
-        expose: false,
+        expose: EXPOSE_NONE,
         inherits: ['Position'],
         properties: [
             {
@@ -256,28 +261,28 @@ const SCHEMA_DEFN = {
         ]
     },
     GenomicPosition: {
-        expose: false,
+        expose: EXPOSE_NONE,
         inherits: ['Position'],
         properties: [{
             name: 'pos', type: 'integer', min: 1, mandatory: true
         }]
     },
     ExonicPosition: {
-        expose: false,
+        expose: EXPOSE_NONE,
         inherits: ['Position'],
         properties: [{
             name: 'pos', type: 'integer', min: 1, mandatory: true
         }]
     },
     IntronicPosition: {
-        expose: false,
+        expose: EXPOSE_NONE,
         inherits: ['Position'],
         properties: [{
             name: 'pos', type: 'integer', min: 1, mandatory: true
         }]
     },
     CdsPosition: {
-        expose: false,
+        expose: EXPOSE_NONE,
         inherits: ['Position'],
         properties: [
             {
@@ -287,6 +292,7 @@ const SCHEMA_DEFN = {
         ]
     },
     Variant: {
+        expose: {QUERY: true, GET: true},
         inherits: ['V', 'Biomarker'],
         properties: [
             {
@@ -408,6 +414,7 @@ const SCHEMA_DEFN = {
         properties: []
     },
     Statement: {
+        expose: {QUERY: true, GET: true}, // will have special post/delete method
         inherits: ['V'],
         properties: [
             {
@@ -512,8 +519,16 @@ for (const name of [
 }
 
 // Set the name to match the key
-for (const name of Object.keys(SCHEMA_DEFN)) {
-    SCHEMA_DEFN[name].name = name;
+// initialize the models
+for (const [name, model] of Object.entries(SCHEMA_DEFN)) {
+    model.name = name;
+
+    model.expose = Object.assign({}, model.isAbstract
+        ? EXPOSE_NONE
+        : EXPOSE_ALL, SCHEMA_DEFN[name].expose || {});
+    if (model.isEdge) {
+        model.expose.PATCH = false; // TODO: re-expose after odb tx fix
+    }
 }
 
 // Add the permissions properties based on the other classes in the schema
