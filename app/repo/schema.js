@@ -55,6 +55,7 @@ const SCHEMA_DEFN = {
     },
     E: {
         expose: EXPOSE_NONE,
+        isEdge: true,
         properties: [
             {
                 name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier'
@@ -409,10 +410,6 @@ const SCHEMA_DEFN = {
             }
         ]
     },
-    OntologyEdge: {
-        inherits: ['E'],
-        properties: []
-    },
     Statement: {
         expose: {QUERY: true, GET: true}, // will have special post/delete method
         inherits: ['V'],
@@ -476,7 +473,7 @@ for (const [name, defn] of Object.entries(SCHEMA_DEFN)) {
     ]);
 }
 
-// Add the other edge classes
+// Add the edge classes
 for (const name of [
     'AliasOf',
     'Cites',
@@ -495,6 +492,7 @@ for (const name of [
         sourceProp.notNull = true;
     }
     SCHEMA_DEFN[name] = {
+        isEdge: true,
         inherits: ['E'],
         properties: [
             {name: 'in', type: 'link', description: 'The record ID of the vertex the edge goes into, the target/destination vertex'},
@@ -678,7 +676,7 @@ class ClassModel {
             inherits: this.inherits,
             edgeRestrictions: this._edgeRestrictions
         };
-        if (this.expose) {
+        if (Object.values(this.expose).some(x => x)) {
             json.route = this.routeName;
         }
         return json;
@@ -790,14 +788,13 @@ class ClassModel {
             ? {}
             : record);
         const {properties} = this;
-        const prefixed = {};
 
         if (!opt.ignoreExtra && !opt.dropExtra) {
             for (const attr of Object.keys(record)) {
                 if (this.isEdge && (attr === 'out' || attr === 'in')) {
                     continue;
                 }
-                if (properties[attr] === undefined && prefixed[attr] === undefined) {
+                if (properties[attr] === undefined) {
                     throw new AttributeError(`unexpected attribute: ${attr}`);
                 }
             }
@@ -864,7 +861,7 @@ class ClassModel {
         }
         // look for linked models
         for (let [attr, value] of Object.entries(formattedRecord)) {
-            let linkedModel = properties[attr].linkedModel;
+            let {linkedModel} = properties[attr];
             if (properties[attr].type === 'embedded' && linkedModel && typeof value === 'object') {
                 if (value && value['@class'] && value['@class'] !== linkedModel.name) {
                     linkedModel = linkedModel.subClassModel(value['@class']);
@@ -1143,5 +1140,11 @@ const loadSchema = async (db) => {
 
 
 module.exports = {
-    createSchema, loadSchema, ClassModel, FUZZY_CLASSES, INDEX_SEP_CHARS, SCHEMA_DEFN
+    createSchema,
+    loadSchema,
+    ClassModel,
+    FUZZY_CLASSES,
+    INDEX_SEP_CHARS,
+    SCHEMA_DEFN,
+    splitSchemaClassLevels
 };

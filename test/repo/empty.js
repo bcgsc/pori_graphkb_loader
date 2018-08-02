@@ -152,8 +152,6 @@ describe('schema', () => {
         expect(result.createdBy).to.eql(admin['@rid']);
         expect(result).to.have.property('deletedAt');
         expect(result.deletedAt).to.not.be.null;
-        expect(result.out).to.not.eql(doSource['@rid']);
-        expect(result.in).to.not.eql(otherVertex['@rid']);
         [otherVertex, doSource] = await db.record.get([otherVertex['@rid'], doSource['@rid']]);
         expect(result.out).to.eql(doSource.history);
         expect(result.in).to.eql(otherVertex.history);

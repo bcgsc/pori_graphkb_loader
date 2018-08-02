@@ -77,7 +77,7 @@ const parseQueryLanguage = (inputQuery) => {
     const query = {};
     for (let [name, valueList] of Object.entries(inputQuery)) {
         if (name === 'fuzzyMatch' || name === 'limit' || name === 'skip' || name === 'neighbors') {
-            if (isNaN(Number(valueList))) { // eslint-disable-line no-restricted-globals
+            if (Number.isNaN(Number(valueList))) {
                 throw new InputValidationError(`Expected ${name} to be a number, but found ${valueList}`);
             }
             valueList = Number(valueList);
@@ -443,7 +443,6 @@ const addResourceRoutes = (opt) => {
         next();
     });
     router.use(model.routeName, checkClassPermissions);
-    console.log(model.name, model.expose);
 
     if (model.expose.QUERY) {
         queryRoute(opt);

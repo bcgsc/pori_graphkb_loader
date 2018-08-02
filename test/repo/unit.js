@@ -4,7 +4,7 @@ const {expect} = require('chai');
 const {types, RID} = require('orientjs');
 
 const {castUUID, looksLikeRID} = require('./../../app/repo/util');
-const {ClassModel} = require('./../../app/repo/schema');
+const {ClassModel, splitSchemaClassLevels} = require('./../../app/repo/schema');
 const {
     hasRecordAccess,
     RELATED_NODE_DEPTH,
@@ -83,38 +83,6 @@ describe('hasRecordAccess', () => {
 
 
 describe('trimRecords', () => {
-    it('removes deleted records', () => {
-        const records = [
-            {name: 'bob'},
-            {name: 'alice', deletedAt: 1}
-        ];
-        const trimmed = trimRecords(records, {activeOnly: true});
-        expect(trimmed).to.eql([{name: 'bob'}]);
-    });
-    it('removes nested deleted records', () => {
-        const records = [
-            {name: 'bob'},
-            {name: 'alice', link: {name: 'george', deletedAt: 1, '@rid': '#44:1'}}
-        ];
-        const trimmed = trimRecords(records, {activeOnly: true});
-        expect(trimmed).to.eql([{name: 'bob'}, {name: 'alice'}]);
-    });
-    it('removes deleted edges', () => {
-        const records = [
-            {name: 'bob'},
-            {
-                name: 'alice',
-                out_link: {
-                    name: 'george',
-                    deletedAt: 1,
-                    in: {name: 'george the 2nd', '@rid': '44:2'},
-                    '@rid': '44:1'
-                }
-            }
-        ];
-        const trimmed = trimRecords(records, {activeOnly: true});
-        expect(trimmed).to.eql([{name: 'bob'}, {name: 'alice'}]);
-    });
     it('removes protected records (default ok)', () => {
         const records = [
             {name: 'bob'},
@@ -1056,6 +1024,20 @@ describe('SelectionQuery', () => {
 });
 
 
+describe('splitSchemaClassLevels', () => {
+    it('splits dependency chain', () => {
+        const schema = {
+            grandparent: {name: 'grandparent'},
+            parent: {inherits: ['grandparent'], name: 'parent', properties: [{linkedClass: 'other'}]},
+            child: {inherits: ['grandparent'], properties: [{linkedClass: 'parent'}], name: 'child'},
+            other: {name: 'other'}
+        };
+        const levels = splitSchemaClassLevels(schema);
+        expect(levels).to.have.property('length', 3);
+    });
+});
+
+
 describe('ClassModel', () => {
     describe('parseOClass', () => {
         it('parses non-abstract class', () => {
@@ -1173,7 +1155,7 @@ describe('ClassModel', () => {
                     req1: {name: 'req1', mandatory: true},
                     req2: {name: 'req2', mandatory: true},
                     opt1: {name: 'opt1'},
-                    opt2: {name: 'opt2'}
+                    opt2: {name: 'opt2', choices: [2, 3], notNull: false}
                 },
                 defaults: {req2: () => 1, opt2: () => 2},
                 cast: {req1: x => x.toLowerCase()}
@@ -1184,6 +1166,15 @@ describe('ClassModel', () => {
                 model.formatRecord({
                     req1: 2
                 }, {dropExtra: false, addDefaults: true});
+            }).to.throw();
+        });
+        it('errors on un-expected attr', () => {
+            expect(() => {
+                model.formatRecord({
+                    req1: 2,
+                    req2: 1,
+                    badAttr: 3
+                }, {dropExtra: false, ignoreExtra: false, addDefaults: false});
             }).to.throw();
         });
         it('adds defaults', () => {
@@ -1250,6 +1241,20 @@ describe('ClassModel', () => {
             expect(record).to.have.property('req2', '1');
             expect(record).to.have.property('opt1', '1');
             expect(record).to.not.have.property('opt2');
+        });
+        it('error on invalid enum choice', () => {
+            expect(() => {
+                model.formatRecord({
+                    req1: 'term1', opt2: 4, req2: 1
+                }, {dropExtra: false, addDefaults: false});
+            }).to.throw('not in the list of valid choices');
+        });
+        it('allow nullable enum', () => {
+            const record = model.formatRecord({
+                req1: 'term1', opt2: null, req2: 1
+            }, {dropExtra: false, addDefaults: false});
+            expect(record).to.have.property('req1', 'term1');
+            expect(record).to.have.property('opt2', null);
         });
     });
 });

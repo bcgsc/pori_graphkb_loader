@@ -12,6 +12,7 @@ const {
     AttributeError,
     MultipleRecordsFoundError,
     NoRecordFoundError,
+    NotImplementedError,
     RecordExistsError,
     PermissionError
 } = require('./error');
@@ -91,6 +92,9 @@ const trimRecords = (recordList, opt = {}) => {
 
     while (queue.length > 0) {
         const curr = queue.shift(); // remove the first element from the list
+        const currRID = curr['@rid']
+            ? castToRID(curr['@rid'])
+            : null;
 
         if (visited.has(curr)) { // avoid infinite look from cycles
             continue;
@@ -108,8 +112,17 @@ const trimRecords = (recordList, opt = {}) => {
                     delete curr[attr];
                 }
             } else if (value instanceof RIDBag) {
+                // check here for updated edges that have not been removed
+                // https://github.com/orientechnologies/orientjs/issues/32
                 const arr = [];
                 for (const edge of value.all()) {
+                    if (edge.out
+                        && edge.in
+                        && castToRID(edge.out) !== currRID
+                        && castToRID(edge.in) !== currRID
+                    ) {
+                        continue;
+                    }
                     queue.push(edge);
                     arr.push(edge);
                 }
@@ -306,7 +319,12 @@ const select = async (db, opt) => {
     if (VERBOSE) {
         console.log('select query statement:',
             query.displayString(),
-            {limit: opt.limit, fetchPlan: opt.fetchPlan, skip: opt.skip});
+            {
+                limit: opt.limit,
+                fetchPlan: opt.fetchPlan,
+                skip: opt.skip,
+                activeOnly: opt.activeOnly
+            });
     }
 
     // send the query statement to the database
@@ -428,7 +446,6 @@ const modifyEdgeTx = async (db, opt) => {
         changes.createdAt = timeStampNow();
         changes.createdBy = userRID;
     }
-
     // create the transaction to update the edge. Uses the createdAt stamp to avoid concurrency errors
     const commit = db
         .let('srcCopy', tx => tx.create('VERTEX', src['@class'])
@@ -444,26 +461,31 @@ const modifyEdgeTx = async (db, opt) => {
             .set('history = $tgtCopy')
             .set({createdBy: userRID, createdAt: timeStampNow()})
             .where({createdAt: tgt.createdAt})
-            .return('AFTER @rid'))
-        .let('edgeCopy', tx => tx.create('EDGE', original['@class'])
-            .set(edgeCopy).from('$srcCopy').to('$tgtCopy'));
+            .return('AFTER @rid'));
+
 
     if (changes === null) {
         // deletion
         commit
-            .let('deleted', tx => tx.delete('EDGE', original['@class'])
-                .from('$src').to('$tgt')
-                .where({createdAt: original.createdAt, '@rid': original['@rid']}))
-            .let('result', tx => tx.select().from('$edgeCopy').fetch({'*': 1}));
+            .let('deleted', tx => tx.update(`EDGE ${original['@rid']}`)
+                .where({createdAt: original.createdAt})
+                .set('out = $srcCopy').set('in = $tgtCopy')
+                .set({deletedAt: timeStampNow(), deletedBy: userRID})
+                .return('AFTER @rid'))
+            .let('result', tx => tx.select().from('$deleted').fetch({'*': 1}));
     } else {
         // edge update
-        console.log(original['@rid']);
+        throw new NotImplementedError('Cannot update edges. Waiting on external fix: https://github.com/orientechnologies/orientdb/issues/8444');
+        /* TODO: Fix after getting feedback
         commit
+            .let('edgeCopy', tx => tx.create('EDGE', original['@class'])
+                .set(edgeCopy).from('$srcCopy').to('$tgtCopy'))
             .let('updatedRID', tx => tx.update(original['@rid'])
                 .set(changes).set('history = $edgeCopy').set(changes)
                 .where({createdAt: original.createdAt})
                 .return('AFTER @rid'))
             .let('result', tx => tx.select().from('$updatedRID').fetch({'*': 1}));
+        */
     }
     return commit.commit();
 };
@@ -588,7 +610,7 @@ const modify = async (db, opt) => {
     try {
         const result = await commit.return('$result').one();
         if (!result) {
-            throw new Error('Failed to update');
+            throw new Error('Failed to modify');
         }
         return result;
     } catch (err) {

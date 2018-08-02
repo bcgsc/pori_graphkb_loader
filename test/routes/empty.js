@@ -391,7 +391,6 @@ describe('API', () => {
         });
         // select neighbors that are not deleted
         describe('GET /diseases: propogating active record selection', () => {
-            let disease;
             beforeEach(async () => {
                 const res1 = await chai.request(app.app)
                     .post(`${app.prefix}/diseases`)
@@ -401,7 +400,6 @@ describe('API', () => {
                         source
                     })
                     .set('Authorization', mockToken);
-                disease = res1.body.result;
                 const res2 = await chai.request(app.app)
                     .post(`${app.prefix}/diseases`)
                     .type('json')
@@ -445,21 +443,19 @@ describe('API', () => {
             });
             it('default limits to active records', async () => {
                 const res = await chai.request(app.app)
-                    .get(`${app.prefix}/diseases/${disease['@rid'].slice(1)}`)
+                    .get(`${app.prefix}/diseases`)
                     .set('Authorization', mockToken)
                     .query({neighbors: 2});
-                expect(res.body.result).to.have.property('sourceId', 'cancer');
-                expect(res.body.result).to.have.property('out_AliasOf');
-                expect(res.body.result.out_AliasOf).to.eql([]);
+                expect(res.body.result[0]).to.have.property('sourceId', 'cancer');
+                expect(res.body.result[0]).to.have.property('out_AliasOf');
+                expect(res.body.result[0].out_AliasOf).to.eql([]);
             });
             it('includes deleted when not limited to active', async () => {
                 const res = await chai.request(app.app)
-                    .get(`${app.prefix}/diseases/${disease['@rid'].slice(1)}`)
+                    .get(`${app.prefix}/diseases`)
                     .set('Authorization', mockToken)
                     .query({neighbors: 2, activeOnly: false});
-                expect(res.body.result).to.have.property('sourceId', 'cancer');
-                expect(res.body.result).to.have.property('out_AliasOf');
-                expect(res.body.result.out_AliasOf).to.have.property('length', 2);
+                expect(res.body.result).to.have.property('length', 6);
             });
         });
         describe('GET /diseases query FULLTEXT index', () => {

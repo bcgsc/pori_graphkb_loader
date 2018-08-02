@@ -54,6 +54,9 @@ class MultipleRecordsFoundError extends ErrorMixin {}
 class RecordExistsError extends ErrorMixin {}
 
 
+class NotImplementedError extends ErrorMixin {}
+
+
 module.exports = {
     RecordExistsError,
     ErrorMixin,
@@ -63,5 +66,6 @@ module.exports = {
     NoRecordFoundError,
     MultipleRecordsFoundError,
     PermissionError,
+    NotImplementedError,
     AuthenticationError
 };
