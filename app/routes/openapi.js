@@ -832,16 +832,24 @@ const generateSwaggerSpec = (schema, metadata) => {
             properties: {}
         };
 
-        if (model.expose) {
-            if (docs.paths[model.routeName] === undefined) {
-                docs.paths[model.routeName] = {};
-            }
+        if (Object.values(model.expose).some(x => x) && docs.paths[model.routeName] === undefined) {
+            docs.paths[model.routeName] = {};
+        }
+        if (model.expose.QUERY) {
             docs.paths[model.routeName].get = describeGet(model);
-            if (!model.isAbstract && model.name !== 'Statement') {
-                docs.paths[model.routeName].post = describePost(model);
-                docs.paths[`${model.routeName}/{rid}`] = {};
+        }
+        if (model.expose.POST) {
+            docs.paths[model.routeName].post = describePost(model);
+        }
+        if (model.expose.GET || model.expose.PATCH || model.expose.DELETE) {
+            docs.paths[`${model.routeName}/{rid}`] = {};
+            if (model.expose.PATCH) {
                 docs.paths[`${model.routeName}/{rid}`].patch = describeOperationByID(model, 'patch');
+            }
+            if (model.expose.DELETE) {
                 docs.paths[`${model.routeName}/{rid}`].delete = describeOperationByID(model, 'delete');
+            }
+            if (model.expose.GET) {
                 docs.paths[`${model.routeName}/{rid}`].get = describeOperationByID(model, 'get');
             }
         }

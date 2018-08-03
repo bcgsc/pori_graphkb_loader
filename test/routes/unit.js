@@ -35,20 +35,27 @@ describe('parseQueryLanguage', () => {
             ])
         });
     });
-    it('edge target v', () => {
-        expect(parseQueryLanguage(qs.parse('supportedby[v]=44:3'))).to.eql({
-            supportedby: {v: new Comparison('44:3')}
+    describe('query immeadiate edges', () => {
+        it('edge target v', () => {
+            expect(parseQueryLanguage(qs.parse('supportedby[v]=44:3'))).to.eql({
+                supportedby: {v: new Comparison('44:3')}
+            });
         });
-    });
-    it('edge direction', () => {
-        expect(parseQueryLanguage(qs.parse('supportedby[direction]=out'))).to.eql({
-            supportedby: {direction: 'out'}
+        it('edge direction', () => {
+            expect(parseQueryLanguage(qs.parse('supportedby[direction]=out'))).to.eql({
+                supportedby: {direction: 'out'}
+            });
         });
-    });
-    it('edge direction bad input error', () => {
-        expect(() => {
-            parseQueryLanguage(qs.parse('supportedby[direction]=blargh'));
-        }).to.throw('direction must be');
+        it('edge direction bad input error', () => {
+            expect(() => {
+                parseQueryLanguage(qs.parse('supportedby[direction]=blargh'));
+            }).to.throw('direction must be');
+        });
+        it('edge multiplicity', () => {
+            expect(parseQueryLanguage(qs.parse('supportedby[size]=3'))).to.eql({
+                supportedby: {size: new Comparison(3)}
+            });
+        });
     });
     it('parses null string', () => {
         const result = parseQueryLanguage(qs.parse('name=null'));
