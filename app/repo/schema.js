@@ -491,8 +491,21 @@ for (const name of [
         sourceProp.mandatory = true;
         sourceProp.notNull = true;
     }
+    let reverseName;
+    if (name.endsWith('Of')) {
+        reverseName = `Has${name.slice(0, name.length - 2)}`;
+    } else if (name === 'SupportedBy') {
+        reverseName = 'Supports';
+    } else if (name.endsWith('By')) {
+        reverseName = `${name.slice(0, name.length - 3)}s`;
+    } else if (name === 'Infers') {
+        reverseName = 'InferredBy';
+    } else {
+        reverseName = `${name.slice(0, name.length - 1)}dBy`;
+    }
     SCHEMA_DEFN[name] = {
         isEdge: true,
+        reverseName,
         inherits: ['E'],
         properties: [
             {name: 'in', type: 'link', description: 'The record ID of the vertex the edge goes into, the target/destination vertex'},
@@ -556,6 +569,7 @@ class ClassModel {
         this._subclasses = opt.subclasses || [];
         this.isEdge = !!opt.isEdge;
         this._edgeRestrictions = opt.edgeRestrictions || null;
+        this.reverseName = opt.reverseName;
         this.expose = opt.expose === undefined
             ? true
             : opt.expose;
@@ -674,8 +688,12 @@ class ClassModel {
         const json = {
             properties: this.properties,
             inherits: this.inherits,
-            edgeRestrictions: this._edgeRestrictions
+            edgeRestrictions: this._edgeRestrictions,
+            isEdge: !!this.isEdge
         };
+        if (this.reverseName) {
+            json.reverseName = this.reverseName;
+        }
         if (Object.values(this.expose).some(x => x)) {
             json.route = this.routeName;
         }
@@ -762,7 +780,8 @@ class ClassModel {
             defaults,
             cast,
             expose: schemaDefn.expose,
-            isAbstract: oclass.defaultClusterId === -1
+            isAbstract: oclass.defaultClusterId === -1,
+            reverseName: schemaDefn.reverseName
         });
     }
 
