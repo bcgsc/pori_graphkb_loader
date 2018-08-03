@@ -53,7 +53,7 @@ describe('parseQueryLanguage', () => {
         });
         it('edge multiplicity', () => {
             expect(parseQueryLanguage(qs.parse('supportedby[size]=3'))).to.eql({
-                supportedby: {size: new Comparison(3)}
+                supportedby: {size: 3}
             });
         });
     });
