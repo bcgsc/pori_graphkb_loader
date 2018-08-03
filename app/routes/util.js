@@ -76,7 +76,7 @@ const parseQueryLanguage = (inputQuery) => {
      */
     const query = {};
     for (let [name, valueList] of Object.entries(inputQuery)) {
-        if (name === 'fuzzyMatch' || name === 'limit' || name === 'skip' || name === 'neighbors') {
+        if (['fuzzyMatch', 'limit', 'skip', 'neighbors', 'size'].includes(name)) {
             if (Number.isNaN(Number(valueList))) {
                 throw new InputValidationError(`Expected ${name} to be a number, but found ${valueList}`);
             }
@@ -92,6 +92,9 @@ const parseQueryLanguage = (inputQuery) => {
             }
             if (name === 'limit' && valueList > QUERY_LIMIT) {
                 throw new InputValidationError(`${name} must be a number between 1 and ${QUERY_LIMIT}. Please use skip and limit to paginate larger queries`);
+            }
+            if (name === 'size' && valueList < 0) {
+                throw new InputValidationError(`${name} must be a positive integer`);
             }
             query[name] = valueList;
         } else if (name === 'descendants' || name === 'ancestors' || name === 'returnProperties') {
