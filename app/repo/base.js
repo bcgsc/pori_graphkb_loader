@@ -642,5 +642,6 @@ module.exports = {
     trimRecords,
     update,
     modify,
-    modifyEdgeTx
+    modifyEdgeTx,
+    wrapIfTypeError
 };

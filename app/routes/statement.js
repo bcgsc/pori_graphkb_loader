@@ -101,27 +101,33 @@ const createStatement = async (opt) => {
     // create the main statement node
     const commit = db
         .let('statement', tx => tx.create('VERTEX', model.name)
-            .set(model.formatRecord(record, {addDefaults: true}))
-            .set({createdBy: userRID}));
+            .set(model.formatRecord(Object.assign({
+                createdBy: userRID
+            }, record), {addDefaults: true})));
     // link to the dependencies
     let edgeCount = 0;
     for (const edge of edges) {
         const eModel = schema[edge['@class']];
-        const eRecord = eModel.formatRecord(edge, {dropExtra: true, addDefaults: true});
+        const eRecord = eModel.formatRecord(Object.assign({
+            createdBy: userRID
+        }, edge), {dropExtra: true, addDefaults: true});
         if (edge.out === undefined) {
             eRecord.out = '$statement';
         } else {
             eRecord.in = '$statement';
         }
-        commit.let(`edge${edgeCount++}`, tx => tx.create('EDGE', model.name)
-            .set({createdBy: userRID})
-            .set(_.omit(eRecord, ['out', 'in']))
-            .from(edge.out)
-            .to(edge.in));
+        commit.let(`edge${edgeCount++}`, tx => tx.create('EDGE', eModel.name)
+            .set(_.omit(eRecord, ['out', 'in', '@class']))
+            .from(eRecord.out)
+            .to(eRecord.in));
     }
+    commit
+        .let('result', tx => tx.select().from('$statement'))
+        .commit();
     try {
         const result = await commit.return('$result').one();
         if (!result) {
+            console.error(commit.buildStatement());
             throw new Error('Failed to create the statement');
         }
         return result;
