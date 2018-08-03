@@ -12,7 +12,9 @@ const OrientDB  = require('orientjs');
 
 //process.on('uncaughtException', app.close);
 let app;
-conf.db.name = `kbapi_${process.env.DATABASE_NAME ? process.env.DATABASE_NAME : `v${process.env.npm_package_version}` }`;
+conf.db.name = `kbapi_${process.env.DATABASE_NAME
+    ? process.env.DATABASE_NAME
+    : `v${process.env.npm_package_version}` }`;
 delete conf.port;
 
 (async () => {
@@ -42,7 +44,12 @@ delete conf.port;
             await createSchema(db, verbose);
             schema = await loadSchema(db, verbose);
             // create the admin user
-            const user = await createUser(db, {model: schema.User, userName: process.env.USER || 'admin', groupNames: ['admin']});
+            const user = await createUser(db, {
+                model: schema.User,
+                userName: process.env.USER || 'admin',
+                groupNames: ['admin'],
+                schema
+            });
             if (verbose) {
                 console.log('created the user:', user);
             }
