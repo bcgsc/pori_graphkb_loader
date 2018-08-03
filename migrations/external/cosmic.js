@@ -126,10 +126,10 @@ const upload = async (opt) => {
             await processCosmicRecord(conn, record, source);
             counts.success++;
         } catch (err) {
-            err = err.error || err;
-            if (errorCache[err.message] === undefined) {
-                console.log('\nfailed', err.error || err);
-                errorCache[err.message] = err;
+            const {message} = (err.error || err);
+            if (errorCache[message] === undefined) {
+                console.log('\nfailed', message);
+                errorCache[message] = err;
             }
             counts.error++;
         }
