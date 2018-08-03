@@ -967,7 +967,7 @@ describe('SelectionQuery', () => {
                 propertyNames: ['blargh', 'name']
             };
             const selectionQuery = new SelectionQuery({model}, model);
-            const {query, params} = selectionQuery.conditionClause('blargh', new Comparison('monkeys', '~'));
+            const {query, params} = selectionQuery.conditionClause('blargh', new Comparison('monkeys', 'CONTAINSTEXT'));
             expect(query).to.equal('blargh CONTAINSTEXT :param0');
             expect(params).to.eql({param0: 'monkeys'});
         });
@@ -992,7 +992,7 @@ describe('SelectionQuery', () => {
                 propertyNames: ['blargh', 'name']
             };
             const selectionQuery = new SelectionQuery({model}, model);
-            const {query, params} = selectionQuery.conditionClause('blargh', new Comparison('monkeys', '~', true));
+            const {query, params} = selectionQuery.conditionClause('blargh', new Comparison('monkeys', 'CONTAINSTEXT', true));
             expect(query).to.equal('NOT (blargh CONTAINSTEXT :param0)');
             expect(params).to.eql({param0: 'monkeys'});
         });

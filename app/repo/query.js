@@ -188,8 +188,8 @@ class Comparison {
         this.value = value;
         this.operator = operator;
         this.negate = negate;
-        if (operator !== '=' && operator !== '~') {
-            throw new AttributeError('Invalid operator. Only = and ~ are supported operators');
+        if (!['CONTAINSTEXT', '=', 'CONTAINS', 'CONTAINSALL'].includes(operator)) {
+            throw new AttributeError('Invalid operator. Only =, CONTAINSTEXT, CONTAINS, CONTAINSALL are supported operators');
         }
     }
 
@@ -227,9 +227,7 @@ class Comparison {
             }
         } else if (this.value !== null) {
             params[pname] = this.value;
-            query = `${name} ${this.operator === '~'
-                ? 'CONTAINSTEXT'
-                : '='} :${pname}`;
+            query = `${name} ${this.operator} :${pname}`;
         } else {
             query = `${name} IS NULL`;
         }
@@ -317,7 +315,7 @@ class SelectionQuery {
                                         vValue = castToRID(value);
                                     }
                                 }
-                                vValue = new Comparison(vValue);
+                                vValue = new Comparison(vValue, 'CONTAINS');
                             } else {
                                 throw new AttributeError(`cannot nest queries after an edge-based selection: ${name}.v.${vProp}`);
                             }

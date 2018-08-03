@@ -4,7 +4,8 @@ const _ = require('lodash');
 
 const {castToRID} = require('./../repo/util');
 const {AttributeError} = require('./../repo/error');
-const {wrapIfTypeError} = require('./../repo/base');
+const {wrapIfTypeError, select} = require('./../repo/base');
+const {SelectionQuery, Clause, Comparison} = require('./../repo/query');
 
 /**
  * Create statement record and its linking required edges. The array of edge objects should be an
@@ -31,6 +32,7 @@ const createStatement = async (opt) => {
     const {
         record, model, schema, user, db
     } = opt;
+    const selectFirst = opt.selectFirst === undefined;
     let dependencies = [];
     // ensure the RIDs look valid for the support
     const edges = [];
@@ -98,6 +100,18 @@ const createStatement = async (opt) => {
     delete record.impliedBy;
     delete record.supportedBy;
     const userRID = castToRID(user);
+    // try to select the statement to see if it exists
+    try {
+        const query = {
+            appliesTo: record.appliesTo,
+            relevance: record.relevance,
+            supportedBy: {
+                direction: 'out',
+                size: record.supportedBy.length
+            }
+        };
+        // const existing = select();
+    } catch (err) {}
     // create the main statement node
     const commit = db
         .let('statement', tx => tx.create('VERTEX', model.name)

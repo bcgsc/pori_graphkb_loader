@@ -31,7 +31,7 @@ describe('parseQueryLanguage', () => {
         const result = parseQueryLanguage(qs.parse('name=~other thing'));
         expect(result).to.eql({
             name: new Clause('AND', [
-                new Comparison('other', '~'), new Comparison('thing', '~')
+                new Comparison('other', 'CONTAINSTEXT'), new Comparison('thing', 'CONTAINSTEXT')
             ])
         });
     });
@@ -217,7 +217,7 @@ describe('parseQueryLanguage', () => {
     });
     it('containstext operator', () => {
         const result = parseQueryLanguage(qs.parse('thing=~other'));
-        expect(result).to.eql({thing: new Comparison('other', '~')});
+        expect(result).to.eql({thing: new Comparison('other', 'CONTAINSTEXT')});
     });
     it('multiple values', () => {
         const result = parseQueryLanguage(qs.parse('thing=1&thing=2'));

@@ -59,7 +59,7 @@ const validateParams = async (opt) => {
  *
  * @param {Object} inputQuery
  */
-const parseQueryLanguage = (inputQuery) => {
+const parseQueryLanguage = (inputQuery, defaultOperator = '=') => {
     /**
      * parse any query parameters based on the expected operator syntax. The final result will be
      * an object of attribute names as keys and arrays (AND) or arrays (OR) or
@@ -120,7 +120,9 @@ const parseQueryLanguage = (inputQuery) => {
             }
         } else if (valueList !== null && typeof valueList === 'object' && !(valueList instanceof Array)) {
             // subqueries
-            valueList = parseQueryLanguage(valueList);
+            valueList = parseQueryLanguage(valueList, name === 'v'
+                ? 'CONTAINS'
+                : '=');
             query[name] = valueList;
         } else {
             if (!(valueList instanceof Array)) {
@@ -135,15 +137,15 @@ const parseQueryLanguage = (inputQuery) => {
                         negate = true;
                         value = value.slice(1);
                     }
-                    let operator = '=';
+                    let operator = defaultOperator;
                     if (value.startsWith('~')) {
-                        operator = '~';
+                        operator = 'CONTAINSTEXT';
                         value = value.slice(1);
                         if (INDEX_SEP_REGEX.exec(value)) {
                             INDEX_SEP_REGEX.lastIndex = 0; // https://siderite.blogspot.com/2011/11/careful-when-reusing-javascript-regexp.html
                             // contains a separator char, should split into AND clause
                             const andClause = new Clause('AND', Array.from(
-                                value.split(INDEX_SEP_REGEX), word => new Comparison(word, '~', negate)
+                                value.split(INDEX_SEP_REGEX), word => new Comparison(word, operator, negate)
                             ));
                             if (andClause.comparisons.some(comp => comp.value.length < MIN_WORD_SIZE)) {
                                 throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters after splitting on separator characters: ${INDEX_SEP_CHARS}`);
