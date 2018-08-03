@@ -1,7 +1,7 @@
 /**
  * Given the DOID JSON file. Upload the diseases and relationships to the knowledgebase using the REST API
  */
-
+const _ = require('lodash');
 const {addRecord, getRecordBy, orderPreferredOntologyTerms} = require('./util');
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
@@ -80,7 +80,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
             }
         }
         // create the database entry
-        const record = await addRecord('diseases', body, conn, true, ['description', 'subsets']);
+        const record = await addRecord('diseases', body, conn, true, _.omit(body, ['description', 'subsets']));
 
         if (recordsBySourceId[record.sourceId] !== undefined) {
             throw new Error(`sourceID is not unique: ${record.sourceId}`);
@@ -166,8 +166,8 @@ const loadEdges = async ({
     for (const edge of DOID.graphs[0].edges) {
         const {sub, pred, obj} = edge;
         if (pred === 'is_a') { // currently only loading this class type
-            let src;
-            let tgt;
+            let src,
+                tgt;
             try {
                 src = parseDoid(sub).toLowerCase();
                 tgt = parseDoid(obj).toLowerCase();
