@@ -75,6 +75,7 @@
 
 const xml2js = require('xml2js');
 const fs = require('fs');
+const _ = require('lodash');
 const {addRecord, getRecordBy} = require('./util');
 
 
@@ -100,7 +101,11 @@ const uploadDrugBank = async ({filename, conn}) => {
     const content = fs.readFileSync(filename).toString();
     console.log(`parsing: ${filename}`);
     const xml = await parseXML(content);
-    const source = await addRecord('sources', {name: 'drugbank', usage: 'https://www.drugbank.ca/legal/terms_of_use'}, conn, true, ['usage']);
+    const source = await addRecord('sources', {
+        name: 'drugbank',
+        usage: 'https://www.drugbank.ca/legal/terms_of_use',
+        url: 'https://www.drugbank.ca'
+    }, conn, true, {name: 'drugbank'});
     console.log(`uploading ${xml.drugbank.drug.length} records`);
 
     const ATC = {};
@@ -131,7 +136,7 @@ const uploadDrugBank = async ({filename, conn}) => {
                     body.subsets.push(cat.category[0]);
                 }
             }
-            const record = await addRecord('therapies', body, conn, true, ['subsets', 'mechanismOfAction', 'description']);
+            const record = await addRecord('therapies', body, conn, true, _.omit(body, ['subsets', 'mechanismOfAction', 'description']));
             // create the categories
             for (const atcLevel of atcLevels) {
                 if (ATC[atcLevel.sourceId] === undefined) {
