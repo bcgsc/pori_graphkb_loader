@@ -343,8 +343,7 @@ class SelectionQuery {
         }
     }
 
-    parseEdgeConditions(edgeModel, name, inputValue) {
-        let value = Object.assign({direction: 'both'}, inputValue);
+    parseEdgeConditions(edgeModel, name, value) {
         const edgePropName = `${value.direction}E('${name}')`;
 
         if (value.size !== undefined) {
