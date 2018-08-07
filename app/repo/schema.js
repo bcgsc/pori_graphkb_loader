@@ -28,11 +28,11 @@ const SCHEMA_DEFN = {
         expose: EXPOSE_NONE,
         properties: [
             {
-                name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier'
+                name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier', cast: castToRID
             },
             {name: '@class', type: 'string', description: 'The database class this record belongs to'},
             {
-                name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, description: 'Internal identifier for tracking record history'
+                name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, description: 'Internal identifier for tracking record history', cast: castUUID
             },
             {
                 name: 'createdAt', type: 'long', mandatory: true, notNull: true, description: 'The timestamp at which the record was created'
@@ -58,11 +58,11 @@ const SCHEMA_DEFN = {
         isEdge: true,
         properties: [
             {
-                name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier'
+                name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier', cast: castToRID
             },
             {name: '@class', type: 'string', description: 'The database class this record belongs to'},
             {
-                name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, description: 'Internal identifier for tracking record history'
+                name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, description: 'Internal identifier for tracking record history', cast: castUUID
             },
             {
                 name: 'createdAt', type: 'long', mandatory: true, notNull: true, description: 'The timestamp at which the record was created'
@@ -86,7 +86,7 @@ const SCHEMA_DEFN = {
     UserGroup: {
         properties: [
             {
-                name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier'
+                name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier', cast: castToRID
             },
             {name: '@class', type: 'string', description: 'The database class this record belongs to'},
             {
@@ -115,7 +115,7 @@ const SCHEMA_DEFN = {
     User: {
         properties: [
             {
-                name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier'
+                name: '@rid', type: 'string', pattern: '^#\\d+:\\d+$', description: 'The record identifier', cast: castToRID
             },
             {name: '@class', type: 'string', description: 'The database class this record belongs to'},
             {
@@ -125,7 +125,7 @@ const SCHEMA_DEFN = {
                 name: 'groups', type: 'linkset', linkedClass: 'UserGroup', description: 'Groups this user belongs to. Defines permissions for the user'
             },
             {
-                name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true
+                name: 'uuid', type: 'string', mandatory: true, notNull: true, readOnly: true, cast: castUUID
             },
             {
                 name: 'createdAt', type: 'long', mandatory: true, notNull: true
@@ -188,7 +188,7 @@ const SCHEMA_DEFN = {
             {name: 'description', type: 'string'},
             {name: 'longName', type: 'string'},
             {
-                name: 'subsets', type: 'embeddedset', linkedType: 'string', description: 'A list of names of subsets this term belongs to'
+                name: 'subsets', type: 'embeddedset', linkedType: 'string', description: 'A list of names of subsets this term belongs to', cast: item => item.trim().toLowerCase()
             },
             {
                 name: 'deprecated', type: 'boolean', default: false, notNull: true, mandatory: true, description: 'True when the term was deprecated by the external source'
@@ -567,7 +567,6 @@ class ClassModel {
      */
     constructor(opt) {
         this.name = opt.name;
-        this._cast = opt.cast || {};
         this._defaults = opt.defaults || {};
         this._inherits = opt.inherits || [];
         this._subclasses = opt.subclasses || [];
@@ -669,14 +668,6 @@ class ClassModel {
         return properties;
     }
 
-    get cast() {
-        let cast = Object.assign({}, this._cast);
-        for (const parent of this._inherits) {
-            cast = Object.assign({}, parent.cast, cast);
-        }
-        return cast;
-    }
-
     get defaults() {
         let defaults = Object.assign({}, this._defaults);
         for (const parent of this._inherits) {
@@ -712,7 +703,6 @@ class ClassModel {
      */
     static parseOClass(oclass, schemaDefn) {
         const defaults = {};
-        const cast = {};
         const properties = {};
 
         for (const prop of schemaDefn.properties || []) {
@@ -756,19 +746,21 @@ class ClassModel {
             if (prop.defaultValue) {
                 defaults[prop.name] = () => prop.defaultValue;
             }
-            if (prop.type === 'integer') {
-                cast[prop.name] = x => parseInt(x, 10);
-            } else if (prop.type === 'string') {
-                if (prop.notNull) {
-                    cast[prop.name] = castString;
-                } else {
-                    cast[prop.name] = castNullableString;
-                }
-            } else if (prop.type.includes('link')) {
-                if (prop.notNull) {
-                    cast[prop.name] = castToRID;
-                } else {
-                    cast[prop.name] = castNullableLink;
+            if (!prop.cast) { // set the default cast functions
+                if (prop.type === 'integer') {
+                    prop.cast = x => parseInt(x, 10);
+                } else if (prop.type === 'string') {
+                    if (prop.notNull) {
+                        prop.cast = castString;
+                    } else {
+                        prop.cast = castNullableString;
+                    }
+                } else if (prop.type.includes('link')) {
+                    if (prop.notNull) {
+                        prop.cast = castToRID;
+                    } else {
+                        prop.cast = castNullableLink;
+                    }
                 }
             }
 
@@ -782,7 +774,6 @@ class ClassModel {
             name: oclass.name,
             properties,
             defaults,
-            cast,
             expose: schemaDefn.expose,
             isAbstract: oclass.defaultClusterId === -1,
             reverseName: schemaDefn.reverseName
@@ -856,24 +847,31 @@ class ClassModel {
         }
 
         // try the casting
-        for (const attr of Object.keys(this.cast)) {
-            if (formattedRecord[attr] !== undefined && formattedRecord[attr] !== null) {
+        for (const prop of Object.values(properties)) {
+            if (formattedRecord[prop.name] !== undefined
+                && formattedRecord[prop.name] !== null
+                && prop.cast
+            ) {
                 try {
-                    if (/(bag|set|list|map)/.exec(properties[attr].type)) {
-                        formattedRecord[attr].forEach((elem, i) => {
-                            formattedRecord[attr][i] = this.cast[attr](elem);
+                    if (/(bag|set|list|map)/.exec(prop.type)) {
+                        formattedRecord[prop.name].forEach((elem, i) => {
+                            formattedRecord[prop.name][i] = prop.cast(elem);
                         });
                     } else {
-                        formattedRecord[attr] = this.cast[attr](formattedRecord[attr]);
+                        formattedRecord[prop.name] = prop.cast(formattedRecord[prop.name]);
                     }
                 } catch (err) {
-                    throw new AttributeError({message: `Failed in casting (${this.cast[attr].name}) attribute (${attr}) with value (${formattedRecord[attr]}): ${err.message}`, castFunc: this.cast[attr]});
+                    throw new AttributeError({
+                        message: `Failed in casting (${prop.cast.name}) attribute (${
+                            prop.name}) with value (${formattedRecord[prop.name]}): ${err.message}`,
+                        castFunc: prop.cast
+                    });
                 }
             }
         }
         // check the properties with enum values
         for (const [attr, value] of Object.entries(formattedRecord)) {
-            if (properties[attr] !== undefined && properties[attr].choices !== undefined) {
+            if (properties[attr] && properties[attr].choices) {
                 if (properties[attr].notNull === false && value === null) {
                     continue;
                 }
@@ -995,13 +993,15 @@ const createSchema = async (db) => {
         console.log('defined schema for the major base classes');
     }
     // create the other schema classes
-    const classesByLevel = splitSchemaClassLevels(_.omit(SCHEMA_DEFN, ['Permissions', 'User', 'UserGroup', 'V', 'E']));
+    const classesByLevel = splitSchemaClassLevels(
+        _.omit(SCHEMA_DEFN, ['Permissions', 'User', 'UserGroup', 'V', 'E'])
+    );
 
     for (const classList of classesByLevel) {
         if (VERBOSE) {
             console.log(`creating the classes: ${Array.from(classList, cls => cls.name).join(', ')}`);
         }
-        await Promise.all(Array.from(classList, async cls => createClassModel(db, cls)));
+        await Promise.all(Array.from(classList, async cls => createClassModel(db, cls))); // eslint-disable-line no-await-in-loop
     }
 
     // create the default user groups
@@ -1116,17 +1116,9 @@ const loadSchema = async (db) => {
             }
         }
     }
-    // add the api-level checks?
-    for (const modelName of ['User', 'V', 'E', 'UserGroup']) {
-        schema[modelName]._cast['@rid'] = castToRID;
-        schema[modelName]._cast.uuid = castUUID;
-    }
-
-    schema.Ontology._cast.subsets = item => item.trim().toLowerCase();
     if (schema.E._edgeRestrictions === null) {
         schema.E._edgeRestrictions = [];
     }
-    schema.User.cast.uuid = castUUID;
 
     if (VERBOSE) {
         for (const cls of Object.values(schema)) {

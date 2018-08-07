@@ -332,17 +332,28 @@ class SelectionQuery {
         this.follow = Follow.parse(Object.assign({activeOnly: this.activeOnly}, inputQuery));
 
         for (const [name, condition] of Object.entries(this.conditions)) {
-            if (!(condition instanceof SelectionQuery) && this.cast[name]) {
-                condition.applyCast(this.cast[name]);
-            }
-            if (this.properties[name] && this.properties[name].choices) {
-                if (!condition.validateEnum(this.properties[name].choices)) {
-                    throw new AttributeError(`The attribute ${name} violates the expected controlled vocabulary`);
+            const prop = this.properties[name];
+            if (prop && !(condition instanceof SelectionQuery)) {
+                if (prop.cast) {
+                    condition.applyCast(prop.cast);
+                }
+                if (prop.choices) {
+                    if (!condition.validateEnum(prop.choices)) {
+                        throw new AttributeError(`The attribute ${name} violates the expected controlled vocabulary`);
+                    }
                 }
             }
         }
     }
 
+    /**
+     * Given some value containing edge query properties, parse and format into valid
+     * query conditions
+     *
+     * @param {ClassModel} edgeModel the model for the type of edge being selected
+     * @param {string} name the attribute name
+     * @param {object} value the input query
+     */
     parseEdgeConditions(edgeModel, name, value) {
         const edgePropName = `${value.direction || 'both'}E('${name}')`;
 
@@ -367,20 +378,19 @@ class SelectionQuery {
             } else {
                 for (let [vProp, vValue] of Object.entries(value.v)) {
                     if (!(vValue instanceof Comparison) && !(vValue instanceof Clause)) {
-                        if (vValue === null || typeof vValue !== 'object') {
-                            if (vValue instanceof String) {
-                                // without a model we need to manually cast values
-                                vValue = vValue.toLowerCase().trim();
-                                if (looksLikeRID(vValue, true)) {
-                                    vValue = castToRID(value);
-                                }
-                            }
-                            vValue = new Comparison(vValue, 'CONTAINS');
-                        } else {
+                        if (vValue !== null && typeof vValue === 'object') {
                             throw new AttributeError(`cannot nest queries after an edge-based selection: ${name}.v.${vProp}`);
                         }
+                        if (vValue instanceof String) {
+                            // without a model we need to manually cast values
+                            vValue = vValue.toLowerCase().trim();
+                            if (looksLikeRID(vValue, true)) {
+                                vValue = castToRID(value);
+                            }
+                        }
+                        vValue = new Comparison(vValue, 'CONTAINS');
                     }
-                    this.conditions[`${targetVertexName}.${vProp}`] = vValue;
+                    this.conditions[`${targetVertexName}.${vProp}.asSet()`] = vValue;
                 }
             }
         }
@@ -398,7 +408,7 @@ class SelectionQuery {
                 Object.assign(this.conditions, result.conditions);
                 Object.assign(this.properties, result.properties);
             } catch (err) {
-                this.conditions[edgePropName] = value;
+                throw new AttributeError('edge subqueries cannot contain follow or fuzzy matching');
             }
         }
     }
