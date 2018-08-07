@@ -8,7 +8,7 @@ const {PERMISSIONS} = require('./../repo/constants');
 
 const keys = {};
 const SERVICE_NAME = 'kb';
-const CATS_URI = 'https://cats01.bcgsc.ca:8001/api/1.0/authentication' || process.env.KB_CATS_URI;
+const CATS_URI = process.env.KB_CATS_URI || 'https://cats01.bcgsc.ca:8000/api/1.0/authentication';
 const TOKEN_TIMEOUT = 60 * 60 * 8; // default timeout is 8 hours
 
 
