@@ -228,6 +228,35 @@ describe('Follow', () => {
 });
 
 
+describe('Comparison', () => {
+    it('uses IS for null', () => {
+        const comp = new Comparison(null);
+        const {query, params} = comp.toString('blargh', 1);
+        expect(query).to.equal('blargh IS NULL');
+        expect(params).to.eql({});
+    });
+    it('negates an entire statement', () => {
+        const comp = new Comparison(null, '=', true);
+        const {query, params} = comp.toString('blargh', 1);
+        expect(query).to.equal('NOT (blargh IS NULL)');
+        expect(params).to.eql({});
+    });
+    it('parses subelements in a list', () => {
+        const comp = new Comparison([1, 2, 3, 4]);
+        const {query, params} = comp.toString('outE().inV().asSet()', 1);
+        expect(query).to.equal('outE().inV().asSet() = [:param1, :param2, :param3, :param4]');
+        expect(params).to.eql({
+            param1: 1, param2: 2, param3: 3, param4: 4
+        });
+    });
+    it('checks contains null for listable type', () => {
+        const comp = new Comparison(null);
+        const {query, params} = comp.toString('blargh', 0, true);
+        expect(query).to.equal('blargh CONTAINS NULL');
+        expect(params).to.eql({});
+    });
+});
+
 describe('SelectionQuery', () => {
     const schema = {
         Person: new ClassModel({
@@ -354,6 +383,18 @@ describe('SelectionQuery', () => {
                 WHERE name = :param0
                 AND outE('AliasOf').size() = :param1
                 AND outE('AliasOf').source = :param2`
+            ));
+        });
+        it('has a related vertex named bob', () => {
+            const query = new SelectionQuery(schema, schema.Parent, {
+                name: 'blargh',
+                AliasOf: {direction: 'out', v: {name: 'bob'}}
+            }, {activeOnly: false});
+            const {query: statement} = query.toString();
+            expect(statement).to.equal(stripSQL(
+                `SELECT * FROM Parent
+                WHERE name = :param0
+                AND outE('AliasOf').inV().name CONTAINS :param1`
             ));
         });
     });
@@ -1102,6 +1143,40 @@ describe('ClassModel', () => {
                 superClass: null
             }, {properties: [{type: 'string', name: 'prop1'}]});
             expect(parsed.cast).to.have.property('prop1');
+        });
+    });
+    describe('routeName', () => {
+        it('does not alter ary suffix', () => {
+            const model = new ClassModel({name: 'vocabulary'});
+            expect(model.routeName).to.equal('/vocabulary');
+        });
+        it('does not alter edge class names', () => {
+            const model = new ClassModel({name: 'edge', isEdge: true});
+            expect(model.routeName).to.equal('/edge');
+        });
+        it('changes ys to ies', () => {
+            const model = new ClassModel({name: 'ontology'});
+            expect(model.routeName).to.equal('/ontologies');
+        });
+        it('adds s to regular class names', () => {
+            const model = new ClassModel({name: 'statement'});
+            expect(model.routeName).to.equal('/statements');
+        });
+    });
+    describe('subclassModel', () => {
+        const child = new ClassModel({name: 'child'});
+        const parent = new ClassModel({name: 'parent', subclasses: [child]});
+        const grandparent = new ClassModel({name: 'grandparent', subclasses: [parent]});
+        it('errors when the class does not exist', () => {
+            expect(() => {
+                grandparent.subClassModel('badName');
+            }).to.throw('was not found as a subclass');
+        });
+        it('returns an immeadiate subclass', () => {
+            expect(parent.subClassModel('child')).to.eql(child);
+        });
+        it('returns a subclass of a subclass recursively', () => {
+            expect(grandparent.subClassModel('child')).to.eql(child);
         });
     });
     describe('inheritance', () => {
