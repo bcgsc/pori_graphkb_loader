@@ -3,9 +3,9 @@ const jc = require('json-cycle');
 const _ = require('lodash');
 
 const {castToRID} = require('./../repo/util');
-const {AttributeError} = require('./../repo/error');
+const {AttributeError, RecordExistsError} = require('./../repo/error');
 const {wrapIfTypeError, select} = require('./../repo/base');
-const {SelectionQuery, Clause, Comparison} = require('./../repo/query');
+
 
 /**
  * Create statement record and its linking required edges. The array of edge objects should be an
@@ -32,7 +32,11 @@ const createStatement = async (opt) => {
     const {
         record, model, schema, user, db
     } = opt;
-    const selectFirst = opt.selectFirst === undefined;
+    const query = {
+        SupportedBy: {direction: 'out', v: new Set()},
+        Implies: {direction: 'in', v: new Set()}
+    };
+
     let dependencies = [];
     // ensure the RIDs look valid for the support
     const edges = [];
@@ -49,6 +53,7 @@ const createStatement = async (opt) => {
         }
         dependencies.push(rid);
         edges.push(Object.assign(edge, {'@class': 'SupportedBy', in: rid}));
+        query.SupportedBy.v.add(rid);
     }
     // ensure the RIDs look valid for the impliedBy
     for (const edge of record.impliedBy) {
@@ -64,6 +69,7 @@ const createStatement = async (opt) => {
         }
         dependencies.push(rid);
         edges.push(Object.assign(edge, {'@class': 'Implies', out: rid}));
+        query.Implies.v.add(rid);
     }
 
     if (record.appliesTo === undefined) {
@@ -72,52 +78,62 @@ const createStatement = async (opt) => {
     try {
         if (record.appliesTo !== null) {
             record.appliesTo = castToRID(record.appliesTo);
+            query.appliesTo = record.appliesTo;
             dependencies.push(record.appliesTo);
         }
     } catch (err) {
-        throw new AttributeError(`statement appliesTo record ID does not look like a valid record ID: ${record.appliesTo}`);
+        throw new AttributeError(
+            `statement appliesTo record ID does not look like a valid record ID: ${record.appliesTo}`
+        );
     }
     if (record.relevance === undefined) {
         throw new AttributeError('statement must have the relevance property');
     }
     try {
         record.relevance = castToRID(record.relevance);
+        query.relevance = record.relevance;
+        dependencies.push(record.relevance);
     } catch (err) {
-        throw new AttributeError(`statement relevance record ID does not look like a valid record ID: ${record.relevance}`);
+        throw new AttributeError(
+            `statement relevance record ID does not look like a valid record ID: ${record.relevance}`
+        );
     }
 
-    // check the DB to ensure all dependencies already exist
-    dependencies.push(record.relevance);
+    // check the DB to ensure all dependencies already exist (and are not deleted)
     try {
         // ensure that the dependency records are valid
-        dependencies = await Promise.all(Array.from(dependencies, async rid => db.record.get(rid)));
+        dependencies = await db.record.get(dependencies).where({deletedAt: null});
     } catch (err) {
         throw new AttributeError({
             message: 'error in retrieving one or more of the dependencies',
             dependencies
         });
     }
-    delete record.impliedBy;
-    delete record.supportedBy;
     const userRID = castToRID(user);
     // try to select the statement to see if it exists
     try {
-        const query = {
-            appliesTo: record.appliesTo,
-            relevance: record.relevance,
-            supportedBy: {
-                direction: 'out',
-                size: record.supportedBy.length
-            }
-        };
+        const records = await select(db, {
+            where: query,
+            activeOnly: true,
+            model: schema.Statement,
+            schema,
+            fetchPlan: '*:2'
+        });
+        if (records.length !== 0) {
+            throw new RecordExistsError({
+                current: records,
+                message: 'Statement cannot be created. A similar statement already exists'
+            });
+        }
         // const existing = select();
     } catch (err) {}
     // create the main statement node
     const commit = db
         .let('statement', tx => tx.create('VERTEX', model.name)
-            .set(model.formatRecord(Object.assign({
-                createdBy: userRID
-            }, record), {addDefaults: true})));
+            .set(model.formatRecord(
+                Object.assign({createdBy: userRID}, _.omit(record, ['impledBy', 'supportedBy'])),
+                {addDefaults: true}
+            )));
     // link to the dependencies
     let edgeCount = 0;
     for (const edge of edges) {
@@ -161,15 +177,24 @@ const addStatement = (opt) => {
     router.post(model.routeName,
         async (req, res) => {
             if (!_.isEmpty(req.query)) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'No query parameters are allowed for this query type', params: req.query});
+                return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                    message: 'No query parameters are allowed for this query type',
+                    params: req.query
+                });
             }
             // ensure the dependencies exist before attempting to create the statement
             if (!req.body.impliedBy || req.body.impliedBy.length === 0) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'statement requires at minimum a single impliedBy relationship', params: req.body});
+                return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                    message: 'statement requires at minimum a single impliedBy relationship',
+                    params: req.body
+                });
             }
 
             if (!req.body.supportedBy || req.body.supportedBy.length === 0) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'statement requires at minimum a single supportedBy relationship', params: req.body});
+                return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                    message: 'statement requires at minimum a single supportedBy relationship',
+                    params: req.body
+                });
             }
             let statement;
             try {
@@ -181,7 +206,11 @@ const addStatement = (opt) => {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
                 console.error(err);
-                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({message: err.message, type: typeof err});
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json({
+                    message:
+                    err.message,
+                    type: typeof err
+                });
             }
             return res.status(HTTP_STATUS.CREATED).json(jc.decycle({result: statement}));
         });
