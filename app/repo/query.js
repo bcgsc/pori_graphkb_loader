@@ -344,7 +344,7 @@ class SelectionQuery {
     }
 
     parseEdgeConditions(edgeModel, name, value) {
-        const edgePropName = `${value.direction}E('${name}')`;
+        const edgePropName = `${value.direction || 'both'}E('${name}')`;
 
         if (value.size !== undefined) {
             this.conditions[`${edgePropName}.size()`] = new Comparison(value.size);
