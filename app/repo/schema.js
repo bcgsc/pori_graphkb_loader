@@ -421,7 +421,11 @@ const SCHEMA_DEFN = {
                 name: 'appliesTo', type: 'link', linkedClass: 'Ontology', mandatory: true, notNull: false
             },
             {name: 'description', type: 'string'},
-            {name: 'reviewStatus', type: 'string'},
+            {
+                name: 'reviewStatus',
+                type: 'string',
+                choices: ['pending', 'not required', 'passed', 'failed']
+            },
             {name: 'reviewedBy', type: 'link', linkedClass: 'User'},
             {name: 'reviewedAt', type: 'long'},
             {name: 'reviewComment', type: 'string'}
