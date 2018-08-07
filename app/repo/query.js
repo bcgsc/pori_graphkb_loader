@@ -298,57 +298,7 @@ class SelectionQuery {
                 continue;
             }
             if (edgeClasses[name.toLowerCase()] !== undefined) {
-                const edgeModel = edgeClasses[name.toLowerCase()];
-                value = Object.assign({direction: 'both'}, value);
-                const edgePropName = `${value.direction}E('${name}')`;
-
-                if (value.size !== undefined) {
-                    this.conditions[`${edgePropName}.size()`] = new Comparison(value.size);
-                }
-                if (value.v) {
-                    let targetVertexName;
-                    if (value.direction === 'out') {
-                        targetVertexName = `${edgePropName}.inV()`;
-                    } else if (value.direction === 'in') {
-                        targetVertexName = `${edgePropName}.outV()`;
-                    } else {
-                        targetVertexName = `${edgePropName}.bothV()`;
-                    }
-                    for (let [vProp, vValue] of Object.entries(value.v)) {
-                        if (!(vValue instanceof Comparison) && !(vValue instanceof Clause)) {
-                            if (vValue === null || typeof vValue !== 'object') {
-                                if (vValue instanceof String) {
-                                    // without a model we need to manually cast values
-                                    vValue = vValue.toLowerCase().trim();
-                                    if (looksLikeRID(vValue, true)) {
-                                        vValue = castToRID(value);
-                                    }
-                                }
-                                vValue = new Comparison(vValue, 'CONTAINS');
-                            } else {
-                                throw new AttributeError(`cannot nest queries after an edge-based selection: ${name}.v.${vProp}`);
-                            }
-                        }
-                        this.conditions[`${targetVertexName}.${vProp}`] = vValue;
-                    }
-                }
-                // now cast the edge attribute values themselves
-                const edgeProps = _.omit(value, ['v', 'direction', 'size']);
-                if (Object.keys(edgeProps).length) {
-                    const subquery = new SelectionQuery(
-                        schema,
-                        edgeModel, _.omit(value, ['v', 'direction', 'size']),
-                        {activeOnly: this.activeOnly}
-                    );
-                    // can this subquery be flattened?
-                    try {
-                        const result = subquery.flattenAs(edgePropName);
-                        Object.assign(this.conditions, result.conditions);
-                        Object.assign(this.properties, result.properties);
-                    } catch (err) {
-                        this.conditions[edgePropName] = value;
-                    }
-                }
+                this.parseEdgeConditions(edgeClasses[name.toLowerCase()], name, value);
             } else if (this.properties[name] === undefined) {
                 throw new AttributeError(`unexpected attribute '${name}' is not defined on this class model '${this.model.name}'`);
             } else {
@@ -389,6 +339,67 @@ class SelectionQuery {
                 if (!condition.validateEnum(this.properties[name].choices)) {
                     throw new AttributeError(`The attribute ${name} violates the expected controlled vocabulary`);
                 }
+            }
+        }
+    }
+
+    parseEdgeConditions(edgeModel, name, inputValue) {
+        let value = Object.assign({direction: 'both'}, inputValue);
+        const edgePropName = `${value.direction}E('${name}')`;
+
+        if (value.size !== undefined) {
+            this.conditions[`${edgePropName}.size()`] = new Comparison(value.size);
+        }
+        if (value.v) {
+            let targetVertexName;
+            if (value.direction === 'out') {
+                targetVertexName = `${edgePropName}.inV()`;
+            } else if (value.direction === 'in') {
+                targetVertexName = `${edgePropName}.outV()`;
+            } else {
+                targetVertexName = `${edgePropName}.bothV()`;
+            }
+            if (value.v instanceof Set || value.v instanceof Array) {
+                // must be an array of RIDs
+                targetVertexName = `${targetVertexName}.asSet()`;
+                this.conditions[targetVertexName] = new Comparison(
+                    Array.from(value.v, castToRID)
+                );
+            } else {
+                for (let [vProp, vValue] of Object.entries(value.v)) {
+                    if (!(vValue instanceof Comparison) && !(vValue instanceof Clause)) {
+                        if (vValue === null || typeof vValue !== 'object') {
+                            if (vValue instanceof String) {
+                                // without a model we need to manually cast values
+                                vValue = vValue.toLowerCase().trim();
+                                if (looksLikeRID(vValue, true)) {
+                                    vValue = castToRID(value);
+                                }
+                            }
+                            vValue = new Comparison(vValue, 'CONTAINS');
+                        } else {
+                            throw new AttributeError(`cannot nest queries after an edge-based selection: ${name}.v.${vProp}`);
+                        }
+                    }
+                    this.conditions[`${targetVertexName}.${vProp}`] = vValue;
+                }
+            }
+        }
+        // now cast the edge attribute values themselves
+        const edgeProps = _.omit(value, ['v', 'direction', 'size']);
+        if (Object.keys(edgeProps).length) {
+            const subquery = new SelectionQuery(
+                this.schema,
+                edgeModel, _.omit(value, ['v', 'direction', 'size']),
+                {activeOnly: this.activeOnly}
+            );
+            // can this subquery be flattened?
+            try {
+                const result = subquery.flattenAs(edgePropName);
+                Object.assign(this.conditions, result.conditions);
+                Object.assign(this.properties, result.properties);
+            } catch (err) {
+                this.conditions[edgePropName] = value;
             }
         }
     }

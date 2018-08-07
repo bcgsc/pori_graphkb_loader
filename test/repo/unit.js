@@ -397,6 +397,21 @@ describe('SelectionQuery', () => {
                 AND outE('AliasOf').inV().name CONTAINS :param1`
             ));
         });
+        it('uses a set operator on a related vertex', () => {
+            const query = new SelectionQuery(schema, schema.Parent, {
+                name: 'blargh',
+                AliasOf: {
+                    direction: 'out',
+                    v: ['#12:0']
+                }
+            }, {activeOnly: false});
+            const {query: statement} = query.toString();
+            expect(statement).to.equal(stripSQL(
+                `SELECT * FROM Parent
+                WHERE name = :param0
+                AND outE('AliasOf').inV().asSet() = [:param1]`
+            ));
+        });
     });
     it('errors on unexpected parameter', () => {
         expect(() => {
