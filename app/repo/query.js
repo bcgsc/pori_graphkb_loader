@@ -217,19 +217,28 @@ class Comparison {
     toString(name, paramIndex = 0, listableType = false) {
         const params = {};
         let query;
-        const pname = `${PARAM_PREFIX}${paramIndex}`;
-        if (listableType) {
-            if (this.value === null) {
-                query = `${name} CONTAINS NULL`;
-            } else {
-                params[pname] = this.value;
-                query = `${name} CONTAINS :${pname}`;
+        if (this.value instanceof Array || this.value instanceof Set) {
+            for (const element of this.value) {
+                const pname = `${PARAM_PREFIX}${paramIndex++}`;
+                params[pname] = element;
             }
-        } else if (this.value !== null) {
-            params[pname] = this.value;
-            query = `${name} ${this.operator} :${pname}`;
+            query = `${name} ${this.operator} [${
+                Array.from(Object.keys(params), p => `:${p}`).join(', ')}]`;
         } else {
-            query = `${name} IS NULL`;
+            const pname = `${PARAM_PREFIX}${paramIndex}`;
+            if (listableType) {
+                if (this.value === null) {
+                    query = `${name} CONTAINS NULL`;
+                } else {
+                    params[pname] = this.value;
+                    query = `${name} CONTAINS :${pname}`;
+                }
+            } else if (this.value !== null) {
+                params[pname] = this.value;
+                query = `${name} ${this.operator} :${pname}`;
+            } else {
+                query = `${name} IS NULL`;
+            }
         }
         if (this.negate) {
             query = `NOT (${query})`;
@@ -308,7 +317,7 @@ class SelectionQuery {
                     for (let [vProp, vValue] of Object.entries(value.v)) {
                         if (!(vValue instanceof Comparison) && !(vValue instanceof Clause)) {
                             if (vValue === null || typeof vValue !== 'object') {
-                                if (vValue instanceof 'string') {
+                                if (vValue instanceof String) {
                                     // without a model we need to manually cast values
                                     vValue = vValue.toLowerCase().trim();
                                     if (looksLikeRID(vValue, true)) {
