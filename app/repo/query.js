@@ -598,7 +598,7 @@ class SelectionQuery {
             }
         }
         if (this.skip != null) {
-            queryString = `${queryString} skip ${this.skip}`;
+            queryString = `${queryString} SKIP ${this.skip}`;
         }
         return {query: queryString, params};
     }

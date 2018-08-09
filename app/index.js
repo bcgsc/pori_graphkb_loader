@@ -13,15 +13,18 @@ const HTTP_STATUS = require('http-status-codes');
 const swaggerUi = require('swagger-ui-express');
 
 const auth = require('./middleware/auth');
-const {generateSwaggerSpec} = require('./routes/openapi');
 const {
     checkToken, generateToken, catsToken
 } = require('./middleware/auth'); // WARNING: middleware fails if function is not imported by itself
 
 const {VERBOSE} = require('./repo/util');
-const {parse} = require('./parser/variant');
 const {loadSchema} = require('./repo/schema');
-const addRoutes = require('./routes');
+
+const {parse} = require('./parser/variant');
+
+const {generateSwaggerSpec} = require('./routes/openapi');
+const {addResourceRoutes} = require('./routes/util');
+const {addStatement} = require('./routes/statement');
 
 
 const logRequests = (req, res, next) => {
@@ -162,8 +165,14 @@ class AppServer {
         if (!auth.keys.private) {
             auth.keys.private = fs.readFileSync(this.conf.private_key);
         }
-        // add the db connection reference to the routes
-        addRoutes({router: this.router, db, schema});
+        // simple routes
+        for (const model of Object.values(schema)) {
+            addResourceRoutes({
+                router: this.router, model, db, schema
+            });
+        }
+        addStatement({router: this.router, schema, db}); // adds POST route
+
         if (VERBOSE) {
             console.log('Adding 404 capture');
         }

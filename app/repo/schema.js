@@ -60,20 +60,38 @@ const SCHEMA_DEFN = {
                 default: timeStampNow
             },
             {
-                name: 'deletedAt', type: 'long', description: 'The timestamp at which the record was deleted', nullable: false
+                name: 'deletedAt',
+                type: 'long',
+                description: 'The timestamp at which the record was deleted',
+                nullable: false
             },
             {
-                name: 'createdBy', type: 'link', mandatory: true, nullable: false, linkedClass: 'User', description: 'The user who created the record'
+                name: 'createdBy',
+                type: 'link',
+                mandatory: true,
+                nullable: false,
+                linkedClass: 'User',
+                description: 'The user who created the record'
             },
             {
-                name: 'deletedBy', type: 'link', linkedClass: 'User', nullable: false, description: 'The user who deleted the record'
+                name: 'deletedBy',
+                type: 'link',
+                linkedClass: 'User',
+                nullable: false,
+                description: 'The user who deleted the record'
             },
             {
-                name: 'history', type: 'link', nullable: false, description: 'Link to the previous version of this record'
+                name: 'history',
+                type: 'link',
+                nullable: false,
+                description: 'Link to the previous version of this record'
             },
             {name: 'comment', type: 'string'},
             {
-                name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup', description: 'user groups allowed to interact with this record'
+                name: 'groupRestrictions',
+                type: 'linkset',
+                linkedClass: 'UserGroup',
+                description: 'user groups allowed to interact with this record'
             }
         ]
     },
@@ -157,10 +175,16 @@ const SCHEMA_DEFN = {
             },
             {name: '@class', description: 'The database class this record belongs to'},
             {
-                name: 'name', mandatory: true, nullable: false, description: 'The username'
+                name: 'name',
+                mandatory: true,
+                nullable: false,
+                description: 'The username'
             },
             {
-                name: 'groups', type: 'linkset', linkedClass: 'UserGroup', description: 'Groups this user belongs to. Defines permissions for the user'
+                name: 'groups',
+                type: 'linkset',
+                linkedClass: 'UserGroup',
+                description: 'Groups this user belongs to. Defines permissions for the user'
             },
             {
                 name: 'uuid',
@@ -482,7 +506,7 @@ const SCHEMA_DEFN = {
         ]
     },
     Statement: {
-        expose: {QUERY: true, GET: true}, // will have special post/delete method
+        expose: {POST: false}, // will have special post method
         inherits: ['V'],
         properties: [
             {
@@ -932,9 +956,16 @@ class ClassModel {
                 class: name
             },
             {
-                name: `${name}.full`,
+                name: `${name}.nameFull`,
                 type: 'FULLTEXT_HASH_INDEX',
                 properties: ['name'],
+                class: name,
+                metadata: {separatorChars: INDEX_SEP_CHARS}
+            },
+            {
+                name: `${name}.sourceIdFull`,
+                type: 'FULLTEXT_HASH_INDEX',
+                properties: ['sourceId'],
                 class: name,
                 metadata: {separatorChars: INDEX_SEP_CHARS}
             }

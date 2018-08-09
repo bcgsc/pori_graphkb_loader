@@ -78,6 +78,8 @@ Query all diseases created by the user with the username *'blargh'*
 \`\`\`
 /api/diseases?createdBy[name]=blargh
 \`\`\`
+
+### Query related edges
 `;
 
 const STUB = {
@@ -90,7 +92,7 @@ const STUB = {
     paths: {
         '/parser/variant': {
             post: {
-                summary: 'Given a variant description, check the formatting and return the pasred result where possible',
+                summary: 'Given a variant description, check the formatting and return the parsed result where possible',
                 tags: ['Parser'],
                 parameters: [
                     {$ref: '#/components/parameters/Content-Type'},
@@ -141,6 +143,7 @@ const STUB = {
                     content: {
                         'application/json': {
                             schema: {
+                                allOf: [{$ref: '#/components/schemas/Statement'}],
                                 type: 'object',
                                 required: ['impliedBy', 'appliesTo', 'relevance', 'supportedBy'],
                                 properties: {
@@ -153,19 +156,47 @@ const STUB = {
                                         type: 'array',
                                         items: {$ref: '#/components/schemas/PutativeEdge'},
                                         description: 'A list of putative edges to be created'
-                                    },
-                                    appliesTo: {
-                                        $ref: '#/components/schemas/@rid',
-                                        description: 'The record ID of the Ontology term this statement applies to'
-                                    },
-                                    relevance: {
-                                        description: 'The record ID of the Vocabulary term used to give meaning/relevance to this statement',
-                                        $ref: '#/components/schemas/@rid'
                                     }
                                 }
                             }
                         }
                     }
+                },
+                responses: {
+                    201: {
+                        description: 'A new record was created',
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        result: {$ref: '#/components/schemas/Statement'}
+                                    }
+                                }
+                            }
+                        },
+                        links: {
+                            getById: {
+                                parameters: {rid: '$response.body#/result.@rid'},
+                                operationId: 'get_statements__rid_',
+                                description: 'The `@rid` value returned in the response can be used as the `rid` parameter in [GET `/statements/{rid}`](.#/Statement/get_statements__rid_) requests'
+                            },
+                            patchById: {
+                                parameters: {rid: '$response.body#/result.@rid'},
+                                operationId: 'patch_statements__rid_',
+                                description: 'The `@rid` value returned in the resnse can be used as the `rid` parameter in [PATCH `/statements/{rid}`](.#/Statement/patch_statements__rid_) requests'
+                            },
+                            deleteById: {
+                                parameters: {rid: '$response.body#/result.@rid'},
+                                operationId: 'delete_statements__rid_',
+                                description: 'The `@rid` value returned in the response can be used as the `rid` parameter in [DELETE `/statements/{rid}`](.#/Statement/delete_statements__rid_) requests'
+                            }
+                        }
+                    },
+                    401: {$ref: '#/components/responses/NotAuthorized'},
+                    400: {$ref: '#/components/responses/BadInput'},
+                    409: {$ref: '#/components/responses/RecordExistsError'},
+                    403: {$ref: '#/components/responses/Forbidden'}
                 }
             }
         },
@@ -623,6 +654,46 @@ const BASIC_HEADER_PARAMS = {
  * Given a class model, generate the swagger documentation for the POST route
  */
 const describePost = (model) => {
+    const links = {};
+    if (model.expose.GET) {
+        links.getById = {
+            parameters: {rid: '$response.body#/result.@rid'},
+            operationId: `get_${model.routeName.slice(1)}__rid_`,
+            description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`${
+                model.routeName
+            }/{rid}\`](.#/${
+                model.name
+            }/get_${
+                model.routeName.slice(1)
+            }__rid_) requests`
+        };
+    }
+    if (model.expose.PATCH) {
+        links.patchById = {
+            parameters: {rid: '$response.body#/result.@rid'},
+            operationId: `patch_${model.routeName.slice(1)}__rid_`,
+            description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`${
+                model.routeName
+            }/{rid}\`](.#/${
+                model.name
+            }/patch_${
+                model.routeName.slice(1)
+            }__rid_) requests`
+        };
+    }
+    if (model.expose.DELETE) {
+        links.deleteById = {
+            parameters: {rid: '$response.body#/result.@rid'},
+            operationId: `delete_${model.routeName.slice(1)}__rid_`,
+            description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`${
+                model.routeName
+            }/{rid}\`](.#/${
+                model.name
+            }/delete_${
+                model.routeName.slice(1)
+            }__rid_) requests`
+        };
+    }
     const post = {
         summary: `create a new ${model.name} record`,
         tags: [model.name],
@@ -644,23 +715,7 @@ const describePost = (model) => {
                         }
                     }
                 },
-                links: {
-                    getById: {
-                        parameters: {rid: '$response.body#/result.@rid'},
-                        operationId: `get${model.routeName}__rid_`,
-                        description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`${model.routeName}/{rid}\`](.#/${model.name}/get${model.routeName}__rid_) requests`
-                    },
-                    patchById: {
-                        parameters: {rid: '$response.body#/result.@rid'},
-                        operationId: `get${model.routeName}__rid_`,
-                        description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`${model.routeName}/{rid}\`](.#/${model.name}/patch${model.routeName}__rid_) requests`
-                    },
-                    deleteById: {
-                        parameters: {rid: '$response.body#/result.@rid'},
-                        operationId: `delete${model.routeName}__rid_`,
-                        description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`${model.routeName}/{rid}\`](.#/${model.name}/delete${model.routeName}__rid_) requests`
-                    }
-                }
+                links
             },
             401: {$ref: '#/components/responses/NotAuthorized'},
             400: {$ref: '#/components/responses/BadInput'},
@@ -699,32 +754,55 @@ const describeGet = (model) => {
                             }
                         }
                     }
-                }
+                },
+                links: {}
             },
             401: {$ref: '#/components/responses/NotAuthorized'},
             400: {$ref: '#/components/responses/BadInput'},
             403: {$ref: '#/components/responses/Forbidden'}
         }
     };
-    if (!model.isAbstract) {
-        get.responses[200].links = {
-            getById: {
-                parameters: {rid: '$response.body#/result[].@rid'},
-                operationId: `get${model.routeName}__rid_`,
-                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`${model.routeName}/{rid}\`](.#/${model.name}/get${model.routeName}__rid_) requests`
-            },
-            patchById: {
-                parameters: {rid: '$response.body#/result[].@rid'},
-                operationId: `patch${model.routeName}__rid_`,
-                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`${model.routeName}/{rid}\`](.#/${model.name}/patch${model.routeName}__rid_) requests`
-            },
-            deleteById: {
-                parameters: {rid: '$response.body#/result[].@rid'},
-                operationId: `delete${model.routeName}__rid_`,
-                description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`${model.routeName}/{rid}\`](.#/${model.name}/delete${model.routeName}__rid_) requests`
-            }
+
+    if (model.expose.GET) {
+        get.responses[200].links.getById = {
+            parameters: {rid: '$response.body#/result[].@rid'},
+            operationId: `get_${model.routeName.slice(1)}__rid_`,
+            description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [GET \`${
+                model.routeName
+            }/{rid}\`](.#/${
+                model.name
+            }/get_${
+                model.routeName.slice(1)
+            }__rid_) requests`
         };
     }
+    if (model.expose.PATCH) {
+        get.responses[200].links.patchById = {
+            parameters: {rid: '$response.body#/result[].@rid'},
+            operationId: `patch_${model.routeName.slice(1)}__rid_`,
+            description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [PATCH \`${
+                model.routeName
+            }/{rid}\`](.#/${
+                model.name
+            }/patch_${
+                model.routeName.slice(1)
+            }__rid_) requests`
+        };
+    }
+    if (model.expose.DELETE) {
+        get.responses[200].links.deleteById = {
+            parameters: {rid: '$response.body#/result[].@rid'},
+            operationId: `delete_${model.routeName.slice(1)}__rid_`,
+            description: `The \`@rid\` value returned in the response can be used as the \`rid\` parameter in [DELETE \`${
+                model.routeName
+            }/{rid}\`](.#/${
+                model.name
+            }/delete_${
+                model.routeName.slice(1)
+            }__rid_) requests`
+        };
+    }
+
     for (const prop of Object.values(model.properties)) {
         const isList = !!/(list|set)/g.exec(prop.type);
         const isLink = !!prop.type.includes('link');
@@ -826,7 +904,6 @@ const generateSwaggerSpec = (schema, metadata) => {
 
     // simple routes
     for (const model of Object.values(schema)) {
-        console.log(model.name, model.expose);
         // create the model in the schemas section
         docs.components.schemas[model.name] = {
             type: 'object',
