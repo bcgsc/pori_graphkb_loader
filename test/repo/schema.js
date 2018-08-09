@@ -1,7 +1,7 @@
 const {expect} = require('chai');
 const {types} = require('orientjs');
 
-const {ClassModel, splitSchemaClassLevels} = require('./../../app/repo/schema');
+const {ClassModel, splitSchemaClassLevels, Property} = require('./../../app/repo/schema');
 
 
 const OJS_TYPES = {};
@@ -14,11 +14,19 @@ for (const num of Object.keys(types)) {
 describe('splitSchemaClassLevels', () => {
     it('splits dependency chain', () => {
         const schema = {
-            grandparent: {name: 'grandparent'},
-            parent: {inherits: ['grandparent'], name: 'parent', properties: [{linkedClass: 'other'}]},
-            child: {inherits: ['grandparent'], properties: [{linkedClass: 'parent'}], name: 'child'},
-            other: {name: 'other'}
+            grandparent: new ClassModel({name: 'grandparent'}),
+            other: new ClassModel({name: 'other'})
         };
+        schema.parent = new ClassModel({
+            inherits: [schema.grandparent],
+            name: 'parent',
+            properties: {prop1: new Property({linkedClass: schema.other, name: 'prop1'})}
+        });
+        schema.child = new ClassModel({
+            inherits: [schema.grandparent],
+            properties: {child: new Property({linkedClass: schema.parent, name: 'child'})}
+        });
+        schema.grandparent._subclasses = [schema.parent, schema.child];
         const levels = splitSchemaClassLevels(schema);
         expect(levels).to.have.property('length', 3);
     });
@@ -26,66 +34,44 @@ describe('splitSchemaClassLevels', () => {
 
 
 describe('ClassModel', () => {
-    describe('parseOClass', () => {
-        it('parses non-abstract class', () => {
-            const parsed = ClassModel.parseOClass({
-                name: 'Pathway',
-                shortName: null,
-                defaultClusterId: 65,
-                properties: [],
-                superClass: 'Ontology'
-            }, {});
-            expect(parsed).to.have.property('name', 'Pathway');
-            expect(parsed).to.have.property('isAbstract', false);
-            expect(parsed.required).to.eql([]);
-            expect(parsed.optional).to.eql([]);
-            expect(parsed.defaults).to.eql({});
-            expect(parsed.inherits).to.eql([]);
+    describe('compareToDbClass', () => {
+        const model = new ClassModel({
+            name: 'Pathway',
+            inherits: [{name: 'Ontology'}],
+            properties: {prop1: new Property({name: 'prop1', type: 'string'})}
         });
-        it('parses abstract class', () => {
-            const parsed = ClassModel.parseOClass({
-                name: 'name',
-                shortName: null,
-                defaultClusterId: -1,
-                properties: [{name: 'prop1', mandatory: true, type: OJS_TYPES.any}],
-                superClass: null
-            }, {properties: [{type: 'any', name: 'prop1'}]});
-            expect(parsed).to.have.property('name', 'name');
-            expect(parsed).to.have.property('isAbstract', true);
-            expect(parsed.required).to.eql(['prop1']);
-            expect(parsed.optional).to.eql([]);
-            expect(parsed.defaults).to.eql({});
-            expect(parsed.inherits).to.eql([]);
+        it('error on abstract mismatch', () => {
+            expect(() => {
+                model.compareToDbClass({
+                    name: 'Pathway',
+                    shortName: null,
+                    defaultClusterId: -1,
+                    properties: [{name: 'prop1', type: OJS_TYPES.string}],
+                    superClass: 'Ontology'
+                }, {});
+            }).to.throw('does not match the database definition');
         });
-        it('parses optional properties', () => {
-            const parsed = ClassModel.parseOClass({
-                name: 'name',
-                shortName: null,
-                properties: [{name: 'prop1', mandatory: false, type: OJS_TYPES.any}],
-                superClass: null
-            }, {properties: [{type: 'any', name: 'prop1'}]});
-            expect(parsed.optional).to.eql(['prop1']);
+        it('error on undefined property', () => {
+            expect(() => {
+                model.compareToDbClass({
+                    name: 'Pathway',
+                    shortName: null,
+                    defaultClusterId: 65,
+                    properties: [{name: 'prop2'}],
+                    superClass: 'Ontology'
+                }, {});
+            }).to.throw('failed to find the property');
         });
-        it('parses default values', () => {
-            const parsed = ClassModel.parseOClass({
-                name: 'name',
-                shortName: null,
-                properties: [{
-                    name: 'prop1', mandatory: false, defaultValue: 1, type: OJS_TYPES.integer
-                }],
-                superClass: null
-            }, {properties: [{type: 'integer', name: 'prop1'}]});
-            expect(parsed.defaults).to.have.property('prop1');
-        });
-        it('parses integer cast', () => {
-            const parsed = ClassModel.parseOClass({
-                name: 'name',
-                shortName: null,
-                properties: [{
-                    name: 'prop1', mandatory: false, defaultValue: 1, type: OJS_TYPES.string
-                }],
-                superClass: null
-            }, {properties: [{type: 'string', name: 'prop1'}]});
+        it('error on wrong property type', () => {
+            expect(() => {
+                model.compareToDbClass({
+                    name: 'Pathway',
+                    shortName: null,
+                    defaultClusterId: 65,
+                    properties: [{name: 'prop1', type: OJS_TYPES.integer}],
+                    superClass: 'Ontology'
+                }, {});
+            }).to.throw('does not match the type');
         });
     });
     describe('routeName', () => {
@@ -122,14 +108,34 @@ describe('ClassModel', () => {
             expect(grandparent.subClassModel('child')).to.eql(child);
         });
     });
+    describe('queryProperties', () => {
+        const child = new ClassModel({
+            name: 'child',
+            properties: {childProp: {name: 'childProp'}}
+        });
+        const parent = new ClassModel({name: 'parent', subclasses: [child], properties: {}});
+        const grandparent = new ClassModel({
+            name: 'grandparent',
+            subclasses: [parent],
+            properties: {grandProp: {name: 'grandProp'}}
+        });
+        it('fetches grandfathered properties', () => {
+            const queryProp = grandparent.queryProperties;
+            expect(queryProp).to.have.property('childProp');
+            expect(queryProp).to.have.property('grandProp');
+        });
+        it('ok when no subclasses', () => {
+            const queryProp = child.queryProperties;
+            expect(Object.keys(queryProp)).to.eql(['childProp']);
+        });
+    });
     describe('inheritance', () => {
         const person = new ClassModel({
             name: 'person',
             properties: {
-                gender: {name: 'gender'},
+                gender: {name: 'gender', default: 'not specified'},
                 name: {name: 'name', mandatory: true}
-            },
-            defaults: {gender: () => 'not specified'}
+            }
         });
         const child = new ClassModel({
             name: 'child',
@@ -153,10 +159,6 @@ describe('ClassModel', () => {
             expect(person.inherits).to.eql([]);
             expect(child.inherits).to.eql([person.name]);
         });
-        it('child defaults returns person attr', () => {
-            expect(person.defaults).to.have.property('gender');
-            expect(child.defaults).to.have.property('gender');
-        });
         it('is not an edge', () => {
             expect(person.isEdge).to.be.false;
             expect(child.isEdge).to.be.true;
@@ -169,12 +171,15 @@ describe('ClassModel', () => {
             model = new ClassModel({
                 name: 'example',
                 properties: {
-                    req1: {name: 'req1', mandatory: true, cast: x => x.toLowerCase()},
-                    req2: {name: 'req2', mandatory: true},
-                    opt1: {name: 'opt1'},
-                    opt2: {name: 'opt2', choices: [2, 3], notNull: false}
-                },
-                defaults: {req2: () => 1, opt2: () => 2}
+                    req1: new Property({name: 'req1', mandatory: true, cast: x => x.toLowerCase()}),
+                    req2: new Property({
+                        name: 'req2', mandatory: true, default: 1, type: 'integer'
+                    }),
+                    opt1: new Property({name: 'opt1'}),
+                    opt2: new Property({
+                        name: 'opt2', choices: [2, 3], nullable: true, default: 2, type: 'integer'
+                    })
+                }
             });
         });
         it('errors on un-cast-able input', () => {
@@ -206,7 +211,11 @@ describe('ClassModel', () => {
             model = new ClassModel({
                 name: 'example',
                 properties: {
-                    thing: {name: 'thing', type: 'embeddedset', cast: x => x.toLowerCase().trim()}
+                    thing: new Property({
+                        name: 'thing',
+                        type: 'embeddedset',
+                        cast: x => x.toLowerCase().trim()
+                    })
                 }
             });
             const record = model.formatRecord({
@@ -219,7 +228,11 @@ describe('ClassModel', () => {
             model = new ClassModel({
                 name: 'example',
                 properties: {
-                    thing: {name: 'thing', type: 'embeddedset', cast: x => x.toLowerCase().trim()}
+                    thing: new Property({
+                        name: 'thing',
+                        type: 'embeddedset',
+                        cast: x => x.toLowerCase().trim()
+                    })
                 }
             });
             const childModel = new ClassModel({
@@ -240,20 +253,20 @@ describe('ClassModel', () => {
             }).to.throw();
 
             const record = model.formatRecord({
-                req1: 'term1', req2: '1'
+                req1: 'term1', req2: '4'
             }, {dropExtra: false, addDefaults: false});
             expect(record).to.have.property('req1', 'term1');
-            expect(record).to.have.property('req2', '1');
+            expect(record).to.have.property('req2', 4);
             expect(record).to.not.have.property('opt2');
             expect(record).to.not.have.property('opt1');
         });
         it('allows optional parameters', () => {
             const record = model.formatRecord({
-                req1: 'term1', req2: '1', opt1: '1'
+                req1: 'term1', req2: '2', opt1: '2'
             }, {dropExtra: false, addDefaults: false});
             expect(record).to.have.property('req1', 'term1');
-            expect(record).to.have.property('req2', '1');
-            expect(record).to.have.property('opt1', '1');
+            expect(record).to.have.property('req2', 2);
+            expect(record).to.have.property('opt1', '2');
             expect(record).to.not.have.property('opt2');
         });
         it('error on invalid enum choice', () => {

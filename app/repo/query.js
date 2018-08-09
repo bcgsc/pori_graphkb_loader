@@ -189,7 +189,9 @@ class Comparison {
         this.operator = operator;
         this.negate = negate;
         if (!['CONTAINSTEXT', '=', 'CONTAINS', 'CONTAINSALL'].includes(operator)) {
-            throw new AttributeError('Invalid operator. Only =, CONTAINSTEXT, CONTAINS, CONTAINSALL are supported operators');
+            throw new AttributeError(
+                'Invalid operator. Only =, CONTAINS(|TEXT|ALL)are supported operators'
+            );
         }
     }
 
@@ -258,159 +260,244 @@ class SelectionQuery {
      * @param {Object} [inputQuery={}] object of property names linked to values, comparisons, or clauses
      *
      */
-    constructor(schema, model, inputQuery = {}, opt = {}) {
-        this.schema = schema;
+    constructor(model, conditions, opt = {}) {
         this.model = model;
-        this.conditions = {};
-        this.follow = [];
+        this.direction = opt.direction || 'both';
+        this.conditions = conditions; // conditions that make up the terms of the query
+        this.follow = opt.follow || [];
         this.skip = opt.skip
             ? opt.skip
             : null;
         this.activeOnly = opt.activeOnly === undefined
             ? true
             : opt.activeOnly;
-        this.properties = Object.assign({}, model.properties);
-        this.returnProperties = inputQuery.returnProperties
-            ? inputQuery.returnProperties
+        this.properties = model.queryProperties; // includes subclass properties
+        this.returnProperties = opt.returnProperties
+            ? opt.returnProperties
             : null;
-        const {propertyNames} = this.model;
-        // get the names of the edge classes for checking queries on edge 'properties'
-        const edgeClasses = {};
-        for (const mod of Object.values(schema)) {
-            if (mod.isEdge) {
-                edgeClasses[mod.name.toLowerCase()] = mod;
-            }
-        }
+
         // can only return properties which belong to this class
         for (const propName of this.returnProperties || []) {
-            if (!propertyNames.includes(propName)) {
+            if (this.properties[propName] === undefined) {
                 throw new AttributeError(`invalid return property '${propName}' is not a valid member of class '${this.model.name}'`);
             }
         }
+    }
 
-        if (this.activeOnly) {
-            this.conditions.deletedAt = new Comparison(null);
+    /**
+     * Given some node class, create a SelectionQuery to build select statements to find items
+     * in the db
+     *
+     * @param {Object.<string,ClassModel>} schema the set of models avaiable for build queries from
+     * @param
+     */
+    static parseQuery(schema, currModel, query = {}, opt = {}) {
+        opt = Object.assign({
+            skip: null,
+            activeOnly: true,
+            returnProperties: null || query.returnProperties
+        }, opt);
+        const conditions = {};
+        const properties = currModel.queryProperties;
+        const schemaMap = {};
+        for (const model of Object.values(schema)) {
+            schemaMap[model.name.toLowerCase()] = model;
         }
-        this.cast = Object.assign({}, this.model.cast);
+        // can only return properties which belong to this class
+        for (const propName of query.returnProperties || []) {
+            if (properties[propName] === undefined) {
+                throw new AttributeError(
+                    `invalid return property '${propName}' is not a valid member of class '${currModel.name}'`
+                );
+            }
+        }
+
+        if (opt.activeOnly) {
+            conditions.deletedAt = new Comparison(null);
+        }
         // split the original query into subqueries where appropriate
-        for (let [name, value] of Object.entries(inputQuery)) {
+        for (let [name, value] of Object.entries(query)) {
             if (SPECIAL_QUERY_ARGS.has(name) || name === 'deletedAt') {
                 continue;
             }
-            if (edgeClasses[name.toLowerCase()] !== undefined) {
-                this.parseEdgeConditions(edgeClasses[name.toLowerCase()], name, value);
-            } else if (this.properties[name] === undefined) {
-                throw new AttributeError(`unexpected attribute '${name}' is not defined on this class model '${this.model.name}'`);
-            } else {
-                if (!(value instanceof Comparison || value instanceof Clause || value instanceof SelectionQuery)) {
-                    if (typeof value === 'object' && value !== null && !(value instanceof Array)) {
-                        // subquery
-                        if (this.properties[name].linkedModel) {
-                            let subQueryModel = this.properties[name].linkedModel;
-                            if (value['@class'] && value['@class'].value !== subQueryModel.name) {
-                                subQueryModel = subQueryModel.subClassModel(value['@class'].value);
-                            }
-                            const subquery = new SelectionQuery(schema, subQueryModel, value, {activeOnly: this.activeOnly});
-                            // can this subquery be flattened?
-                            try {
-                                const result = subquery.flattenAs(name);
-                                Object.assign(this.conditions, result.conditions);
-                                Object.assign(this.properties, result.properties);
-                            } catch (err) {
-                                this.conditions[name] = subquery;
-                            }
-                            continue;
-                        } else {
-                            throw new AttributeError(`cannot subquery the non-linked attribute '${name}'`);
-                        }
-                    }
-                    value = new Comparison(value); // default to basic equals
+            let model; // model associated with this parameter (for potential subqueries)
+            const prop = properties[name];
+            if (prop === undefined) { // not a property of the current class
+                if (schemaMap[name.toLowerCase()] === undefined) {
+                    throw new AttributeError(
+                        `unexpected attribute '${name}' is not defined on this class model '${currModel.name}'`
+                    );
+                } else {
+                    model = schemaMap[name.toLowerCase()];
                 }
-                this.conditions[name] = value;
+            } else if (prop.linkedClass) {
+                model = prop.linkedClass;
+            }
+            if (model && model.isEdge) {
+                const {
+                    conditions: eConditions,
+                    properties: eProperties
+                } = SelectionQuery.parseRelatedEdgeQuery(
+                    schema, model, value, opt
+                );
+                Object.assign(conditions, eConditions);
+                Object.assign(properties, eProperties);
+            } else {
+                if (!(value instanceof Comparison
+                    || value instanceof Clause
+                    || value instanceof this
+                )) {
+                    if (typeof value === 'object'
+                        && value !== null
+                        && !(value instanceof Array)
+                    ) {
+                        // subquery
+                        if (!properties[name].linkedClass) {
+                            throw new AttributeError(
+                                `cannot subquery non-link properties (${currModel.name}.${name})`
+                            );
+                        } else if (properties[name].linkedClass.isEdge) {
+                            throw new AttributeError(
+                                `cannot subquery linked edges (${currModel.name}.${name})`
+                            );
+                        }
+                        value = this.parseQuery(
+                            schema,
+                            properties[name].linkedClass,
+                            value,
+                            opt
+                        );
+                    } else {
+                        value = new Comparison(value, opt.defaultOperator); // default to basic equals
+                    }
+                }
+                // Any subquery without a follow statement can be flattened
+                if (value instanceof SelectionQuery && value.follow.length === 0) {
+                    const result = value.flattenAs(name);
+                    Object.assign(conditions, result.conditions);
+                    Object.assign(properties, result.properties);
+                } else {
+                    conditions[name] = value;
+                }
             }
         }
-        this.follow = Follow.parse(Object.assign({activeOnly: this.activeOnly}, inputQuery));
+        const follow = Follow.parse(Object.assign({activeOnly: opt.activeOnly}, query));
 
-        for (const [name, condition] of Object.entries(this.conditions)) {
-            const prop = this.properties[name];
-            if (prop && !(condition instanceof SelectionQuery)) {
+        // try casting all values and check that values satify enum contraints
+        for (const [name, condition] of Object.entries(conditions)) {
+            const prop = properties[name];
+            if (prop && !(condition instanceof this)) {
                 if (prop.cast) {
                     condition.applyCast(prop.cast);
                 }
                 if (prop.choices) {
                     if (!condition.validateEnum(prop.choices)) {
-                        throw new AttributeError(`The attribute ${name} violates the expected controlled vocabulary`);
+                        throw new AttributeError(
+                            `The attribute ${name} violates the expected controlled vocabulary`
+                        );
                     }
                 }
             }
         }
+        return new this(currModel, conditions, Object.assign({}, opt, {follow}));
     }
 
     /**
      * Given some value containing edge query properties, parse and format into valid
      * query conditions
      *
-     * @param {ClassModel} edgeModel the model for the type of edge being selected
+     * @param {ClassModel} currModel the model for the type of edge being selected
      * @param {string} name the attribute name
-     * @param {object} value the input query
+     * @param {object} query the input query
+     *
+     * @example
+     * > query.parseEdgeConditions(model, 'SupportedBy')
      */
-    parseEdgeConditions(edgeModel, name, value) {
-        const edgePropName = `${value.direction || 'both'}E('${name}')`;
-
-        if (value.size !== undefined) {
-            this.conditions[`${edgePropName}.size()`] = new Comparison(value.size);
+    static parseRelatedEdgeQuery(schema, currModel, query, opt = {}) {
+        if (query.ancestors !== undefined
+            || query.descendants !== undefined
+            || query.fuzzyMatch !== undefined
+        ) {
+            throw new AttributeError(
+                'Edge-based query cannot specify MATCH properties (ancestors, descendants, or fuzzyMatch)'
+            );
         }
-        if (value.v) {
-            let targetVertexName;
-            if (value.direction === 'out') {
-                targetVertexName = `${edgePropName}.inV()`;
-            } else if (value.direction === 'in') {
-                targetVertexName = `${edgePropName}.outV()`;
+        opt = Object.assign({
+            activeOnly: true
+        }, opt, {defaultOperator: 'CONTAINS'});
+        const conditions = {};
+        const properties = currModel.queryProperties;
+        const schemaMap = {};
+        for (const model of Object.values(schema)) {
+            schemaMap[model.name.toLowerCase()] = model;
+        }
+        const prefix = `${query.direction || 'both'}E('${currModel.name}')`;
+
+        if (opt.activeOnly) {
+            query.deletedAt = new Comparison(null, opt.defaultOperator);
+        }
+        if (query.size !== undefined) {
+            conditions[`${prefix}.size()`] = new Comparison(query.size);
+        }
+        // subquery based on the related node
+        if (query.v) {
+            let targetPrefix;
+            if (query.direction === 'out') {
+                targetPrefix = `${prefix}.inV()`;
+            } else if (query.direction === 'in') {
+                targetPrefix = `${prefix}.outV()`;
             } else {
-                targetVertexName = `${edgePropName}.bothV()`;
+                targetPrefix = `${prefix}.bothV()`;
             }
-            if (value.v instanceof Set || value.v instanceof Array) {
+            if (query.v instanceof Set || query.v instanceof Array) {
                 // must be an array of RIDs
-                targetVertexName = `${targetVertexName}.asSet()`;
-                this.conditions[targetVertexName] = new Comparison(
-                    Array.from(value.v, castToRID)
+                targetPrefix = `${targetPrefix}.asSet()`;
+                conditions[targetPrefix] = new Comparison(
+                    Array.from(query.v, castToRID)
                 );
             } else {
-                for (let [vProp, vValue] of Object.entries(value.v)) {
-                    if (!(vValue instanceof Comparison) && !(vValue instanceof Clause)) {
-                        if (vValue !== null && typeof vValue === 'object') {
-                            throw new AttributeError(`cannot nest queries after an edge-based selection: ${name}.v.${vProp}`);
-                        }
-                        if (vValue instanceof String) {
-                            // without a model we need to manually cast values
-                            vValue = vValue.toLowerCase().trim();
-                            if (looksLikeRID(vValue, true)) {
-                                vValue = castToRID(value);
-                            }
-                        }
-                        vValue = new Comparison(vValue, 'CONTAINS');
-                    }
-                    this.conditions[`${targetVertexName}.${vProp}.asSet()`] = vValue;
+                const subqModel = schema[query.v['@class']] || schema.V;
+                if (subqModel === undefined) {
+                    throw new AttributeError(
+                        'Cannot create a general subquery, schema does not contain the general vertex description'
+                    );
+                }
+                let subquery = this.parseQuery(schema, subqModel, query.v, opt);
+                if (subquery.follow.length === 0) {
+                    const result = subquery.flattenAs(targetPrefix);
+                    Object.assign(conditions, result.conditions);
+                    Object.assign(properties, result.properties);
+                } else {
+                    // default operator should be = for a subquery b/c it does not have to account for multiplcity
+                    subquery = this.parseQuery(
+                        schema,
+                        subqModel,
+                        query.v,
+                        Object.assign({}, opt, {defaultOperator: '='})
+                    );
+                    conditions[targetPrefix] = subquery;
                 }
             }
         }
-        // now cast the edge attribute values themselves
-        const edgeProps = _.omit(value, ['v', 'direction', 'size']);
+        // now cast the edge attribute querys themselves
+        const edgeProps = _.omit(query, ['v', 'direction', 'size']);
         if (Object.keys(edgeProps).length) {
-            const subquery = new SelectionQuery(
-                this.schema,
-                edgeModel, _.omit(value, ['v', 'direction', 'size']),
-                {activeOnly: this.activeOnly}
+            const subquery = this.parseQuery(
+                schema,
+                currModel,
+                edgeProps,
+                opt
             );
-            // can this subquery be flattened?
-            try {
-                const result = subquery.flattenAs(edgePropName);
-                Object.assign(this.conditions, result.conditions);
-                Object.assign(this.properties, result.properties);
-            } catch (err) {
-                throw new AttributeError('edge subqueries cannot contain follow or fuzzy matching');
+            // Any subquery without a follow statement can be flattened
+            if (subquery.follow.length === 0) {
+                const result = subquery.flattenAs(prefix);
+                Object.assign(conditions, result.conditions);
+                Object.assign(properties, result.properties);
+            } else {
+                throw new AttributeError('Cannot use MATCH QUERY properties for edge queries');
             }
         }
+        return {conditions, properties};
     }
 
     /**
@@ -418,23 +505,20 @@ class SelectionQuery {
      * parent query
      */
     flattenAs(asProp) {
-        if (this.follow.length > 0) {
-            throw new AttributeError('cannot flatten a selection query with a non-zero follow statment');
-        }
-        const result = {
-            properties: {}, conditions: {}
-        };
+        const properties = {};
+        const conditions = {};
+
         for (const [name, prop] of Object.entries(this.conditions)) {
             const combinedName = `${asProp}.${name}`;
-            result.properties[combinedName] = this.properties[name];
-            result.conditions[combinedName] = prop;
+            properties[combinedName] = this.properties[name];
+            conditions[combinedName] = prop;
         }
-        return result;
+        return {conditions, properties};
     }
 
     /**
      * @param {string} name name of the parameter
-     * @param {Clause|Comparison} value possible value(s)
+     * @param {Clause|Comparison} query possible query(s)
      * @param {int} [paramIndex=0] the index to use for naming parameters
      *
      * @example
@@ -446,26 +530,15 @@ class SelectionQuery {
      *  {query: 'thing = :param0', params: {param0: 2}}
      */
     conditionClause(name, value, paramIndex = 0) {
-        let property = this.properties[name];
-        if (!property) {
-            property = {type: 'null'};
+        let prop = this.properties[name];
+        if (!prop) {
+            prop = {type: 'null'};
         }
 
-        let isList = false;
-        if (/^(embedded|link)(list|set|map|bag)$/.exec(property.type)) {
-            isList = true;
-        }
-
-        const {query, params} = value.toString(name, paramIndex, isList);
-        if (property.type.includes('link')) {
+        const {query, params} = value.toString(name, paramIndex, prop.iterable);
+        if (prop.cast) {
             for (const pname of Object.keys(params)) {
-                if (params[pname] instanceof RID) {
-                    continue;
-                } else if (params[pname] !== null && !looksLikeRID(params[pname])) {
-                    throw new AttributeError(`'${name}' expects an RID or null but saw '${params[pname]}'`);
-                } else if (params[pname] !== null) {
-                    params[pname] = new RID(`#${params[pname].replace(/^#/, '')}`);
-                }
+                params[pname] = prop.cast(params[pname]);
             }
         }
         return {query, params};

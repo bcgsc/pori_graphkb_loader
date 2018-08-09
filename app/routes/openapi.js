@@ -826,6 +826,7 @@ const generateSwaggerSpec = (schema, metadata) => {
 
     // simple routes
     for (const model of Object.values(schema)) {
+        console.log(model.name, model.expose);
         // create the model in the schemas section
         docs.components.schemas[model.name] = {
             type: 'object',
@@ -857,7 +858,7 @@ const generateSwaggerSpec = (schema, metadata) => {
         for (const prop of Object.values(model.properties)) {
             const isList = !!/(list|set)/g.exec(prop.type);
 
-            if (prop.mandatory && !model.defaults[prop.name] && (!['deletedBy', 'createdBy'].includes(prop.name))) {
+            if (prop.mandatory && prop.default === undefined && prop.generateDefault === undefined) {
                 if (docs.components.schemas[model.name].required === undefined) {
                     docs.components.schemas[model.name].required = [];
                 }

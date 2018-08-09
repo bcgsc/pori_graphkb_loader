@@ -41,6 +41,11 @@ describe('schema', () => {
             console.log('finished DB setup');
         }
     });
+    describe('SelectionQuery', () => {
+        it('select statements related to a particular publication pmid');
+        // it('select statements related to a particular pmid', () => {
+        // select * from statement where outE('supportedBy').inV().asSet() in (select @rid from (select * from evidence where sourceId in ["23578175"]))
+    });
     beforeEach(async () => {
         // create the source
         doSource = await create(db, {
@@ -253,7 +258,9 @@ describe('schema', () => {
         await db.query('delete vertex v');
     });
     after(async () => {
-        await server.drop({name: emptyConf.db.name});
-        await server.close();
+        if (server) {
+            await server.drop({name: emptyConf.db.name});
+            await server.close();
+        }
     });
 });

@@ -33,25 +33,32 @@ const setUpEmptyDB = async (conf = emptyConf) => {
         console.log('creating the db', conf.db.name);
     }
     const db = await server.create({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
-    await db.query('alter database custom standardElementConstraints=false');
-    if (VERBOSE) {
-        console.log('create the schema');
+    try {
+        await db.query('alter database custom standardElementConstraints=false');
+        if (VERBOSE) {
+            console.log('create the schema');
+        }
+        await createSchema(db);
+        const schema = await loadSchema(db);
+        // create the admin user
+        if (VERBOSE) {
+            console.log('creating the admin user');
+        }
+        const [user] = (await createUser(db, {
+            schema, model: schema.User, userName: 'admin', groupNames: ['admin']
+        }));
+        if (VERBOSE) {
+            console.log('created the user:', user);
+        }
+        return {
+            server, db, schema, admin: user
+        };
+    } catch (err) {
+        // drop the new database
+        await server.drop({name: conf.db.name});
+        await server.close();
+        throw err;
     }
-    await createSchema(db);
-    const schema = await loadSchema(db);
-    // create the admin user
-    if (VERBOSE) {
-        console.log('creating the admin user');
-    }
-    const [user] = (await createUser(db, {
-        schema, model: schema.User, userName: 'admin', groupNames: ['admin']
-    }));
-    if (VERBOSE) {
-        console.log('created the user:', user);
-    }
-    return {
-        server, db, schema, admin: user
-    };
 };
 
 

@@ -515,7 +515,9 @@ describe('API', () => {
         });
     });
     after(async () => {
-        await server.drop({name: conf.db.name});
-        await server.close();
+        if (server) {
+            await server.drop({name: conf.db.name});
+            await server.close();
+        }
     });
 });

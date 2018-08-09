@@ -174,7 +174,7 @@ class AppServer {
         });
         // last catch any errors for undefined routes. all actual routes should be defined above
         this.app.use((req, res) => res.status(HTTP_STATUS.NOT_FOUND).json({
-            error: 'Not Found',
+            error: `Not Found: ${req.route}`,
             name: 'UrlNotFound',
             message: `The requested url does not exist: ${req.url}`,
             url: req.url,

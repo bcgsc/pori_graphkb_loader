@@ -8,6 +8,7 @@ const _ = require('lodash');
 const {RID, RIDBag} = require('orientjs');
 
 const {SelectionQuery} = require('./query');
+const {SCHEMA_DEFN} = require('./schema');
 const {
     AttributeError,
     MultipleRecordsFoundError,
@@ -171,32 +172,30 @@ const hasRecordAccess = (user, record) => {
  *
  * @param {object} db the orientjs database connection
  * @param {object} opt options
- * @param {ClassModel} opt.model the class model for User
  * @param {string} opt.userName the name of the new user
  * @param {string[]} opt.groupNames the list of group names for which to add the new user to
  */
 const createUser = async (db, opt) => {
     const {
-        schema, model, userName, groupNames
+        userName, groupNames
     } = opt;
     const userGroups = await db.select().from('UserGroup').all();
     const groupIds = Array.from(userGroups.filter(
         group => groupNames.includes(group.name)
     ), group => group['@rid']);
-
-    const record = model.formatRecord({
+    const record = SCHEMA_DEFN.User.formatRecord({
         name: userName,
         groups: groupIds,
         deletedAt: null
     }, {dropExtra: false, addDefaults: true});
-    await db.insert().into(model.name)
+    await db.insert().into(SCHEMA_DEFN.User.name)
         .set(record)
         .one();
     try {
         return await select(db, {
-            schema,
+            schema: SCHEMA_DEFN,
             where: {name: userName},
-            model,
+            model: SCHEMA_DEFN.User,
             exactlyN: 1,
             fetchPlan: 'groups:1'
         });
@@ -295,7 +294,6 @@ const getUserByName = async (db, username) => {
  * @param {Object} opt Selection options
  * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
  * @param {ClassModel} opt.model the current model to be selected from
- * @param {object.<string,ClassModel>} opt.schema the schema of all models
  * @param {string} [opt.fetchPlan='*:0'] key value mapping of class names to depths of edges to follow or '*' for any class
  * @param {Array} [opt.where=[]] the query requirements
  * @param {?number} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
@@ -313,9 +311,10 @@ const select = async (db, opt) => {
         activeOnly: true,
         exactlyN: null,
         limit: QUERY_LIMIT,
-        skip: 0
+        skip: 0,
+        schema: SCHEMA_DEFN
     }, opt.where, opt);
-    const query = new SelectionQuery(opt.schema, opt.model, opt.where || {}, opt);
+    const query = SelectionQuery.parseQuery(opt.schema, opt.model, opt.where || {}, opt);
     if (VERBOSE) {
         console.log('select query statement:',
             query.displayString(),
@@ -566,9 +565,10 @@ const deleteNodeTx = async (db, opt) => {
  */
 const modify = async (db, opt) => {
     const {
-        model, user, where, schema
+        model, user, where
     } = opt;
-    if (!schema || !where || !model || !user) {
+    const schema = opt.schema || SCHEMA_DEFN;
+    if (!where || !model || !user) {
         throw new AttributeError('missing required argument');
     }
     const changes = opt.changes === null

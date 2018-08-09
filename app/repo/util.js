@@ -39,6 +39,26 @@ const castToRID = (string) => {
 };
 
 
+const castString = x => x.toString().toLowerCase().trim();
+const castNullableString = x => (x === null
+    ? null
+    : x.toString().toLowerCase().trim());
+const castNullableLink = (string) => {
+    try {
+        if (string.toString().toLowerCase() === 'null') {
+            return null;
+        }
+    } catch (err) {}
+    return castToRID(string);
+};
+const castDecimalInteger = (string) => {
+    if (/^\d+$/.exec(string.toString().trim())) {
+        return parseInt(string, 10);
+    }
+    throw new AttributeError(`${string} is not a valid decimal integer`);
+};
+
+
 /**
  *
  * @param {string} rid the putative @rid value
@@ -83,5 +103,14 @@ const looksLikeRID = (rid, requireHash = false) => {
 const quoteWrap = string => `'${string}'`;
 
 module.exports = {
-    timeStampNow, castUUID, quoteWrap, looksLikeRID, castToRID, VERBOSE
+    castDecimalInteger,
+    castNullableLink,
+    castNullableString,
+    castString,
+    castToRID,
+    castUUID,
+    looksLikeRID,
+    quoteWrap,
+    timeStampNow,
+    VERBOSE
 };
