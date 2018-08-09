@@ -629,8 +629,170 @@ const update = async (db, opt) => {
 const remove = async (db, opt) => modify(db, Object.assign({}, opt, {changes: null}));
 
 
+/**
+ * Create statement record and its linking required edges. The array of edge objects should be an
+ * array of objects with a target property for the node connected to the statement and any other
+ * properties to add to the new edge
+ *
+ * @param {object} opt.record the content of the statement
+ * @param {Array} opt.record.impliedBy conditions which imply the current statement
+ * @param {Array} opt.record.supportedBy evidence used to support the statement
+ * @param {ClassModel} opt.model the statement class model
+ * @param {object} opt.user the user record
+ * @param {object} opt.schema the object mapping class names to models for all db classes
+ * @param {object} opt.db the database connection object
+ *
+ * @example
+ * > createStatement({record: {
+ *      impliedBy: [{target: '#33:0', comment: 'some comment on the edge'}],
+ *      supportedBy: [{target: '44:0'}],
+ *      relevance: '#45:1',
+ *      appliesTo: '#87:0'
+ *  } ...})
+ */
+const createStatement = async (opt) => {
+    const {
+        record, model, schema, user, db
+    } = opt;
+    const query = {
+        SupportedBy: {direction: 'out', v: new Set()},
+        Implies: {direction: 'in', v: new Set()}
+    };
+
+    let dependencies = [];
+    // ensure the RIDs look valid for the support
+    const edges = [];
+    for (const edge of record.supportedBy) {
+        if (edge.target === undefined) {
+            throw new AttributeError('expected supportedBy edge object to have target attribute');
+        }
+        let rid = edge.target;
+        delete edge.target;
+        try {
+            rid = castToRID(rid);
+        } catch (err) {
+            throw new AttributeError(`the supportedBy dependency does not look like a valid RID: ${rid}`);
+        }
+        dependencies.push(rid);
+        edges.push(Object.assign(edge, {'@class': 'SupportedBy', in: rid}));
+        query.SupportedBy.v.add(rid);
+    }
+    // ensure the RIDs look valid for the impliedBy
+    for (const edge of record.impliedBy) {
+        if (edge.target === undefined) {
+            throw new AttributeError('expected impliedBy edge object to have target attribute');
+        }
+        let rid = edge.target;
+        delete edge.target;
+        try {
+            rid = castToRID(rid);
+        } catch (err) {
+            throw new AttributeError(`the impliedBy dependency does not look like a valid RID: ${rid}`);
+        }
+        dependencies.push(rid);
+        edges.push(Object.assign(edge, {'@class': 'Implies', out: rid}));
+        query.Implies.v.add(rid);
+    }
+
+    if (record.appliesTo === undefined) {
+        throw new AttributeError('statement must have the appliesTo property');
+    }
+    try {
+        if (record.appliesTo !== null) {
+            record.appliesTo = castToRID(record.appliesTo);
+            query.appliesTo = record.appliesTo;
+            dependencies.push(record.appliesTo);
+        }
+    } catch (err) {
+        throw new AttributeError(
+            `statement appliesTo record ID does not look like a valid record ID: ${record.appliesTo}`
+        );
+    }
+    if (record.relevance === undefined) {
+        throw new AttributeError('statement must have the relevance property');
+    }
+    try {
+        record.relevance = castToRID(record.relevance);
+        query.relevance = record.relevance;
+        dependencies.push(record.relevance);
+    } catch (err) {
+        throw new AttributeError(
+            `statement relevance record ID does not look like a valid record ID: ${record.relevance}`
+        );
+    }
+
+    // check the DB to ensure all dependencies already exist (and are not deleted)
+    try {
+        // ensure that the dependency records are valid
+        dependencies = await db.record.get(dependencies).where({deletedAt: null});
+    } catch (err) {
+        throw new AttributeError({
+            message: 'error in retrieving one or more of the dependencies',
+            dependencies
+        });
+    }
+    const userRID = castToRID(user);
+    // try to select the statement to see if it exists
+    try {
+        const records = await select(db, {
+            where: query,
+            activeOnly: true,
+            model: schema.Statement,
+            schema,
+            fetchPlan: '*:2'
+        });
+        if (records.length !== 0) {
+            throw new RecordExistsError({
+                current: records,
+                message: 'Statement cannot be created. A similar statement already exists'
+            });
+        }
+        // const existing = select();
+    } catch (err) {}
+    // create the main statement node
+    const commit = db
+        .let('statement', tx => tx.create('VERTEX', model.name)
+            .set(model.formatRecord(
+                Object.assign({createdBy: userRID}, _.omit(record, ['impledBy', 'supportedBy'])),
+                {addDefaults: true}
+            )));
+    // link to the dependencies
+    let edgeCount = 0;
+    for (const edge of edges) {
+        const eModel = schema[edge['@class']];
+        const eRecord = eModel.formatRecord(Object.assign({
+            createdBy: userRID
+        }, edge), {dropExtra: true, addDefaults: true});
+        if (edge.out === undefined) {
+            eRecord.out = '$statement';
+        } else {
+            eRecord.in = '$statement';
+        }
+        commit.let(`edge${edgeCount++}`, tx => tx.create('EDGE', eModel.name)
+            .set(_.omit(eRecord, ['out', 'in', '@class']))
+            .from(eRecord.out)
+            .to(eRecord.in));
+    }
+    commit
+        .let('result', tx => tx.select().from('$statement'))
+        .commit();
+    try {
+        const result = await commit.return('$result').one();
+        if (!result) {
+            console.error(commit.buildStatement());
+            throw new Error('Failed to create the statement');
+        }
+        return result;
+    } catch (err) {
+        err.sql = commit.buildStatement();
+        throw wrapIfTypeError(err);
+    }
+};
+
+
 module.exports = {
     create,
+    createStatement,
     createUser,
     getUserByName,
     hasRecordAccess,
