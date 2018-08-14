@@ -111,7 +111,7 @@ describe('API', () => {
                         name: 'blargh monkeys'
                     })
                     .set('Authorization', mockToken);
-                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res).to.have.status(HTTP_STATUS.CREATED);
                 expect(res.body.result).to.be.a('object');
                 expect(res.body.result.name).to.equal('blargh monkeys');
             });
@@ -170,7 +170,7 @@ describe('API', () => {
                         source
                     })
                     .set('Authorization', mockToken);
-                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res).to.have.status(HTTP_STATUS.CREATED);
                 expect(res.body.result).to.be.a('object');
                 expect(res.body.result).to.have.property('sourceId', 'cancer');
                 expect(res.body.result.source).to.eql(source['@rid']);
@@ -232,7 +232,7 @@ describe('API', () => {
                         source
                     })
                     .set('Authorization', mockToken);
-                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res).to.have.status(HTTP_STATUS.CREATED);
                 try {
                     res = await chai.request(app.app)
                         .post(`${app.prefix}/diseases`)
@@ -320,7 +320,7 @@ describe('API', () => {
                         source
                     })
                     .set('Authorization', mockToken);
-                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res).to.have.status(HTTP_STATUS.CREATED);
                 try {
                     res = await chai.request(app.app)
                         .patch(`${app.prefix}/diseases/${diseaseId}`)
@@ -506,6 +506,227 @@ describe('API', () => {
                     .set('Authorization', mockToken);
                 expect(res).to.have.status(HTTP_STATUS.OK);
                 expect(res.body.result).to.have.property('length', 2);
+            });
+        });
+        describe('POST /statement', () => {
+            let disease1,
+                disease2,
+                publication1,
+                publication2,
+                relevance1,
+                relevance2;
+            beforeEach(async () => {
+                [
+                    disease1,
+                    disease2,
+                    publication1,
+                    publication2,
+                    relevance1,
+                    relevance2
+                ] = await Promise.all(Array.from([
+                    {content: {name: 'disease1', sourceId: 'disease1'}, route: 'diseases'},
+                    {content: {name: 'disease2', sourceId: 'disease2'}, route: 'diseases'},
+                    {content: {name: 'publication1', sourceId: 'publication1'}, route: 'publications'},
+                    {content: {name: 'publication2', sourceId: 'publication2'}, route: 'publications'},
+                    {content: {name: 'relevance1', sourceId: 'relevance1'}, route: 'vocabulary'},
+                    {content: {name: 'relevance2', sourceId: 'relevance2'}, route: 'vocabulary'}
+                ], async (opt) => {
+                    const res = await chai.request(app.app)
+                        .post(`${app.prefix}/${opt.route}`)
+                        .type('json')
+                        .set('Authorization', mockToken)
+                        .send(Object.assign({source}, opt.content));
+                    return res.body.result;
+                }));
+            });
+            it('BAD REQUEST error on supportedBy undefined', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .post(`${app.prefix}/statements`)
+                        .type('json')
+                        .send({
+                            appliesTo: disease1['@rid'],
+                            impliedBy: [{target: disease1['@rid']}],
+                            relevance: relevance1
+                        })
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('must include an array property supportedBy');
+            });
+            it('BAD REQUEST error on supportedBy empty array', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .post(`${app.prefix}/statements`)
+                        .type('json')
+                        .send({
+                            appliesTo: disease1['@rid'],
+                            supportedBy: [],
+                            impliedBy: [{target: disease1['@rid']}],
+                            relevance: relevance1
+                        })
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('must include an array property supportedBy');
+            });
+            it('BAD REQUEST error on supportedBy bad RID format', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .post(`${app.prefix}/statements`)
+                        .type('json')
+                        .send({
+                            appliesTo: disease1['@rid'],
+                            supportedBy: [{target: 'not an rid'}],
+                            impliedBy: [{target: disease1['@rid']}],
+                            relevance: relevance1
+                        })
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('does not look like a valid RID');
+            });
+            it('BAD REQUEST error on impliedBy undefined', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .post(`${app.prefix}/statements`)
+                        .type('json')
+                        .send({
+                            appliesTo: disease1['@rid'],
+                            supportedBy: [{target: publication1['@rid']}],
+                            relevance: relevance1
+                        })
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('must include an array property impliedBy');
+            });
+            it('BAD REQUEST error on impliedBy empty array', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .post(`${app.prefix}/statements`)
+                        .type('json')
+                        .send({
+                            appliesTo: disease1['@rid'],
+                            impliedBy: [],
+                            supportedBy: [{target: publication1['@rid']}],
+                            relevance: relevance1
+                        })
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('must include an array property impliedBy');
+            });
+            it('BAD REQUEST error on impliedBy bad RID format', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .post(`${app.prefix}/statements`)
+                        .type('json')
+                        .send({
+                            appliesTo: disease1['@rid'],
+                            impliedBy: [{target: 'not an rid'}],
+                            supportedBy: [{target: publication1['@rid']}],
+                            relevance: relevance1
+                        })
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('does not look like a valid RID');
+            });
+            it('BAD REQUEST error in finding one of the dependencies', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .post(`${app.prefix}/statements`)
+                        .type('json')
+                        .send({
+                            appliesTo: '#448989898:0',
+                            impliedBy: [{target: disease1}],
+                            supportedBy: [{target: publication1}],
+                            relevance: relevance1
+                        })
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('error in retrieving one or more of the dependencies');
+            });
+            it('BAD REQUEST error on missing relevance', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .post(`${app.prefix}/statements`)
+                        .type('json')
+                        .send({
+                            appliesTo: disease1,
+                            impliedBy: [{target: disease1}],
+                            supportedBy: [{target: publication1}]
+                        })
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('must have the relevance property');
+            });
+            it('BAD REQUEST error on missing appliesTo', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .post(`${app.prefix}/statements`)
+                        .type('json')
+                        .send({
+                            impliedBy: [{target: disease1}],
+                            supportedBy: [{target: publication1}],
+                            relevance: relevance1
+                        })
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('must have the appliesTo property');
+            });
+            it('creates statement', async () => {
+                const res = await chai.request(app.app)
+                    .post(`${app.prefix}/statements`)
+                    .type('json')
+                    .send({
+                        appliesTo: disease1,
+                        impliedBy: [{target: disease2}],
+                        supportedBy: [{target: publication1}],
+                        relevance: relevance1
+                    })
+                    .set('Authorization', mockToken);
+                expect(res).to.have.status(HTTP_STATUS.CREATED);
             });
         });
         afterEach(async () => {

@@ -308,7 +308,7 @@ const getRoute = (opt) => {
  */
 const postRoute = (opt) => {
     const {
-        router, db, model
+        router, db, model, schema
     } = opt;
     if (process.env.VERBOSE === '1') {
         console.log(`NEW ROUTE [POST] ${model.routeName}`);
@@ -321,8 +321,10 @@ const postRoute = (opt) => {
                 ));
             }
             try {
-                const result = await create(db, {model, content: req.body, user: req.user});
-                return res.json({result: jc.decycle(result)});
+                const result = await create(db, {
+                    model, content: req.body, user: req.user, schema
+                });
+                return res.status(HTTP_STATUS.CREATED).json({result: jc.decycle(result)});
             } catch (err) {
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);

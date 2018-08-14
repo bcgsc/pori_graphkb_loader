@@ -9,9 +9,15 @@ const {
     create,
     update,
     remove,
-    select,
-    modifyEdgeTx
+    select
 } = require('./../../app/repo/base');
+const {
+    RecordExistsError,
+    AttributeError
+} = require('./../../app/repo/error');
+const {
+    castToRID
+} = require('./../../app/repo/util');
 const {
     setUpEmptyDB
 } = require('./../util');
@@ -74,10 +80,11 @@ describe('schema', () => {
                     user: admin
                 });
                 console.log(record);
-                expect.fail();
             } catch (err) {
-                expect(err).to.have.property('message', 'missing required attribute source');
+                expect(err.message).to.include('missing required attribute source');
+                return;
             }
+            expect.fail('did not throw the expected error');
         });
         it('create a new disease with source disease ontology', async () => {
             const record = await create(db, {
@@ -250,6 +257,276 @@ describe('schema', () => {
             });
             expect(records).to.have.property('length', 1);
             expect(records[0]).to.have.property('sourceId', 'disease of cellular proliferation');
+        });
+    });
+    describe('statements', () => {
+        let disease1,
+            disease2,
+            publication1,
+            publication2,
+            drug,
+            relevance1,
+            relevance2,
+            level,
+            source;
+        beforeEach(async () => {
+            source = doSource['@rid'];
+            // add a disease and pubmed source
+            [
+                disease1,
+                disease2,
+                drug,
+                relevance1,
+                relevance2,
+                level
+            ] = await Promise.all(Array.from([{
+                model: schema.Disease,
+                user: admin,
+                content: {source, name: 'cancer', sourceId: 'DOID:123'}
+            },
+            {
+                model: schema.Disease,
+                user: admin,
+                content: {source, name: 'carcinoma', sourceId: 'DOID:124'}
+            },
+            {
+                content: {name: 'drug', sourceId: 'drug', source},
+                model: schema.Therapy,
+                user: admin
+            },
+            {
+                content: {name: 'sensitivity', sourceId: 'sensitivity', source},
+                model: schema.Vocabulary,
+                user: admin
+            },
+            {
+                content: {name: 'resistance', sourceId: 'resistance', source},
+                model: schema.Vocabulary,
+                user: admin
+            },
+            {
+                content: {name: '4a', sourceId: '4a', source},
+                model: schema.EvidenceLevel,
+                user: admin
+            }], async x => create(db, x)));
+            // add a publication
+            [publication1, publication2] = await Promise.all(Array.from([
+                {
+                    name: 'some article name',
+                    sourceId: '123456',
+                    year: 2017,
+                    source
+                },
+                {
+                    name: 'second article',
+                    sourceId: '1234567',
+                    year: 2018,
+                    source
+                }], async content => create(db, {
+                model: schema.Publication, schema, user: admin, content
+            })));
+        });
+        it('inserts related edges', async () => {
+            await create(db, {
+                content: {
+                    relevance: relevance1['@rid'],
+                    appliesTo: drug['@rid'],
+                    impliedBy: [{target: disease1['@rid']}],
+                    supportedBy: [{target: publication1['@rid'], level}]
+                },
+                user: admin,
+                model: schema.Statement,
+                schema
+            });
+        });
+        it('delete a statement', async () => {
+            const stat = await create(db, {
+                content: {
+                    relevance: relevance1['@rid'],
+                    appliesTo: drug['@rid'],
+                    impliedBy: [{target: disease1['@rid']}],
+                    supportedBy: [{target: publication1['@rid'], level}]
+                },
+                user: admin,
+                model: schema.Statement,
+                schema
+            });
+            await remove(db, {
+                where: {'@rid': stat['@rid']},
+                user: admin,
+                model: schema.Statement
+            });
+            const statements = await select(db, {
+                where: {'@rid': stat['@rid'], activeOnly: true},
+                schema,
+                model: schema.Statement
+            });
+            expect(statements).to.have.property('length', 0);
+        });
+        it('updating the review status also updates reviewedBy', async () => {
+            const stat = await create(db, {
+                content: {
+                    relevance: relevance1['@rid'],
+                    appliesTo: drug['@rid'],
+                    impliedBy: [{target: disease1['@rid']}],
+                    supportedBy: [{target: publication1['@rid'], level}]
+                },
+                user: admin,
+                model: schema.Statement,
+                schema
+            });
+            await update(db, {
+                where: {'@rid': stat['@rid']},
+                changes: {reviewStatus: 'passed'},
+                user: admin,
+                model: schema.Statement
+            });
+            const statements = await select(db, {
+                where: {createdAt: stat.createdAt, activeOnly: true},
+                schema,
+                model: schema.Statement
+            });
+            expect(statements).to.have.property('length', 0);
+        });
+        it('error on existing statement', async () => {
+            await create(db, {
+                content: {
+                    relevance: relevance1['@rid'],
+                    appliesTo: drug['@rid'],
+                    impliedBy: [{target: disease1['@rid']}],
+                    supportedBy: [{target: publication1['@rid'], level}]
+                },
+                user: admin,
+                model: schema.Statement,
+                schema
+            });
+            try {
+                await create(db, {
+                    content: {
+                        relevance: relevance1['@rid'],
+                        appliesTo: drug['@rid'],
+                        impliedBy: [{target: disease1['@rid']}],
+                        supportedBy: [{target: publication1['@rid'], level}]
+                    },
+                    user: admin,
+                    model: schema.Statement,
+                    schema
+                });
+            } catch (err) {
+                expect(err).to.be.an.instanceof(RecordExistsError);
+                expect(err.message).to.include('already exists');
+                return;
+            }
+            expect.fail('did not throw the expected error');
+        });
+        it('allows statement with only some shared edges', async () => {
+            await create(db, {
+                content: {
+                    relevance: relevance1['@rid'],
+                    appliesTo: drug['@rid'],
+                    impliedBy: [{target: disease1['@rid']}],
+                    supportedBy: [{target: publication1['@rid'], level}]
+                },
+                user: admin,
+                model: schema.Statement,
+                schema
+            });
+            await create(db, {
+                content: {
+                    relevance: relevance1['@rid'],
+                    appliesTo: drug['@rid'],
+                    impliedBy: [{target: disease1['@rid']}, {target: disease2['@rid']}],
+                    supportedBy: [{target: publication1['@rid'], level}]
+                },
+                user: admin,
+                model: schema.Statement,
+                schema
+            });
+        });
+        describe('query', () => {
+            let statement1,
+                statement2,
+                relevance3;
+            beforeEach(async () => {
+                relevance3 = await create(db, {
+                    model: schema.Vocabulary,
+                    content: {
+                        name: 'other',
+                        sourceId: 'other',
+                        source
+                    },
+                    user: admin
+                });
+                [, , statement1, statement2] = await Promise.all(Array.from([
+                    {
+                        model: schema.AliasOf,
+                        content: {out: relevance1['@rid'], in: relevance2['@rid'], source}
+                    },
+                    {
+                        model: schema.DeprecatedBy,
+                        content: {out: publication1['@rid'], in: publication2['@rid'], source}
+                    },
+                    {
+                        content: {
+                            relevance: relevance1['@rid'],
+                            appliesTo: drug['@rid'],
+                            impliedBy: [{target: disease1['@rid']}],
+                            supportedBy: [{target: publication1['@rid'], level}]
+                        },
+                        model: schema.Statement
+                    },
+                    {
+                        content: {
+                            relevance: relevance2['@rid'],
+                            appliesTo: drug['@rid'],
+                            impliedBy: [{target: disease1['@rid']}, {target: disease2['@rid']}],
+                            supportedBy: [{target: publication1['@rid'], level}]
+                        },
+                        model: schema.Statement
+                    },
+                    {
+                        content: {
+                            relevance: relevance3['@rid'],
+                            appliesTo: drug['@rid'],
+                            impliedBy: [{target: disease1['@rid']}, {target: disease2['@rid']}],
+                            supportedBy: [{target: publication2['@rid']}]
+                        },
+                        model: schema.Statement
+                    }
+                ], async opt => create(db, Object.assign({schema, user: admin}, opt))));
+            });
+            it('allows fuzzy matching statement properties', async () => {
+                // should get relevance1 and relevance2 but not relevance3
+                const recordList = await select(db, {
+                    where: {
+                        relevance: {fuzzyMatch: 3, name: relevance1.name}
+                    },
+                    model: schema.Statement,
+                    schema
+                });
+                expect(recordList).to.have.property('length', 2);
+                expect(Array.from(recordList, castToRID)).to.eql([statement1['@rid'], statement2['@rid']]);
+            });
+            it('allows fuzzy matching related vertices', async () => {
+                const recordList = await select(db, {
+                    where: {
+                        supportedBy: {v: {fuzzyMatch: 3, name: publication2.name}}
+                    },
+                    model: schema.Statement,
+                    schema
+                });
+                expect(recordList).to.have.property('length', 3);
+            });
+            it('select on related edge properties', async () => {
+                const recordList = await select(db, {
+                    where: {
+                        supportedBy: {level: {name: level.name}}
+                    },
+                    model: schema.Statement,
+                    schema
+                });
+                expect(recordList).to.have.property('length', 2);
+            });
         });
     });
     afterEach(async () => {

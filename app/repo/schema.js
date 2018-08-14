@@ -506,7 +506,7 @@ const SCHEMA_DEFN = {
         ]
     },
     Statement: {
-        expose: {POST: false}, // will have special post method
+        expose: EXPOSE_ALL, // will have special post method
         inherits: ['V'],
         properties: [
             {
@@ -787,12 +787,12 @@ class ClassModel {
             // get the property definition from the schema
             const prop = this.properties[dbProp.name];
             if (prop === undefined) {
-                throw new Error(`failed to find the property ${dbProp.name} on the schema definition`);
+                throw new Error(`[${this.name}] failed to find the property ${dbProp.name} on the schema definition`);
             }
             const dbPropType = orientjs.types[dbProp.type].toLowerCase();
             if (dbPropType !== prop.type) {
                 throw new Error(
-                    `The type defined on the schema model (${
+                    `[${this.name}] The type defined on the schema model (${
                         prop.type
                     }) does not match the type loaded from the database (${
                         dbPropType
@@ -842,7 +842,7 @@ class ClassModel {
                     continue;
                 }
                 if (properties[attr] === undefined) {
-                    throw new AttributeError(`unexpected attribute: ${attr}`);
+                    throw new AttributeError(`[${this.name}] unexpected attribute: ${attr}`);
                 }
             }
         }
@@ -869,7 +869,7 @@ class ClassModel {
                     formattedRecord[prop.name] = record[prop.name];
                 }
                 if (formattedRecord[prop.name] === undefined && !opt.ignoreMissing) {
-                    throw new AttributeError(`missing required attribute ${prop.name}`);
+                    throw new AttributeError(`[${this.name}] missing required attribute ${prop.name}`);
                 }
             } else if (record[prop.name] !== undefined) {
                 // add any optional attributes that were specified
@@ -890,7 +890,7 @@ class ClassModel {
                     }
                 } catch (err) {
                     throw new AttributeError({
-                        message: `Failed in casting (${prop.cast.name}) attribute (${
+                        message: `[${this.name}] Failed in casting (${prop.cast.name}) attribute (${
                             prop.name}) with value (${formattedRecord[prop.name]}): ${err.message}`,
                         castFunc: prop.cast
                     });
@@ -905,7 +905,7 @@ class ClassModel {
                     continue;
                 }
                 if (!prop.choices.includes(value)) {
-                    throw new AttributeError(`Expected controlled vocabulary choices. ${value} is not in the list of valid choices: ${prop.choices}`);
+                    throw new AttributeError(`[${this.name}] Expected controlled vocabulary choices. ${value} is not in the list of valid choices: ${prop.choices}`);
                 }
             }
         }

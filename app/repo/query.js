@@ -238,6 +238,8 @@ class Comparison {
             } else if (this.value !== null) {
                 params[pname] = this.value;
                 query = `${name} ${this.operator} :${pname}`;
+            } else if (this.operator !== '=') {
+                throw new AttributeError('Cannot use list operators against a null value');
             } else {
                 query = `${name} IS NULL`;
             }
@@ -313,7 +315,7 @@ class SelectionQuery {
         }
 
         if (opt.activeOnly) {
-            conditions.deletedAt = new Comparison(null);
+            conditions.deletedAt = new Comparison(null, opt.defaultOperator);
         }
         // split the original query into subqueries where appropriate
         for (let [name, value] of Object.entries(query)) {
@@ -349,7 +351,7 @@ class SelectionQuery {
                 )) {
                     if (typeof value === 'object'
                         && value !== null
-                        && !(value instanceof Array)
+                        && !(value instanceof Array || value instanceof RID)
                     ) {
                         // subquery
                         if (!properties[name].linkedClass) {
@@ -486,7 +488,7 @@ class SelectionQuery {
                 schema,
                 currModel,
                 edgeProps,
-                opt
+                Object.assign({}, opt, {activeOnly: false}) // edges fail on null in list comparison
             );
             // Any subquery without a follow statement can be flattened
             if (subquery.follow.length === 0) {

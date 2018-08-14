@@ -206,34 +206,6 @@ const createUser = async (db, opt) => {
 
 
 /**
- * create new record in the database
- *
- * @param {object} db the orientjs database connection
- * @param {object} opt options
- * @param {object} opt.content the contents of the new record
- * @param {ClassModel} opt.model the model for the table/class to insert the new record into
- * @param {object} opt.user the user creating the new record
- */
-const create = async (db, opt) => {
-    const {content, model, user} = opt;
-    if (model.isEdge) {
-        return createEdge(db, opt);
-    }
-    const record = model.formatRecord(
-        Object.assign({}, content, {createdBy: user['@rid']}),
-        {dropExtra: false, addDefaults: true},
-    );
-    if (VERBOSE) {
-        console.log('create:', record);
-    }
-    try {
-        return await db.insert().into(model.name).set(record).one();
-    } catch (err) {
-        throw wrapIfTypeError(err);
-    }
-};
-
-/**
  * create new edge record in the database
  *
  * @param {object} db the orientjs database connection
@@ -385,10 +357,13 @@ const omitDBAttributes = rec => _.omit(rec, Object.keys(rec).filter(
  * with the changes
  */
 const updateNodeTx = async (db, opt) => {
-    const {original, changes} = opt;
+    const {original, changes, model} = opt;
     const userRID = castToRID(opt.user);
 
-    const content = omitDBAttributes(original);
+    const content = model.formatRecord(omitDBAttributes(original), {
+        dropExtra: true,
+        addDefaults: false
+    });
     content.deletedAt = timeStampNow();
     content.deletedBy = userRID;
 
@@ -559,7 +534,7 @@ const deleteNodeTx = async (db, opt) => {
  *
  * @param {Object} db orientjs database connection
  * @param {Object} opt options
- * @param {Object} opt.content the content for the new node (any unspecified attributes are assumed to be unchanged)
+ * @param {Object} opt.changes the content for the new node (any unspecified attributes are assumed to be unchanged)
  * @param {Array} opt.where the selection criteria for the original node
  * @param {Object} opt.user the user updating the record
  */
@@ -592,7 +567,6 @@ const modify = async (db, opt) => {
     if (!hasRecordAccess(user, original)) {
         throw new PermissionError(`The user '${user.name}' does not have sufficient permissions to interact with record ${original['@rid']}`);
     }
-
     let commit;
     if (model.isEdge) {
         commit = await modifyEdgeTx(db, {original, user, changes});
@@ -601,7 +575,9 @@ const modify = async (db, opt) => {
         commit = await deleteNodeTx(db, {original, user});
     } else {
         // vertex update
-        commit = await updateNodeTx(db, {original, user, changes});
+        commit = await updateNodeTx(db, {
+            original, user, changes, model
+        });
     }
     if (process.env.DEBUG === '1') {
         console.log('modify transaction');
@@ -619,6 +595,15 @@ const modify = async (db, opt) => {
     }
 };
 
+/**
+ * Update a node or edge.
+ *
+ * @param {Object} db orientjs database connection
+ * @param {Object} opt options
+ * @param {Object} opt.changes the new content to be set for the node/edge
+ * @param {Array} opt.where the selection criteria for the original node
+ * @param {Object} opt.user the user updating the record
+ */
 const update = async (db, opt) => {
     if (opt.changes === null) {
         throw new AttributeError('opt.changes is a required argument');
@@ -626,6 +611,14 @@ const update = async (db, opt) => {
     return modify(db, opt);
 };
 
+/**
+ * Delete a record by marking it deleted. For node, delete the connecting edges as well.
+ *
+ * @param {Object} db orientjs database connection
+ * @param {Object} opt options
+ * @param {Array} opt.where the selection criteria for the original node
+ * @param {Object} opt.user the user updating the record
+ */
 const remove = async (db, opt) => modify(db, Object.assign({}, opt, {changes: null}));
 
 
@@ -634,13 +627,13 @@ const remove = async (db, opt) => modify(db, Object.assign({}, opt, {changes: nu
  * array of objects with a target property for the node connected to the statement and any other
  * properties to add to the new edge
  *
- * @param {object} opt.record the content of the statement
- * @param {Array} opt.record.impliedBy conditions which imply the current statement
- * @param {Array} opt.record.supportedBy evidence used to support the statement
+ * @param {Object} opt.content the content of the statement
+ * @param {Array} opt.content.impliedBy conditions which imply the current statement
+ * @param {Array} opt.content.supportedBy evidence used to support the statement
  * @param {ClassModel} opt.model the statement class model
- * @param {object} opt.user the user record
- * @param {object} opt.schema the object mapping class names to models for all db classes
- * @param {object} opt.db the database connection object
+ * @param {Object} opt.user the user record
+ * @param {Object.<string,ClassModel>} opt.schema the object mapping class names to models for all db classes
+ * @param {Object} opt.db the database connection object
  *
  * @example
  * > createStatement({record: {
@@ -650,9 +643,9 @@ const remove = async (db, opt) => modify(db, Object.assign({}, opt, {changes: nu
  *      appliesTo: '#87:0'
  *  } ...})
  */
-const createStatement = async (opt) => {
+const createStatement = async (db, opt) => {
     const {
-        record, model, schema, user, db
+        content, model, schema, user
     } = opt;
     const query = {
         SupportedBy: {direction: 'out', v: new Set()},
@@ -662,7 +655,13 @@ const createStatement = async (opt) => {
     let dependencies = [];
     // ensure the RIDs look valid for the support
     const edges = [];
-    for (const edge of record.supportedBy) {
+    if ((content.supportedBy || []).length === 0) {
+        throw new AttributeError('statement must include an array property supportedBy with 1 or more elements');
+    }
+    if ((content.impliedBy || []).length === 0) {
+        throw new AttributeError('statement must include an array property impliedBy with 1 or more elements');
+    }
+    for (const edge of content.supportedBy) {
         if (edge.target === undefined) {
             throw new AttributeError('expected supportedBy edge object to have target attribute');
         }
@@ -678,7 +677,7 @@ const createStatement = async (opt) => {
         query.SupportedBy.v.add(rid);
     }
     // ensure the RIDs look valid for the impliedBy
-    for (const edge of record.impliedBy) {
+    for (const edge of content.impliedBy) {
         if (edge.target === undefined) {
             throw new AttributeError('expected impliedBy edge object to have target attribute');
         }
@@ -694,66 +693,65 @@ const createStatement = async (opt) => {
         query.Implies.v.add(rid);
     }
 
-    if (record.appliesTo === undefined) {
+    if (content.appliesTo === undefined) {
         throw new AttributeError('statement must have the appliesTo property');
     }
     try {
-        if (record.appliesTo !== null) {
-            record.appliesTo = castToRID(record.appliesTo);
-            query.appliesTo = record.appliesTo;
-            dependencies.push(record.appliesTo);
+        if (content.appliesTo !== null) {
+            content.appliesTo = castToRID(content.appliesTo);
+            query.appliesTo = content.appliesTo;
+            dependencies.push(content.appliesTo);
         }
     } catch (err) {
         throw new AttributeError(
-            `statement appliesTo record ID does not look like a valid record ID: ${record.appliesTo}`
+            `statement appliesTo record ID does not look like a valid record ID: ${content.appliesTo}`
         );
     }
-    if (record.relevance === undefined) {
+    if (content.relevance === undefined) {
         throw new AttributeError('statement must have the relevance property');
     }
     try {
-        record.relevance = castToRID(record.relevance);
-        query.relevance = record.relevance;
-        dependencies.push(record.relevance);
+        content.relevance = castToRID(content.relevance);
+        query.relevance = content.relevance;
+        dependencies.push(content.relevance);
     } catch (err) {
         throw new AttributeError(
-            `statement relevance record ID does not look like a valid record ID: ${record.relevance}`
+            `statement relevance record ID does not look like a valid record ID: ${content.relevance}`
         );
     }
 
     // check the DB to ensure all dependencies already exist (and are not deleted)
     try {
         // ensure that the dependency records are valid
-        dependencies = await db.record.get(dependencies).where({deletedAt: null});
+        dependencies = Array.from(dependencies, rid => ({'@rid': rid, deletedAt: null}));
+        dependencies = await db.record.get(dependencies);
     } catch (err) {
         throw new AttributeError({
             message: 'error in retrieving one or more of the dependencies',
-            dependencies
+            dependencies,
+            suberror: err
         });
     }
     const userRID = castToRID(user);
     // try to select the statement to see if it exists
-    try {
-        const records = await select(db, {
-            where: query,
-            activeOnly: true,
-            model: schema.Statement,
-            schema,
-            fetchPlan: '*:2'
+    const records = await select(db, {
+        where: query,
+        activeOnly: true,
+        model,
+        schema,
+        fetchPlan: '*:2'
+    });
+    if (records.length !== 0) {
+        throw new RecordExistsError({
+            current: records,
+            message: 'Statement cannot be created. A similar statement already exists'
         });
-        if (records.length !== 0) {
-            throw new RecordExistsError({
-                current: records,
-                message: 'Statement cannot be created. A similar statement already exists'
-            });
-        }
-        // const existing = select();
-    } catch (err) {}
+    }
     // create the main statement node
     const commit = db
         .let('statement', tx => tx.create('VERTEX', model.name)
             .set(model.formatRecord(
-                Object.assign({createdBy: userRID}, _.omit(record, ['impledBy', 'supportedBy'])),
+                Object.assign({createdBy: userRID}, _.omit(content, ['impledBy', 'supportedBy'])),
                 {addDefaults: true}
             )));
     // link to the dependencies
@@ -776,6 +774,9 @@ const createStatement = async (opt) => {
     commit
         .let('result', tx => tx.select().from('$statement'))
         .commit();
+    if (process.env.VERBOSE === '1') {
+        console.log(commit.buildStatement());
+    }
     try {
         const result = await commit.return('$result').one();
         if (!result) {
@@ -790,9 +791,42 @@ const createStatement = async (opt) => {
 };
 
 
+/**
+ * create new record in the database
+ *
+ * @param {Object} db the orientjs database connection
+ * @param {Object} opt options
+ * @param {Object} opt.content the contents of the new record
+ * @param {ClassModel} opt.model the model for the table/class to insert the new record into
+ * @param {Object} opt.user the user creating the new record
+ * @param {Object.<string,ClassModel>} [schema] only required for creating statements
+ */
+const create = async (db, opt) => {
+    const {
+        content, model, user
+    } = opt;
+    if (model.isEdge) {
+        return createEdge(db, opt);
+    } if (model.name === 'Statement') {
+        return createStatement(db, opt);
+    }
+    const record = model.formatRecord(
+        Object.assign({}, content, {createdBy: user['@rid']}),
+        {dropExtra: false, addDefaults: true},
+    );
+    if (VERBOSE) {
+        console.log('create:', record);
+    }
+    try {
+        return await db.insert().into(model.name).set(record).one();
+    } catch (err) {
+        throw wrapIfTypeError(err);
+    }
+};
+
+
 module.exports = {
     create,
-    createStatement,
     createUser,
     getUserByName,
     hasRecordAccess,
@@ -804,6 +838,5 @@ module.exports = {
     trimRecords,
     update,
     modify,
-    modifyEdgeTx,
     wrapIfTypeError
 };

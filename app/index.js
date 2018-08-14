@@ -24,7 +24,6 @@ const {parse} = require('./parser/variant');
 
 const {generateSwaggerSpec} = require('./routes/openapi');
 const {addResourceRoutes} = require('./routes/util');
-const {addStatement} = require('./routes/statement');
 
 
 const logRequests = (req, res, next) => {
@@ -171,7 +170,6 @@ class AppServer {
                 router: this.router, model, db, schema
             });
         }
-        addStatement({router: this.router, schema, db}); // adds POST route
 
         if (VERBOSE) {
             console.log('Adding 404 capture');
