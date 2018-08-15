@@ -97,7 +97,7 @@ const parseQueryLanguage = (inputQuery, defaultOperator = '=') => {
                 throw new InputValidationError(`${name} must be a positive integer`);
             }
             query[name] = valueList;
-        } else if (name === 'descendants' || name === 'ancestors' || name === 'returnProperties') {
+        } else if (['descendants', 'ancestors', 'returnProperties', 'or'].includes(name)) {
             if (typeof (valueList) !== 'string') {
                 throw new InputValidationError(`Query parameter ${name} cannot be specified multiple times`);
             }

@@ -14,16 +14,17 @@ const RELATED_NODE_DEPTH = 3;
 const PARAM_PREFIX = 'param';
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 const SPECIAL_QUERY_ARGS = new Set([
-    'fuzzyMatch',
-    'ancestors',
-    'descendants',
-    'returnProperties',
-    'limit',
+    'fuzzyMatch', // follow deprecatedby/aliasof links
+    'ancestors', // follow outgoing edges
+    'descendants', // follow incoming edges
+    'returnProperties', // return select properties only
+    'limit', // limit the number of records to return
     'skip',
     'neighbors',
     'activeOnly',
     'v',
-    'direction'
+    'direction',
+    'or'
 ]);
 
 
@@ -277,6 +278,12 @@ class SelectionQuery {
         this.returnProperties = opt.returnProperties
             ? opt.returnProperties
             : null;
+        this.or = opt.or || [];
+        for (const propName of this.or) {
+            if (conditions[propName] === undefined) {
+                throw new AttributeError(`Cannot OR properties without conditions: ${propName}`);
+            }
+        }
 
         // can only return properties which belong to this class
         for (const propName of this.returnProperties || []) {
@@ -559,6 +566,7 @@ class SelectionQuery {
             ? this.returnProperties.join(', ')
             : '*';
         const conditions = [];
+        const orConditions = [];
         const params = {};
         const conditionNames = Object.keys(this.conditions);
         conditionNames.sort(); // parameters will have the same aliases
@@ -575,7 +583,16 @@ class SelectionQuery {
             if (this.conditions[attr] instanceof Clause && this.conditions[attr].length > 1) {
                 clause.query = `(${clause.query})`;
             }
-            conditions.push(clause.query);
+            if (this.or.includes(attr)) {
+                orConditions.push(clause.query);
+            } else {
+                conditions.push(clause.query);
+            }
+        }
+        if (orConditions.length <= 1) {
+            conditions.push(...orConditions);
+        } else {
+            conditions.push(`(${orConditions.join(' OR ')})`);
         }
         if (this.follow.length > 0) {
             // must be a match query to follow edges

@@ -211,6 +211,7 @@ describe('schema', () => {
                 model: schema.Disease,
                 content: {
                     sourceId: 'disease of cellular proliferation',
+                    name: 'other name',
                     source: doSource
                 },
                 user: admin
@@ -233,6 +234,15 @@ describe('schema', () => {
                     sourceId: 'cancer',
                     fuzzyMatch: 3
                 },
+                user: admin
+            });
+            expect(records).to.have.property('length', 2);
+        });
+        it('get by name OR sourceId', async () => {
+            const records = await select(db, {
+                schema,
+                model: schema.Disease,
+                where: {name: 'other name', sourceId: 'cancer', or: ['name', 'sourceId']},
                 user: admin
             });
             expect(records).to.have.property('length', 2);

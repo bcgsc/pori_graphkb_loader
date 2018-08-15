@@ -18,57 +18,58 @@ Authentication is managed via tokens. See the [authentication](.#/Authentication
 
 ## Dynamic Queries
 
+### Comparison Operators
 
 GET requests on the API support regular query paramters as well as using special query operator syntax. These allow the user to
 specify operators beyond \`=\` such as \`!\` (not), \`~\` (substring), and \`|\` (OR).
 Note that all the urls shown below have not been escaped.
 
-### Using the NOT Operator
+#### Using the NOT Operator
 
 Query all diseases where the name does not equal *'cancer'*
 
 \`\`\`
-/api/diseases?name=!cancer
+/api/<version>/diseases?name=!cancer
 \`\`\`
 
-### Using the Contains Operator
+#### Using the Contains Operator
 
 When applied to a string value this will look for a substring, specifically prefixes or full words. This will not apply to suffixes.
 
 Query all diseases where the name contains *'pancreatic'*
 
 \`\`\`
-/api/diseases?name=~pancreatic
+/api/<version>/diseases?name=~pancreatic
 \`\`\`
 
 It is worth noting that when the contains operator is applied to fields using a full text index (i.e. ontology names) that the
 query will check for starting prefixes and may not find substrings which are in the middle of a word.
 
-### Combining the Contains and NOT Operators
+#### Combining the Contains and NOT Operators
 
 Query all diseases where the name does not contain *'breast'*
 
 \`\`\`
-/api/diseases?name=!~breast
+/api/<version>/diseases?name=!~breast
 \`\`\`
 
-### Using the OR operator
+#### Using the OR operator
 
 Query all diseases where the name is *'breast cancer'* or *'breast carcinoma'*
 
 \`\`\`
-/api/diseases?name=breast cancer|breast carcinoma
+/api/<version>/diseases?name=breast cancer|breast carcinoma
 \`\`\`
 
-### Combining the OR Operator with the NOT Operator
+#### Combining the OR Operator with the NOT Operator
 
 Query all diseases where the name is *'breast cancer'* or is not *'pancreatic cancer'*
 
 \`\`\`
-/api/diseases?name=breast cancer|!pancreatic cancer
+/api/<version>/diseases?name=breast cancer|!pancreatic cancer
 \`\`\`
 
-### Using subqueries
+### Using Subqueries
 
 Since the KB is a graph database, queries can include conditions on related elements with minimal penalty (does not require a join).
 As such KB will support querying on related objects using the following syntax
@@ -76,10 +77,48 @@ As such KB will support querying on related objects using the following syntax
 Query all diseases created by the user with the username *'blargh'*
 
 \`\`\`
-/api/diseases?createdBy[name]=blargh
+/api/<version>/diseases?createdBy[name]=blargh
 \`\`\`
 
-### Query related edges
+### Query by Related Edges
+
+It can be useful to query a class based on its related vertices rather than its immeadiate properties.
+For example, a user might be interested in all statements that are related to disease 'pancreatic cancer'
+
+\`\`\`
+/api/<version>/statements?implies[v][name]=pancreatic cancer&implies[v][fuzzyMatch]=3
+\`\`\`
+
+The above will match all statements implied by pancreatic cancer or any of its aliased/deprecated terms.
+
+A simpler query can also allow the user to query based on the immediate edge properties.
+
+\`\`\`
+/api/<version>/statements?supportedBy[level][name]=4a
+\`\`\`
+
+The above would return all statments supported by evidence with an evidence level of 4a
+
+### Query Using Special Query Parameters
+
+#### Neighbors
+
+The \`neighbors\` query parameter can be used to retrieve related records after a selection statement.
+For example if you wish to expand all links on a given record, this can be done as below
+
+\`\`\`
+/api/<version>/diseases?neighbors=1
+\`\`\`
+
+#### OR properties
+
+The \`or\` query parameter can be used to set a top-level OR. For example, querying diseases by sourceId
+OR by name could be done in a single query using this query parameter
+
+\`\`\`
+/api/<version>/diseases?sourceId=blargh&name=blargh&or=sourceId,name
+\`\`\`
+
 `;
 
 const STUB = {
@@ -574,6 +613,13 @@ const GENERAL_QUERY_PARAMS = {
         schema: {type: 'integer'},
         nullable: false,
         description: 'The timestamp when the record was created'
+    },
+    or: {
+        in: 'query',
+        name: 'or',
+        schema: {type: 'string'},
+        nullable: false,
+        description: 'CSV list of class properties which should be joined as an OR statment instead of the default AND'
     }
 };
 
@@ -913,21 +959,23 @@ const generateSwaggerSpec = (schema, metadata) => {
         if (Object.values(model.expose).some(x => x) && docs.paths[model.routeName] === undefined) {
             docs.paths[model.routeName] = {};
         }
-        if (model.expose.QUERY) {
+        if (model.expose.QUERY && !docs.paths[model.routeName].get) {
             docs.paths[model.routeName].get = describeGet(model);
         }
-        if (model.expose.POST) {
+        if (model.expose.POST && !docs.paths[model.routeName].post) {
             docs.paths[model.routeName].post = describePost(model);
         }
         if (model.expose.GET || model.expose.PATCH || model.expose.DELETE) {
-            docs.paths[`${model.routeName}/{rid}`] = {};
-            if (model.expose.PATCH) {
+            if (!docs.paths[`${model.routeName}/{rid}`]) {
+                docs.paths[`${model.routeName}/{rid}`] = {};
+            }
+            if (model.expose.PATCH && !docs.paths[`${model.routeName}/{rid}`].patch) {
                 docs.paths[`${model.routeName}/{rid}`].patch = describeOperationByID(model, 'patch');
             }
-            if (model.expose.DELETE) {
+            if (model.expose.DELETE && !docs.paths[`${model.routeName}/{rid}`].delete) {
                 docs.paths[`${model.routeName}/{rid}`].delete = describeOperationByID(model, 'delete');
             }
-            if (model.expose.GET) {
+            if (model.expose.GET && !docs.paths[`${model.routeName}/{rid}`].get) {
                 docs.paths[`${model.routeName}/{rid}`].get = describeOperationByID(model, 'get');
             }
         }

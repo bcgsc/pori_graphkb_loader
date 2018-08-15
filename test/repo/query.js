@@ -129,6 +129,7 @@ describe('Comparison', () => {
     });
 });
 
+
 describe('SelectionQuery', () => {
     let schema;
     beforeEach(() => {
@@ -373,6 +374,16 @@ describe('SelectionQuery', () => {
         const query = SelectionQuery.parseQuery(schema, schema.Parent, {name: new Comparison('blargh')}, {activeOnly: true});
         const {query: statement} = query.toString();
         expect(statement).to.equal('SELECT * FROM Parent WHERE deletedAt IS NULL AND name = :param0');
+    });
+    it('or two top level properties', () => {
+        const query = SelectionQuery.parseQuery(
+            schema,
+            schema.RestrictiveModel,
+            {requiredVar: new Clause('OR', ['blargh', 'monkeys']), defaultVar: 'monkeys'},
+            {or: ['requiredVar', 'defaultVar']}
+        );
+        const {query: statement} = query.toString();
+        expect(statement).to.equal('SELECT * FROM RestrictiveModel WHERE deletedAt IS NULL AND (defaultVar = :param0 OR (requiredVar = :param1 OR requiredVar = :param2))');
     });
     it('parses simple query', () => {
         const query = SelectionQuery.parseQuery(schema, schema.RestrictiveModel, {
