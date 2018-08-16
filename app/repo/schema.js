@@ -33,14 +33,24 @@ const EXPOSE_EDGE = {
     QUERY: true, PATCH: false, DELETE: true, POST: true, GET: true
 };
 
+const trimString = x => x.toString().trim();
+
+
 const SCHEMA_DEFN = {
     V: {
         expose: EXPOSE_NONE,
         properties: [
             {
-                name: '@rid', pattern: '^#\\d+:\\d+$', description: 'The record identifier', cast: castToRID
+                name: '@rid',
+                pattern: '^#\\d+:\\d+$',
+                description: 'The record identifier',
+                cast: castToRID
             },
-            {name: '@class', description: 'The database class this record belongs to'},
+            {
+                name: '@class',
+                description: 'The database class this record belongs to',
+                cast: trimString
+            },
             {
                 name: 'uuid',
                 type: 'string',
@@ -100,9 +110,16 @@ const SCHEMA_DEFN = {
         isEdge: true,
         properties: [
             {
-                name: '@rid', pattern: '^#\\d+:\\d+$', description: 'The record identifier', cast: castToRID
+                name: '@rid',
+                pattern: '^#\\d+:\\d+$',
+                description: 'The record identifier',
+                cast: castToRID
             },
-            {name: '@class', description: 'The database class this record belongs to'},
+            {
+                name: '@class',
+                description: 'The database class this record belongs to',
+                cast: trimString
+            },
             {
                 name: 'uuid',
                 type: 'string',
@@ -122,29 +139,54 @@ const SCHEMA_DEFN = {
                 default: timeStampNow
             },
             {
-                name: 'deletedAt', type: 'long', description: 'The timestamp at which the record was deleted', nullable: false
+                name: 'deletedAt',
+                type: 'long',
+                description: 'The timestamp at which the record was deleted',
+                nullable: false
             },
             {
-                name: 'createdBy', type: 'link', mandatory: true, nullable: false, linkedClass: 'User', description: 'The user who created the record'
+                name: 'createdBy',
+                type: 'link',
+                mandatory: true,
+                nullable: false,
+                linkedClass: 'User',
+                description: 'The user who created the record'
             },
             {
-                name: 'deletedBy', type: 'link', linkedClass: 'User', nullable: false, description: 'The user who deleted the record'
+                name: 'deletedBy',
+                type: 'link',
+                linkedClass: 'User',
+                nullable: false,
+                description: 'The user who deleted the record'
             },
             {
-                name: 'history', type: 'link', nullable: false, description: 'Link to the previous version of this record'
+                name: 'history',
+                type: 'link',
+                nullable: false,
+                description: 'Link to the previous version of this record'
             },
             {name: 'comment', type: 'string'},
             {
-                name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup', description: 'user groups allowed to interact with this record'
+                name: 'groupRestrictions',
+                type: 'linkset',
+                linkedClass: 'UserGroup',
+                description: 'user groups allowed to interact with this record'
             }
         ]
     },
     UserGroup: {
         properties: [
             {
-                name: '@rid', pattern: '^#\\d+:\\d+$', description: 'The record identifier', cast: castToRID
+                name: '@rid',
+                pattern: '^#\\d+:\\d+$',
+                description: 'The record identifier',
+                cast: castToRID
             },
-            {name: '@class', description: 'The database class this record belongs to'},
+            {
+                name: '@class',
+                description: 'The database class this record belongs to',
+                cast: trimString
+            },
             {
                 name: 'name', mandatory: true, nullable: false
             },
@@ -171,9 +213,16 @@ const SCHEMA_DEFN = {
     User: {
         properties: [
             {
-                name: '@rid', pattern: '^#\\d+:\\d+$', description: 'The record identifier', cast: castToRID
+                name: '@rid',
+                pattern: '^#\\d+:\\d+$',
+                description: 'The record identifier',
+                cast: castToRID
             },
-            {name: '@class', description: 'The database class this record belongs to'},
+            {
+                name: '@class',
+                description: 'The database class this record belongs to',
+                cast: trimString
+            },
             {
                 name: 'name',
                 mandatory: true,
