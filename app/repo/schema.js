@@ -30,7 +30,7 @@ const EXPOSE_NONE = {
     QUERY: false, PATCH: false, DELETE: false, POST: false, GET: false
 };
 const EXPOSE_EDGE = {
-    QUERY: false, PATCH: false, DELETE: true, POST: true, GET: true
+    QUERY: true, PATCH: false, DELETE: true, POST: true, GET: true
 };
 
 const SCHEMA_DEFN = {
@@ -521,9 +521,17 @@ const SCHEMA_DEFN = {
                 type: 'string',
                 choices: ['pending', 'not required', 'passed', 'failed']
             },
-            {name: 'reviewedBy', type: 'link', linkedClass: 'User'},
-            {name: 'reviewedAt', type: 'long'},
-            {name: 'reviewComment', type: 'string'}
+            {name: 'reviewComment', type: 'string'},
+            {
+                name: 'sourceId',
+                description: 'If the statement is imported from an external source, this is used to track the statement'
+            },
+            {
+                name: 'source',
+                description: 'If the statement is imported from an external source, it is linked here',
+                linkedClass: 'Source',
+                type: 'link'
+            }
         ]
     },
     AnatomicalEntity: {inherits: ['Ontology']},
@@ -1022,9 +1030,10 @@ class ClassModel {
             ]
         };
         if (name === 'SupportedBy') {
-            schema[name].properties.push({
-                name: 'level', type: 'link', linkedClass: 'EvidenceLevel'
-            });
+            schema[name].properties.push(...[
+                {name: 'level', type: 'link', linkedClass: 'EvidenceLevel'},
+                {name: 'summary', description: 'Generally a quote from the supporting source which describes the pertinent details with resect to the statement it supports'}
+            ]);
         }
     }
 
@@ -1221,7 +1230,7 @@ const loadSchema = async (db) => {
     if (VERBOSE) {
         console.log('linking models');
     }
-    db.models = SCHEMA_DEFN;
+    db.schema = SCHEMA_DEFN;
     // set the default record group
     if (VERBOSE) {
         console.log('schema loading complete');

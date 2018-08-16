@@ -1,7 +1,7 @@
 {
   "name": "knowledgebase-api",
   "main": "server.js",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "dependencies": {
     "ajv": "^5.5.2",
     "bluebird": "^3.5.0",

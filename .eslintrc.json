@@ -67,7 +67,7 @@
             "allowEmptyCatch": true
         }],
         "react/destructuring-assignment": "off",
-        "no-await-in-loop": "warn",
+        "no-await-in-loop": "off",
         "no-unused-expressions": "off"
     }
 }

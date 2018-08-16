@@ -66,12 +66,34 @@ class Follow {
         if (this.depth === null) {
             // follow until out of edge types
             if (this.activeOnly) {
-                return `.${this.type}(${classesString}){while: (${this.type}(${classesString}).size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}`;
+                return `.${
+                    this.type
+                }(${
+                    classesString
+                }){while: (${
+                    this.type
+                }(${
+                    classesString
+                }).size() > 0 AND deletedAt IS NULL), where: (deletedAt IS NULL)}`;
             }
-            return `.${this.type}(${classesString}){while: (${this.type}(${classesString}).size() > 0)}`;
+            return `.${
+                this.type
+            }(${
+                classesString
+            }){while: (${
+                this.type
+            }(${
+                classesString
+            }).size() > 0)}`;
         }
         if (this.activeOnly) {
-            return `.${this.type}(${classesString}){while: ($depth < ${this.depth} AND deletedAt IS NULL), where: (deletedAt IS NULL)}`;
+            return `.${
+                this.type
+            }(${
+                classesString
+            }){while: ($depth < ${
+                this.depth
+            } AND deletedAt IS NULL), where: (deletedAt IS NULL)}`;
         }
         return `.${this.type}(${classesString}){while: ($depth < ${this.depth})}`;
     }
@@ -288,7 +310,13 @@ class SelectionQuery {
         // can only return properties which belong to this class
         for (const propName of this.returnProperties || []) {
             if (this.properties[propName] === undefined) {
-                throw new AttributeError(`invalid return property '${propName}' is not a valid member of class '${this.model.name}'`);
+                throw new AttributeError(
+                    `invalid return property '${
+                        propName
+                    }' is not a valid member of class '${
+                        this.model.name
+                    }'`
+                );
             }
         }
     }
@@ -391,6 +419,11 @@ class SelectionQuery {
             }
         }
         const follow = Follow.parse(Object.assign({activeOnly: opt.activeOnly}, query));
+        if (follow.length > 0 && currModel.isEdge) {
+            throw new AttributeError(
+                'Invalid query, cannot create MATCH type queries on Edge classes'
+            );
+        }
 
         // try casting all values and check that values satify enum contraints
         for (const [name, condition] of Object.entries(conditions)) {
