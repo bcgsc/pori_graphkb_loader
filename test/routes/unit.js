@@ -35,7 +35,7 @@ describe('parseQueryLanguage', () => {
             ])
         });
     });
-    describe('query immeadiate edges', () => {
+    describe('query immediate edges', () => {
         it('edge target v', () => {
             expect(parseQueryLanguage(qs.parse('supportedby[v]=44:3'))).to.eql({
                 supportedby: {v: new Comparison('44:3')}
@@ -54,6 +54,11 @@ describe('parseQueryLanguage', () => {
         it('edge multiplicity', () => {
             expect(parseQueryLanguage(qs.parse('supportedby[size]=3'))).to.eql({
                 supportedby: {size: 3}
+            });
+        });
+        it('edge target set of nodes', () => {
+            expect(parseQueryLanguage(qs.parse('supportedby[v][0]=44:3&supportedby[v][1]=44:4'))).to.eql({
+                supportedby: {v: new Comparison(['44:3', '44:4'])}
             });
         });
     });
@@ -219,9 +224,9 @@ describe('parseQueryLanguage', () => {
         const result = parseQueryLanguage(qs.parse('thing=~other'));
         expect(result).to.eql({thing: new Comparison('other', 'CONTAINSTEXT')});
     });
-    it('multiple values', () => {
+    it('array', () => {
         const result = parseQueryLanguage(qs.parse('thing=1&thing=2'));
-        expect(result).to.eql({thing: new Clause('AND', ['1', '2'])});
+        expect(result).to.eql({thing: new Comparison(['1', '2'])});
     });
     describe('subquery support', () => {
         it('not operator', () => {

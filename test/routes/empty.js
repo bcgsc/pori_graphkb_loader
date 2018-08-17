@@ -457,6 +457,13 @@ describe('API', () => {
                     .query({neighbors: 2, activeOnly: false});
                 expect(res.body.result).to.have.property('length', 6);
             });
+            it('query on related node', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/diseases`)
+                    .set('Authorization', mockToken)
+                    .query({aliasOf: {v: {name: 'bob'}}});
+                expect(res.body.result).to.have.property('length', 0);
+            });
         });
         describe('GET /diseases query FULLTEXT index', () => {
             beforeEach(async () => {

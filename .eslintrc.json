@@ -56,6 +56,7 @@
             "props": true,
             "ignorePropertyModificationsFor": ["opt"]
         }],
+        "no-multi-assign": "off",
         "one-var": ["error", {
             "let": "consecutive"
         }],
