@@ -916,7 +916,10 @@ class ClassModel {
      * @returns {string[]} a list of property names for all optional properties
      */
     get optional() {
-        const optional = Array.from(Object.values(this._properties).filter(prop => !prop.mandatory), prop => prop.name);
+        const optional = Array.from(
+            Object.values(this._properties).filter(prop => !prop.mandatory),
+            prop => prop.name
+        );
         for (const parent of this._inherits) {
             optional.push(...parent.optional);
         }

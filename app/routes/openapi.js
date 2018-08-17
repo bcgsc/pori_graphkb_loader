@@ -698,6 +698,8 @@ const BASIC_HEADER_PARAMS = {
 
 /**
  * Given a class model, generate the swagger documentation for the POST route
+ *
+ * @param {ClassModel} model the model to build the route for
  */
 const describePost = (model) => {
     const links = {};
@@ -774,6 +776,8 @@ const describePost = (model) => {
 
 /**
  * Given a class model, generate the swagger documentation for the GET route
+ *
+ * @param {ClassModel} model the model to build the route for
  */
 const describeGet = (model) => {
     const get = {
@@ -882,6 +886,8 @@ const describeGet = (model) => {
 /**
  * Given a class model, generate the swagger documentation for the OPERATION/:id route where
  * OPERATION can be delete, patch, etc.
+ *
+ * @param {ClassModel} model the model to build the route for
  */
 const describeOperationByID = (model, operation = 'delete') => {
     const description = {
@@ -930,7 +936,10 @@ const describeOperationByID = (model, operation = 'delete') => {
 /**
  * Generates the JSON object that represents the openapi specification for this API
  *
- * @param {object} schema the database schema loaded from loadSchema
+ * @param {Object.<string,ClassModel>} schema the database schema loaded from loadSchema
+ * @param {Object} metadata
+ * @param {number} metadata.port the port number the API is being served on
+ * @param {string} metadata.host the host serving the API
  * @see loadSchema
  *
  * @returns {object} the JSON object representing the swagger API specification

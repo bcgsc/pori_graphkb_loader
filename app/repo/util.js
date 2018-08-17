@@ -38,7 +38,16 @@ const castToRID = (string) => {
     throw new AttributeError({message: 'not a valid RID', value: string});
 };
 
-
+/**
+ * Join a list of strings as you would for putting into a sentence
+ *
+ * @param {Array.<string>} list the list to join
+ * @returns {string} the joined list
+ *
+ * @example
+ * > naturalListJoin(['a', 'b', 'c'])
+ * 'a, b, and c'
+ */
 const naturalListJoin = (list) => {
     if (list.length === 0) {
         return '';

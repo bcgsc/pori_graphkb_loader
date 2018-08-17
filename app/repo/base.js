@@ -46,9 +46,10 @@ const wrapIfTypeError = (err) => {
 /**
  * Given a list of records, removes any object which contains a non-null deletedAt property
  *
- * @param {object} opt options
- * @param {boolean} activeOnly trim deleted records
- * @param {User} user if the user object is given, will check record-level permissions and trim any non-permitted content
+ * @param {Array.<Object>} recordList list of records to be trimmed
+ * @param {Object} opt options
+ * @param {boolean} [opt.activeOnly=true] trim deleted records
+ * @param {User} [opt.user=null] if the user object is given, will check record-level permissions and trim any non-permitted content
  */
 const trimRecords = (recordList, opt = {}) => {
     const {activeOnly, user} = Object.assign({
@@ -150,6 +151,12 @@ const trimRecords = (recordList, opt = {}) => {
 
 /**
  * Check if the user has sufficient access
+ *
+ * @param {Object} user the user
+ * @param {Object} record the record the user wishes to access
+ * @param {Array} record.groupRestrictions an array of groups that are allowed to access the record. If empty, then all groups are allowed access
+ *
+ * @returns {boolean} flag to indicate if the user is allowed access to the record
  */
 const hasRecordAccess = (user, record) => {
     if (!record.groupRestrictions || record.groupRestrictions.length === 0) {
@@ -170,10 +177,10 @@ const hasRecordAccess = (user, record) => {
 /**
  * Create new User record
  *
- * @param {object} db the orientjs database connection
- * @param {object} opt options
+ * @param {orientjs.Db} db the orientjs database connection
+ * @param {Object} opt options
  * @param {string} opt.userName the name of the new user
- * @param {string[]} opt.groupNames the list of group names for which to add the new user to
+ * @param {Array.<string>} opt.groupNames the list of group names for which to add the new user to
  */
 const createUser = async (db, opt) => {
     const {
@@ -208,13 +215,13 @@ const createUser = async (db, opt) => {
 /**
  * create new edge record in the database
  *
- * @param {object} db the orientjs database connection
- * @param {object} opt options
- * @param {object} opt.content the contents of the new record
+ * @param {orientjs.Db} db the orientjs database connection
+ * @param {Object} opt options
+ * @param {Object} opt.content the contents of the new record
  * @param {string} opt.content.out the @rid of the source node
  * @param {string} opt.content.in the @rid of the target node
  * @param {ClassModel} opt.model the model for the table/class to insert the new record into
- * @param {object} opt.user the user creating the new record
+ * @param {Object} opt.user the user creating the new record
  */
 const createEdge = async (db, opt) => {
     const {content, model, user} = opt;
@@ -238,6 +245,9 @@ const createEdge = async (db, opt) => {
 /**
  * Given a user name return the active record. Groups will be returned in full so that table level
  * permissions can be checked
+ *
+ * @param {orientjs.Db} db the orientjs database connection object
+ * @param {string} username the name of the user to select
  */
 const getUserByName = async (db, username) => {
     // raw SQL to avoid having to load db models in the middleware
@@ -261,20 +271,21 @@ const getUserByName = async (db, username) => {
 /**
  * Builds the query statement for selecting or matching records from the database
  *
- * @param {Object} db Database connection from orientjs
+ * @param {orientjs.Db} db Database connection from orientjs
  *
  * @param {Object} opt Selection options
  * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
  * @param {ClassModel} opt.model the current model to be selected from
- * @param {string} [opt.fetchPlan='*:0'] key value mapping of class names to depths of edges to follow or '*' for any class
+ * @param {string} [opt.fetchPlan] key value mapping of class names to depths of edges to follow or '*' for any class
  * @param {Array} [opt.where=[]] the query requirements
  * @param {?number} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
  * @param {?number} [opt.limit=QUERY_LIMIT] the maximum number of records to return
  * @param {number} [opt.skip=0] the number of records to skip (for pagination)
+ * @param {Object.<string,ClassModel>} schema mapping of class names to db models
  *
+ * @todo Add support for permissions base-d fetch plans
  *
- * Add support for permissions base-d fetch plans
- * SELECT * FROM statement fetchPlan appliesTo:-2 *:1
+ * @returns {Array.<Object>} array of database records
  */
 const select = async (db, opt) => {
     // set the default options
@@ -355,6 +366,12 @@ const omitDBAttributes = rec => _.omit(rec, Object.keys(rec).filter(
 /**
  * Create the transaction to copy the current node as history and then update the current node
  * with the changes
+ *
+ * @param {orientjs.Db} db the database connection object
+ * @param {Object} opt options
+ * @param {Object} opt.changes the changes to the edge properties. Null for deletions
+ * @param {Object} opt.original the original edge record to be updated
+ * @param {Object} opt.user the user performing the record update
  */
 const updateNodeTx = async (db, opt) => {
     const {original, changes, model} = opt;
@@ -393,9 +410,11 @@ const updateNodeTx = async (db, opt) => {
  * 5. copy e as eCopy from srcCopy to tgtCopy
  * 6. link eCopy to e as history
  *
- * @param {object} opt.changes the changes to the edge properties. Null for deletions
- * @param {object} opt.original the original edge record to be updated
- * @param {object} opt.user the user performing the record update
+ * @param {orientjs.Db} db the database connection object
+ * @param {Object} opt options
+ * @param {Object} opt.changes the changes to the edge properties. Null for deletions
+ * @param {Object} opt.original the original edge record to be updated
+ * @param {Object} opt.user the user performing the record update
  */
 const modifyEdgeTx = async (db, opt) => {
     const {original, changes} = opt;
@@ -468,6 +487,9 @@ const modifyEdgeTx = async (db, opt) => {
  * Creates the transaction to delete a node and all of its surrounding edges
  * This requires copy all neighbors and modifying any immediate edges in
  * addition to the modifying the current node
+ *
+ * @param {orientjs.Db} db the database connection object
+ * @param {Object} opt options
  */
 const deleteNodeTx = async (db, opt) => {
     const {original} = opt;
@@ -532,7 +554,7 @@ const deleteNodeTx = async (db, opt) => {
  * then update the actual current record (to preserve links)
  * the link the copy to the current record with the history link
  *
- * @param {Object} db orientjs database connection
+ * @param {orientjs.Db} db orientjs database connection
  * @param {Object} opt options
  * @param {Object} opt.changes the content for the new node (any unspecified attributes are assumed to be unchanged)
  * @param {Array} opt.where the selection criteria for the original node
@@ -598,7 +620,7 @@ const modify = async (db, opt) => {
 /**
  * Update a node or edge.
  *
- * @param {Object} db orientjs database connection
+ * @param {orientjs.Db} db orientjs database connection
  * @param {Object} opt options
  * @param {Object} opt.changes the new content to be set for the node/edge
  * @param {Array} opt.where the selection criteria for the original node
@@ -614,7 +636,7 @@ const update = async (db, opt) => {
 /**
  * Delete a record by marking it deleted. For node, delete the connecting edges as well.
  *
- * @param {Object} db orientjs database connection
+ * @param {orientjs.Db} db orientjs database connection
  * @param {Object} opt options
  * @param {Array} opt.where the selection criteria for the original node
  * @param {Object} opt.user the user updating the record
@@ -627,13 +649,14 @@ const remove = async (db, opt) => modify(db, Object.assign({}, opt, {changes: nu
  * array of objects with a target property for the node connected to the statement and any other
  * properties to add to the new edge
  *
+ * @param {orientjs.Db} db the database connection object
+ * @param {Object} opt options
  * @param {Object} opt.content the content of the statement
  * @param {Array} opt.content.impliedBy conditions which imply the current statement
  * @param {Array} opt.content.supportedBy evidence used to support the statement
  * @param {ClassModel} opt.model the statement class model
  * @param {Object} opt.user the user record
  * @param {Object.<string,ClassModel>} opt.schema the object mapping class names to models for all db classes
- * @param {Object} opt.db the database connection object
  *
  * @example
  * > createStatement({record: {
@@ -720,7 +743,7 @@ const createStatement = async (db, opt) => {
         );
     }
     if (content.source) {
-        content.source = castToRID(content.appliesTo);
+        content.source = castToRID(content.source);
         dependencies.push(content.source);
         query.source = content.source;
     } else {
@@ -801,7 +824,7 @@ const createStatement = async (db, opt) => {
 /**
  * create new record in the database
  *
- * @param {Object} db the orientjs database connection
+ * @param {orientjs.Db} db the orientjs database connection
  * @param {Object} opt options
  * @param {Object} opt.content the contents of the new record
  * @param {ClassModel} opt.model the model for the table/class to insert the new record into

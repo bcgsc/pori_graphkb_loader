@@ -13,9 +13,9 @@ const {
     select, create, update, remove, QUERY_LIMIT
 } = require('./../repo/base');
 const {
-    SPECIAL_QUERY_ARGS, Clause, Comparison
+    Clause, Comparison
 } = require('./../repo/query');
-const {looksLikeRID, VERBOSE} = require('./../repo/util');
+const {looksLikeRID} = require('./../repo/util');
 const {INDEX_SEP_CHARS} = require('./../repo/schema');
 const {checkClassPermissions} = require('./../middleware/auth');
 
@@ -24,35 +24,6 @@ const INDEX_SEP_REGEX = new RegExp(`[${escapeStringRegexp(INDEX_SEP_CHARS)}]+`, 
 const MIN_WORD_SIZE = 4;
 
 class InputValidationError extends ErrorMixin {}
-/*
- * check that the parameters passed are expected
- */
-const validateParams = async (opt) => {
-    const required = opt.required || [];
-    const optional = opt.optional || [];
-    const allowNone = opt.allowNone !== undefined
-        ? opt.allowNone
-        : true;
-    const params = [];
-
-    if (Object.keys(params).length === 0 && !allowNone) {
-        throw new InputValidationError('no parameters were specified');
-    }
-    // check that the required parameters are present
-    for (const attr of required) {
-        if (params.indexOf(attr) < 0) {
-            throw new InputValidationError(`missing required parameter: ${attr}. Found ${params}`);
-        }
-    }
-    // check that all parameters are expected
-    for (const attr of params) {
-        if (required.indexOf(attr) < 0 && optional.indexOf(attr) < 0) {
-            throw new InputValidationError(`unexpected parameter: ${attr}`);
-        }
-    }
-    return true;
-};
-
 
 /**
  * Parse the operators prefixed on the query parameters
@@ -62,19 +33,7 @@ const validateParams = async (opt) => {
 const parseQueryLanguage = (inputQuery, defaultOperator = '=') => {
     const query = {};
     for (const [name, value] of Object.entries(inputQuery)) {
-        const clauseList = [];
-        if (value instanceof Array && !SPECIAL_QUERY_ARGS.has(name)) {
-            for (const subValue of value) {
-                clauseList.push(parseQueryComparison(name, subValue, defaultOperator));
-            }
-        } else {
-            clauseList.push(parseQueryComparison(name, value, defaultOperator));
-        }
-        if (clauseList.length > 1) {
-            query[name] = new Clause('AND', clauseList);
-        } else {
-            query[name] = clauseList[0];
-        }
+        query[name] = parseQueryComparison(name, value, defaultOperator);
     }
     return query;
 };
@@ -85,6 +44,8 @@ const parseQueryLanguage = (inputQuery, defaultOperator = '=') => {
  * objects/subqueries
  *
  * @param {string} name the name of the query parameter
+ * @param value
+ * @param {string} [defaultOperator='='] the default operator to use in comparisons
  */
 const parseQueryComparison = (name, value, defaultOperator = '=') => {
     if (['fuzzyMatch', 'limit', 'skip', 'neighbors', 'size'].includes(name)) {
@@ -122,61 +83,68 @@ const parseQueryComparison = (name, value, defaultOperator = '=') => {
             return value;
         }
         throw new InputValidationError(`direction must be 'out' or 'in' but found: ${value}`);
-    } else if (value !== null && typeof value === 'object' && !(value instanceof Array)) {
+    // } if (name === 'v') {
+    //    return parseQueryLanguage(value);
+    } if (value instanceof Array) {
+        return new Comparison(value);
+    } if (value !== null && typeof value === 'object') {
         // subqueries
         value = parseQueryLanguage(value, name === 'v'
             ? 'CONTAINS'
             : '=');
         return value;
-    } else {
-        const orList = new Clause('OR');
-        console.log(name, value);
-        for (let subValue of value.split('|')) {
-            let negate = false;
-            if (subValue.startsWith('!')) {
-                negate = true;
-                subValue = value.slice(1);
-            }
-            let operator = defaultOperator;
-            if (subValue.startsWith('~')) {
-                operator = 'CONTAINSTEXT';
-                subValue = subValue.slice(1);
-                if (INDEX_SEP_REGEX.exec(subValue)) {
-                    INDEX_SEP_REGEX.lastIndex = 0; // https://siderite.blogspot.com/2011/11/careful-when-reusing-javascript-regexp.html
-                    // contains a separator char, should split into AND clause
-                    const andClause = new Clause('AND', Array.from(
-                        subValue.split(INDEX_SEP_REGEX), word => new Comparison(word, operator, negate)
-                    ));
-                    if (andClause.comparisons.some(comp => comp.value.length < MIN_WORD_SIZE)) {
-                        throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters after splitting on separator characters: ${INDEX_SEP_CHARS}`);
-                    }
-                    orList.push(andClause);
-                    continue;
-                } else if (subValue.length < MIN_WORD_SIZE) {
-                    throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters`);
-                }
-            }
-            if (subValue === 'null') {
-                subValue = null;
-            }
-            orList.push(new Comparison(subValue, operator, negate));
-        }
-        return orList.length === 1
-            ? orList.comparisons[0]
-            : orList;
     }
+    const orList = new Clause('OR');
+    for (let subValue of value.split('|')) {
+        let negate = false;
+        if (subValue.startsWith('!')) {
+            negate = true;
+            subValue = value.slice(1);
+        }
+        let operator = defaultOperator;
+        if (subValue.startsWith('~')) {
+            operator = 'CONTAINSTEXT';
+            subValue = subValue.slice(1);
+            if (INDEX_SEP_REGEX.exec(subValue)) {
+                INDEX_SEP_REGEX.lastIndex = 0; // https://siderite.blogspot.com/2011/11/careful-when-reusing-javascript-regexp.html
+                // contains a separator char, should split into AND clause
+                const andClause = new Clause('AND', Array.from(
+                    subValue.split(INDEX_SEP_REGEX), word => new Comparison(word, operator, negate)
+                ));
+                if (andClause.comparisons.some(comp => comp.value.length < MIN_WORD_SIZE)) {
+                    throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters after splitting on separator characters: ${INDEX_SEP_CHARS}`);
+                }
+                orList.push(andClause);
+                continue;
+            } else if (subValue.length < MIN_WORD_SIZE) {
+                throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters`);
+            }
+        }
+        if (subValue === 'null') {
+            subValue = null;
+        }
+        orList.push(new Comparison(subValue, operator, negate));
+    }
+    return orList.length === 1
+        ? orList.comparisons[0]
+        : orList;
 };
 
 
 /**
  * Query a record class
+ *
+ * @param {Object} opt
+ * @param {orientjs.Db} opt.db the database connection
+ * @param {express.Router} opt.router the router to ad the route to
+ * @param {ClassModel} opt.model the model the route is being built for
+ * @param {Object.<string,ClassModel>} opt.schema the mapping of class names to models
+ *
  */
 const queryRoute = (opt) => {
     const {
         router, model, db, schema
     } = opt;
-    const optQueryParams = opt.optQueryParams || _.concat(model._optional, model._required);
-    const reqQueryParams = opt.reqQueryParams || [];
     if (process.env.VERBOSE === '1') {
         console.log(`NEW ROUTE [QUERY] ${model.routeName}`);
     }
@@ -189,19 +157,8 @@ const queryRoute = (opt) => {
                 if (err instanceof InputValidationError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
-                if (VERBOSE) {
-                    console.error('INTERNAL_SERVER_ERROR', err);
-                }
+                console.error(err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
-            }
-            try {
-                validateParams({
-                    params: _.omit(req.query, SPECIAL_QUERY_ARGS),
-                    required: reqQueryParams,
-                    optional: optQueryParams
-                });
-            } catch (err) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
             }
             let fetchPlan = null;
             if (req.query.neighbors !== undefined) {
@@ -217,9 +174,7 @@ const queryRoute = (opt) => {
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
-                if (VERBOSE) {
-                    console.error('INTERNAL_SERVER_ERROR', err);
-                }
+                console.error(err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
@@ -227,6 +182,12 @@ const queryRoute = (opt) => {
 
 /**
  * Get a record by RID
+ *
+ * @param {Object} opt
+ * @param {orientjs.Db} opt.db the database connection
+ * @param {express.Router} opt.router the router to ad the route to
+ * @param {ClassModel} opt.model the model the route is being built for
+ * @param {Object.<string,ClassModel>} opt.schema the mapping of class names to models
  */
 const getRoute = (opt) => {
     const {
@@ -246,9 +207,7 @@ const getRoute = (opt) => {
                     }
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
-                if (VERBOSE) {
-                    console.error('INTERNAL_SERVER_ERROR', err);
-                }
+                console.error(err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
             if (!looksLikeRID(req.params.rid, false)) {
@@ -265,14 +224,6 @@ const getRoute = (opt) => {
             }
 
             try {
-                validateParams({
-                    params: _.omit(req.query, ['activeOnly'])
-                });
-            } catch (err) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-            }
-
-            try {
                 const result = await select(db, Object.assign(req.query, {
                     model,
                     where: {'@rid': req.params.rid},
@@ -286,9 +237,7 @@ const getRoute = (opt) => {
                 if (err instanceof NoRecordFoundError) {
                     return res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 }
-                if (VERBOSE) {
-                    console.error('INTERNAL_SERVER_ERROR', err);
-                }
+                console.error(err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
@@ -296,6 +245,12 @@ const getRoute = (opt) => {
 
 /**
  * POST route to create new records
+ *
+ * @param {Object} opt
+ * @param {orientjs.Db} opt.db the database connection
+ * @param {express.Router} opt.router the router to ad the route to
+ * @param {ClassModel} opt.model the model the route is being built for
+ * @param {Object.<string,ClassModel>} opt.schema the mapping of class names to models
  */
 const postRoute = (opt) => {
     const {
@@ -322,7 +277,7 @@ const postRoute = (opt) => {
                 } if (err instanceof RecordExistsError) {
                     return res.status(HTTP_STATUS.CONFLICT).json(err);
                 }
-                console.log(err);
+                console.error(err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
@@ -331,6 +286,12 @@ const postRoute = (opt) => {
 
 /**
  * Route to update a record given its RID
+ *
+ * @param {Object} opt
+ * @param {orientjs.Db} opt.db the database connection
+ * @param {express.Router} opt.router the router to ad the route to
+ * @param {ClassModel} opt.model the model the route is being built for
+ * @param {Object.<string,ClassModel>} opt.schema the mapping of class names to models
  */
 const updateRoute = (opt) => {
     const {
@@ -369,9 +330,7 @@ const updateRoute = (opt) => {
                 } if (err instanceof RecordExistsError) {
                     return res.status(HTTP_STATUS.CONFLICT).json(err);
                 }
-                if (VERBOSE) {
-                    console.error(err);
-                }
+                console.error(err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
@@ -379,6 +338,12 @@ const updateRoute = (opt) => {
 
 /**
  * Route to delete/remove a resource
+ *
+ * @param {Object} opt
+ * @param {orientjs.Db} opt.db the database connection
+ * @param {express.Router} opt.router the router to ad the route to
+ * @param {ClassModel} opt.model the model the route is being built for
+ * @param {Object.<string,ClassModel>} opt.schema the mapping of class names to models
  */
 const deleteRoute = (opt) => {
     const {
@@ -413,9 +378,7 @@ const deleteRoute = (opt) => {
                 } if (err instanceof NoRecordFoundError) {
                     return res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 }
-                if (VERBOSE) {
-                    console.error(err);
-                }
+                console.error(err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
@@ -461,5 +424,5 @@ const addResourceRoutes = (opt) => {
 
 
 module.exports = {
-    validateParams, addResourceRoutes, InputValidationError, parseQueryLanguage, MAX_JUMPS
+    addResourceRoutes, InputValidationError, parseQueryLanguage, MAX_JUMPS
 };

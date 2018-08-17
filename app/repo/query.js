@@ -1,12 +1,13 @@
 /**
  * The query module is reponsible for building the complex psuedo-SQL statements
+ * @module app/repo/query
  */
 const _ = require('lodash');
 const {RID} = require('orientjs');
 
 const {AttributeError} = require('./error');
 const {
-    quoteWrap, looksLikeRID, castToRID
+    quoteWrap, castToRID
 } = require('./util');
 
 
@@ -31,7 +32,7 @@ const SPECIAL_QUERY_ARGS = new Set([
 class Follow {
     /**
      * Sets up the edge following clause portion for tha match query statement
-     * @param {string[]} classnames the names of the edge classes to follow
+     * @param {Array.<string>} classnames the names of the edge classes to follow
      * @param {string} [type='both'] the type of edge to follow (in, out, both)
      * @param {?number} [depth=RELATED_NODE_DEPTH] depth of the edges to follow
      *
@@ -60,6 +61,8 @@ class Follow {
 
     /**
      * Converts the follow clause into an SQL statement
+     *
+     * @returns {string} the string representing the follow clause
      */
     toString() {
         const classesString = Array.from(this.classnames, quoteWrap).join(', ');
@@ -100,7 +103,7 @@ class Follow {
 
     /**
      * Based on the input query, create the follow statement (part of a match expresion)
-     * @param {object} query
+     * @param {Object} query
      * @param {Array} [query.ancestors] list of edge class names to follow for all ancestors
      * @param {Array} [query.descendants] list of edge class names to follow for all descendants
      * @param {int} [query.fuzzyMatch] sets how far to follow 'aliasof' and 'deprecatedby' edges
@@ -262,7 +265,9 @@ class Comparison {
                 params[pname] = this.value;
                 query = `${name} ${this.operator} :${pname}`;
             } else if (this.operator !== '=') {
-                throw new AttributeError('Cannot use list operators against a null value');
+                throw new AttributeError(`Error in converting to string for parameter: ${
+                    name
+                }. Cannot use list operators against a null value`);
             } else {
                 query = `${name} IS NULL`;
             }
@@ -282,7 +287,11 @@ class SelectionQuery {
      * @param {Object} opt Selection options
      * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
      * @param {ClassModel} model the model to be selected from
-     * @param {Object} [inputQuery={}] object of property names linked to values, comparisons, or clauses
+     * @param {Object.<string,(SelectionQuery|Clause|Comparison)>} conditions object of property names linked to values, comparisons, or clauses
+     * @param {string} [opt.direction='both'] the dedfault direction to be used for edge queries
+     * @param {Array.<Follow>} [opt.follow] follow clauses for the current query
+     * @param {Array.<string>} [opt.or] list of condition names that should be treated with OR instead of and
+     * @param {Array} [opt.returnProperties] list of property names to return from the selection (instead of full records)
      *
      */
     constructor(model, conditions, opt = {}) {
@@ -326,13 +335,14 @@ class SelectionQuery {
      * in the db
      *
      * @param {Object.<string,ClassModel>} schema the set of models avaiable for build queries from
-     * @param
+     * @param {ClassModel} currModel the current model
      */
     static parseQuery(schema, currModel, query = {}, opt = {}) {
         opt = Object.assign({
             skip: null,
             activeOnly: true,
-            returnProperties: null || query.returnProperties
+            returnProperties: null || query.returnProperties,
+            defaultOperator: '='
         }, opt);
         const conditions = {};
         const properties = currModel.queryProperties;
@@ -349,7 +359,8 @@ class SelectionQuery {
             }
         }
 
-        if (opt.activeOnly) {
+        if (opt.activeOnly && ['IS', '='].includes(opt.defaultOperator)) {
+            // cannot use contains against a null, won't work: https://github.com/orientechnologies/orientdb/issues/8460
             conditions.deletedAt = new Comparison(null, opt.defaultOperator);
         }
         // split the original query into subqueries where appropriate
@@ -452,7 +463,7 @@ class SelectionQuery {
      *
      * @param {ClassModel} currModel the model for the type of edge being selected
      * @param {string} name the attribute name
-     * @param {object} query the input query
+     * @param {Object} query the input query
      *
      * @example
      * > query.parseEdgeConditions(model, 'SupportedBy')
@@ -477,9 +488,6 @@ class SelectionQuery {
         }
         const prefix = `${query.direction || 'both'}E('${currModel.name}')`;
 
-        if (opt.activeOnly) {
-            query.deletedAt = new Comparison(null, opt.defaultOperator);
-        }
         if (query.size !== undefined) {
             conditions[`${prefix}.size()`] = new Comparison(query.size);
         }
@@ -493,6 +501,9 @@ class SelectionQuery {
                 targetPrefix = `${prefix}.outV()`;
             } else {
                 targetPrefix = `${prefix}.bothV()`;
+            }
+            if (query.v instanceof Comparison) {
+                query.v = query.v.value;
             }
             if (query.v instanceof Set || query.v instanceof Array) {
                 // must be an array of RIDs
@@ -578,11 +589,11 @@ class SelectionQuery {
      * @param {int} [paramIndex=0] the index to use for naming parameters
      *
      * @example
-     *  >>> query.OrClause('thing', new Clause('OR', [new Comparison('blargh'), new Comparison(null)]))
+     *  > query.OrClause('thing', new Clause('OR', [new Comparison('blargh'), new Comparison(null)]))
      *  {query: '(thing = :param0 OR thing IS NULL)', params: {param0: 'blargh'}}
      *
      * @example
-     *  >>> query.OrClause('thing', new Comparison(2))
+     *  > query.OrClause('thing', new Comparison(2))
      *  {query: 'thing = :param0', params: {param0: 2}}
      */
     conditionClause(name, value, paramIndex = 0) {
@@ -605,7 +616,7 @@ class SelectionQuery {
      *
      * @param {int} paramStartIndex
      *
-     * @returns {object} an object containing the SQL query statment (query) and the parameters (params)
+     * @returns {Object} an object containing the SQL query statment (query) and the parameters (params)
      */
     toString(paramStartIndex = 0) {
         let queryString;
