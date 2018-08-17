@@ -699,9 +699,9 @@ const createStatement = async (db, opt) => {
     try {
         if (content.appliesTo !== null) {
             content.appliesTo = castToRID(content.appliesTo);
-            query.appliesTo = content.appliesTo;
             dependencies.push(content.appliesTo);
         }
+        query.appliesTo = content.appliesTo;
     } catch (err) {
         throw new AttributeError(
             `statement appliesTo record ID does not look like a valid record ID: ${content.appliesTo}`
@@ -719,7 +719,14 @@ const createStatement = async (db, opt) => {
             `statement relevance record ID does not look like a valid record ID: ${content.relevance}`
         );
     }
-
+    if (content.source) {
+        content.source = castToRID(content.appliesTo);
+        dependencies.push(content.source);
+        query.source = content.source;
+    } else {
+        query.source = null;
+    }
+    query.sourceId = content.sourceId || null;
     // check the DB to ensure all dependencies already exist (and are not deleted)
     try {
         // ensure that the dependency records are valid
