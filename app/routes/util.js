@@ -60,122 +60,113 @@ const validateParams = async (opt) => {
  * @param {Object} inputQuery
  */
 const parseQueryLanguage = (inputQuery, defaultOperator = '=') => {
-    /**
-     * parse any query parameters based on the expected operator syntax. The final result will be
-     * an object of attribute names as keys and arrays (AND) or arrays (OR) or
-     * clauses {value,operator}
-     *
-     * @example
-     * > parseQueryLanguage({'name': ['~cancer', '~pancreas|~pancreatic']})
-     * {
-     *      name: [
-     *          [{value: 'cancer', operator: '~'}],
-     *          [{value: 'pancreas', operator: '~'}, {value: 'pancreatic', operator: '~'}]
-     *      ]
-     * }
-     */
     const query = {};
-    for (let [name, valueList] of Object.entries(inputQuery)) {
-        if (['fuzzyMatch', 'limit', 'skip', 'neighbors', 'size'].includes(name)) {
-            if (Number.isNaN(Number(valueList))) {
-                throw new InputValidationError(`Expected ${name} to be a number, but found ${valueList}`);
+    for (const [name, value] of Object.entries(inputQuery)) {
+        const clauseList = [];
+        if (value instanceof Array && !SPECIAL_QUERY_ARGS.has(name)) {
+            for (const subValue of value) {
+                clauseList.push(parseQueryComparison(name, subValue, defaultOperator));
             }
-            valueList = Number(valueList);
-            if (
-                (name === 'fuzzyMatch' || name === 'neighbors')
-                && (valueList < 0 || valueList > MAX_JUMPS)
-            ) {
-                throw new InputValidationError(`${name} must be a number between 0 and ${MAX_JUMPS}`);
-            }
-            if ((name === 'skip' || name === 'limit') && (valueList < 1)) {
-                throw new InputValidationError(`${name} must be a positive integer greater than zero`);
-            }
-            if (name === 'limit' && valueList > QUERY_LIMIT) {
-                throw new InputValidationError(`${name} must be a number between 1 and ${QUERY_LIMIT}. Please use skip and limit to paginate larger queries`);
-            }
-            if (name === 'size' && valueList < 0) {
-                throw new InputValidationError(`${name} must be a positive integer`);
-            }
-            query[name] = valueList;
-        } else if (['descendants', 'ancestors', 'returnProperties', 'or'].includes(name)) {
-            if (typeof (valueList) !== 'string') {
-                throw new InputValidationError(`Query parameter ${name} cannot be specified multiple times`);
-            }
-            query[name] = valueList.split(',').filter(x => x.length > 0); // empty string should give an empty list
-        } else if (name === 'activeOnly') {
-            valueList = valueList.trim().toLowerCase();
-            if (['0', 'false', 'f'].includes(valueList)) {
-                query.activeOnly = false;
-            } else {
-                query.activeOnly = true;
-            }
-        } else if (name === 'direction') {
-            valueList = valueList.toString().toLowerCase().trim();
-            if (valueList === 'out') {
-                query.direction = 'out';
-            } else if (valueList === 'in') {
-                query.direction = 'in';
-            } else {
-                throw new InputValidationError(`direction must be 'out' or 'in' but found: ${valueList}`);
-            }
-        } else if (valueList !== null && typeof valueList === 'object' && !(valueList instanceof Array)) {
-            // subqueries
-            valueList = parseQueryLanguage(valueList, name === 'v'
-                ? 'CONTAINS'
-                : '=');
-            query[name] = valueList;
         } else {
-            if (!(valueList instanceof Array)) {
-                valueList = [valueList];
-            }
-            const clauseList = [];
-            for (let i = 0; i < valueList.length; i++) {
-                const orList = new Clause('OR');
-                for (let value of valueList[i].split('|')) {
-                    let negate = false;
-                    if (value.startsWith('!')) {
-                        negate = true;
-                        value = value.slice(1);
-                    }
-                    let operator = defaultOperator;
-                    if (value.startsWith('~')) {
-                        operator = 'CONTAINSTEXT';
-                        value = value.slice(1);
-                        if (INDEX_SEP_REGEX.exec(value)) {
-                            INDEX_SEP_REGEX.lastIndex = 0; // https://siderite.blogspot.com/2011/11/careful-when-reusing-javascript-regexp.html
-                            // contains a separator char, should split into AND clause
-                            const andClause = new Clause('AND', Array.from(
-                                value.split(INDEX_SEP_REGEX), word => new Comparison(word, operator, negate)
-                            ));
-                            if (andClause.comparisons.some(comp => comp.value.length < MIN_WORD_SIZE)) {
-                                throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters after splitting on separator characters: ${INDEX_SEP_CHARS}`);
-                            }
-                            orList.push(andClause);
-                            continue;
-                        } else if (value.length < MIN_WORD_SIZE) {
-                            throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters`);
-                        }
-                    }
-                    if (value === 'null') {
-                        value = null;
-                    }
-                    orList.push(new Comparison(value, operator, negate));
-                }
-                if (orList.length === 1) {
-                    clauseList.push(orList.comparisons[0]);
-                } else {
-                    clauseList.push(orList);
-                }
-            }
-            if (clauseList.length > 1) {
-                query[name] = new Clause('AND', clauseList);
-            } else {
-                query[name] = clauseList[0];
-            }
+            clauseList.push(parseQueryComparison(name, value, defaultOperator));
+        }
+        if (clauseList.length > 1) {
+            query[name] = new Clause('AND', clauseList);
+        } else {
+            query[name] = clauseList[0];
         }
     }
     return query;
 };
+
+
+/**
+ * Convert the content of an invididual value into a set of comparisons, clauses, or
+ * objects/subqueries
+ *
+ * @param {string} name the name of the query parameter
+ */
+const parseQueryComparison = (name, value, defaultOperator = '=') => {
+    if (['fuzzyMatch', 'limit', 'skip', 'neighbors', 'size'].includes(name)) {
+        if (Number.isNaN(Number(value))) {
+            throw new InputValidationError(`Expected ${name} to be a number, but found ${value}`);
+        }
+        value = Number(value);
+        if (
+            (name === 'fuzzyMatch' || name === 'neighbors')
+            && (value < 0 || value > MAX_JUMPS)
+        ) {
+            throw new InputValidationError(`${name} must be a number between 0 and ${MAX_JUMPS}`);
+        }
+        if ((name === 'skip' || name === 'limit') && (value < 1)) {
+            throw new InputValidationError(`${name} must be a positive integer greater than zero`);
+        }
+        if (name === 'limit' && value > QUERY_LIMIT) {
+            throw new InputValidationError(`${name} must be a number between 1 and ${QUERY_LIMIT}. Please use skip and limit to paginate larger queries`);
+        }
+        if (name === 'size' && value < 0) {
+            throw new InputValidationError(`${name} must be a positive integer`);
+        }
+        return value;
+    } if (['descendants', 'ancestors', 'returnProperties', 'or'].includes(name)) {
+        if (typeof (value) !== 'string') {
+            throw new InputValidationError(`Query parameter ${name} cannot be specified multiple times`);
+        }
+        return value.split(',').filter(x => x.length > 0); // empty string should give an empty list
+    } if (name === 'activeOnly') {
+        value = value.trim().toLowerCase();
+        return !['0', 'false', 'f'].includes(value);
+    } if (name === 'direction') {
+        value = value.toString().toLowerCase().trim();
+        if (value === 'out' || value === 'in') {
+            return value;
+        }
+        throw new InputValidationError(`direction must be 'out' or 'in' but found: ${value}`);
+    } else if (value !== null && typeof value === 'object' && !(value instanceof Array)) {
+        // subqueries
+        value = parseQueryLanguage(value, name === 'v'
+            ? 'CONTAINS'
+            : '=');
+        return value;
+    } else {
+        const orList = new Clause('OR');
+        console.log(name, value);
+        for (let subValue of value.split('|')) {
+            let negate = false;
+            if (subValue.startsWith('!')) {
+                negate = true;
+                subValue = value.slice(1);
+            }
+            let operator = defaultOperator;
+            if (subValue.startsWith('~')) {
+                operator = 'CONTAINSTEXT';
+                subValue = subValue.slice(1);
+                if (INDEX_SEP_REGEX.exec(subValue)) {
+                    INDEX_SEP_REGEX.lastIndex = 0; // https://siderite.blogspot.com/2011/11/careful-when-reusing-javascript-regexp.html
+                    // contains a separator char, should split into AND clause
+                    const andClause = new Clause('AND', Array.from(
+                        subValue.split(INDEX_SEP_REGEX), word => new Comparison(word, operator, negate)
+                    ));
+                    if (andClause.comparisons.some(comp => comp.value.length < MIN_WORD_SIZE)) {
+                        throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters after splitting on separator characters: ${INDEX_SEP_CHARS}`);
+                    }
+                    orList.push(andClause);
+                    continue;
+                } else if (subValue.length < MIN_WORD_SIZE) {
+                    throw new InputValidationError(`Word is too short to query with ~ operator. Must be at least ${MIN_WORD_SIZE} letters`);
+                }
+            }
+            if (subValue === 'null') {
+                subValue = null;
+            }
+            orList.push(new Comparison(subValue, operator, negate));
+        }
+        return orList.length === 1
+            ? orList.comparisons[0]
+            : orList;
+    }
+};
+
 
 /**
  * Query a record class
@@ -221,7 +212,7 @@ const queryRoute = (opt) => {
                 const result = await select(db, {
                     model, where: req.query, fetchPlan, user: req.user, schema
                 });
-                return res.json({result: jc.decycle(result)});
+                return res.json(jc.decycle({result}));
             } catch (err) {
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
@@ -290,7 +281,7 @@ const getRoute = (opt) => {
                     user: req.user,
                     schema
                 }));
-                return res.json({result: jc.decycle(result[0])});
+                return res.json(jc.decycle({result: result[0]}));
             } catch (err) {
                 if (err instanceof NoRecordFoundError) {
                     return res.status(HTTP_STATUS.NOT_FOUND).json(err);
@@ -324,7 +315,7 @@ const postRoute = (opt) => {
                 const result = await create(db, {
                     model, content: req.body, user: req.user, schema
                 });
-                return res.status(HTTP_STATUS.CREATED).json({result: jc.decycle(result)});
+                return res.status(HTTP_STATUS.CREATED).json(jc.decycle({result}));
             } catch (err) {
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
@@ -369,7 +360,7 @@ const updateRoute = (opt) => {
                     user: req.user,
                     schema
                 });
-                return res.json({result: jc.decycle(result)});
+                return res.json(jc.decycle({result}));
             } catch (err) {
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
@@ -415,7 +406,7 @@ const deleteRoute = (opt) => {
                         model, schema, where: {'@rid': req.params.rid, deletedAt: null}, user: req.user
                     }
                 );
-                return res.json({result: jc.decycle(result)});
+                return res.json(jc.decycle({result}));
             } catch (err) {
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
