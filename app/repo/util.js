@@ -39,6 +39,18 @@ const castToRID = (string) => {
 };
 
 
+const naturalListJoin = (list) => {
+    if (list.length === 0) {
+        return '';
+    }
+    let result = list.slice(0, list.length - 1).join(', ');
+    if (list.length > 1) {
+        result = `${result}, and ${list[list.length - 1]}`;
+    }
+    return result;
+};
+
+
 const castString = x => x.toString().toLowerCase().trim();
 const castNullableString = x => (x === null
     ? null
@@ -110,6 +122,7 @@ module.exports = {
     castToRID,
     castUUID,
     looksLikeRID,
+    naturalListJoin,
     quoteWrap,
     timeStampNow,
     VERBOSE

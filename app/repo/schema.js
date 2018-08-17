@@ -14,6 +14,7 @@ const {
     castString,
     castToRID,
     castUUID,
+    naturalListJoin,
     timeStampNow,
     VERBOSE
 } = require('./util');
@@ -259,7 +260,10 @@ const SCHEMA_DEFN = {
                 name: 'createdBy', type: 'link', nullable: false, mandatory: false
             },
             {
-                name: 'groupRestrictions', type: 'linkset', linkedClass: 'UserGroup', description: 'user groups allowed to interact with this record'
+                name: 'groupRestrictions',
+                type: 'linkset',
+                linkedClass: 'UserGroup',
+                description: 'user groups allowed to interact with this record'
             }
         ],
         indices: [
@@ -276,12 +280,18 @@ const SCHEMA_DEFN = {
         inherits: ['Evidence', 'V'],
         properties: [
             {
-                name: 'name', mandatory: true, nullable: false, description: 'Name of the evidence or source'
+                name: 'name',
+                mandatory: true,
+                nullable: false,
+                description: 'Name of the evidence or source'
             },
             {name: 'version', description: 'The evidence version'},
             {name: 'url', type: 'string'},
             {name: 'description', type: 'string'},
-            {name: 'usage', description: 'Link to the usage/licensing information associated with this evidence'}
+            {
+                name: 'usage',
+                description: 'Link to the usage/licensing information associated with this evidence'
+            }
         ],
         indices: [
             {
@@ -291,7 +301,8 @@ const SCHEMA_DEFN = {
                 properties: ['name', 'version', 'deletedAt'],
                 class: 'Source'
             }
-        ]
+        ],
+        paraphrase: rec => rec.name.toString().trim()
     },
     Ontology: {
         expose: {
@@ -319,7 +330,10 @@ const SCHEMA_DEFN = {
                 description: 'Mainly for alias records. If this term is defined as a part of another term, this should link to the original term'
             },
             {name: 'name', description: 'Name of the term'},
-            {name: 'sourceIdVersion', description: 'The version of the identifier based on the external database/system'},
+            {
+                name: 'sourceIdVersion',
+                description: 'The version of the identifier based on the external database/system'
+            },
             {name: 'description', type: 'string'},
             {name: 'longName', type: 'string'},
             {
@@ -339,6 +353,7 @@ const SCHEMA_DEFN = {
             },
             {name: 'url', type: 'string'}
         ],
+        paraphrase: rec => rec.name.toString().trim(),
         isAbstract: true
     },
     EvidenceLevel: {inherits: ['Ontology', 'Evidence']},
@@ -356,9 +371,13 @@ const SCHEMA_DEFN = {
     Publication: {
         inherits: ['Ontology', 'Evidence'],
         properties: [
-            {name: 'journalName', description: 'Name of the journal where the article was published'},
+            {
+                name: 'journalName',
+                description: 'Name of the journal where the article was published'
+            },
             {name: 'year', type: 'integer'}
-        ]
+        ],
+        paraphrase: rec => `${rec.source}:${rec.sourceId}`
     },
     Therapy: {
         inherits: ['Ontology'],
@@ -374,14 +393,23 @@ const SCHEMA_DEFN = {
             {name: 'start', type: 'integer'},
             {name: 'end', type: 'integer'},
             {
-                name: 'biotype', mandatory: true, nullable: false, description: 'The biological type of the feature', choices: ['gene', 'protein', 'transcript', 'exon', 'chromosome']
+                name: 'biotype',
+                mandatory: true,
+                nullable: false,
+                description: 'The biological type of the feature',
+                choices: ['gene', 'protein', 'transcript', 'exon', 'chromosome']
             }
         ]
     },
     Position: {
         properties: [
-            {name: '@class', description: 'The database class this record belongs to'}
+            {
+                name: '@class',
+                description: 'The database class this record belongs to',
+                cast: trimString
+            }
         ],
+        paraphrase: rec => rec.pos.toString(),
         isAbstract: true
     },
     ProteinPosition: {
@@ -441,18 +469,37 @@ const SCHEMA_DEFN = {
         inherits: ['V', 'Biomarker'],
         properties: [
             {
-                name: 'type', type: 'link', mandatory: true, nullable: false, linkedClass: 'Vocabulary'
+                name: 'type',
+                type: 'link',
+                mandatory: true,
+                nullable: false,
+                linkedClass: 'Vocabulary'
             },
             {name: 'zygosity', choices: ['heterozygous', 'homozygous']},
-            {name: 'germline', type: 'boolean', description: 'Flag to indicate if the variant is germline (vs somatic)'}
+            {
+                name: 'germline',
+                type: 'boolean',
+                description: 'Flag to indicate if the variant is germline (vs somatic)'
+            }
         ],
-        isAbstract: true
+        isAbstract: true,
+        paraphrase: (rec) => {
+            let result = `${rec.type} of ${rec.reference1}`;
+            if (rec.reference2) {
+                result = `${result} and ${rec.reference2}`;
+            }
+            return result;
+        }
     },
     PositionalVariant: {
         inherits: ['Variant'],
         properties: [
             {
-                name: 'reference1', mandatory: true, type: 'link', linkedClass: 'Feature', nullable: false
+                name: 'reference1',
+                mandatory: true,
+                type: 'link',
+                linkedClass: 'Feature',
+                nullable: false
             },
             {
                 name: 'reference2', type: 'link', linkedClass: 'Feature', nullable: false
@@ -513,7 +560,11 @@ const SCHEMA_DEFN = {
         inherits: ['Variant'],
         properties: [
             {
-                name: 'reference1', mandatory: true, type: 'link', linkedClass: 'Ontology', nullable: false
+                name: 'reference1',
+                mandatory: true,
+                type: 'link',
+                linkedClass: 'Ontology',
+                nullable: false
             },
             {
                 name: 'reference2', type: 'link', linkedClass: 'Ontology', nullable: false
@@ -555,14 +606,22 @@ const SCHEMA_DEFN = {
         ]
     },
     Statement: {
-        expose: EXPOSE_ALL, // will have special post method
+        expose: EXPOSE_ALL,
         inherits: ['V'],
         properties: [
             {
-                name: 'relevance', type: 'link', linkedClass: 'Vocabulary', mandatory: true, nullable: false
+                name: 'relevance',
+                type: 'link',
+                linkedClass: 'Vocabulary',
+                mandatory: true,
+                nullable: false
             },
             {
-                name: 'appliesTo', type: 'link', linkedClass: 'Ontology', mandatory: true, notNull: false
+                name: 'appliesTo',
+                type: 'link',
+                linkedClass: 'Ontology',
+                mandatory: true,
+                notNull: false
             },
             {name: 'description', type: 'string'},
             {
@@ -581,7 +640,28 @@ const SCHEMA_DEFN = {
                 linkedClass: 'Source',
                 type: 'link'
             }
-        ]
+        ],
+        paraphrase: (rec, schema) => {
+            const implications = [];
+            const support = [];
+            for (const edge of rec.in_Implies) {
+                const model = schema[edge.out['@class']];
+                implications.push(model.paraphraseRecord(edge.out, schema));
+            }
+            for (const edge of rec.out_SupportedBy) {
+                const model = schema[edge.in['@class']];
+                support.push(model.paraphraseRecord(edge.in, schema));
+            }
+            let result = '';
+            if (implications.length > 0) {
+                result = `Given ${naturalListJoin(implications)}, `;
+            }
+            result = `${result}${rec.relevance} applies to ${rec.appliesTo}`;
+            if (support.length > 0) {
+                result = `${result}, which is supported by ${naturalListJoin(support)}`;
+            }
+            return result;
+        }
     },
     AnatomicalEntity: {inherits: ['Ontology']},
     Disease: {inherits: ['Ontology']},
@@ -684,6 +764,7 @@ class ClassModel {
         this._subclasses = opt.subclasses || [];
         this.isEdge = !!opt.isEdge;
         this._edgeRestrictions = opt.edgeRestrictions || null;
+        this._paraphrase = opt.paraphrase;
         if (this._edgeRestrictions) {
             this.isEdge = true;
         }
@@ -746,6 +827,41 @@ class ClassModel {
     }
 
     /**
+     * Given some record, returns a string representation that is used for display purposes only
+     *
+     * @param {Object} record the record to be paraphrased
+     */
+    paraphraseRecord(record, schema) {
+        const newRecord = {};
+        const {properties} = this;
+        for (let [attr, value] of Object.entries(record)) {
+            if (attr.startsWith('out_') || attr.startsWith('in_')) {
+                newRecord[attr] = value;
+                continue;
+            }
+            if (properties[attr] === undefined) {
+                continue;
+            }
+            if (value && value['@class']) {
+                const model = schema[value['@class']];
+                value = model.paraphraseRecord(value, schema);
+            }
+            newRecord[attr] = value;
+        }
+        let paraphraseFunc = this._paraphrase;
+        for (const parentName of this.inherits) {
+            if (paraphraseFunc) {
+                break;
+            }
+            paraphraseFunc = schema[parentName]._paraphrase;
+        }
+        if (paraphraseFunc) {
+            return paraphraseFunc(newRecord, schema);
+        }
+        return `${record['@class']}[${record['@rid']}]`;
+    }
+
+    /**
      * Given the name of a subclass, retrieve the subclass model or throw an error if it is not
      * found
      */
@@ -758,7 +874,11 @@ class ClassModel {
                 return subclass.subClassModel(modelName);
             } catch (err) {}
         }
-        throw new Error(`The subclass (${modelName}) was not found as a subclass of the current model (${this.name})`);
+        throw new Error(`The subclass (${
+            modelName
+        }) was not found as a subclass of the current model (${
+            this.name
+        })`);
     }
 
     /**
@@ -844,7 +964,11 @@ class ClassModel {
             // get the property definition from the schema
             const prop = this.properties[dbProp.name];
             if (prop === undefined) {
-                throw new Error(`[${this.name}] failed to find the property ${dbProp.name} on the schema definition`);
+                throw new Error(`[${
+                    this.name
+                }] failed to find the property ${
+                    dbProp.name
+                } on the schema definition`);
             }
             const dbPropType = orientjs.types[dbProp.type].toLowerCase();
             if (dbPropType !== prop.type) {
@@ -962,7 +1086,13 @@ class ClassModel {
                     continue;
                 }
                 if (!prop.choices.includes(value)) {
-                    throw new AttributeError(`[${this.name}] Expected controlled vocabulary choices. ${value} is not in the list of valid choices: ${prop.choices}`);
+                    throw new AttributeError(`[${
+                        this.name
+                    }] Expected controlled vocabulary choices. ${
+                        value
+                    } is not in the list of valid choices: ${
+                        prop.choices
+                    }`);
                 }
             }
         }
