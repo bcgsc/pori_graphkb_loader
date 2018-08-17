@@ -1098,12 +1098,12 @@ class ClassModel {
         }
         // look for linked models
         for (let [attr, value] of Object.entries(formattedRecord)) {
-            let {linkedModel} = properties[attr];
-            if (properties[attr].type === 'embedded' && linkedModel && typeof value === 'object') {
-                if (value && value['@class'] && value['@class'] !== linkedModel.name) {
-                    linkedModel = linkedModel.subClassModel(value['@class']);
+            let {linkedClass} = properties[attr];
+            if (properties[attr].type === 'embedded' && linkedClass && typeof value === 'object') {
+                if (value && value['@class'] && value['@class'] !== linkedClass.name) {
+                    linkedClass = linkedClass.subClassModel(value['@class']);
                 }
-                value = linkedModel.formatRecord(value);
+                value = linkedClass.formatRecord(value);
             }
             formattedRecord[attr] = value;
         }

@@ -1003,13 +1003,13 @@ const generateSwaggerSpec = (schema, metadata) => {
             }
             if (prop.name === 'subsets') {
                 propDefn.type = 'string';
-            } else if (prop.linkedModel) {
+            } else if (prop.linkedClass) {
                 if (prop.type.includes('embedded')) {
-                    propDefn.$ref = `#/components/schemas/${prop.linkedModel.name}`;
-                } else if (docs.components.schemas[`${prop.linkedModel.name}Link`]) {
-                    propDefn.$ref = `#/components/schemas/${prop.linkedModel.name}Link`;
+                    propDefn.$ref = `#/components/schemas/${prop.linkedClass.name}`;
+                } else if (docs.components.schemas[`${prop.linkedClass.name}Link`]) {
+                    propDefn.$ref = `#/components/schemas/${prop.linkedClass.name}Link`;
                 } else {
-                    Object.assign(propDefn, linkOrModel(prop.linkedModel.name));
+                    Object.assign(propDefn, linkOrModel(prop.linkedClass.name));
                 }
             } else if (prop.type.includes('link')) {
                 propDefn.$ref = '#/components/schemas/RecordLink';
