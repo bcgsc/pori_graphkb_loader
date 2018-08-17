@@ -56,7 +56,7 @@ const processCosmicRecord = async (conn, record, source) => {
     }))).result;
     variant.reference1 = gene['@rid'];
     variant.type = (await getRecordBy('vocabulary', {name: variant.type}, conn))['@rid'];
-    variant = await addRecord('positionalvariants', variant, conn, true);
+    variant = await addRecord('positionalvariants', variant, conn, {existsOk: true});
     // get the enst transcript
     // const gene = await getRecordBy('features', {name: record['Transcript'], source: {name: 'ensembl'}, biotype: 'transcript'}, conn, orderPreferredOntologyTerms);
     // add the cds variant
@@ -115,8 +115,8 @@ const upload = async (opt) => {
         name: 'cosmic',
         url: 'https://cancer.sanger.ac.uk',
         usage: 'https://cancer.sanger.ac.uk/cosmic/terms'
-    }, conn, true))['@rid'];
-    const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, true);
+    }, conn, {existsOk: true}))['@rid'];
+    const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, {existsOk: true});
     const counts = {success: 0, error: 0, skip: 0};
     const errorCache = {};
     console.log(`Processing ${jsonList.length} records`);

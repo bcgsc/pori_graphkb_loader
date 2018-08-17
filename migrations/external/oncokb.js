@@ -111,8 +111,8 @@ const processVariant = async (opt) => {
         }
 
         // if it fits one of the known term types usethat, otherwise attempt to parse as if protein notation
-        let variantUrl;
-        let variantType;
+        let variantUrl,
+            variantType;
         const defaults = {
             zygosity: null,
             germline: null,
@@ -269,7 +269,6 @@ const processActionableRecord = async (opt) => {
         reviewStatus: 'not required'
     }, conn, {
         existsOk: true,
-        verbose: true,
         getWhere: {
             implies: {direction: 'in', v: [variant['@rid'], disease['@rid']]},
             supportedBy: {direction: 'out', v: Array.from(publications, x => x['@rid'])},

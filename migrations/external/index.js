@@ -2,16 +2,12 @@
  * Migrates the data from the flatfiles to the graph database
  */
 
-const commandLineArgs = require('command-line-args');
-const commandLineUsage = require('command-line-usage');
-const fs = require('fs');
-const path = require('path');
 const request = require('request-promise');
 
+const {fileExists, createOptionsMenu} = require('./../cli');
 const {uploadDiseaseOntology} = require('./disease_ontology');
 // const ensHg19 = require('./../ensembl69_hg19_annotations');
 const {uploadHugoGenes} = require('./hgnc');
-const {upload: uploadKbFlatFile} = require('./kb');
 const {uploadUberon} = require('./uberon');
 const {uploadNCIT} = require('./ncit');
 const {uploadOncoTree} = require('./oncotree');
@@ -23,20 +19,6 @@ const {upload: uploadCivic} = require('./civic');
 const {upload: uploadVocab} = require('./vocab');
 const {upload: uploadCosmic} = require('./cosmic');
 const {upload: uploadDocm} = require('./docm');
-
-const argumentError = (usage, msg) => {
-    console.log(usage);
-    console.error(`Argument Error: ${msg}\n`);
-    process.exit(2);
-};
-
-
-const fileExists = (fileName) => {
-    if (!fs.existsSync(fileName)) {
-        throw new Error(`File does not exist: ${fileName}`);
-    }
-    return path.resolve(fileName);
-};
 
 
 const optionDefinitions = [
@@ -67,25 +49,26 @@ const optionDefinitions = [
         name: 'host',
         default: '127.0.0.1',
         description: 'server hosting the KB API',
-        required: true
+        env: 'KB_HOST'
     },
     {
         name: 'port',
-        type: parseInt,
+        type: Number,
         default: 8080,
-        required: true,
+        env: 'KB_PORT',
         description: 'port number for the server hosting the KB API'
     },
     {
         name: 'username',
-        default: process.env.KB_USER || process.env.USER,
+        default: process.env.USER,
         required: true,
-        description: 'ldap username required for access to the kb (KB_USER)'
+        description: 'ldap username required for access to the kb (KB_USER)',
+        env: 'KB_USER'
     },
     {
         name: 'password',
-        default: process.env.KB_PASSWORD,
         required: true,
+        env: 'KB_PASSWORD',
         description: 'the password for access to the kb api (KB_PASSWORD)'
     },
     {
@@ -143,40 +126,12 @@ const optionDefinitions = [
         description: 'load mutations from DOCM database api'
     }
 ];
-
-const usage = commandLineUsage([
+const options = createOptionsMenu(optionDefinitions,
     {
-        header: 'Initial Migration',
-        content: 'Migrates the data from the flatfiles into the KB graph structure'
-    },
-    {
-        header: 'Options',
-        optionList: optionDefinitions
-    }
-]);
+        title: 'External Database Migration',
+        description: 'Migrates the data from the flatfiles into the KB graph structure'
+    });
 
-let options;
-try {
-    options = commandLineArgs(optionDefinitions);
-} catch (err) {
-    argumentError(usage, err.message);
-}
-// check if they are looking for the help menu
-if (options.help !== undefined) {
-    console.log(usage);
-    process.exit(0);
-}
-
-// check all required arguments
-for (const opt of optionDefinitions) {
-    if (options[opt.name] === undefined) {
-        if (opt.default !== undefined) {
-            options[opt.name] = opt.default;
-        } else if (opt.required) {
-            argumentError(usage, `--${opt.name} is a required argument`);
-        }
-    }
-}
 
 /**
  * wrapper to make requests less verbose
@@ -248,9 +203,6 @@ const upload = async () => {
     }
     if (options.cosmic) {
         await uploadCosmic({conn: apiConnection, filename: options.cosmic});
-    }
-    if (options.kb) {
-        await uploadKbFlatFile({conn: apiConnection, filename: options.kb});
     }
     if (options.oncokb !== undefined) {
         await uploadOncoKB(apiConnection);

@@ -273,9 +273,6 @@ const processEvidenceRecord = async (opt) => {
                     : 'p.'}${variant}`
             }
         }));
-        if (variant.result.untemplatedSeq === undefined) {
-            variant.result.untemplatedSeq = null;
-        }
         const variantClass = await getRecordBy('vocabulary', {name: variant.result.type}, conn);
         variant = Object.assign(variant.result, {
             reference1: feature['@rid'],
@@ -294,7 +291,8 @@ const processEvidenceRecord = async (opt) => {
                     germline: null,
                     zygosity: null,
                     reference2: null,
-                    break2Repr: null
+                    break2Repr: null,
+                    untemplatedSeq: null
                 }, variant)
             }
         );
@@ -322,35 +320,43 @@ const processEvidenceRecord = async (opt) => {
         }, conn);
     } catch (err) {
         publication = await getPubmedArticle(rawRecord.source.pubmed_id);
-        publication = await addRecord('publications', Object.assign(publication, {source: pubmedSource['@rid']}), conn, true);
+        publication = await addRecord('publications', Object.assign(publication, {source: pubmedSource['@rid']}), conn, {existsOk: true});
     }
+    // common content
+    const content = {
+        relevance: relevance['@rid'],
+        source: source['@rid'],
+        reviewStatus: 'not required',
+        sourceId: rawRecord.id
+    };
+    const getWhere = Object.assign({
+        implies: {v: [variant['@rid']]},
+        supportedBy: {v: [publication['@rid']], source: source['@rid'], level: level['@rid']}
+
+    }, content);
+    content.supportedBy = [{target: publication['@rid'], source: source['@rid'], level: level['@rid']}];
+    content.impliedBy = [{target: variant['@rid']}];
+    content.description = rawRecord.description;
     // create the statement and connecting edges
-    if (rawRecord.evidence_type === 'Diagnostic') {
-        return addRecord('statements', {
-            impliedBy: [{target: variant['@rid']}],
-            supportedBy: [{target: publication['@rid'], source: source['@rid'], level: level['@rid']}],
-            relevance: relevance['@rid'],
-            appliesTo: disease['@rid'],
-            description: rawRecord.description
-        }, conn);
-    } if (rawRecord.evidence_type === 'Predictive' && drug) {
-        return addRecord('statements', {
-            impliedBy: [{target: variant['@rid']}, {target: disease['@rid']}],
-            supportedBy: [{target: publication['@rid'], source: source['@rid'], level: level['@rid']}],
-            relevance: relevance['@rid'],
-            appliesTo: drug['@rid'],
-            description: rawRecord.description
-        }, conn);
-    } if (rawRecord.evidence_type === 'Prognostic') {
-        return addRecord('statements', {
-            impliedBy: [{target: variant['@rid']}, {target: disease['@rid']}],
-            supportedBy: [{target: publication['@rid'], source: source['@rid'], level: level['@rid']}],
-            relevance: relevance['@rid'],
-            appliesTo: null,
-            description: rawRecord.description
-        }, conn);
+    if (!['Diagnostic', 'Predictive', 'Prognostic'].includes(rawRecord.evidence_type)) {
+        throw new Error('unable to make statement', rawRecord.evidence_type, relevance.name);
     }
-    throw new Error('unable to make statement', relevance.name);
+    if (rawRecord.evidence_type === 'Diagnostic') {
+        content.appliesTo = getWhere.appliesTo = disease['@rid'];
+    } else {
+        content.impliedBy.push({target: disease['@rid']});
+        getWhere.implies = {v: [variant['@rid'], disease['@rid']]};
+    }
+
+    if (rawRecord.evidence_type === 'Predictive' && drug) {
+        content.appliesTo = getWhere.appliesTo = drug['@rid'];
+    } if (rawRecord.evidence_type === 'Prognostic') {
+        content.appliesTo = getWhere.appliesTo = null;
+    }
+    return addRecord('statements', content, conn, {
+        existsOk: true,
+        getWhere
+    });
 };
 
 
@@ -418,7 +424,6 @@ const upload = async (conn) => {
             if (record.drugs === undefined || record.drugs.length === 0) {
                 record.drugs = [null];
             }
-            let anyErr = false;
             for (const drug of record.drugs) {
                 try {
                     await processEvidenceRecord({
@@ -431,12 +436,7 @@ const upload = async (conn) => {
                 } catch (err) {
                     console.error((err.error || err).message);
                     counts.error++;
-                    anyErr = true;
                 }
-            }
-            if (false && anyErr) {
-                console.log();
-                console.log(record);
             }
         }
         console.log(counts);

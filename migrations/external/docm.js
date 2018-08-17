@@ -116,7 +116,6 @@ const processRecord = async (opt) => {
                 reviewStatus: 'not required'
             }, conn, {
                 existsOk: true,
-                verbose: true,
                 getWhere: {
                     implies: {direction: 'in', v: [disease['@rid'], variant['@rid']]},
                     supportedBy: {v: [publication['@rid']], direction: 'out'},
@@ -128,9 +127,7 @@ const processRecord = async (opt) => {
             });
             counts.success++;
         } catch (err) {
-            console.log(err.error
-                ? err.error.message
-                : err.message);
+            console.log(err.error || err);
             counts.error++;
         }
     }
@@ -170,9 +167,7 @@ const upload = async (conn) => {
             counts.skip += updates.skip;
         } catch (err) {
             counts.error++;
-            console.log(err.error
-                ? err.error.message
-                : err.message);
+            console.log(err.error || err);
         }
     }
     console.log('\n', counts);

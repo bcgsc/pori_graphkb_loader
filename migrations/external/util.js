@@ -114,10 +114,6 @@ const addRecord = async (className, where, conn, optIn = {}) => {
                 ? '='
                 : '*');
             const result = await getRecordBy(className, opt.getWhere || where, conn);
-            if (opt.verbose) {
-                console.log('vs record retrieved');
-                console.log(result);
-            }
             return result;
         }
         throw err;
