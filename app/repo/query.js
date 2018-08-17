@@ -361,9 +361,11 @@ class SelectionQuery {
             const prop = properties[name];
             if (prop === undefined) { // not a property of the current class
                 if (schemaMap[name.toLowerCase()] === undefined) {
-                    throw new AttributeError(
-                        `unexpected attribute '${name}' is not defined on this class model '${currModel.name}'`
-                    );
+                    throw new AttributeError({
+                        message: `unexpected attribute '${name}' is not defined on this class model '${currModel.name}'`,
+                        query,
+                        propertyNames: Object.keys(properties)
+                    });
                 } else {
                     model = schemaMap[name.toLowerCase()];
                 }
@@ -481,6 +483,7 @@ class SelectionQuery {
         if (query.size !== undefined) {
             conditions[`${prefix}.size()`] = new Comparison(query.size);
         }
+        query.direction = query.direction || 'both';
         // subquery based on the related node
         if (query.v) {
             let targetPrefix;
@@ -493,10 +496,21 @@ class SelectionQuery {
             }
             if (query.v instanceof Set || query.v instanceof Array) {
                 // must be an array of RIDs
-                targetPrefix = `${targetPrefix}.asSet()`;
-                conditions[targetPrefix] = new Comparison(
-                    Array.from(query.v, castToRID)
-                );
+                if (query.direction === 'both') {
+                    if (query.v.length === 1) {
+                        conditions[targetPrefix] = new Comparison(
+                            castToRID(query.v[0]), 'CONTAINS'
+                        );
+                    } else {
+                        const andList = Array.from(query.v, rid => new Comparison(castToRID(rid), 'CONTAINS'));
+                        conditions[targetPrefix] = new Clause('AND', andList);
+                    }
+                } else {
+                    targetPrefix = `${targetPrefix}.asSet()`;
+                    conditions[targetPrefix] = new Comparison(
+                        Array.from(query.v, castToRID)
+                    );
+                }
             } else {
                 const subqModel = schema[query.v['@class']] || schema.V;
                 if (subqModel === undefined) {
