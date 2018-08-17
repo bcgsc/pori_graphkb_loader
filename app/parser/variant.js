@@ -52,6 +52,10 @@ const NOTATION_TO_SUBTYPE = new Map([
  * @param {string} string
  *
  * @returns {string} the prefix
+ *
+ * @example
+ * > getPrefix('p.1234')
+ * 'p'
  */
 const getPrefix = (string) => {
     const [prefix] = string;
@@ -164,7 +168,7 @@ const parse = (string) => {
  *
  * @param {string} string the string to be parsed
  *
- * @returns {pbject} the parsed variant information
+ * @returns {object} the parsed variant information
  *
  * @example
  * > parseMultiFeature('e.fusion(1,10)');

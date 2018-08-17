@@ -18,6 +18,14 @@ const PROTEIN_PATT = /([A-Za-z?*])?(\d+|\?)/;
 const CYTOBAND_PATT = /[pq]((\d+|\?)(\.(\d+|\?))?)?/;
 
 
+/**
+ * Given some input breakpoint, returns a string representation
+ *
+ * @param {Object} inputBreakpoint the input breakpoint
+ * @param {string} inputBreakpoint.@class the class name of the position type
+ *
+ * @returns {string} the string representation of the breakpoint position
+ */
 const positionString = (inputBreakpoint) => {
     const breakpoint = Object.assign({}, inputBreakpoint);
     if (breakpoint.pos === undefined || breakpoint.pos === null) {
@@ -63,6 +71,8 @@ const positionString = (inputBreakpoint) => {
  * @example
  * > break1Repr('g', {pos: 1})
  * 'g.1'
+ *
+ * @returns {string} the string representation of a breakpoint or breakpoint range including the prefix
  */
 const breakRepr = (prefix, start, end = null) => {
     if (end) { // range
