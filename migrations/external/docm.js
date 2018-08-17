@@ -80,7 +80,7 @@ const processRecord = async (opt) => {
     variant.reference1 = gene['@rid'];
     variant.type = variantType['@rid'];
     // create the variant
-    variant = await addRecord('positionalvariants', variant, conn, true, Object.assign(defaults, variant));
+    variant = await addRecord('positionalvariants', variant, conn, {existsOk: true, getWhere: Object.assign(defaults, variant)});
 
     for (const diseaseRec of details.diseases) {
         if (!diseaseRec.tags || diseaseRec.tags.length !== 1) {
@@ -104,15 +104,28 @@ const processRecord = async (opt) => {
                 publication = await getPubmedArticle(diseaseRec.source_pubmed_id);
                 publication = await addRecord('publications', Object.assign(publication, {
                     source: pubmedSource['@rid']
-                }), conn, true);
+                }), conn, {existsOk: true});
             }
             // now create the statement
             await addRecord('statements', {
                 impliedBy: [{target: disease['@rid']}, {target: variant['@rid']}],
                 supportedBy: [{target: publication['@rid'], source: source['@rid']}],
                 relevance: relevance['@rid'],
-                appliesTo: disease['@rid']
-            }, conn, true);
+                appliesTo: disease['@rid'],
+                source: source['@rid'],
+                reviewStatus: 'not required'
+            }, conn, {
+                existsOk: true,
+                verbose: true,
+                getWhere: {
+                    implies: {direction: 'in', v: [disease['@rid'], variant['@rid']]},
+                    supportedBy: {v: [publication['@rid']], direction: 'out'},
+                    relevance: relevance['@rid'],
+                    appliesTo: disease['@rid'],
+                    source: source['@rid'],
+                    reviewStatus: 'not required'
+                }
+            });
             counts.success++;
         } catch (err) {
             console.log(err.error
@@ -139,8 +152,8 @@ const upload = async (conn) => {
         name: SOURCE_NAME,
         usage: 'http://www.docm.info/terms',
         url: 'http://www.docm.info'
-    }, conn, true, {name: SOURCE_NAME});
-    const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, true);
+    }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME}});
+    const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, {existsOk: true});
 
     const counts = {error: 0, success: 0, skip: 0};
 

@@ -1,5 +1,6 @@
 const request = require('request-promise');
 const jc = require('json-cycle');
+const _ = require('lodash');
 
 const convertNulls = (where) => {
     const queryParams = {};
@@ -23,7 +24,7 @@ const getRecordBy = async (className, where, conn, sortFunc = () => 0) => {
             uri: className,
             qs: Object.assign({neighbors: 1}, queryParams)
         }));
-        newRecord = jc.retrocycle(newRecord.result);
+        newRecord = jc.retrocycle(newRecord).result;
     } catch (err) {
         throw err;
     }
@@ -40,30 +41,84 @@ const getRecordBy = async (className, where, conn, sortFunc = () => 0) => {
     return newRecord;
 };
 
+
+const succinctRepresentation = (record) => {
+    const succint = {};
+    const cleanEdge = (edge, target) => {
+        const result = {};
+        if (edge[target] && edge[target]['@rid']) {
+            result[target] = edge[target]['@rid'];
+        } else {
+            result[target] = edge[target];
+        }
+        return succinctRepresentation(Object.assign(result, _.omit(edge, ['in', 'out', 'createdBy', 'uuid', 'createdAt', '@class', '@rid'])));
+    };
+    for (let [attr, value] of Object.entries(record)) {
+        if (['createdBy', 'uuid', 'createdAt'].includes(attr)) {
+            continue;
+        }
+        if (value instanceof Array) {
+            for (let i = 0; i < value.length; i++) {
+                if (attr.startsWith('out_')) {
+                    value[i] = cleanEdge(value[i], 'in');
+                } else if (attr.startsWith('in_')) {
+                    value[i] = cleanEdge(value[i], 'out');
+                }
+            }
+        } else if (value && value['@rid']) {
+            value = value['@rid'];
+        }
+        succint[attr] = value;
+    }
+    return succint;
+};
+
+
 /**
  * Add a disease record to the DB
  * @param {object} where
  * @param {ApiRequest} conn
  * @param {boolean} exists_ok
  */
-const addRecord = async (className, where, conn, existsOk = false, getWhere = null) => {
-    const opt = conn.request({
-        method: 'POST',
-        uri: className,
-        body: where
-    });
+const addRecord = async (className, where, conn, optIn = {}) => {
+    const opt = Object.assign({
+        existsOk: false,
+        getWhere: null,
+        verbose: false
+    }, optIn);
     try {
-        const newRecord = await request(opt);
+        const newRecord = jc.retrocycle(await request(conn.request({
+            method: 'POST',
+            uri: className,
+            body: where
+        })));
+
         process.stdout.write(where.out && where.in
             ? '-'
             : '.');
         return newRecord.result;
     } catch (err) {
-        if (existsOk && err.error && err.error.message && err.error.message.startsWith('Cannot index')) {
+        err.error = jc.retrocycle(err.error);
+        if (opt.verbose) {
+            console.log('Record Attempted');
+            console.log(where);
+            if (err.error.current) {
+                console.log('vs record(s) retrieved');
+                for (const record of err.error ? err.error.current : []) {
+                    console.log(succinctRepresentation(record));
+                }
+            }
+        }
+        if (opt.existsOk && err.statusCode === 409) {
             process.stdout.write(where.out && where.in
                 ? '='
                 : '*');
-            return getRecordBy(className, getWhere || where, conn);
+            const result = await getRecordBy(className, opt.getWhere || where, conn);
+            if (opt.verbose) {
+                console.log('vs record retrieved');
+                console.log(result);
+            }
+            return result;
         }
         throw err;
     }

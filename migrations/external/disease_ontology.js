@@ -40,7 +40,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
     let source = await addRecord('sources', {
         name: SOURCE_NAME,
         version: doVersion
-    }, conn, true);
+    }, conn, {existsOk: true});
     source = source['@rid'].toString();
     console.log('\nAdding/getting the disease nodes');
     const recordsBySourceId = {};
@@ -80,7 +80,10 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
             }
         }
         // create the database entry
-        const record = await addRecord('diseases', body, conn, true, _.omit(body, ['description', 'subsets']));
+        const record = await addRecord('diseases', body, conn, {
+            existsOk: true,
+            getWhere: _.omit(body, ['description', 'subsets'])
+        });
 
         if (recordsBySourceId[record.sourceId] !== undefined) {
             throw new Error(`sourceID is not unique: ${record.sourceId}`);
@@ -103,12 +106,12 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                     name: alias,
                     dependency: record['@rid'],
                     source
-                }, conn, true);
+                }, conn, {existsOk: true});
                 await addRecord('aliasof', {
                     out: synonym['@rid'],
                     in: record['@rid'],
                     source
-                }, conn, true);
+                }, conn, {existsOk: true});
             }
         }
         // create deprecatedBy links for the old sourceIDs
@@ -122,7 +125,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                         dependency: record['@rid'],
                         source
                     }, conn, true);
-                    await addRecord('deprecatedby', {out: alternate['@rid'], in: record['@rid'], source}, conn, true);
+                    await addRecord('deprecatedby', {out: alternate['@rid'], in: record['@rid'], source}, conn, {existsOk: true});
                 }
             }
         }
@@ -138,7 +141,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                         process.stdout.write('?');
                     }
                     if (ncitNode) {
-                        await addRecord('aliasof', {out: record['@rid'], in: ncitNode['@rid'], source}, conn, true);
+                        await addRecord('aliasof', {out: record['@rid'], in: ncitNode['@rid'], source}, conn, {existsOk: true});
                     }
                 }
             }
@@ -179,7 +182,7 @@ const loadEdges = async ({
                     out: records[src]['@rid'],
                     in: records[tgt]['@rid'],
                     source
-                }, conn, true);
+                }, conn, {existsOk: true});
             }
         } else {
             relationshipTypes[pred] = null;

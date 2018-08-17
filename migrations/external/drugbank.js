@@ -105,7 +105,7 @@ const uploadDrugBank = async ({filename, conn}) => {
         name: 'drugbank',
         usage: 'https://www.drugbank.ca/legal/terms_of_use',
         url: 'https://www.drugbank.ca'
-    }, conn, true, {name: 'drugbank'});
+    }, conn, {existsOk: true, getWhere: {name: 'drugbank'}});
     console.log(`uploading ${xml.drugbank.drug.length} records`);
 
     const ATC = {};
@@ -136,7 +136,10 @@ const uploadDrugBank = async ({filename, conn}) => {
                     body.subsets.push(cat.category[0]);
                 }
             }
-            const record = await addRecord('therapies', body, conn, true, _.omit(body, ['subsets', 'mechanismOfAction', 'description']));
+            const record = await addRecord('therapies', body, conn, {
+                existsOk: true,
+                getWhere: _.omit(body, ['subsets', 'mechanismOfAction', 'description'])
+            });
             // create the categories
             for (const atcLevel of atcLevels) {
                 if (ATC[atcLevel.sourceId] === undefined) {
@@ -144,7 +147,7 @@ const uploadDrugBank = async ({filename, conn}) => {
                         source: source['@rid'],
                         name: atcLevel.name,
                         sourceId: atcLevel.sourceId
-                    }, conn, true);
+                    }, conn, {existsOk: true});
                     ATC[level.sourceId] = level;
                 }
             }
@@ -154,14 +157,14 @@ const uploadDrugBank = async ({filename, conn}) => {
                     source: source['@rid'],
                     out: record['@rid'],
                     in: ATC[atcLevels[0].sourceId]['@rid']
-                }, conn, true);
+                }, conn, {existsOk: true});
                 // link the subclassing
                 for (let i = 0; i < atcLevels.length - 1; i++) {
                     await addRecord('subclassof', {
                         source: source['@rid'],
                         out: ATC[atcLevels[i].sourceId]['@rid'],
                         in: ATC[atcLevels[i + 1].sourceId]['@rid']
-                    }, conn, true);
+                    }, conn, {existsOk: true});
                 }
             }
             // link to the FDA UNII
@@ -174,7 +177,7 @@ const uploadDrugBank = async ({filename, conn}) => {
                         process.stdout.write('?');
                     }
                     if (fdaRec) {
-                        await addRecord('aliasof', {source: source['@rid'], out: record['@rid'], in: fdaRec['@rid']}, conn, true);
+                        await addRecord('aliasof', {source: source['@rid'], out: record['@rid'], in: fdaRec['@rid']}, conn, {existsOk: true});
                     }
                 }
             }

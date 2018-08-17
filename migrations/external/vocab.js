@@ -181,7 +181,10 @@ const upload = async (conn) => {
         if (term.description) {
             content.description = term.description;
         }
-        const record = await addRecord('vocabulary', content, conn, true, _.omit(content, ['description']));
+        const record = await addRecord('vocabulary', content, conn, {
+            existsOk: true,
+            getWhere: _.omit(content, ['description'])
+        });
         termsByName[record.name] = record;
     }
     // now add the edge links
@@ -193,26 +196,26 @@ const upload = async (conn) => {
                 out: termsByName[term.name]['@rid'],
                 in: termsByName[parent.toLowerCase()]['@rid'],
                 source: source['@rid']
-            }, conn, true);
+            }, conn, {existsOk: true});
         }
         for (let parent of term.aliasof || []) {
             parent = await addRecord('vocabulary', {
                 name: parent,
                 sourceId: parent,
                 source: source['@rid']
-            }, conn, true);
+            }, conn, {existsOk: true});
             await addRecord('aliasof', {
                 out: termsByName[term.name]['@rid'],
                 in: parent['@rid'],
                 source: source['@rid']
-            }, conn, true);
+            }, conn, {existsOk: true});
         }
         for (const parent of term.oppositeof || []) {
             await addRecord('oppositeof', {
                 out: termsByName[term.name]['@rid'],
                 in: termsByName[parent.toLowerCase()]['@rid'],
                 source: source['@rid']
-            }, conn, true);
+            }, conn, {existsOk: true});
         }
     }
     console.log();

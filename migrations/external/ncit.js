@@ -80,6 +80,9 @@ tree head nodes to collect all subclasses from
 
 const rdf = require('rdflib');
 const fs = require('fs');
+const _ = require('lodash');
+
+
 const {addRecord, convertOwlGraphToJson, getRecordBy} = require('./util');
 
 const ROOT_NODES = {
@@ -163,8 +166,19 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
                 dependency: dbEntry['@rid'],
                 name: alias
             };
-            const aliasRecord = await addRecord(dbClassName, aliasBody, conn, true, ['dependency']);
-            await addRecord('aliasof', {source: source['@rid'], out: aliasRecord['@rid'], in: dbEntry['@rid']}, conn, true);
+            const aliasRecord = await addRecord(
+                dbClassName,
+                aliasBody,
+                conn,
+                true,
+                _.omit(aliasBody, ['dependency'])
+            );
+            await addRecord(
+                'aliasof',
+                {source: source['@rid'], out: aliasRecord['@rid'], in: dbEntry['@rid']},
+                conn,
+                true
+            );
         }
         // add the link to the FDA
         if (fdaSource && node[PRED_MAP.FDA] && node[PRED_MAP.FDA].length) {
@@ -197,7 +211,7 @@ const uploadNCIT = async ({filename, conn}) => {
     rdf.parse(content, graph, 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl', 'application/rdf+xml');
     const nodesByCode = convertOwlGraphToJson(graph, parseNcitID);
 
-    const source = await addRecord('sources', {name: 'ncit'}, conn, true);
+    const source = await addRecord('sources', {name: 'ncit'}, conn, {existsOk: true});
     let fdaSource;
     try {
         fdaSource = await getRecordBy('sources', {name: 'fda'}, conn);
@@ -250,7 +264,7 @@ const uploadNCIT = async ({filename, conn}) => {
     console.log(`\nLoading ${subclassEdges.length} subclassof relationships`);
     for (const {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
-            await addRecord('subclassof', {out: records[src]['@rid'], in: records[tgt]['@rid'], source: source['@rid']}, conn, true);
+            await addRecord('subclassof', {out: records[src]['@rid'], in: records[tgt]['@rid'], source: source['@rid']}, conn, {existsOk: true});
         } else {
             process.stdout.write('x');
         }

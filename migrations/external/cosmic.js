@@ -85,8 +85,21 @@ const processCosmicRecord = async (conn, record, source) => {
         relevance,
         appliesTo: drug,
         impliedBy: [{target: variant['@rid']}, {target: disease['@rid']}],
-        supportedBy: [{target: record.publication['@rid'], source}]
-    }, conn);
+        supportedBy: [{target: record.publication['@rid'], source}],
+        source: source['@rid'],
+        reviewStatus: 'not required'
+    }, conn, {
+        existsOk: true,
+        verbose: true,
+        getWhere: {
+            relevance,
+            appliesTo: drug,
+            implies: {direction: 'in', v: [variant['@rid'], disease['@rid']]},
+            supportedBy: {v: [record.publication['@rid']], direction: 'out'},
+            source: source['@rid'],
+            reviewStatus: 'not required'
+        }
+    });
 };
 
 const upload = async (opt) => {
@@ -119,7 +132,7 @@ const upload = async (opt) => {
             publication = await getPubmedArticle(record['Pubmed Id']);
             publication = await addRecord('publications', Object.assign(publication, {
                 source: pubmedSource['@rid']
-            }), conn, true);
+            }), conn, {existsOk: true});
         }
         record.publication = publication;
         try {

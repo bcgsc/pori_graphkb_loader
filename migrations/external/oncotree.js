@@ -37,7 +37,7 @@ const uploadOncoTree = async (conn) => {
         name: 'oncotree',
         version: sourceVersion,
         url: ONCOTREE_API
-    }, conn, true, ['url']);
+    }, conn, {existsOk: true, getWhere: {name: 'oncotree'}});
     const recordBySourceID = {};
     const subclassof = [];
     let ncitSource;
@@ -53,7 +53,7 @@ const uploadOncoTree = async (conn) => {
             name: record.name,
             sourceId: record.code
         };
-        const rec = await addRecord('diseases', body, conn, true);
+        const rec = await addRecord('diseases', body, conn, {existsOk: true});
         recordBySourceID[rec.sourceId] = rec;
         if (record.parent != null) {
             subclassof.push({src: record.code.toLowerCase(), tgt: record.parent.toLowerCase()});
@@ -77,7 +77,7 @@ const uploadOncoTree = async (conn) => {
     for (let {src, tgt} of subclassof) {
         src = recordBySourceID[src]['@rid'];
         tgt = recordBySourceID[tgt]['@rid'];
-        await addRecord('subclassof', {out: src, in: tgt, source: source['@rid']}, conn, true);
+        await addRecord('subclassof', {out: src, in: tgt, source: source['@rid']}, conn, {existsOk: true});
     }
     console.log();
 };

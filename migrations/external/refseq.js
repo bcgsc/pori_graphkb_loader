@@ -16,10 +16,10 @@ const uploadRefSeq = async (opt) => {
     const json = parse(content, {
         delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true
     });
-    const source = await addRecord('sources', {name: 'refseq'}, conn, true);
+    const source = await addRecord('sources', {name: 'refseq'}, conn, {existsOk: true});
     for (const record of json) {
         record.RNA = record.RNA.replace(/\.\d+$/, ''); // separate the sourceIDVersion from the sourceID
-        const transcript = await addRecord('features', {biotype: 'transcript', source: source['@rid'].toString(), sourceId: record.RNA}, conn, true);
+        const transcript = await addRecord('features', {biotype: 'transcript', source: source['@rid'].toString(), sourceId: record.RNA}, conn, {existsOK: true});
         let hgnc;
         try {
             hgnc = await getRecordBy('features', {source: {name: 'hgnc'}, name: record.Symbol}, conn, orderPreferredOntologyTerms);
@@ -27,7 +27,7 @@ const uploadRefSeq = async (opt) => {
             process.stdout.write('?');
             continue;
         }
-        await addRecord('elementof', {out: transcript['@rid'].toString(), in: hgnc['@rid'].toString(), source: source['@rid'].toString()}, conn, true);
+        await addRecord('elementof', {out: transcript['@rid'].toString(), in: hgnc['@rid'].toString(), source: source['@rid'].toString()}, conn, {existsOk: true});
     }
     console.log();
 };

@@ -199,13 +199,18 @@ const processEvidenceRecord = async (opt) => {
     // get the evidenceLevel
     let level = `${rawRecord.evidence_level}${rawRecord.rating}`.toLowerCase();
     if (EVIDENCE_LEVEL_CACHE[level] === undefined) {
-        level = await addRecord('evidencelevels', {
-            name: level,
-            sourceId: level,
-            source: source['@rid'],
-            description: `${VOCAB[rawRecord.evidence_level]} ${VOCAB[rawRecord.rating]}`,
-            url: VOCAB.url
-        }, conn, true, {sourceId: level, name: level, source: source['@rid']});
+        level = await addRecord(
+            'evidencelevels', {
+                name: level,
+                sourceId: level,
+                source: source['@rid'],
+                description: `${VOCAB[rawRecord.evidence_level]} ${VOCAB[rawRecord.rating]}`,
+                url: VOCAB.url
+            }, conn, {
+                existsOk: true,
+                getWhere: {sourceId: level, name: level, source: source['@rid']}
+            }
+        );
         EVIDENCE_LEVEL_CACHE[level.sourceId] = level;
     } else {
         level = EVIDENCE_LEVEL_CACHE[level];
@@ -249,12 +254,14 @@ const processEvidenceRecord = async (opt) => {
             'categoryvariants',
             body,
             conn,
-            true,
-            Object.assign({
-                zygosity: null,
-                reference2: null,
-                germline: null
-            }, body)
+            {
+                existsOk: true,
+                getWhere: Object.assign({
+                    zygosity: null,
+                    reference2: null,
+                    germline: null
+                }, body)
+            }
         );
     } catch (err) {
         variant = await request(conn.request({
@@ -281,13 +288,15 @@ const processEvidenceRecord = async (opt) => {
             'positionalvariants',
             variant,
             conn,
-            true,
-            Object.assign({
-                germline: null,
-                zygosity: null,
-                reference2: null,
-                break2Repr: null
-            }, variant)
+            {
+                existsOk: true,
+                getWhere: Object.assign({
+                    germline: null,
+                    zygosity: null,
+                    reference2: null,
+                    break2Repr: null
+                }, variant)
+            }
         );
     }
 
@@ -384,9 +393,9 @@ const upload = async (conn) => {
         name: SOURCE_NAME,
         usage: 'https://creativecommons.org/publicdomain/zero/1.0',
         url: 'https://civicdb.org'
-    }, conn, true);
+    }, conn, {existsOk: true});
 
-    const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, true);
+    const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, {existsOk: true});
     const varById = await downloadVariantRecords();
 
     while (currentPage <= expectedPages) {

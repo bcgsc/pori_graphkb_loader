@@ -48,7 +48,7 @@ const uploadUberon = async ({filename, conn}) => {
     const nodesByCode = convertOwlGraphToJson(graph, parseUberonId);
 
     const subclassEdges = [];
-    const source = await addRecord('sources', {name: 'uberon'}, conn, true);
+    const source = await addRecord('sources', {name: 'uberon'}, conn, {existsOk: true});
 
     console.log(`Adding the uberon ${Object.keys(nodesByCode).length} entity nodes`);
     for (const node of Object.values(nodesByCode)) {
@@ -82,7 +82,7 @@ const uploadUberon = async ({filename, conn}) => {
         if (node[PRED_MAP.DEPRECATED] && node[PRED_MAP.DEPRECATED][0] === 'true') {
             body.deprecated = true;
         }
-        const dbEntry = await addRecord('anatomicalentities', body, conn, true);
+        const dbEntry = await addRecord('anatomicalentities', body, conn, {existsOk: true});
         records[dbEntry.sourceId] = dbEntry;
     }
     console.log(`\nAdding the ${subclassEdges.length} subclassof relationships`);
@@ -92,7 +92,7 @@ const uploadUberon = async ({filename, conn}) => {
                 out: records[src]['@rid'],
                 in: records[tgt]['@rid'],
                 source: source['@rid']
-            }, conn, true);
+            }, conn, {existsOk: true});
         } else {
             process.stdout.write('x');
         }
@@ -109,7 +109,7 @@ const uploadUberon = async ({filename, conn}) => {
                 out: records[src]['@rid'],
                 in: ncitRecord['@rid'],
                 source: source['@rid']
-            }, conn, true);
+            }, conn, {existsOk: true});
         } catch (err) {
             // ignore missing vocabulary
             process.stdout.write('x');

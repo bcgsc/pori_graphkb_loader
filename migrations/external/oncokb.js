@@ -47,9 +47,9 @@ const addTherapyCombination = async (conn, source, name) => {
         name: combinationName,
         sourceId: combinationName,
         source: source['@rid']
-    }, conn, true);
+    }, conn, {existsOk: true});
     for (const drug of drugRec) {
-        await addRecord('elementOf', {source: source['@rid'], out: drug['@rid'], in: combination['@rid']}, conn, true);
+        await addRecord('elementOf', {source: source['@rid'], out: drug['@rid'], in: combination['@rid']}, conn, {existsOk: true});
     }
     return combination;
 };
@@ -151,7 +151,7 @@ const processVariant = async (opt) => {
         }
         variant.type = variantType['@rid'];
         // create the variant
-        variant = await addRecord(variantUrl, variant, conn, true, Object.assign(defaults, variant));
+        variant = await addRecord(variantUrl, variant, conn, {existsOk: true, getWhere: Object.assign(defaults, variant)});
     }
     return variant;
 };
@@ -194,7 +194,7 @@ const processPublicationsList = async (opt) => {
             publication = await getPubmedArticle(pmid);
             publication = await addRecord('publications', Object.assign(publication, {
                 source: pubmedSource['@rid']
-            }), conn, true);
+            }), conn, {existsOk: true});
         }
         publications.push(publication);
     }
@@ -264,8 +264,21 @@ const processActionableRecord = async (opt) => {
         impliedBy: [{target: variant['@rid']}, {target: disease['@rid']}],
         supportedBy: Array.from(publications, x => ({target: x['@rid'], source: source['@rid'], level: level['@rid']})),
         relevance: relevance['@rid'],
-        appliesTo: drug['@rid']
-    }, conn);
+        appliesTo: drug['@rid'],
+        source: source['@rid'],
+        reviewStatus: 'not required'
+    }, conn, {
+        existsOk: true,
+        verbose: true,
+        getWhere: {
+            implies: {direction: 'in', v: [variant['@rid'], disease['@rid']]},
+            supportedBy: {direction: 'out', v: Array.from(publications, x => x['@rid'])},
+            relevance: relevance['@rid'],
+            appliesTo: drug['@rid'],
+            source: source['@rid'],
+            reviewStatus: 'not required'
+        }
+    });
     return statement;
 };
 
@@ -309,8 +322,21 @@ const processAnnotatedRecord = async (opt) => {
             impliedBy,
             supportedBy: Array.from(publications, x => ({target: x['@rid'], source: source['@rid']})),
             relevance: relevance1['@rid'],
-            appliesTo: variant.reference1
-        }, conn);
+            appliesTo: variant.reference1,
+            source: source['@rid'],
+            reviewStatus: 'not required'
+        }, conn, {
+            verbose: true,
+            existsOk: true,
+            getWhere: {
+                implies: {v: Array.from(impliedBy, x => x.target)},
+                supportedBy: {v: Array.from(publications, x => x['@rid'])},
+                relevance: relevance1['@rid'],
+                appliesTo: variant.reference1,
+                source: source['@rid'],
+                reviewStatus: 'not required'
+            }
+        });
         count++;
     }
     // make the oncogenicity statement
@@ -319,8 +345,21 @@ const processAnnotatedRecord = async (opt) => {
             impliedBy,
             supportedBy: Array.from(publications, x => ({target: x['@rid'], source: source['@rid']})),
             relevance: relevance2['@rid'],
-            appliesTo: null
-        }, conn);
+            appliesTo: null,
+            source: source['@rid'],
+            reviewStatus: 'not required'
+        }, conn, {
+            verbose: true,
+            existsOk: true,
+            getWhere: {
+                implies: {v: Array.from(impliedBy, x => x.target)},
+                supportedBy: {v: Array.from(publications, x => x['@rid'])},
+                relevance: relevance2['@rid'],
+                appliesTo: null,
+                reviewStatus: 'not required',
+                source: source['@rid']
+            }
+        });
         count++;
     }
     return count;
@@ -353,7 +392,7 @@ const addEvidenceLevels = async (conn, source) => {
             name: level,
             description: desc,
             url: URL
-        }, conn, true);
+        }, conn, {existsOk: true});
         result[level] = record;
     }
     return result;
@@ -376,9 +415,9 @@ const upload = async (conn) => {
         name: SOURCE_NAME,
         usage: 'http://oncokb.org/#/terms',
         url: 'http://oncokb.org'
-    }, conn, true);
+    }, conn, {existsOk: true});
 
-    const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, true);
+    const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, {existsOk: true});
     const counts = {errors: 0, success: 0, skip: 0};
     await addEvidenceLevels(conn, source);
     // console.log(Object.keys(terms));

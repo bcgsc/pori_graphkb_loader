@@ -15,7 +15,7 @@ const upload = async (opt) => {
     const jsonList = parse(content, {
         delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true
     });
-    const source = await addRecord('sources', {name: 'FDA', url: 'https://fdasis.nlm.nih.gov/srs'}, conn, true);
+    const source = await addRecord('sources', {name: 'FDA', url: 'https://fdasis.nlm.nih.gov/srs'}, conn, {existsOk: true});
     let NCIT;
     try {
         NCIT = await getRecordBy('sources', {name: 'NCIT'}, conn);
@@ -38,7 +38,7 @@ const upload = async (opt) => {
         // only load records with at min these 3 values filled out
         const drug = await addRecord('therapies', {
             name: record.PT, sourceId: record.UNII, source: source['@rid']
-        }, conn, true);
+        }, conn, {existsOk: true});
         if (NCIT && record.NCIT.length) {
             let ncitRec;
             try {
@@ -51,7 +51,7 @@ const upload = async (opt) => {
                     source: source['@rid'],
                     out: drug['@rid'],
                     in: ncitRec['@rid']
-                }, conn, true);
+                }, conn, {existsOk: true});
             }
         }
     }
