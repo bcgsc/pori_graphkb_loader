@@ -1354,14 +1354,36 @@ const createSchema = async (db) => {
     const readOnlyPermissions = {};
 
     for (const model of Object.values(SCHEMA_DEFN)) {
-        if (!model.isAbstract) {
-            adminPermissions[model.name] = PERMISSIONS.ALL;
-            if (['Permissions', 'UserGroup', 'User'].includes(model.name)) {
-                regularPermissions[model.name] = PERMISSIONS.READ;
-            } else {
-                regularPermissions[model.name] = PERMISSIONS.ALL;
+        // The permissions for operations against a class should be the intersection of the
+        // exposed routes and the group type
+        const {name} = model;
+        const adminGroup = (['Permissions', 'UserGroup', 'User'].includes(model.name));
+        adminPermissions[name] = PERMISSIONS.NONE;
+        regularPermissions[name] = PERMISSIONS.NONE;
+        readOnlyPermissions[name] = PERMISSIONS.NONE;
+
+        if (model.expose.QUERY || model.expose.GET) {
+            adminPermissions[name] |= PERMISSIONS.READ;
+            regularPermissions[name] |= PERMISSIONS.READ;
+            readOnlyPermissions[name] |= PERMISSIONS.READ;
+        }
+        if (model.expose.PATCH || model.expose.UPDATE) {
+            adminPermissions[name] |= PERMISSIONS.UPDATE;
+            if (!adminGroup) {
+                regularPermissions[name] |= PERMISSIONS.UPDATE;
             }
-            readOnlyPermissions[model.name] = PERMISSIONS.READ;
+        }
+        if (model.expose.POST) {
+            adminPermissions[name] |= PERMISSIONS.CREATE;
+            if (!adminGroup) {
+                regularPermissions[name] |= PERMISSIONS.CREATE;
+            }
+        }
+        if (model.expose.DELETE) {
+            adminPermissions[name] |= PERMISSIONS.DELETE;
+            if (!adminGroup) {
+                regularPermissions[name] |= PERMISSIONS.DELETE;
+            }
         }
     }
     const defaultGroups = [

@@ -465,6 +465,27 @@ describe('API', () => {
                 expect(res.body.result).to.have.property('length', 0);
             });
         });
+        describe('GET /ontologies', () => {
+            beforeEach(async () => {
+                await chai.request(app.app)
+                    .post(`${app.prefix}/diseases`)
+                    .type('json')
+                    .send({
+                        sourceId: '2',
+                        name: 'liver cancer',
+                        source
+                    })
+                    .set('Authorization', mockToken);
+            });
+            it('Does not throw permissions error', async () => {
+                const resp = await chai.request(app.app)
+                    .get(`${app.prefix}/ontologies`)
+                    .type('json')
+                    .set('Authorization', mockToken);
+                expect(resp.body).to.have.property('result');
+                expect(resp.body.result).to.have.property('length', 1);
+            });
+        });
         describe('GET /diseases query FULLTEXT index', () => {
             beforeEach(async () => {
                 await chai.request(app.app)
