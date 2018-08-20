@@ -1,3 +1,14 @@
+*~
+.nyc_output
+coverage
 /node_modules/*
 /.orientdb_history
 /dist
+*png
+*gz
+*zip
+*tar
+.vscode
+test/data/
+id_rsa*
+out
