@@ -9,9 +9,10 @@ class ErrorMixin extends Error {
     constructor(content) {
         let message;
         if (typeof content === 'object' && content !== null) {
-            message = content.message;
+            ({message} = content);
         } else {
             message = content;
+            content = {};
         }
         super(message);
         this.message = message;
