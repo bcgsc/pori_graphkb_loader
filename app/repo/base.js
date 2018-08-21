@@ -130,7 +130,7 @@ const trimRecords = (recordList, opt = {}) => {
                 }
                 curr[attr] = arr;
             } else if (typeof value === 'object' && value && value['@rid'] !== undefined) {
-                if (!accessOk(value)) {
+                if (!accessOk(value) || (activeOnly && value.deletedAt)) {
                     delete curr[attr];
                 } else {
                     queue.push(value);
@@ -141,7 +141,7 @@ const trimRecords = (recordList, opt = {}) => {
     // remove the top level elements last
     const result = [];
     for (const record of recordList) {
-        if (accessOk(record)) {
+        if (accessOk(record) && (!activeOnly || !record.deletedAt)) {
             result.push(record);
         }
     }
