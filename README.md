@@ -13,7 +13,7 @@ It is a graph database which is used to store variants, ontologies, and the rele
 - [OpenAPI Specification](#openapi-specification)
 - [Authentication](#authentication)
 - [Guidelines for Contributors](#guidelines-for-contributors)
-- [Release Notes](doc/HISTORY.md)
+- [Running the Tests](#running-the-tests)
 
 
 ## Getting Started
@@ -21,6 +21,7 @@ It is a graph database which is used to store variants, ontologies, and the rele
 To start the API server you must first have the database server running. Then starting is as simple as running
 
 ```
+npm install
 npm start
 ```
 
@@ -54,3 +55,27 @@ In summary, KB Client will send user credentials and recieve a token which will 
    test styles, please match the existing style in the current tests.
 3. API must follow REST guidelines (for example see https://github.com/Microsoft/api-guidelines/blob/vNext/Guidelines.md)
 4. JS code should be written with ES6 syntax (where possible) see https://github.com/lukehoban/es6features
+
+## Running the Tests
+
+The orientDB instance must already be running. To configure where the tests will point to the user can either modify `test/config/empty.js` or set the environment variables which override this config (default values are shown below, this will change depending on how you db server is configured).
+
+```
+DATABASE_SERVER_PASS=root
+DATABASE_SERVER_USER=root
+DATABASE_HOST='orientdb02.bcgsc.ca'
+DATABASE_PORT=2480
+KEY_FILE='id_rsa'  // used in generating the tokens
+```
+
+After these options are configured, the full set of tests can be run
+
+```
+npm run test
+```
+
+The non-database tests can be run without the above configuration
+
+```
+npm run unit
+```
