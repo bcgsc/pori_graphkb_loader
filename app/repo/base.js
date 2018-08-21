@@ -130,7 +130,7 @@ const trimRecords = (recordList, opt = {}) => {
                 }
                 curr[attr] = arr;
             } else if (typeof value === 'object' && value && value['@rid'] !== undefined) {
-                if (!accessOk(value)) {
+                if (!accessOk(value) || (activeOnly && value.deletedAt)) {
                     delete curr[attr];
                 } else {
                     queue.push(value);
@@ -141,7 +141,7 @@ const trimRecords = (recordList, opt = {}) => {
     // remove the top level elements last
     const result = [];
     for (const record of recordList) {
-        if (accessOk(record)) {
+        if (accessOk(record) && (!activeOnly || !record.deletedAt)) {
             result.push(record);
         }
     }
@@ -387,9 +387,17 @@ const updateNodeTx = async (db, opt) => {
     changes.createdBy = userRID;
     changes.createdAt = timeStampNow();
 
-    const commit = db
-        .let('copy', tx => tx.create('VERTEX', original['@class'])
-            .set(content))
+    let commit;
+    if (model.inherits.includes('V')) {
+        commit = db
+            .let('copy', tx => tx.create('VERTEX', original['@class'])
+                .set(content));
+    } else {
+        commit = db
+            .let('copy', tx => tx.insert().into(original['@class'])
+                .set(content));
+    }
+    commit
         .let('updated', tx => tx.update(original['@rid'])
             .set(changes)
             .set('history = $copy')
@@ -397,6 +405,7 @@ const updateNodeTx = async (db, opt) => {
             .return('AFTER @rid'))
         .let('result', tx => tx.select()
             .from(original['@class']).where({'@rid': original['@rid']}));
+
     return commit.commit();
 };
 
@@ -616,6 +625,7 @@ const modify = async (db, opt) => {
         throw wrapIfTypeError(err);
     }
 };
+
 
 /**
  * Update a node or edge.

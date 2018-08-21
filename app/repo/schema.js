@@ -189,16 +189,65 @@ const SCHEMA_DEFN = {
                 cast: trimString
             },
             {
-                name: 'name', mandatory: true, nullable: false
+                name: 'name', mandatory: true, nullable: false, castString
+            },
+            {
+                name: 'uuid',
+                type: 'string',
+                mandatory: true,
+                nullable: false,
+                readOnly: true,
+                description: 'Internal identifier for tracking record history',
+                cast: castUUID,
+                default: uuidV4
+            },
+            {
+                name: 'createdAt',
+                type: 'long',
+                mandatory: true,
+                nullable: false,
+                description: 'The timestamp at which the record was created',
+                default: timeStampNow
+            },
+            {
+                name: 'deletedAt',
+                type: 'long',
+                description: 'The timestamp at which the record was deleted',
+                nullable: false
+            },
+            {
+                name: 'createdBy',
+                type: 'link',
+                nullable: false,
+                description: 'The user who created the record'
+            },
+            {
+                name: 'deletedBy',
+                type: 'link',
+                nullable: false,
+                description: 'The user who deleted the record'
+            },
+            {
+                name: 'history',
+                type: 'link',
+                nullable: false,
+                description: 'Link to the previous version of this record'
             },
             {name: 'permissions', type: 'embedded', linkedClass: 'Permissions'}
         ],
         indices: [
             {
+                name: 'ActiveUserGroupName',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['name', 'deletedAt'],
+                class: 'UserGroup'
+            },
+            {
                 name: 'ActiveUserGroup',
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
-                properties: ['name'],
+                properties: ['uuid', 'deletedAt'],
                 class: 'UserGroup'
             }
         ]
@@ -260,6 +309,9 @@ const SCHEMA_DEFN = {
                 name: 'createdBy', type: 'link', nullable: false, mandatory: false
             },
             {
+                name: 'deletedBy', type: 'link', nullable: false, mandatory: false
+            },
+            {
                 name: 'groupRestrictions',
                 type: 'linkset',
                 linkedClass: 'UserGroup',
@@ -272,6 +324,13 @@ const SCHEMA_DEFN = {
                 type: 'unique',
                 metadata: {ignoreNullValues: false},
                 properties: ['name', 'deletedAt'],
+                class: 'User'
+            },
+            {
+                name: 'ActiveUser',
+                type: 'unique',
+                metadata: {ignoreNullValues: false},
+                properties: ['uuid', 'deletedAt'],
                 class: 'User'
             }
         ]
@@ -1221,6 +1280,13 @@ class ClassModel {
 
     // Set the name to match the key
     // initialize the models
+    for (const name of Object.keys(schema)) {
+        if (name !== 'Permissions') {
+            schema.Permissions.properties.push({
+                min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', nullable: false, readOnly: false, name
+            });
+        }
+    }
     const models = {};
     for (const [name, model] of Object.entries(schema)) {
         model.name = name;
@@ -1232,13 +1298,6 @@ class ClassModel {
             {properties},
             _.omit(model, ['inherits', 'properties'])
         ));
-
-        // Add the permissions properties based on the other classes in the schema
-        if (name !== 'Permissions') {
-            schema.Permissions.properties.push({
-                min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', nullable: false, readOnly: false, name
-            });
-        }
     }
     // link the inherited models and linked models
     for (const model of Object.values(models)) {
@@ -1358,7 +1417,7 @@ const createSchema = async (db) => {
         // exposed routes and the group type
         const {name} = model;
         const adminGroup = (['Permissions', 'UserGroup', 'User'].includes(model.name));
-        adminPermissions[name] = PERMISSIONS.NONE;
+        adminPermissions[name] = PERMISSIONS.READ;
         regularPermissions[name] = PERMISSIONS.NONE;
         readOnlyPermissions[name] = PERMISSIONS.NONE;
 
@@ -1386,12 +1445,15 @@ const createSchema = async (db) => {
             }
         }
     }
-    const defaultGroups = [
+    if (process.env.VERBOSE === '1') {
+        console.log('creating the default user groups');
+    }
+    const defaultGroups = Array.from([
         {name: 'admin', permissions: adminPermissions},
         {name: 'regular', permissions: regularPermissions},
         {name: 'readOnly', permissions: readOnlyPermissions}
-    ];
-    await Promise.all(Array.from(defaultGroups, x => db.insert().into('UserGroup').set(x).one()));
+    ], rec => SCHEMA_DEFN.UserGroup.formatRecord(rec, {addDefaults: true}));
+    await Promise.all(Array.from(defaultGroups, async x => db.insert().into('UserGroup').set(x).one()));
 
     if (VERBOSE) {
         console.log('Schema is Complete');

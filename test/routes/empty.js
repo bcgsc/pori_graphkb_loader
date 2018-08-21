@@ -160,6 +160,139 @@ describe('API', () => {
                 expect(res).to.have.status(HTTP_STATUS.CONFLICT);
             });
         });
+        describe('PATCH /users/{rid}', () => {
+            let readyOnly,
+                adminGroup,
+                user;
+            beforeEach(async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/usergroups`)
+                    .type('json')
+                    .set('Authorization', mockToken);
+                for (const group of res.body.result) {
+                    if (group.name === 'readonly') {
+                        readyOnly = group;
+                    } else if (group.name === 'admin') {
+                        adminGroup = group;
+                    }
+                }
+                if (!readyOnly || !adminGroup) {
+                    throw new Error('failed to find the readonly and admin user groups');
+                }
+                user = (await chai.request(app.app)
+                    .post(`${app.prefix}/users`)
+                    .type('json')
+                    .send({
+                        name: 'alice',
+                        groups: [readyOnly['@rid']]
+                    })
+                    .set('Authorization', mockToken)
+                ).body.result;
+            });
+            it('modify the group associated with a user', async () => {
+                const updatedUser = (await chai.request(app.app)
+                    .patch(`${app.prefix}/users/${user['@rid'].slice(1)}`)
+                    .type('json')
+                    .send({groups: [adminGroup['@rid']]})
+                    .set('Authorization', mockToken)
+                ).body.result;
+                expect(updatedUser).to.have.property('groups');
+                expect(updatedUser.groups).to.have.property('length', 1);
+                expect(updatedUser.groups[0]).to.equal(adminGroup['@rid']);
+                expect(updatedUser).to.have.property('name', 'alice');
+            });
+            it('rename the user', async () => {
+                const updatedUser = (await chai.request(app.app)
+                    .patch(`${app.prefix}/users/${user['@rid'].slice(1)}`)
+                    .type('json')
+                    .send({name: 'bob'})
+                    .set('Authorization', mockToken)
+                ).body.result;
+                expect(updatedUser).to.have.property('groups');
+                expect(updatedUser.groups).to.have.property('length', 1);
+                expect(updatedUser.groups[0]).to.equal(readyOnly['@rid']);
+                expect(updatedUser).to.have.property('name', 'bob');
+            });
+        });
+        describe('DELETE /users/{rid}', () => {
+            let readyOnly,
+                adminGroup,
+                user;
+            beforeEach(async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/usergroups`)
+                    .type('json')
+                    .set('Authorization', mockToken);
+                for (const group of res.body.result) {
+                    if (group.name === 'readonly') {
+                        readyOnly = group;
+                    } else if (group.name === 'admin') {
+                        adminGroup = group;
+                    }
+                }
+                if (!readyOnly || !adminGroup) {
+                    throw new Error('failed to find the readonly and admin user groups');
+                }
+                user = (await chai.request(app.app)
+                    .post(`${app.prefix}/users`)
+                    .type('json')
+                    .send({
+                        name: 'alice',
+                        groups: [readyOnly['@rid']]
+                    })
+                    .set('Authorization', mockToken)
+                ).body.result;
+            });
+            it('delete the current user', async () => {
+                const updatedUser = (await chai.request(app.app)
+                    .delete(`${app.prefix}/users/${user['@rid'].slice(1)}`)
+                    .type('json')
+                    .set('Authorization', mockToken)
+                ).body.result;
+                expect(updatedUser).to.have.property('deletedAt');
+                expect(updatedUser.deletedBy).to.equal(admin['@rid'].toString());
+            });
+        });
+        it('POST /usergroups', async () => {
+            const group = (await chai.request(app.app)
+                .post(`${app.prefix}/usergroups`)
+                .type('json')
+                .send({
+                    name: 'wonderland',
+                    permissions: {V: 15}
+                })
+                .set('Authorization', mockToken)
+            ).body.result;
+            expect(group).to.have.property('createdAt');
+            expect(group).to.have.property('@class', 'UserGroup');
+            expect(group.permissions).to.have.property('@class', 'Permissions');
+        });
+        describe('PATCH /usergroups/{rid}', () => {
+            let group;
+            beforeEach(async () => {
+                group = (await chai.request(app.app)
+                    .post(`${app.prefix}/usergroups`)
+                    .type('json')
+                    .send({
+                        name: 'wonderland',
+                        permissions: {V: 15}
+                    })
+                    .set('Authorization', mockToken)
+                ).body.result;
+            });
+            it('modify permissions', async () => {
+                const updated = (await chai.request(app.app)
+                    .patch(`${app.prefix}/usergroups/${group['@rid'].toString().slice(1)}`)
+                    .type('json')
+                    .send({
+                        permissions: {V: 15, E: 15}
+                    })
+                    .set('Authorization', mockToken)
+                ).body.result;
+                expect(updated).to.have.property('@rid', group['@rid'].toString());
+                expect(updated).to.have.property('history');
+            });
+        });
         describe('POST /diseases', () => {
             it('OK', async () => {
                 const res = await chai.request(app.app)
@@ -761,6 +894,8 @@ describe('API', () => {
             // clear all V/E records
             await db.query('delete edge e');
             await db.query('delete vertex v');
+            await db.query(`delete from user where name != '${admin.name}'`);
+            await db.query('delete from usergroup where name != \'readonly\' and name != \'admin\' and name != \'regular\'');
         });
     });
     after(async () => {
