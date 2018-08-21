@@ -1,6 +1,6 @@
-let ORIENTDB_HOME = process.env.ORIENTDB_HOME;
+const {ORIENTDB_HOME} = process.env;
 
-let dbName = 'test_empty';
+const dbName = 'test_empty';
 
 const server = {
     pass: process.env.DATABASE_SERVER_PASS || 'root',
@@ -18,4 +18,10 @@ const db = {
     port: server.port
 };
 
-module.exports = {server, db, app: {port: process.env.PORT || 8080}, private_key: 'id_rsa', disableCats: process.env.DISABLE_CATS === '1' ? true :false};
+module.exports = {
+    server,
+    db,
+    app: {port: process.env.PORT || 8080},
+    private_key: 'id_rsa' || process.env.KEY_FILE,
+    disableCats: process.env.DISABLE_CATS === '1'
+};
