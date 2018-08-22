@@ -12,3 +12,4 @@ coverage
 test/data/
 id_rsa*
 out
+external_data
