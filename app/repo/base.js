@@ -192,8 +192,7 @@ const createUser = async (db, opt) => {
     ), group => group['@rid']);
     const record = SCHEMA_DEFN.User.formatRecord({
         name: userName,
-        groups: groupIds,
-        deletedAt: null
+        groups: groupIds
     }, {dropExtra: false, addDefaults: true});
     await db.insert().into(SCHEMA_DEFN.User.name)
         .set(record)

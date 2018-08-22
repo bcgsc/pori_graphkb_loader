@@ -11,6 +11,8 @@ const {
     castDecimalInteger,
     castNullableLink,
     castNullableString,
+    castNonEmptyString,
+    castNonEmptyNullableString,
     castString,
     castToRID,
     castUUID,
@@ -306,10 +308,10 @@ const SCHEMA_DEFN = {
             {name: 'deletedAt', type: 'long', nullable: false},
             {name: 'history', type: 'link', nullable: false},
             {
-                name: 'createdBy', type: 'link', nullable: false, mandatory: false
+                name: 'createdBy', type: 'link'
             },
             {
-                name: 'deletedBy', type: 'link', nullable: false, mandatory: false
+                name: 'deletedBy', type: 'link', nullable: false
             },
             {
                 name: 'groupRestrictions',
@@ -381,6 +383,7 @@ const SCHEMA_DEFN = {
                 name: 'sourceId',
                 mandatory: true,
                 nullable: false,
+                nonEmpty: true,
                 description: 'The identifier of the record/term in the external source database/system'
             },
             {
@@ -388,7 +391,7 @@ const SCHEMA_DEFN = {
                 type: 'link',
                 description: 'Mainly for alias records. If this term is defined as a part of another term, this should link to the original term'
             },
-            {name: 'name', description: 'Name of the term'},
+            {name: 'name', description: 'Name of the term', nonEmpty: true},
             {
                 name: 'sourceIdVersion',
                 description: 'The version of the identifier based on the external database/system'
@@ -412,7 +415,7 @@ const SCHEMA_DEFN = {
             },
             {name: 'url', type: 'string'}
         ],
-        paraphrase: rec => rec.name.toString().trim(),
+        paraphrase: rec => (rec.name || rec.sourceId).toString().trim(),
         isAbstract: true
     },
     EvidenceLevel: {inherits: ['Ontology', 'Evidence']},
@@ -680,7 +683,7 @@ const SCHEMA_DEFN = {
                 type: 'link',
                 linkedClass: 'Ontology',
                 mandatory: true,
-                notNull: false
+                nullable: true
             },
             {name: 'description', type: 'string'},
             {
@@ -751,9 +754,9 @@ class Property {
         this.nullable = opt.nullable === undefined
             ? true
             : !!opt.nullable;
-        this.mandatory = opt.mandatory === undefined
-            ? false
-            : !!opt.mandatory;
+        this.mandatory = !!opt.mandatory; // default false
+        this.nonEmpty = !!opt.nonEmpty;
+
         this.iterable = !!/(set|list|bag|map)/ig.exec(this.type);
         this.linkedClass = opt.linkedClass;
         this.min = opt.min;
@@ -764,9 +767,13 @@ class Property {
                 this.cast = castDecimalInteger;
             } else if (this.type === 'string') {
                 if (!this.nullable) {
-                    this.cast = castString;
+                    this.cast = this.nonEmpty
+                        ? castNonEmptyString
+                        : castString;
                 } else {
-                    this.cast = castNullableString;
+                    this.cast = this.nonEmpty
+                        ? castNonEmptyNullableString
+                        : castNullableString;
                 }
             } else if (this.type.includes('link')) {
                 if (!this.nullable) {
@@ -787,7 +794,7 @@ class Property {
         const dbProperties = {
             name: this.name,
             type: this.type,
-            notNull: !!this.nullable,
+            notNull: !this.nullable,
             mandatory: this.mandatory
         };
         if (this.linkedClass) {
@@ -1237,7 +1244,7 @@ class ClassModel {
         const sourceProp = {name: 'source', type: 'link', linkedClass: 'Source'};
         if (!['SupportedBy', 'Implies'].includes(name)) {
             sourceProp.mandatory = true;
-            sourceProp.notNull = true;
+            sourceProp.nullable = false;
         }
         let reverseName;
         if (name.endsWith('Of')) {
