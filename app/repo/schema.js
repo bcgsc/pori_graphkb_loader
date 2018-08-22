@@ -308,10 +308,10 @@ const SCHEMA_DEFN = {
             {name: 'deletedAt', type: 'long', nullable: false},
             {name: 'history', type: 'link', nullable: false},
             {
-                name: 'createdBy', type: 'link', nullable: false, mandatory: false
+                name: 'createdBy', type: 'link'
             },
             {
-                name: 'deletedBy', type: 'link', nullable: false, mandatory: false
+                name: 'deletedBy', type: 'link', nullable: false
             },
             {
                 name: 'groupRestrictions',
@@ -794,7 +794,7 @@ class Property {
         const dbProperties = {
             name: this.name,
             type: this.type,
-            notNull: !!this.nullable,
+            notNull: !this.nullable,
             mandatory: this.mandatory
         };
         if (this.linkedClass) {
