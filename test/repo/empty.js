@@ -373,7 +373,7 @@ describe('schema', () => {
             });
             expect(statements).to.have.property('length', 0);
         });
-        it('updating the review status also updates reviewedBy', async () => {
+        it('update the review status', async () => {
             const stat = await create(db, {
                 content: {
                     relevance: relevance1['@rid'],
@@ -452,6 +452,20 @@ describe('schema', () => {
                 model: schema.Statement,
                 schema
             });
+        });
+        it('create statment with null appliesTo', async () => {
+            const statement = await create(db, {
+                content: {
+                    relevance: relevance1['@rid'],
+                    appliesTo: null,
+                    impliedBy: [{target: disease1['@rid']}],
+                    supportedBy: [{target: publication1['@rid'], level}]
+                },
+                user: admin,
+                model: schema.Statement,
+                schema
+            });
+            expect(statement).to.have.property('appliesTo', null);
         });
         describe('query', () => {
             let statement1,

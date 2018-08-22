@@ -683,7 +683,7 @@ const SCHEMA_DEFN = {
                 type: 'link',
                 linkedClass: 'Ontology',
                 mandatory: true,
-                notNull: false
+                nullable: true
             },
             {name: 'description', type: 'string'},
             {
@@ -1244,7 +1244,7 @@ class ClassModel {
         const sourceProp = {name: 'source', type: 'link', linkedClass: 'Source'};
         if (!['SupportedBy', 'Implies'].includes(name)) {
             sourceProp.mandatory = true;
-            sourceProp.notNull = true;
+            sourceProp.nullable = false;
         }
         let reverseName;
         if (name.endsWith('Of')) {
