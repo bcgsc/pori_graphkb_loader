@@ -226,7 +226,12 @@ describe('parseQueryLanguage', () => {
     });
     it('array', () => {
         const result = parseQueryLanguage(qs.parse('thing=1&thing=2'));
-        expect(result).to.eql({thing: new Comparison(['1', '2'])});
+        expect(result).to.eql({
+            thing: new Clause(
+                'AND',
+                [new Comparison('1'), new Comparison('2')]
+            )
+        });
     });
     describe('subquery support', () => {
         it('not operator', () => {

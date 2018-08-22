@@ -86,7 +86,7 @@ const parseQueryComparison = (name, value, defaultOperator = '=') => {
     // } if (name === 'v') {
     //    return parseQueryLanguage(value);
     } if (value instanceof Array) {
-        return new Comparison(value);
+        return new Clause('AND', Array.from(value, v => new Comparison(v)));
     } if (value !== null && typeof value === 'object') {
         // subqueries
         value = parseQueryLanguage(value, name === 'v'

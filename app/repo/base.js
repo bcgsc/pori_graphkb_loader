@@ -680,18 +680,20 @@ const createStatement = async (db, opt) => {
     const {
         content, model, schema, user
     } = opt;
+    content.impliedBy = content.impliedBy || [];
+    content.supportedBy = content.supportedBy || [];
     const query = {
-        SupportedBy: {direction: 'out', v: new Set()},
-        Implies: {direction: 'in', v: new Set()}
+        SupportedBy: {direction: 'out', v: new Set(), size: content.supportedBy.length},
+        Implies: {direction: 'in', v: new Set(), size: content.impliedBy.length}
     };
 
     let dependencies = [];
     // ensure the RIDs look valid for the support
     const edges = [];
-    if ((content.supportedBy || []).length === 0) {
+    if (content.supportedBy.length === 0) {
         throw new AttributeError('statement must include an array property supportedBy with 1 or more elements');
     }
-    if ((content.impliedBy || []).length === 0) {
+    if (content.impliedBy.length === 0) {
         throw new AttributeError('statement must include an array property impliedBy with 1 or more elements');
     }
     for (const edge of content.supportedBy) {
