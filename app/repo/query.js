@@ -640,7 +640,11 @@ class SelectionQuery {
             }
             paramStartIndex += Object.keys(clause.params).length;
             Object.assign(params, clause.params);
-            if (this.conditions[attr] instanceof Clause && this.conditions[attr].length > 1) {
+            if (
+                this.conditions[attr] instanceof Clause
+                && this.conditions[attr].length > 1
+                && this.conditions[attr].type === 'OR'
+            ) {
                 clause.query = `(${clause.query})`;
             }
             if (this.or.includes(attr)) {
