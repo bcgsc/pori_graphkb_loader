@@ -5,8 +5,6 @@ const uuidValidate = require('uuid-validate');
 const {AttributeError} = require('./error');
 
 
-const VERBOSE = (process.env.VERBOSE === '1');
-
 const castUUID = (uuid) => {
     if (uuidValidate(uuid, 4)) {
         return uuid;
@@ -150,6 +148,5 @@ module.exports = {
     looksLikeRID,
     naturalListJoin,
     quoteWrap,
-    timeStampNow,
-    VERBOSE
+    timeStampNow
 };

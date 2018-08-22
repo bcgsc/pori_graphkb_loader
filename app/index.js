@@ -8,16 +8,15 @@ const fs = require('fs');
 const http = require('http');
 const jc = require('json-cycle');
 const cors = require('cors');
-const moment = require('moment');
 const HTTP_STATUS = require('http-status-codes');
 const swaggerUi = require('swagger-ui-express');
 
 const auth = require('./middleware/auth');
+const {logger} = require('./repo/logging');
 const {
     checkToken, generateToken, catsToken
 } = require('./middleware/auth'); // WARNING: middleware fails if function is not imported by itself
 
-const {VERBOSE} = require('./repo/util');
 const {loadSchema} = require('./repo/schema');
 
 const {parse} = require('./parser/variant');
@@ -27,7 +26,7 @@ const {addResourceRoutes} = require('./routes/util');
 
 
 const logRequests = (req, res, next) => {
-    console.log(`${moment().toISOString()} [${req.method}] ${req.url}`);
+    logger.log('info', `[${req.method}] ${req.url}`);
     return next();
 };
 
@@ -40,15 +39,11 @@ const connectDB = async (conf) => {
         username: conf.server.user,
         password: conf.server.pass
     });
-    if (VERBOSE) {
-        console.log(`connecting to the database: ${conf.db.name} as ${conf.db.user}`);
-    }
+    logger.log('info', `connecting to the database: ${conf.db.name} as ${conf.db.user}`);
     let db;
     try {
         db = await server.use({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
-        if (VERBOSE) {
-            console.log('loading the schema');
-        }
+        logger.log('info', 'loading the schema');
     } catch (err) {
         server.close();
         throw err;
@@ -60,9 +55,7 @@ const connectDB = async (conf) => {
         db.close();
         throw err;
     }
-    if (VERBOSE) {
-        console.log('loaded the schema');
-    }
+    logger.log('info', 'loaded the schema');
     // create the admin user
     return {server, db, schema};
 };
@@ -75,9 +68,7 @@ class AppServer {
         this.app.use(bodyParser.urlencoded({extended: true}));
         this.app.use(bodyParser.json());
         // add some basic logging
-        if (VERBOSE) {
-            this.app.use(logRequests);
-        }
+        this.app.use(logRequests);
         this.app.use(cors({
             origin: true
         }));
@@ -90,9 +81,6 @@ class AppServer {
         // set up the routes
         this.router = express.Router();
         this.prefix = `/api/v${process.env.npm_package_version || 'test'}`;
-        if (VERBOSE) {
-            console.log('AppServer prefix', this.prefix);
-        }
         this.app.use(this.prefix, this.router);
 
         this.router.route('/token').post(async (req, res) => {
@@ -135,9 +123,7 @@ class AppServer {
      */
     async listen() {
         // connect to the database
-        if (VERBOSE) {
-            console.log('starting db connection');
-        }
+        logger.log('info', 'starting db connection');
         const {db, schema} = await connectDB(this.conf);
         this.db = db;
         this.schema = schema;
@@ -171,12 +157,10 @@ class AppServer {
             });
         }
 
-        if (VERBOSE) {
-            console.log('Adding 404 capture');
-        }
+        logger.log('info', 'Adding 404 capture');
         // catch any other errors
         this.router.use((err, req, res, next) => { // eslint-disable-line no-unused-vars
-            console.error(err.stack);
+            logger.log('error', err.stack);
             return res.status(err.code || HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
         });
         // last catch any errors for undefined routes. all actual routes should be defined above
@@ -189,26 +173,24 @@ class AppServer {
         }));
 
         this.server = await http.createServer(this.app).listen(this.conf.app.port);
-        if (VERBOSE) {
-            console.log('started application server at:', this.server.address().host, this.server.address().port);
-        }
+        logger.log('info', `started application server at: ${this.server.address().host}:${this.server.address().port}`);
     }
 
     async close() {
-        if (VERBOSE) { console.log('cleaning up'); }
+        logger.log('info', 'cleaning up');
         try {
             if (this.server) {
                 await this.server.close();
             }
         } catch (err) {
-            console.error(err);
+            logger.log('error', err);
         }
         try {
             if (this.db) {
                 await this.db.close();
             }
         } catch (err) {
-            console.error(err);
+            logger.log('error', err);
         }
     }
 }

@@ -7,6 +7,7 @@
 const _ = require('lodash');
 const {RID, RIDBag} = require('orientjs');
 
+const {logger} = require('./logging');
 const {SelectionQuery} = require('./query');
 const {SCHEMA_DEFN} = require('./schema');
 const {
@@ -18,7 +19,7 @@ const {
     PermissionError
 } = require('./error');
 const {
-    timeStampNow, VERBOSE, castToRID
+    timeStampNow, castToRID
 } = require('./util');
 const {PERMISSIONS} = require('./constants');
 
@@ -226,9 +227,6 @@ const createEdge = async (db, opt) => {
     const {content, model, user} = opt;
     content.createdBy = user['@rid'];
     const record = model.formatRecord(content, {dropExtra: false, addDefaults: true});
-    if (VERBOSE) {
-        console.log('create:', record);
-    }
     const from = record.out;
     const to = record.in;
     delete record.out;
@@ -297,16 +295,7 @@ const select = async (db, opt) => {
         schema: SCHEMA_DEFN
     }, opt.where, opt);
     const query = SelectionQuery.parseQuery(opt.schema, opt.model, opt.where || {}, opt);
-    if (VERBOSE) {
-        console.log('select query statement:',
-            query.displayString(),
-            {
-                limit: opt.limit,
-                fetchPlan: opt.fetchPlan,
-                skip: opt.skip,
-                activeOnly: opt.activeOnly
-            });
-    }
+    logger.log('debug', query.displayString());
 
     // send the query statement to the database
     const {params, query: statement} = query.toString();
@@ -328,7 +317,7 @@ const select = async (db, opt) => {
     let recordList = await db.query(`${statement}`, queryOpt).all();
 
     if (process.env.DEBUG === '1') {
-        console.log(`selected ${recordList.length} records`);
+        logger.log('debug', `selected ${recordList.length} records`);
     }
     recordList = trimRecords(recordList, {activeOnly: opt.activeOnly, user: opt.user});
 
@@ -609,10 +598,7 @@ const modify = async (db, opt) => {
             original, user, changes, model
         });
     }
-    if (process.env.DEBUG === '1') {
-        console.log('modify transaction');
-        console.log(commit.buildStatement());
-    }
+    logger.log('debug', commit.buildStatement());
     try {
         const result = await commit.return('$result').one();
         if (!result) {
@@ -815,13 +801,10 @@ const createStatement = async (db, opt) => {
     commit
         .let('result', tx => tx.select().from('$statement'))
         .commit();
-    if (process.env.VERBOSE === '1') {
-        console.log(commit.buildStatement());
-    }
+    logger.log('debug', commit.buildStatement());
     try {
         const result = await commit.return('$result').one();
         if (!result) {
-            console.error(commit.buildStatement());
             throw new Error('Failed to create the statement');
         }
         return result;
@@ -855,9 +838,6 @@ const create = async (db, opt) => {
         Object.assign({}, content, {createdBy: user['@rid']}),
         {dropExtra: false, addDefaults: true},
     );
-    if (VERBOSE) {
-        console.log('create:', record);
-    }
     try {
         return await db.insert().into(model.name).set(record).one();
     } catch (err) {

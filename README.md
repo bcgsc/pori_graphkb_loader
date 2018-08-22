@@ -14,6 +14,7 @@ It is a graph database which is used to store variants, ontologies, and the rele
 - [Authentication](#authentication)
 - [Guidelines for Contributors](#guidelines-for-contributors)
 - [Running the Tests](#running-the-tests)
+- [Logging](#logging)
 
 
 ## Getting Started
@@ -79,3 +80,22 @@ The non-database tests can be run without the above configuration
 ```
 npm run unit
 ```
+
+
+## Logging
+
+By default the API will log at the warning level. This can be configured using the environment
+variable `LOG_LEVEL` which must be one of: info, error, warn, info, verbose, or debug
+([corresponding to the npm logging levels](https://www.npmjs.com/package/winston#logging-levels))
+
+```
+export LOG_LEVEL=error
+```
+
+Additionally logging can be recorded in a file. To do this the `LOG_DIR` environment variable must be set.
+```
+export LOG_DIR=/path/to/dir
+```
+
+This will be used as the directly to write logs to. If the variable is not set, no log files will be written and only console will be logged to.
+
