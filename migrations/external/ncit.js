@@ -157,7 +157,7 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
         if (node[PRED_MAP.DEPRECATED] && node[PRED_MAP.DEPRECATED][0] === 'true') {
             body.deprecated = true;
         }
-        const dbEntry = await addRecord(dbClassName, body, conn, true);
+        const dbEntry = await addRecord(dbClassName, body, conn, {existsOk: true});
         // add the aliasof links
         for (const alias of node[PRED_MAP.SYNONYM] || []) {
             const aliasBody = {
@@ -170,14 +170,13 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
                 dbClassName,
                 aliasBody,
                 conn,
-                true,
-                _.omit(aliasBody, ['dependency'])
+                {existsOk: true, getWhere: _.omit(aliasBody, ['dependency'])}
             );
             await addRecord(
                 'aliasof',
                 {source: source['@rid'], out: aliasRecord['@rid'], in: dbEntry['@rid']},
                 conn,
-                true
+                {existsOk: true}
             );
         }
         // add the link to the FDA
@@ -193,7 +192,7 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
                     source: source['@rid'],
                     out: dbEntry['@rid'],
                     in: fdaRec['@rid']
-                }, conn, true);
+                }, conn, {existsOk: true});
             }
         }
         records[dbEntry.sourceId] = dbEntry;

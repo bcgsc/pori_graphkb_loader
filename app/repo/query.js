@@ -144,13 +144,13 @@ class Clause {
      * @param {string} type can be OR or AND
      * @param {Array.<(Comparison|Clause)>} comparisons the array of comparisons (or clauses) which make up the clause
      */
-    constructor(type = 'OR', comparisons = []) {
+    constructor(type = 'OR', comparisons = [], defaultOperator = '=') {
         this.type = type;
         this.comparisons = Array.from(comparisons, (comp) => {
             if (comp instanceof Clause || comp instanceof Comparison) {
                 return comp;
             }
-            return new Comparison(comp);
+            return new Comparison(comp, defaultOperator);
         });
     }
 
@@ -222,7 +222,13 @@ class Comparison {
     }
 
     applyCast(cast) {
-        if (this.value !== null) {
+        if (this.value instanceof Array || this.value instanceof Set) {
+            for (let i = 0; i < this.value.length; i++) {
+                if (this.value[i] !== null) {
+                    this.value[i] = cast(this.value[i]);
+                }
+            }
+        } else if (this.value !== null) {
             this.value = cast(this.value);
         }
     }
@@ -502,27 +508,18 @@ class SelectionQuery {
             } else {
                 targetPrefix = `${prefix}.bothV()`;
             }
-            if (query.v instanceof Comparison) {
-                query.v = query.v.value;
-            }
-            if (query.v instanceof Set || query.v instanceof Array) {
-                // must be an array of RIDs
-                if (query.direction === 'both') {
-                    if (query.v.length === 1) {
-                        conditions[targetPrefix] = new Comparison(
-                            castToRID(query.v[0]), 'CONTAINS'
-                        );
-                    } else {
-                        const andList = Array.from(query.v, rid => new Comparison(castToRID(rid), 'CONTAINS'));
-                        conditions[targetPrefix] = new Clause('AND', andList);
-                    }
-                } else {
-                    targetPrefix = `${targetPrefix}.asSet()`;
-                    conditions[targetPrefix] = new Comparison(
-                        Array.from(query.v, castToRID)
-                    );
-                }
-            } else {
+
+            let vClause;
+            if (query.v instanceof Clause) {
+                vClause = new Clause(query.v.type, Array.from(query.v.comparisons,
+                    comp => new Comparison(castToRID(comp.value), 'CONTAINS', comp.negate)));
+            } else if (query.v instanceof Array || query.v instanceof Set) {
+                vClause = new Clause('AND', Array.from(query.v, castToRID), 'CONTAINS');
+            } else if (
+                query.v !== null
+                && typeof query.v === 'object'
+                && !(query.v instanceof Comparison)
+            ) {
                 const subqModel = schema[query.v['@class']] || schema.V;
                 if (subqModel === undefined) {
                     throw new AttributeError(
@@ -532,8 +529,8 @@ class SelectionQuery {
                 let subquery = this.parseQuery(schema, subqModel, query.v, opt);
                 if (subquery.follow.length === 0) {
                     const result = subquery.flattenAs(targetPrefix);
-                    Object.assign(conditions, result.conditions);
                     Object.assign(properties, result.properties);
+                    Object.assign(conditions, result.conditions);
                 } else {
                     // default operator should be = for a subquery b/c it does not have to account for multiplcity
                     subquery = this.parseQuery(
@@ -542,8 +539,13 @@ class SelectionQuery {
                         query.v,
                         Object.assign({}, opt, {defaultOperator: '='})
                     );
-                    conditions[targetPrefix] = subquery;
+                    vClause = subquery;
                 }
+            } else { // primitive value
+                vClause = new Clause('AND', [query.v]);
+            }
+            if (vClause) {
+                conditions[targetPrefix] = vClause;
             }
         }
         // now cast the edge attribute querys themselves
@@ -638,7 +640,11 @@ class SelectionQuery {
             }
             paramStartIndex += Object.keys(clause.params).length;
             Object.assign(params, clause.params);
-            if (this.conditions[attr] instanceof Clause && this.conditions[attr].length > 1) {
+            if (
+                this.conditions[attr] instanceof Clause
+                && this.conditions[attr].length > 1
+                && this.conditions[attr].type === 'OR'
+            ) {
                 clause.query = `(${clause.query})`;
             }
             if (this.or.includes(attr)) {
