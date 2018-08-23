@@ -7,6 +7,7 @@ const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
 
 const {PERMISSIONS} = require('./constants');
+const {logger} = require('./logging');
 const {
     castDecimalInteger,
     castNullableLink,
@@ -735,6 +736,25 @@ const SCHEMA_DEFN = {
 
 
 class Property {
+    /**
+     * create a new property
+     *
+     * @param {Object} opt options
+     * @param {string} opt.name the property name
+     * @param opt.default the default value or function for generating the default
+     * @param {string} opt.pattern the regex pattern values for this property should follow (used purely in docs)
+     * @param {boolean} opt.nullable flag to indicate if the value can be null
+     * @param {boolean} opt.mandatory flag to indicate if this property is required
+     * @param {boolean} opt.nonEmpty for string properties indicates that an empty string is invalid
+     * @param {string} opt.description description for the openapi spec
+     * @param {ClassModel} opt.linkedClass if applicable, the class this link should point to or embed
+     * @param {Array} opt.choices enum representing acceptable values
+     * @param {Number} opt.min minimum value allowed (for intger type properties)
+     * @param {Number} opt.max maximum value allowed (for integer type properties)
+     * @param {Function} opt.cast the function to be used in formatting values for this property (for list properties it is the function for elements in the list)
+     *
+     * @return {Property} the new property
+     */
     constructor(opt) {
         if (!opt.name) {
             throw new AttributeError('name is a required parameter');
@@ -1400,7 +1420,7 @@ const createSchema = async (db) => {
         class: cls
     })));
     if (VERBOSE) {
-        console.log('defined schema for the major base classes');
+        logger.log('info', 'defined schema for the major base classes');
     }
     // create the other schema classes
     const classesByLevel = splitSchemaClassLevels(
@@ -1409,7 +1429,7 @@ const createSchema = async (db) => {
 
     for (const classList of classesByLevel) {
         if (VERBOSE) {
-            console.log(`creating the classes: ${Array.from(classList, cls => cls.name).join(', ')}`);
+            logger.log('info', `creating the classes: ${Array.from(classList, cls => cls.name).join(', ')}`);
         }
         await Promise.all(Array.from(classList, async cls => cls.create(db))); // eslint-disable-line no-await-in-loop
     }
@@ -1453,7 +1473,7 @@ const createSchema = async (db) => {
         }
     }
     if (process.env.VERBOSE === '1') {
-        console.log('creating the default user groups');
+        logger.log('info', 'creating the default user groups');
     }
     const defaultGroups = Array.from([
         {name: 'admin', permissions: adminPermissions},
@@ -1463,7 +1483,7 @@ const createSchema = async (db) => {
     await Promise.all(Array.from(defaultGroups, async x => db.insert().into('UserGroup').set(x).one()));
 
     if (VERBOSE) {
-        console.log('Schema is Complete');
+        logger.log('info', 'Schema is Complete');
     }
 };
 
@@ -1497,16 +1517,16 @@ const loadSchema = async (db) => {
             if (cls.isAbstract) {
                 continue;
             }
-            console.log(`loaded class: ${cls.name} [${cls.inherits}]`);
+            logger.log('info', `loaded class: ${cls.name} [${cls.inherits}]`);
         }
     }
     if (VERBOSE) {
-        console.log('linking models');
+        logger.log('info', 'linking models');
     }
     db.schema = SCHEMA_DEFN;
     // set the default record group
     if (VERBOSE) {
-        console.log('schema loading complete');
+        logger.log('info', 'schema loading complete');
     }
     return SCHEMA_DEFN;
 };
