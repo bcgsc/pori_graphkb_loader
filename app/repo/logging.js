@@ -1,5 +1,6 @@
 /**
  * module responsible for setting up logging
+ * @module app/repo/logging
  */
 
 const winston = require('winston');

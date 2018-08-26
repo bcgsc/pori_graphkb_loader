@@ -154,6 +154,10 @@ class Clause {
         });
     }
 
+    /**
+     * Add an item to the list of comparisons
+     * @param {Comparison|Clause} item item to be added
+     */
     push(item) {
         this.comparisons.push(item);
     }
@@ -162,6 +166,10 @@ class Clause {
         return this.comparisons.length;
     }
 
+    /**
+     * Recursively apply the case function to all comarison values
+     * @param {Function} cast the cast function to be applied
+     */
     applyCast(cast) {
         for (const item of this.comparisons) {
             item.applyCast(cast);
@@ -290,10 +298,10 @@ class SelectionQuery {
     /**
      * Builds the query statement for selecting or matching records from the database
      *
-     * @param {Object} opt Selection options
-     * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
      * @param {ClassModel} model the model to be selected from
      * @param {Object.<string,(SelectionQuery|Clause|Comparison)>} conditions object of property names linked to values, comparisons, or clauses
+     * @param {Object} opt Selection options
+     * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
      * @param {string} [opt.direction='both'] the dedfault direction to be used for edge queries
      * @param {Array.<Follow>} [opt.follow] follow clauses for the current query
      * @param {Array.<string>} [opt.or] list of condition names that should be treated with OR instead of and
@@ -342,6 +350,12 @@ class SelectionQuery {
      *
      * @param {Object.<string,ClassModel>} schema the set of models avaiable for build queries from
      * @param {ClassModel} currModel the current model
+     * @param {Object} query the query to be parsed
+     * @param {Object} opt options
+     * @param {?Number} [opt.skip=null] number of records to skip
+     * @param {boolean} [opt.activeOnly=true] select only active records
+     * @param {?Array.<string>} [opt.returnProperties=null] the list of properties to return
+     * @param {string} [opt.defaultOperator='='] the default operator to be used for subsequent comparisons
      */
     static parseQuery(schema, currModel, query = {}, opt = {}) {
         opt = Object.assign({

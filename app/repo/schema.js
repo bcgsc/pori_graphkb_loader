@@ -27,6 +27,17 @@ const {AttributeError} = require('./error');
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 
 const INDEX_SEP_CHARS = ' \r\n\t:;,.|+*/\\=!?[]()'; // default separator chars for orientdb full text hash: https://github.com/orientechnologies/orientdb/blob/2.2.x/core/src/main/java/com/orientechnologies/orient/core/index/OIndexFullText.java
+
+/**
+ * The complete Triforce, or one or more components of the Triforce.
+ * @typedef {Object} Expose
+ * @property {boolean} QUERY - expose the GET route
+ * @property {boolean} GET - expose the GET/{rid} route
+ * @property {boolean} POST - expose the POST route
+ * @property {boolean} PATCH - expose the PATCH/{rid} route
+ * @property {boolean} DELETE - expose the DELETE/{rid} route
+ */
+
 const EXPOSE_ALL = {
     QUERY: true, PATCH: true, DELETE: true, POST: true, GET: true
 };
@@ -741,7 +752,7 @@ class Property {
      *
      * @param {Object} opt options
      * @param {string} opt.name the property name
-     * @param opt.default the default value or function for generating the default
+     * @param {*|Function} opt.default the default value or function for generating the default
      * @param {string} opt.pattern the regex pattern values for this property should follow (used purely in docs)
      * @param {boolean} opt.nullable flag to indicate if the value can be null
      * @param {boolean} opt.mandatory flag to indicate if this property is required
@@ -843,6 +854,8 @@ class ClassModel {
      * @param {Array} [opt.edgeRestrictions=[]] list of class pairs this edge type is allowed to join
      * @param {boolean} [opt.isAbstract=false] this is an abstract class
      * @param {Object.<string,Object>} [opt.properties={}] mapping by attribute name to property objects (defined by orientjs)
+     * @param {Function} [opt.paraphrase] the function to paraphrase this class type
+     * @param {Expose} [opt.expose] the routes to expose to the API for this class
      */
     constructor(opt) {
         this.name = opt.name;
@@ -897,6 +910,8 @@ class ClassModel {
 
     /**
      * Create this class (and its properties) in the database
+     *
+     * @param {orientjs.Db} db the database connection
      */
     async create(db) {
         const inherits = this._inherits
@@ -916,6 +931,7 @@ class ClassModel {
      * Given some record, returns a string representation that is used for display purposes only
      *
      * @param {Object} record the record to be paraphrased
+     * @param {Object.<string,ClassModel>} schema mapping of names to db class models
      */
     paraphraseRecord(record, schema) {
         const newRecord = {};
@@ -950,6 +966,8 @@ class ClassModel {
     /**
      * Given the name of a subclass, retrieve the subclass model or throw an error if it is not
      * found
+     *
+     * @param {string} modelName the name of the model to find as a subclass
      */
     subClassModel(modelName) {
         for (const subclass of this._subclasses) {
@@ -986,7 +1004,7 @@ class ClassModel {
     }
 
     /**
-     * @returns {string[]} a list of property names for all required properties
+     * @returns {Array.<string>} a list of property names for all required properties
      */
     get required() {
         const required = Array.from(Object.values(this._properties).filter(
@@ -999,7 +1017,7 @@ class ClassModel {
     }
 
     /**
-     * @returns {string[]} a list of property names for all optional properties
+     * @returns {Array.<string>} a list of property names for all optional properties
      */
     get optional() {
         const optional = Array.from(
@@ -1012,6 +1030,9 @@ class ClassModel {
         return optional;
     }
 
+    /**
+     * @returns {Array.<Property>} a list of the properties associate with this class or parents of this class
+     */
     get properties() {
         let properties = Object.assign({}, this._properties);
         for (const parent of this._inherits) {
@@ -1021,7 +1042,7 @@ class ClassModel {
     }
 
     /**
-     * returns a partial json representation of the current class model
+     * @returns {Object} a partial json representation of the current class model
      */
     toJSON() {
         const json = {
@@ -1041,7 +1062,7 @@ class ClassModel {
 
     /**
      * Given some orientjs class object, compare the model to the schema definition expected
-     * @param {object} oclass
+     * @param {orientjs.dbClass} oclass the class from the database load
      *
      * @throws {Error} when the parsed class from the database does not match the expected schema definition
      */
@@ -1352,6 +1373,7 @@ class ClassModel {
 /**
  * Split class models into an array or with dependencies
  * will be in an array after the array it depends on
+ * @param {Object.<string,ClassModel>} schema mapping of names to class models
  */
 const splitSchemaClassLevels = (schema) => {
     const ranks = {};
@@ -1391,7 +1413,7 @@ const splitSchemaClassLevels = (schema) => {
 /**
  * Defines and uilds the schema in the database
  *
- * @param {object} db the orientjs database connection object
+ * @param {orientjs.Db} db the orientjs database connection object
  */
 const createSchema = async (db) => {
     // create the permissions class
@@ -1492,7 +1514,7 @@ const createSchema = async (db) => {
  * Loads the schema from the database and then adds additional checks. returns the object of models.
  * Checks that the schema loaded from the databases matches the schema defined here
  *
- * @param {object} db the orientjs database connection
+ * @param {orientjs.Db} db the orientjs database connection
  */
 const loadSchema = async (db) => {
     // adds checks etc to the schema loaded from the database

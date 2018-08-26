@@ -3,6 +3,17 @@
 /** @module app/parser/position */
 const {ParsingError} = require('./../repo/error');
 
+/**
+ * the mapping of positional variant notation prefixes to their corresponging position classes
+ * @namespace
+ *
+ * @property {string} g genomic postions
+ * @property {string} i intronic positions
+ * @property {string} e exonic positions
+ * @property {string} p protein positions (amino acid coordinates)
+ * @property {string} y cytoband positions
+ * @property {string} c coding sequence positions
+ */
 const PREFIX_CLASS = {
     g: 'GenomicPosition',
     i: 'IntronicPosition',
