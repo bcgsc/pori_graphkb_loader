@@ -14,6 +14,7 @@ It is a graph database which is used to store variants, ontologies, and the rele
 - [Authentication](#authentication)
 - [Guidelines for Contributors](#guidelines-for-contributors)
 - [Running the Tests](#running-the-tests)
+- [Logging](#logging)
 
 
 ## Getting Started
@@ -30,7 +31,7 @@ npm start
 
 The schema for the database consist of four major types of data: ontology terms, variants, literature/evidence, and statements.
 
-![schema](doc/schema.svg)
+![schema](schema.svg)
 
 ## OpenAPI Specification
 
@@ -44,7 +45,7 @@ to CATS with the users credentials and a token is returned if the user exists an
 
 The next step happens when KB looks up the username in the KB database. Each user in KB belongs to one or more UserGroups. Each of these UserGroups contains table-level permission schemas.
 
-![KB Authentication Process](doc/authentication.svg)
+![KB Authentication Process](authentication.svg)
 
 In summary, KB Client will send user credentials and recieve a token which will be used in the header of all subsequent requests.
 
@@ -79,3 +80,22 @@ The non-database tests can be run without the above configuration
 ```
 npm run unit
 ```
+
+
+## Logging
+
+By default the API will log at the warning level. This can be configured using the environment
+variable `LOG_LEVEL` which must be one of: info, error, warn, info, verbose, or debug
+([corresponding to the npm logging levels](https://www.npmjs.com/package/winston#logging-levels))
+
+```
+export LOG_LEVEL=error
+```
+
+Additionally logging can be recorded in a file. To do this the `LOG_DIR` environment variable must be set.
+```
+export LOG_DIR=/path/to/dir
+```
+
+This will be used as the directly to write logs to. If the variable is not set, no log files will be written and only console will be logged to.
+

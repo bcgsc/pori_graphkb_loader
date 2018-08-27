@@ -1,16 +1,22 @@
 
 
 const {expect} = require('chai');
-const {types} = require('orientjs');
 
-const {castUUID, looksLikeRID} = require('./../../app/repo/util');
+const {
+    castUUID,
+    looksLikeRID,
+    castString,
+    castNullableString,
+    castNonEmptyString,
+    castNonEmptyNullableString
+} = require('./../../app/repo/util');
 const {
     hasRecordAccess,
     trimRecords
 } = require('./../../app/repo/base');
 
 
-describe('util.castUUID', () => {
+describe('castUUID', () => {
     it('returns valid uuid', () => {
         const uuid = '933fd4de-5bd6-471c-9869-a7601294ea6e';
         expect(castUUID(uuid)).to.equal(uuid);
@@ -21,8 +27,42 @@ describe('util.castUUID', () => {
     });
 });
 
+describe('castString', () => {
+    it('lowercases', () => {
+        expect(castString('Blargh MONKEYS')).to.equal('blargh monkeys');
+    });
+    it('trims whitespace', () => {
+        expect(castString('blargh monkeys ')).to.equal('blargh monkeys');
+    });
+    it('convert int', () => {
+        expect(castString(1)).to.equal('1');
+    });
+    it('error on null', () => {
+        expect(() => castString(null)).to.throw('cannot cast null');
+    });
+    it('can be empty', () => {
+        expect(castString('')).to.equal('');
+    });
+});
 
-describe('util.looksLikeRID', () => {
+describe('castNonEmptyString', () => {
+    it('cannot be empty', () => {
+        expect(() => castNonEmptyString('')).to.throw('Cannot be an empty string');
+    });
+});
+
+
+describe('castNullableString', () => {
+    it('allows null', () => {
+        expect(castNullableString(null)).to.be.null;
+    });
+    it('does not convert null', () => {
+        expect(castNullableString('null')).to.equal('null');
+    });
+});
+
+
+describe('looksLikeRID', () => {
     it('false for bad rid', () => {
         expect(looksLikeRID('4')).to.be.false;
     });

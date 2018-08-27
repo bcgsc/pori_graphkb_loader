@@ -58,8 +58,16 @@ describe('parseQueryLanguage', () => {
         });
         it('edge target set of nodes', () => {
             expect(parseQueryLanguage(qs.parse('supportedby[v][0]=44:3&supportedby[v][1]=44:4'))).to.eql({
-                supportedby: {v: new Comparison(['44:3', '44:4'])}
+                supportedby: {
+                    v: new Clause('AND', [
+                        new Comparison('44:3'),
+                        new Comparison('44:4')
+                    ])
+                }
             });
+        });
+        it('error when size is not a positive integer', () => {
+            expect(() => parseQueryLanguage(qs.parse('supportedby[size]=-1'))).to.throw('must be a positive integer');
         });
     });
     it('parses null string', () => {
@@ -226,7 +234,12 @@ describe('parseQueryLanguage', () => {
     });
     it('array', () => {
         const result = parseQueryLanguage(qs.parse('thing=1&thing=2'));
-        expect(result).to.eql({thing: new Comparison(['1', '2'])});
+        expect(result).to.eql({
+            thing: new Clause(
+                'AND',
+                [new Comparison('1'), new Comparison('2')]
+            )
+        });
     });
     describe('subquery support', () => {
         it('not operator', () => {

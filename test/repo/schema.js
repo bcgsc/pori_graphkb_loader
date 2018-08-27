@@ -171,7 +171,9 @@ describe('ClassModel', () => {
             model = new ClassModel({
                 name: 'example',
                 properties: {
-                    req1: new Property({name: 'req1', mandatory: true, cast: x => x.toLowerCase()}),
+                    req1: new Property({
+                        name: 'req1', mandatory: true, nonEmpty: true, type: 'string'
+                    }),
                     req2: new Property({
                         name: 'req2', mandatory: true, default: 1, type: 'integer'
                     }),
@@ -182,10 +184,18 @@ describe('ClassModel', () => {
                 }
             });
         });
+        it('error on empty string', () => {
+            expect(() => {
+                model.formatRecord({
+                    req1: ''
+                }, {dropExtra: false, addDefaults: true});
+            }).to.throw();
+        });
         it('errors on un-cast-able input', () => {
             expect(() => {
                 model.formatRecord({
-                    req1: 2
+                    req1: 2,
+                    req2: 'f45'
                 }, {dropExtra: false, addDefaults: true});
             }).to.throw();
         });

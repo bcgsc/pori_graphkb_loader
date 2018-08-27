@@ -7,10 +7,13 @@ const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
 
 const {PERMISSIONS} = require('./constants');
+const {logger} = require('./logging');
 const {
     castDecimalInteger,
     castNullableLink,
     castNullableString,
+    castNonEmptyString,
+    castNonEmptyNullableString,
     castString,
     castToRID,
     castUUID,
@@ -24,6 +27,17 @@ const {AttributeError} = require('./error');
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 
 const INDEX_SEP_CHARS = ' \r\n\t:;,.|+*/\\=!?[]()'; // default separator chars for orientdb full text hash: https://github.com/orientechnologies/orientdb/blob/2.2.x/core/src/main/java/com/orientechnologies/orient/core/index/OIndexFullText.java
+
+/**
+ * The complete Triforce, or one or more components of the Triforce.
+ * @typedef {Object} Expose
+ * @property {boolean} QUERY - expose the GET route
+ * @property {boolean} GET - expose the GET/{rid} route
+ * @property {boolean} POST - expose the POST route
+ * @property {boolean} PATCH - expose the PATCH/{rid} route
+ * @property {boolean} DELETE - expose the DELETE/{rid} route
+ */
+
 const EXPOSE_ALL = {
     QUERY: true, PATCH: true, DELETE: true, POST: true, GET: true
 };
@@ -306,10 +320,10 @@ const SCHEMA_DEFN = {
             {name: 'deletedAt', type: 'long', nullable: false},
             {name: 'history', type: 'link', nullable: false},
             {
-                name: 'createdBy', type: 'link', nullable: false, mandatory: false
+                name: 'createdBy', type: 'link'
             },
             {
-                name: 'deletedBy', type: 'link', nullable: false, mandatory: false
+                name: 'deletedBy', type: 'link', nullable: false
             },
             {
                 name: 'groupRestrictions',
@@ -381,6 +395,7 @@ const SCHEMA_DEFN = {
                 name: 'sourceId',
                 mandatory: true,
                 nullable: false,
+                nonEmpty: true,
                 description: 'The identifier of the record/term in the external source database/system'
             },
             {
@@ -388,7 +403,7 @@ const SCHEMA_DEFN = {
                 type: 'link',
                 description: 'Mainly for alias records. If this term is defined as a part of another term, this should link to the original term'
             },
-            {name: 'name', description: 'Name of the term'},
+            {name: 'name', description: 'Name of the term', nonEmpty: true},
             {
                 name: 'sourceIdVersion',
                 description: 'The version of the identifier based on the external database/system'
@@ -412,7 +427,7 @@ const SCHEMA_DEFN = {
             },
             {name: 'url', type: 'string'}
         ],
-        paraphrase: rec => rec.name.toString().trim(),
+        paraphrase: rec => (rec.name || rec.sourceId).toString().trim(),
         isAbstract: true
     },
     EvidenceLevel: {inherits: ['Ontology', 'Evidence']},
@@ -680,7 +695,7 @@ const SCHEMA_DEFN = {
                 type: 'link',
                 linkedClass: 'Ontology',
                 mandatory: true,
-                notNull: false
+                nullable: true
             },
             {name: 'description', type: 'string'},
             {
@@ -732,6 +747,25 @@ const SCHEMA_DEFN = {
 
 
 class Property {
+    /**
+     * create a new property
+     *
+     * @param {Object} opt options
+     * @param {string} opt.name the property name
+     * @param {*|Function} opt.default the default value or function for generating the default
+     * @param {string} opt.pattern the regex pattern values for this property should follow (used purely in docs)
+     * @param {boolean} opt.nullable flag to indicate if the value can be null
+     * @param {boolean} opt.mandatory flag to indicate if this property is required
+     * @param {boolean} opt.nonEmpty for string properties indicates that an empty string is invalid
+     * @param {string} opt.description description for the openapi spec
+     * @param {ClassModel} opt.linkedClass if applicable, the class this link should point to or embed
+     * @param {Array} opt.choices enum representing acceptable values
+     * @param {Number} opt.min minimum value allowed (for intger type properties)
+     * @param {Number} opt.max maximum value allowed (for integer type properties)
+     * @param {Function} opt.cast the function to be used in formatting values for this property (for list properties it is the function for elements in the list)
+     *
+     * @return {Property} the new property
+     */
     constructor(opt) {
         if (!opt.name) {
             throw new AttributeError('name is a required parameter');
@@ -751,9 +785,9 @@ class Property {
         this.nullable = opt.nullable === undefined
             ? true
             : !!opt.nullable;
-        this.mandatory = opt.mandatory === undefined
-            ? false
-            : !!opt.mandatory;
+        this.mandatory = !!opt.mandatory; // default false
+        this.nonEmpty = !!opt.nonEmpty;
+
         this.iterable = !!/(set|list|bag|map)/ig.exec(this.type);
         this.linkedClass = opt.linkedClass;
         this.min = opt.min;
@@ -764,9 +798,13 @@ class Property {
                 this.cast = castDecimalInteger;
             } else if (this.type === 'string') {
                 if (!this.nullable) {
-                    this.cast = castString;
+                    this.cast = this.nonEmpty
+                        ? castNonEmptyString
+                        : castString;
                 } else {
-                    this.cast = castNullableString;
+                    this.cast = this.nonEmpty
+                        ? castNonEmptyNullableString
+                        : castNullableString;
                 }
             } else if (this.type.includes('link')) {
                 if (!this.nullable) {
@@ -787,7 +825,7 @@ class Property {
         const dbProperties = {
             name: this.name,
             type: this.type,
-            notNull: !!this.nullable,
+            notNull: !this.nullable,
             mandatory: this.mandatory
         };
         if (this.linkedClass) {
@@ -816,6 +854,8 @@ class ClassModel {
      * @param {Array} [opt.edgeRestrictions=[]] list of class pairs this edge type is allowed to join
      * @param {boolean} [opt.isAbstract=false] this is an abstract class
      * @param {Object.<string,Object>} [opt.properties={}] mapping by attribute name to property objects (defined by orientjs)
+     * @param {Function} [opt.paraphrase] the function to paraphrase this class type
+     * @param {Expose} [opt.expose] the routes to expose to the API for this class
      */
     constructor(opt) {
         this.name = opt.name;
@@ -870,6 +910,8 @@ class ClassModel {
 
     /**
      * Create this class (and its properties) in the database
+     *
+     * @param {orientjs.Db} db the database connection
      */
     async create(db) {
         const inherits = this._inherits
@@ -889,6 +931,7 @@ class ClassModel {
      * Given some record, returns a string representation that is used for display purposes only
      *
      * @param {Object} record the record to be paraphrased
+     * @param {Object.<string,ClassModel>} schema mapping of names to db class models
      */
     paraphraseRecord(record, schema) {
         const newRecord = {};
@@ -923,6 +966,8 @@ class ClassModel {
     /**
      * Given the name of a subclass, retrieve the subclass model or throw an error if it is not
      * found
+     *
+     * @param {string} modelName the name of the model to find as a subclass
      */
     subClassModel(modelName) {
         for (const subclass of this._subclasses) {
@@ -959,7 +1004,7 @@ class ClassModel {
     }
 
     /**
-     * @returns {string[]} a list of property names for all required properties
+     * @returns {Array.<string>} a list of property names for all required properties
      */
     get required() {
         const required = Array.from(Object.values(this._properties).filter(
@@ -972,7 +1017,7 @@ class ClassModel {
     }
 
     /**
-     * @returns {string[]} a list of property names for all optional properties
+     * @returns {Array.<string>} a list of property names for all optional properties
      */
     get optional() {
         const optional = Array.from(
@@ -985,6 +1030,9 @@ class ClassModel {
         return optional;
     }
 
+    /**
+     * @returns {Array.<Property>} a list of the properties associate with this class or parents of this class
+     */
     get properties() {
         let properties = Object.assign({}, this._properties);
         for (const parent of this._inherits) {
@@ -994,7 +1042,7 @@ class ClassModel {
     }
 
     /**
-     * returns a partial json representation of the current class model
+     * @returns {Object} a partial json representation of the current class model
      */
     toJSON() {
         const json = {
@@ -1014,7 +1062,7 @@ class ClassModel {
 
     /**
      * Given some orientjs class object, compare the model to the schema definition expected
-     * @param {object} oclass
+     * @param {orientjs.dbClass} oclass the class from the database load
      *
      * @throws {Error} when the parsed class from the database does not match the expected schema definition
      */
@@ -1237,7 +1285,7 @@ class ClassModel {
         const sourceProp = {name: 'source', type: 'link', linkedClass: 'Source'};
         if (!['SupportedBy', 'Implies'].includes(name)) {
             sourceProp.mandatory = true;
-            sourceProp.notNull = true;
+            sourceProp.nullable = false;
         }
         let reverseName;
         if (name.endsWith('Of')) {
@@ -1325,6 +1373,7 @@ class ClassModel {
 /**
  * Split class models into an array or with dependencies
  * will be in an array after the array it depends on
+ * @param {Object.<string,ClassModel>} schema mapping of names to class models
  */
 const splitSchemaClassLevels = (schema) => {
     const ranks = {};
@@ -1364,7 +1413,7 @@ const splitSchemaClassLevels = (schema) => {
 /**
  * Defines and uilds the schema in the database
  *
- * @param {object} db the orientjs database connection object
+ * @param {orientjs.Db} db the orientjs database connection object
  */
 const createSchema = async (db) => {
     // create the permissions class
@@ -1393,7 +1442,7 @@ const createSchema = async (db) => {
         class: cls
     })));
     if (VERBOSE) {
-        console.log('defined schema for the major base classes');
+        logger.log('info', 'defined schema for the major base classes');
     }
     // create the other schema classes
     const classesByLevel = splitSchemaClassLevels(
@@ -1402,7 +1451,7 @@ const createSchema = async (db) => {
 
     for (const classList of classesByLevel) {
         if (VERBOSE) {
-            console.log(`creating the classes: ${Array.from(classList, cls => cls.name).join(', ')}`);
+            logger.log('info', `creating the classes: ${Array.from(classList, cls => cls.name).join(', ')}`);
         }
         await Promise.all(Array.from(classList, async cls => cls.create(db))); // eslint-disable-line no-await-in-loop
     }
@@ -1446,7 +1495,7 @@ const createSchema = async (db) => {
         }
     }
     if (process.env.VERBOSE === '1') {
-        console.log('creating the default user groups');
+        logger.log('info', 'creating the default user groups');
     }
     const defaultGroups = Array.from([
         {name: 'admin', permissions: adminPermissions},
@@ -1456,7 +1505,7 @@ const createSchema = async (db) => {
     await Promise.all(Array.from(defaultGroups, async x => db.insert().into('UserGroup').set(x).one()));
 
     if (VERBOSE) {
-        console.log('Schema is Complete');
+        logger.log('info', 'Schema is Complete');
     }
 };
 
@@ -1465,7 +1514,7 @@ const createSchema = async (db) => {
  * Loads the schema from the database and then adds additional checks. returns the object of models.
  * Checks that the schema loaded from the databases matches the schema defined here
  *
- * @param {object} db the orientjs database connection
+ * @param {orientjs.Db} db the orientjs database connection
  */
 const loadSchema = async (db) => {
     // adds checks etc to the schema loaded from the database
@@ -1490,16 +1539,16 @@ const loadSchema = async (db) => {
             if (cls.isAbstract) {
                 continue;
             }
-            console.log(`loaded class: ${cls.name} [${cls.inherits}]`);
+            logger.log('info', `loaded class: ${cls.name} [${cls.inherits}]`);
         }
     }
     if (VERBOSE) {
-        console.log('linking models');
+        logger.log('info', 'linking models');
     }
     db.schema = SCHEMA_DEFN;
     // set the default record group
     if (VERBOSE) {
-        console.log('schema loading complete');
+        logger.log('info', 'schema loading complete');
     }
     return SCHEMA_DEFN;
 };

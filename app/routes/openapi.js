@@ -998,7 +998,7 @@ const generateSwaggerSpec = (schema, metadata) => {
                 }
                 docs.components.schemas[model.name].required.push(prop.name);
             }
-            if (docs.components.schemas[prop.name]) {
+            if (docs.components.schemas[prop.name] && model.name !== 'Permissions') {
                 docs.components.schemas[model.name].properties[prop.name] = {$ref: `#/components/schemas/${prop.name}`};
                 continue;
             }

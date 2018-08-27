@@ -1,7 +1,7 @@
 const {expect} = require('chai');
 const {RID} = require('orientjs');
 
-const {ClassModel} = require('./../../app/repo/schema');
+const {ClassModel, Property, SCHEMA_DEFN} = require('./../../app/repo/schema');
 const {
     Clause, Comparison, SelectionQuery, Follow
 } = require('./../../app/repo/query');
@@ -162,7 +162,7 @@ describe('SelectionQuery', () => {
                 defaultVar: {name: 'defaultVar', type: 'string'},
                 castable: {name: 'castable', type: 'string', cast: x => x.toLowerCase()},
                 linkVar: {name: 'linkVar', linkedClass: schema.LinkedModel, type: 'link'},
-                embeddedSetVar: {name: 'embeddedSetVar', type: 'embeddedset', cast: x => x.toLowerCase()}
+                embeddedSetVar: new Property({name: 'embeddedSetVar', type: 'embeddedset', cast: x => x.toLowerCase()})
             },
             defaults: {defaultVar: () => 'default'}
         });
@@ -185,6 +185,20 @@ describe('SelectionQuery', () => {
                 isEdge: true
             });
         });
+        it('AND clause against listable prop', () => {
+            const query = SelectionQuery.parseQuery(schema, schema.RestrictiveModel, {
+                embeddedSetVar: new Clause(
+                    'AND',
+                    [new Comparison('1'), new Comparison('2')]
+                )
+            }, {activeOnly: false});
+            const {query: statement} = query.toString();
+            expect(statement).to.equal(stripSQL(
+                `SELECT * FROM RestrictiveModel
+                WHERE embeddedSetVar CONTAINS :param0
+                AND embeddedSetVar CONTAINS :param1`
+            ));
+        });
         it('has 3 outgoing aliasof edges', () => {
             const query = SelectionQuery.parseQuery(schema, schema.Parent, {
                 name: 'blargh',
@@ -195,6 +209,41 @@ describe('SelectionQuery', () => {
                 `SELECT * FROM Parent
                 WHERE name = :param0
                 AND outE('AliasOf').size() = :param1`
+            ));
+        });
+        it('explicit related nodes by @rid', () => {
+            const query = SelectionQuery.parseQuery(SCHEMA_DEFN, SCHEMA_DEFN.Statement,
+                {
+                    supportedby: {
+                        v: new Clause('AND', [
+                            new Comparison('44:3'),
+                            new Comparison('44:4')
+                        ])
+                    }
+                }, {activeOnly: false});
+            const {query: statement} = query.toString();
+            expect(statement).to.equal(stripSQL(
+                `SELECT * FROM Statement
+                WHERE bothE('SupportedBy').bothV() CONTAINS :param0
+                AND bothE('SupportedBy').bothV() CONTAINS :param1`
+            ));
+        });
+        it('explicit outgoing nodes by @rid', () => {
+            const query = SelectionQuery.parseQuery(SCHEMA_DEFN, SCHEMA_DEFN.Statement,
+                {
+                    supportedby: {
+                        direction: 'out',
+                        v: new Clause('AND', [
+                            new Comparison('44:3'),
+                            new Comparison('44:4')
+                        ])
+                    }
+                }, {activeOnly: false});
+            const {query: statement} = query.toString();
+            expect(statement).to.equal(stripSQL(
+                `SELECT * FROM Statement
+                WHERE outE('SupportedBy').inV() CONTAINS :param0
+                AND outE('SupportedBy').inV() CONTAINS :param1`
             ));
         });
         it('has 3 ingoing aliasof edges', () => {
@@ -272,6 +321,27 @@ describe('SelectionQuery', () => {
                 AND outE('AliasOf').inV().name CONTAINS :param1`
             ));
         });
+        it('has a related vertex with a name containing the substring bob but not alice', () => {
+            const query = SelectionQuery.parseQuery(schema, schema.Parent, {
+                name: 'blargh',
+                AliasOf: {
+                    direction: 'out',
+                    v: {
+                        name: new Clause('AND', [
+                            new Comparison('bob', 'CONTAINSTEXT'),
+                            new Comparison('alice', 'CONTAINSTEXT', true)
+                        ])
+                    }
+                }
+            }, {activeOnly: false});
+            const {query: statement} = query.toString();
+            expect(statement).to.equal(stripSQL(
+                `SELECT * FROM Parent
+                WHERE name = :param0
+                AND outE('AliasOf').inV().name CONTAINSTEXT :param1
+                AND NOT (outE('AliasOf').inV().name CONTAINSTEXT :param2)`
+            ));
+        });
         it('uses a set operator on a related vertex property', () => {
             const query = SelectionQuery.parseQuery(schema, schema.Parent, {
                 name: 'blargh',
@@ -284,7 +354,7 @@ describe('SelectionQuery', () => {
             expect(statement).to.equal(stripSQL(
                 `SELECT * FROM Parent
                 WHERE name = :param0
-                AND outE('AliasOf').inV().asSet() = [:param1]`
+                AND outE('AliasOf').inV() CONTAINS :param1`
             ));
         });
 

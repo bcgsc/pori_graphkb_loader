@@ -5,8 +5,6 @@ const uuidValidate = require('uuid-validate');
 const {AttributeError} = require('./error');
 
 
-const VERBOSE = (process.env.VERBOSE === '1');
-
 const castUUID = (uuid) => {
     if (uuidValidate(uuid, 4)) {
         return uuid;
@@ -60,13 +58,28 @@ const naturalListJoin = (list) => {
 };
 
 
-const castString = x => x.toString().toLowerCase().trim();
+const castString = (string) => {
+    if (string === null) {
+        throw new AttributeError('cannot cast null to string');
+    }
+    return string.toString().toLowerCase().trim();
+};
 const castNullableString = x => (x === null
     ? null
-    : x.toString().toLowerCase().trim());
+    : castString(x));
+const castNonEmptyString = (x) => {
+    const result = x.toString().toLowerCase().trim();
+    if (result.length === 0) {
+        throw new AttributeError('Cannot be an empty string');
+    }
+    return result;
+};
+const castNonEmptyNullableString = x => (x === null
+    ? null
+    : castNonEmptyString(x));
 const castNullableLink = (string) => {
     try {
-        if (string.toString().toLowerCase() === 'null') {
+        if (string === null || string.toString().toLowerCase() === 'null') {
             return null;
         }
     } catch (err) {}
@@ -127,12 +140,13 @@ module.exports = {
     castDecimalInteger,
     castNullableLink,
     castNullableString,
+    castNonEmptyString,
+    castNonEmptyNullableString,
     castString,
     castToRID,
     castUUID,
     looksLikeRID,
     naturalListJoin,
     quoteWrap,
-    timeStampNow,
-    VERBOSE
+    timeStampNow
 };

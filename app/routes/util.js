@@ -9,6 +9,7 @@ const escapeStringRegexp = require('escape-string-regexp');
 const {
     ErrorMixin, AttributeError, NoRecordFoundError, RecordExistsError
 } = require('./../repo/error');
+const {logger} = require('./../repo/logging');
 const {
     select, create, update, remove, QUERY_LIMIT
 } = require('./../repo/base');
@@ -86,7 +87,7 @@ const parseQueryComparison = (name, value, defaultOperator = '=') => {
     // } if (name === 'v') {
     //    return parseQueryLanguage(value);
     } if (value instanceof Array) {
-        return new Comparison(value);
+        return new Clause('AND', Array.from(value, v => new Comparison(v)));
     } if (value !== null && typeof value === 'object') {
         // subqueries
         value = parseQueryLanguage(value, name === 'v'
@@ -146,7 +147,7 @@ const queryRoute = (opt) => {
         router, model, db, schema
     } = opt;
     if (process.env.VERBOSE === '1') {
-        console.log(`NEW ROUTE [QUERY] ${model.routeName}`);
+        logger.log('info', `NEW ROUTE [QUERY] ${model.routeName}`);
     }
 
     router.get(model.routeName,
@@ -157,7 +158,7 @@ const queryRoute = (opt) => {
                 if (err instanceof InputValidationError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
-                console.error(err);
+                logger.log('error', err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
             let fetchPlan = null;
@@ -174,7 +175,7 @@ const queryRoute = (opt) => {
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
-                console.error(err);
+                logger.log('error', err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
@@ -194,7 +195,7 @@ const getRoute = (opt) => {
         router, schema, db, model
     } = opt;
     if (process.env.VERBOSE === '1') {
-        console.log(`NEW ROUTE [GET] ${model.routeName}`);
+        logger.log('info', `NEW ROUTE [GET] ${model.routeName}`);
     }
     router.get(`${model.routeName}/:rid`,
         async (req, res) => {
@@ -202,12 +203,9 @@ const getRoute = (opt) => {
                 req.query = parseQueryLanguage(req.query);
             } catch (err) {
                 if (err instanceof InputValidationError) {
-                    if (process.env.DEBUG === '1') {
-                        console.log(err.stack);
-                    }
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
-                console.error(err);
+                logger.log('error', err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
             if (!looksLikeRID(req.params.rid, false)) {
@@ -237,7 +235,7 @@ const getRoute = (opt) => {
                 if (err instanceof NoRecordFoundError) {
                     return res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 }
-                console.error(err);
+                logger.log('error', err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
@@ -257,7 +255,7 @@ const postRoute = (opt) => {
         router, db, model, schema
     } = opt;
     if (process.env.VERBOSE === '1') {
-        console.log(`NEW ROUTE [POST] ${model.routeName}`);
+        logger.log('info', `NEW ROUTE [POST] ${model.routeName}`);
     }
     router.post(model.routeName,
         async (req, res) => {
@@ -277,7 +275,7 @@ const postRoute = (opt) => {
                 } if (err instanceof RecordExistsError) {
                     return res.status(HTTP_STATUS.CONFLICT).json(err);
                 }
-                console.error(err);
+                logger.log('error', err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
@@ -298,7 +296,7 @@ const updateRoute = (opt) => {
         router, schema, db, model
     } = opt;
     if (process.env.VERBOSE === '1') {
-        console.log(`NEW ROUTE [UPDATE] ${model.routeName}`);
+        logger.log('info', `NEW ROUTE [UPDATE] ${model.routeName}`);
     }
     router.patch(`${model.routeName}/:rid`,
         async (req, res) => {
@@ -330,7 +328,7 @@ const updateRoute = (opt) => {
                 } if (err instanceof RecordExistsError) {
                     return res.status(HTTP_STATUS.CONFLICT).json(err);
                 }
-                console.error(err);
+                logger.log('error', err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
@@ -350,7 +348,7 @@ const deleteRoute = (opt) => {
         router, schema, db, model
     } = opt;
     if (process.env.VERBOSE === '1') {
-        console.log(`NEW ROUTE [DELETE] ${model.routeName}`);
+        logger.log('info', `NEW ROUTE [DELETE] ${model.routeName}`);
     }
     router.delete(`${model.routeName}/:rid`,
         async (req, res) => {
@@ -378,7 +376,7 @@ const deleteRoute = (opt) => {
                 } if (err instanceof NoRecordFoundError) {
                     return res.status(HTTP_STATUS.NOT_FOUND).json(err);
                 }
-                console.error(err);
+                logger.log('error', err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });

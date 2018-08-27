@@ -1,3 +1,7 @@
+/**
+ * Module resposible for authentication and authroization related middleware functions
+ * @module app/middleware/auth
+ */
 const HTTP_STATUS = require('http-status-codes');
 const jwt = require('jsonwebtoken');
 const request = require('request-promise');
@@ -15,6 +19,8 @@ const TOKEN_TIMEOUT = 60 * 60 * 8; // default timeout is 8 hours
 /**
  * Retrieve a token from the central authentication server (CATS) which is used to verify the
  * username and password exist in our ldap system
+ * @param {string} username
+ * @param {string} password
  */
 const catsToken = async (username, password) => {
     try {
@@ -44,6 +50,10 @@ const catsToken = async (username, password) => {
 
 /**
  * Look up a username in the database and generate a token for this user
+ *
+ * @param {orientjs.Db} db the database connection object
+ * @param {string} username
+ * @param exp the expiry time/date
  */
 const generateToken = async (db, username, exp = null) => {
     const user = await getUserByName(db, username);
@@ -54,9 +64,7 @@ const generateToken = async (db, username, exp = null) => {
 };
 
 /*
- * TODO: authenticate the header token
- * - check that the token is valid/active
- * - check the user is allowed permission to the given endpoint
+ * checks that the token is valid/active
  */
 const checkToken = async (req, res, next) => {
     if (req.method === 'OPTIONS') {

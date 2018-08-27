@@ -12,7 +12,7 @@
         - [Insertion](#insertion)
         - [Deletion](#deletion)
         - [Duplication](#duplication)
-        - [Frameshift](#frameshifthttp---varnomenhgvsorg-recommendations-protein-variant-frameshift)
+        - [Frameshift](#frameshift)
 - [CytoBand Coordinates](#cytoband-coordinates)
     - [Deletion Example](#deletion-example)
 - [Multi-Feature Notation](#multi-feature-notation)
@@ -188,10 +188,10 @@ The minor band number is optional.
 
 ### Deletion Example
 
-A deletion spanniing p11.1 to p12.
+A deletion spanning p11.1 to p12.
 
 ```text
-chr1:p11.1_p12del
+chr1:y.p11.1_p12del
 ```
 
 ## Multi-Feature Notation
