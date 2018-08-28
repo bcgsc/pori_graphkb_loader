@@ -1,34 +1,46 @@
+/**
+ * | | |
+ * | --- | --- |
+ * | Source | HGNC |
+ * | About | https://www.genenames.org/about/overview |
+ * | Source Type | Ontology |
+ * | Data Example| ftp://ftp.ebi.ac.uk/pub/databases/genenames/new/json/locus_types/gene_with_protein_product.json |
+ * | Data Format| JSON |
+ *
+ *@example <caption>Example record</caption>
+ * {
+ *      gene_family: [ 'Immunoglobulin like domain containing' ],
+ *      date_approved_reserved: '1989-06-30',
+ *      vega_id: 'OTTHUMG00000183507',
+ *      locus_group: 'protein-coding gene',
+ *      status: 'Approved',
+ *      _version_: 1598236253568893000,
+ *      uuid: '70eda6bc-724a-4370-8b27-5647e64a0ad2',
+ *      merops: 'I43.950',
+ *      refseq_accession: [ 'NM_130786' ],
+ *      locus_type: 'gene with protein product',
+ *      gene_family_id: [ 594 ],
+ *      cosmic: 'A1BG',
+ *      hgnc_id: 'HGNC:5',
+ *      rgd_id: [ 'RGD:69417' ],
+ *      ensembl_gene_id: 'ENSG00000121410',
+ *      entrez_id: '1',
+ *      omim_id: [ '138670' ],
+ *      symbol: 'A1BG',
+ *      location: '19q13.43',
+ *      name: 'alpha-1-B glycoprotein',
+ *      date_modified: '2015-07-13',
+ *      mgd_id: [ 'MGI:2152878' ],
+ *      ucsc_id: 'uc002qsd.5',
+ *      uniprot_ids: [ 'P04217' ],
+ *      ccds_id: [ 'CCDS12976' ],
+ *      pubmed_id: [ 2591067 ],
+ *      location_sortable: '19q13.43'
+ * }
+ *
+ * @module migrations/external/hgnc
+ */
 const {getRecordBy, addRecord} = require('./util');
-
-/* example record
-{ gene_family: [ 'Immunoglobulin like domain containing' ],
-  date_approved_reserved: '1989-06-30',
-  vega_id: 'OTTHUMG00000183507',
-  locus_group: 'protein-coding gene',
-  status: 'Approved',
-  _version_: 1598236253568893000,
-  uuid: '70eda6bc-724a-4370-8b27-5647e64a0ad2',
-  merops: 'I43.950',
-  refseq_accession: [ 'NM_130786' ],
-  locus_type: 'gene with protein product',
-  gene_family_id: [ 594 ],
-  cosmic: 'A1BG',
-  hgnc_id: 'HGNC:5',
-  rgd_id: [ 'RGD:69417' ],
-  ensembl_gene_id: 'ENSG00000121410',
-  entrez_id: '1',
-  omim_id: [ '138670' ],
-  symbol: 'A1BG',
-  location: '19q13.43',
-  name: 'alpha-1-B glycoprotein',
-  date_modified: '2015-07-13',
-  mgd_id: [ 'MGI:2152878' ],
-  ucsc_id: 'uc002qsd.5',
-  uniprot_ids: [ 'P04217' ],
-  ccds_id: [ 'CCDS12976' ],
-  pubmed_id: [ 2591067 ],
-  location_sortable: '19q13.43' }
-*/
 
 
 const SOURCE_NAME = 'hgnc';

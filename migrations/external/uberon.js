@@ -1,5 +1,14 @@
 /**
+ * | | |
+ * | --- | --- |
+ * | Source | Uberon |
+ * | About | http://uberon.github.io/about.html |
+ * | Source Type | Ontology |
+ * | Data Example| http://purl.obolibrary.org/obo/uberon/releases/2018-02-28/uberon.owl |
+ * | Data Format| OWL |
+ *
  * Module responsible for parsing uberon OWL files and uploading them to the graph KB
+ * @module migrations/external/uberon
  */
 const rdf = require('rdflib');
 const fs = require('fs');

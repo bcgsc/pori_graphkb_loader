@@ -1,7 +1,17 @@
 /**
- * Import the Clinical Evidence summaries from the public Civic database
+ * | | |
+ * | --- | --- |
+ * | Source| CIVIC |
+ * | About | https://civicdb.org/about |
+ * | Source Type | Knowledgebase |
+ * | Data Example | Direct API Access |
+ * | Data Format | JSON |
+ *
+ * Import the Clinical Evidence summaries from the public Civic database. CIVIC pro
+ *
  * http://griffithlab.org/civic-api-docs/#endpoint-types
  * https://civicdb.org/api/evidence_items
+ * @module migrations/external/civic
  */
 const request = require('request-promise');
 const _ = require('lodash');

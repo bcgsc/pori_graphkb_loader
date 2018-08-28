@@ -1,9 +1,13 @@
 /**
- * Import the publically available OncoKB JSON files into the OncoKB
+ * | | |
+ * | --- | --- |
+ * | Source | OncoKB |
+ * | About |  http://oncokb.org/#/about |
+ * | Source Type | Knowledgebase |
+ * | Data Example| Direct API Access |
+ * | Data Format| JSON |
  *
- * https://github.com/oncokb/oncokb-public/tree/master/data
- *
- * @module oncokb
+ * @module migrations/external/oncokb
  */
 const request = require('request-promise');
 const {
