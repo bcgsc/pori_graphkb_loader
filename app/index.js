@@ -35,15 +35,14 @@ const connectDB = async (conf) => {
     // set up the database server
     const server = OrientDB({
         host: conf.server.host,
-        HTTPport: conf.server.port,
+        port: conf.server.port,
         username: conf.server.user,
         password: conf.server.pass
     });
-    logger.log('info', `connecting to the database: ${conf.db.name} as ${conf.db.user}`);
+    logger.log('info', `connecting to the database (${conf.db.name}) as ${conf.db.user}`);
     let db;
     try {
         db = await server.use({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
-        logger.log('info', 'loading the schema');
     } catch (err) {
         server.close();
         throw err;
@@ -55,7 +54,6 @@ const connectDB = async (conf) => {
         db.close();
         throw err;
     }
-    logger.log('info', 'loaded the schema');
     // create the admin user
     return {server, db, schema};
 };
@@ -123,7 +121,7 @@ class AppServer {
      */
     async listen() {
         // connect to the database
-        logger.log('info', 'starting db connection');
+        logger.log('info', `starting db connection (${this.conf.server.host}:${this.conf.server.port})`);
         const {db, schema} = await connectDB(this.conf);
         this.db = db;
         this.schema = schema;
@@ -173,7 +171,7 @@ class AppServer {
         }));
 
         this.server = await http.createServer(this.app).listen(this.conf.app.port);
-        logger.log('info', `started application server at: ${this.server.address().host}:${this.server.address().port}`);
+        logger.log('info', `started application server (${this.server.address().host || process.env.HOSTNAME}:${this.server.address().port})`);
     }
 
     async close() {

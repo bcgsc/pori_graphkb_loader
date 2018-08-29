@@ -18,8 +18,7 @@ const {
     castToRID,
     castUUID,
     naturalListJoin,
-    timeStampNow,
-    VERBOSE
+    timeStampNow
 } = require('./util');
 const {AttributeError} = require('./error');
 
@@ -1442,18 +1441,14 @@ const createSchema = async (db) => {
         properties: ['uuid', 'deletedAt'],
         class: cls
     })));
-    if (VERBOSE) {
-        logger.log('info', 'defined schema for the major base classes');
-    }
+    logger.log('info', 'defined schema for the major base classes');
     // create the other schema classes
     const classesByLevel = splitSchemaClassLevels(
         _.omit(SCHEMA_DEFN, ['Permissions', 'User', 'UserGroup', 'V', 'E'])
     );
 
     for (const classList of classesByLevel) {
-        if (VERBOSE) {
-            logger.log('info', `creating the classes: ${Array.from(classList, cls => cls.name).join(', ')}`);
-        }
+        logger.log('info', `creating the classes: ${Array.from(classList, cls => cls.name).join(', ')}`);
         await Promise.all(Array.from(classList, async cls => cls.create(db))); // eslint-disable-line no-await-in-loop
     }
 
@@ -1495,9 +1490,7 @@ const createSchema = async (db) => {
             }
         }
     }
-    if (process.env.VERBOSE === '1') {
-        logger.log('info', 'creating the default user groups');
-    }
+    logger.log('info', 'creating the default user groups');
     const defaultGroups = Array.from([
         {name: 'admin', permissions: adminPermissions},
         {name: 'regular', permissions: regularPermissions},
@@ -1505,9 +1498,7 @@ const createSchema = async (db) => {
     ], rec => SCHEMA_DEFN.UserGroup.formatRecord(rec, {addDefaults: true}));
     await Promise.all(Array.from(defaultGroups, async x => db.insert().into('UserGroup').set(x).one()));
 
-    if (VERBOSE) {
-        logger.log('info', 'Schema is Complete');
-    }
+    logger.log('info', 'Schema is Complete');
 };
 
 
@@ -1535,22 +1526,16 @@ const loadSchema = async (db) => {
         }
     }
 
-    if (VERBOSE) {
-        for (const cls of Object.values(SCHEMA_DEFN)) {
-            if (cls.isAbstract) {
-                continue;
-            }
-            logger.log('info', `loaded class: ${cls.name} [${cls.inherits}]`);
+    for (const cls of Object.values(SCHEMA_DEFN)) {
+        if (cls.isAbstract) {
+            continue;
         }
+        logger.log('verbose', `loaded class: ${cls.name} [${cls.inherits}]`);
     }
-    if (VERBOSE) {
-        logger.log('info', 'linking models');
-    }
+    logger.log('verbose', 'linking models');
     db.schema = SCHEMA_DEFN;
     // set the default record group
-    if (VERBOSE) {
-        logger.log('info', 'schema loading complete');
-    }
+    logger.log('info', 'schema loading complete');
     return SCHEMA_DEFN;
 };
 
