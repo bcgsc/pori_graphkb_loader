@@ -4,11 +4,11 @@ const _ = require('lodash');
 const OrientDB = require('orientjs');
 const moment = require('moment');
 
+const {parse: variantParser} = require('knowledgebase-parser').variant;
 
 const {createOptionsMenu, fileExists} = require('./../cli');
 
 
-const {parse: variantParser} = require('./../../app/parser/variant');
 const {
     ParsingError, RecordExistsError, NoRecordFoundError, MultipleRecordsFoundError
 } = require('./../../app/repo/error');

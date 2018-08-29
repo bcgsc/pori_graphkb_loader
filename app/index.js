@@ -11,6 +11,8 @@ const cors = require('cors');
 const HTTP_STATUS = require('http-status-codes');
 const swaggerUi = require('swagger-ui-express');
 
+const {parse} = require('knowledgebase-parser').variant;
+
 const auth = require('./middleware/auth');
 const {logger} = require('./repo/logging');
 const {
@@ -18,8 +20,6 @@ const {
 } = require('./middleware/auth'); // WARNING: middleware fails if function is not imported by itself
 
 const {loadSchema} = require('./repo/schema');
-
-const {parse} = require('./parser/variant');
 
 const {generateSwaggerSpec} = require('./routes/openapi');
 const {addResourceRoutes} = require('./routes/util');

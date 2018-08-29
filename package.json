@@ -1,10 +1,10 @@
 {
   "name": "knowledgebase-api",
   "main": "server.js",
-  "version": "0.3.0",
+  "version": "0.4.0",
   "repository": {
     "type": "git",
-    "url": "https://creisle@svn.bcgsc.ca/bitbucket/scm/prod/knowledgebase.git"
+    "url": "https://svn.bcgsc.ca/bitbucket/scm/prod/knowledgebase.git"
   },
   "dependencies": {
     "ajv": "^5.5.2",
@@ -24,6 +24,7 @@
     "json-cycle": "^1.2.0",
     "jsonfile": "^4.0.0",
     "jsonwebtoken": "^8.2.0",
+    "knowledgebase-parser": "git+https://svn.bcgsc.ca/bitbucket/scm/vdb/knowledgebase_parser.git#v0.1.0",
     "lodash": "^4.17.4",
     "mocha-bamboo-reporter": "^1.1.1",
     "moment": "^2.18.1",
@@ -60,8 +61,8 @@
   "scripts": {
     "start": "node server.js",
     "import": "node --stack-size=8192  --max-old-space-size=20000 migrations/external/index.js",
-    "unit": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive test/*/{unit,schema,query}.js test/parser",
-    "test": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive --exit --timeout 100000 test/{repo,routes,parser}",
+    "unit": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive test/*/{unit,schema,query}.js",
+    "test": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive --exit --timeout 100000 test/{repo,routes}",
     "test-ext": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive --exit --timeout 100000 test/migrations",
     "lint": "eslint -c .eslintrc.jon app test",
     "jsdoc": "jsdoc -r app -r migrations -R README.md -d jsdoc --package package.json -c config/jsdoc.config.js",
