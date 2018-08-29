@@ -1,20 +1,22 @@
-'use strict';
+
 
 // required packages
-const conf = require('./test/config/sample'); // get the database connection configuration
-const {AppServer} = require('./app');
-const auth = require('./app/middleware/auth');
+
 const fs = require('fs');
+const OrientDB = require('orientjs');
+
 const {createSchema, loadSchema} = require('./app/repo/schema');
 const {createUser} = require('./app/repo/base');
-const OrientDB  = require('orientjs');
+const conf = require('./config/config'); // get the database connection configuration
+const {AppServer} = require('./app');
+const auth = require('./app/middleware/auth');
+const {logger} = require('./app/repo/logging');
 
-
-//process.on('uncaughtException', app.close);
+// process.on('uncaughtException', app.close);
 let app;
 conf.db.name = `kbapi_${process.env.DATABASE_NAME
     ? process.env.DATABASE_NAME
-    : `v${process.env.npm_package_version}` }`;
+    : `v${process.env.npm_package_version}`}`;
 delete conf.port;
 
 (async () => {
