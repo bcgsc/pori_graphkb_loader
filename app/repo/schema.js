@@ -28,7 +28,6 @@ const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 const INDEX_SEP_CHARS = ' \r\n\t:;,.|+*/\\=!?[]()'; // default separator chars for orientdb full text hash: https://github.com/orientechnologies/orientdb/blob/2.2.x/core/src/main/java/com/orientechnologies/orient/core/index/OIndexFullText.java
 
 /**
- * The complete Triforce, or one or more components of the Triforce.
  * @typedef {Object} Expose
  * @property {boolean} QUERY - expose the GET route
  * @property {boolean} GET - expose the GET/{rid} route
