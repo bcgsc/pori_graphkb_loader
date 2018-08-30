@@ -1,7 +1,6 @@
 
 
 const OrientDB = require('orientjs');
-const shell = require('shelljs');
 
 const {createSchema, loadSchema} = require('./../app/repo/schema');
 const {createUser} = require('./../app/repo/base');
@@ -17,7 +16,7 @@ const setUpEmptyDB = async (conf = emptyConf) => {
     // set up the database server
     const server = OrientDB({
         host: conf.server.host,
-        HTTPport: conf.server.port,
+        port: conf.server.port,
         username: conf.server.user,
         password: conf.server.pass
     });
