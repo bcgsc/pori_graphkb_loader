@@ -4,6 +4,7 @@
  */
 const HTTP_STATUS = require('http-status-codes');
 const jwt = require('jsonwebtoken');
+const jc = require('json-cycle');
 const request = require('request-promise');
 const moment = require('moment');
 const {AuthenticationError, PermissionError} = require('./../repo/error');
@@ -56,7 +57,7 @@ const catsToken = async (username, password) => {
  * @param exp the expiry time/date
  */
 const generateToken = async (db, username, exp = null) => {
-    const user = await getUserByName(db, username);
+    const user = jc.decycle(await getUserByName(db, username));
     if (exp === null) {
         return jwt.sign({user}, keys.private, {expiresIn: TOKEN_TIMEOUT});
     }
