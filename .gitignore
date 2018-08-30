@@ -15,3 +15,14 @@ out
 external_data
 jsdoc
 xunit.xml
+.audit.json
+TODO.txt
+civic_problems.txt
+config/generate_ensembl79_annotations.sh
+drugbank.tmp.json
+logging/
+mocha.json
+ncit_temp.json
+setup_sample_server.js
+target/
+test_transaction.sql
