@@ -1,82 +1,19 @@
 /**
+ * | | |
+ * | --- | --- |
+ * | Source | NCIT |
+ * | About |  https://cbiit.cancer.gov/about/about-cbiit |
+ * | Source Type | Ontology |
+ * | Data Example| http://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus_18.06d.OWL.zip |
+ * | Data Format| OWL |
+ *
+ *
  * Module responsible for parsing the NCIT owl file and uploading the converted records to the Graph KB
  *
  * NCIT owl file is very large. When uploading additional arguments were specified for node (--stack-size=8192  --max-old-space-size=20000)
  * Additionally node v10 is required since the string size is too small in previous versions
+ * @module migrations/external/ncit
  */
-
-/*
-
-Example record
-
-
-    <owl:Class rdf:about="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C11570">
-        <rdfs:subClassOf rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C83481"/>
-        <NHC0>C11570</NHC0>
-        <P106>Therapeutic or Preventive Procedure</P106>
-        <P108>Doxorubicin/Monoclonal Antibody C225</P108>
-        <P200>Chemotherapy_Regimen</P200>
-        <P203>Chemotherapy_Regimen_Kind</P203>
-        <P204>Chemotherapy_Regimen_Has_Component|Cetuximab</P204>
-        <P204>Chemotherapy_Regimen_Has_Component|Doxorubicin</P204>
-        <P310>Retired_Concept</P310>
-        <P90>DOX/MOAB C225</P90>
-        <P90>Doxorubicin/Monoclonal Antibody C225</P90>
-        <rdfs:label>Doxorubicin/Monoclonal Antibody C225</rdfs:label>
-        <owl:deprecated rdf:datatype="http://www.w3.org/2001/XMLSchema#boolean">true</owl:deprecated>
-    </owl:Class>
-    <owl:Axiom>
-        <owl:annotatedSource rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C11570"/>
-        <owl:annotatedProperty rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P90"/>
-        <owl:annotatedTarget>DOX/MOAB C225</owl:annotatedTarget>
-        <P383>SY</P383>
-        <P384>NCI</P384>
-    </owl:Axiom>
-    <owl:Axiom>
-        <owl:annotatedSource rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C11570"/>
-        <owl:annotatedProperty rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P90"/>
-        <owl:annotatedTarget>Doxorubicin/Monoclonal Antibody C225</owl:annotatedTarget>
-        <P383>PT</P383>
-        <P384>NCI</P384>
-    </owl:Axiom>
-
-
-<!-- http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C100032 -->
-
-<owl:Class rdf:about="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C100032">
-    <rdfs:subClassOf rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C35552"/>
-    <A8 rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C101837"/>
-    <A8 rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C101838"/>
-    <A8 rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C61410"/>
-    <A8 rdf:resource="http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C66830"/>
-    <NHC0>C100032</NHC0>
-    <P106>Classification</P106>
-    <P108>American College of Cardiology/American Heart Association Lesion Complexity Class</P108>
-    <P207>C3272276</P207>
-    <P322>CDISC</P322>
-    <P325>A classification system for coronary stenosis based upon characteristics that influence the difficulty of percutaneous coronary revascularization.</P325>
-    <P90>ACC/AHA Lesion Complexity Class</P90>
-    <P90>American College of Cardiology/American Heart Association Lesion Complexity Class</P90>
-    <P90>LSNCPCLS</P90>
-    <P97>A classification system for coronary stenosis based upon characteristics that influence the difficulty of percutaneous coronary revascularization. (ACC)</P97>
-    <rdfs:label>American College of Cardiology/American Heart Association Lesion Complexity Class</rdfs:label>
-</owl:Class>
-
-
-Properties/Relationships to pull into Graph KB:
-    - NHC0 (code) => sourceId
-    - P97 (definition) => description
-    - P90 (synonym) => aliasof
-    - P108 (preferred name) => name
-    - A8 (concept in subset) => subsets
-    - A11 (Has_NICHD_Parent) => subclassof
-
-tree head nodes to collect all subclasses from
-- C1514: agonist
-- C1932: chemical modifier
-- C1909: pharmacologic substance
-- C2991: Disease or disorder
-*/
 
 const rdf = require('rdflib');
 const fs = require('fs');

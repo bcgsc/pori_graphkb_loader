@@ -1,28 +1,37 @@
 /**
+ * | | |
+ * | --- | --- |
+ * | Source | COSMIC |
+ * | About | https://cancer.sanger.ac.uk/cosmic/about |
+ * | Source Type | Knowledgebase |
+ * | Data Example | https://cancer.sanger.ac.uk/cosmic/download (CosmicResistanceMutations.tsv.gz) |
+ * | Data Format | Tab-delimited|
+ *
  * Import COSMIC resistance mutation statements
  *
  * Expects column names like
+ * - Gene Name
+ * - Transcript
+ * - Census Gene
+ * - Drug Name
+ * - ID Mutation
+ * - AA Mutation
+ * - CDS Mutation
+ * - Primary Tissue
+ * - Tissue Subtype 1
+ * - Tissue Subtype 2
+ * - Histology
+ * - Histology Subtype 1
+ * - Histology Subtype 2
+ * - Pubmed Id
+ * - CGP Study
+ * - Somatic Status
+ * - Sample Type
+ * - Zygosity
+ * - Genome Coordinates (GRCh38)
+ * - Tier
  *
- * Gene Name
- * Transcript
- * Census Gene
- * Drug Name
- * ID Mutation
- * AA Mutation
- * CDS Mutation
- * Primary Tissue
- * Tissue Subtype 1
- * Tissue Subtype 2
- * Histology
- * Histology Subtype 1
- * Histology Subtype 2
- * Pubmed Id
- * CGP Study
- * Somatic Status
- * Sample Type
- * Zygosity
- * Genome Coordinates (GRCh38)
- * Tier
+ * @module migrations/external/cosmic
  */
 const parse = require('csv-parse/lib/sync');
 const fs = require('fs');

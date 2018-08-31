@@ -1,7 +1,14 @@
 /**
- * Import the RefSeq transcripts, ignoring version numbers for now
+ * | | |
+ * | --- | --- |
+ * | Source | RefSeq |
+ * | About | https://www.ncbi.nlm.nih.gov/refseq/about/ |
+ * | Source Type | Ontology |
+ * | Data Example|  ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene |
+ * | Data Format| Tab-delimited |
  *
- * ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene
+ * Import the RefSeq transcripts, ignoring version numbers for now
+ * @module migrations/external/refseq
  */
 const parse = require('csv-parse/lib/sync');
 const fs = require('fs');

@@ -12,8 +12,7 @@ const {
     select
 } = require('./../../app/repo/base');
 const {
-    RecordExistsError,
-    AttributeError
+    RecordExistsError
 } = require('./../../app/repo/error');
 const {
     castToRID
@@ -22,7 +21,7 @@ const {
     setUpEmptyDB
 } = require('./../util');
 
-const emptyConf = Object.assign({}, require('./../config/empty'));
+const emptyConf = Object.assign({}, require('./../../config/config.js'));
 
 emptyConf.db = Object.assign({}, emptyConf.db);
 emptyConf.verbose = true;

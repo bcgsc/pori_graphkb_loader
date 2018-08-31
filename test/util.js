@@ -1,21 +1,22 @@
 
 
 const OrientDB = require('orientjs');
-const shell = require('shelljs');
 
 const {createSchema, loadSchema} = require('./../app/repo/schema');
 const {createUser} = require('./../app/repo/base');
 const {VERBOSE} = require('./../app/repo/util');
-const emptyConf = require('./config/empty');
-const sampleConf = require('./config/sample');
+const emptyConf = require('./../config/config');
 // connect to the orientdb server
 // connect to the db server
 
 const setUpEmptyDB = async (conf = emptyConf) => {
+    if (VERBOSE) {
+        console.log(`connecting to the database server:${conf.server.host}${conf.server.port}`);
+    }
     // set up the database server
     const server = OrientDB({
         host: conf.server.host,
-        HTTPport: conf.server.port,
+        port: conf.server.port,
         username: conf.server.user,
         password: conf.server.pass
     });
@@ -62,44 +63,4 @@ const setUpEmptyDB = async (conf = emptyConf) => {
 };
 
 
-const setUpSampleDB = async () => {
-    // set up the database server
-    const server = OrientDB({
-        host: sampleConf.server.host,
-        HTTPport: sampleConf.server.port,
-        username: sampleConf.server.user,
-        password: sampleConf.server.pass
-    });
-    const exists = await server.exists({name: sampleConf.db.name});
-    if (VERBOSE) {
-        console.log('db exists. will drop', exists, sampleConf.db.name);
-    }
-    if (exists) {
-        await server.drop({name: sampleConf.db.name});
-    }
-    if (VERBOSE) {
-        console.log('creating the db', sampleConf.db.name);
-    }
-    const db = await server.create({name: sampleConf.db.name, username: sampleConf.db.user, password: sampleConf.db.pass});
-    await db.query('alter database custom standardElementConstraints=false');
-    // await db.query(`import database ${sampleConf.db.export} -preserveClusterIDs=TRUE`);
-    const command = `${process.env.ORIENTDB_HOME}/bin/console.sh "CONNECT remote:${process.env.ORIENTDB_HOME}/databases/test_sample admin admin; SELECT FROM V; import database ${sampleConf.db.export} -preserveClusterIDs=TRUE"`;
-    if (VERBOSE) {
-        console.log('executing shell command');
-        console.log(command);
-    }
-    const code = await shell.exec(command, {silent: true}).code;
-    if (code !== 0) {
-        throw new Error(`exit code ${code}, expected 0`);
-    }
-    const schema = await loadSchema(db);
-    return {server, db, schema};
-};
-
-
-const tearDownSampleDB = async (server) => {
-    // await server.drop({name: sampleConf.db.name});
-    await server.close();
-};
-
-module.exports = {setUpEmptyDB, setUpSampleDB, tearDownSampleDB};
+module.exports = {setUpEmptyDB};

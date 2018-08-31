@@ -3,7 +3,7 @@
 ![Build Status](https://www.bcgsc.ca/bamboo/plugins/servlet/wittified/build-status/KNOW-KNOW)
 
 The KB is implemented using [orientDB](https://github.com/orientechnologies/orientdb) and [orientjs](https://github.com/orientechnologies/orientjs).
-It is a graph database which is used to store variants, ontologies, and the relevance of this terms and variants. The KB uses strict controlled vocbulary to provide a parseable and machine-readable interface for other applications to build on. The API is a REST API built on node/express.
+It is a graph database which is used to store variants, ontologies, and the relevance of this terms and variants. The KB uses strict controlled vocabulary to provide a parseable and machine-readable interface for other applications to build on. The API is a REST API built on node/express.
 
 
 ### Table Of Contents
@@ -15,6 +15,7 @@ It is a graph database which is used to store variants, ontologies, and the rele
 - [Guidelines for Contributors](#guidelines-for-contributors)
 - [Running the Tests](#running-the-tests)
 - [Logging](#logging)
+- [Migrating External Content](#migrating-external-content)
 
 
 ## Getting Started
@@ -99,3 +100,18 @@ export LOG_DIR=/path/to/dir
 
 This will be used as the directly to write logs to. If the variable is not set, no log files will be written and only console will be logged to.
 
+
+## Migrating External Content
+
+Automatic Import modules are provided for a variety of input sources. To Start importing external data, first the GraphKB API
+must already be running. Then the command line interface can be used for upload. Get the help menu
+detailing the commands and required inputs as follows
+
+```
+npm run import -- --help
+```
+
+If loaded in order, some modules will link to one another. The relationships between external sources is
+detailed below.
+
+![external content relationships](external.svg)

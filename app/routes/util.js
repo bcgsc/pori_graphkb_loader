@@ -146,9 +146,7 @@ const queryRoute = (opt) => {
     const {
         router, model, db, schema
     } = opt;
-    if (process.env.VERBOSE === '1') {
-        logger.log('info', `NEW ROUTE [QUERY] ${model.routeName}`);
-    }
+    logger.log('verbose', `NEW ROUTE [QUERY] ${model.routeName}`);
 
     router.get(model.routeName,
         async (req, res) => {
@@ -194,9 +192,7 @@ const getRoute = (opt) => {
     const {
         router, schema, db, model
     } = opt;
-    if (process.env.VERBOSE === '1') {
-        logger.log('info', `NEW ROUTE [GET] ${model.routeName}`);
-    }
+    logger.log('verbose', `NEW ROUTE [GET] ${model.routeName}`);
     router.get(`${model.routeName}/:rid`,
         async (req, res) => {
             try {
@@ -254,9 +250,7 @@ const postRoute = (opt) => {
     const {
         router, db, model, schema
     } = opt;
-    if (process.env.VERBOSE === '1') {
-        logger.log('info', `NEW ROUTE [POST] ${model.routeName}`);
-    }
+    logger.log('verbose', `NEW ROUTE [POST] ${model.routeName}`);
     router.post(model.routeName,
         async (req, res) => {
             if (!_.isEmpty(req.query)) {
@@ -295,9 +289,8 @@ const updateRoute = (opt) => {
     const {
         router, schema, db, model
     } = opt;
-    if (process.env.VERBOSE === '1') {
-        logger.log('info', `NEW ROUTE [UPDATE] ${model.routeName}`);
-    }
+    logger.log('verbose', `NEW ROUTE [UPDATE] ${model.routeName}`);
+
     router.patch(`${model.routeName}/:rid`,
         async (req, res) => {
             if (!looksLikeRID(req.params.rid, false)) {
@@ -347,9 +340,7 @@ const deleteRoute = (opt) => {
     const {
         router, schema, db, model
     } = opt;
-    if (process.env.VERBOSE === '1') {
-        logger.log('info', `NEW ROUTE [DELETE] ${model.routeName}`);
-    }
+    logger.log('verbose', `NEW ROUTE [DELETE] ${model.routeName}`);
     router.delete(`${model.routeName}/:rid`,
         async (req, res) => {
             if (!looksLikeRID(req.params.rid, false)) {

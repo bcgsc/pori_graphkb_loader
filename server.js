@@ -1,20 +1,22 @@
-'use strict';
+
 
 // required packages
-const conf = require('./test/config/sample'); // get the database connection configuration
-const {AppServer} = require('./app');
-const auth = require('./app/middleware/auth');
+
 const fs = require('fs');
+const OrientDB = require('orientjs');
+
 const {createSchema, loadSchema} = require('./app/repo/schema');
 const {createUser} = require('./app/repo/base');
-const OrientDB  = require('orientjs');
+const conf = require('./config/config'); // get the database connection configuration
+const {AppServer} = require('./app');
+const auth = require('./app/middleware/auth');
+const {logger} = require('./app/repo/logging');
 
-
-//process.on('uncaughtException', app.close);
+// process.on('uncaughtException', app.close);
 let app;
 conf.db.name = `kbapi_${process.env.DATABASE_NAME
     ? process.env.DATABASE_NAME
-    : `v${process.env.npm_package_version}` }`;
+    : `v${process.env.npm_package_version}`}`;
 delete conf.port;
 
 (async () => {
@@ -24,23 +26,21 @@ delete conf.port;
         const server = OrientDB({
             host: conf.server.host,
             HTTPport: conf.server.port,
+            port: conf.server.port,
             username: conf.server.user,
             password: conf.server.pass
         });
         const exists = await server.exists({name: conf.db.name});
-        if (verbose) {
-            console.log('db exists', exists, conf.db.name);
-        }
-        let db, schema;
-        if (! exists) {
-            if (verbose) {
-                console.log('creating the db', conf.db.name);
-            }
+        logger.log('info', `The database ${conf.db.name} ${exists
+            ? 'exists'
+            : 'does not exist'}`);
+        let db,
+            schema;
+        if (!exists) {
+            logger.log('info', `creating the database: ${conf.db.name}`);
             db = await server.create({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
             await db.query('alter database custom standardElementConstraints=false');
-            if (verbose) {
-                console.log('create the schema');
-            }
+            logger.log('verbose', 'create the schema');
             await createSchema(db, verbose);
             schema = await loadSchema(db, verbose);
             // create the admin user
@@ -50,15 +50,13 @@ delete conf.port;
                 groupNames: ['admin'],
                 schema
             });
-            if (verbose) {
-                console.log('created the user:', user);
-            }
+            logger.log('verbose', `created the user: ${user.name}`);
             await db.close();
         }
 
-        console.log('creating certificate');
+        logger.log('verbose', 'creating certificate');
         auth.keys.private = fs.readFileSync(conf.private_key);
-        //conf.disableCats = true;
+        // conf.disableCats = true;
         app = new AppServer(conf);
         await app.listen();
 
@@ -69,10 +67,9 @@ delete conf.port;
             }
             process.exit(1);
         });
-    } catch(err) {
-        console.error('Failed to start server', err);
+    } catch (err) {
+        logger.log('error', `Failed to start server: ${err}`);
         app.close();
         throw err;
     }
 })();
-

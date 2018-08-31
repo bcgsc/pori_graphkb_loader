@@ -10,7 +10,7 @@ const HTTP_STATUS = require('http-status-codes');
 const {
     setUpEmptyDB
 } = require('./../util');
-const conf = require('./../config/empty');
+const conf = require('./../../config/config.js');
 const auth = require('./../../app/middleware/auth');
 
 chai.use(chaiHttp);
