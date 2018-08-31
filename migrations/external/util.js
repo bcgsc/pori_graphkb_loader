@@ -1,3 +1,7 @@
+/**
+ * @module
+ * @ignore
+ */
 const request = require('request-promise');
 const jc = require('json-cycle');
 const _ = require('lodash');

@@ -1,5 +1,7 @@
-/*
+/**
  * Migrates the data from the flatfiles to the graph database
+ * @module
+ * @ignore
  */
 
 const request = require('request-promise');

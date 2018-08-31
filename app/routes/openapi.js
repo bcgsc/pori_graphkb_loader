@@ -700,6 +700,7 @@ const BASIC_HEADER_PARAMS = {
  * Given a class model, generate the swagger documentation for the POST route
  *
  * @param {ClassModel} model the model to build the route for
+ * @returns {Object} json representing the openapi spec defn
  */
 const describePost = (model) => {
     const links = {};
@@ -778,6 +779,7 @@ const describePost = (model) => {
  * Given a class model, generate the swagger documentation for the GET route
  *
  * @param {ClassModel} model the model to build the route for
+ * @returns {Object} json representing the openapi spec defn
  */
 const describeGet = (model) => {
     const get = {
@@ -888,6 +890,7 @@ const describeGet = (model) => {
  * OPERATION can be delete, patch, etc.
  *
  * @param {ClassModel} model the model to build the route for
+ * @returns {Object} json representing the openapi spec defn
  */
 const describeOperationByID = (model, operation = 'delete') => {
     const description = {
@@ -942,7 +945,7 @@ const describeOperationByID = (model, operation = 'delete') => {
  * @param {string} metadata.host the host serving the API
  * @see loadSchema
  *
- * @returns {object} the JSON object representing the swagger API specification
+ * @returns {Object} the JSON object representing the swagger API specification
  */
 const generateSwaggerSpec = (schema, metadata) => {
     metadata = Object.assign({port: 8088, host: process.env.HOSTNAME}, metadata);

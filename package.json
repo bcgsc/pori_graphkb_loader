@@ -24,7 +24,7 @@
     "json-cycle": "^1.2.0",
     "jsonfile": "^4.0.0",
     "jsonwebtoken": "^8.2.0",
-    "knowledgebase-parser": "git+https://svn.bcgsc.ca/bitbucket/scm/vdb/knowledgebase_parser.git#v0.1.0",
+    "knowledgebase-parser": "git+https://svn.bcgsc.ca/bitbucket/scm/vdb/knowledgebase_parser.git#v0.2.0",
     "lodash": "^4.17.4",
     "mocha-bamboo-reporter": "^1.1.1",
     "moment": "^2.18.1",
