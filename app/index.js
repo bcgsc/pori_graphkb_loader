@@ -12,9 +12,12 @@ const HTTP_STATUS = require('http-status-codes');
 const swaggerUi = require('swagger-ui-express');
 
 const {parse} = require('knowledgebase-parser').variant;
+const {ParsingError} = require('knowledgebase-parser').error;
 
 const auth = require('./middleware/auth');
 const {logger} = require('./repo/logging');
+const {selectCounts} = require('./repo/base');
+const {AttributeError} = require('./repo/error');
 const {
     checkToken, generateToken, catsToken
 } = require('./middleware/auth'); // WARNING: middleware fails if function is not imported by itself
@@ -109,9 +112,13 @@ class AppServer {
         this.router.post('/parser/variant', async (req, res) => {
             try {
                 const parsed = parse(req.body.content);
-                res.status(HTTP_STATUS.OK).json({result: parsed});
+                return res.status(HTTP_STATUS.OK).json({result: parsed});
             } catch (err) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                if (err instanceof ParsingError) {
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                }
+                logger.log('error', err.message | err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
     }

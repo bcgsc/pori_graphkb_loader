@@ -50,7 +50,7 @@ describe('API', () => {
                 .post(`${app.prefix}/parser/variant`)
                 .type('json')
                 .send({
-                    content: 'p.R12K'
+                    content: 'KRAS:p.R12K'
                 });
             expect(res.body).to.have.property('result');
             expect(res.body.result).to.eql({
@@ -59,7 +59,9 @@ describe('API', () => {
                 untemplatedSeqSize: 1,
                 refSeq: 'R',
                 type: 'substitution',
-                break1Repr: 'p.R12'
+                break1Repr: 'p.R12',
+                reference1: 'KRAS',
+                multiFeature: false
             });
         });
     });
