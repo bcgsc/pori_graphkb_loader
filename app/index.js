@@ -63,6 +63,15 @@ const connectDB = async (conf) => {
 
 
 class AppServer {
+    /**
+     * @property {express} app the express app instance
+     * @property {?http.Server} server the http server running the API
+     * @property {?orientjs.Db} the orientjs database connection
+     * @property {express.Router} router the main router
+     * @property {string} prefix the prefix to use for all routes
+     * @property {Object} conf the configuration object
+     * @property {?Object.<string,ClassModel>} schema the mapping of class names to models for the db
+     */
     constructor(conf = {app: {}}) {
         this.app = express();
         // set up middleware parser to deal with jsons
@@ -76,6 +85,7 @@ class AppServer {
 
 
         this.db = null;
+        this.schema = null;
         this.server = null;
         this.conf = conf;
 

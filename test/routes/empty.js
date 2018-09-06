@@ -36,7 +36,7 @@ describe('API', () => {
             server
         } = await setUpEmptyDB(conf));
 
-        const {AppServer} = require('./../../app');
+        const {AppServer} = require('./../../app'); // eslint-disable-line global-require
         delete conf.app.port;
         app = new AppServer(conf, false);
 
