@@ -74,6 +74,8 @@ describe('API', () => {
             expect(res).to.have.status(HTTP_STATUS.OK);
             expect(res.body).to.have.property('result');
             expect(res.body.result).to.have.property('User', 1);
+            expect(res.body.result).to.not.have.property('ProteinPosition'); // ignore embedded
+            expect(res.body.result).to.not.have.property('Variant'); // ignore abstract
         });
     });
     describe('database', () => {

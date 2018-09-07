@@ -173,7 +173,9 @@ class AppServer {
         }
         // add the stats route
         const classList = Object.keys(this.schema).filter(
-            name => !this.schema[name].isAbstract && this.schema[name].subclasses.length === 0
+            name => !this.schema[name].isAbstract
+                && this.schema[name].subclasses.length === 0 // terminal classes only
+                && !this.schema[name].embedded
         );
         this.router.get('/stats', async (req, res) => {
             let grouping = req.query.grouping || [];
