@@ -1057,7 +1057,9 @@ class ClassModel {
             inherits: this.inherits,
             edgeRestrictions: this._edgeRestrictions,
             isEdge: !!this.isEdge,
-            name: this.name
+            name: this.name,
+            isAbstract: this.isAbstract,
+            embedded: this.embedded
         };
         if (this.reverseName) {
             json.reverseName = this.reverseName;
