@@ -8,12 +8,71 @@ const {
     castString,
     castNullableString,
     castNonEmptyString,
-    castNonEmptyNullableString
+    groupRecordsBy
 } = require('./../../app/repo/util');
 const {
     hasRecordAccess,
     trimRecords
 } = require('./../../app/repo/base');
+
+
+describe('groupRecordsBy', () => {
+    it('groups single level', () => {
+        const records = [
+            {name: 'bob', city: 'van'},
+            {name: 'alice', city: 'van'},
+            {name: 'blargh', city: 'monkeys'}
+        ];
+        expect(groupRecordsBy(records, ['city'], {value: 'name'})).to.eql({
+            van: ['bob', 'alice'],
+            monkeys: ['blargh']
+        });
+    });
+    it('error on no aggregate and non-unique grouping', () => {
+        const records = [
+            {name: 'bob', city: 'van'},
+            {name: 'alice', city: 'van'},
+            {name: 'blargh', city: 'monkeys'}
+        ];
+        expect(() => {
+            groupRecordsBy(records, ['city'], {value: 'name', aggregate: false});
+        }).to.throw('non-unique grouping');
+    });
+    it('uses the whole record when nestedProperty is null', () => {
+        const records = [
+            {name: 'bob', city: 'van'},
+            {name: 'alice', city: 'van'},
+            {name: 'blargh', city: 'monkeys'}
+        ];
+        expect(groupRecordsBy(records, ['city'])).to.eql({
+            van: [{name: 'bob', city: 'van'}, {name: 'alice', city: 'van'}],
+            monkeys: [{name: 'blargh', city: 'monkeys'}]
+        });
+    });
+    it('groups 2+ levels', () => {
+        const records = [
+            {name: 'bob', city: 'van', country: 'canada'},
+            {name: 'alice', city: 'van', country: 'canada'},
+            {name: 'blargh', city: 'monkeys', country: 'narnia'}
+        ];
+        expect(groupRecordsBy(records, ['country', 'city'], {value: 'name'})).to.eql({
+            canada: {van: ['bob', 'alice']},
+            narnia: {monkeys: ['blargh']}
+        });
+    });
+    it('no aggregate', () => {
+        const records = [
+            {name: 'bob', city: 'van', country: 'canada'},
+            {name: 'alice', city: 'van', country: 'mordor'},
+            {name: 'blargh', city: 'monkeys', country: 'narnia'}
+        ];
+        expect(groupRecordsBy(records, ['country', 'city'], {value: 'name', aggregate: false})).to.eql({
+            canada: {van: 'bob'},
+            mordor: {van: 'alice'},
+            narnia: {monkeys: 'blargh'}
+        });
+    });
+});
 
 
 describe('castUUID', () => {

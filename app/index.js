@@ -12,9 +12,12 @@ const HTTP_STATUS = require('http-status-codes');
 const swaggerUi = require('swagger-ui-express');
 
 const {parse} = require('knowledgebase-parser').variant;
+const {ParsingError} = require('knowledgebase-parser').error;
 
 const auth = require('./middleware/auth');
 const {logger} = require('./repo/logging');
+const {selectCounts} = require('./repo/base');
+const {AttributeError} = require('./repo/error');
 const {
     checkToken, generateToken, catsToken
 } = require('./middleware/auth'); // WARNING: middleware fails if function is not imported by itself
@@ -60,6 +63,15 @@ const connectDB = async (conf) => {
 
 
 class AppServer {
+    /**
+     * @property {express} app the express app instance
+     * @property {?http.Server} server the http server running the API
+     * @property {?orientjs.Db} the orientjs database connection
+     * @property {express.Router} router the main router
+     * @property {string} prefix the prefix to use for all routes
+     * @property {Object} conf the configuration object
+     * @property {?Object.<string,ClassModel>} schema the mapping of class names to models for the db
+     */
     constructor(conf = {app: {}}) {
         this.app = express();
         // set up middleware parser to deal with jsons
@@ -73,6 +85,7 @@ class AppServer {
 
 
         this.db = null;
+        this.schema = null;
         this.server = null;
         this.conf = conf;
 
@@ -109,9 +122,13 @@ class AppServer {
         this.router.post('/parser/variant', async (req, res) => {
             try {
                 const parsed = parse(req.body.content);
-                res.status(HTTP_STATUS.OK).json({result: parsed});
+                return res.status(HTTP_STATUS.OK).json({result: parsed});
             } catch (err) {
-                res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                if (err instanceof ParsingError) {
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                }
+                logger.log('error', err.message || err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
     }
@@ -154,6 +171,32 @@ class AppServer {
                 router: this.router, model, db, schema
             });
         }
+        // add the stats route
+        const classList = Object.keys(this.schema).filter(
+            name => !this.schema[name].isAbstract && this.schema[name].subclasses.length === 0
+        );
+        this.router.get('/stats', async (req, res) => {
+            let grouping = req.query.grouping || [];
+            if (!(grouping instanceof Array)) {
+                grouping = [grouping];
+            }
+            if (Object.keys(req.query) - !!req.query.grouping > 0) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({
+                    message: 'only accepts the grouping query parameter',
+                    params: Object.keys(req.query)
+                }));
+            }
+            try {
+                const stats = await selectCounts(this.db, classList, grouping);
+                return res.status(HTTP_STATUS.OK).json(jc.decycle({result: stats}));
+            } catch (err) {
+                if (err instanceof AttributeError) {
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(jc.decycle(err));
+                }
+                logger.log('error', err || err.message);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(jc.decycle(err));
+            }
+        });
 
         logger.log('info', 'Adding 404 capture');
         // catch any other errors

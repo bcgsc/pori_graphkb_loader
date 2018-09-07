@@ -36,7 +36,7 @@ describe('API', () => {
             server
         } = await setUpEmptyDB(conf));
 
-        const {AppServer} = require('./../../app');
+        const {AppServer} = require('./../../app'); // eslint-disable-line global-require
         delete conf.app.port;
         app = new AppServer(conf, false);
 
@@ -50,7 +50,7 @@ describe('API', () => {
                 .post(`${app.prefix}/parser/variant`)
                 .type('json')
                 .send({
-                    content: 'p.R12K'
+                    content: 'KRAS:p.R12K'
                 });
             expect(res.body).to.have.property('result');
             expect(res.body.result).to.eql({
@@ -59,8 +59,21 @@ describe('API', () => {
                 untemplatedSeqSize: 1,
                 refSeq: 'R',
                 type: 'substitution',
-                break1Repr: 'p.R12'
+                break1Repr: 'p.R12',
+                reference1: 'KRAS',
+                multiFeature: false
             });
+        });
+    });
+    describe('stats', () => {
+        it('gathers table stats', async () => {
+            const res = await chai.request(app.app)
+                .get(`${app.prefix}/stats`)
+                .type('json')
+                .set('Authorization', mockToken);
+            expect(res).to.have.status(HTTP_STATUS.OK);
+            expect(res.body).to.have.property('result');
+            expect(res.body.result).to.have.property('User', 1);
         });
     });
     describe('database', () => {

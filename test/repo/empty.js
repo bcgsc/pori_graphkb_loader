@@ -9,7 +9,8 @@ const {
     create,
     update,
     remove,
-    select
+    select,
+    selectCounts
 } = require('./../../app/repo/base');
 const {
     RecordExistsError
@@ -139,6 +140,14 @@ describe('schema', () => {
         expect(updated.history).to.eql(originalNode['@rid']);
         expect(originalNode.deletedBy['@rid']).to.eql(admin['@rid']);
         expect(updated.createdBy).to.eql(admin['@rid']);
+    });
+    it('get /stats group by class', async () => {
+        const stats = await selectCounts(db, ['Source', 'User', 'UserGroup']);
+        expect(stats).to.eql({
+            Source: 2,
+            User: 1,
+            UserGroup: 3
+        });
     });
     it('"delete" edge', async () => {
         // create the initial edge

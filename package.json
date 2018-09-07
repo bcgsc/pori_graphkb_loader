@@ -1,10 +1,10 @@
 {
   "name": "knowledgebase-api",
   "main": "server.js",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "repository": {
     "type": "git",
-    "url": "https://svn.bcgsc.ca/bitbucket/scm/prod/knowledgebase.git"
+    "url": "ssh://git@svn.bcgsc.ca:7999/vdb/knowledgebase_api.git"
   },
   "dependencies": {
     "ajv": "^5.5.2",
@@ -24,7 +24,7 @@
     "json-cycle": "^1.2.0",
     "jsonfile": "^4.0.0",
     "jsonwebtoken": "^8.2.0",
-    "knowledgebase-parser": "git+https://svn.bcgsc.ca/bitbucket/scm/vdb/knowledgebase_parser.git#v0.2.0",
+    "knowledgebase-parser": "git+ssh://git@svn.bcgsc.ca:7999/vdb/knowledgebase_parser.git#v0.2.0",
     "lodash": "^4.17.4",
     "mocha-bamboo-reporter": "^1.1.1",
     "moment": "^2.18.1",

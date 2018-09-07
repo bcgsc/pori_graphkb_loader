@@ -312,6 +312,82 @@ const STUB = {
                     200: {}
                 }
             }
+        },
+        '/stats': {
+            get: {
+                summary: 'Returns counts for all non-abstract database classes',
+                tags: ['Metadata'],
+                parameters: [
+                    {$ref: '#/components/parameters/Accept'},
+                    {$ref: '#/components/parameters/Authorization'},
+                    {
+                        in: 'query',
+                        name: 'grouping',
+                        schema: {type: 'string', enum: ['source']},
+                        description: 'Additional attribute to group by'
+                    }
+                ],
+                responses: {
+                    200: {
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        result: {
+                                            type: 'object',
+                                            additionalProperties: {
+                                                type: 'integer',
+                                                description: 'The number of records in this grouping (usually just by class)'
+                                            }
+                                        }
+                                    },
+                                    example: {
+                                        result: {
+                                            UserGroup: 17,
+                                            Permissions: 0,
+                                            User: 8,
+                                            Source: 11,
+                                            EvidenceLevel: 9,
+                                            ClinicalTrial: 0,
+                                            Publication: 3347,
+                                            Therapy: 69382,
+                                            Feature: 97496,
+                                            ProteinPosition: 0,
+                                            CytobandPosition: 0,
+                                            GenomicPosition: 0,
+                                            ExonicPosition: 0,
+                                            IntronicPosition: 0,
+                                            CdsPosition: 0,
+                                            PositionalVariant: 3234,
+                                            CategoryVariant: 545,
+                                            Statement: 7677,
+                                            AnatomicalEntity: 25613,
+                                            Disease: 41569,
+                                            Pathway: 0,
+                                            Signature: 0,
+                                            Vocabulary: 163,
+                                            CatalogueVariant: 0,
+                                            AliasOf: 142363,
+                                            Cites: 0,
+                                            DeprecatedBy: 15673,
+                                            ElementOf: 22,
+                                            Implies: 7957,
+                                            Infers: 0,
+                                            OppositeOf: 15,
+                                            SubClassOf: 66691,
+                                            SupportedBy: 17582,
+                                            TargetOf: 0
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    401: {$ref: '#/components/responses/NotAuthorized'},
+                    400: {$ref: '#/components/responses/BadInput'}
+                }
+            }
         }
     },
     components: {

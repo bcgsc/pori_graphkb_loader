@@ -136,6 +136,55 @@ const looksLikeRID = (rid, requireHash = false) => {
  */
 const quoteWrap = string => `'${string}'`;
 
+
+/**
+ * @param {Array.<Object>} records the records to be nested
+ * @param {Array.<string>} keysList keys to use as levels for nesting
+ * @param {?Object} opt options
+ * @param {?string} [opt.value=null] the value to use as the lowest level value (if null defaults to entire record)
+ * @param {?boolean} [opt.aggregate=true] create a list of records for each grouping
+ *
+ * @example
+ * > groupRecordsBy([{name: 'bob', city: 'van'}, {name: 'alice', city: 'van'}, {name: 'blargh', city: 'monkey'}], ['city'], {value: 'name'})
+ * {van: ['bob', 'alice'], monkey: ['blargh']}
+ */
+const groupRecordsBy = (records, keysList, opt = {}) => {
+    const nestedProperty = opt.value || null;
+    const aggregate = opt.aggregate === undefined
+        ? true
+        : opt.aggregate;
+    const nested = {};
+    // nest counts into objects based on the grouping keys
+    for (const record of records) {
+        let level = nested;
+        for (const groupingKey of keysList.slice(0, -1)) {
+            const key = record[groupingKey];
+            if (level[key] === undefined) {
+                level[key] = {};
+            }
+            level = level[key];
+        }
+        const lastKey = record[keysList.slice(-1)];
+        if (aggregate) {
+            if (level[lastKey] === undefined) {
+                level[lastKey] = [];
+            }
+            if (nestedProperty) {
+                level[lastKey].push(record[nestedProperty]);
+            } else {
+                level[lastKey].push(record);
+            }
+        } else if (level[lastKey] === undefined) {
+            level[lastKey] = nestedProperty
+                ? record[nestedProperty]
+                : record;
+        } else {
+            throw new AttributeError('grouping is not unique. Must aggregate for non-unique groupings');
+        }
+    }
+    return nested;
+};
+
 module.exports = {
     castDecimalInteger,
     castNullableLink,
@@ -145,6 +194,7 @@ module.exports = {
     castString,
     castToRID,
     castUUID,
+    groupRecordsBy,
     looksLikeRID,
     naturalListJoin,
     quoteWrap,
