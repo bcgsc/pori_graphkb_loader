@@ -127,7 +127,7 @@ class AppServer {
                 if (err instanceof ParsingError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
-                logger.log('error', err.message | err);
+                logger.log('error', err.message || err);
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
         });
@@ -171,6 +171,32 @@ class AppServer {
                 router: this.router, model, db, schema
             });
         }
+        // add the stats route
+        const classList = Object.keys(this.schema).filter(
+            name => !this.schema[name].isAbstract && this.schema[name].subclasses.length === 0
+        );
+        this.router.get('/stats', async (req, res) => {
+            let grouping = req.query.grouping || [];
+            if (!(grouping instanceof Array)) {
+                grouping = [grouping];
+            }
+            if (Object.keys(req.query) - !!req.query.grouping > 0) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError({
+                    message: 'only accepts the grouping query parameter',
+                    params: Object.keys(req.query)
+                }));
+            }
+            try {
+                const stats = await selectCounts(this.db, classList, grouping);
+                return res.status(HTTP_STATUS.OK).json(jc.decycle({result: stats}));
+            } catch (err) {
+                if (err instanceof AttributeError) {
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(jc.decycle(err));
+                }
+                logger.log('error', err || err.message);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(jc.decycle(err));
+            }
+        });
 
         logger.log('info', 'Adding 404 capture');
         // catch any other errors

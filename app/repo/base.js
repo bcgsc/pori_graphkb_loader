@@ -19,11 +19,12 @@ const {
     PermissionError
 } = require('./error');
 const {
-    timeStampNow, castToRID
+    timeStampNow, castToRID, groupRecordsBy
 } = require('./util');
 const {PERMISSIONS} = require('./constants');
 
 
+const STATS_GROUPING = new Set(['@class', 'source']);
 const RELATED_NODE_DEPTH = 3;
 const QUERY_LIMIT = 1000;
 const FETCH_OMIT = -2;
@@ -146,6 +147,48 @@ const trimRecords = (recordList, opt = {}) => {
             result.push(record);
         }
     }
+    return result;
+};
+
+
+/**
+ * @param {orientjs.Db} db the database connection object
+ * @param {Array.<string>} classList list of classes to gather stats for
+ * @param {Array.<string>} [extraGrouping=[]] the terms used for grouping the counts into sets (not includeing @class which is always used)
+ */
+const selectCounts = async (db, classList, extraGrouping = []) => {
+    const grouping = [];
+    grouping.push(...(extraGrouping || []));
+    for (const attr of grouping) {
+        if (!STATS_GROUPING.has(attr)) {
+            throw new AttributeError(`Invalid attribute for grouping (${attr}) is not supported`);
+        }
+    }
+    const clause = grouping.join(', ');
+    const tempCounts = await Promise.all(Array.from(
+        classList,
+        async (cls) => {
+            let statement;
+            if (grouping.length === 0) {
+                statement = `SELECT count(*) FROM ${cls}`;
+            } else {
+                statement = `SELECT ${clause}, count(*) FROM ${cls} GROUP BY ${clause}`;
+            }
+            logger.log('debug', statement);
+            return db.query(statement).all();
+        }
+    ));
+    const counts = [];
+    // nest counts into objects based on the grouping keys
+    for (let i = 0; i < classList.length; i++) {
+        for (const record of tempCounts[i]) {
+            record['@class'] = classList[i]; // selecting @prefix removes on return
+            counts.push(record);
+        }
+    }
+    grouping.unshift('@class');
+    const result = groupRecordsBy(counts, grouping, {value: 'count', aggregate: false});
+    console.log(result);
     return result;
 };
 
@@ -859,5 +902,6 @@ module.exports = {
     trimRecords,
     update,
     modify,
-    wrapIfTypeError
+    wrapIfTypeError,
+    selectCounts
 };

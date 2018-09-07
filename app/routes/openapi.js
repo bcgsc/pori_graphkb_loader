@@ -312,6 +312,49 @@ const STUB = {
                     200: {}
                 }
             }
+        },
+        '/stats': {
+            get: {
+                summary: 'Returns counts for all non-abstract database classes',
+                tags: ['Metadata'],
+                parameters: [
+                    {$ref: '#/components/parameters/Accept'},
+                    {$ref: '#/components/parameters/Authorization'},
+                    {
+                        in: 'query',
+                        name: 'grouping',
+                        schema: {type: 'string', enum: ['source']},
+                        description: 'Additional attribute to group by'
+                    }
+                ],
+                responses: {
+                    200: {
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        result: {
+                                            type: 'object',
+                                            additionalProperties: {
+                                                type: 'integer',
+                                                description: 'The number of records in this grouping (usually just by class)'
+                                            }
+                                        }
+                                    },
+                                    example: {
+                                        User: 1,
+                                        UserGroup: 3,
+                                        Feature: 95000
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    401: {$ref: '#/components/responses/NotAuthorized'},
+                    400: {$ref: '#/components/responses/BadInput'}
+                }
+            }
         }
     },
     components: {

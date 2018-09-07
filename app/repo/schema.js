@@ -858,7 +858,7 @@ class ClassModel {
     constructor(opt) {
         this.name = opt.name;
         this._inherits = opt.inherits || [];
-        this._subclasses = opt.subclasses || [];
+        this.subclasses = opt.subclasses || [];
         this.isEdge = !!opt.isEdge;
         this._edgeRestrictions = opt.edgeRestrictions || null;
         this._paraphrase = opt.paraphrase;
@@ -968,7 +968,7 @@ class ClassModel {
      * @param {string} modelName the name of the model to find as a subclass
      */
     subClassModel(modelName) {
-        for (const subclass of this._subclasses) {
+        for (const subclass of this.subclasses) {
             if (subclass.name === modelName) {
                 return subclass;
             }
@@ -987,7 +987,7 @@ class ClassModel {
      * Returns a set of properties from this class and all subclasses
      */
     get queryProperties() {
-        const queue = Array.from(this._subclasses);
+        const queue = Array.from(this.subclasses);
         const queryProps = this.properties;
         while (queue.length > 0) {
             const curr = queue.shift();
@@ -996,7 +996,7 @@ class ClassModel {
                     queryProps[prop.name] = prop;
                 }
             }
-            queue.push(...curr._subclasses);
+            queue.push(...curr.subclasses);
         }
         return queryProps;
     }
@@ -1354,7 +1354,7 @@ class ClassModel {
                 throw new Error(`Schema definition error. Expected model ${parent} is not defined`);
             }
             models[model.name]._inherits.push(models[parent]);
-            models[parent]._subclasses.push(models[model.name]);
+            models[parent].subclasses.push(models[model.name]);
         }
         for (const prop of Object.values(model._properties)) {
             if (prop.linkedClass) {

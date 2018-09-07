@@ -65,6 +65,17 @@ describe('API', () => {
             });
         });
     });
+    describe('stats', () => {
+        it('gathers table stats', async () => {
+            const res = await chai.request(app.app)
+                .get(`${app.prefix}/stats`)
+                .type('json')
+                .set('Authorization', mockToken);
+            expect(res).to.have.status(HTTP_STATUS.OK);
+            expect(res.body).to.have.property('result');
+            expect(res.body.result).to.have.property('User', 1);
+        });
+    });
     describe('database', () => {
         let source;
         beforeEach(async () => {
