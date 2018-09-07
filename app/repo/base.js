@@ -188,7 +188,6 @@ const selectCounts = async (db, classList, extraGrouping = []) => {
     }
     grouping.unshift('@class');
     const result = groupRecordsBy(counts, grouping, {value: 'count', aggregate: false});
-    console.log(result);
     return result;
 };
 
