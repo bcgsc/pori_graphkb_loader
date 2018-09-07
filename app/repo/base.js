@@ -76,7 +76,9 @@ const trimRecords = (recordList, opt = {}) => {
 
     const accessOk = (record) => {
         if (user) {
-            const cls = record['@class'];
+            const cls = record['@rid'] === undefined // embedded records cannot have class-level permissions checks and will not have @rid's
+                ? null
+                : record['@class'];
             if (cls && !readableClasses.has(cls)) {
                 return false;
             }

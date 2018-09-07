@@ -481,12 +481,14 @@ const SCHEMA_DEFN = {
                 cast: trimString
             }
         ],
+        embedded: true,
         paraphrase: rec => rec.pos.toString(),
         isAbstract: true
     },
     ProteinPosition: {
         expose: EXPOSE_NONE,
         inherits: ['Position'],
+        embedded: true,
         properties: [
             {
                 name: 'pos', type: 'integer', min: 1, mandatory: true
@@ -497,6 +499,7 @@ const SCHEMA_DEFN = {
     CytobandPosition: {
         expose: EXPOSE_NONE,
         inherits: ['Position'],
+        embedded: true,
         properties: [
             {
                 name: 'arm', mandatory: true, nullable: false
@@ -508,6 +511,7 @@ const SCHEMA_DEFN = {
     GenomicPosition: {
         expose: EXPOSE_NONE,
         inherits: ['Position'],
+        embedded: true,
         properties: [{
             name: 'pos', type: 'integer', min: 1, mandatory: true
         }]
@@ -515,6 +519,7 @@ const SCHEMA_DEFN = {
     ExonicPosition: {
         expose: EXPOSE_NONE,
         inherits: ['Position'],
+        embedded: true,
         properties: [{
             name: 'pos', type: 'integer', min: 1, mandatory: true
         }]
@@ -522,6 +527,7 @@ const SCHEMA_DEFN = {
     IntronicPosition: {
         expose: EXPOSE_NONE,
         inherits: ['Position'],
+        embedded: true,
         properties: [{
             name: 'pos', type: 'integer', min: 1, mandatory: true
         }]
@@ -529,6 +535,7 @@ const SCHEMA_DEFN = {
     CdsPosition: {
         expose: EXPOSE_NONE,
         inherits: ['Position'],
+        embedded: true,
         properties: [
             {
                 name: 'pos', type: 'integer', min: 1, mandatory: true
@@ -854,6 +861,7 @@ class ClassModel {
      * @param {Object.<string,Object>} [opt.properties={}] mapping by attribute name to property objects (defined by orientjs)
      * @param {Function} [opt.paraphrase] the function to paraphrase this class type
      * @param {Expose} [opt.expose] the routes to expose to the API for this class
+     * @param {boolean} [opt.embedded=false] this class owns no records and is used as part of other class records only
      */
     constructor(opt) {
         this.name = opt.name;
@@ -865,9 +873,10 @@ class ClassModel {
         if (this._edgeRestrictions) {
             this.isEdge = true;
         }
+        this.embedded = !!opt.embedded;
         this.reverseName = opt.reverseName;
         this.isAbstract = !!opt.isAbstract;
-        if (this.isAbstract) {
+        if (this.isAbstract || this.embedded) {
             this.expose = Object.assign({}, EXPOSE_NONE, opt.expose || {});
         } else if (this.isEdge) {
             this.expose = Object.assign({}, EXPOSE_EDGE, opt.expose || {});
@@ -1328,7 +1337,7 @@ class ClassModel {
     // Set the name to match the key
     // initialize the models
     for (const name of Object.keys(schema)) {
-        if (name !== 'Permissions') {
+        if (name !== 'Permissions' && !schema[name].embedded) {
             schema.Permissions.properties.push({
                 min: PERMISSIONS.NONE, max: PERMISSIONS.ALL, type: 'integer', nullable: false, readOnly: false, name
             });
