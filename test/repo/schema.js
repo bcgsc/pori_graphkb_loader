@@ -91,9 +91,12 @@ describe('SCHEMA', () => {
                 reference1: '#33:1',
                 type: '#33:2',
                 createdBy: '#44:1',
-                break1Start: {'@class': 'ProteinPosition', pos: 1, refAA: 'A'}
+                break1Start: {'@class': 'ProteinPosition', pos: 1, refAA: 'A'},
+                break2Start: {'@class': 'ExonicPosition', pos: 1},
+                break2End: {'@class': 'ExonicPosition', pos: 3}
             }, {addDefaults: true});
             expect(formatted).to.have.property('break1Repr', 'p.a1');
+            expect(formatted).to.have.property('break2Repr', 'e.(1_3)');
         });
         it('ignores the input breakrepr if given', () => {
             const formatted = SCHEMA_DEFN.PositionalVariant.formatRecord({
