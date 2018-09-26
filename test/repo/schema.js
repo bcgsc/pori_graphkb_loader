@@ -45,12 +45,66 @@ describe('SCHEMA', () => {
         it('error on missing reference1', () => {
             expect(() => {
                 SCHEMA_DEFN.PositionalVariant.formatRecord({
-
+                    reference2: '#33:1',
+                    break1Start: {'@class': 'ProteinPosition', pos: 1},
+                    type: '#33:2',
+                    createdBy: '#44:1'
                 }, {addDefaults: true});
             }).to.throw('missing required attribute');
         });
-        it('error on missing break1Start');
-        it('auto generates the breakRepr');
+        it('error on missing break1Start', () => {
+            expect(() => {
+                const formatted = SCHEMA_DEFN.PositionalVariant.formatRecord({
+                    reference1: '#33:1',
+                    break2Start: {'@class': 'ProteinPosition', pos: 1, refAA: 'A'},
+                    type: '#33:2',
+                    createdBy: '#44:1'
+                }, {addDefaults: true});
+                console.log(formatted);
+            }).to.throw('missing required attribute');
+        });
+        it('error on position without @class attribute', () => {
+            expect(() => {
+                const formatted = SCHEMA_DEFN.PositionalVariant.formatRecord({
+                    reference1: '#33:1',
+                    break1Start: {pos: 1, refAA: 'A'},
+                    type: '#33:2',
+                    createdBy: '#44:1'
+                }, {addDefaults: true});
+                console.log(formatted);
+            }).to.throw('positions must include the @class attribute');
+        });
+        it('error on break2End without break2Start', () => {
+            expect(() => {
+                const formatted = SCHEMA_DEFN.PositionalVariant.formatRecord({
+                    reference1: '#33:1',
+                    break1Start: {'@class': 'ProteinPosition', pos: 1, refAA: 'A'},
+                    type: '#33:2',
+                    break2End: {'@class': 'ProteinPosition', pos: 10, refAA: 'B'},
+                    createdBy: '#44:1'
+                }, {addDefaults: true});
+                console.log(formatted);
+            }).to.throw('both start and end');
+        });
+        it('auto generates the breakRepr', () => {
+            const formatted = SCHEMA_DEFN.PositionalVariant.formatRecord({
+                reference1: '#33:1',
+                type: '#33:2',
+                createdBy: '#44:1',
+                break1Start: {'@class': 'ProteinPosition', pos: 1, refAA: 'A'}
+            }, {addDefaults: true});
+            expect(formatted).to.have.property('break1Repr', 'p.a1');
+        });
+        it('ignores the input breakrepr if given', () => {
+            const formatted = SCHEMA_DEFN.PositionalVariant.formatRecord({
+                reference1: '#33:1',
+                type: '#33:2',
+                createdBy: '#44:1',
+                break1Start: {'@class': 'ProteinPosition', pos: 1, refAA: 'A'},
+                break1Repr: 'bad'
+            }, {addDefaults: true});
+            expect(formatted).to.have.property('break1Repr', 'p.a1');
+        });
     });
 });
 

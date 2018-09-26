@@ -7,6 +7,7 @@ const _ = require('lodash');
 
 const {position} = require('knowledgebase-parser');
 
+
 const {PERMISSIONS} = require('./constants');
 const {logger} = require('./logging');
 const {
@@ -42,6 +43,9 @@ const generateBreakRepr = (start, end) => {
     }
     if ((start && !start['@class']) || (end && !end['@class'])) {
         throw new AttributeError('positions must include the @class attribute to specify the position type');
+    }
+    if ((end && !start)) {
+        throw new AttributeError('both start and end are required to define a range');
     }
     const posClass = start['@class'];
     const repr = position.breakRepr(
@@ -590,7 +594,11 @@ const SCHEMA_DEFN = {
                 name: 'reference2', type: 'link', linkedClass: 'Feature', nullable: false
             },
             {
-                name: 'break1Start', type: 'embedded', linkedClass: 'Position', nullable: false
+                name: 'break1Start',
+                type: 'embedded',
+                linkedClass: 'Position',
+                nullable: false,
+                mandatory: true
             },
             {name: 'break1End', type: 'embedded', linkedClass: 'Position'},
             {
@@ -605,7 +613,7 @@ const SCHEMA_DEFN = {
                 name: 'break2Repr',
                 type: 'string',
                 generated: true,
-                default: record => generateBreakRepr(record.break1Start, record.break1End)
+                default: record => generateBreakRepr(record.break2Start, record.break2End)
             },
             {name: 'refSeq', type: 'string'},
             {name: 'untemplatedSeq', type: 'string'},
