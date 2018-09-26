@@ -1,7 +1,8 @@
 const {expect} = require('chai');
 const {RID} = require('orientjs');
 
-const {ClassModel, Property, SCHEMA_DEFN} = require('./../../app/repo/schema');
+const {SCHEMA_DEFN} = require('./../../app/repo/schema');
+const {ClassModel, Property} = require('./../../app/repo/model');
 const {
     Clause, Comparison, SelectionQuery, Follow
 } = require('./../../app/repo/query');

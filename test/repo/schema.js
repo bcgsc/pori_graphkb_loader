@@ -1,7 +1,14 @@
 const {expect} = require('chai');
 const {types} = require('orientjs');
 
-const {ClassModel, splitSchemaClassLevels, Property} = require('./../../app/repo/schema');
+const {
+    splitSchemaClassLevels,
+    SCHEMA_DEFN
+} = require('./../../app/repo/schema');
+const {
+    ClassModel,
+    Property
+} = require('./../../app/repo/model');
 
 
 const OJS_TYPES = {};
@@ -29,6 +36,21 @@ describe('splitSchemaClassLevels', () => {
         schema.grandparent._subclasses = [schema.parent, schema.child];
         const levels = splitSchemaClassLevels(schema);
         expect(levels).to.have.property('length', 3);
+    });
+});
+
+
+describe('SCHEMA', () => {
+    describe('PositionalVariant.formatRecord', () => {
+        it('error on missing reference1', () => {
+            expect(() => {
+                SCHEMA_DEFN.PositionalVariant.formatRecord({
+
+                }, {addDefaults: true});
+            }).to.throw('missing required attribute');
+        });
+        it('error on missing break1Start');
+        it('auto generates the breakRepr');
     });
 });
 
@@ -164,7 +186,6 @@ describe('ClassModel', () => {
             expect(child.isEdge).to.be.true;
         });
     });
-
     describe('formatRecord', () => {
         let model;
         beforeEach(() => {
