@@ -1,3 +1,7 @@
+/**
+ * Classes for enforcing constraints on DB classes and properties
+ * @module app/repo/model
+ */
 const orientjs = require('orientjs');
 
 const {

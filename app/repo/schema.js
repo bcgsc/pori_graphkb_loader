@@ -2,7 +2,6 @@
  * Repsonsible for defining and loading the database schema.
  * @module app/repo/schema
  */
-const orientjs = require('orientjs');
 const uuidV4 = require('uuid/v4');
 const _ = require('lodash');
 
