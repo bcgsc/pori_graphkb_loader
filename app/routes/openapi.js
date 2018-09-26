@@ -1070,6 +1070,9 @@ const generateSwaggerSpec = (schema, metadata) => {
         // for all model properties add a query parameter to the main GET request. Also add to the model components spec
         for (const prop of Object.values(model.properties)) {
             const isList = !!/(list|set)/g.exec(prop.type);
+            if (prop.generated) {
+                continue;
+            }
 
             if (prop.mandatory && prop.default === undefined && prop.generateDefault === undefined) {
                 if (docs.components.schemas[model.name].required === undefined) {
