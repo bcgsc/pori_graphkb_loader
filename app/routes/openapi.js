@@ -1067,6 +1067,12 @@ const generateSwaggerSpec = (schema, metadata) => {
                 docs.paths[`${model.routeName}/{rid}`].get = describeOperationByID(model, 'get');
             }
         }
+        if (model.isAbstract) {
+            // should inherit from its concrete subclasses instead
+            const oneOf = model.subclasses.map(m => ({$ref: `#/components/schemas/${m.name}`}));
+            docs.components.schemas[model.name].oneOf = oneOf;
+            continue;
+        }
         // for all model properties add a query parameter to the main GET request. Also add to the model components spec
         for (const prop of Object.values(model.properties)) {
             const isList = !!/(list|set)/g.exec(prop.type);
