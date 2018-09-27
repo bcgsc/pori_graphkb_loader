@@ -29,7 +29,7 @@ Note that all the urls shown below have not been escaped.
 Query all diseases where the name does not equal *'cancer'*
 
 \`\`\`
-/api/<version>/diseases?name=!cancer
+/api/diseases?name=!cancer
 \`\`\`
 
 #### Using the Contains Operator
@@ -39,7 +39,7 @@ When applied to a string value this will look for a substring, specifically pref
 Query all diseases where the name contains *'pancreatic'*
 
 \`\`\`
-/api/<version>/diseases?name=~pancreatic
+/api/diseases?name=~pancreatic
 \`\`\`
 
 It is worth noting that when the contains operator is applied to fields using a full text index (i.e. ontology names) that the
@@ -50,7 +50,7 @@ query will check for starting prefixes and may not find substrings which are in 
 Query all diseases where the name does not contain *'breast'*
 
 \`\`\`
-/api/<version>/diseases?name=!~breast
+/api/diseases?name=!~breast
 \`\`\`
 
 #### Using the OR operator
@@ -58,7 +58,7 @@ Query all diseases where the name does not contain *'breast'*
 Query all diseases where the name is *'breast cancer'* or *'breast carcinoma'*
 
 \`\`\`
-/api/<version>/diseases?name=breast cancer|breast carcinoma
+/api/diseases?name=breast cancer|breast carcinoma
 \`\`\`
 
 #### Combining the OR Operator with the NOT Operator
@@ -66,7 +66,7 @@ Query all diseases where the name is *'breast cancer'* or *'breast carcinoma'*
 Query all diseases where the name is *'breast cancer'* or is not *'pancreatic cancer'*
 
 \`\`\`
-/api/<version>/diseases?name=breast cancer|!pancreatic cancer
+/api/diseases?name=breast cancer|!pancreatic cancer
 \`\`\`
 
 ### Using Subqueries
@@ -77,7 +77,7 @@ As such KB will support querying on related objects using the following syntax
 Query all diseases created by the user with the username *'blargh'*
 
 \`\`\`
-/api/<version>/diseases?createdBy[name]=blargh
+/api/diseases?createdBy[name]=blargh
 \`\`\`
 
 ### Query by Related Edges
@@ -86,7 +86,7 @@ It can be useful to query a class based on its related vertices rather than its 
 For example, a user might be interested in all statements that are related to disease 'pancreatic cancer'
 
 \`\`\`
-/api/<version>/statements?implies[v][name]=pancreatic cancer&implies[v][fuzzyMatch]=3
+/api/statements?implies[v][name]=pancreatic cancer&implies[v][fuzzyMatch]=3
 \`\`\`
 
 The above will match all statements implied by pancreatic cancer or any of its aliased/deprecated terms.
@@ -94,7 +94,7 @@ The above will match all statements implied by pancreatic cancer or any of its a
 A simpler query can also allow the user to query based on the immediate edge properties.
 
 \`\`\`
-/api/<version>/statements?supportedBy[level][name]=4a
+/api/statements?supportedBy[level][name]=4a
 \`\`\`
 
 The above would return all statments supported by evidence with an evidence level of 4a
@@ -107,7 +107,7 @@ The \`neighbors\` query parameter can be used to retrieve related records after 
 For example if you wish to expand all links on a given record, this can be done as below
 
 \`\`\`
-/api/<version>/diseases?neighbors=1
+/api/diseases?neighbors=1
 \`\`\`
 
 #### OR properties
@@ -116,7 +116,7 @@ The \`or\` query parameter can be used to set a top-level OR. For example, query
 OR by name could be done in a single query using this query parameter
 
 \`\`\`
-/api/<version>/diseases?sourceId=blargh&name=blargh&or=sourceId,name
+/api/diseases?sourceId=blargh&name=blargh&or=sourceId,name
 \`\`\`
 
 `;
@@ -310,6 +310,33 @@ const STUB = {
                 tags: ['Metadata'],
                 responses: {
                     200: {}
+                }
+            }
+        },
+        '/version': {
+            get: {
+                summary: 'Get the version of the API and Database',
+                tags: ['Metadata'],
+                parameters: [{$ref: '#/components/parameters/Accept'}],
+                responses: {
+                    200: {
+                        content: {
+                            'application/json': {
+                                schema: {
+                                    type: 'object',
+                                    properties: {
+                                        api: {
+                                            type: 'string',
+                                            pattern: '^\\d+\\.\\d+\\.\\d+$',
+                                            description: 'version number for the API',
+                                            example: '0.6.1'
+                                        },
+                                        db: {type: 'string', description: 'Name of the database the API is accessing'}
+                                    }
+                                }
+                            }
+                        }
+                    }
                 }
             }
         },
