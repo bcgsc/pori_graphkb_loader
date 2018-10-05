@@ -1,7 +1,7 @@
 {
   "name": "knowledgebase-api",
   "main": "server.js",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "repository": {
     "type": "git",
     "url": "ssh://git@svn.bcgsc.ca:7999/vdb/knowledgebase_api.git"

@@ -505,7 +505,7 @@ const SCHEMA_DEFN = {
                 name: 'arm', mandatory: true, nullable: false
             },
             {name: 'majorBand', type: 'integer', min: 1},
-            {name: 'minorBand', type: 'integer'}
+            {name: 'minorBand', type: 'integer', min: 1}
         ]
     },
     GenomicPosition: {
