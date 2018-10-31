@@ -1,0 +1,145 @@
+const GENERAL_QUERY_PARAMS = {
+    neighbors: {
+        in: 'query',
+        name: 'neighbors',
+        schema: {
+            type: 'integer',
+            minimum: 0,
+            maximum: 4
+        },
+        description: 'Return neighbors of the selected node(s) up to \'n\' edges away. If this is set to 0, no neighbors will be returned. To collect all immediate neighbors this must be set to 2.'
+    },
+    activeOnly: {
+        in: 'query',
+        name: 'activeOnly',
+        schema: {
+            type: 'boolean',
+            default: true
+        },
+        description: 'Limit the query to active records only (records that have not been deleted)'
+    },
+    returnProperties: {
+        in: 'query',
+        name: 'returnProperties',
+        schema: {
+            type: 'string'
+        },
+        description: 'CSV list of attributes to return. Returns the whole record if not specified'
+    },
+    limit: {
+        in: 'query',
+        name: 'limit',
+        schema: {
+            type: 'integer',
+            minimum: 1,
+            maximum: 1000
+        },
+        description: 'Limits the number of records to return (useful for paginating queries)',
+        default: 100
+    },
+    skip: {
+        in: 'query',
+        name: 'skip',
+        schema: {
+            type: 'integer',
+            minimum: 1
+        },
+        description: 'Number of records to skip (useful for paginating queries)'
+    },
+    deletedAt: {
+        in: 'query',
+        name: 'deletedAt',
+        schema: {type: 'integer'},
+        nullable: true,
+        description: 'The timestamp when the record was deleted'
+    },
+    createdAt: {
+        in: 'query',
+        name: 'createdAt',
+        schema: {type: 'integer'},
+        nullable: false,
+        description: 'The timestamp when the record was created'
+    },
+    or: {
+        in: 'query',
+        name: 'or',
+        schema: {type: 'string'},
+        nullable: false,
+        description: 'CSV list of class properties which should be joined as an OR statment instead of the default AND'
+    }
+};
+
+
+const ONTOLOGY_QUERY_PARAMS = {
+    subsets: {
+        in: 'query',
+        name: 'subsets',
+        schema: {
+            type: 'string'
+        },
+        description: 'Check if an ontology term belongs to a given subset'
+    },
+    fuzzyMatch: {
+        in: 'query',
+        name: 'fuzzyMatch',
+        schema: {
+            type: 'integer',
+            minimum: 0,
+            maximum: 4
+        },
+        description: 'Indicates that aliasof and deprecatedby links should be followed when matching ontology terms to \'n\' degrees away'
+    },
+    ancestors: {
+        in: 'query',
+        name: 'ancestors',
+        schema: {
+            type: 'string'
+        },
+        description: 'CSV list of edge class names for which to get all ancestors (follows ingoing edges) of any matched nodes'
+    },
+    descendants: {
+        in: 'query',
+        name: 'descendants',
+        schema: {
+            type: 'string'
+        },
+        description: 'CSV list of edge class names for which to get all descendants (follows outgoing edges) of any matched nodes'
+    }
+};
+
+
+const BASIC_HEADER_PARAMS = {
+    Authorization: {
+        in: 'header',
+        name: 'Authorization',
+        schema: {
+            type: 'string',
+            format: 'token'
+        },
+        required: true,
+        description: 'Token containing the user information/authentication'
+    },
+    Accept: {
+        in: 'header',
+        name: 'Accept',
+        schema: {
+            type: 'string',
+            enum: ['application/json']
+        },
+        required: true,
+        description: 'The content type you expect to recieve. Currently only supports application/json'
+    },
+    'Content-Type': {
+        in: 'header',
+        name: 'Content-Type',
+        schema: {
+            type: 'string',
+            enum: ['application/json']
+        },
+        required: true,
+        description: 'The content type you expect to send. Currently only supports application/json'
+    }
+};
+
+
+module.exports = {BASIC_HEADER_PARAMS, GENERAL_QUERY_PARAMS, ONTOLOGY_QUERY_PARAMS};
