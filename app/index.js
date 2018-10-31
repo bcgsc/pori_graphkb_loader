@@ -91,7 +91,7 @@ class AppServer {
 
         // set up the routes
         this.router = express.Router();
-        this.prefix = `/api/v${process.env.npm_package_version || 'test'}`;
+        this.prefix = '/api';
         this.app.use(this.prefix, this.router);
 
         this.router.route('/token').post(async (req, res) => {
@@ -157,6 +157,12 @@ class AppServer {
 
         this.router.get('/schema', async (req, res) => {
             res.status(HTTP_STATUS.OK).json({schema: jc.decycle(schema)});
+        });
+        this.router.get('/version', async (req, res) => {
+            res.status(HTTP_STATUS.OK).json({
+                api: process.env.npm_package_version,
+                db: this.conf.db.name
+            });
         });
 
         this.router.use(checkToken);
