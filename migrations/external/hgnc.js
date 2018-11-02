@@ -60,7 +60,7 @@ const uploadHugoGenes = async (opt) => {
     source = source['@rid'].toString();
     let ensemblSource;
     try {
-        ensemblSource = getRecordBy('sources', {name: 'ensembl'}, conn);
+        ensemblSource = await getRecordBy('sources', {name: 'ensembl'}, conn);
     } catch (err) {
         console.log('Unable to fetch ensembl source for llinking records:', err);
     }
