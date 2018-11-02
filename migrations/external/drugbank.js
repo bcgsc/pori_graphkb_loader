@@ -82,34 +82,14 @@
  * @module migrations/external/drugbank
  */
 
-const xml2js = require('xml2js');
-const fs = require('fs');
 const _ = require('lodash');
-const {addRecord, getRecordBy} = require('./util');
+const {addRecord, getRecordBy, loadXmlToJson} = require('./util');
 
-
-/**
- * Promise wrapper around the xml to js parser so it will work with async instead of callback
- *
- * @param {string} xmlContent
- */
-const parseXML = xmlContent => new Promise((resolve, reject) => {
-    xml2js.parseString(xmlContent, (err, result) => {
-        console.log(err);
-        if (err !== null) {
-            reject(err);
-        } else {
-            resolve(result);
-        }
-    });
-});
 
 const uploadFile = async ({filename, conn}) => {
     console.log('Loading the external drugbank data');
-    console.log(`reading: ${filename}`);
-    const content = fs.readFileSync(filename).toString();
-    console.log(`parsing: ${filename}`);
-    const xml = await parseXML(content);
+    const xml = await loadXmlToJson(filename);
+
     const source = await addRecord('sources', {
         name: 'drugbank',
         usage: 'https://www.drugbank.ca/legal/terms_of_use',

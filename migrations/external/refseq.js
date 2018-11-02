@@ -10,19 +10,15 @@
  * Import the RefSeq transcripts, ignoring version numbers for now
  * @module migrations/external/refseq
  */
-const parse = require('csv-parse/lib/sync');
-const fs = require('fs');
-const {getRecordBy, addRecord, orderPreferredOntologyTerms} = require('./util');
+const {
+    getRecordBy, addRecord, orderPreferredOntologyTerms, loadDelimToJson
+} = require('./util');
 
 
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;
-    console.log(`loading: ${filename}`);
-    const content = fs.readFileSync(filename, 'utf8');
-    console.log('parsing into json');
-    const json = parse(content, {
-        delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true
-    });
+    const json = await loadDelimToJson(filename);
+
     const source = await addRecord('sources', {name: 'refseq'}, conn, {existsOk: true});
     for (const record of json) {
         // Load the RNA

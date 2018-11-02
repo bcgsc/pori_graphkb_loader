@@ -14,6 +14,7 @@ IMPORT_MODULES.cosmic = require('./cosmic');
 IMPORT_MODULES.diseaseOntology = require('./disease_ontology');
 IMPORT_MODULES.docm = require('./docm');
 IMPORT_MODULES.drugbank = require('./drugbank');
+IMPORT_MODULES.ensembl = require('./ensembl');
 IMPORT_MODULES.fda = require('./fda');
 IMPORT_MODULES.hgnc = require('./hgnc');
 IMPORT_MODULES.ncit = require('./ncit');

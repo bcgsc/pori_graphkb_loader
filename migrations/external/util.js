@@ -4,7 +4,11 @@
  */
 const request = require('request-promise');
 const jc = require('json-cycle');
+const fs = require('fs');
 const _ = require('lodash');
+const parse = require('csv-parse/lib/sync');
+const xml2js = require('xml2js');
+
 
 const convertNulls = (where) => {
     const queryParams = {};
@@ -265,6 +269,43 @@ const convertOwlGraphToJson = (graph, idParser) => {
     return nodesByCode;
 };
 
+
+const loadDelimToJson = async (filename, delim = '\t') => {
+    console.log(`loading: ${filename}`);
+    const content = fs.readFileSync(filename, 'utf8');
+    console.log('parsing into json');
+    const jsonList = parse(content, {
+        delimiter: delim, escape: null, quote: null, comment: '##', columns: true, auto_parse: true
+    });
+    return jsonList;
+};
+
+
+const loadXmlToJson = (filename) => {
+    console.log(`reading: ${filename}`);
+    const xmlContent = fs.readFileSync(filename).toString();
+    console.log(`parsing: ${filename}`);
+    return new Promise((resolve, reject) => {
+        xml2js.parseString(xmlContent, (err, result) => {
+            console.log(err);
+            if (err !== null) {
+                reject(err);
+            } else {
+                resolve(result);
+            }
+        });
+    });
+};
+
+
 module.exports = {
-    addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs
+    addRecord,
+    getRecordBy,
+    convertOwlGraphToJson,
+    orderPreferredOntologyTerms,
+    getPubmedArticle,
+    preferredDiseases,
+    preferredDrugs,
+    loadDelimToJson,
+    loadXmlToJson
 };

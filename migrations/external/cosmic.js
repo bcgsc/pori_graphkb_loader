@@ -33,8 +33,6 @@
  *
  * @module migrations/external/cosmic
  */
-const parse = require('csv-parse/lib/sync');
-const fs = require('fs');
 const request = require('request-promise');
 const {
     addRecord,
@@ -42,7 +40,8 @@ const {
     orderPreferredOntologyTerms,
     getPubmedArticle,
     preferredDrugs,
-    preferredDiseases
+    preferredDiseases,
+    loadDelimToJson
 } = require('./util');
 
 const THERAPY_MAPPING = {
@@ -113,12 +112,7 @@ const processCosmicRecord = async (conn, record, source) => {
 
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;
-    console.log(`loading: ${filename}`);
-    const content = fs.readFileSync(filename, 'utf8');
-    console.log('parsing into json');
-    const jsonList = parse(content, {
-        delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true
-    });
+    const jsonList = loadDelimToJson(filename);
     // get the dbID for the source
     const source = (await addRecord('sources', {
         name: 'cosmic',

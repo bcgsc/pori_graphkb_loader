@@ -12,18 +12,14 @@
  * @module migrations/external/fda
  */
 
-const parse = require('csv-parse/lib/sync');
-const fs = require('fs');
-const {addRecord, getRecordBy, orderPreferredOntologyTerms} = require('./util');
+const {
+    addRecord, getRecordBy, orderPreferredOntologyTerms, loadDelimToJson
+} = require('./util');
+
 
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;
-    console.log(`loading: ${filename}`);
-    const content = fs.readFileSync(filename, 'utf8');
-    console.log('parsing into json');
-    const jsonList = parse(content, {
-        delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true
-    });
+    const jsonList = loadDelimToJson(filename);
     const source = await addRecord('sources', {name: 'FDA', url: 'https://fdasis.nlm.nih.gov/srs'}, conn, {existsOk: true});
     let NCIT;
     try {
