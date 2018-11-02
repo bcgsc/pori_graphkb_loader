@@ -37,7 +37,7 @@ const parseDoVersion = (version) => {
  *
  * @param {Object} opt
  */
-const uploadDiseaseOntology = async ({filename, conn}) => {
+const uploadFile = async ({filename, conn}) => {
     // load the DOID JSON
     console.log('Loading external disease ontology data');
     const DOID = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
@@ -200,4 +200,4 @@ const loadEdges = async ({
     }
 };
 
-module.exports = {uploadDiseaseOntology};
+module.exports = {uploadFile};

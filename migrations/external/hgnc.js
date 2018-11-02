@@ -46,7 +46,7 @@ const {getRecordBy, addRecord} = require('./util');
 const SOURCE_NAME = 'hgnc';
 const CLASS_NAME = 'features';
 
-const uploadHugoGenes = async (opt) => {
+const uploadFile = async (opt) => {
     console.log('Loading the external HGNC data');
     const {filename, conn} = opt;
     console.log(`loading: ${filename}`);
@@ -142,4 +142,4 @@ const uploadHugoGenes = async (opt) => {
     console.log();
 };
 
-module.exports = {uploadHugoGenes};
+module.exports = {uploadFile};

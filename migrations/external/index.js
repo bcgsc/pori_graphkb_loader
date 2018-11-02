@@ -7,20 +7,20 @@
 const request = require('request-promise');
 
 const {fileExists, createOptionsMenu} = require('./../cli');
-const {uploadDiseaseOntology} = require('./disease_ontology');
-// const ensHg19 = require('./../ensembl69_hg19_annotations');
-const {uploadHugoGenes} = require('./hgnc');
-const {uploadUberon} = require('./uberon');
-const {uploadNCIT} = require('./ncit');
-const {uploadOncoTree} = require('./oncotree');
-const {uploadDrugBank} = require('./drugbank');
-const {uploadRefSeq} = require('./refseq');
-const {upload: uploadOncoKB} = require('./oncokb');
-const {upload: uploadFDA} = require('./fda');
-const {upload: uploadCivic} = require('./civic');
-const {upload: uploadVocab} = require('./vocab');
-const {upload: uploadCosmic} = require('./cosmic');
-const {upload: uploadDocm} = require('./docm');
+
+const civic = require('./civic');
+const cosmic = require('./cosmic');
+const diseaseOntology = require('./disease_ontology');
+const docm = require('./docm');
+const drugbank = require('./drugbank');
+const fda = require('./fda');
+const hgnc = require('./hgnc');
+const ncit = require('./ncit');
+const oncokb = require('./oncokb');
+const oncotree = require('./oncotree');
+const refseq = require('./refseq');
+const uberon = require('./uberon');
+const vocab = require('./vocab');
 
 
 const optionDefinitions = [
@@ -177,43 +177,43 @@ const upload = async () => {
     await apiConnection.setAuth(options);
     console.log('Login Succeeded\n');
     if (options.vocab !== undefined) {
-        await uploadVocab(apiConnection);
+        await vocab.upload(apiConnection);
     }
     if (options.ncit) {
-        await uploadNCIT({conn: apiConnection, filename: options.ncit});
+        await ncit.uploadFile({conn: apiConnection, filename: options.ncit});
     }
     if (options.fda) {
-        await uploadFDA({conn: apiConnection, filename: options.fda});
+        await fda.uploadFile({conn: apiConnection, filename: options.fda});
     }
     if (options.drugbank) {
-        await uploadDrugBank({conn: apiConnection, filename: options.drugbank});
+        await drugbank.uploadFile({conn: apiConnection, filename: options.drugbank});
     }
     if (options['disease-ontology']) {
-        await uploadDiseaseOntology({conn: apiConnection, filename: options['disease-ontology']});
+        await diseaseOntology.uploadFile({conn: apiConnection, filename: options['disease-ontology']});
     }
     if (options.hgnc) {
-        await uploadHugoGenes({conn: apiConnection, filename: options.hgnc});
+        await hgnc.uploadFile({conn: apiConnection, filename: options.hgnc});
     }
     if (options.refseq) {
-        await uploadRefSeq({conn: apiConnection, filename: options.refseq});
+        await refseq.uploadFile({conn: apiConnection, filename: options.refseq});
     }
     if (options.uberon) {
-        await uploadUberon({conn: apiConnection, filename: options.uberon});
+        await uberon.uploadFile({conn: apiConnection, filename: options.uberon});
     }
     if (options.oncotree !== undefined) {
-        await uploadOncoTree(apiConnection);
+        await oncotree.uploadFile(apiConnection);
     }
     if (options.cosmic) {
-        await uploadCosmic({conn: apiConnection, filename: options.cosmic});
+        await cosmic.uploadFile({conn: apiConnection, filename: options.cosmic});
     }
     if (options.oncokb !== undefined) {
-        await uploadOncoKB(apiConnection);
+        await oncokb.upload(apiConnection);
     }
     if (options.civic !== undefined) {
-        await uploadCivic(apiConnection);
+        await civic.upload(apiConnection);
     }
     if (options.docm !== undefined) {
-        await uploadDocm(apiConnection);
+        await docm.upload(apiConnection);
     }
 };
 

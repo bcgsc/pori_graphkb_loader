@@ -104,7 +104,7 @@ const parseXML = xmlContent => new Promise((resolve, reject) => {
     });
 });
 
-const uploadDrugBank = async ({filename, conn}) => {
+const uploadFile = async ({filename, conn}) => {
     console.log('Loading the external drugbank data');
     console.log(`reading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
@@ -197,4 +197,4 @@ const uploadDrugBank = async ({filename, conn}) => {
     console.log();
 };
 
-module.exports = {uploadDrugBank};
+module.exports = {uploadFile};

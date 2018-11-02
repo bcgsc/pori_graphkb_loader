@@ -111,7 +111,7 @@ const processCosmicRecord = async (conn, record, source) => {
     });
 };
 
-const upload = async (opt) => {
+const uploadFile = async (opt) => {
     const {filename, conn} = opt;
     console.log(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
@@ -161,4 +161,4 @@ const upload = async (opt) => {
     console.log(`${Object.keys(errorCache).length} unique errors`);
 };
 
-module.exports = {upload};
+module.exports = {uploadFile};

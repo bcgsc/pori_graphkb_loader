@@ -138,7 +138,7 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
 };
 
 
-const uploadNCIT = async ({filename, conn}) => {
+const uploadFile = async ({filename, conn}) => {
     console.log('Loading external NCIT data');
     console.log(`loading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
@@ -210,4 +210,4 @@ const uploadNCIT = async ({filename, conn}) => {
 };
 
 
-module.exports = {uploadNCIT};
+module.exports = {uploadFile};

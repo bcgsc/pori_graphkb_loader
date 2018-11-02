@@ -15,7 +15,7 @@ const fs = require('fs');
 const {getRecordBy, addRecord, orderPreferredOntologyTerms} = require('./util');
 
 
-const uploadRefSeq = async (opt) => {
+const uploadFile = async (opt) => {
     const {filename, conn} = opt;
     console.log(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
@@ -77,4 +77,4 @@ const uploadRefSeq = async (opt) => {
     console.log();
 };
 
-module.exports = {uploadRefSeq};
+module.exports = {uploadFile};

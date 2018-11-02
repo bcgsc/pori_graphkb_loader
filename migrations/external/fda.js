@@ -16,7 +16,7 @@ const parse = require('csv-parse/lib/sync');
 const fs = require('fs');
 const {addRecord, getRecordBy, orderPreferredOntologyTerms} = require('./util');
 
-const upload = async (opt) => {
+const uploadFile = async (opt) => {
     const {filename, conn} = opt;
     console.log(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
@@ -67,4 +67,4 @@ const upload = async (opt) => {
     console.log(`\nskipped ${skipCount} records`);
 };
 
-module.exports = {upload};
+module.exports = {uploadFile};

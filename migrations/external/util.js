@@ -103,7 +103,7 @@ const addRecord = async (className, where, conn, optIn = {}) => {
         return newRecord.result;
     } catch (err) {
         err.error = jc.retrocycle(err.error);
-        if (opt.verbose) {
+        if (opt.verbose || process.env.VERBOSE == '1') {
             console.log('Record Attempted');
             console.log(where);
             if (err.error.current) {

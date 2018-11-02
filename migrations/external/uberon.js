@@ -44,7 +44,7 @@ const PRED_MAP = {
 };
 
 
-const uploadUberon = async ({filename, conn}) => {
+const uploadFile = async ({filename, conn}) => {
     console.log('Loading the external uberon data');
     console.log(`reading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
@@ -127,4 +127,4 @@ const uploadUberon = async ({filename, conn}) => {
     console.log();
 };
 
-module.exports = {uploadUberon};
+module.exports = {uploadFile};
