@@ -169,7 +169,7 @@ const VOCABULARY = [
 const upload = async (conn) => {
     console.log('Loading custom vocabulary terms');
     const termsByName = {};
-    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, true);
+    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
     // add the records
     for (const term of VOCABULARY) {
         term.name = term.name.toLowerCase();
