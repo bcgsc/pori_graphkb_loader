@@ -36,7 +36,7 @@ const optionDefinitions = [
         type: fileExists
     },
     {
-        name: 'hugo',
+        name: 'hgnc',
         alias: 'g',
         description: 'Flag to indicate if we should try loading the hugo genes',
         type: fileExists
@@ -191,8 +191,8 @@ const upload = async () => {
     if (options['disease-ontology']) {
         await uploadDiseaseOntology({conn: apiConnection, filename: options['disease-ontology']});
     }
-    if (options.hugo) {
-        await uploadHugoGenes({conn: apiConnection, filename: options.hugo});
+    if (options.hgnc) {
+        await uploadHugoGenes({conn: apiConnection, filename: options.hgnc});
     }
     if (options.refseq) {
         await uploadRefSeq({conn: apiConnection, filename: options.refseq});
