@@ -145,9 +145,10 @@ const processRecord = async (opt) => {
 };
 
 
-const upload = async (conn) => {
+const upload = async (opt) => {
+    const {conn} = opt;
     // load directly from their api:
-    console.log(`loading: ${BASE_URL}.json`);
+    console.log(`loading: ${opt.url || BASE_URL}.json`);
     const recordsList = await request({
         method: 'GET',
         json: true,

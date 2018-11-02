@@ -8,19 +8,20 @@ const request = require('request-promise');
 
 const {fileExists, createOptionsMenu} = require('./../cli');
 
-const civic = require('./civic');
-const cosmic = require('./cosmic');
-const diseaseOntology = require('./disease_ontology');
-const docm = require('./docm');
-const drugbank = require('./drugbank');
-const fda = require('./fda');
-const hgnc = require('./hgnc');
-const ncit = require('./ncit');
-const oncokb = require('./oncokb');
-const oncotree = require('./oncotree');
-const refseq = require('./refseq');
-const uberon = require('./uberon');
-const vocab = require('./vocab');
+const IMPORT_MODULES = {};
+IMPORT_MODULES.civic = require('./civic');
+IMPORT_MODULES.cosmic = require('./cosmic');
+IMPORT_MODULES.diseaseOntology = require('./disease_ontology');
+IMPORT_MODULES.docm = require('./docm');
+IMPORT_MODULES.drugbank = require('./drugbank');
+IMPORT_MODULES.fda = require('./fda');
+IMPORT_MODULES.hgnc = require('./hgnc');
+IMPORT_MODULES.ncit = require('./ncit');
+IMPORT_MODULES.oncokb = require('./oncokb');
+IMPORT_MODULES.oncotree = require('./oncotree');
+IMPORT_MODULES.refseq = require('./refseq');
+IMPORT_MODULES.uberon = require('./uberon');
+IMPORT_MODULES.vocab = require('./vocab');
 
 
 const optionDefinitions = [
@@ -42,7 +43,7 @@ const optionDefinitions = [
         type: fileExists
     },
     {
-        name: 'disease-ontology',
+        name: 'diseaseOntology',
         alias: 'd',
         type: fileExists,
         description: 'Flag to indicate if we should try loading the disease ontology'
@@ -176,44 +177,34 @@ const apiConnection = new ApiRequest(options);
 const upload = async () => {
     await apiConnection.setAuth(options);
     console.log('Login Succeeded\n');
-    if (options.vocab !== undefined) {
-        await vocab.upload(apiConnection);
-    }
-    if (options.ncit) {
-        await ncit.uploadFile({conn: apiConnection, filename: options.ncit});
-    }
-    if (options.fda) {
-        await fda.uploadFile({conn: apiConnection, filename: options.fda});
-    }
-    if (options.drugbank) {
-        await drugbank.uploadFile({conn: apiConnection, filename: options.drugbank});
-    }
-    if (options['disease-ontology']) {
-        await diseaseOntology.uploadFile({conn: apiConnection, filename: options['disease-ontology']});
-    }
-    if (options.hgnc) {
-        await hgnc.uploadFile({conn: apiConnection, filename: options.hgnc});
-    }
-    if (options.refseq) {
-        await refseq.uploadFile({conn: apiConnection, filename: options.refseq});
-    }
-    if (options.uberon) {
-        await uberon.uploadFile({conn: apiConnection, filename: options.uberon});
-    }
-    if (options.oncotree !== undefined) {
-        await oncotree.uploadFile(apiConnection);
-    }
-    if (options.cosmic) {
-        await cosmic.uploadFile({conn: apiConnection, filename: options.cosmic});
-    }
-    if (options.oncokb !== undefined) {
-        await oncokb.upload(apiConnection);
-    }
-    if (options.civic !== undefined) {
-        await civic.upload(apiConnection);
-    }
-    if (options.docm !== undefined) {
-        await docm.upload(apiConnection);
+    const moduleOrder = [
+        'vocab',
+        'ncit',
+        'fda',
+        'drugbank',
+        'diseaseOntology',
+        'hgnc',
+        'refseq',
+        'uberon',
+        'oncotree',
+        'cosmic',
+        'civic',
+        'docm'
+    ];
+    for (const moduleName of moduleOrder) {
+        if (options[moduleName] !== undefined) {
+            const currModule = IMPORT_MODULES[moduleName];
+            if (currModule.uploadFile !== undefined) {
+                await currModule.uploadFile({
+                    conn: apiConnection,
+                    filename: options[moduleName]
+                });
+            } else {
+                await currModule.upload({
+                    conn: apiConnection
+                });
+            }
+        }
     }
 };
 

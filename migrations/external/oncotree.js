@@ -18,11 +18,12 @@ const {addRecord, getRecordBy} = require('./util');
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
 
 
-const upload = async (conn) => {
+const upload = async (opt) => {
+    const {conn} = opt;
     console.log('\nRetrieving the oncotree metadata');
     const versions = await request({
         method: 'GET',
-        uri: `${ONCOTREE_API}/versions`,
+        uri: `${opt.url || ONCOTREE_API}/versions`,
         json: true
     });
     let stable;

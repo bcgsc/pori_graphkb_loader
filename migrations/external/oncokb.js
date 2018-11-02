@@ -402,8 +402,9 @@ const addEvidenceLevels = async (conn, source) => {
 };
 
 
-const upload = async (conn) => {
-    const URL = 'http://oncokb.org/api/v1/utils';
+const upload = async (opt) => {
+    const {conn} = opt;
+    const URL = opt.url || 'http://oncokb.org/api/v1/utils';
 
     // load directly from their api:
     console.log(`loading: ${URL}`);

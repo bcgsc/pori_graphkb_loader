@@ -166,7 +166,8 @@ const VOCABULARY = [
 ];
 
 
-const upload = async (conn) => {
+const upload = async (opt) => {
+    const {conn} = opt;
     console.log('Loading custom vocabulary terms');
     const termsByName = {};
     const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});

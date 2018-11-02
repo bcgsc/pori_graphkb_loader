@@ -397,8 +397,9 @@ const downloadVariantRecords = async () => {
 };
 
 
-const upload = async (conn) => {
-    const urlTemplate = `${BASE_URL}/evidence_items?count=500&status=accepted`;
+const upload = async (opt) => {
+    const {conn} = opt;
+    const urlTemplate = `${opt.url | BASE_URL}/evidence_items?count=500&status=accepted`;
     // load directly from their api
     const counts = {error: 0, success: 0, skip: 0};
     let expectedPages = 1,
