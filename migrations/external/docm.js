@@ -127,8 +127,8 @@ const processRecord = async (opt) => {
             }, conn, {
                 existsOk: true,
                 getWhere: {
-                    implies: {direction: 'in', v: rid([disease), rid(variant)]},
-                    supportedBy: {v: rid([publication)], direction: 'out'},
+                    implies: {direction: 'in', v: [rid(disease), rid(variant)]},
+                    supportedBy: {v: [rid(publication)], direction: 'out'},
                     relevance: rid(relevance),
                     appliesTo: rid(disease),
                     source: rid(source),
