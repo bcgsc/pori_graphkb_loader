@@ -25,8 +25,17 @@ const uploadRefSeq = async (opt) => {
     });
     const source = await addRecord('sources', {name: 'refseq'}, conn, {existsOk: true});
     for (const record of json) {
-        record.RNA = record.RNA.replace(/\.\d+$/, ''); // separate the sourceIDVersion from the sourceID
-        const transcript = await addRecord('features', {biotype: 'transcript', source: source['@rid'].toString(), sourceId: record.RNA}, conn, {existsOK: true});
+        // Load the RNA
+        const [rnaName, rnaVersion] = record.RNA.split('.');
+        const general = await addRecord('features', {
+            biotype: 'transcript', source: source['@rid'].toString(), sourceId: rnaName, sourceIdVersion: null
+        }, conn, {existsOk: true});
+        const versioned = await addRecord('features', {
+            biotype: 'transcript', source: source['@rid'].toString(), sourceId: rnaName, sourceIdVersion: rnaVersion
+        }, conn, {existsOk: true});
+        // make the general an alias of the versioned
+        await addRecord('generalizationof', {out: general['@rid'].toString(), in: versioned['@rid'].toString(), source: source['@rid'].toString()}, conn, {existsOk: true});
+
         let hgnc;
         try {
             hgnc = await getRecordBy('features', {source: {name: 'hgnc'}, name: record.Symbol}, conn, orderPreferredOntologyTerms);
@@ -34,7 +43,36 @@ const uploadRefSeq = async (opt) => {
             process.stdout.write('?');
             continue;
         }
-        await addRecord('elementof', {out: transcript['@rid'].toString(), in: hgnc['@rid'].toString(), source: source['@rid'].toString()}, conn, {existsOk: true});
+        await addRecord('elementof', {out: general['@rid'].toString(), in: hgnc['@rid'].toString(), source: source['@rid'].toString()}, conn, {existsOk: true});
+        // load the DNA
+        // load the protein
+        if (record.Protein) {
+            const [proteinName, proteinVersion] = record.Protein.split('.');
+            const generalProtein = await addRecord('features', {
+                biotype: 'protein', source: source['@rid'].toString(), sourceId: proteinName, sourceIdVersion: null
+            }, conn, {existsOk: true});
+            const versionedProtein = await addRecord('features', {
+                biotype: 'protein', source: source['@rid'].toString(), sourceId: proteinName, sourceIdVersion: proteinVersion
+            }, conn, {existsOk: true});
+            // make the general an alias of the versioned
+            await addRecord('generalizationof', {
+                out: generalProtein['@rid'].toString(),
+                in: versionedProtein['@rid'].toString(),
+                source: source['@rid'].toString()
+            }, conn, {existsOk: true});
+
+            await addRecord('elementof', {
+                out: generalProtein['@rid'].toString(),
+                in: general['@rid'].toString(),
+                source: source['@rid'].toString()
+            }, conn, {existsOk: true});
+
+            await addRecord('elementof', {
+                out: versionedProtein['@rid'].toString(),
+                in: versioned['@rid'].toString(),
+                source: source['@rid'].toString()
+            }, conn, {existsOk: true});
+        }
     }
     console.log();
 };
