@@ -126,11 +126,6 @@ const optionDefinitions = [
     {
         name: 'docm',
         description: 'load mutations from DOCM database api'
-    },
-    {
-        name: 'api-version',
-        description: 'api version to connect to',
-        env: 'npm_package_version'
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
@@ -145,7 +140,7 @@ const options = createOptionsMenu(optionDefinitions,
  */
 class ApiRequest {
     constructor(opt) {
-        this.baseUrl = `http://${opt.host}:${opt.port}/api/v${opt['api-version']}`;
+        this.baseUrl = `http://${opt.host}:${opt.port}/api`;
         this.headers = {};
     }
 
