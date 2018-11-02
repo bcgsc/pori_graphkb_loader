@@ -83,7 +83,9 @@
  */
 
 const _ = require('lodash');
-const {addRecord, getRecordBy, loadXmlToJson} = require('./util');
+const {
+    addRecord, getRecordBy, loadXmlToJson, rid
+} = require('./util');
 
 
 const uploadFile = async ({filename, conn}) => {
@@ -112,7 +114,7 @@ const uploadFile = async ({filename, conn}) => {
         } catch (err) {}
         try {
             const body = {
-                source: source['@rid'],
+                source: rid(source),
                 sourceId: drug['drugbank-id'][0]._,
                 name: drug.name[0],
                 sourceIdVersion: drug.$.updated,
@@ -133,7 +135,7 @@ const uploadFile = async ({filename, conn}) => {
             for (const atcLevel of atcLevels) {
                 if (ATC[atcLevel.sourceId] === undefined) {
                     const level = await addRecord('therapies', {
-                        source: source['@rid'],
+                        source: rid(source),
                         name: atcLevel.name,
                         sourceId: atcLevel.sourceId
                     }, conn, {existsOk: true});
@@ -143,16 +145,16 @@ const uploadFile = async ({filename, conn}) => {
             if (atcLevels.length > 0) {
                 // link the current record to the lowest subclass
                 await addRecord('subclassof', {
-                    source: source['@rid'],
-                    out: record['@rid'],
-                    in: ATC[atcLevels[0].sourceId]['@rid']
+                    source: rid(source),
+                    out: rid(record),
+                    in: rid(ATC[atcLevels[0].sourceId])
                 }, conn, {existsOk: true});
                 // link the subclassing
                 for (let i = 0; i < atcLevels.length - 1; i++) {
                     await addRecord('subclassof', {
-                        source: source['@rid'],
-                        out: ATC[atcLevels[i].sourceId]['@rid'],
-                        in: ATC[atcLevels[i + 1].sourceId]['@rid']
+                        source: rid(record),
+                        out: rid(ATC[atcLevels[i].sourceId]),
+                        in: rid(ATC[atcLevels[i + 1].sourceId])
                     }, conn, {existsOk: true});
                 }
             }
@@ -161,12 +163,14 @@ const uploadFile = async ({filename, conn}) => {
                 for (const unii of drug.unii) {
                     let fdaRec;
                     try {
-                        fdaRec = await getRecordBy('therapies', {source: FDA['@rid'], sourceId: unii}, conn);
+                        fdaRec = await getRecordBy('therapies', {source: rid(FDA), sourceId: unii}, conn);
                     } catch (err) {
                         process.stdout.write('?');
                     }
                     if (fdaRec) {
-                        await addRecord('aliasof', {source: source['@rid'], out: record['@rid'], in: fdaRec['@rid']}, conn, {existsOk: true});
+                        await addRecord('aliasof', {
+                            source: rid(source), out: rid(record), in: rid(fdaRec)
+                        }, conn, {existsOk: true});
                     }
                 }
             }

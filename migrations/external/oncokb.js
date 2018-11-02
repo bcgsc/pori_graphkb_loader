@@ -11,7 +11,7 @@
  */
 const request = require('request-promise');
 const {
-    addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs
+    addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs, rid
 } = require('./util');
 const {ParsingError} = require('./../../app/repo/error');
 
@@ -50,10 +50,10 @@ const addTherapyCombination = async (conn, source, name) => {
     const combination = await addRecord('therapies', {
         name: combinationName,
         sourceId: combinationName,
-        source: source['@rid']
+        source: rid(source)
     }, conn, {existsOk: true});
     for (const drug of drugRec) {
-        await addRecord('elementOf', {source: source['@rid'], out: drug['@rid'], in: combination['@rid']}, conn, {existsOk: true});
+        await addRecord('elementOf', {source: rid(source), out: rid(drug), in: rid(combination)}, conn, {existsOk: true});
     }
     return combination;
 };
@@ -149,11 +149,11 @@ const processVariant = async (opt) => {
                 truncation: null
             });
         }
-        variant.reference1 = gene1['@rid'];
+        variant.reference1 = rid(gene1);
         if (gene2) {
-            variant.reference2 = gene2['@rid'];
+            variant.reference2 = rid(gene2);
         }
-        variant.type = variantType['@rid'];
+        variant.type = rid(variantType);
         // create the variant
         variant = await addRecord(variantUrl, variant, conn, {existsOk: true, getWhere: Object.assign(defaults, variant)});
     }
@@ -197,7 +197,7 @@ const processPublicationsList = async (opt) => {
         } catch (err) {
             publication = await getPubmedArticle(pmid);
             publication = await addRecord('publications', Object.assign(publication, {
-                source: pubmedSource['@rid']
+                source: rid(pubmedSource)
             }), conn, {existsOk: true});
         }
         publications.push(publication);
@@ -253,7 +253,7 @@ const processActionableRecord = async (opt) => {
     }
 
     // get the evidence level and determine the relevance
-    const level = await getRecordBy('evidencelevels', {sourceId: rawRecord.level, source: source['@rid']}, conn);
+    const level = await getRecordBy('evidencelevels', {sourceId: rawRecord.level, source: rid(source)}, conn);
 
     let relevance = level.name.startsWith('r')
         ? 'resistance'
@@ -265,20 +265,20 @@ const processActionableRecord = async (opt) => {
 
     // make the actual statement
     const statement = await addRecord('statements', {
-        impliedBy: [{target: variant['@rid']}, {target: disease['@rid']}],
-        supportedBy: Array.from(publications, x => ({target: x['@rid'], source: source['@rid'], level: level['@rid']})),
-        relevance: relevance['@rid'],
-        appliesTo: drug['@rid'],
-        source: source['@rid'],
+        impliedBy: [{target: rid(variant)}, {target: rid(disease)}],
+        supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(source), level: rid(level)})),
+        relevance: rid(relevance),
+        appliesTo: rid(drug),
+        source: rid(source),
         reviewStatus: 'not required'
     }, conn, {
         existsOk: true,
         getWhere: {
-            implies: {direction: 'in', v: [variant['@rid'], disease['@rid']]},
-            supportedBy: {direction: 'out', v: Array.from(publications, x => x['@rid'])},
-            relevance: relevance['@rid'],
-            appliesTo: drug['@rid'],
-            source: source['@rid'],
+            implies: {direction: 'in', v: [rid(variant), rid(disease)]},
+            supportedBy: {direction: 'out', v: Array.from(publications, x => rid(x))},
+            relevance: rid(relevance),
+            appliesTo: rid(drug),
+            source: rid(source),
             reviewStatus: 'not required'
         }
     });
@@ -315,28 +315,28 @@ const processAnnotatedRecord = async (opt) => {
         throw new Error(`unable to find vocabulary terms: ${rawRecord.mutationEffect} or ${rawRecord.oncogenicity}`);
     }
     // make the actual functional statement
-    const impliedBy = [{target: variant['@rid']}];
+    const impliedBy = [{target: rid(variant)}];
     if (disease) {
-        impliedBy.push({target: disease['@rid']});
+        impliedBy.push({target: rid(disease)});
     }
     let count = 0;
     if (relevance1) {
         await addRecord('statements', {
             impliedBy,
-            supportedBy: Array.from(publications, x => ({target: x['@rid'], source: source['@rid']})),
-            relevance: relevance1['@rid'],
+            supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(source)})),
+            relevance: rid(relevance1),
             appliesTo: variant.reference1,
-            source: source['@rid'],
+            source: rid(source),
             reviewStatus: 'not required'
         }, conn, {
             verbose: true,
             existsOk: true,
             getWhere: {
                 implies: {v: Array.from(impliedBy, x => x.target)},
-                supportedBy: {v: Array.from(publications, x => x['@rid'])},
-                relevance: relevance1['@rid'],
+                supportedBy: {v: Array.from(publications, x => rid(x))},
+                relevance: rid(relevance1),
                 appliesTo: variant.reference1,
-                source: source['@rid'],
+                source: rid(source),
                 reviewStatus: 'not required'
             }
         });
@@ -346,21 +346,21 @@ const processAnnotatedRecord = async (opt) => {
     if (relevance2) {
         await addRecord('statements', {
             impliedBy,
-            supportedBy: Array.from(publications, x => ({target: x['@rid'], source: source['@rid']})),
-            relevance: relevance2['@rid'],
+            supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(source)})),
+            relevance: rid(relevance2),
             appliesTo: null,
-            source: source['@rid'],
+            source: rid(source),
             reviewStatus: 'not required'
         }, conn, {
             verbose: true,
             existsOk: true,
             getWhere: {
                 implies: {v: Array.from(impliedBy, x => x.target)},
-                supportedBy: {v: Array.from(publications, x => x['@rid'])},
-                relevance: relevance2['@rid'],
+                supportedBy: {v: Array.from(publications, x => rid(x))},
+                relevance: rid(relevance2),
                 appliesTo: null,
                 reviewStatus: 'not required',
-                source: source['@rid']
+                source: rid(source)
             }
         });
         count++;
@@ -390,7 +390,7 @@ const addEvidenceLevels = async (conn, source) => {
         }
         level = level.slice('LEVEL_'.length);
         const record = await addRecord('evidencelevels', {
-            source: source['@rid'],
+            source: rid(source),
             sourceId: level,
             name: level,
             description: desc,

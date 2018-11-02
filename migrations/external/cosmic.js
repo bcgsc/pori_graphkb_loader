@@ -41,7 +41,8 @@ const {
     getPubmedArticle,
     preferredDrugs,
     preferredDiseases,
-    loadDelimToJson
+    loadDelimToJson,
+    rid
 } = require('./util');
 
 const THERAPY_MAPPING = {
@@ -62,8 +63,8 @@ const processCosmicRecord = async (conn, record, source) => {
         uri: 'parser/variant',
         body: {content: variant}
     }))).result;
-    variant.reference1 = gene['@rid'];
-    variant.type = (await getRecordBy('vocabulary', {name: variant.type}, conn))['@rid'];
+    variant.reference1 = rid(gene);
+    variant.type = rid(await getRecordBy('vocabulary', {name: variant.type}, conn));
     variant = await addRecord('positionalvariants', variant, conn, {existsOk: true});
     // get the enst transcript
     // const gene = await getRecordBy('features', {name: record['Transcript'], source: {name: 'ensembl'}, biotype: 'transcript'}, conn, orderPreferredOntologyTerms);
@@ -92,9 +93,9 @@ const processCosmicRecord = async (conn, record, source) => {
     await addRecord('statements', {
         relevance,
         appliesTo: drug,
-        impliedBy: [{target: variant['@rid']}, {target: disease['@rid']}],
-        supportedBy: [{target: record.publication['@rid'], source}],
-        source: source['@rid'],
+        impliedBy: [{target: rid(variant)}, {target: rid(disease)}],
+        supportedBy: [{target: rid(record.publication), source}],
+        source: rid(source),
         reviewStatus: 'not required'
     }, conn, {
         existsOk: true,
@@ -102,9 +103,9 @@ const processCosmicRecord = async (conn, record, source) => {
         getWhere: {
             relevance,
             appliesTo: drug,
-            implies: {direction: 'in', v: [variant['@rid'], disease['@rid']]},
-            supportedBy: {v: [record.publication['@rid']], direction: 'out'},
-            source: source['@rid'],
+            implies: {direction: 'in', v: [rid(variant), rid(disease)]},
+            supportedBy: {v: [rid(record.publication)], direction: 'out'},
+            source: rid(source),
             reviewStatus: 'not required'
         }
     });
@@ -114,11 +115,11 @@ const uploadFile = async (opt) => {
     const {filename, conn} = opt;
     const jsonList = loadDelimToJson(filename);
     // get the dbID for the source
-    const source = (await addRecord('sources', {
+    const source = rid(await addRecord('sources', {
         name: 'cosmic',
         url: 'https://cancer.sanger.ac.uk',
         usage: 'https://cancer.sanger.ac.uk/cosmic/terms'
-    }, conn, {existsOk: true}))['@rid'];
+    }, conn, {existsOk: true}));
     const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, {existsOk: true});
     const counts = {success: 0, error: 0, skip: 0};
     const errorCache = {};
@@ -134,7 +135,7 @@ const uploadFile = async (opt) => {
         } catch (err) {
             publication = await getPubmedArticle(record['Pubmed Id']);
             publication = await addRecord('publications', Object.assign(publication, {
-                source: pubmedSource['@rid']
+                source: rid(pubmedSource)
             }), conn, {existsOk: true});
         }
         record.publication = publication;

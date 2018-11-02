@@ -113,6 +113,12 @@ const optionDefinitions = [
         type: fileExists
     },
     {
+        name: 'ensembl',
+        alias: 'e',
+        description: 'path to the ensembl biomart export tab delimited file',
+        type: fileExists
+    },
+    {
         name: 'civic',
         description: 'upload civic using their api'
     },
@@ -186,6 +192,7 @@ const upload = async () => {
         'diseaseOntology',
         'hgnc',
         'refseq',
+        'ensembl',
         'uberon',
         'oncotree',
         'cosmic',

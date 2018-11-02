@@ -13,7 +13,7 @@
 const rdf = require('rdflib');
 const fs = require('fs');
 const {
-    addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms
+    addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, rid
 } = require('./util');
 
 
@@ -65,7 +65,7 @@ const uploadFile = async ({filename, conn}) => {
             continue;
         }
         const body = {
-            source: source['@rid'],
+            source: rid(source),
             name: node[PRED_MAP.LABEL][0],
             sourceId: node.code
         };
@@ -84,7 +84,7 @@ const uploadFile = async ({filename, conn}) => {
             for (let aliasCode of node[PRED_MAP.CROSS_REF]) {
                 aliasCode = aliasCode.toLowerCase();
                 if (/^ncit:c\d+$/.exec(aliasCode)) {
-                    ncitLinks.push({src: node.code, tgt: aliasCode.slice('ncit:'.length), source: source['@rid']});
+                    ncitLinks.push({src: node.code, tgt: aliasCode.slice('ncit:'.length), source: rid(source)});
                 }
             }
         }
@@ -100,7 +100,7 @@ const uploadFile = async ({filename, conn}) => {
             await addRecord('subclassof', {
                 out: records[src]['@rid'],
                 in: records[tgt]['@rid'],
-                source: source['@rid']
+                source: rid(source)
             }, conn, {existsOk: true});
         } else {
             process.stdout.write('x');
@@ -116,8 +116,8 @@ const uploadFile = async ({filename, conn}) => {
             const ncitRecord = await getRecordBy('anatomicalentities', {source: {name: 'ncit'}, sourceId: tgt}, conn, orderPreferredOntologyTerms);
             await addRecord('aliasof', {
                 out: records[src]['@rid'],
-                in: ncitRecord['@rid'],
-                source: source['@rid']
+                in: rid(ncitRecord),
+                source: rid(source)
             }, conn, {existsOk: true});
         } catch (err) {
             // ignore missing vocabulary

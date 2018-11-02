@@ -13,7 +13,7 @@
  */
 
 const {
-    addRecord, getRecordBy, orderPreferredOntologyTerms, loadDelimToJson
+    addRecord, getRecordBy, orderPreferredOntologyTerms, loadDelimToJson, rid
 } = require('./util');
 
 

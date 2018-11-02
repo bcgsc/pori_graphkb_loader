@@ -12,7 +12,7 @@
  */
 
 const request = require('request-promise');
-const {addRecord, getRecordBy} = require('./util');
+const {addRecord, getRecordBy, rid} = require('./util');
 
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
@@ -59,7 +59,7 @@ const upload = async (opt) => {
 
     for (const record of records) {
         const body = {
-            source: source['@rid'],
+            source: rid(source),
             name: record.name,
             sourceId: record.code
         };
@@ -74,7 +74,7 @@ const upload = async (opt) => {
                     ncitID = ncitID.toLowerCase();
                     try {
                         const ncitRec = await getRecordBy('diseases', {source: {name: 'ncit'}, sourceId: ncitID}, conn);
-                        await addRecord('aliasof', {out: rec['@rid'], in: ncitRec['@rid'], source: source['@rid']}, conn);
+                        await addRecord('aliasof', {out: rid(rec), in: rid(ncitRec), source: rid(source)}, conn);
                     } catch (err) {
                         // don't care. Don't add relationship unless the node exists
                         process.stdout.write('?');
@@ -87,7 +87,7 @@ const upload = async (opt) => {
     for (let {src, tgt} of subclassof) {
         src = recordBySourceID[src]['@rid'];
         tgt = recordBySourceID[tgt]['@rid'];
-        await addRecord('subclassof', {out: src, in: tgt, source: source['@rid']}, conn, {existsOk: true});
+        await addRecord('subclassof', {out: src, in: tgt, source: rid(source)}, conn, {existsOk: true});
     }
     console.log();
 };

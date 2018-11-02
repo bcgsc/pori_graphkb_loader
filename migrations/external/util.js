@@ -298,7 +298,11 @@ const loadXmlToJson = (filename) => {
 };
 
 
+const rid = record => record['@rid'].toString();
+
+
 module.exports = {
+    rid,
     addRecord,
     getRecordBy,
     convertOwlGraphToJson,

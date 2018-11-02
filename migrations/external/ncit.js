@@ -20,7 +20,9 @@ const fs = require('fs');
 const _ = require('lodash');
 
 
-const {addRecord, convertOwlGraphToJson, getRecordBy} = require('./util');
+const {
+    addRecord, convertOwlGraphToJson, getRecordBy, rid
+} = require('./util');
 
 const ROOT_NODES = {
     AGONIST: 'c1514',
@@ -81,7 +83,7 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
             continue;
         }
         const body = {
-            source: source['@rid'],
+            source: rid(source),
             name: node[PRED_MAP.LABEL][0],
             sourceId: node.code
         };
@@ -98,9 +100,9 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
         // add the aliasof links
         for (const alias of node[PRED_MAP.SYNONYM] || []) {
             const aliasBody = {
-                source: source['@rid'],
+                source: rid(source),
                 sourceId: node.code,
-                dependency: dbEntry['@rid'],
+                dependency: rid(dbEntry),
                 name: alias
             };
             const aliasRecord = await addRecord(
@@ -111,7 +113,7 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
             );
             await addRecord(
                 'aliasof',
-                {source: source['@rid'], out: aliasRecord['@rid'], in: dbEntry['@rid']},
+                {source: rid(source), out: rid(aliasRecord), in: rid(dbEntry)},
                 conn,
                 {existsOk: true}
             );
@@ -120,15 +122,15 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
         if (fdaSource && node[PRED_MAP.FDA] && node[PRED_MAP.FDA].length) {
             let fdaRec;
             try {
-                fdaRec = await getRecordBy(dbClassName, {source: fdaSource['@rid'], name: node[PRED_MAP.FDA][0]}, conn);
+                fdaRec = await getRecordBy(dbClassName, {source: rid(fdaSource), name: node[PRED_MAP.FDA][0]}, conn);
             } catch (err) {
                 process.write('?');
             }
             if (fdaRec) {
                 await addRecord('aliasof', {
-                    source: source['@rid'],
-                    out: dbEntry['@rid'],
-                    in: fdaRec['@rid']
+                    source: rid(source),
+                    out: rid(dbEntry),
+                    in: rid(fdaRec)
                 }, conn, {existsOk: true});
             }
         }
@@ -200,7 +202,7 @@ const uploadFile = async ({filename, conn}) => {
     console.log(`\nLoading ${subclassEdges.length} subclassof relationships`);
     for (const {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
-            await addRecord('subclassof', {out: records[src]['@rid'], in: records[tgt]['@rid'], source: source['@rid']}, conn, {existsOk: true});
+            await addRecord('subclassof', {out: records[src]['@rid'], in: records[tgt]['@rid'], source: rid(source)}, conn, {existsOk: true});
         } else {
             process.stdout.write('x');
         }

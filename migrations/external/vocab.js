@@ -1,6 +1,6 @@
 const _ = require('lodash');
 
-const {addRecord} = require('./util');
+const {addRecord, rid} = require('./util');
 
 const SOURCE_NAME = 'bcgsc';
 
@@ -177,7 +177,7 @@ const upload = async (opt) => {
         const content = {
             name: term.name,
             sourceId: term.name,
-            source: source['@rid']
+            source: rid(source)
         };
         if (term.description) {
             content.description = term.description;
@@ -196,26 +196,26 @@ const upload = async (opt) => {
             await addRecord('subclassof', {
                 out: termsByName[term.name]['@rid'],
                 in: termsByName[parent.toLowerCase()]['@rid'],
-                source: source['@rid']
+                source: rid(source)
             }, conn, {existsOk: true});
         }
         for (let parent of term.aliasof || []) {
             parent = await addRecord('vocabulary', {
                 name: parent,
                 sourceId: parent,
-                source: source['@rid']
+                source: rid(source)
             }, conn, {existsOk: true});
             await addRecord('aliasof', {
                 out: termsByName[term.name]['@rid'],
-                in: parent['@rid'],
-                source: source['@rid']
+                in: rid(parent),
+                source: rid(source)
             }, conn, {existsOk: true});
         }
         for (const parent of term.oppositeof || []) {
             await addRecord('oppositeof', {
                 out: termsByName[term.name]['@rid'],
                 in: termsByName[parent.toLowerCase()]['@rid'],
-                source: source['@rid']
+                source: rid(source)
             }, conn, {existsOk: true});
         }
     }
