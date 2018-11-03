@@ -23,6 +23,7 @@ IMPORT_MODULES.oncotree = require('./oncotree');
 IMPORT_MODULES.refseq = require('./refseq');
 IMPORT_MODULES.uberon = require('./uberon');
 IMPORT_MODULES.vocab = require('./vocab');
+IMPORT_MODULES.vario = require('./vario');
 
 
 const optionDefinitions = [
@@ -134,6 +135,11 @@ const optionDefinitions = [
     {
         name: 'docm',
         description: 'load mutations from DOCM database api'
+    },
+    {
+        name: 'vario',
+        description: 'load the variation ontology file (OWL format)',
+        type: fileExists
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
@@ -186,6 +192,7 @@ const upload = async () => {
     console.log('Login Succeeded\n');
     const moduleOrder = [
         'vocab',
+        'vario',
         'ncit',
         'fda',
         'drugbank',
