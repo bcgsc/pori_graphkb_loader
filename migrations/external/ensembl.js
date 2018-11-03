@@ -41,7 +41,7 @@ const uploadFile = async (opt) => {
         process.stdout.write('x');
     }
 
-    const visited = {};
+    const visited = {}; // cache genes to speed up adding records
 
     for (const record of contentList) {
         record.hgncName = record[HEADER.geneNameSource] === 'HGNC Symbol'

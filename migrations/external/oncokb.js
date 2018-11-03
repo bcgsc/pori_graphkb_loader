@@ -10,6 +10,7 @@
  * @module migrations/external/oncokb
  */
 const request = require('request-promise');
+const kbParser = require('knowledgebase-parser');
 const {
     addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs, rid
 } = require('./util');
@@ -127,16 +128,13 @@ const processVariant = async (opt) => {
             variantUrl = 'categoryvariants';
             variant = {};
         } catch (err) {
-            variant = await request(conn.request({
-                method: 'POST',
-                uri: 'parser/variant',
-                body: {
-                    content: `${variant.startsWith('e.')
-                        ? ''
-                        : 'p.'}${variant}`
-                }
-            }));
-            variant = variant.result;
+            variant = kbParser.variant.parse(
+                `${variant.startsWith('e.')
+                    ? ''
+                    : 'p.'}${variant}`,
+                false
+            ).toJSON();
+
             variantUrl = 'positionalvariants';
             variantType = await getRecordBy('vocabulary', {name: variant.type}, conn);
             Object.assign(defaults, {
