@@ -228,7 +228,7 @@ const getPubmedArticle = async (pmid) => {
 };
 
 
-const convertOwlGraphToJson = (graph, idParser) => {
+const convertOwlGraphToJson = (graph, idParser = x => x) => {
     const initialRecords = {};
     for (const statement of graph.statements) {
         let src;

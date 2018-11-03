@@ -100,9 +100,9 @@ const uploadFile = async ({filename, conn}) => {
     console.log(`uploading ${xml.drugbank.drug.length} records`);
 
     const ATC = {};
-    let FDA;
+    let fdaSource;
     try {
-        FDA = await getRecordBy('sources', {name: 'FDA'}, conn);
+        fdaSource = await getRecordBy('sources', {name: 'FDA'}, conn);
     } catch (err) {
         process.stdout.write('?');
     }
@@ -152,20 +152,20 @@ const uploadFile = async ({filename, conn}) => {
                 // link the subclassing
                 for (let i = 0; i < atcLevels.length - 1; i++) {
                     await addRecord('subclassof', {
-                        source: rid(record),
+                        source: rid(source),
                         out: rid(ATC[atcLevels[i].sourceId]),
                         in: rid(ATC[atcLevels[i + 1].sourceId])
                     }, conn, {existsOk: true});
                 }
             }
             // link to the FDA UNII
-            if (FDA) {
+            if (fdaSource) {
                 for (const unii of drug.unii) {
                     let fdaRec;
                     try {
-                        fdaRec = await getRecordBy('therapies', {source: rid(FDA), sourceId: unii}, conn);
+                        fdaRec = await getRecordBy('therapies', {source: rid(fdaSource), sourceId: unii}, conn);
                     } catch (err) {
-                        process.stdout.write('?');
+                        process.stdout.write('x');
                     }
                     if (fdaRec) {
                         await addRecord('aliasof', {

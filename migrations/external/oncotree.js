@@ -54,7 +54,7 @@ const upload = async (opt) => {
     try {
         ncitSource = await getRecordBy('sources', {name: 'ncit'}, conn);
     } catch (err) {
-        process.stdout.write('?');
+        process.stdout.write('x');
     }
 
     for (const record of records) {
@@ -77,7 +77,7 @@ const upload = async (opt) => {
                         await addRecord('aliasof', {out: rid(rec), in: rid(ncitRec), source: rid(source)}, conn);
                     } catch (err) {
                         // don't care. Don't add relationship unless the node exists
-                        process.stdout.write('?');
+                        process.stdout.write('x');
                     }
                 }
             }

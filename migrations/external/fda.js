@@ -19,18 +19,16 @@ const {
 
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;
-    const jsonList = loadDelimToJson(filename);
+    const jsonList = await loadDelimToJson(filename);
     const source = await addRecord('sources', {name: 'FDA', url: 'https://fdasis.nlm.nih.gov/srs'}, conn, {existsOk: true});
-    let NCIT;
+    let ncitSource;
     try {
-        NCIT = await getRecordBy('sources', {name: 'NCIT'}, conn);
+        ncitSource = await getRecordBy('sources', {name: 'NCIT'}, conn);
     } catch (err) {
-        console.log(err);
-        process.stdout.write('?');
+        process.stdout.write('x');
     }
     console.log(`\nloading ${jsonList.length} records`);
     let skipCount = 0;
-
     for (const record of jsonList) {
         if (record.NCIT.length === 0 && !/\S+[mn][ia]b\b/i.exec(record.PT)) {
             skipCount++;
@@ -44,7 +42,7 @@ const uploadFile = async (opt) => {
         const drug = await addRecord('therapies', {
             name: record.PT, sourceId: record.UNII, source: source['@rid']
         }, conn, {existsOk: true});
-        if (NCIT && record.NCIT.length) {
+        if (ncitSource && record.NCIT.length) {
             let ncitRec;
             try {
                 ncitRec = await getRecordBy('therapies', {source: {name: 'ncit'}, sourceId: record.NCIT}, conn, orderPreferredOntologyTerms);

@@ -196,6 +196,7 @@ const upload = async () => {
         'uberon',
         'oncotree',
         'cosmic',
+        'oncokb',
         'civic',
         'docm'
     ];

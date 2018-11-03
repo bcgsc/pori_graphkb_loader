@@ -325,7 +325,7 @@ const processAnnotatedRecord = async (opt) => {
             impliedBy,
             supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(source)})),
             relevance: rid(relevance1),
-            appliesTo: variant.reference1,
+            appliesTo: rid(variant.reference1),
             source: rid(source),
             reviewStatus: 'not required'
         }, conn, {
@@ -335,7 +335,7 @@ const processAnnotatedRecord = async (opt) => {
                 implies: {v: Array.from(impliedBy, x => x.target)},
                 supportedBy: {v: Array.from(publications, x => rid(x))},
                 relevance: rid(relevance1),
-                appliesTo: variant.reference1,
+                appliesTo: rid(variant.reference1),
                 source: rid(source),
                 reviewStatus: 'not required'
             }
