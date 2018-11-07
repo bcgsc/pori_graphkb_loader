@@ -51,7 +51,7 @@ const parseId = (url) => {
  * @param {ApiRequest} opt.conn the api request connection object
  */
 const uploadFile = async ({filename, conn}) => {
-    console.log('Loading external NCIT data');
+    console.log(`Loading external ${SOURCE_NAME} data`);
     console.log(`loading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
     console.log(`parsing: ${filename}`);
