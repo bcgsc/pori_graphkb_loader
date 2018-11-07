@@ -12,7 +12,9 @@
  * @module migrations/external/disease_ontology
  */
 const _ = require('lodash');
-const {addRecord, getRecordBy, orderPreferredOntologyTerms} = require('./util');
+const {
+    addRecord, getRecordBy, orderPreferredOntologyTerms, rid
+} = require('./util');
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
 const SOURCE_NAME = 'disease ontology';
@@ -35,9 +37,11 @@ const parseDoVersion = (version) => {
 /**
  * Parses the disease ontology json for disease definitions, relationships to other DO diseases and relationships to NCI disease terms
  *
- * @param {Object} opt
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input JSON file
+ * @param {ApiRequest} opt.conn the api connection object
  */
-const uploadDiseaseOntology = async ({filename, conn}) => {
+const uploadFile = async ({filename, conn}) => {
     // load the DOID JSON
     console.log('Loading external disease ontology data');
     const DOID = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
@@ -51,14 +55,14 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
         name: SOURCE_NAME,
         version: doVersion
     }, conn, {existsOk: true});
-    source = source['@rid'].toString();
+    source = rid(source);
     console.log('\nAdding/getting the disease nodes');
     const recordsBySourceId = {};
 
     let ncitSource;
     try {
         ncitSource = await getRecordBy('sources', {name: 'ncit'}, conn);
-        ncitSource = ncitSource['@rid'].toString();
+        ncitSource = rid(ncitSource);
     } catch (err) {}
 
     for (const node of DOID.graphs[0].nodes) {
@@ -114,12 +118,12 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                 const synonym = await addRecord('diseases', {
                     sourceId: body.sourceId,
                     name: alias,
-                    dependency: record['@rid'],
+                    dependency: rid(record),
                     source
                 }, conn, {existsOk: true});
                 await addRecord('aliasof', {
-                    out: synonym['@rid'],
-                    in: record['@rid'],
+                    out: rid(synonym),
+                    in: rid(record),
                     source
                 }, conn, {existsOk: true});
             }
@@ -132,10 +136,10 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                         sourceId: val,
                         name: record.name,
                         deprecated: true,
-                        dependency: record['@rid'],
+                        dependency: rid(record),
                         source
                     }, conn, true);
-                    await addRecord('deprecatedby', {out: alternate['@rid'], in: record['@rid'], source}, conn, {existsOk: true});
+                    await addRecord('deprecatedby', {out: rid(alternate), in: rid(record), source}, conn, {existsOk: true});
                 }
             }
         }
@@ -151,7 +155,7 @@ const uploadDiseaseOntology = async ({filename, conn}) => {
                         process.stdout.write('?');
                     }
                     if (ncitNode) {
-                        await addRecord('aliasof', {out: record['@rid'], in: ncitNode['@rid'], source}, conn, {existsOk: true});
+                        await addRecord('aliasof', {out: rid(record), in: rid(ncitNode), source}, conn, {existsOk: true});
                     }
                 }
             }
@@ -200,4 +204,4 @@ const loadEdges = async ({
     }
 };
 
-module.exports = {uploadDiseaseOntology};
+module.exports = {uploadFile};

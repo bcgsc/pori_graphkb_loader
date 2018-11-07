@@ -9,20 +9,30 @@
  *
  *
  * Module for Loading content from the oncotree web API
+ * @module migrations/external/oncotree
  */
 
 const request = require('request-promise');
-const {addRecord, getRecordBy} = require('./util');
+const {addRecord, getRecordBy, rid} = require('./util');
 
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
+const SOURCE_NAME = 'oncotree';
 
 
-const uploadOncoTree = async (conn) => {
+/**
+ * Use the oncotree REST API to pull down ontology information and then load it into the GraphKB API
+ *
+ * @param {object} opt options
+ * @param {ApiRequest} opt.conn the GraphKB API connection object
+ * @param {string} opt.url the base url to use in connecting to oncotree
+ */
+const upload = async (opt) => {
+    const {conn} = opt;
     console.log('\nRetrieving the oncotree metadata');
     const versions = await request({
         method: 'GET',
-        uri: `${ONCOTREE_API}/versions`,
+        uri: `${opt.url || ONCOTREE_API}/versions`,
         json: true
     });
     let stable;
@@ -43,22 +53,22 @@ const uploadOncoTree = async (conn) => {
         json: true
     });
     const source = await addRecord('sources', {
-        name: 'oncotree',
+        name: SOURCE_NAME,
         version: sourceVersion,
         url: ONCOTREE_API
-    }, conn, {existsOk: true, getWhere: {name: 'oncotree'}});
+    }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME, version: sourceVersion}});
     const recordBySourceID = {};
     const subclassof = [];
     let ncitSource;
     try {
         ncitSource = await getRecordBy('sources', {name: 'ncit'}, conn);
     } catch (err) {
-        process.stdout.write('?');
+        process.stdout.write('x');
     }
 
     for (const record of records) {
         const body = {
-            source: source['@rid'],
+            source: rid(source),
             name: record.name,
             sourceId: record.code
         };
@@ -73,10 +83,10 @@ const uploadOncoTree = async (conn) => {
                     ncitID = ncitID.toLowerCase();
                     try {
                         const ncitRec = await getRecordBy('diseases', {source: {name: 'ncit'}, sourceId: ncitID}, conn);
-                        await addRecord('aliasof', {out: rec['@rid'], in: ncitRec['@rid'], source: source['@rid']}, conn);
+                        await addRecord('aliasof', {out: rid(rec), in: rid(ncitRec), source: rid(source)}, conn);
                     } catch (err) {
                         // don't care. Don't add relationship unless the node exists
-                        process.stdout.write('?');
+                        process.stdout.write('x');
                     }
                 }
             }
@@ -84,12 +94,12 @@ const uploadOncoTree = async (conn) => {
     }
     console.log('\nAdding subclass relationships');
     for (let {src, tgt} of subclassof) {
-        src = recordBySourceID[src]['@rid'];
-        tgt = recordBySourceID[tgt]['@rid'];
-        await addRecord('subclassof', {out: src, in: tgt, source: source['@rid']}, conn, {existsOk: true});
+        src = rid(recordBySourceID[src]);
+        tgt = rid(recordBySourceID[tgt]);
+        await addRecord('subclassof', {out: src, in: tgt, source: rid(source)}, conn, {existsOk: true});
     }
     console.log();
 };
 
 
-module.exports = {uploadOncoTree};
+module.exports = {upload};

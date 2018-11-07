@@ -1,6 +1,6 @@
 const _ = require('lodash');
 
-const {addRecord} = require('./util');
+const {addRecord, rid} = require('./util');
 
 const SOURCE_NAME = 'bcgsc';
 
@@ -165,18 +165,24 @@ const VOCABULARY = [
     {name: 'wild type', subclassof: ['no functional effect']}
 ];
 
-
-const upload = async (conn) => {
+/**
+ * Upload the JSON constant above into GraphKB
+ *
+ * @param {object} opt options
+ * @param {ApiRequest} opt.conn the database connection object for GraphKB
+ */
+const upload = async (opt) => {
+    const {conn} = opt;
     console.log('Loading custom vocabulary terms');
     const termsByName = {};
-    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, true);
+    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
     // add the records
     for (const term of VOCABULARY) {
         term.name = term.name.toLowerCase();
         const content = {
             name: term.name,
             sourceId: term.name,
-            source: source['@rid']
+            source: rid(source)
         };
         if (term.description) {
             content.description = term.description;
@@ -195,26 +201,26 @@ const upload = async (conn) => {
             await addRecord('subclassof', {
                 out: termsByName[term.name]['@rid'],
                 in: termsByName[parent.toLowerCase()]['@rid'],
-                source: source['@rid']
+                source: rid(source)
             }, conn, {existsOk: true});
         }
         for (let parent of term.aliasof || []) {
             parent = await addRecord('vocabulary', {
                 name: parent,
                 sourceId: parent,
-                source: source['@rid']
+                source: rid(source)
             }, conn, {existsOk: true});
             await addRecord('aliasof', {
                 out: termsByName[term.name]['@rid'],
-                in: parent['@rid'],
-                source: source['@rid']
+                in: rid(parent),
+                source: rid(source)
             }, conn, {existsOk: true});
         }
         for (const parent of term.oppositeof || []) {
             await addRecord('oppositeof', {
                 out: termsByName[term.name]['@rid'],
                 in: termsByName[parent.toLowerCase()]['@rid'],
-                source: source['@rid']
+                source: rid(source)
             }, conn, {existsOk: true});
         }
     }

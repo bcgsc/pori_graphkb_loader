@@ -82,45 +82,36 @@
  * @module migrations/external/drugbank
  */
 
-const xml2js = require('xml2js');
-const fs = require('fs');
 const _ = require('lodash');
-const {addRecord, getRecordBy} = require('./util');
+const {
+    addRecord, getRecordBy, loadXmlToJson, rid
+} = require('./util');
+
+const SOURCE_NAME = 'drugbank';
 
 
 /**
- * Promise wrapper around the xml to js parser so it will work with async instead of callback
+ * Given the input XML file, load the resulting parsed ontology into GraphKB
  *
- * @param {string} xmlContent
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input XML file
+ * @param {ApiRequest} opt.conn the api connection object
  */
-const parseXML = xmlContent => new Promise((resolve, reject) => {
-    xml2js.parseString(xmlContent, (err, result) => {
-        console.log(err);
-        if (err !== null) {
-            reject(err);
-        } else {
-            resolve(result);
-        }
-    });
-});
-
-const uploadDrugBank = async ({filename, conn}) => {
+const uploadFile = async ({filename, conn}) => {
     console.log('Loading the external drugbank data');
-    console.log(`reading: ${filename}`);
-    const content = fs.readFileSync(filename).toString();
-    console.log(`parsing: ${filename}`);
-    const xml = await parseXML(content);
+    const xml = await loadXmlToJson(filename);
+
     const source = await addRecord('sources', {
-        name: 'drugbank',
+        name: SOURCE_NAME,
         usage: 'https://www.drugbank.ca/legal/terms_of_use',
         url: 'https://www.drugbank.ca'
-    }, conn, {existsOk: true, getWhere: {name: 'drugbank'}});
+    }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME}});
     console.log(`uploading ${xml.drugbank.drug.length} records`);
 
     const ATC = {};
-    let FDA;
+    let fdaSource;
     try {
-        FDA = await getRecordBy('sources', {name: 'FDA'}, conn);
+        fdaSource = await getRecordBy('sources', {name: 'FDA'}, conn);
     } catch (err) {
         process.stdout.write('?');
     }
@@ -132,7 +123,7 @@ const uploadDrugBank = async ({filename, conn}) => {
         } catch (err) {}
         try {
             const body = {
-                source: source['@rid'],
+                source: rid(source),
                 sourceId: drug['drugbank-id'][0]._,
                 name: drug.name[0],
                 sourceIdVersion: drug.$.updated,
@@ -153,7 +144,7 @@ const uploadDrugBank = async ({filename, conn}) => {
             for (const atcLevel of atcLevels) {
                 if (ATC[atcLevel.sourceId] === undefined) {
                     const level = await addRecord('therapies', {
-                        source: source['@rid'],
+                        source: rid(source),
                         name: atcLevel.name,
                         sourceId: atcLevel.sourceId
                     }, conn, {existsOk: true});
@@ -163,30 +154,32 @@ const uploadDrugBank = async ({filename, conn}) => {
             if (atcLevels.length > 0) {
                 // link the current record to the lowest subclass
                 await addRecord('subclassof', {
-                    source: source['@rid'],
-                    out: record['@rid'],
-                    in: ATC[atcLevels[0].sourceId]['@rid']
+                    source: rid(source),
+                    out: rid(record),
+                    in: rid(ATC[atcLevels[0].sourceId])
                 }, conn, {existsOk: true});
                 // link the subclassing
                 for (let i = 0; i < atcLevels.length - 1; i++) {
                     await addRecord('subclassof', {
-                        source: source['@rid'],
-                        out: ATC[atcLevels[i].sourceId]['@rid'],
-                        in: ATC[atcLevels[i + 1].sourceId]['@rid']
+                        source: rid(source),
+                        out: rid(ATC[atcLevels[i].sourceId]),
+                        in: rid(ATC[atcLevels[i + 1].sourceId])
                     }, conn, {existsOk: true});
                 }
             }
             // link to the FDA UNII
-            if (FDA) {
+            if (fdaSource) {
                 for (const unii of drug.unii) {
                     let fdaRec;
                     try {
-                        fdaRec = await getRecordBy('therapies', {source: FDA['@rid'], sourceId: unii}, conn);
+                        fdaRec = await getRecordBy('therapies', {source: rid(fdaSource), sourceId: unii}, conn);
                     } catch (err) {
-                        process.stdout.write('?');
+                        process.stdout.write('x');
                     }
                     if (fdaRec) {
-                        await addRecord('aliasof', {source: source['@rid'], out: record['@rid'], in: fdaRec['@rid']}, conn, {existsOk: true});
+                        await addRecord('aliasof', {
+                            source: rid(source), out: rid(record), in: rid(fdaRec)
+                        }, conn, {existsOk: true});
                     }
                 }
             }
@@ -197,4 +190,4 @@ const uploadDrugBank = async ({filename, conn}) => {
     console.log();
 };
 
-module.exports = {uploadDrugBank};
+module.exports = {uploadFile};

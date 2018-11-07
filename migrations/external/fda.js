@@ -12,29 +12,31 @@
  * @module migrations/external/fda
  */
 
-const parse = require('csv-parse/lib/sync');
-const fs = require('fs');
-const {addRecord, getRecordBy, orderPreferredOntologyTerms} = require('./util');
+const {
+    addRecord, getRecordBy, orderPreferredOntologyTerms, loadDelimToJson, rid
+} = require('./util');
 
-const upload = async (opt) => {
+const SOURCE_NAME = 'fda';
+
+/**
+ * Given the TAB delimited UNII records file. Load therapy records and NCIT links
+ *
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input file
+ * @param {ApiRequest} opt.conn the api connection object
+ */
+const uploadFile = async (opt) => {
     const {filename, conn} = opt;
-    console.log(`loading: ${filename}`);
-    const content = fs.readFileSync(filename, 'utf8');
-    console.log('parsing into json');
-    const jsonList = parse(content, {
-        delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true
-    });
-    const source = await addRecord('sources', {name: 'FDA', url: 'https://fdasis.nlm.nih.gov/srs'}, conn, {existsOk: true});
-    let NCIT;
+    const jsonList = await loadDelimToJson(filename);
+    const source = await addRecord('sources', {name: SOURCE_NAME, url: 'https://fdasis.nlm.nih.gov/srs'}, conn, {existsOk: true});
+    let ncitSource;
     try {
-        NCIT = await getRecordBy('sources', {name: 'NCIT'}, conn);
+        ncitSource = await getRecordBy('sources', {name: 'NCIT'}, conn);
     } catch (err) {
-        console.log(err);
-        process.stdout.write('?');
+        process.stdout.write('x');
     }
     console.log(`\nloading ${jsonList.length} records`);
     let skipCount = 0;
-
     for (const record of jsonList) {
         if (record.NCIT.length === 0 && !/\S+[mn][ia]b\b/i.exec(record.PT)) {
             skipCount++;
@@ -46,9 +48,9 @@ const upload = async (opt) => {
         }
         // only load records with at min these 3 values filled out
         const drug = await addRecord('therapies', {
-            name: record.PT, sourceId: record.UNII, source: source['@rid']
+            name: record.PT, sourceId: record.UNII, source: rid(source)
         }, conn, {existsOk: true});
-        if (NCIT && record.NCIT.length) {
+        if (ncitSource && record.NCIT.length) {
             let ncitRec;
             try {
                 ncitRec = await getRecordBy('therapies', {source: {name: 'ncit'}, sourceId: record.NCIT}, conn, orderPreferredOntologyTerms);
@@ -57,9 +59,9 @@ const upload = async (opt) => {
             }
             if (ncitRec) {
                 await addRecord('aliasof', {
-                    source: source['@rid'],
-                    out: drug['@rid'],
-                    in: ncitRec['@rid']
+                    source: rid(source),
+                    out: rid(drug),
+                    in: rid(ncitRec)
                 }, conn, {existsOk: true});
             }
         }
@@ -67,4 +69,4 @@ const upload = async (opt) => {
     console.log(`\nskipped ${skipCount} records`);
 };
 
-module.exports = {upload};
+module.exports = {uploadFile};

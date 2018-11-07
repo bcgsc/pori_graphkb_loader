@@ -40,13 +40,19 @@
  *
  * @module migrations/external/hgnc
  */
-const {getRecordBy, addRecord} = require('./util');
+const {getRecordBy, addRecord, rid} = require('./util');
 
 
 const SOURCE_NAME = 'hgnc';
 const CLASS_NAME = 'features';
 
-const uploadHugoGenes = async (opt) => {
+/**
+ * Upload the HGNC genes and ensembl links
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input JSON file
+ * @param {ApiRequest} opt.conn the API connection object
+ */
+const uploadFile = async (opt) => {
     console.log('Loading the external HGNC data');
     const {filename, conn} = opt;
     console.log(`loading: ${filename}`);
@@ -57,10 +63,10 @@ const uploadHugoGenes = async (opt) => {
     const deprecatedBy = [];
     const records = {};
     let source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
-    source = source['@rid'].toString();
+    source = rid(source);
     let ensemblSource;
     try {
-        ensemblSource = getRecordBy('sources', {name: 'ensembl'}, conn);
+        ensemblSource = await getRecordBy('sources', {name: 'ensembl'}, conn);
     } catch (err) {
         console.log('Unable to fetch ensembl source for llinking records:', err);
     }
@@ -84,7 +90,7 @@ const uploadHugoGenes = async (opt) => {
         if (gene.ensembl_gene_id && ensemblSource) {
             try {
                 const ensembl = await getRecordBy(CLASS_NAME, {source: 'ensembl', biotype: 'gene', sourceId: gene.ensembl_gene_id}, conn);
-                ensemblLinks.push({src: record['@rid'], tgt: ensembl['@rid']});
+                ensemblLinks.push({src: rid(record), tgt: rid(ensembl)});
             } catch (err) {
                 process.stdout.write('x');
             }
@@ -93,7 +99,7 @@ const uploadHugoGenes = async (opt) => {
             const related = await addRecord(CLASS_NAME, {
                 source,
                 sourceId: record.sourceId,
-                dependency: record['@rid'].toString(),
+                dependency: rid(record),
                 deprecated: true,
                 biotype: record.biotype,
                 name: symbol
@@ -103,7 +109,7 @@ const uploadHugoGenes = async (opt) => {
                     source, sourceId: record.sourceId, name: symbol, deprecated: true
                 }
             });
-            deprecatedBy.push({src: related['@rid'], tgt: record['@rid']});
+            deprecatedBy.push({src: rid(related), tgt: rid(record)});
         }
         for (const symbol of gene.alias_symbol || []) {
             try {
@@ -112,14 +118,14 @@ const uploadHugoGenes = async (opt) => {
                     name: symbol,
                     sourceId: record.sourceId,
                     biotype: record.biotype,
-                    dependency: record['@rid'].toString()
+                    dependency: rid(record)
                 }, conn, {
                     existsOk: true,
                     getWhere: {
                         source, sourceId: record.sourceId, name: symbol
                     }
                 });
-                aliasOf.push({src: record['@rid'], tgt: related['@rid']});
+                aliasOf.push({src: rid(record), tgt: rid(related)});
             } catch (err) {
                 process.stdout.write('x');
             }
@@ -142,4 +148,4 @@ const uploadHugoGenes = async (opt) => {
     console.log();
 };
 
-module.exports = {uploadHugoGenes};
+module.exports = {uploadFile};

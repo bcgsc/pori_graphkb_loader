@@ -4,7 +4,11 @@
  */
 const request = require('request-promise');
 const jc = require('json-cycle');
+const fs = require('fs');
 const _ = require('lodash');
+const parse = require('csv-parse/lib/sync');
+const xml2js = require('xml2js');
+
 
 const convertNulls = (where) => {
     const queryParams = {};
@@ -103,7 +107,7 @@ const addRecord = async (className, where, conn, optIn = {}) => {
         return newRecord.result;
     } catch (err) {
         err.error = jc.retrocycle(err.error);
-        if (opt.verbose) {
+        if (opt.verbose || process.env.VERBOSE == '1') {
             console.log('Record Attempted');
             console.log(where);
             if (err.error.current) {
@@ -224,7 +228,7 @@ const getPubmedArticle = async (pmid) => {
 };
 
 
-const convertOwlGraphToJson = (graph, idParser) => {
+const convertOwlGraphToJson = (graph, idParser = x => x) => {
     const initialRecords = {};
     for (const statement of graph.statements) {
         let src;
@@ -265,6 +269,47 @@ const convertOwlGraphToJson = (graph, idParser) => {
     return nodesByCode;
 };
 
+
+const loadDelimToJson = async (filename, delim = '\t') => {
+    console.log(`loading: ${filename}`);
+    const content = fs.readFileSync(filename, 'utf8');
+    console.log('parsing into json');
+    const jsonList = parse(content, {
+        delimiter: delim, escape: null, quote: null, comment: '##', columns: true, auto_parse: true
+    });
+    return jsonList;
+};
+
+
+const loadXmlToJson = (filename) => {
+    console.log(`reading: ${filename}`);
+    const xmlContent = fs.readFileSync(filename).toString();
+    console.log(`parsing: ${filename}`);
+    return new Promise((resolve, reject) => {
+        xml2js.parseString(xmlContent, (err, result) => {
+            console.log(err);
+            if (err !== null) {
+                reject(err);
+            } else {
+                resolve(result);
+            }
+        });
+    });
+};
+
+
+const rid = record => record['@rid'].toString();
+
+
 module.exports = {
-    addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs
+    rid,
+    addRecord,
+    getRecordBy,
+    convertOwlGraphToJson,
+    orderPreferredOntologyTerms,
+    getPubmedArticle,
+    preferredDiseases,
+    preferredDrugs,
+    loadDelimToJson,
+    loadXmlToJson
 };

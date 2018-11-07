@@ -618,7 +618,8 @@ const SCHEMA_DEFN = {
             {name: 'refSeq', type: 'string'},
             {name: 'untemplatedSeq', type: 'string'},
             {name: 'untemplatedSeqSize', type: 'integer'}, // for when we know the number of bases inserted but not what they are
-            {name: 'truncation', type: 'integer'}
+            {name: 'truncation', type: 'integer'},
+            {name: 'assembly', type: 'string'} // hg19, GRhg38
         ],
         indices: [
             {
@@ -637,7 +638,8 @@ const SCHEMA_DEFN = {
                     'untemplatedSeq',
                     'untemplatedSeqSize',
                     'zygosity',
-                    'truncation'
+                    'truncation',
+                    'assembly'
                 ],
                 class: 'PositionalVariant'
             },
@@ -835,7 +837,8 @@ const SCHEMA_DEFN = {
         'OppositeOf',
         'SubClassOf',
         'SupportedBy',
-        'TargetOf'
+        'TargetOf',
+        'GeneralizationOf'
     ]) {
         const sourceProp = {name: 'source', type: 'link', linkedClass: 'Source'};
         if (!['SupportedBy', 'Implies'].includes(name)) {
