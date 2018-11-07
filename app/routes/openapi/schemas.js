@@ -1,4 +1,7 @@
 
+/**
+ * reuseable schema objects (components/schemas)
+ */
 const PutativeEdge = {
     type: 'object',
     properties: {

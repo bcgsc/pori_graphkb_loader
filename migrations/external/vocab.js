@@ -165,7 +165,12 @@ const VOCABULARY = [
     {name: 'wild type', subclassof: ['no functional effect']}
 ];
 
-
+/**
+ * Upload the JSON constant above into GraphKB
+ *
+ * @param {object} opt options
+ * @param {ApiRequest} opt.conn the database connection object for GraphKB
+ */
 const upload = async (opt) => {
     const {conn} = opt;
     console.log('Loading custom vocabulary terms');

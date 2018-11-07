@@ -22,12 +22,20 @@ const HEADER = {
     geneNameSource: 'Source of gene name'
 };
 
+const SOURCE_NAME = 'ensembl';
 
+/**
+ * Given a TAB delmited biomart export of Ensembl data, upload the features to GraphKB
+ *
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the tab delimited export file
+ * @param {ApiRequest} opt.conn the api connection object
+ */
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;
     const contentList = await loadDelimToJson(filename);
 
-    const source = await addRecord('sources', {name: 'ensembl'}, conn, {existsOk: true});
+    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
     let refseqSource;
     try {
         refseqSource = await getRecordBy('sources', {name: 'refseq'}, conn);

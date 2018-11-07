@@ -46,6 +46,12 @@ const {getRecordBy, addRecord, rid} = require('./util');
 const SOURCE_NAME = 'hgnc';
 const CLASS_NAME = 'features';
 
+/**
+ * Upload the HGNC genes and ensembl links
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input JSON file
+ * @param {ApiRequest} opt.conn the API connection object
+ */
 const uploadFile = async (opt) => {
     console.log('Loading the external HGNC data');
     const {filename, conn} = opt;

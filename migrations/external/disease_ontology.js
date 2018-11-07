@@ -37,7 +37,9 @@ const parseDoVersion = (version) => {
 /**
  * Parses the disease ontology json for disease definitions, relationships to other DO diseases and relationships to NCI disease terms
  *
- * @param {Object} opt
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input JSON file
+ * @param {ApiRequest} opt.conn the api connection object
  */
 const uploadFile = async ({filename, conn}) => {
     // load the DOID JSON

@@ -15,11 +15,22 @@ const {
 } = require('./util');
 
 
+const SOURCE_NAME = 'refseq';
+
+/**
+ * Parse the tab delimited file to upload features and their relationships
+ * For each versioned feature, a generalization (non-versioned) feature is created
+ * to facilitate linking from other sources where the version may not be given
+ *
+ * @param {object} opt options
+ * @param {string} opt.filename path to the tab delimited file
+ * @param {ApiRequest} opt.conn the api connection object
+ */
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;
     const json = await loadDelimToJson(filename);
 
-    const source = await addRecord('sources', {name: 'refseq'}, conn, {existsOk: true});
+    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
     for (const record of json) {
         // Load the RNA
         const [rnaName, rnaVersion] = record.RNA.split('.');

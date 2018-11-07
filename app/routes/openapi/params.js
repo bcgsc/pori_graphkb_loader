@@ -1,3 +1,7 @@
+/**
+ * Parameter definitions (components/params) for use in generating the swagger specification
+ */
+
 const GENERAL_QUERY_PARAMS = {
     neighbors: {
         in: 'query',

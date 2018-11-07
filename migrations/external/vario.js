@@ -1,9 +1,13 @@
+/**
+ * @module migrations/external/vario
+ */
+
 const rdf = require('rdflib');
 const fs = require('fs');
 
 
 const {
-    addRecord, convertOwlGraphToJson, getRecordBy, rid
+    addRecord, convertOwlGraphToJson, rid
 } = require('./util');
 
 
@@ -14,7 +18,21 @@ const PREDICATES = {
     description: 'http://purl.obolibrary.org/obo/IAO_0000115'
 };
 
+const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/vario.owl';
+const SOURCE_URL = 'http://variationontology.org';
+const SOURCE_NAME = 'VariO';
 
+/**
+ * Parse the ID from a url string
+ *
+ * @param {string} url the url to be parsed
+ * @returns {string} the ID string
+ * @throws {Error} when the string does not match the expected format
+ *
+ * @example
+ * > parseId(http://purl.obolibrary.org/obo/VariO_044)
+ * 'VariO_044'
+ */
 const parseId = (url) => {
     // http://purl.obolibrary.org/obo/VariO_044
     const match = /.*\/(VariO_\d+)$/.exec(url);
@@ -25,18 +43,25 @@ const parseId = (url) => {
 };
 
 
+/**
+ * Parse the input OWL file and upload the ontology to GraphKB via the API
+ *
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input OWL file
+ * @param {ApiRequest} opt.conn the api request connection object
+ */
 const uploadFile = async ({filename, conn}) => {
     console.log('Loading external NCIT data');
     console.log(`loading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
     console.log(`parsing: ${filename}`);
     const graph = rdf.graph();
-    rdf.parse(content, graph, 'http://purl.obolibrary.org/obo/vario.owl', 'application/rdf+xml');
+    rdf.parse(content, graph, OWL_NAMESPACE, 'application/rdf+xml');
     const nodesByCode = convertOwlGraphToJson(graph, parseId);
 
     const source = await addRecord('sources', {
-        url: 'http://variationontology.org',
-        name: 'VariO'
+        url: SOURCE_URL,
+        name: SOURCE_NAME
     }, conn, {existsOk: true});
 
     const recordsByCode = {};

@@ -9,6 +9,7 @@
  *
  *
  * Module for Loading content from the oncotree web API
+ * @module migrations/external/oncotree
  */
 
 const request = require('request-promise');
@@ -16,8 +17,16 @@ const {addRecord, getRecordBy, rid} = require('./util');
 
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
+const SOURCE_NAME = 'oncotree';
 
 
+/**
+ * Use the oncotree REST API to pull down ontology information and then load it into the GraphKB API
+ *
+ * @param {object} opt options
+ * @param {ApiRequest} opt.conn the GraphKB API connection object
+ * @param {string} opt.url the base url to use in connecting to oncotree
+ */
 const upload = async (opt) => {
     const {conn} = opt;
     console.log('\nRetrieving the oncotree metadata');
@@ -44,10 +53,10 @@ const upload = async (opt) => {
         json: true
     });
     const source = await addRecord('sources', {
-        name: 'oncotree',
+        name: SOURCE_NAME,
         version: sourceVersion,
         url: ONCOTREE_API
-    }, conn, {existsOk: true, getWhere: {name: 'oncotree'}});
+    }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME, version: sourceVersion}});
     const recordBySourceID = {};
     const subclassof = [];
     let ncitSource;
@@ -85,8 +94,8 @@ const upload = async (opt) => {
     }
     console.log('\nAdding subclass relationships');
     for (let {src, tgt} of subclassof) {
-        src = recordBySourceID[src]['@rid'];
-        tgt = recordBySourceID[tgt]['@rid'];
+        src = rid(recordBySourceID[src]);
+        tgt = rid(recordBySourceID[tgt]);
         await addRecord('subclassof', {out: src, in: tgt, source: rid(source)}, conn, {existsOk: true});
     }
     console.log();

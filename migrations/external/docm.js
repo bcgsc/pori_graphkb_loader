@@ -145,6 +145,13 @@ const processRecord = async (opt) => {
 };
 
 
+/**
+ * Uses the DOCM API to pull content, parse it and load it into GraphKB
+ *
+ * @param {object} opt options
+ * @param {ApiRequest} opt.conn the api connection object for GraphKB
+ * @param {string} [opt.url] the base url for the DOCM api
+ */
 const upload = async (opt) => {
     const {conn} = opt;
     // load directly from their api:

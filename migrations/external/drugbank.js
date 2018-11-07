@@ -87,16 +87,25 @@ const {
     addRecord, getRecordBy, loadXmlToJson, rid
 } = require('./util');
 
+const SOURCE_NAME = 'drugbank';
 
+
+/**
+ * Given the input XML file, load the resulting parsed ontology into GraphKB
+ *
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input XML file
+ * @param {ApiRequest} opt.conn the api connection object
+ */
 const uploadFile = async ({filename, conn}) => {
     console.log('Loading the external drugbank data');
     const xml = await loadXmlToJson(filename);
 
     const source = await addRecord('sources', {
-        name: 'drugbank',
+        name: SOURCE_NAME,
         usage: 'https://www.drugbank.ca/legal/terms_of_use',
         url: 'https://www.drugbank.ca'
-    }, conn, {existsOk: true, getWhere: {name: 'drugbank'}});
+    }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME}});
     console.log(`uploading ${xml.drugbank.drug.length} records`);
 
     const ATC = {};

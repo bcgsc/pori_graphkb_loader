@@ -1,3 +1,8 @@
+/**
+ * Route definition components (components/routes) that cannot be auto generated only from the schema
+ */
+
+
 const POST_STATEMENT = {
     summary: 'Add a new statement',
     tags: ['Statement'],
