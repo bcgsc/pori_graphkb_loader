@@ -95,7 +95,7 @@ describe('SCHEMA', () => {
                 break2Start: {'@class': 'ExonicPosition', pos: 1},
                 break2End: {'@class': 'ExonicPosition', pos: 3}
             }, {addDefaults: true});
-            expect(formatted).to.have.property('break1Repr', 'p.a1');
+            expect(formatted).to.have.property('break1Repr', 'p.A1');
             expect(formatted).to.have.property('break2Repr', 'e.(1_3)');
         });
         it('ignores the input breakrepr if given', () => {
@@ -106,7 +106,7 @@ describe('SCHEMA', () => {
                 break1Start: {'@class': 'ProteinPosition', pos: 1, refAA: 'A'},
                 break1Repr: 'bad'
             }, {addDefaults: true});
-            expect(formatted).to.have.property('break1Repr', 'p.a1');
+            expect(formatted).to.have.property('break1Repr', 'p.A1');
         });
     });
 });
