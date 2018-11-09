@@ -32,6 +32,7 @@ const INDEX_SEP_CHARS = ' \r\n\t:;,.|+*/\\=!?[]()'; // default separator chars f
 
 
 const trimString = x => x.toString().trim();
+const uppercase = x => x.toString().trim().toUpperCase();
 
 /**
  * Given some set of positions, create position object to check they are valid
@@ -503,7 +504,7 @@ const SCHEMA_DEFN = {
             {
                 name: 'pos', type: 'integer', min: 1, mandatory: true
             },
-            {name: 'refAA', type: 'string'}
+            {name: 'refAA', type: 'string', cast: uppercase}
         ]
     },
     CytobandPosition: {
@@ -605,7 +606,8 @@ const SCHEMA_DEFN = {
                 name: 'break1Repr',
                 type: 'string',
                 generated: true,
-                default: record => generateBreakRepr(record.break1Start, record.break1End)
+                default: record => generateBreakRepr(record.break1Start, record.break1End),
+                cast: string => `${string.slice(0, 2)}${string.slice(2).toUpperCase()}`
             },
             {name: 'break2Start', type: 'embedded', linkedClass: 'Position'},
             {name: 'break2End', type: 'embedded', linkedClass: 'Position'},
@@ -613,13 +615,19 @@ const SCHEMA_DEFN = {
                 name: 'break2Repr',
                 type: 'string',
                 generated: true,
-                default: record => generateBreakRepr(record.break2Start, record.break2End)
+                default: record => generateBreakRepr(record.break2Start, record.break2End),
+                cast: string => `${string.slice(0, 2)}${string.slice(2).toUpperCase()}`
             },
-            {name: 'refSeq', type: 'string'},
-            {name: 'untemplatedSeq', type: 'string'},
+            {name: 'refSeq', type: 'string', cast: uppercase},
+            {name: 'untemplatedSeq', type: 'string', cast: uppercase},
             {name: 'untemplatedSeqSize', type: 'integer'}, // for when we know the number of bases inserted but not what they are
             {name: 'truncation', type: 'integer'},
-            {name: 'assembly', type: 'string'} // hg19, GRhg38
+            {
+                name: 'assembly',
+                type: 'string',
+                choices: ['Hg18', 'Hg19/GRCh37', 'GrCh38'],
+                description: 'Flag which is optionally used for genomic variants that are not linked to a fixed assembly reference'
+            } // hg19, GRhg38
         ],
         indices: [
             {
