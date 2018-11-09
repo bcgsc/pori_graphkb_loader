@@ -17,6 +17,7 @@ const VOCABULARY = [
         name: 'any rna expression', subclassof: ['any expression'], aliasof: ['rna expression'], oppositeof: ['no rna expression']
     },
     {name: 'associated with'},
+    {name: 'benign', subclassof: ['biological']},
     {name: 'biological'},
     {name: 'copy gain', subclassof: ['copy variant'], aliasof: ['copy number gain']},
     {name: 'copy loss', subclassof: ['copy variant'], aliasof: ['copy number loss']},
@@ -74,6 +75,7 @@ const VOCABULARY = [
     {name: 'inversion', subclassof: ['structural variant']},
     {name: 'inverted translocation', subclassof: ['translocation']},
     {name: 'is characteristic of', subclassof: ['favours diagnosis'], description: 'a hallmark of this disease type'},
+    {name: 'likely benign', subclassof: ['benign']},
     {name: 'likely gain of function', subclassof: ['gain of function'], description: 'gain-of-function is predicted or assumed (by the literature) based on an inference of similar events or data'},
     {name: 'likely loss of function', subclassof: ['loss of function'], description: 'loss-of-function is predicted or assumed (by the literature) based on an inference of similar events or data'},
     {name: 'likely no functional effect', subclassof: ['no functional effect'], aliasof: ['likely neutral']},
@@ -127,8 +129,9 @@ const VOCABULARY = [
     {name: 'phosphorylation', subclassof: ['post-translational modification']},
     {name: 'polymorphism', subclassof: ['mutation']},
     {name: 'post-translational modification', subclassof: ['biological']},
-    {name: 'predisposing', subclassof: ['biological']},
+    {name: 'predisposing', subclassof: ['biological'], aliasof: ['risk factor']},
     {name: 'prognostic indicator'},
+    {name: 'protective', subclassof: ['benign'], description: 'protect against some disease or phenotype. Associated with decreased risk of the disease or phenotype'},
     {name: 'protein expression variant', subclassof: ['expression variant']},
     {name: 'recurrent', subclassof: ['biological'], description: 'commonly observed'},
     {name: 'reduced expression', subclassof: ['any expression'], aliasof: ['underexpression', 'down-regulated expression']},
@@ -162,7 +165,7 @@ const VOCABULARY = [
     {name: 'unfavourable prognosis', subclassof: ['prognostic indicator'], description: 'event is associated with a specifed, unfavouable outcome'},
     {name: 'weakly reduced function', subclassof: ['reduced function']},
     {name: 'weakly increased function', subclassof: ['increased function']},
-    {name: 'wild type', subclassof: ['no functional effect']}
+    {name: 'wild type', subclassof: ['no functional effect'], aliasof: ['wildtype']}
 ];
 
 /**
