@@ -15,6 +15,11 @@
  */
 const request = require('request-promise');
 const _ = require('lodash');
+
+
+const kbParser = require('knowledgebase-parser');
+
+
 const {
     addRecord,
     getRecordBy,
@@ -274,17 +279,13 @@ const processEvidenceRecord = async (opt) => {
             }
         );
     } catch (err) {
-        variant = await request(conn.request({
-            method: 'POST',
-            uri: 'parser/variant',
-            body: {
-                content: `${variant.startsWith('e.')
-                    ? ''
-                    : 'p.'}${variant}`
-            }
-        }));
-        const variantClass = await getRecordBy('vocabulary', {name: variant.result.type}, conn);
-        variant = Object.assign(variant.result, {
+        variant = kbParser.variant.parse(
+            `${variant.startsWith('e.')
+                ? ''
+                : 'p.'}${variant}`, false
+        ).toJSON();
+        const variantClass = await getRecordBy('vocabulary', {name: variant.type}, conn);
+        Object.assign(variant, {
             reference1: feature['@rid'],
             type: variantClass['@rid']
         });
