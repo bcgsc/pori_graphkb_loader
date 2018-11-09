@@ -84,7 +84,7 @@ const uploadFile = async (opt) => {
 
         await addRecord('generalizationof', {
             out: rid(gene), in: rid(versionedGene), source: rid(source)
-        }, conn, {existsOk: true});
+        }, conn, {existsOk: true, get: false});
 
         // transcript
         const versionedTranscript = await addRecord('features', {
@@ -101,15 +101,15 @@ const uploadFile = async (opt) => {
         }, conn, {existsOk: true});
         await addRecord('generalizationof', {
             out: rid(transcript), in: rid(versionedTranscript), source: rid(source)
-        }, conn, {existsOk: true});
+        }, conn, {existsOk: true, get: false});
 
         // transcript -> elementof -> gene
         await addRecord('elementof', {
             out: rid(transcript), in: rid(gene), source: rid(source)
-        }, conn, {existsOk: true});
+        }, conn, {existsOk: true, get: false});
         await addRecord('elementof', {
             out: rid(versionedTranscript), in: rid(versionedGene), source: rid(source)
-        }, conn, {existsOk: true});
+        }, conn, {existsOk: true, get: false});
 
         // TODO: protein
         // TODO: protein -> elementof -> transcript
@@ -124,7 +124,7 @@ const uploadFile = async (opt) => {
                 }, conn, orderPreferredOntologyTerms);
                 await addRecord('aliasof', {
                     out: rid(transcript), in: rid(refseq), source: rid(source)
-                }, conn, {existsOk: true});
+                }, conn, {existsOk: true, get: false});
             } catch (err) {
                 process.stdout.write(`[missing: ${record[HEADER.refseqId]}]`);
                 process.stdout.write('x');
@@ -140,7 +140,7 @@ const uploadFile = async (opt) => {
                 }, conn, orderPreferredOntologyTerms);
                 await addRecord('aliasof', {
                     out: rid(gene), in: rid(hgnc), source: rid(source)
-                }, conn, {existsOk: true});
+                }, conn, {existsOk: true, get: false});
             } catch (err) {
                 process.stdout.write(`[missing: ${record[HEADER.hgncId]}/${record.hgncName}]`);
                 process.stdout.write('x');
