@@ -86,12 +86,6 @@ const groupRecordsBy = (records, keysList, opt = {}) => {
 };
 
 
-const instanceOfRID = (rid) => {
-    if (rid instanceof RID) {
-        return true;}
-}
-
-
 module.exports = {
     groupRecordsBy,
     naturalListJoin,
