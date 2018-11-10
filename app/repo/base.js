@@ -359,6 +359,7 @@ const select = async (db, opt) => {
             queryOpt.fetchPlan = `${queryOpt.fetchPlan} history:${FETCH_OMIT}`;
         }
     }
+    logger.log('debug', JSON.stringify(queryOpt));
     let recordList = await db.query(`${statement}`, queryOpt).all();
 
     if (process.env.DEBUG === '1') {

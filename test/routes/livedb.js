@@ -8,7 +8,6 @@ const {
 } = require('chai');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const uuidV4 = require('uuid/v4');
 const HTTP_STATUS = require('http-status-codes');
 const jc = require('json-cycle');
 

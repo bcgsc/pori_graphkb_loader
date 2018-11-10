@@ -16,8 +16,6 @@ const conf = require('./../../config/livedb.js');
 
 const {select} = require('./../../app/repo/base');
 const {SCHEMA_DEFN} = require('./../../app/repo/schema');
-const {inspect} = require('util');
-const _ = require('lodash');
 
 
 conf.verbose = true;
