@@ -1,6 +1,6 @@
 /** @module app/repo/util */
 const {RID} = require('orientjs');
-const {error: {AttributeError}} = require('knowledgebase-schema');
+const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 
 /**
  * Join a list of strings as you would for putting into a sentence

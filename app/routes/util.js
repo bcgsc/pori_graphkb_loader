@@ -6,7 +6,7 @@ const jc = require('json-cycle');
 const _ = require('lodash');
 const escapeStringRegexp = require('escape-string-regexp');
 
-const {constants: {INDEX_SEP_CHARS}, util: {looksLikeRID}} = require('knowledgebase-schema');
+const {constants: {INDEX_SEP_CHARS}, util: {looksLikeRID}} = require('@bcgsc/knowledgebase-schema');
 
 
 const {

@@ -8,7 +8,7 @@ const jc = require('json-cycle');
 const request = require('request-promise');
 const moment = require('moment');
 
-const {constants: {PERMISSIONS}} = require('knowledgebase-schema');
+const {constants: {PERMISSIONS}} = require('@bcgsc/knowledgebase-schema');
 
 const {AuthenticationError, PermissionError} = require('./../repo/error');
 const {getUserByName} = require('./../repo/base');

@@ -3,7 +3,7 @@
  * @module app/repo/model
  */
 const orientjs = require('orientjs');
-const kbSchema = require('knowledgebase-schema');
+const kbSchema = require('@bcgsc/knowledgebase-schema');
 
 
 class Property extends kbSchema.Property {

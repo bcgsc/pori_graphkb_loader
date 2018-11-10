@@ -4,7 +4,7 @@
  */
 const _ = require('lodash');
 
-const {constants: {PERMISSIONS}, schema: SCHEMA_DEFN} = require('knowledgebase-schema');
+const {constants: {PERMISSIONS}, schema: SCHEMA_DEFN} = require('@bcgsc/knowledgebase-schema');
 
 const {logger} = require('./logging');
 const {ClassModel, Property} = require('./model');

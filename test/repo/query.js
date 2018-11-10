@@ -1,7 +1,7 @@
 const {expect} = require('chai');
 const {RID} = require('orientjs');
 
-const {util: {castToRID}} = require('knowledgebase-schema');
+const {util: {castToRID}} = require('@bcgsc/knowledgebase-schema');
 
 const {SCHEMA_DEFN} = require('./../../app/repo/schema');
 const {ClassModel, Property} = require('./../../app/repo/model');
