@@ -1,13 +1,15 @@
 const {expect} = require('chai');
 const {RID} = require('orientjs');
 
+const {util: {castToRID}} = require('knowledgebase-schema');
+
 const {SCHEMA_DEFN} = require('./../../app/repo/schema');
 const {ClassModel, Property} = require('./../../app/repo/model');
 const {
     Clause, Comparison, SelectionQuery, Follow
 } = require('./../../app/repo/query');
 const {RELATED_NODE_DEPTH} = require('./../../app/repo/base');
-const {castToRID} = require('./../../app/repo/util');
+
 
 const stripSQL = string => string.replace(/\s+\./g, '.').replace(/\s+/g, ' ');
 
@@ -971,7 +973,9 @@ describe('SelectionQuery', () => {
             const selectionQuery = SelectionQuery.parseQuery({model}, model);
             const {query, params} = selectionQuery.conditionClause('blargh', new Clause('OR', ['4:0', null]));
             expect(query).to.equal('blargh = :param0 OR blargh IS NULL');
-            expect(params).to.eql({param0: new RID('#4:0')});
+            expect(params.param0.toString()).to.eql('#4:0');
+            console.log(params.param0.name);
+            expect(params.param0).to.be.instanceof(RID);
         });
         it('defaults to OR statement', () => {
             const model = new ClassModel({

@@ -5,9 +5,11 @@
 const _ = require('lodash');
 const {RID} = require('orientjs');
 
+const {util: {castToRID}} = require('knowledgebase-schema');
+
 const {AttributeError} = require('./error');
 const {
-    quoteWrap, castToRID
+    quoteWrap
 } = require('./util');
 
 

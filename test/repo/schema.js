@@ -121,7 +121,7 @@ describe('ClassModel', () => {
         });
         it('error on abstract mismatch', () => {
             expect(() => {
-                model.compareToDbClass({
+                ClassModel.compareToDbClass(model, {
                     name: 'Pathway',
                     shortName: null,
                     defaultClusterId: -1,
@@ -132,7 +132,7 @@ describe('ClassModel', () => {
         });
         it('error on undefined property', () => {
             expect(() => {
-                model.compareToDbClass({
+                ClassModel.compareToDbClass(model, {
                     name: 'Pathway',
                     shortName: null,
                     defaultClusterId: 65,
@@ -143,7 +143,7 @@ describe('ClassModel', () => {
         });
         it('error on wrong property type', () => {
             expect(() => {
-                model.compareToDbClass({
+                ClassModel.compareToDbClass(model, {
                     name: 'Pathway',
                     shortName: null,
                     defaultClusterId: 65,

@@ -6,6 +6,9 @@ const jc = require('json-cycle');
 const _ = require('lodash');
 const escapeStringRegexp = require('escape-string-regexp');
 
+const {constants: {INDEX_SEP_CHARS}, util: {looksLikeRID}} = require('knowledgebase-schema');
+
+
 const {
     ErrorMixin, AttributeError, NoRecordFoundError, RecordExistsError
 } = require('./../repo/error');
@@ -16,8 +19,6 @@ const {
 const {
     Clause, Comparison
 } = require('./../repo/query');
-const {looksLikeRID} = require('./../repo/util');
-const {INDEX_SEP_CHARS} = require('./../repo/schema');
 const {checkClassPermissions} = require('./../middleware/auth');
 
 const MAX_JUMPS = 4; // fetchplans beyond 6 are very slow

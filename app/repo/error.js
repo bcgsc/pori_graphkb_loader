@@ -1,7 +1,7 @@
 
 
 /** @module app/repo/error */
-const {ErrorMixin} = require('knowledgebase-parser').error;
+const {error: {ErrorMixin}} = require('knowledgebase-parser');
 
 class AttributeError extends ErrorMixin {}
 
