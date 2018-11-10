@@ -44,27 +44,6 @@ describe('API', () => {
         mockToken = await auth.generateToken(db, admin.name, REALLY_LONG_TIME);
     });
 
-    describe('parser', () => {
-        it('parses a variant', async () => {
-            const res = await chai.request(app.app)
-                .post(`${app.prefix}/parser/variant`)
-                .type('json')
-                .send({
-                    content: 'KRAS:p.R12K'
-                });
-            expect(res.body).to.have.property('result');
-            expect(res.body.result).to.eql({
-                break1Start: {'@class': 'ProteinPosition', pos: 12, refAA: 'R'},
-                untemplatedSeq: 'K',
-                untemplatedSeqSize: 1,
-                refSeq: 'R',
-                type: 'substitution',
-                break1Repr: 'p.R12',
-                reference1: 'KRAS',
-                multiFeature: false
-            });
-        });
-    });
     describe('stats', () => {
         it('gathers table stats', async () => {
             const res = await chai.request(app.app)
