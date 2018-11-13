@@ -39,8 +39,8 @@ const getRecordBy = async (className, where, conn, sortFunc = () => 0) => {
     newRecord.sort(sortFunc);
     if (newRecord.length > 1) {
         if (sortFunc(newRecord[0], newRecord[1]) === 0) {
-            throw new Error(`\nexpected a single ${className} record: ${
-                where.name || where.sourceId || Object.keys(where)}`);
+            console.log(newRecord[0], newRecord[1]);
+            throw new Error(`expected a single ${className} record but found multiple: ${rid(newRecord[0])} and ${rid(newRecord[1])}`);
         }
     } else if (newRecord.length === 0) {
         throw new Error(`\nmissing ${className} record: ${where.name || where.sourceId || Object.entries(where)} (${where.sourceId})`);
@@ -92,7 +92,8 @@ const addRecord = async (className, where, conn, optIn = {}) => {
     const opt = Object.assign({
         existsOk: false,
         getWhere: null,
-        verbose: false
+        verbose: false,
+        get: true
     }, optIn);
     try {
         const newRecord = jc.retrocycle(await request(conn.request({
@@ -121,8 +122,11 @@ const addRecord = async (className, where, conn, optIn = {}) => {
             process.stdout.write(where.out && where.in
                 ? '='
                 : '*');
-            const result = await getRecordBy(className, opt.getWhere || where, conn);
-            return result;
+            if (opt.get) {
+                const result = await getRecordBy(className, opt.getWhere || where, conn);
+                return result;
+            }
+            return null;
         }
         throw err;
     }
@@ -138,6 +142,16 @@ const orderPreferredOntologyTerms = (term1, term2) => {
         return -1;
     } if (term2.dependency == null & term1.dependency != null) {
         return 1;
+    } if (term1.sourceId === term2.sourceId) {
+        if (term1.sourceIdVersion < term2.sourceIdVersion) {
+            return -1;
+        } if (term1.sourceIdVersion > term2.sourceIdVersion) {
+            return 1;
+        } if (term1.source.version < term2.source.version) {
+            return -1;
+        } if (term1.source.version > term2.source.version) {
+            return 1;
+        }
     }
     return 0;
 };
@@ -298,7 +312,7 @@ const loadXmlToJson = (filename) => {
 };
 
 
-const rid = record => record['@rid'].toString();
+const rid = record => (record['@rid'] || record).toString();
 
 
 module.exports = {

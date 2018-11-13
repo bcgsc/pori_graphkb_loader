@@ -255,8 +255,8 @@ describe('SelectionQuery', () => {
             const {query: statement} = query.toString();
             expect(statement).to.equal(stripSQL(
                 `SELECT * FROM Parent
-                WHERE inE('AliasOf').size() = :param0
-                AND name = :param1`
+                WHERE name = :param0
+                AND inE('AliasOf').size() = :param1`
             ));
         });
         it('has 3 aliasof edges (direction not specified)', () => {
@@ -267,8 +267,8 @@ describe('SelectionQuery', () => {
             const {query: statement} = query.toString();
             expect(statement).to.equal(stripSQL(
                 `SELECT * FROM Parent
-                WHERE bothE('AliasOf').size() = :param0
-                AND name = :param1`
+                WHERE name = :param0
+                AND bothE('AliasOf').size() = :param1`
             ));
         });
         it('size and direct edge properties (flattened)', () => {
@@ -406,7 +406,7 @@ describe('SelectionQuery', () => {
         const query = SelectionQuery.parseQuery(schema, schema.Parent, {name: new Comparison('blargh'), fuzzyMatch: 1, returnProperties: ['name', 'child']}, {activeOnly: true});
         const {query: statement} = query.toString();
         expect(statement).to.equal(stripSQL(
-            `SELECT name, child FROM (MATCH {class: Parent, where: (deletedAt IS NULL AND name = :param0)}
+            `SELECT name, child FROM (MATCH {class: Parent, where: (name = :param0 AND deletedAt IS NULL)}
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 1 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
             RETURN $pathElements)`
         ));
@@ -431,7 +431,7 @@ describe('SelectionQuery', () => {
         const query = SelectionQuery.parseQuery(schema, schema.Parent, {name: new Comparison('blargh'), fuzzyMatch: 1});
         const {query: statement} = query.toString();
         expect(statement).to.equal(stripSQL(
-            `MATCH {class: Parent, where: (deletedAt IS NULL AND name = :param0)}
+            `MATCH {class: Parent, where: (name = :param0 AND deletedAt IS NULL)}
             .both('AliasOf', 'DeprecatedBy'){while: ($depth < 1 AND deletedAt IS NULL), where: (deletedAt IS NULL)}
             RETURN $pathElements`
         ));
@@ -444,7 +444,7 @@ describe('SelectionQuery', () => {
     it('defaults to a select statement when no follow arguments are given (active Only)', () => {
         const query = SelectionQuery.parseQuery(schema, schema.Parent, {name: new Comparison('blargh')}, {activeOnly: true});
         const {query: statement} = query.toString();
-        expect(statement).to.equal('SELECT * FROM Parent WHERE deletedAt IS NULL AND name = :param0');
+        expect(statement).to.equal('SELECT * FROM Parent WHERE name = :param0 AND deletedAt IS NULL');
     });
     it('or two top level properties', () => {
         const query = SelectionQuery.parseQuery(

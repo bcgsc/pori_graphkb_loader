@@ -643,7 +643,28 @@ class SelectionQuery {
         const orConditions = [];
         const params = {};
         const conditionNames = Object.keys(this.conditions);
-        conditionNames.sort(); // parameters will have the same aliases
+        const sortCond = (cond1, cond2) => {
+            /**
+             * Order comparisons against the indexed parameters first (bug in 2.2.35 ODB where it does not use the index otherwise)
+             */
+            if (cond1 !== cond2) {
+                if (cond1 === 'sourceId') {
+                    return -1;
+                } if (cond2 === 'sourceId') {
+                    return 1;
+                } if (cond1 === 'name') {
+                    return -1;
+                } if (cond2 === 'name') {
+                    return 1;
+                } if (cond1 < cond2) {
+                    return -1;
+                } if (cond2 < cond1) {
+                    return 1;
+                }
+            }
+            return 0;
+        };
+        conditionNames.sort(sortCond); // parameters will have the same aliases
         for (const attr of conditionNames) {
             let clause;
             if (this.conditions[attr] instanceof SelectionQuery) {
