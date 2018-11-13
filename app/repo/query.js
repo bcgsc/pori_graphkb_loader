@@ -645,7 +645,7 @@ class SelectionQuery {
         const conditionNames = Object.keys(this.conditions);
         const sortCond = (cond1, cond2) => {
             /**
-             * Order comparisons against the indexed parameters first (bug in 2.2.35 ODB where it does not used the index otherwise)
+             * Order comparisons against the indexed parameters first (bug in 2.2.35 ODB where it does not use the index otherwise)
              */
             if (cond1 !== cond2) {
                 if (cond1 === 'sourceId') {
