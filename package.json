@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@bcgsc/knowledgebase-parser": "~0.4.0",
-    "@bcgsc/knowledgebase-schema": "^1.0.2",
+    "@bcgsc/knowledgebase-schema": "~1.0.0",
     "ajv": "^5.5.2",
     "bluebird": "^3.5.0",
     "body-parser": "^1.15.2",
