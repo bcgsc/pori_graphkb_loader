@@ -387,7 +387,7 @@ describe('SelectionQuery', () => {
                 schema.Parent,
                 {name: new Comparison('blargh'), fuzzyMatch: 1, badAttr: new Comparison(null)}
             );
-            console.log(query);
+            console.error(query);
         }).to.throw('unexpected attribute');
     });
     it('match in select when returnProperties and fuzzyMatch specified', () => {
@@ -974,7 +974,6 @@ describe('SelectionQuery', () => {
             const {query, params} = selectionQuery.conditionClause('blargh', new Clause('OR', ['4:0', null]));
             expect(query).to.equal('blargh = :param0 OR blargh IS NULL');
             expect(params.param0.toString()).to.eql('#4:0');
-            console.log(params.param0.name);
             expect(params.param0).to.be.instanceof(RID);
         });
         it('defaults to OR statement', () => {

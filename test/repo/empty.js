@@ -78,7 +78,7 @@ describe('schema', () => {
                     },
                     user: admin
                 });
-                console.log(record);
+                console.error(record);
             } catch (err) {
                 expect(err.message).to.include('missing required attribute source');
                 return;
