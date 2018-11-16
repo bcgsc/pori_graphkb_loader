@@ -5,6 +5,8 @@ const {
 } = require('chai');
 const uuidV4 = require('uuid/v4');
 
+
+const {util: {castToRID}} = require('@bcgsc/knowledgebase-schema');
 const {
     create,
     update,
@@ -15,9 +17,6 @@ const {
 const {
     RecordExistsError
 } = require('./../../app/repo/error');
-const {
-    castToRID
-} = require('./../../app/repo/util');
 const {
     setUpEmptyDB
 } = require('./../util');
@@ -79,7 +78,7 @@ describe('schema', () => {
                     },
                     user: admin
                 });
-                console.log(record);
+                console.error(record);
             } catch (err) {
                 expect(err.message).to.include('missing required attribute source');
                 return;

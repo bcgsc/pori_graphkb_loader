@@ -9,7 +9,6 @@ dist
 *zip
 *tar
 .vscode/
-test/data/
 id_rsa*
 out
 external_data

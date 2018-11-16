@@ -60,7 +60,7 @@ describe('SCHEMA', () => {
                     type: '#33:2',
                     createdBy: '#44:1'
                 }, {addDefaults: true});
-                console.log(formatted);
+                console.error(formatted);
             }).to.throw('missing required attribute');
         });
         it('error on position without @class attribute', () => {
@@ -71,7 +71,7 @@ describe('SCHEMA', () => {
                     type: '#33:2',
                     createdBy: '#44:1'
                 }, {addDefaults: true});
-                console.log(formatted);
+                console.error(formatted);
             }).to.throw('positions must include the @class attribute');
         });
         it('error on break2End without break2Start', () => {
@@ -83,7 +83,7 @@ describe('SCHEMA', () => {
                     break2End: {'@class': 'ProteinPosition', pos: 10, refAA: 'B'},
                     createdBy: '#44:1'
                 }, {addDefaults: true});
-                console.log(formatted);
+                console.error(formatted);
             }).to.throw('both start and end');
         });
         it('auto generates the breakRepr', () => {
@@ -121,7 +121,7 @@ describe('ClassModel', () => {
         });
         it('error on abstract mismatch', () => {
             expect(() => {
-                model.compareToDbClass({
+                ClassModel.compareToDbClass(model, {
                     name: 'Pathway',
                     shortName: null,
                     defaultClusterId: -1,
@@ -132,7 +132,7 @@ describe('ClassModel', () => {
         });
         it('error on undefined property', () => {
             expect(() => {
-                model.compareToDbClass({
+                ClassModel.compareToDbClass(model, {
                     name: 'Pathway',
                     shortName: null,
                     defaultClusterId: 65,
@@ -143,7 +143,7 @@ describe('ClassModel', () => {
         });
         it('error on wrong property type', () => {
             expect(() => {
-                model.compareToDbClass({
+                ClassModel.compareToDbClass(model, {
                     name: 'Pathway',
                     shortName: null,
                     defaultClusterId: 65,

@@ -7,6 +7,8 @@
 const _ = require('lodash');
 const {RID, RIDBag} = require('orientjs');
 
+const {constants: {PERMISSIONS}, util: {castToRID, timeStampNow}} = require('@bcgsc/knowledgebase-schema');
+
 const {logger} = require('./logging');
 const {SelectionQuery} = require('./query');
 const {SCHEMA_DEFN} = require('./schema');
@@ -19,9 +21,8 @@ const {
     PermissionError
 } = require('./error');
 const {
-    timeStampNow, castToRID, groupRecordsBy
+    groupRecordsBy
 } = require('./util');
-const {PERMISSIONS} = require('./constants');
 
 
 const STATS_GROUPING = new Set(['@class', 'source']);
@@ -358,6 +359,7 @@ const select = async (db, opt) => {
             queryOpt.fetchPlan = `${queryOpt.fetchPlan} history:${FETCH_OMIT}`;
         }
     }
+    logger.log('debug', JSON.stringify(queryOpt));
     let recordList = await db.query(`${statement}`, queryOpt).all();
 
     if (process.env.DEBUG === '1') {
