@@ -1,6 +1,7 @@
 /**
  * Parameter definitions (components/params) for use in generating the swagger specification
  */
+const {MAX_JUMPS, MAX_QUERY_LIMIT, DEFAULT_QUERY_LIMIT} = require('./constants');
 
 const GENERAL_QUERY_PARAMS = {
     neighbors: {
@@ -9,7 +10,7 @@ const GENERAL_QUERY_PARAMS = {
         schema: {
             type: 'integer',
             minimum: 0,
-            maximum: 4
+            maximum: MAX_JUMPS
         },
         description: 'Return neighbors of the selected node(s) up to \'n\' edges away. If this is set to 0, no neighbors will be returned. To collect all immediate neighbors this must be set to 2.'
     },
@@ -36,10 +37,10 @@ const GENERAL_QUERY_PARAMS = {
         schema: {
             type: 'integer',
             minimum: 1,
-            maximum: 1000
+            maximum: MAX_QUERY_LIMIT
         },
         description: 'Limits the number of records to return (useful for paginating queries)',
-        default: 100
+        default: DEFAULT_QUERY_LIMIT
     },
     skip: {
         in: 'query',
@@ -82,32 +83,6 @@ const ONTOLOGY_QUERY_PARAMS = {
             type: 'string'
         },
         description: 'Check if an ontology term belongs to a given subset'
-    },
-    fuzzyMatch: {
-        in: 'query',
-        name: 'fuzzyMatch',
-        schema: {
-            type: 'integer',
-            minimum: 0,
-            maximum: 4
-        },
-        description: 'Indicates that aliasof and deprecatedby links should be followed when matching ontology terms to \'n\' degrees away'
-    },
-    ancestors: {
-        in: 'query',
-        name: 'ancestors',
-        schema: {
-            type: 'string'
-        },
-        description: 'CSV list of edge class names for which to get all ancestors (follows ingoing edges) of any matched nodes'
-    },
-    descendants: {
-        in: 'query',
-        name: 'descendants',
-        schema: {
-            type: 'string'
-        },
-        description: 'CSV list of edge class names for which to get all descendants (follows outgoing edges) of any matched nodes'
     }
 };
 

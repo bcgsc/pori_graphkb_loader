@@ -1,5 +1,4 @@
 /** @module app/repo/util */
-const {RID} = require('orientjs');
 const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 
 /**

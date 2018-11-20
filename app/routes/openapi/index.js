@@ -11,8 +11,10 @@ const routes = require('./routes');
 const responses = require('./responses');
 const schemas = require('./schemas');
 const {GENERAL_QUERY_PARAMS, BASIC_HEADER_PARAMS, ONTOLOGY_QUERY_PARAMS} = require('./params');
+const {MAX_QUERY_LIMIT, MAX_JUMPS} = require('./constants');
 
 const ABOUT_FILE = path.join(__dirname, '../../../doc/openapi_intro.md');
+const SCHEMA_PREFIX = '#/components/schemas';
 
 
 const STUB = {
@@ -22,7 +24,6 @@ const STUB = {
         version: process.env.npm_package_version
     },
     paths: {
-        '/parser/variant': {post: routes.POST_PARSE_VARIANT},
         '/statements': {post: routes.POST_STATEMENT},
         '/token': {post: routes.POST_TOKEN},
         '/schema': {get: routes.GET_SCHEMA},
@@ -50,13 +51,13 @@ const STUB = {
             in: {
                 in: 'query',
                 name: 'in',
-                schema: {$ref: '#/components/schemas/RID'},
+                schema: {$ref: `${SCHEMA_PREFIX}/RID`},
                 description: 'The record ID of the vertex the edge goes into, the target/destination vertex'
             },
             out: {
                 in: 'query',
                 name: 'out',
-                schema: {$ref: '#/components/schemas/RID'},
+                schema: {$ref: `${SCHEMA_PREFIX}/RID`},
                 description: 'The record ID of the vertex the edge comes from, the source vertex'
             }
         },
@@ -81,10 +82,10 @@ const linkOrModel = (model, nullable = false) => {
         type: 'object',
         oneOf: [
             {
-                $ref: '#/components/schemas/@rid'
+                $ref: `${SCHEMA_PREFIX}/@rid`
             },
             {
-                $ref: `#/components/schemas/${model}`
+                $ref: `${SCHEMA_PREFIX}/${model}`
             }
         ]
     };
@@ -148,7 +149,7 @@ const describePost = (model) => {
         parameters: Array.from(Object.values(BASIC_HEADER_PARAMS), p => ({$ref: `#/components/parameters/${p.name}`})),
         requestBody: {
             required: true,
-            content: {'application/json': {schema: {$ref: `#/components/schemas/${model.name}`}}}
+            content: {'application/json': {schema: {$ref: `${SCHEMA_PREFIX}/${model.name}`}}}
         },
         responses: {
             201: {
@@ -158,7 +159,7 @@ const describePost = (model) => {
                         schema: {
                             type: 'object',
                             properties: {
-                                result: {$ref: `#/components/schemas/${model.name}`}
+                                result: {$ref: `${SCHEMA_PREFIX}/${model.name}`}
                             }
                         }
                     }
@@ -200,7 +201,7 @@ const describeGet = (model) => {
                             properties: {
                                 result: {
                                     type: 'array',
-                                    items: {$ref: `#/components/schemas/${model.name}`}
+                                    items: {$ref: `${SCHEMA_PREFIX}/${model.name}`}
                                 }
                             }
                         }
@@ -268,11 +269,11 @@ const describeGet = (model) => {
         }
         get.parameters.push(param);
         if (isLink && isList) {
-            param.schema.$ref = '#/components/schemas/RecordList';
+            param.schema.$ref = `${SCHEMA_PREFIX}/RecordList`;
         } else if (isLink) {
-            param.schema.$ref = '#/components/schemas/RecordLink';
+            param.schema.$ref = `${SCHEMA_PREFIX}/RecordLink`;
         } else if (prop.name === '@rid') {
-            param.schema.$ref = '#/components/schemas/@rid';
+            param.schema.$ref = `${SCHEMA_PREFIX}/@rid`;
         } else {
             param.schema.type = prop.type;
         }
@@ -299,7 +300,7 @@ const describeOperationByID = (model, operation = 'delete') => {
             [{
                 in: 'path',
                 name: 'rid',
-                schema: {$ref: '#/components/schemas/@rid'},
+                schema: {$ref: `${SCHEMA_PREFIX}/@rid`},
                 description: 'The record identifier',
                 example: '#34:1',
                 required: true
@@ -312,7 +313,7 @@ const describeOperationByID = (model, operation = 'delete') => {
                             type: 'object',
                             properties: {
                                 result: {
-                                    $ref: `#/components/schemas/${model.name}`
+                                    $ref: `${SCHEMA_PREFIX}/${model.name}`
                                 }
                             }
                         }
@@ -331,6 +332,58 @@ const describeOperationByID = (model, operation = 'delete') => {
     if (operation === 'get') {
         description.parameters.push({$ref: '#/components/parameters/neighbors'});
     }
+    return description;
+};
+
+
+/**
+ * Describe the main search endpoint for complex queries using POST
+ */
+const describePostSearch = (model) => {
+    const body = {
+        type: 'object',
+        properties: {
+            skip: {nullable: true, type: 'integer', min: 0},
+            activeOnly: {type: 'boolean', default: true},
+            where: {type: 'array', items: {$ref: `${SCHEMA_PREFIX}/Comparison`}},
+            returnProperties: {type: 'array', items: {type: 'string'}},
+            limit: {type: 'integer', min: 1, max: MAX_QUERY_LIMIT},
+            neighbors: {
+                type: 'integer',
+                min: 0,
+                max: MAX_JUMPS,
+                description: 'For the final query result, featch records up to this many links away (warning: may significantly increase query time)'
+            }
+        }
+    };
+    const description = {
+        summary: `Query ${model.name} records using complex query objects`,
+        tags: [model.name],
+        parameters: Array.from(Object.values(BASIC_HEADER_PARAMS), p => ({$ref: `#/components/parameters/${p.name}`})),
+        requestBody: {
+            required: true,
+            content: {'application/json': {schema: body}}
+        },
+        responses: {
+            200: {
+                content: {
+                    'application/json': {
+                        schema: {
+                            type: 'object',
+                            properties: {
+                                result: {
+                                    $ref: `${SCHEMA_PREFIX}/${model.name}`
+                                }
+                            }
+                        }
+                    }
+                }
+            },
+            401: {$ref: '#/components/responses/NotAuthorized'},
+            400: {$ref: '#/components/responses/BadInput'},
+            403: {$ref: '#/components/responses/Forbidden'}
+        }
+    };
     return description;
 };
 
@@ -376,6 +429,7 @@ const generateSwaggerSpec = (schema, metadata) => {
         }
         if (model.expose.QUERY && !docs.paths[model.routeName].get) {
             docs.paths[model.routeName].get = describeGet(model);
+            docs.paths[`${model.routeName}/search`] = {post: describePostSearch(model)};
         }
         if (model.expose.POST && !docs.paths[model.routeName].post) {
             docs.paths[model.routeName].post = describePost(model);
@@ -436,7 +490,7 @@ const generateSwaggerSpec = (schema, metadata) => {
                     Object.assign(propDefn, linkOrModel(prop.linkedClass.name));
                 }
             } else if (prop.type.includes('link')) {
-                propDefn.$ref = '#/components/schemas/RecordLink';
+                propDefn.$ref = `${SCHEMA_PREFIX}/RecordLink`;
                 propDefn.description = docs.components.schemas.RecordLink.description;
             } else {
                 propDefn.type = prop.type === 'long'

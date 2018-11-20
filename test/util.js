@@ -4,7 +4,8 @@ const OrientDB = require('orientjs');
 
 const {createSchema, loadSchema} = require('./../app/repo/schema');
 const {createUser} = require('./../app/repo/base');
-const {VERBOSE} = require('./../app/repo/util');
+
+const VERBOSE = process.env.VERBOSE === '1';
 const emptyConf = require('./../config/config');
 // connect to the orientdb server
 // connect to the db server
@@ -49,7 +50,7 @@ const setUpEmptyDB = async (conf = emptyConf, createDB = true) => {
             if (VERBOSE) {
                 console.log('creating the admin user');
             }
-            [user] = (await createUser(db, {
+            user = (await createUser(db, {
                 schema, model: schema.User, userName: 'admin', groupNames: ['admin']
             }));
             if (VERBOSE) {
