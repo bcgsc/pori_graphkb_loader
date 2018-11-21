@@ -254,13 +254,13 @@ describe('Comparison', () => {
             comp.validate();
             expect(comp.value).to.eql([1, 2, 3]);
         });
-        it('checks values against an enum for each value in an Array', () => {
+        it('checks values against an choices for each value in an Array', () => {
             const comp = new Comparison(
                 new Traversal({
                     attr: 'blargh',
                     property: {
                         iterable: true,
-                        enum: ['blargh', 'monkey']
+                        choices: ['blargh', 'monkey']
                     }
                 }),
                 ['blargh', 'monkey'],
@@ -268,13 +268,13 @@ describe('Comparison', () => {
             );
             comp.validate();
         });
-        it('Error on bad enum value in array', () => {
+        it('Error on bad choices value in array', () => {
             const comp = new Comparison(
                 new Traversal({
                     attr: 'blargh',
                     property: {
                         iterable: true,
-                        enum: ['blargh', 'modnkey']
+                        choices: ['blargh', 'modnkey']
                     }
                 }),
                 ['blargh', 'monkey'],

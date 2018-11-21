@@ -79,6 +79,9 @@ const formatTraversal = (attrList) => {
  * @returns {Object} the object representing the value as a query
  */
 const parseValue = (attr, value) => {
+    if (value instanceof Array) {
+        throw new AttributeError(`Cannot specify a query parameter (${attr.attr || attr}) more than once (${value.length})`);
+    }
     const clause = {operator: 'OR', comparisons: []};
     for (let subValue of value.split('|')) {
         let negate = false;
@@ -86,7 +89,7 @@ const parseValue = (attr, value) => {
             negate = true;
             subValue = subValue.slice(1);
         }
-        let operator = OPERATORS.EQ;
+        let operator;
 
         if (subValue.startsWith('~')) {
             // CONTAINSTEXT must be split on index separators or the search will not behave as expected on a fulltext index
@@ -95,11 +98,14 @@ const parseValue = (attr, value) => {
 
             if (INDEX_SEP_REGEX.exec(subValue)) { // contains a separator char, should split into AND clause
                 INDEX_SEP_REGEX.lastIndex = 0; // https://siderite.blogspot.com/2011/11/careful-when-reusing-javascript-regexp.html
-                const andClause = Array.from(
-                    subValue.split(INDEX_SEP_REGEX), word => ({
-                        attr, value: word, operator, negate
-                    })
-                );
+                const andClause = {
+                    operator: OPERATORS.AND,
+                    comparisons: Array.from(
+                        subValue.split(INDEX_SEP_REGEX), word => ({
+                            attr, value: word, operator, negate
+                        })
+                    )
+                };
                 if (andClause.comparisons.some(comp => comp.value.length < MIN_WORD_SIZE)) {
                     throw new AttributeError(
                         `Word is too short to query with ~ operator. Must be at least ${
@@ -109,7 +115,7 @@ const parseValue = (attr, value) => {
                         }`
                     );
                 }
-                clause.comparisons.push({operator: OPERATORS.AND, comparisons: andClause});
+                clause.comparisons.push(andClause);
                 continue; // added already
             } else if (subValue.length < MIN_WORD_SIZE) {
                 throw new AttributeError(
@@ -123,7 +129,7 @@ const parseValue = (attr, value) => {
             subValue = null;
         }
         clause.comparisons.push({
-            value: subValue, attr, operator, negate
+            value: subValue, attr, negate, operator
         });
     }
     if (clause.comparisons.length < 1) {

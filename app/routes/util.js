@@ -17,7 +17,7 @@ const {
 } = require('./../repo/base');
 const {checkClassPermissions} = require('./../middleware/auth');
 const {
-    Query, Clause, Comparison, Traversal
+    Query
 } = require('./../repo/query');
 
 const {parse: parseQueryLanguage} = require('./query');
@@ -30,6 +30,7 @@ const activeRidQuery = (schema, model, rid) => {
         ],
         activeOnly: true
     });
+    console.log(query);
     query.validate();
     return query;
 };
@@ -52,9 +53,13 @@ const queryRoute = (opt) => {
 
     router.get(model.routeName,
         async (req, res) => {
+            let query;
             try {
-                req.query = parseQueryLanguage(req.query);
+                query = Query.parse(schema, model, parseQueryLanguage(req.query));
+                query.validate();
+                // console.log(query.where.comparisons[0]);
             } catch (err) {
+                logger.log('debug', err);
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
@@ -62,11 +67,10 @@ const queryRoute = (opt) => {
                 return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
             }
             try {
-                const result = await select(db, Object.assign({
-                    model, user: req.user, schema
-                }, req.query));
+                const result = await select(db, query, {user: req.user});
                 return res.json(jc.decycle({result}));
             } catch (err) {
+                logger.log('debug', err);
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
@@ -157,6 +161,7 @@ const postRoute = (opt) => {
                 });
                 return res.status(HTTP_STATUS.CREATED).json(jc.decycle({result}));
             } catch (err) {
+                logger.log('debug', err.toString());
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } if (err instanceof RecordExistsError) {
@@ -252,11 +257,12 @@ const deleteRoute = (opt) => {
                 const query = activeRidQuery(schema, model, req.params.rid);
                 const result = await remove(
                     db, {
-                        query, user: req.user
+                        query, user: req.user, model
                     }
                 );
                 return res.json(jc.decycle({result}));
             } catch (err) {
+                logger.log('debug', err);
                 if (err instanceof AttributeError) {
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 } if (err instanceof NoRecordFoundError) {

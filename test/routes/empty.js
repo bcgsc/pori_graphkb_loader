@@ -106,7 +106,7 @@ describe('API', () => {
                     res = err;
                 }
                 expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
-                expect(res.response.body).to.have.property('name', 'InputValidationError');
+                expect(res.response.body).to.have.property('name', 'AttributeError');
             });
         });
         describe('POST /users', () => {
@@ -597,13 +597,6 @@ describe('API', () => {
                     .query({neighbors: 2, activeOnly: false});
                 expect(res.body.result).to.have.property('length', 6);
             });
-            it('query on related node', async () => {
-                const res = await chai.request(app.app)
-                    .get(`${app.prefix}/diseases`)
-                    .set('Authorization', mockToken)
-                    .query({aliasOf: {v: {name: 'bob'}}});
-                expect(res.body.result).to.have.property('length', 0);
-            });
         });
         describe('GET /ontologies', () => {
             beforeEach(async () => {
@@ -625,24 +618,6 @@ describe('API', () => {
                     .set('Authorization', mockToken);
                 expect(resp.body).to.have.property('result');
                 expect(resp.body.result).to.have.property('length', 1);
-            });
-            it('query by subsets list', async () => {
-                const resp = await chai.request(app.app)
-                    .get(`${app.prefix}/ontologies`)
-                    .type('json')
-                    .query({subsets: ['a', 'b']})
-                    .set('Authorization', mockToken);
-                expect(resp.body).to.have.property('result');
-                expect(resp.body.result).to.have.property('length', 1);
-            });
-            it('query by subsets list require all terms', async () => {
-                const resp = await chai.request(app.app)
-                    .get(`${app.prefix}/ontologies`)
-                    .type('json')
-                    .query({subsets: ['a', 'b', 'x']})
-                    .set('Authorization', mockToken);
-                expect(resp.body).to.have.property('result');
-                expect(resp.body.result).to.have.property('length', 0);
             });
             it('query by subset single term', async () => {
                 const resp = await chai.request(app.app)

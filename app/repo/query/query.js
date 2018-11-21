@@ -12,15 +12,23 @@ class Comparison {
      * @param {string} operator the operator to use for the comparison
      * @param {bool} negate if true then surround the comparison with a negation
      */
-    constructor(attr, value, operator = OPERATORS.EQ, negate = false) {
+    constructor(attr, value, operator, negate = false) {
         this.attr = attr;
         if (!(this.attr instanceof Traversal)) {
             this.attr = new Traversal(this.attr);
         }
+        if (operator === undefined) {
+            const prop = this.attr.terminalProperty();
+            if (prop && prop.iterable) {
+                if (!(value instanceof Array)) {
+                    this.operator = OPERATORS.CONTAINS;
+                }
+            }
+        }
         this.value = value;
-        this.operator = operator.toUpperCase();
+        this.operator = (this.operator || operator || OPERATORS.EQ).toUpperCase();
         this.negate = negate;
-        if (!Object.values(OPERATORS).includes(operator) || operator === OPERATORS.OR || operator === OPERATORS.AND) {
+        if (!Object.values(OPERATORS).includes(this.operator) || this.operator === OPERATORS.OR || this.operator === OPERATORS.AND) {
             throw new AttributeError(
                 `Invalid operator (${
                     operator
@@ -69,7 +77,7 @@ class Comparison {
         const validateValue = (value) => {
             if (prop) {
                 if (value !== null) {
-                    if (prop.enum && !prop.enum.includes(value)) {
+                    if (prop.choices && !prop.choices.includes(value)) {
                         throw new AttributeError(`Expect the property (${prop.name}) to be restricted to enum values but found: ${value}`);
                     }
                 }
@@ -189,7 +197,7 @@ class Query {
      * Builds the query statement for selecting or matching records from the database
      *
      * @param {string} modelName the model to be selected from
-     * @param {Array.<(Clause|Comparison)>} where object of property names linked to values, comparisons, or clauses
+     * @param {?Clause} where object of property names linked to values, comparisons, or clauses
      * @param {Object} opt Selection options
      * @param {Array} [opt.returnProperties] list of property names to return from the selection (instead of full records)
      *
@@ -251,7 +259,6 @@ class Query {
                 conditions.push(Clause.parse(schema, model, condition));
             } else {
                 // comparison
-                condition.operator = condition.operator || OPERATORS.EQ;
                 conditions.push(Comparison.parse(schema, model, condition));
             }
         }
@@ -278,6 +285,17 @@ class Query {
         const {where, ...queryOpt} = opt;
 
         return new this(model.name, conditions, queryOpt);
+    }
+
+    /**
+     * Given the contents of a record, create a query to select it from the DB
+     */
+    static parseRecord(schema, model, content = {}, opt = {}) {
+        const where = [];
+        for (const [key, value] of Object.entries(content || {})) {
+            where.push({attr: key, value});
+        }
+        return this.parse(schema, model, Object.assign({}, opt, {where}));
     }
 
     /**
