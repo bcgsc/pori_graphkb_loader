@@ -111,6 +111,15 @@ POST /api/statements/search
 }
 ```
 
+This becomes
+
+```SQL
+MATCH
+    {class: Disease, WHERE: (sourceId = 'cancer' AND deletedAt IS NULL)}
+        .both('AliasOf', 'GeneralizationOf', 'DeprecatedBy', 'CrossReferenceOf', 'ElementOf'){WHILE: ($depth < 3)}
+RETURN $pathElements
+```
+
 Note that the class must be given for subqueries or it will be assumed to be the same as the starting
 endpoint (in this case Statement).
 
