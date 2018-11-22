@@ -352,7 +352,7 @@ const describePostSearch = (model) => {
                 type: 'integer',
                 min: 0,
                 max: MAX_JUMPS,
-                description: 'For the final query result, featch records up to this many links away (warning: may significantly increase query time)'
+                description: 'For the final query result, fetch records up to this many links away (warning: may significantly increase query time)'
             }
         }
     };
