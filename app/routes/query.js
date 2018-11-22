@@ -267,7 +267,7 @@ const parse = (queryParams) => {
     // add conditions to regular level or to the top level or and parse values
     for (const condition of queryConditions) {
         let {attr} = condition;
-        if (compoundSyntax) {
+        if (typeof attr === 'string' && (compoundSyntax || attr.includes('.'))) {
             attr = parseCompoundAttr(attr);
         }
 

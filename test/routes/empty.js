@@ -81,6 +81,45 @@ describe('API', () => {
                 expect(res.body.result[0].name).to.equal('admin');
             });
         });
+        describe('POST /users/search', () => {
+            it('name', async () => {
+                const res = await chai.request(app.app)
+                    .post(`${app.prefix}/users/search`)
+                    .set('Authorization', mockToken)
+                    .type('json')
+                    .send({
+                        where: [
+                            {attr: 'name', value: 'admin'}
+                        ],
+                        neighbors: 1,
+                        limit: 10
+                    });
+                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res.body.result).to.be.a('array');
+                expect(res.body.result.length).to.equal(1);
+                expect(res.body.result[0].name).to.equal('admin');
+            });
+            it('BAD REQUEST for query params', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .post(`${app.prefix}/users/search?neighbors=1`)
+                        .set('Authorization', mockToken)
+                        .type('json')
+                        .send({
+                            where: [
+                                {attr: 'name', value: 'admin'}
+                            ],
+                            neighbors: 1,
+                            limit: 10
+                        });
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('name', 'AttributeError');
+            });
+        });
         describe('GET /features', () => {
             it('BAD REQUEST on invalid biotype', async () => {
                 let res;
