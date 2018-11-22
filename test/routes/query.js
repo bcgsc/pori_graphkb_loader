@@ -16,7 +16,7 @@ const {
     constants: {TRAVERSAL_TYPE, OPERATORS}, Query, Clause, Comparison, Traversal
 } = require('./../../app/repo/query');
 const {
-    flattenQueryParams, formatTraversal, parseValue, parse
+    flattenQueryParams, formatTraversal, parseValue, parse, parseCompoundAttr
 } = require('./../../app/routes/query');
 
 
@@ -135,6 +135,76 @@ describe('parseValue', () => {
                     attr: 'attr', value: 'monkeys', negate: true
                 }
             ]
+        });
+    });
+});
+
+
+describe('parseCompoundAttr', () => {
+    it('parses edge.link.direct', () => {
+        const parsed = parseCompoundAttr('out.vertex.name');
+        expect(parsed).to.eql({
+            type: 'EDGE',
+            direction: 'out',
+            child: {
+                attr: 'inV',
+                type: 'LINK',
+                child: {attr: 'name'}
+            }
+        });
+    });
+    it('parses edge with classes', () => {
+        const parsed = parseCompoundAttr('out(implies, supportedby).vertex.name');
+        expect(parsed).to.eql({
+            type: 'EDGE',
+            direction: 'out',
+            edges: ['implies', 'supportedby'],
+            child: {
+                attr: 'inV',
+                type: 'LINK',
+                child: {attr: 'name'}
+            }
+        });
+    });
+    it('parses edge without classes', () => {
+        const parsed = parseCompoundAttr('out().vertex.name');
+        expect(parsed).to.eql({
+            type: 'EDGE',
+            direction: 'out',
+            edges: [],
+            child: {
+                attr: 'inV',
+                type: 'LINK',
+                child: {attr: 'name'}
+            }
+        });
+    });
+    it('parses direct', () => {
+        const parsed = parseCompoundAttr('name');
+        expect(parsed).to.eql({
+            attr: 'name'
+        });
+    });
+    it('parses link.edge', () => {
+        const parsed = parseCompoundAttr('source.out(implies,supportedby)');
+        expect(parsed).to.eql({
+            attr: 'source',
+            type: 'LINK',
+            child: {
+                type: 'EDGE',
+                direction: 'out',
+                edges: ['implies', 'supportedby']
+            }
+        });
+    });
+    it('parses link.direct', () => {
+        const parsed = parseCompoundAttr('source.name');
+        expect(parsed).to.eql({
+            type: 'LINK',
+            attr: 'source',
+            child: {
+                attr: 'name'
+            }
         });
     });
 });
