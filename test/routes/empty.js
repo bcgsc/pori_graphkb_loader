@@ -629,6 +629,20 @@ describe('API', () => {
                 expect(res.body.result[0]).to.have.property('out_AliasOf');
                 expect(res.body.result[0].out_AliasOf).to.eql([]);
             });
+            it('neighborhood query returns both', async () => {
+                const res = await chai.request(app.app)
+                    .post(`${app.prefix}/diseases/search`)
+                    .set('Authorization', mockToken)
+                    .type('json')
+                    .send({
+                        type: 'neighborhood',
+                        where: {attr: 'sourceId', value: 'cancer'},
+                        neighbors: 2
+                    });
+                expect(res.body.result[0]).to.have.property('sourceId', 'cancer');
+                expect(res.body.result[0]).to.have.property('out_AliasOf');
+                expect(res.body.result[0].out_AliasOf).to.eql([]);
+            });
             it('includes deleted when not limited to active', async () => {
                 const res = await chai.request(app.app)
                     .get(`${app.prefix}/diseases`)
