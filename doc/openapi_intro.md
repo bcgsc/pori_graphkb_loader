@@ -70,25 +70,6 @@ Query all diseases created by the user with the username *'blargh'*
 /api/diseases?createdBy[name]=blargh
 ```
 
-### Query by Related Edges
-
-It can be useful to query a class based on its related vertices rather than its immeadiate properties.
-For example, a user might be interested in all statements that are related to disease 'pancreatic cancer'
-
-```text
-/api/statements?implies[v][name]=pancreatic cancer&implies[v][fuzzyMatch]=3
-```
-
-The above will match all statements implied by pancreatic cancer or any of its aliased/deprecated terms.
-
-A simpler query can also allow the user to query based on the immediate edge properties.
-
-```text
-/api/statements?supportedBy[level][name]=4a
-```
-
-The above would return all statments supported by evidence with an evidence level of 4a
-
 ### Query Using Special Query Parameters
 
 #### Neighbors

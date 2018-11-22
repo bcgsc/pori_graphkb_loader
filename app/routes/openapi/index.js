@@ -372,7 +372,8 @@ const describePostSearch = (model) => {
                             type: 'object',
                             properties: {
                                 result: {
-                                    $ref: `${SCHEMA_PREFIX}/${model.name}`
+                                    type: 'array',
+                                    items: {$ref: `${SCHEMA_PREFIX}/${model.name}`}
                                 }
                             }
                         }
