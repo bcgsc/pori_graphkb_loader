@@ -128,9 +128,13 @@ const parseValue = (attr, value) => {
         if (subValue === 'null') {
             subValue = null;
         }
-        clause.comparisons.push({
-            value: subValue, attr, negate, operator
-        });
+        const comp = {
+            value: subValue, attr, negate
+        };
+        if (operator !== undefined) {
+            comp.operator = operator;
+        }
+        clause.comparisons.push(comp);
     }
     if (clause.comparisons.length < 1) {
         throw new AttributeError(`Cannot define a comparison with no values ${attr}:${value}`);

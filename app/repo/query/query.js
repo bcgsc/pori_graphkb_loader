@@ -21,12 +21,12 @@ class Comparison {
             const prop = this.attr.terminalProperty();
             if (prop && prop.iterable) {
                 if (!(value instanceof Array)) {
-                    this.operator = OPERATORS.CONTAINS;
+                    operator = OPERATORS.CONTAINS;
                 }
             }
         }
         this.value = value;
-        this.operator = (this.operator || operator || OPERATORS.EQ).toUpperCase();
+        this.operator = (operator || OPERATORS.EQ).toUpperCase();
         this.negate = negate;
         if (!Object.values(OPERATORS).includes(this.operator) || this.operator === OPERATORS.OR || this.operator === OPERATORS.AND) {
             throw new AttributeError(
@@ -49,7 +49,7 @@ class Comparison {
     static parse(schema, model, opt) {
         const {
             attr, value, operator, negate
-        } = Object.assign({operator: OPERATORS.EQ, negate: false}, opt);
+        } = Object.assign({negate: false}, opt);
 
         const parsedAttr = Traversal.parse(schema, model, attr);
 

@@ -68,7 +68,6 @@ describe('parseValue', () => {
         expect(parsed).to.eql({
             attr: 'attr',
             value: 'blargh',
-            operator: OPERATORS.EQ,
             negate: false
         });
     });
@@ -77,7 +76,6 @@ describe('parseValue', () => {
         expect(parsed).to.eql({
             attr: 'attr',
             value: null,
-            operator: OPERATORS.EQ,
             negate: false
         });
     });
@@ -86,7 +84,6 @@ describe('parseValue', () => {
         expect(parsed).to.eql({
             attr: 'attr',
             value: null,
-            operator: OPERATORS.EQ,
             negate: false
         });
     });
@@ -95,7 +92,6 @@ describe('parseValue', () => {
         expect(parsed).to.eql({
             attr: 'attr',
             value: 'blargh',
-            operator: OPERATORS.EQ,
             negate: true
         });
     });
@@ -105,10 +101,10 @@ describe('parseValue', () => {
             operator: OPERATORS.OR,
             comparisons: [
                 {
-                    attr: 'attr', value: 'blargh', operator: OPERATORS.EQ, negate: false
+                    attr: 'attr', value: 'blargh', negate: false
                 },
                 {
-                    attr: 'attr', value: 'monkeys', operator: OPERATORS.EQ, negate: false
+                    attr: 'attr', value: 'monkeys', negate: false
                 }
             ]
         });
@@ -119,7 +115,7 @@ describe('parseValue', () => {
             operator: OPERATORS.OR,
             comparisons: [
                 {
-                    attr: 'attr', value: 'blargh', operator: OPERATORS.EQ, negate: false
+                    attr: 'attr', value: 'blargh', negate: false
                 },
                 {
                     attr: 'attr', value: 'monkeys', operator: OPERATORS.CONTAINSTEXT, negate: false
@@ -133,10 +129,10 @@ describe('parseValue', () => {
             operator: OPERATORS.OR,
             comparisons: [
                 {
-                    attr: 'attr', value: 'blargh', operator: OPERATORS.EQ, negate: false
+                    attr: 'attr', value: 'blargh', negate: false
                 },
                 {
-                    attr: 'attr', value: 'monkeys', operator: OPERATORS.EQ, negate: true
+                    attr: 'attr', value: 'monkeys', negate: true
                 }
             ]
         });
@@ -168,10 +164,10 @@ describe('parse', () => {
                 operator: OPERATORS.OR,
                 comparisons: [
                     {
-                        attr: 'sourceId', value: 'blargh', operator: OPERATORS.EQ, negate: false
+                        attr: 'sourceId', value: 'blargh', negate: false
                     },
                     {
-                        attr: 'name', value: 'monkeys', operator: OPERATORS.EQ, negate: false
+                        attr: 'name', value: 'monkeys', negate: false
                     }
                 ]
             }]
@@ -186,8 +182,7 @@ describe('parse', () => {
                 {
                     attr: {attr: 'source', type: 'LINK', child: {attr: 'name'}},
                     value: 'disease ontology',
-                    negate: false,
-                    operator: OPERATORS.EQ
+                    negate: false
                 },
                 {
                     attr: 'name',
