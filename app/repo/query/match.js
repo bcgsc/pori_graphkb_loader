@@ -5,7 +5,7 @@
 const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 const {quoteWrap} = require('./../util');
 
-const {NEIGHBORHOOD_EDGES} = require('./constants');
+const {NEIGHBORHOOD_EDGES, MAX_TRAVEL_DEPTH, RELATED_NODE_DEPTH} = require('./constants');
 
 
 /**
@@ -18,9 +18,10 @@ const {NEIGHBORHOOD_EDGES} = require('./constants');
  */
 const treeQuery = (opt) => {
     const {
-        whereClause, modelName, paramIndex, direction
+        whereClause, modelName, paramIndex, direction, depth
     } = Object.assign({
-        paramIndex: 0
+        paramIndex: 0,
+        depth: MAX_TRAVEL_DEPTH
     }, opt);
     const edges = opt.edges || ['SubclassOf'];
 
@@ -32,7 +33,7 @@ const treeQuery = (opt) => {
     const edgeList = Array.from(edges, quoteWrap).join(', ');
     const statement = `MATCH
     {class: ${modelName}, WHERE: (${query})}
-        .${direction}(${edgeList}){WHILE: (${direction}(${edgeList}).size() > 0)}
+        .${direction}(${edgeList}){WHILE: (${direction}(${edgeList}).size() > 0 AND $depth < ${depth})}
 RETURN $pathElements`;
     return {query: statement, params};
 };
@@ -52,7 +53,7 @@ const neighborhood = (opt) => {
         paramIndex: 0
     }, opt);
     const edges = opt.edges || NEIGHBORHOOD_EDGES;
-    const depth = opt.depth || 3;
+    const depth = opt.depth || RELATED_NODE_DEPTH;
 
     const {query, params} = whereClause.toString(paramIndex);
     const statement = `MATCH

@@ -12,7 +12,7 @@ describe('treeQuery', () => {
             modelName: 'Disease',
             edges: ['AliasOf']
         });
-        expect(stripSQL(query)).to.equal('MATCH {class: Disease, WHERE: (name = :param0)}.out(\'AliasOf\'){WHILE: (out(\'AliasOf\').size() > 0)} RETURN $pathElements');
+        expect(stripSQL(query)).to.equal('MATCH {class: Disease, WHERE: (name = :param0)}.out(\'AliasOf\'){WHILE: (out(\'AliasOf\').size() > 0 AND $depth < 50)} RETURN $pathElements');
         expect(params).to.eql({param0: 'blargh'});
     });
 });

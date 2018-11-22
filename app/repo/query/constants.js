@@ -1,4 +1,5 @@
 const RELATED_NODE_DEPTH = 3;
+const MAX_TRAVEL_DEPTH = 50;
 const PARAM_PREFIX = 'param';
 const FUZZY_CLASSES = ['AliasOf', 'DeprecatedBy'];
 const SPECIAL_QUERY_ARGS = new Set([
@@ -59,5 +60,6 @@ module.exports = {
     DIRECTIONS,
     NEIGHBORHOOD_EDGES,
     TRAVERSAL_TYPE,
-    SIZE_COMPUTATION
+    SIZE_COMPUTATION,
+    MAX_TRAVEL_DEPTH
 };
