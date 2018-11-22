@@ -81,6 +81,56 @@ const queryRoute = (opt) => {
 };
 
 /**
+ * Complex query endpoint for searching via POST
+ *
+ * @param {Object} opt
+ * @param {orientjs.Db} opt.db the database connection
+ * @param {express.Router} opt.router the router to ad the route to
+ * @param {ClassModel} opt.model the model the route is being built for
+ * @param {Object.<string,ClassModel>} opt.schema the mapping of class names to models
+ *
+ */
+const searchRoute = (opt) => {
+    const {
+        router, model, db, schema
+    } = opt;
+    logger.log('verbose', `NEW ROUTE [SEARCH] ${model.routeName}/search`);
+
+    router.post(`${model.routeName}/search`,
+        async (req, res) => {
+            if (!_.isEmpty(req.query)) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(new AttributeError(
+                    {message: 'No query parameters are allowed for this query type', params: req.query}
+                ));
+            }
+            let query;
+            try {
+                query = Query.parse(schema, model, req.body);
+                query.validate();
+            } catch (err) {
+                logger.log('debug', err);
+                if (err instanceof AttributeError) {
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                }
+                logger.log('error', err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+            }
+            try {
+                const result = await select(db, query, {user: req.user});
+                return res.json(jc.decycle({result}));
+            } catch (err) {
+                logger.log('debug', err);
+                if (err instanceof AttributeError) {
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                }
+                logger.log('error', err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+            }
+        });
+};
+
+
+/**
  * Get a record by RID
  *
  * @param {Object} opt
@@ -297,6 +347,7 @@ const addResourceRoutes = (opt) => {
 
     if (model.expose.QUERY) {
         queryRoute(opt);
+        searchRoute(opt);
     }
     if (model.expose.GET) {
         getRoute(opt);
