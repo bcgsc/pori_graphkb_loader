@@ -79,16 +79,23 @@ class Traversal {
                 throw new AttributeError(`Invalid direction (${parsed.direction})`);
             }
             return parsed;
-        } if (attr.type === TRAVERSAL_TYPE.LINK && attr.child) { // Link without a child is the same as a direct attr
+        }
+        const optAttr = {attr: attr.attr || attr};
+
+        const matchbuiltIn = /^(in|out|both)([V])?(\(\))?$/.exec(optAttr.attr);
+
+        if (matchbuiltIn) {
+            optAttr.cast = castToRID;
+            optAttr.attr = `${matchbuiltIn[1]}V()`;
+        }
+
+        if (attr.child) { // Link without a child is the same as a direct attr
             // Linked class property or direct attribute
             if (!attr.attr) {
                 throw new AttributeError('attr is a required property for link-type traversals');
             }
             const {child} = attr;
-            const optAttr = {
-                attr: attr.attr,
-                type: attr.type
-            };
+            optAttr.type = TRAVERSAL_TYPE.LINK;
             if (prop) {
                 optAttr.property = prop;
                 if (!prop.linkedClass) {
@@ -96,9 +103,7 @@ class Traversal {
                 } else {
                     optAttr.child = this.parse(schema, prop.linkedClass, child);
                 }
-            } else if (['out', 'in', 'outV', 'inV', 'bothV', 'both'].includes(attr.attr)) {
-                optAttr.cast = castToRID;
-                optAttr.attr = `${attr.attr}()`;
+            } else if (matchbuiltIn) {
                 optAttr.child = this.parse(schema, null, child);
             } else {
                 throw new AttributeError(`The expected property (${attr.attr}) has no definition`);
@@ -107,9 +112,6 @@ class Traversal {
             return new this(optAttr);
         }
         // Direct attribute
-        const optAttr = Object.assign({}, typeof attr === 'string'
-            ? {attr}
-            : attr);
         if (prop) {
             optAttr.property = prop;
         } else if (optAttr.attr === SIZE_COMPUTATION) {

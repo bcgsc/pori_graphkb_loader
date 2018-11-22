@@ -192,7 +192,7 @@ const parseCompoundAttr = (compoundAttr) => {
         if (curr.type === undefined) {
             curr.type = TRAVERSAL_TYPE.LINK;
         }
-        const match = /^(in|out|both)(\(([^)]*)\))?$/.exec(attr);
+        const match = /^(in|out|both)E?(\(([^)]*)\))?$/.exec(attr);
         if (match) {
             curr.child = {
                 type: TRAVERSAL_TYPE.EDGE,
