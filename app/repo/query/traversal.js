@@ -54,7 +54,7 @@ class Traversal {
         }
         const prop = properties[attr.attr || attr]; // property associated with this attr
 
-        if (attr.type === TRAVERSAL_TYPE.EDGE) {
+        if (attr.type === TRAVERSAL_TYPE.EDGE || attr.edges || attr.direction) {
             // Edge property
             let {child} = attr;
             if (attr.attr) {

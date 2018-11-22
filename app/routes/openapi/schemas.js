@@ -172,6 +172,7 @@ const EdgeTraversal = {
 const BasicQuery = {
     description: 'Query based on the conditions in the where clause',
     type: 'object',
+    required: ['where'],
     properties: {
         where: {
             type: 'object', $ref: `${PREFIX}/Clause`
@@ -235,6 +236,7 @@ const Query = {
 
 const Clause = {
     type: 'object',
+    required: ['operator', 'comparisons'],
     properties: {
         operator: {type: 'string', enum: [OPERATORS.AND, OPERATORS.OR]},
         comparisons: {
@@ -252,6 +254,7 @@ const Clause = {
 
 const Comparison = {
     type: 'object',
+    required: ['attr', 'value'],
     properties: {
         attr: {oneOf: [{type: 'string'}, {$ref: `${PREFIX}/Traversal`}]},
         value: {
@@ -262,7 +265,7 @@ const Comparison = {
             description: 'The base value or subquery to be compared against'
         },
         operator: {type: 'string', enum: Object.values(OPERATORS).filter(op => !['AND', 'OR'].includes(op))},
-        negate: {type: 'boolean', description: 'Negation of this comparison'}
+        negate: {type: 'boolean', description: 'Negation of this comparison', default: false}
     }
 };
 
