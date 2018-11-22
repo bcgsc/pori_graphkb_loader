@@ -252,6 +252,9 @@ class Query {
 
         const conditions = new Clause(OPERATORS.AND);
 
+        if (!(opt.where instanceof Array)) {
+            opt.where = [opt.where];
+        }
         for (const condition of opt.where) {
             // condition must be a Clause or a Comparison
             if (condition.comparisons !== undefined || condition.attr === undefined) {

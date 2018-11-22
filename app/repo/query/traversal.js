@@ -57,6 +57,9 @@ class Traversal {
         if (attr.type === TRAVERSAL_TYPE.EDGE || attr.edges || attr.direction) {
             // Edge property
             let {child} = attr;
+            if (child && !child.attr) {
+                child = {attr: child};
+            }
             if (attr.attr) {
                 throw new AttributeError('Edges do not require the attr property since they are not named');
             }
@@ -69,7 +72,17 @@ class Traversal {
                     throw new AttributeError(`Invalid Edge class: ${edgename}`);
                 }
             }
+
             if (child) {
+                if (child.attr === 'vertex') {
+                    if (attr.direction === 'out') {
+                        child.attr = 'inv';
+                    } else if (attr.direction === 'in') {
+                        child.attr = 'outV';
+                    } else {
+                        child.attr = 'bothV';
+                    }
+                }
                 child = this.parse(schema, null, child);
             }
             const parsed = new this({
