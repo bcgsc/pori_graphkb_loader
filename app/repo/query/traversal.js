@@ -3,6 +3,7 @@ const {error: {AttributeError}, util: {castDecimalInteger, castToRID}} = require
 const {quoteWrap} = require('./../../../app/repo/util');
 
 const {TRAVERSAL_TYPE, SIZE_COMPUTATION, DIRECTIONS} = require('./constants');
+const {parseCompoundAttr} = require('./util');
 
 
 class Traversal {
@@ -51,6 +52,9 @@ class Traversal {
             Object.assign(properties, model.queryProperties);
         } else {
             Object.assign(properties, schema.E.queryProperties, schema.V.queryProperties);
+        }
+        if (typeof attr === 'string') {
+            attr = parseCompoundAttr(attr);
         }
         const prop = properties[attr.attr || attr]; // property associated with this attr
 
