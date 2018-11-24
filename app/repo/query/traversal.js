@@ -28,7 +28,7 @@ class Traversal {
         this.edges = opt.edges || [];
         this.direction = (opt.direction || DIRECTIONS.BOTH).toLowerCase();
         this.cast = opt.cast || null;
-        if (!this.cast && this.type === TRAVERSAL_TYPE.EDGE) {
+        if (!this.cast && (this.type === TRAVERSAL_TYPE.EDGE || this.attr === '@rid')) {
             this.cast = castToRID;
         }
         this.property = opt.property || null;
@@ -103,7 +103,9 @@ class Traversal {
 
         if (matchbuiltIn) {
             optAttr.cast = castToRID;
-            optAttr.attr = `${matchbuiltIn[1]}V()`;
+            if (!model || !model.isEdge) {
+                optAttr.attr = `${matchbuiltIn[1]}V()`;
+            }
         }
 
         if (attr.child) { // Link without a child is the same as a direct attr
