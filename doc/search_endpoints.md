@@ -56,7 +56,7 @@ POST /api/statements/search
     "compoundSyntax": true,
     "where": [
         {
-            "attr": "in(implies).vertex.reference1.name",
+            "attr": "inE(implies).vertex.reference1.name",
             "value": "KRAS"
         }
     ]
@@ -100,7 +100,7 @@ or in compound form
 POST /api/statements/search
 {
     "where": {
-        "attr": "in(implies).vertex",
+        "attr": "inE(implies).vertex",
         "value": {
             "type": "neighborhood",
             "where": [{"attr": "name", "value": "KRAS"}],
@@ -114,10 +114,10 @@ POST /api/statements/search
 This becomes
 
 ```SQL
-MATCH
+SELECT * FROM (MATCH
     {class: Disease, WHERE: (sourceId = 'cancer' AND deletedAt IS NULL)}
         .both('AliasOf', 'GeneralizationOf', 'DeprecatedBy', 'CrossReferenceOf', 'ElementOf'){WHILE: ($depth < 3)}
-RETURN $pathElements
+RETURN $pathElements)
 ```
 
 Note that the class must be given for subqueries or it will be assumed to be the same as the starting
