@@ -168,6 +168,41 @@ const VOCABULARY = [
     {name: 'wild type', subclassof: ['no functional effect'], aliasof: ['wildtype']}
 ];
 
+
+/**
+ * For any term which has an alias, they should also share subclassof relationships
+ */
+(() => {
+    const termsByName = {};
+    for (const term of VOCABULARY) {
+        termsByName[term.name.toLowerCase()] = term;
+    }
+    for (const term of Object.values(termsByName)) {
+        term.subclassof = term.subclassof || [];
+
+        for (const aliasName of term.aliasof || []) {
+            if (termsByName[aliasName.toLowerCase()] === undefined) {
+                termsByName[aliasName.toLowerCase()] = {
+                    name: aliasName,
+                    aliasof: [],
+                    subclassof: []
+                };
+                VOCABULARY.push(termsByName[aliasName.toLowerCase()]);
+            }
+            const alias = termsByName[aliasName.toLowerCase()];
+            alias.subclassof = alias.subclassof || [];
+
+            for (const superClass of alias.subclassof || []) {
+                term.subclassof.push(superClass);
+            }
+
+            for (const superClass of term.subclassof || []) {
+                alias.subclassof.push(superClass);
+            }
+        }
+    }
+})();
+
 /**
  * Upload the JSON constant above into GraphKB
  *
