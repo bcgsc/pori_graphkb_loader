@@ -107,7 +107,9 @@ class Comparison {
             }
         }
 
-        if (this.value instanceof Array) {
+        if (this.value instanceof Query) {
+            this.value.validate();
+        } else if (this.value instanceof Array) {
             for (let i = 0; i < this.value.length; i++) {
                 if (this.value[i] !== null) {
                     this.value[i] = validateValue(this.value[i]);
@@ -360,6 +362,8 @@ class Query {
             let value = params[key];
             if (typeof value === 'string') {
                 value = `'${value}'`;
+            } else if (value instanceof RID) {
+                value = `#${value.cluster}:${value.position}`;
             }
             statement = statement.replace(new RegExp(`:${key}`, 'g'), `${value}`);
         }
