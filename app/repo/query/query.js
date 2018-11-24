@@ -1,3 +1,5 @@
+const {RID} = require('orientjs');
+
 const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 
 const match = require('./match');
@@ -53,7 +55,7 @@ class Comparison {
 
         const parsedAttr = Traversal.parse(schema, model, attr);
 
-        if (typeof value === 'object' && value !== null) {
+        if (typeof value === 'object' && value !== null && !(value instanceof Array) && !(value instanceof RID)) {
             if (value.class) {
                 // must be a Query.
                 const subModel = schema[value.class] || model;
