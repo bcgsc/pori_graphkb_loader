@@ -20,8 +20,7 @@ const treeQuery = (opt) => {
     const {
         whereClause, modelName, paramIndex, direction, depth
     } = Object.assign({
-        paramIndex: 0,
-        depth: MAX_TRAVEL_DEPTH
+        paramIndex: 0
     }, opt);
     const edges = opt.edges || ['SubclassOf'];
 
@@ -31,10 +30,10 @@ const treeQuery = (opt) => {
 
     const {query, params} = whereClause.toString(paramIndex);
     const edgeList = Array.from(edges, quoteWrap).join(', ');
-    const statement = `MATCH
+    const statement = `SELECT * FROM (MATCH
     {class: ${modelName}, WHERE: (${query})}
-        .${direction}(${edgeList}){WHILE: (${direction}(${edgeList}).size() > 0 AND $depth < ${depth})}
-RETURN $pathElements`;
+        .${direction}(${edgeList}){WHILE: (${direction}(${edgeList}).size() > 0 AND $depth < ${depth || MAX_TRAVEL_DEPTH})}
+RETURN $pathElements)`;
     return {query: statement, params};
 };
 
@@ -56,10 +55,10 @@ const neighborhood = (opt) => {
     const depth = opt.depth || RELATED_NODE_DEPTH;
 
     const {query, params} = whereClause.toString(paramIndex);
-    const statement = `MATCH
+    const statement = `SELECT * FROM (MATCH
     {class: ${modelName}, WHERE: (${query})}
         .both(${Array.from(edges, quoteWrap).join(', ')}){WHILE: ($depth < ${depth})}
-RETURN $pathElements`;
+RETURN $pathElements)`;
     return {query: statement, params};
 };
 

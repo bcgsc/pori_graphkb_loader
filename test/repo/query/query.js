@@ -175,10 +175,10 @@ describe('Query Parsing', () => {
             );
             expect(parsed).to.eql(expected);
             const sql = `SELECT * FROM Disease
-                WHERE source IN (
+                WHERE source IN (SELECT * FROM (
                     MATCH {class: Source, WHERE: (name = :param0 AND deletedAt IS NULL)}.both(
                         ${Array.from(NEIGHBORHOOD_EDGES, quoteWrap).join(', ')}
-                    ){WHILE: ($depth < 3)} RETURN $pathElements)`;
+                    ){WHILE: ($depth < 3)} RETURN $pathElements))`;
             const {query, params} = parsed.toString();
             expect(params).to.eql({param0: 'disease-ontology'});
             expect(stripSQL(query)).to.equal(stripSQL(sql));

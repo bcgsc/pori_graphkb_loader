@@ -12,7 +12,7 @@ describe('treeQuery', () => {
             modelName: 'Disease',
             edges: ['AliasOf']
         });
-        expect(stripSQL(query)).to.equal('MATCH {class: Disease, WHERE: (name = :param0)}.out(\'AliasOf\'){WHILE: (out(\'AliasOf\').size() > 0 AND $depth < 50)} RETURN $pathElements');
+        expect(stripSQL(query)).to.equal('SELECT * FROM (MATCH {class: Disease, WHERE: (name = :param0)}.out(\'AliasOf\'){WHILE: (out(\'AliasOf\').size() > 0 AND $depth < 50)} RETURN $pathElements)');
         expect(params).to.eql({param0: 'blargh'});
     });
 });
@@ -27,7 +27,7 @@ describe('neighborhood', () => {
             direction: 'both',
             depth: 10
         });
-        expect(stripSQL(query)).to.equal('MATCH {class: Disease, WHERE: (name = :param0)}.both(\'AliasOf\'){WHILE: ($depth < 10)} RETURN $pathElements');
+        expect(stripSQL(query)).to.equal('SELECT * FROM (MATCH {class: Disease, WHERE: (name = :param0)}.both(\'AliasOf\'){WHILE: ($depth < 10)} RETURN $pathElements)');
         expect(params).to.eql({param0: 'blargh'});
     });
 });
