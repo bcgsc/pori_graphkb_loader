@@ -11,7 +11,7 @@ const escapeStringRegexp = require('escape-string-regexp');
 
 const {constants: {INDEX_SEP_CHARS}, error: {AttributeError}, util: {castDecimalInteger}} = require('@bcgsc/knowledgebase-schema');
 
-const {constants: {TRAVERSAL_TYPE, OPERATORS}} = require('./../repo/query');
+const {constants: {TRAVERSAL_TYPE, OPERATORS}, util: {parseCompoundAttr}} = require('./../repo/query');
 
 const MAX_JUMPS = 4; // fetchplans beyond 6 are very slow
 const INDEX_SEP_REGEX = new RegExp(`[${escapeStringRegexp(INDEX_SEP_CHARS)}]+`, 'g');
@@ -175,52 +175,6 @@ const castBoolean = (value) => {
         return false;
     }
     throw new AttributeError(`Expected a boolean value but found ${value}`);
-};
-
-
-/**
- * @param {string} compoundAttr the shorthand attr notation
- *
- * @returns {Object} the query JSON attr representation
- */
-const parseCompoundAttr = (compoundAttr) => {
-    const attrs = compoundAttr.split('.');
-    const expanded = {};
-    let curr = expanded;
-
-    for (const attr of attrs) {
-        if (curr.type === undefined) {
-            curr.type = TRAVERSAL_TYPE.LINK;
-        }
-        const match = /^(in|out|both)E?(\(([^)]*)\))?$/.exec(attr);
-        if (match) {
-            curr.child = {
-                type: TRAVERSAL_TYPE.EDGE,
-                direction: match[1]
-            };
-            if (match[3] !== undefined) {
-                curr.child.edges = match[3].trim().length > 0
-                    ? Array.from(match[3].split(','), e => e.trim())
-                    : [];
-            }
-        } else if (attr === 'vertex') {
-            if (curr.type !== TRAVERSAL_TYPE.EDGE) {
-                throw new AttributeError('vertex may only follow an edge traversal');
-            }
-            curr.child = {};
-            if (curr.direction === 'out') {
-                curr.child.attr = 'inV';
-            } else if (curr.direction === 'in') {
-                curr.child.attr = 'outV';
-            } else {
-                curr.child.attr = 'bothV';
-            }
-        } else {
-            curr.child = {attr};
-        }
-        curr = curr.child;
-    }
-    return expanded.child;
 };
 
 

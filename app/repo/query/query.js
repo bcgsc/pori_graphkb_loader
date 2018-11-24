@@ -53,11 +53,14 @@ class Comparison {
 
         const parsedAttr = Traversal.parse(schema, model, attr);
 
-        if (typeof value === 'object' && value !== null && value.class) {
-            // must be a Query.
-            const subModel = schema[value.class] || model;
-            const subquery = Query.parse(schema, subModel, value);
-            return new this(parsedAttr, subquery, operator, negate);
+        if (typeof value === 'object' && value !== null) {
+            if (value.class) {
+                // must be a Query.
+                const subModel = schema[value.class] || model;
+                const subquery = Query.parse(schema, subModel, value);
+                return new this(parsedAttr, subquery, operator, negate);
+            }
+            throw new AttributeError('Value for a comparison must be a primitive value or a subquery. Subqueries must contains the `class` attribute');
         }
         return new this(parsedAttr, value, operator, negate);
     }
@@ -82,9 +85,10 @@ class Comparison {
                     }
                 }
             }
-            return cast
-                ? cast(value)
-                : value;
+            if (cast && !(value instanceof Query)) {
+                return cast(value);
+            }
+            return value;
         };
 
         if (prop) {
