@@ -142,7 +142,7 @@ describe('parseValue', () => {
 
 describe('parseCompoundAttr', () => {
     it('parses edge.link.direct', () => {
-        const parsed = parseCompoundAttr('out.vertex.name');
+        const parsed = parseCompoundAttr('outE.vertex.name');
         expect(parsed).to.eql({
             type: 'EDGE',
             direction: 'out',
