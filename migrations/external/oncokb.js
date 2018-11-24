@@ -10,7 +10,7 @@
  * @module migrations/external/oncokb
  */
 const request = require('request-promise');
-const kbParser = require('knowledgebase-parser');
+const kbParser = require('@bcgsc/knowledgebase-parser');
 const {
     addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs, rid
 } = require('./util');
