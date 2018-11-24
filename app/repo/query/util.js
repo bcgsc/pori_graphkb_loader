@@ -17,15 +17,16 @@ const parseCompoundAttr = (compoundAttr) => {
         if (curr.type === undefined) {
             curr.type = TRAVERSAL_TYPE.LINK;
         }
-        const match = /^(in|out|both)E?(\(([^)]*)\))?$/.exec(attr);
+        const match = /^(in|out|both)(E?(\(([^)]*)\))|E)$/.exec(attr);
         if (match) {
+            const [, direction, , , edges] = match;
             curr.child = {
                 type: TRAVERSAL_TYPE.EDGE,
-                direction: match[1]
+                direction
             };
-            if (match[3] !== undefined) {
-                curr.child.edges = match[3].trim().length > 0
-                    ? Array.from(match[3].split(','), e => e.trim())
+            if (edges !== undefined) {
+                curr.child.edges = edges.trim().length > 0
+                    ? Array.from(edges.split(','), e => e.trim())
                     : [];
             }
         } else if (attr === 'vertex') {
