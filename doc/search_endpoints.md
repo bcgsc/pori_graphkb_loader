@@ -10,7 +10,6 @@ have a search endpoint (POST) which follows the pattern
 
 The body contains the query specification.
 
-
 ## Examples
 
 ### Query by related vertices
@@ -26,7 +25,7 @@ POST /api/statements/search
                 "type": "EDGE",
                 "edges": ["Implies"],
                 "direction": "in",
-                    "child": {
+                "child": {
                     "attr": "vertex",
                     "type": "LINK",
                     "child": {
@@ -79,7 +78,7 @@ POST /api/statements/search
                 "type": "EDGE",
                 "edges": ["Implies"],
                 "direction": "in",
-                    "child": {
+                "child": {
                     "attr": "vertex"
                 }
             },
