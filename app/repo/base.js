@@ -618,7 +618,7 @@ const createStatement = async (db, opt) => {
     }
 
     const suppTraversal = new Traversal({
-        type: TRAVERSAL_TYPE.EDGE, edges: ['SupportedBy'], direction: 'out', child: new Traversal({attr: 'inV()'})
+        type: TRAVERSAL_TYPE.EDGE, edges: ['SupportedBy'], direction: 'out', child: 'inV()'
     });
     for (const edge of content.supportedBy) {
         if (edge.target === undefined) {
@@ -638,7 +638,7 @@ const createStatement = async (db, opt) => {
 
     // ensure the RIDs look valid for the impliedBy
     const impTraversal = new Traversal({
-        type: TRAVERSAL_TYPE.EDGE, edges: ['Implies'], direction: 'in', child: new Traversal({attr: 'outV()'})
+        type: TRAVERSAL_TYPE.EDGE, edges: ['Implies'], direction: 'in', child: 'outV()'
     });
     for (const edge of content.impliedBy) {
         if (edge.target === undefined) {
