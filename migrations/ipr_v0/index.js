@@ -4,7 +4,7 @@ const _ = require('lodash');
 const OrientDB = require('orientjs');
 const moment = require('moment');
 
-const {parse: variantParser} = require('knowledgebase-parser').variant;
+const {parse: variantParser} = require('@bcgsc/knowledgebase-parser').variant;
 
 const {createOptionsMenu, fileExists} = require('./../cli');
 

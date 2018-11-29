@@ -3,11 +3,11 @@
 const {expect} = require('chai');
 
 const {
-    groupRecordsBy
+    groupRecordsBy,
+    trimRecords
 } = require('./../../app/repo/util');
 const {
-    hasRecordAccess,
-    trimRecords
+    hasRecordAccess
 } = require('./../../app/repo/base');
 
 

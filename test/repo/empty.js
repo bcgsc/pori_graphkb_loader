@@ -20,6 +20,9 @@ const {
 const {
     setUpEmptyDB
 } = require('./../util');
+const {
+    Query, Clause, Comparison
+} = require('./../../app/repo/query');
 
 const emptyConf = Object.assign({}, require('./../../config/config.js'));
 
@@ -119,7 +122,7 @@ describe('schema', () => {
             },
             model: schema.Disease,
             user: admin,
-            where: Object.assign({}, content)
+            query: Query.parseRecord(schema, schema.Disease, content)
         });
         // check that a history link has been added to the node
         expect(updated).to.have.property('sourceId', 'new name');
@@ -127,14 +130,18 @@ describe('schema', () => {
         // check that the 'old'/copy node has the original details
         expect(updated['@rid']).to.eql(record['@rid']);
         // select the original node
-        let originalNode = await select(db, {
-            schema,
-            where: content,
-            activeOnly: false,
-            exactlyN: 1,
-            model: schema.Disease,
-            fetchPlan: '*:1'
-        });
+        let originalNode = await select(
+            db,
+            Query.parseRecord(
+                schema,
+                schema.Disease,
+                content,
+                {
+                    activeOnly: false
+                }
+            ),
+            {fetchPlan: '*:1', exactlyN: 1}
+        );
         originalNode = originalNode[0];
         expect(updated.history).to.eql(originalNode['@rid']);
         expect(originalNode.deletedBy['@rid']).to.eql(admin['@rid']);
@@ -162,7 +169,7 @@ describe('schema', () => {
         });
         // now update the edge, both src and target node should have history after
         const result = await remove(db, {
-            where: {'@rid': original['@rid'].toString(), createdAt: original.createdAt},
+            query: Query.parseRecord(schema, schema.AliasOf, {'@rid': original['@rid'].toString(), createdAt: original.createdAt}),
             user: admin,
             model: schema.AliasOf,
             schema
@@ -190,7 +197,7 @@ describe('schema', () => {
             user: admin
         });
         const result = await remove(db, {
-            where: {'@rid': doSource['@rid'].toString(), createdAt: doSource.createdAt},
+            query: Query.parseRecord(schema, schema.Source, {'@rid': doSource['@rid'].toString(), createdAt: doSource.createdAt}),
             user: admin,
             model: schema.Source,
             schema
@@ -233,45 +240,29 @@ describe('schema', () => {
                 user: admin
             });
         });
-        it('get by name', async () => {
-            const records = await select(db, {
-                schema,
-                model: schema.Disease,
-                where: {
-                    sourceId: 'cancer',
-                    fuzzyMatch: 3
-                },
-                user: admin
-            });
-            expect(records).to.have.property('length', 2);
-        });
         it('get by name OR sourceId', async () => {
-            const records = await select(db, {
-                schema,
-                model: schema.Disease,
-                where: {name: 'other name', sourceId: 'cancer', or: ['name', 'sourceId']},
-                user: admin
-            });
+            const records = await select(
+                db,
+                Query.parse(schema, schema.Disease, {
+                    where: [{operator: 'OR', comparisons: [{attr: 'name', value: 'other name'}, {attr: 'sourceId', value: 'cancer'}]}]
+                }),
+                {user: admin}
+            );
             expect(records).to.have.property('length', 2);
         });
         it('limit 1', async () => {
-            const records = await select(db, {
-                schema,
-                model: schema.Disease,
-                limit: 1,
-                user: admin
+            const query = Query.parse(schema, schema.Disease, {
+                limit: 1
             });
+            const records = await select(db, query, {user: admin});
             expect(records).to.have.property('length', 1);
             expect(records[0]).to.have.property('sourceId', 'cancer');
         });
         it('limit 1, skip 1', async () => {
-            const records = await select(db, {
-                schema,
-                model: schema.Disease,
-                skip: 1,
-                limit: 1,
-                user: admin
+            const query = Query.parse(schema, schema.Disease, {
+                limit: 1, skip: 1
             });
+            const records = await select(db, query, {user: admin});
             expect(records).to.have.property('length', 1);
             expect(records[0]).to.have.property('sourceId', 'disease of cellular proliferation');
         });
@@ -369,15 +360,14 @@ describe('schema', () => {
                 schema
             });
             await remove(db, {
-                where: {'@rid': stat['@rid']},
+                query: Query.parseRecord(schema, schema.Statement, {'@rid': stat['@rid']}),
                 user: admin,
                 model: schema.Statement
             });
-            const statements = await select(db, {
-                where: {'@rid': stat['@rid'], activeOnly: true},
-                schema,
-                model: schema.Statement
-            });
+            const statements = await select(
+                db,
+                Query.parseRecord(schema, schema.Statement, {'@rid': stat['@rid']}, {activeOnly: true})
+            );
             expect(statements).to.have.property('length', 0);
         });
         it('update the review status', async () => {
@@ -393,16 +383,15 @@ describe('schema', () => {
                 schema
             });
             await update(db, {
-                where: {'@rid': stat['@rid']},
+                query: Query.parseRecord(schema, schema.Statement, {'@rid': stat['@rid']}),
                 changes: {reviewStatus: 'passed'},
                 user: admin,
                 model: schema.Statement
             });
-            const statements = await select(db, {
-                where: {createdAt: stat.createdAt, activeOnly: true},
-                schema,
-                model: schema.Statement
-            });
+            const statements = await select(
+                db,
+                Query.parseRecord(schema, schema.Statement, {createdAt: stat.createdAt}, {activeOnly: true})
+            );
             expect(statements).to.have.property('length', 0);
         });
         it('error on existing statement', async () => {
@@ -526,36 +515,50 @@ describe('schema', () => {
                     }
                 ], async opt => create(db, Object.assign({schema, user: admin}, opt))));
             });
-            it('allows fuzzy matching statement properties', async () => {
-                // should get relevance1 and relevance2 but not relevance3
-                const recordList = await select(db, {
-                    where: {
-                        relevance: {fuzzyMatch: 3, name: relevance1.name}
-                    },
-                    model: schema.Statement,
-                    schema
-                });
-                expect(recordList).to.have.property('length', 2);
-                expect(Array.from(recordList, castToRID)).to.eql([statement1['@rid'], statement2['@rid']]);
-            });
-            it('allows fuzzy matching related vertices', async () => {
-                const recordList = await select(db, {
-                    where: {
-                        supportedBy: {v: {fuzzyMatch: 3, name: publication2.name}}
-                    },
-                    model: schema.Statement,
-                    schema
-                });
-                expect(recordList).to.have.property('length', 3);
-            });
             it('select on related edge properties', async () => {
-                const recordList = await select(db, {
-                    where: {
-                        supportedBy: {level: {name: level.name}}
-                    },
-                    model: schema.Statement,
-                    schema
-                });
+                const query = Query.parse(
+                    schema,
+                    schema.Statement,
+                    {
+                        where: [
+                            {
+                                attr: {
+                                    type: 'EDGE',
+                                    edges: ['SupportedBy'],
+                                    child: {
+                                        attr: 'level', type: 'LINK', child: 'name'
+                                    },
+                                    direction: 'out'
+                                },
+                                value: level.name
+                            }
+                        ]
+                    }
+                );
+                const recordList = await select(db, query);
+                expect(recordList).to.have.property('length', 2);
+            });
+            it('select on related uni-directional edge properties', async () => {
+                const query = Query.parse(
+                    schema,
+                    schema.Statement,
+                    {
+                        where: [
+                            {
+                                attr: {
+                                    type: 'EDGE',
+                                    edges: ['SupportedBy'],
+                                    child: {
+                                        type: 'LINK', child: 'name', attr: 'level'
+                                    },
+                                    direction: 'both'
+                                },
+                                value: level.name
+                            }
+                        ]
+                    }
+                );
+                const recordList = await select(db, query);
                 expect(recordList).to.have.property('length', 2);
             });
         });

@@ -214,45 +214,6 @@ const GET_STATS = {
     }
 };
 
-
-const POST_PARSE_VARIANT = {
-    summary: 'Given a variant description, check the formatting and return the parsed result where possible',
-    tags: ['Parser'],
-    parameters: [
-        {$ref: '#/components/parameters/Content-Type'},
-        {$ref: '#/components/parameters/Accept'}
-    ],
-    requestBody: {
-        required: true,
-        content: {
-            'application/json': {
-                schema: {
-                    type: 'object',
-                    properties: {
-                        content: {type: 'string', description: 'the variant description'}
-                    }
-                }
-            }
-        }
-    },
-    responses: {
-        200: {
-            description: 'The variant is valid and has been parsed',
-            content: {
-                'application/json': {
-                    schema: {
-                        type: 'object',
-                        $ref: '#/components/schemas/PositionalVariant'
-                    }
-                }
-            }
-        },
-        400: {
-            $ref: '#/components/responses/BadInput'
-        }
-    }
-};
-
 module.exports = {
-    POST_STATEMENT, POST_TOKEN, GET_SCHEMA, GET_STATS, POST_PARSE_VARIANT
+    POST_STATEMENT, POST_TOKEN, GET_SCHEMA, GET_STATS
 };

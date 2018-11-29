@@ -17,7 +17,7 @@ const request = require('request-promise');
 const _ = require('lodash');
 
 
-const kbParser = require('knowledgebase-parser');
+const kbParser = require('@bcgsc/knowledgebase-parser');
 
 
 const {
