@@ -5,7 +5,7 @@ const dbName = 'test_empty';
 const server = {
     pass: process.env.DATABASE_SERVER_PASS || 'root',
     user: process.env.DATABASE_SERVER_USER || 'root',
-    port: process.env.DATABASE_PORT || 2424,
+    port: process.env.DATABASE_PORT || 2425,
     host: process.env.DATABASE_HOST || 'orientdb02.bcgsc.ca'
 };
 
