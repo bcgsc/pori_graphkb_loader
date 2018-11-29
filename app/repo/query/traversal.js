@@ -1,6 +1,6 @@
 const {error: {AttributeError}, util: {castDecimalInteger, castToRID}} = require('@bcgsc/knowledgebase-schema');
 
-const {quoteWrap} = require('./../../../app/repo/util');
+const {quoteWrap} = require('./../util');
 
 const {TRAVERSAL_TYPE, SIZE_COMPUTATION, DIRECTIONS} = require('./constants');
 const {parseCompoundAttr} = require('./util');

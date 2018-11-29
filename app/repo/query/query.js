@@ -207,7 +207,12 @@ class Query {
      * @param {string} modelName the model to be selected from
      * @param {?Clause} where object of property names linked to values, comparisons, or clauses
      * @param {Object} opt Selection options
-     * @param {Array} [opt.returnProperties] list of property names to return from the selection (instead of full records)
+     * @param {Array.<string>} [opt.returnProperties] list of property names to return from the selection (instead of full records)
+     * @param {Number} [opt.skip] skip the first N records
+     * @param {Number} [opt.limit] limit the return to N records
+     * @param {string} [opt.type] the type of pre-fabricated query (should match an export name in the match module)
+     * @param {boolean} [opt.activeOnly=true] select only non-deleted records
+     * @param {Number} [opt.neighbors] select records N jumps away from the resulting selection of records (fetch)
      *
      */
     constructor(modelName, where, opt = {}) {
