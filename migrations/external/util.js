@@ -77,7 +77,6 @@ const getRecordBy = async (className, where, conn, sortFunc = () => 0) => {
     newRecord.sort(sortFunc);
     if (newRecord.length > 1) {
         if (sortFunc(newRecord[0], newRecord[1]) === 0) {
-            console.log(newRecord[0], newRecord[1]);
             throw new Error(`expected a single ${className} record but found multiple: ${rid(newRecord[0])} and ${rid(newRecord[1])}`);
         }
     } else if (newRecord.length === 0) {
@@ -170,7 +169,14 @@ const addRecord = async (className, where, conn, optIn = {}) => {
     }
 };
 
-
+/**
+ * Given two ontology terms, return the newer, non-deprecated, independant, term first.
+ *
+ * @param {object} term1 the first term record
+ * @param {object} term2 the second term record
+ *
+ * @returns {Number} the sorting number (-1, 0, +1)
+ */
 const orderPreferredOntologyTerms = (term1, term2) => {
     if (term1.deprecated && !term2.deprecated) {
         return 1;

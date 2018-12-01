@@ -204,4 +204,4 @@ const loadEdges = async ({
     }
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, dependencies: ['ncit']};

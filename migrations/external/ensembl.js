@@ -149,4 +149,4 @@ const uploadFile = async (opt) => {
     }
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, dependencies: ['refseq', 'hgnc']};

@@ -46,12 +46,10 @@ const uploadFile = async (opt) => {
         let hgnc;
         try {
             hgnc = await getRecordBy('features', {source: {name: 'hgnc'}, name: record.Symbol}, conn, orderPreferredOntologyTerms);
+            await addRecord('elementof', {out: rid(general), in: rid(hgnc), source: rid(source)}, conn, {existsOk: true});
         } catch (err) {
             process.stdout.write('?');
-            continue;
         }
-        await addRecord('elementof', {out: rid(general), in: rid(hgnc), source: rid(source)}, conn, {existsOk: true});
-        // load the DNA
         // load the protein
         if (record.Protein) {
             const [proteinName, proteinVersion] = record.Protein.split('.');
