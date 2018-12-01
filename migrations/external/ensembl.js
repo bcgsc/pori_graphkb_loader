@@ -122,7 +122,7 @@ const uploadFile = async (opt) => {
                     sourceId: record[HEADER.refseqId],
                     sourceIdVersion: null
                 }, conn, orderPreferredOntologyTerms);
-                await addRecord('aliasof', {
+                await addRecord('crossreferenceof', {
                     out: rid(transcript), in: rid(refseq), source: rid(source)
                 }, conn, {existsOk: true, get: false});
             } catch (err) {
@@ -138,7 +138,7 @@ const uploadFile = async (opt) => {
                     sourceId: record[HEADER.hgncId],
                     name: record.hgncName
                 }, conn, orderPreferredOntologyTerms);
-                await addRecord('aliasof', {
+                await addRecord('crossreferenceof', {
                     out: rid(gene), in: rid(hgnc), source: rid(source)
                 }, conn, {existsOk: true, get: false});
             } catch (err) {
