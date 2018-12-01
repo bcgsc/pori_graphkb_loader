@@ -205,7 +205,15 @@ class AppServer {
         }));
 
         this.server = await http.createServer(this.app).listen(this.conf.app.port);
-        logger.log('info', `started application server (${this.server.address().host || process.env.HOSTNAME}:${this.server.address().port})`);
+        logger.log('info', `started application server (${this.host || process.env.HOSTNAME}:${this.port})`);
+    }
+
+    get host() {
+        return this.server.address().host || 'localhost';
+    }
+
+    get port() {
+        return this.server.address().port;
     }
 
     async close() {
