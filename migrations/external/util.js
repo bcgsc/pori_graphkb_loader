@@ -134,30 +134,30 @@ const addRecord = async (className, where, conn, optIn = {}) => {
         get: true
     }, optIn);
     try {
-        const newRecord = jc.retrocycle(await request(conn.request({
+        const newRecord = jc.retrocycle(await conn.request({
             method: 'POST',
             uri: className,
             body: where
-        })));
+        }));
 
-        process.stdout.write(where.out && where.in
+        progress(where.out && where.in
             ? '-'
             : '.');
         return newRecord.result;
     } catch (err) {
         err.error = jc.retrocycle(err.error);
-        if (opt.verbose || process.env.VERBOSE == '1') {
-            console.log('Record Attempted');
-            console.log(where);
+        if (opt.verbose || process.env.VERBOSE === '1') {
+            logger.error('Record Attempted');
+            logger.error(where);
             if (err.error.current) {
-                console.log('vs record(s) retrieved');
+                logger.error('vs record(s) retrieved');
                 for (const record of err.error ? err.error.current : []) {
-                    console.log(succinctRepresentation(record));
+                    logger.error(succinctRepresentation(record));
                 }
             }
         }
         if (opt.existsOk && err.statusCode === 409) {
-            process.stdout.write(where.out && where.in
+            progress(where.out && where.in
                 ? '='
                 : '*');
             if (opt.get) {
@@ -323,9 +323,9 @@ const convertOwlGraphToJson = (graph, idParser = x => x) => {
 
 
 const loadDelimToJson = async (filename, delim = '\t') => {
-    console.log(`loading: ${filename}`);
+    logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
-    console.log('parsing into json');
+    logger.info('parsing into json');
     const jsonList = parse(content, {
         delimiter: delim, escape: null, quote: null, comment: '##', columns: true, auto_parse: true
     });
@@ -334,12 +334,12 @@ const loadDelimToJson = async (filename, delim = '\t') => {
 
 
 const loadXmlToJson = (filename) => {
-    console.log(`reading: ${filename}`);
+    logger.info(`reading: ${filename}`);
     const xmlContent = fs.readFileSync(filename).toString();
-    console.log(`parsing: ${filename}`);
+    logger.info(`parsing: ${filename}`);
     return new Promise((resolve, reject) => {
         xml2js.parseString(xmlContent, (err, result) => {
-            console.log(err);
+            logger.error(err);
             if (err !== null) {
                 reject(err);
             } else {

@@ -15,6 +15,8 @@
 const request = require('request-promise');
 const {addRecord, getRecordBy, rid} = require('./util');
 
+const {addRecord, getRecordBy, rid} = require('./util');
+const {logger, progress} = require('./logging');
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
 const SOURCE_NAME = 'oncotree';
@@ -63,7 +65,7 @@ const upload = async (opt) => {
     try {
         ncitSource = await getRecordBy('sources', {name: 'ncit'}, conn);
     } catch (err) {
-        process.stdout.write('x');
+        progress('x');
     }
 
     for (const record of records) {

@@ -15,6 +15,7 @@
 const {
     addRecord, getRecordBy, orderPreferredOntologyTerms, loadDelimToJson, rid
 } = require('./util');
+const {logger, progress} = require('./logging');
 
 const SOURCE_NAME = 'fda';
 
@@ -33,9 +34,9 @@ const uploadFile = async (opt) => {
     try {
         ncitSource = await getRecordBy('sources', {name: 'NCIT'}, conn);
     } catch (err) {
-        process.stdout.write('x');
+        progress('x\n');
     }
-    console.log(`\nloading ${jsonList.length} records`);
+    logger.info(`loading ${jsonList.length} records`);
     let skipCount = 0;
     for (const record of jsonList) {
         if (record.NCIT.length === 0 && !/\S+[mn][ia]b\b/i.exec(record.PT)) {
@@ -55,7 +56,7 @@ const uploadFile = async (opt) => {
             try {
                 ncitRec = await getRecordBy('therapies', {source: {name: 'ncit'}, sourceId: record.NCIT}, conn, orderPreferredOntologyTerms);
             } catch (err) {
-                process.stdout.write('?');
+                progress('x');
             }
             if (ncitRec) {
                 await addRecord('aliasof', {
@@ -66,7 +67,7 @@ const uploadFile = async (opt) => {
             }
         }
     }
-    console.log(`\nskipped ${skipCount} records`);
+    logger.info(`\nskipped ${skipCount} records`);
 };
 
 module.exports = {uploadFile};
