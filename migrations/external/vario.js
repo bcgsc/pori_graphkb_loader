@@ -9,6 +9,7 @@ const fs = require('fs');
 const {
     addRecord, convertOwlGraphToJson, rid
 } = require('./util');
+const {logging, progress} = require('./logging');
 
 
 const PREDICATES = {
@@ -51,10 +52,10 @@ const parseId = (url) => {
  * @param {ApiConnection} opt.conn the api request connection object
  */
 const uploadFile = async ({filename, conn}) => {
-    console.log(`Loading external ${SOURCE_NAME} data`);
-    console.log(`loading: ${filename}`);
+    logging.info(`Loading external ${SOURCE_NAME} data`);
+    logging.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
-    console.log(`parsing: ${filename}`);
+    logging.info(`parsing: ${filename}`);
     const graph = rdf.graph();
     rdf.parse(content, graph, OWL_NAMESPACE, 'application/rdf+xml');
     const nodesByCode = convertOwlGraphToJson(graph, parseId);
