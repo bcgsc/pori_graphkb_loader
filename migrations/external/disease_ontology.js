@@ -39,7 +39,7 @@ const parseDoVersion = (version) => {
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the input JSON file
- * @param {ApiRequest} opt.conn the api connection object
+ * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async ({filename, conn}) => {
     // load the DOID JSON

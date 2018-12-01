@@ -23,7 +23,7 @@ const SOURCE_NAME = 'fda';
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the input file
- * @param {ApiRequest} opt.conn the api connection object
+ * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;

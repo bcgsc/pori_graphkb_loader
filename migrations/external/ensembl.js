@@ -29,7 +29,7 @@ const SOURCE_NAME = 'ensembl';
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the tab delimited export file
- * @param {ApiRequest} opt.conn the api connection object
+ * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;

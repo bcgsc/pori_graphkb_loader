@@ -8,6 +8,44 @@ const fs = require('fs');
 const _ = require('lodash');
 const parse = require('csv-parse/lib/sync');
 const xml2js = require('xml2js');
+const {progress, logger} = require('./logging');
+
+
+/**
+ * wrapper to make requests less verbose
+ */
+class ApiConnection {
+    constructor(opt) {
+        this.baseUrl = `http://${opt.host}:${opt.port}/api`;
+        this.headers = {};
+    }
+
+    async setAuth({username, password}) {
+        const token = await request({
+            method: 'POST',
+            uri: `${this.baseUrl}/token`,
+            json: true,
+            body: {username, password}
+        });
+        this.headers.Authorization = token.kbToken;
+    }
+
+    async request(opt) {
+        const req = {
+            method: opt.method || 'GET',
+            headers: this.headers,
+            uri: `${this.baseUrl}/${opt.uri}`,
+            json: true
+        };
+        if (opt.body) {
+            req.body = opt.body;
+        }
+        if (opt.qs) {
+            req.qs = opt.qs;
+        }
+        return request(req);
+    }
+}
 
 
 const convertNulls = (where) => {
@@ -28,10 +66,10 @@ const getRecordBy = async (className, where, conn, sortFunc = () => 0) => {
     const queryParams = convertNulls(where);
     let newRecord;
     try {
-        newRecord = await request(conn.request({
+        newRecord = await conn.request({
             uri: className,
             qs: Object.assign({neighbors: 1}, queryParams)
-        }));
+        });
         newRecord = jc.retrocycle(newRecord).result;
     } catch (err) {
         throw err;
@@ -85,7 +123,7 @@ const succinctRepresentation = (record) => {
 /**
  * Add a disease record to the DB
  * @param {object} where
- * @param {ApiRequest} conn
+ * @param {ApiConnection} conn
  * @param {boolean} exists_ok
  */
 const addRecord = async (className, where, conn, optIn = {}) => {
@@ -325,5 +363,6 @@ module.exports = {
     preferredDiseases,
     preferredDrugs,
     loadDelimToJson,
-    loadXmlToJson
+    loadXmlToJson,
+    ApiConnection
 };

@@ -48,7 +48,7 @@ const parseId = (url) => {
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the input OWL file
- * @param {ApiRequest} opt.conn the api request connection object
+ * @param {ApiConnection} opt.conn the api request connection object
  */
 const uploadFile = async ({filename, conn}) => {
     console.log(`Loading external ${SOURCE_NAME} data`);

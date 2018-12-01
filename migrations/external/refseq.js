@@ -24,7 +24,7 @@ const SOURCE_NAME = 'refseq';
  *
  * @param {object} opt options
  * @param {string} opt.filename path to the tab delimited file
- * @param {ApiRequest} opt.conn the api connection object
+ * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;

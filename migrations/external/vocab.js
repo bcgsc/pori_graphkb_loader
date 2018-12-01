@@ -207,7 +207,7 @@ const VOCABULARY = [
  * Upload the JSON constant above into GraphKB
  *
  * @param {object} opt options
- * @param {ApiRequest} opt.conn the database connection object for GraphKB
+ * @param {ApiConnection} opt.conn the database connection object for GraphKB
  */
 const upload = async (opt) => {
     const {conn} = opt;

@@ -95,7 +95,7 @@ const SOURCE_NAME = 'drugbank';
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the input XML file
- * @param {ApiRequest} opt.conn the api connection object
+ * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async ({filename, conn}) => {
     console.log('Loading the external drugbank data');

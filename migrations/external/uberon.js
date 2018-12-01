@@ -63,7 +63,7 @@ const parseSubsetName = (url) => {
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the input OWL file
- * @param {ApiRequest} opt.conn the API connection object
+ * @param {ApiConnection} opt.conn the API connection object
  */
 const uploadFile = async ({filename, conn}) => {
     console.log('Loading the external uberon data');
