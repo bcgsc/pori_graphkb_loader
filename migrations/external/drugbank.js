@@ -90,6 +90,15 @@ const {logger, progress} = require('./logging');
 
 const SOURCE_NAME = 'drugbank';
 
+// Lists most of the commonly required 'Tags' and Attributes
+const HEADER = {
+    unii: 'unii',
+    superclasses: 'atc-codes',
+    superclass: 'atc-code',
+    ident: 'drugbank-id',
+    mechanism: 'mechanism-of-action'
+};
+
 
 /**
  * Given the input XML file, load the resulting parsed ontology into GraphKB
@@ -120,16 +129,19 @@ const uploadFile = async ({filename, conn}) => {
     for (const drug of xml.drugbank.drug) {
         let atcLevels = [];
         try {
-            atcLevels = Array.from(drug['atc-codes'][0]['atc-code'][0].level, x => ({name: x._, sourceId: x.$.code.toLowerCase()}));
+            atcLevels = Array.from(
+                drug[HEADER.superclasses][0][HEADER.superclass][0].level,
+                x => ({name: x._, sourceId: x.$.code.toLowerCase()})
+            );
         } catch (err) {}
         try {
             const body = {
                 source: rid(source),
-                sourceId: drug['drugbank-id'][0]._,
+                sourceId: drug[HEADER.ident][0]._,
                 name: drug.name[0],
                 sourceIdVersion: drug.$.updated,
                 description: drug.description[0],
-                mechanismOfAction: drug['mechanism-of-action'][0]
+                mechanismOfAction: drug[HEADER.mechanism][0]
             };
             if (drug.categories[0] && drug.categories[0].category) {
                 body.subsets = [];
@@ -170,7 +182,7 @@ const uploadFile = async ({filename, conn}) => {
             }
             // link to the FDA UNII
             if (fdaSource) {
-                for (const unii of drug.unii) {
+                for (const unii of drug[HEADER.unii]) {
                     let fdaRec;
                     try {
                         fdaRec = await getRecordBy('therapies', {source: rid(fdaSource), sourceId: unii}, conn);

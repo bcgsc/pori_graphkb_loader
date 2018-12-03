@@ -13,6 +13,9 @@ const ensembl = require('./../../migrations/external/ensembl');
 const refseq = require('./../../migrations/external/refseq');
 const fda = require('./../../migrations/external/fda');
 const oncotree = require('./../../migrations/external/oncotree');
+const vario = require('./../../migrations/external/vario');
+const drugbank = require('./../../migrations/external/drugbank');
+
 const {ApiConnection} = require('./../../migrations/external/util');
 
 
@@ -28,6 +31,8 @@ const ENSEMBL_INPUT = path.join(DATA_DIR, 'ensembl_20181102_biomart_export_kras.
 const REFSEQ_INPUT = path.join(DATA_DIR, 'LRG_RefSeqGene_d1541209245_kras.tab');
 const FDA_INPUT = path.join(DATA_DIR, 'UNII_Records_25Oct2018_sample.txt');
 const ONCOTREE_TUMOUR_TYPES = path.join(DATA_DIR, 'tumorTypes-oncotree_latest_stable.json');
+const VARIO_INPUT = path.join(DATA_DIR, 'vario_v2018-04-27.owl');
+const DRUGBANK_INPUT = path.join(DATA_DIR, 'drugbank_sample.xml');
 
 
 const clearDB = async (db, admin) => {
@@ -65,6 +70,7 @@ describe('external migrations', () => {
     });
     describe('loads input files', () => {
         describe('ensembl', () => {
+            const sourceName = 'ensembl';
             before(async () => {
                 await ensembl.uploadFile({
                     filename: ENSEMBL_INPUT,
@@ -73,15 +79,15 @@ describe('external migrations', () => {
             });
             it('creates a source', async () => {
                 // check that there is a source named ensembl
-                const sources = await db.query('select * from source');
+                const sources = await db.query(`select * from source where name = '${sourceName}'`);
                 expect(sources).to.have.property('length', 1);
             });
             it('creates genes', async () => {
-                const genes = await db.query('select * from feature where biotype = \'gene\'');
+                const genes = await db.query(`select * from feature where biotype = 'gene' and source.name = '${sourceName}'`);
                 expect(genes).to.have.property('length', 2); // general and versioned
             });
             it('creates transcripts', async () => {
-                const transcripts = await db.query('select * from feature where biotype = \'transcript\'');
+                const transcripts = await db.query(`select * from feature where biotype = 'transcript' and source.name = '${sourceName}'`);
                 expect(transcripts).to.have.property('length', 8);
             });
             after(async () => {
@@ -89,6 +95,7 @@ describe('external migrations', () => {
             });
         });
         describe('refseq', () => {
+            const sourceName = 'refseq';
             before(async () => {
                 await refseq.uploadFile({
                     filename: REFSEQ_INPUT,
@@ -97,20 +104,20 @@ describe('external migrations', () => {
             });
             it('creates a source', async () => {
                 // check that there is a source named ensembl
-                const sources = await db.query('select * from source');
+                const sources = await db.query(`select * from source where name = '${sourceName}'`);
                 expect(sources).to.have.property('length', 1);
             });
             it('creates no genes', async () => {
                 // check that the correct number of elements have been created
-                const genes = await db.query('select * from feature where biotype = \'gene\'');
+                const genes = await db.query(`select * from feature where biotype = 'gene' and source.name = '${sourceName}'`);
                 expect(genes).to.have.property('length', 0);
             });
             it('creates transcripts', async () => {
-                const transcripts = await db.query('select * from feature where biotype = \'transcript\'');
+                const transcripts = await db.query(`select * from feature where biotype = 'transcript' and source.name = '${sourceName}'`);
                 expect(transcripts).to.have.property('length', 4);
             });
             it('creates proteins', async () => {
-                const proteins = await db.query('select * from feature where biotype = \'protein\'');
+                const proteins = await db.query(`select * from feature where biotype = 'protein' and source.name = '${sourceName}'`);
                 expect(proteins).to.have.property('length', 4);
             });
             after(async () => {
@@ -118,6 +125,7 @@ describe('external migrations', () => {
             });
         });
         describe('fda', () => {
+            const sourceName = 'fda';
             before(async () => {
                 await fda.uploadFile({
                     filename: FDA_INPUT,
@@ -126,12 +134,12 @@ describe('external migrations', () => {
             });
             it('creates a source', async () => {
                 // check that there is a source named ensembl
-                const sources = await db.query('select * from source');
+                const sources = await db.query(`select * from source where name = '${sourceName}'`);
                 expect(sources).to.have.property('length', 1);
             });
             it('creates therapies', async () => {
                 // check that the correct number of elements have been created
-                const drugs = await db.query('select * from therapy');
+                const drugs = await db.query(`select * from therapy where source.name = '${sourceName}'`);
                 expect(drugs).to.have.property('length', 4);
             });
             after(async () => {
@@ -139,6 +147,7 @@ describe('external migrations', () => {
             });
         });
         describe('oncotree', () => {
+            const sourceName = 'oncotree';
             before(async () => {
                 // mock the oncotree api class
                 const versions = [
@@ -155,13 +164,57 @@ describe('external migrations', () => {
             });
             it('creates a source', async () => {
                 // check that there is a source named ensembl
-                const sources = await db.query('select * from source');
+                const sources = await db.query(`select * from source where name = '${sourceName}'`);
                 expect(sources).to.have.property('length', 1);
             });
-            it('creates therapies', async () => {
+            it('creates diseases', async () => {
                 // check that the correct number of elements have been created
-                const diseases = await db.query('select * from disease');
+                const diseases = await db.query(`select * from disease where source.name = '${sourceName}'`);
                 expect(diseases).to.have.property('length', 853);
+            });
+            after(async () => {
+                await clearDB(db, admin);
+            });
+        });
+        describe('vario', () => {
+            const sourceName = 'vario';
+            before(async () => {
+                await vario.uploadFile({
+                    filename: VARIO_INPUT,
+                    conn: connection
+                });
+            });
+            it('creates a source', async () => {
+                // check that there is a source named ensembl
+                const sources = await db.query(`select * from source where name = '${sourceName}'`);
+                expect(sources).to.have.property('length', 1);
+            });
+            it('creates vocabulary terms', async () => {
+                // check that the correct number of elements have been created
+                const drugs = await db.query(`select * from vocabulary where source.name = '${sourceName}'`);
+                expect(drugs).to.have.property('length', 447);
+            });
+            after(async () => {
+                await clearDB(db, admin);
+            });
+        });
+        describe('drugbank', () => {
+            const sourceName = 'drugbank';
+            before(async () => {
+                await drugbank.uploadFile({
+                    filename: DRUGBANK_INPUT,
+                    conn: connection
+                });
+            });
+            it('creates a source', async () => {
+                // check that there is a source named ensembl
+                const sources = await db.query(`select * from source where name = '${sourceName}'`);
+                expect(sources).to.have.property('length', 1);
+            });
+            it('creates vocabulary terms', async () => {
+                // check that the correct number of elements have been created
+                const drugs = await db.query(`select * from therapy where source.name = '${sourceName}'`);
+                expect(drugs).to.have.property('length', 5);
             });
             after(async () => {
                 await clearDB(db, admin);
