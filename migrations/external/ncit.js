@@ -23,6 +23,7 @@ const _ = require('lodash');
 const {
     addRecord, convertOwlGraphToJson, getRecordBy, rid
 } = require('./util');
+const {logger, progress} = require('./logging');
 
 const ROOT_NODES = {
     AGONIST: 'c1514',
@@ -85,7 +86,7 @@ const subclassTree = (nodesByCode, roots) => {
  */
 const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource) => {
     const records = {};
-    console.log(`\nLoading ${Object.keys(inputRecords).length} ${dbClassName} nodes`);
+    logger.info(`\nLoading ${Object.keys(inputRecords).length} ${dbClassName} nodes`);
     for (const node of Object.values(inputRecords)) {
         if (!node[PREDICATES.CODE] || !node[PREDICATES.LABEL]) { // do not include anything that does not have at minimum these values
             continue;
@@ -156,10 +157,10 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
  * @param {ApiRequst} opt.conn the API connection object
  */
 const uploadFile = async ({filename, conn}) => {
-    console.log('Loading external NCIT data');
-    console.log(`loading: ${filename}`);
+    logger.info('Loading external NCIT data');
+    logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
-    console.log(`parsing: ${filename}`);
+    logger.info(`parsing: ${filename}`);
     const graph = rdf.graph();
     rdf.parse(content, graph, 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl', 'application/rdf+xml');
     const nodesByCode = convertOwlGraphToJson(graph, parseNcitID);
@@ -169,7 +170,7 @@ const uploadFile = async ({filename, conn}) => {
     try {
         fdaSource = await getRecordBy('sources', {name: 'fda'}, conn);
     } catch (err) {
-        process.stdout.write('?');
+        progress('x');
     }
 
     // for the given source nodes, include all descendents Has_NICHD_Parentdants/subclasses
@@ -214,12 +215,12 @@ const uploadFile = async ({filename, conn}) => {
     result = await createRecords(diseaseNodes.tree, 'diseases', conn, source, fdaSource);
     Object.assign(records, result);
 
-    console.log(`\nLoading ${subclassEdges.length} subclassof relationships`);
+    logger.info(`\nLoading ${subclassEdges.length} subclassof relationships`);
     for (const {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
             await addRecord('subclassof', {out: rid(records[src]), in: rid(records[tgt]), source: rid(source)}, conn, {existsOk: true});
         } else {
-            process.stdout.write('x');
+            progress('x');
         }
     }
     console.log();

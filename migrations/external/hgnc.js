@@ -41,6 +41,7 @@
  * @module migrations/external/hgnc
  */
 const {getRecordBy, addRecord, rid} = require('./util');
+const {logger, progress} = require('./logging');
 
 
 const SOURCE_NAME = 'hgnc';
@@ -68,10 +69,10 @@ const uploadFile = async (opt) => {
     try {
         ensemblSource = await getRecordBy('sources', {name: 'ensembl'}, conn);
     } catch (err) {
-        console.log('Unable to fetch ensembl source for llinking records:', err);
+        logger.info('Unable to fetch ensembl source for llinking records:', err);
     }
 
-    console.log(`\nAdding ${genes.length} feature records`);
+    logger.info(`\nAdding ${genes.length} feature records`);
     for (const gene of genes) {
         const body = {
             source,
@@ -92,7 +93,7 @@ const uploadFile = async (opt) => {
                 const ensembl = await getRecordBy(CLASS_NAME, {source: 'ensembl', biotype: 'gene', sourceId: gene.ensembl_gene_id}, conn);
                 ensemblLinks.push({src: rid(record), tgt: rid(ensembl)});
             } catch (err) {
-                process.stdout.write('x');
+                progress('x');
             }
         }
         for (const symbol of gene.prev_symbol || []) {
@@ -127,21 +128,21 @@ const uploadFile = async (opt) => {
                 });
                 aliasOf.push({src: rid(record), tgt: rid(related)});
             } catch (err) {
-                process.stdout.write('x');
+                progress('x');
             }
         }
     }
     if (ensemblSource) {
-        console.log(`\nAdding the ${ensemblLinks.length} ensembl links`);
+        logger.info(`\nAdding the ${ensemblLinks.length} ensembl links`);
         for (const {src, tgt} of ensemblLinks) {
             await addRecord('aliasof', {out: src, in: tgt, source}, conn, {existsOk: true});
         }
     }
-    console.log(`\nAdding the ${aliasOf.length} aliasof links`);
+    logger.info(`\nAdding the ${aliasOf.length} aliasof links`);
     for (const {src, tgt} of aliasOf) {
         await addRecord('aliasof', {out: src, in: tgt, source}, conn, {existsOk: true});
     }
-    console.log(`\nAdding the ${deprecatedBy.length} deprecatedby links`);
+    logger.info(`\nAdding the ${deprecatedBy.length} deprecatedby links`);
     for (const {src, tgt} of deprecatedBy) {
         await addRecord('deprecatedby', {out: src, in: tgt, source}, conn, {existsOk: true});
     }

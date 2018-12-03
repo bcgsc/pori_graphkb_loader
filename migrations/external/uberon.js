@@ -15,6 +15,7 @@ const fs = require('fs');
 const {
     addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, rid
 } = require('./util');
+const {logger, progress} = require('./logging');
 
 const PREDICATES = {
     CROSS_REF: 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
@@ -66,13 +67,13 @@ const parseSubsetName = (url) => {
  * @param {ApiConnection} opt.conn the API connection object
  */
 const uploadFile = async ({filename, conn}) => {
-    console.log('Loading the external uberon data');
-    console.log(`reading: ${filename}`);
+    logger.info('Loading the external uberon data');
+    logger.info(`reading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
     const graph = rdf.graph();
     const records = {};
     const ncitLinks = [];
-    console.log(`parsing: ${filename}`);
+    logger.info(`parsing: ${filename}`);
     rdf.parse(content, graph, OWL_NAMESPACE, 'application/rdf+xml');
 
     const nodesByCode = convertOwlGraphToJson(graph, parseUberonId);
@@ -80,7 +81,7 @@ const uploadFile = async ({filename, conn}) => {
     const subclassEdges = [];
     const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
 
-    console.log(`Adding the uberon ${Object.keys(nodesByCode).length} entity nodes`);
+    logger.info(`Adding the uberon ${Object.keys(nodesByCode).length} entity nodes`);
     for (const node of Object.values(nodesByCode)) {
         if (!node[PREDICATES.LABEL] || !node.code) {
             continue;
@@ -115,7 +116,7 @@ const uploadFile = async ({filename, conn}) => {
         const dbEntry = await addRecord('anatomicalentities', body, conn, {existsOk: true});
         records[dbEntry.sourceId] = dbEntry;
     }
-    console.log(`\nAdding the ${subclassEdges.length} subclassof relationships`);
+    logger.info(`\nAdding the ${subclassEdges.length} subclassof relationships`);
     for (const {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
             await addRecord('subclassof', {
@@ -124,11 +125,11 @@ const uploadFile = async ({filename, conn}) => {
                 source: rid(source)
             }, conn, {existsOk: true});
         } else {
-            process.stdout.write('x');
+            progress('x');
         }
     }
 
-    console.log(`\nAdding the ${ncitLinks.length} uberon/ncit aliasof relationships`);
+    logger.info(`\nAdding the ${ncitLinks.length} uberon/ncit aliasof relationships`);
     for (const {src, tgt} of ncitLinks) {
         if (records[src] === undefined) {
             continue;
@@ -142,7 +143,7 @@ const uploadFile = async ({filename, conn}) => {
             }, conn, {existsOk: true});
         } catch (err) {
             // ignore missing vocabulary
-            process.stdout.write('x');
+            progress('x');
         }
     }
     console.log();

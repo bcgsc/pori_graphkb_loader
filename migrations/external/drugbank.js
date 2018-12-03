@@ -86,6 +86,7 @@ const _ = require('lodash');
 const {
     addRecord, getRecordBy, loadXmlToJson, rid
 } = require('./util');
+const {logger, progress} = require('./logging');
 
 const SOURCE_NAME = 'drugbank';
 
@@ -98,7 +99,7 @@ const SOURCE_NAME = 'drugbank';
  * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async ({filename, conn}) => {
-    console.log('Loading the external drugbank data');
+    logger.info('Loading the external drugbank data');
     const xml = await loadXmlToJson(filename);
 
     const source = await addRecord('sources', {
@@ -106,14 +107,14 @@ const uploadFile = async ({filename, conn}) => {
         usage: 'https://www.drugbank.ca/legal/terms_of_use',
         url: 'https://www.drugbank.ca'
     }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME}});
-    console.log(`uploading ${xml.drugbank.drug.length} records`);
+    logger.info(`uploading ${xml.drugbank.drug.length} records`);
 
     const ATC = {};
     let fdaSource;
     try {
         fdaSource = await getRecordBy('sources', {name: 'FDA'}, conn);
     } catch (err) {
-        process.stdout.write('?');
+        progress('x');
     }
 
     for (const drug of xml.drugbank.drug) {
@@ -174,7 +175,7 @@ const uploadFile = async ({filename, conn}) => {
                     try {
                         fdaRec = await getRecordBy('therapies', {source: rid(fdaSource), sourceId: unii}, conn);
                     } catch (err) {
-                        process.stdout.write('x');
+                        progress('x');
                     }
                     if (fdaRec) {
                         await addRecord('aliasof', {
