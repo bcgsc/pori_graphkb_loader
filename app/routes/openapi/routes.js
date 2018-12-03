@@ -139,6 +139,30 @@ const GET_SCHEMA = {
 };
 
 
+const GET_VERSION = {
+    summary: 'Returns the version information for the API and database',
+    tags: ['Metadata'],
+    parameters: [
+        {$ref: '#/components/parameters/Accept'}
+    ],
+    responses: {
+        200: {
+            content: {
+                'application/json': {
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            api: {type: 'string', description: 'Version of the API', example: '0.6.3'},
+                            db: {type: 'string', description: 'Name of the database the API is connected to', example: 'kbapi_v0.6.3'}
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
+
 const GET_STATS = {
     summary: 'Returns counts for all non-abstract database classes',
     tags: ['Metadata'],
@@ -215,5 +239,5 @@ const GET_STATS = {
 };
 
 module.exports = {
-    POST_STATEMENT, POST_TOKEN, GET_SCHEMA, GET_STATS
+    POST_STATEMENT, POST_TOKEN, GET_SCHEMA, GET_STATS, GET_VERSION
 };

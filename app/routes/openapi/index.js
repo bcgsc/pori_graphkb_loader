@@ -27,6 +27,7 @@ const STUB = {
         '/statements': {post: routes.POST_STATEMENT},
         '/token': {post: routes.POST_TOKEN},
         '/schema': {get: routes.GET_SCHEMA},
+        '/version': {get: routes.GET_VERSION},
         '/spec': {
             get: {
                 summary: 'Returns this specification',
