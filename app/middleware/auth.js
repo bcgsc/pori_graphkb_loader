@@ -93,7 +93,10 @@ const checkToken = async (req, res, next) => {
  */
 const checkClassPermissions = async (req, res, next) => {
     const {model, user} = req;
-    const operation = req.method;
+    let operation = req.method;
+    if (req.url.endsWith('/search')) {
+        operation = 'GET';
+    }
     const mapping = {
         GET: PERMISSIONS.READ,
         UPDATE: PERMISSIONS.UPDATE,
