@@ -6,14 +6,15 @@
 
 const _ = require('lodash');
 const fs = require('fs');
-const path = require('path');
 const routes = require('./routes');
 const responses = require('./responses');
 const schemas = require('./schemas');
 const {GENERAL_QUERY_PARAMS, BASIC_HEADER_PARAMS, ONTOLOGY_QUERY_PARAMS} = require('./params');
-const {MAX_QUERY_LIMIT, MAX_JUMPS} = require('./constants');
+const {
+    MAX_QUERY_LIMIT, MAX_JUMPS, ABOUT_FILE, SEARCH_ABOUT
+} = require('./constants');
 
-const ABOUT_FILE = path.join(__dirname, '../../../doc/openapi_intro.md');
+
 const SCHEMA_PREFIX = '#/components/schemas';
 
 
@@ -27,6 +28,7 @@ const STUB = {
         '/statements': {post: routes.POST_STATEMENT},
         '/token': {post: routes.POST_TOKEN},
         '/schema': {get: routes.GET_SCHEMA},
+        '/version': {get: routes.GET_VERSION},
         '/spec': {
             get: {
                 summary: 'Returns this specification',
@@ -415,7 +417,8 @@ const generateSwaggerSpec = (schema, metadata) => {
     // Add the MD about section
 
     const about = fs.readFileSync(ABOUT_FILE).toString();
-    docs.info.description = about;
+    const search = fs.readFileSync(SEARCH_ABOUT).toString();
+    docs.info.description = `${about}\n${search}`;
 
     // simple routes
     for (const model of Object.values(schema)) {
