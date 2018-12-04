@@ -86,8 +86,18 @@ const _ = require('lodash');
 const {
     addRecord, getRecordBy, loadXmlToJson, rid
 } = require('./util');
+const {logger, progress} = require('./logging');
 
 const SOURCE_NAME = 'drugbank';
+
+// Lists most of the commonly required 'Tags' and Attributes
+const HEADER = {
+    unii: 'unii',
+    superclasses: 'atc-codes',
+    superclass: 'atc-code',
+    ident: 'drugbank-id',
+    mechanism: 'mechanism-of-action'
+};
 
 
 /**
@@ -95,10 +105,10 @@ const SOURCE_NAME = 'drugbank';
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the input XML file
- * @param {ApiRequest} opt.conn the api connection object
+ * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async ({filename, conn}) => {
-    console.log('Loading the external drugbank data');
+    logger.info('Loading the external drugbank data');
     const xml = await loadXmlToJson(filename);
 
     const source = await addRecord('sources', {
@@ -106,29 +116,32 @@ const uploadFile = async ({filename, conn}) => {
         usage: 'https://www.drugbank.ca/legal/terms_of_use',
         url: 'https://www.drugbank.ca'
     }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME}});
-    console.log(`uploading ${xml.drugbank.drug.length} records`);
+    logger.info(`uploading ${xml.drugbank.drug.length} records`);
 
     const ATC = {};
     let fdaSource;
     try {
         fdaSource = await getRecordBy('sources', {name: 'FDA'}, conn);
     } catch (err) {
-        process.stdout.write('?');
+        progress('x');
     }
 
     for (const drug of xml.drugbank.drug) {
         let atcLevels = [];
         try {
-            atcLevels = Array.from(drug['atc-codes'][0]['atc-code'][0].level, x => ({name: x._, sourceId: x.$.code.toLowerCase()}));
+            atcLevels = Array.from(
+                drug[HEADER.superclasses][0][HEADER.superclass][0].level,
+                x => ({name: x._, sourceId: x.$.code.toLowerCase()})
+            );
         } catch (err) {}
         try {
             const body = {
                 source: rid(source),
-                sourceId: drug['drugbank-id'][0]._,
+                sourceId: drug[HEADER.ident][0]._,
                 name: drug.name[0],
                 sourceIdVersion: drug.$.updated,
                 description: drug.description[0],
-                mechanismOfAction: drug['mechanism-of-action'][0]
+                mechanismOfAction: drug[HEADER.mechanism][0]
             };
             if (drug.categories[0] && drug.categories[0].category) {
                 body.subsets = [];
@@ -169,12 +182,12 @@ const uploadFile = async ({filename, conn}) => {
             }
             // link to the FDA UNII
             if (fdaSource) {
-                for (const unii of drug.unii) {
+                for (const unii of drug[HEADER.unii]) {
                     let fdaRec;
                     try {
                         fdaRec = await getRecordBy('therapies', {source: rid(fdaSource), sourceId: unii}, conn);
                     } catch (err) {
-                        process.stdout.write('x');
+                        progress('x');
                     }
                     if (fdaRec) {
                         await addRecord('aliasof', {
@@ -190,4 +203,4 @@ const uploadFile = async ({filename, conn}) => {
     console.log();
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, dependencies: ['fda']};

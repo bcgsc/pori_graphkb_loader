@@ -8,6 +8,44 @@ const fs = require('fs');
 const _ = require('lodash');
 const parse = require('csv-parse/lib/sync');
 const xml2js = require('xml2js');
+const {progress, logger} = require('./logging');
+
+
+/**
+ * wrapper to make requests less verbose
+ */
+class ApiConnection {
+    constructor(opt) {
+        this.baseUrl = `http://${opt.host}:${opt.port}/api`;
+        this.headers = {};
+    }
+
+    async setAuth({username, password}) {
+        const token = await request({
+            method: 'POST',
+            uri: `${this.baseUrl}/token`,
+            json: true,
+            body: {username, password}
+        });
+        this.headers.Authorization = token.kbToken;
+    }
+
+    async request(opt) {
+        const req = {
+            method: opt.method || 'GET',
+            headers: this.headers,
+            uri: `${this.baseUrl}/${opt.uri}`,
+            json: true
+        };
+        if (opt.body) {
+            req.body = opt.body;
+        }
+        if (opt.qs) {
+            req.qs = opt.qs;
+        }
+        return request(req);
+    }
+}
 
 
 const convertNulls = (where) => {
@@ -28,10 +66,10 @@ const getRecordBy = async (className, where, conn, sortFunc = () => 0) => {
     const queryParams = convertNulls(where);
     let newRecord;
     try {
-        newRecord = await request(conn.request({
+        newRecord = await conn.request({
             uri: className,
             qs: Object.assign({neighbors: 1}, queryParams)
-        }));
+        });
         newRecord = jc.retrocycle(newRecord).result;
     } catch (err) {
         throw err;
@@ -39,7 +77,6 @@ const getRecordBy = async (className, where, conn, sortFunc = () => 0) => {
     newRecord.sort(sortFunc);
     if (newRecord.length > 1) {
         if (sortFunc(newRecord[0], newRecord[1]) === 0) {
-            console.log(newRecord[0], newRecord[1]);
             throw new Error(`expected a single ${className} record but found multiple: ${rid(newRecord[0])} and ${rid(newRecord[1])}`);
         }
     } else if (newRecord.length === 0) {
@@ -85,7 +122,7 @@ const succinctRepresentation = (record) => {
 /**
  * Add a disease record to the DB
  * @param {object} where
- * @param {ApiRequest} conn
+ * @param {ApiConnection} conn
  * @param {boolean} exists_ok
  */
 const addRecord = async (className, where, conn, optIn = {}) => {
@@ -96,30 +133,30 @@ const addRecord = async (className, where, conn, optIn = {}) => {
         get: true
     }, optIn);
     try {
-        const newRecord = jc.retrocycle(await request(conn.request({
+        const newRecord = jc.retrocycle(await conn.request({
             method: 'POST',
             uri: className,
             body: where
-        })));
+        }));
 
-        process.stdout.write(where.out && where.in
+        progress(where.out && where.in
             ? '-'
             : '.');
         return newRecord.result;
     } catch (err) {
         err.error = jc.retrocycle(err.error);
-        if (opt.verbose || process.env.VERBOSE == '1') {
-            console.log('Record Attempted');
-            console.log(where);
+        if (opt.verbose || process.env.VERBOSE === '1') {
+            logger.error('Record Attempted');
+            logger.error(where);
             if (err.error.current) {
-                console.log('vs record(s) retrieved');
+                logger.error('vs record(s) retrieved');
                 for (const record of err.error ? err.error.current : []) {
-                    console.log(succinctRepresentation(record));
+                    logger.error(succinctRepresentation(record));
                 }
             }
         }
         if (opt.existsOk && err.statusCode === 409) {
-            process.stdout.write(where.out && where.in
+            progress(where.out && where.in
                 ? '='
                 : '*');
             if (opt.get) {
@@ -132,7 +169,14 @@ const addRecord = async (className, where, conn, optIn = {}) => {
     }
 };
 
-
+/**
+ * Given two ontology terms, return the newer, non-deprecated, independant, term first.
+ *
+ * @param {object} term1 the first term record
+ * @param {object} term2 the second term record
+ *
+ * @returns {Number} the sorting number (-1, 0, +1)
+ */
 const orderPreferredOntologyTerms = (term1, term2) => {
     if (term1.deprecated && !term2.deprecated) {
         return 1;
@@ -285,9 +329,9 @@ const convertOwlGraphToJson = (graph, idParser = x => x) => {
 
 
 const loadDelimToJson = async (filename, delim = '\t') => {
-    console.log(`loading: ${filename}`);
+    logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
-    console.log('parsing into json');
+    logger.info('parsing into json');
     const jsonList = parse(content, {
         delimiter: delim, escape: null, quote: null, comment: '##', columns: true, auto_parse: true
     });
@@ -296,12 +340,12 @@ const loadDelimToJson = async (filename, delim = '\t') => {
 
 
 const loadXmlToJson = (filename) => {
-    console.log(`reading: ${filename}`);
+    logger.info(`reading: ${filename}`);
     const xmlContent = fs.readFileSync(filename).toString();
-    console.log(`parsing: ${filename}`);
+    logger.info(`parsing: ${filename}`);
     return new Promise((resolve, reject) => {
         xml2js.parseString(xmlContent, (err, result) => {
-            console.log(err);
+            logger.error(err);
             if (err !== null) {
                 reject(err);
             } else {
@@ -325,5 +369,6 @@ module.exports = {
     preferredDiseases,
     preferredDrugs,
     loadDelimToJson,
-    loadXmlToJson
+    loadXmlToJson,
+    ApiConnection
 };

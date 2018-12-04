@@ -1,6 +1,7 @@
 const _ = require('lodash');
 
 const {addRecord, rid} = require('./util');
+const {logger} = require('./logging');
 
 const SOURCE_NAME = 'bcgsc';
 
@@ -207,11 +208,11 @@ const VOCABULARY = [
  * Upload the JSON constant above into GraphKB
  *
  * @param {object} opt options
- * @param {ApiRequest} opt.conn the database connection object for GraphKB
+ * @param {ApiConnection} opt.conn the database connection object for GraphKB
  */
 const upload = async (opt) => {
     const {conn} = opt;
-    console.log('Loading custom vocabulary terms');
+    logger.info('Loading custom vocabulary terms');
     const termsByName = {};
     const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
     // add the records
@@ -232,7 +233,7 @@ const upload = async (opt) => {
         termsByName[record.name] = record;
     }
     // now add the edge links
-    console.log('\nRelating custom vocabulary');
+    logger.info('\nRelating custom vocabulary');
     for (const term of VOCABULARY) {
         term.name = term.name.toLowerCase();
         for (const parent of term.subclassof || []) {

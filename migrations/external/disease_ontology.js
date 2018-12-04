@@ -15,6 +15,7 @@ const _ = require('lodash');
 const {
     addRecord, getRecordBy, orderPreferredOntologyTerms, rid
 } = require('./util');
+const {logger, progress} = require('./logging');
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
 const SOURCE_NAME = 'disease ontology';
@@ -39,11 +40,11 @@ const parseDoVersion = (version) => {
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the input JSON file
- * @param {ApiRequest} opt.conn the api connection object
+ * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async ({filename, conn}) => {
     // load the DOID JSON
-    console.log('Loading external disease ontology data');
+    logger.info('Loading external disease ontology data');
     const DOID = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
 
     // build the disease ontology first
@@ -56,7 +57,7 @@ const uploadFile = async ({filename, conn}) => {
         version: doVersion
     }, conn, {existsOk: true});
     source = rid(source);
-    console.log('\nAdding/getting the disease nodes');
+    logger.info('\nAdding/getting the disease nodes');
     const recordsBySourceId = {};
 
     let ncitSource;
@@ -152,7 +153,7 @@ const uploadFile = async ({filename, conn}) => {
                         const ncitId = `${match[1].toLowerCase()}`;
                         ncitNode = await getRecordBy('diseases', {source: ncitSource, sourceId: ncitId}, conn, orderPreferredOntologyTerms);
                     } catch (err) {
-                        process.stdout.write('?');
+                        progress('x');
                     }
                     if (ncitNode) {
                         await addRecord('aliasof', {out: rid(record), in: rid(ncitNode), source}, conn, {existsOk: true});
@@ -179,7 +180,7 @@ const loadEdges = async ({
     DOID, records, conn, source
 }) => {
     const relationshipTypes = {};
-    console.log('\nAdding the subclass relationships');
+    logger.info('\nAdding the subclass relationships');
     for (const edge of DOID.graphs[0].edges) {
         const {sub, pred, obj} = edge;
         if (pred === 'is_a') { // currently only loading this class type
@@ -204,4 +205,4 @@ const loadEdges = async ({
     }
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, dependencies: ['ncit']};

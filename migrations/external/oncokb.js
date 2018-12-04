@@ -404,7 +404,7 @@ const addEvidenceLevels = async (conn, source) => {
  *
  * @param {object} opt options
  * @param {string} [opt.url] the base url for fetching from the OncoKB Api
- * @param {ApiRequest} opt.conn the GraphKB api connection object
+ * @param {ApiConnection} opt.conn the GraphKB api connection object
  */
 const upload = async (opt) => {
     const {conn} = opt;

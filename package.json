@@ -8,7 +8,7 @@
   },
   "dependencies": {
     "@bcgsc/knowledgebase-parser": "^0.4.1",
-    "@bcgsc/knowledgebase-schema": "^1.2.0",
+    "@bcgsc/knowledgebase-schema": "^1.2.1",
     "ajv": "^5.5.2",
     "bluebird": "^3.5.0",
     "body-parser": "^1.15.2",
@@ -60,13 +60,16 @@
     "qs": "^6.5.2",
     "rewire": "^4.0.1"
   },
+  "nyc": {
+    "reporter": ["html", "text", "clover"]
+  },
   "scripts": {
     "start": "node server.js",
     "import": "node --stack-size=8192  --max-old-space-size=20000 migrations/external/index.js",
-    "livetest": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive test/{routes,repo}/livedb.js --exit",
-    "unit": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive test/*/{unit,schema,query}*",
-    "test": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive --exit --timeout 100000 test/{routes,repo}",
-    "test-ext": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive --exit --timeout 100000 test/migrations",
+    "livetest": "nyc mocha test/{routes,repo}/livedb.js --exit",
+    "unit": "nyc mocha test/*/{unit,schema,query}*",
+    "test": "nyc mocha test/{routes,repo}",
+    "test-import": "nyc mocha test/migrations",
     "lint": "eslint -c .eslintrc.jon app test",
     "jsdoc": "jsdoc -r app -r migrations -R README.md -d jsdoc --package package.json -c config/jsdoc.config.js",
     "version": "echo $npm_package_version"

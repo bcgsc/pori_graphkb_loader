@@ -30,4 +30,10 @@ const logger = winston.createLogger({
     )
 });
 
-module.exports = {logger};
+const progress = (content) => {
+    if (['info', 'debug', 'verbose'].includes(winston.level)) {
+        process.stdout.write(content);
+    }
+};
+
+module.exports = {logger, progress};

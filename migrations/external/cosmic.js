@@ -119,7 +119,7 @@ const processCosmicRecord = async (conn, record, source) => {
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the input tab delimited file
- * @param {ApiRequest} opt.conn the API connection object
+ * @param {ApiConnection} opt.conn the API connection object
  */
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;

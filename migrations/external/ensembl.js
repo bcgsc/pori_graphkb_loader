@@ -5,6 +5,7 @@
 const {
     loadDelimToJson, addRecord, getRecordBy, rid, orderPreferredOntologyTerms
 } = require('./util');
+const {progress} = require('./logging');
 
 const HEADER = {
     geneId: 'Gene stable ID',
@@ -29,7 +30,7 @@ const SOURCE_NAME = 'ensembl';
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the tab delimited export file
- * @param {ApiRequest} opt.conn the api connection object
+ * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;
@@ -40,13 +41,13 @@ const uploadFile = async (opt) => {
     try {
         refseqSource = await getRecordBy('sources', {name: 'refseq'}, conn);
     } catch (err) {
-        process.stdout.write('x');
+        progress('x');
     }
     let hgncSource;
     try {
         hgncSource = await getRecordBy('sources', {name: 'hgnc'}, conn);
     } catch (err) {
-        process.stdout.write('x');
+        progress('x');
     }
 
     const visited = {}; // cache genes to speed up adding records
@@ -122,12 +123,12 @@ const uploadFile = async (opt) => {
                     sourceId: record[HEADER.refseqId],
                     sourceIdVersion: null
                 }, conn, orderPreferredOntologyTerms);
-                await addRecord('aliasof', {
+                await addRecord('crossreferenceof', {
                     out: rid(transcript), in: rid(refseq), source: rid(source)
                 }, conn, {existsOk: true, get: false});
             } catch (err) {
-                process.stdout.write(`[missing: ${record[HEADER.refseqId]}]`);
-                process.stdout.write('x');
+                progress(`[missing: ${record[HEADER.refseqId]}]`);
+                progress('x');
             }
         }
         // gene -> aliasof -> hgnc
@@ -138,15 +139,15 @@ const uploadFile = async (opt) => {
                     sourceId: record[HEADER.hgncId],
                     name: record.hgncName
                 }, conn, orderPreferredOntologyTerms);
-                await addRecord('aliasof', {
+                await addRecord('crossreferenceof', {
                     out: rid(gene), in: rid(hgnc), source: rid(source)
                 }, conn, {existsOk: true, get: false});
             } catch (err) {
-                process.stdout.write(`[missing: ${record[HEADER.hgncId]}/${record.hgncName}]`);
-                process.stdout.write('x');
+                progress(`[missing: ${record[HEADER.hgncId]}/${record.hgncName}]`);
+                progress('x');
             }
         }
     }
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, dependencies: ['refseq', 'hgnc']};

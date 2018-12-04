@@ -402,7 +402,7 @@ const downloadVariantRecords = async () => {
  * Access the CIVic API, parse content, transform and load into GraphKB
  *
  * @param {object} opt options
- * @param {ApiRequest} opt.conn the api connection object for GraphKB
+ * @param {ApiConnection} opt.conn the api connection object for GraphKB
  * @param {string} [opt.url] url to use as the base for accessing the civic api
  */
 const upload = async (opt) => {

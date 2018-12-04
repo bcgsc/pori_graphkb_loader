@@ -4,9 +4,9 @@
  * @ignore
  */
 
-const request = require('request-promise');
-
 const {fileExists, createOptionsMenu} = require('./../cli');
+
+const {ApiConnection} = require('./util');
 
 const IMPORT_MODULES = {};
 IMPORT_MODULES.civic = require('./civic');
@@ -149,43 +149,7 @@ const options = createOptionsMenu(optionDefinitions,
     });
 
 
-/**
- * wrapper to make requests less verbose
- */
-class ApiRequest {
-    constructor(opt) {
-        this.baseUrl = `http://${opt.host}:${opt.port}/api`;
-        this.headers = {};
-    }
-
-    async setAuth({username, password}) {
-        const token = await request({
-            method: 'POST',
-            uri: `${this.baseUrl}/token`,
-            json: true,
-            body: {username, password}
-        });
-        this.headers.Authorization = token.kbToken;
-    }
-
-    request(opt) {
-        const req = {
-            method: opt.method || 'GET',
-            headers: this.headers,
-            uri: `${this.baseUrl}/${opt.uri}`,
-            json: true
-        };
-        if (opt.body) {
-            req.body = opt.body;
-        }
-        if (opt.qs) {
-            req.qs = opt.qs;
-        }
-        return req;
-    }
-}
-
-const apiConnection = new ApiRequest(options);
+const apiConnection = new ApiConnection(options);
 
 const upload = async () => {
     await apiConnection.setAuth(options);

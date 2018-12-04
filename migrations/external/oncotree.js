@@ -13,93 +13,244 @@
  */
 
 const request = require('request-promise');
-const {addRecord, getRecordBy, rid} = require('./util');
+const fs = require('fs');
+const jc = require('json-cycle');
 
+
+const {addRecord, getRecordBy, rid} = require('./util');
+const {logger, progress} = require('./logging');
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
 const SOURCE_NAME = 'oncotree';
+
+const CURRENT_VERSION_ID = 'oncotree_latest_stable';
+
+
+class OncotreeAPI {
+    constructor(baseurl) {
+        this.baseurl = baseurl;
+    }
+
+    /**
+     * Retrieve version information from the oncotree api
+     */
+    async getVersions() {
+        const versions = await request({
+            method: 'GET',
+            uri: `${this.baseurl}/versions`,
+            json: true
+        });
+
+        const versionMapping = {};
+
+        for (const version of versions) {
+            if (/^oncotree_\d+_\d+_\d+$/.exec(version.api_identifier) || version.api_identifier === CURRENT_VERSION_ID) {
+                versionMapping[version.release_date] = {
+                    name: version.release_date,
+                    apiKey: version.api_identifier
+                };
+            }
+        }
+        const versionList = Array.from(Object.values(versionMapping), v => v.name).sort();
+        for (let i = 1; i < versionList.length; i++) {
+            versionMapping[versionList[i]].previous = versionMapping[versionList[i - 1]];
+        }
+        const result = Object.values(versionMapping).sort((v1, v2) => {
+            if (v1.name < v2.name) {
+                return -1;
+            } if (v1.name > v2.name) {
+                return 1;
+            }
+            return 0;
+        });
+        return result;
+    }
+
+    async getRecords(versionApiKey) {
+        const records = await request({
+            method: 'GET',
+            uri: `${this.baseurl}/tumorTypes?version=${versionApiKey}`,
+            json: true
+        });
+        return records;
+    }
+
+    /**
+     * Retrieve records for each version from the oncotree api
+     *
+     */
+    async getAllRecords(versions) {
+        const recordsByCode = {};
+
+        const historicalCodes = (record) => {
+            const previous = [];
+            for (const dep of record.deprecates) {
+                previous.push(...historicalCodes(dep));
+            }
+            previous.push(record.sourceId);
+            return previous;
+        };
+        for (const version of versions) {
+            logger.info(
+                `loading version ${
+                    version.name
+                } [${
+                    version.apiKey
+                }] (follows: ${
+                    version.previous
+                        ? version.previous.name
+                        : null
+                })`
+            );
+            let records = await this.getRecords(version.apiKey);
+            records = Array.from(records, (rec) => {
+                const newRec = Object.assign({}, rec);
+                newRec.code = rec.code.toLowerCase();
+                newRec.history = Array.from(rec.history || [], code => code.toLowerCase());
+                if (rec.parent) {
+                    newRec.parent = rec.parent.toLowerCase();
+                }
+                return newRec;
+            });
+            for (const {name, mainType, code} of records) {
+                if (recordsByCode[code] === undefined) {
+                    recordsByCode[code] = {
+                        name,
+                        sourceId: code,
+                        sourceIdVersion: version.name,
+                        subclassOf: [],
+                        crossReferenceOf: [],
+                        subsets: [mainType],
+                        deprecates: []
+                    };
+                }
+            }
+            for (const {
+                parent, history, externalReferences, code
+            } of records) {
+                try {
+                    const record = recordsByCode[code];
+                    const previous = historicalCodes(record);
+
+                    if (parent) {
+                        if (!recordsByCode[parent]) {
+                            logger.error(`Could not find parent code (${parent}) record of ${code})`);
+                        } else {
+                            record.subclassOf.push(recordsByCode[parent]);
+                        }
+                    }
+                    for (const [xrefSource, xrefIdList] of Object.entries(externalReferences)) {
+                        for (const sourceId of xrefIdList) {
+                            record.crossReferenceOf.push({source: xrefSource, sourceId});
+                        }
+                    }
+                    if (version.previous) {
+                        for (const previousCode of history) {
+                            if (!previous.includes(previousCode)) {
+                            // link to deprecated version
+                                const deprecated = recordsByCode[previousCode];
+                                if (!deprecated) {
+                                    throw new Error(`Cannot deprecate. Previous Code (${previousCode}) not found`);
+                                } if (deprecated.deprecatedBy) {
+                                    throw new Error(`cannot deprecate (${
+                                        code
+                                    }) the same record twice. Currently deprecated by ${
+                                        deprecated.deprecatedBy.sourceId
+                                    } (${
+                                        deprecated.deprecatedBy.sourceIdVersion
+                                    }) and therefore cannot deprecate with ${
+                                        previousCode
+                                    }`);
+                                }
+                                deprecated.deprecatedBy = record;
+                                record.deprecates.push(deprecated);
+                            }
+                        }
+                    }
+                } catch (err) {
+                    logger.error('Failed linking', code);
+                    logger.error(err);
+                }
+            }
+        }
+        return Object.values(recordsByCode);
+    }
+}
 
 
 /**
  * Use the oncotree REST API to pull down ontology information and then load it into the GraphKB API
  *
  * @param {object} opt options
- * @param {ApiRequest} opt.conn the GraphKB API connection object
+ * @param {ApiConnection} opt.conn the GraphKB API connection object
  * @param {string} opt.url the base url to use in connecting to oncotree
  */
 const upload = async (opt) => {
     const {conn} = opt;
-    console.log('\nRetrieving the oncotree metadata');
-    const versions = await request({
-        method: 'GET',
-        uri: `${opt.url || ONCOTREE_API}/versions`,
-        json: true
-    });
-    let stable;
-    for (const version of versions) {
-        if (version.api_identifier === 'oncotree_latest_stable') {
-            stable = version;
-            break;
-        }
-    }
-    if (stable === undefined) {
-        throw new Error('Could not find the latest stable release metadata information');
-    }
-    const sourceVersion = stable.release_date;
-    console.log(`Retrieving the entries for version: ${sourceVersion}`);
-    const records = await request({
-        method: 'GET',
-        uri: `${ONCOTREE_API}/tumorTypes`,
-        json: true
-    });
+    logger.info('Retrieving the oncotree metadata');
+    const oncotreeApi = new OncotreeAPI(opt.url || ONCOTREE_API);
+
+    const versions = await oncotreeApi.getVersions();
+    const records = await oncotreeApi.getAllRecords(versions);
+
+    logger.info('writing test.json');
+    fs.writeFileSync('test.json', JSON.stringify(jc.decycle(records)));
+
     const source = await addRecord('sources', {
         name: SOURCE_NAME,
-        version: sourceVersion,
         url: ONCOTREE_API
-    }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME, version: sourceVersion}});
-    const recordBySourceID = {};
-    const subclassof = [];
+    }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME}});
+
     let ncitSource;
     try {
         ncitSource = await getRecordBy('sources', {name: 'ncit'}, conn);
     } catch (err) {
-        process.stdout.write('x');
+        progress('x');
     }
 
+    const dbRecordsByCode = {};
+    // upload the results
     for (const record of records) {
         const body = {
             source: rid(source),
             name: record.name,
-            sourceId: record.code
+            sourceId: record.sourceId,
+            sourceIdVersion: record.sourceIdVersion
         };
         const rec = await addRecord('diseases', body, conn, {existsOk: true});
-        recordBySourceID[rec.sourceId] = rec;
-        if (record.parent != null) {
-            subclassof.push({src: record.code.toLowerCase(), tgt: record.parent.toLowerCase()});
-        }
-        if (ncitSource) {
-            if (record.externalReferences && record.externalReferences.NCI) {
-                for (let ncitID of record.externalReferences.NCI) {
-                    ncitID = ncitID.toLowerCase();
-                    try {
-                        const ncitRec = await getRecordBy('diseases', {source: {name: 'ncit'}, sourceId: ncitID}, conn);
-                        await addRecord('aliasof', {out: rid(rec), in: rid(ncitRec), source: rid(source)}, conn);
-                    } catch (err) {
-                        // don't care. Don't add relationship unless the node exists
-                        process.stdout.write('x');
-                    }
+        dbRecordsByCode[record.sourceId] = rec;
+
+        for (const xref of record.crossReferenceOf) {
+            if (xref.source === 'NCI' && ncitSource) {
+                try {
+                    const ncitXref = await getRecordBy('diseases', {source: rid(ncitSource), sourceId: xref.sourceId}, conn);
+                    await addRecord('crossReferenceOf', {out: rid(rec), in: rid(ncitXref), source: rid(source)}, conn, {existsOk: true});
+                } catch (err) {
+                    progress('x');
                 }
             }
         }
     }
-    console.log('\nAdding subclass relationships');
-    for (let {src, tgt} of subclassof) {
-        src = rid(recordBySourceID[src]);
-        tgt = rid(recordBySourceID[tgt]);
-        await addRecord('subclassof', {out: src, in: tgt, source: rid(source)}, conn, {existsOk: true});
+
+    for (const record of records) {
+        for (const parentRecord of record.subclassOf || []) {
+            await addRecord('subclassOf', {
+                out: rid(dbRecordsByCode[record.sourceId]),
+                in: rid(dbRecordsByCode[parentRecord.sourceId]),
+                source: rid(source)
+            }, conn, {existsOk: true});
+        }
+        for (const deprecated of record.deprecates || []) {
+            await addRecord('deprecatedBy', {
+                out: rid(dbRecordsByCode[deprecated.sourceId]),
+                in: rid(dbRecordsByCode[record.sourceId]),
+                source: rid(source)
+            }, conn, {existsOk: true});
+        }
     }
+
     console.log();
 };
 
 
-module.exports = {upload};
+module.exports = {upload, OncotreeAPI};
