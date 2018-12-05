@@ -126,7 +126,7 @@ const uploadFile = async ({filename, conn}) => {
                     out: rid(synonym),
                     in: rid(record),
                     source
-                }, conn, {existsOk: true});
+                }, conn, {existsOk: true, get: false});
             }
         }
         // create deprecatedBy links for the old sourceIDs
@@ -140,7 +140,7 @@ const uploadFile = async ({filename, conn}) => {
                         dependency: rid(record),
                         source
                     }, conn, true);
-                    await addRecord('deprecatedby', {out: rid(alternate), in: rid(record), source}, conn, {existsOk: true});
+                    await addRecord('deprecatedby', {out: rid(alternate), in: rid(record), source}, conn, {existsOk: true, get: false});
                 }
             }
         }
@@ -156,7 +156,7 @@ const uploadFile = async ({filename, conn}) => {
                         progress('x');
                     }
                     if (ncitNode) {
-                        await addRecord('aliasof', {out: rid(record), in: rid(ncitNode), source}, conn, {existsOk: true});
+                        await addRecord('aliasof', {out: rid(record), in: rid(ncitNode), source}, conn, {existsOk: true, get: false});
                     }
                 }
             }
@@ -197,7 +197,7 @@ const loadEdges = async ({
                     out: records[src]['@rid'],
                     in: records[tgt]['@rid'],
                     source
-                }, conn, {existsOk: true});
+                }, conn, {existsOk: true, get: false});
             }
         } else {
             relationshipTypes[pred] = null;

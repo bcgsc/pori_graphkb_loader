@@ -262,7 +262,7 @@ const processActionableRecord = async (opt) => {
     const publications = await processPublicationsList({conn, pubmedSource, pmidList: rawRecord.pmids});
 
     // make the actual statement
-    const statement = await addRecord('statements', {
+    await addRecord('statements', {
         impliedBy: [{target: rid(variant)}, {target: rid(disease)}],
         supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(source), level: rid(level)})),
         relevance: rid(relevance),
@@ -271,16 +271,8 @@ const processActionableRecord = async (opt) => {
         reviewStatus: 'not required'
     }, conn, {
         existsOk: true,
-        getWhere: {
-            implies: {direction: 'in', v: [rid(variant), rid(disease)]},
-            supportedBy: {direction: 'out', v: Array.from(publications, x => rid(x))},
-            relevance: rid(relevance),
-            appliesTo: rid(drug),
-            source: rid(source),
-            reviewStatus: 'not required'
-        }
+        get: false
     });
-    return statement;
 };
 
 /**
@@ -329,14 +321,7 @@ const processAnnotatedRecord = async (opt) => {
         }, conn, {
             verbose: true,
             existsOk: true,
-            getWhere: {
-                implies: {v: Array.from(impliedBy, x => x.target)},
-                supportedBy: {v: Array.from(publications, x => rid(x))},
-                relevance: rid(relevance1),
-                appliesTo: rid(variant.reference1),
-                source: rid(source),
-                reviewStatus: 'not required'
-            }
+            get: false
         });
         count++;
     }
@@ -352,14 +337,7 @@ const processAnnotatedRecord = async (opt) => {
         }, conn, {
             verbose: true,
             existsOk: true,
-            getWhere: {
-                implies: {v: Array.from(impliedBy, x => x.target)},
-                supportedBy: {v: Array.from(publications, x => rid(x))},
-                relevance: rid(relevance2),
-                appliesTo: null,
-                reviewStatus: 'not required',
-                source: rid(source)
-            }
+            get: false
         });
         count++;
     }
@@ -453,6 +431,7 @@ const upload = async (opt) => {
                     ? err.error.message
                     : err.message || err, `variant: ${rawRecord.variant}`);
                 counts.errors++;
+                console.log(err.error || err);
             }
         }
     }
@@ -499,6 +478,7 @@ const upload = async (opt) => {
                 ? err.error.message
                 : err.message || err, `variant: ${rawRecord.variant}`);
             counts.errors++;
+            console.log(err.error || err);
         }
     }
     console.log('\n', counts);
