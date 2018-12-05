@@ -6,7 +6,7 @@
 
 const {fileExists, createOptionsMenu} = require('./../cli');
 
-const {ApiConnection} = require('./util');
+const {ApiConnection, PUBMED_DEFAULT_QS} = require('./util');
 
 const IMPORT_MODULES = {};
 IMPORT_MODULES.civic = require('./civic');
@@ -75,6 +75,11 @@ const optionDefinitions = [
         required: true,
         env: 'KB_PASSWORD',
         description: 'the password for access to the kb api (KB_PASSWORD)'
+    },
+    {
+        name: 'pubmed',
+        end: 'PUBMED_API_KEY',
+        description: 'The pubmed API key to use for pubmed requests'
     },
     {
         name: 'uberon',
@@ -150,6 +155,10 @@ const options = createOptionsMenu(optionDefinitions,
 
 
 const apiConnection = new ApiConnection(options);
+
+if (options.pubmed) {
+    PUBMED_DEFAULT_QS.api_key = options.pubmed;
+}
 
 const upload = async () => {
     await apiConnection.setAuth(options);

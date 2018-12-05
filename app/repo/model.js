@@ -90,7 +90,7 @@ class ClassModel extends kbSchema.ClassModel {
                 );
             }
         }
-        if ((oclass.defaultClusterId === -1) !== model.isAbstract) {
+        if ((oclass.defaultClusterId === -1) !== model.isAbstract && model.name !== 'V' && model.name !== 'E') {
             throw new Error(
                 `The abstractness (${
                     model.isAbstract
