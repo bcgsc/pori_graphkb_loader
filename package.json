@@ -1,14 +1,14 @@
 {
   "name": "@bcgsc/knowledgebase-api",
   "main": "server.js",
-  "version": "0.6.3",
+  "version": "1.0.0",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/VDB/repos/knowledgebase_api/browse"
   },
   "dependencies": {
     "@bcgsc/knowledgebase-parser": "^0.4.1",
-    "@bcgsc/knowledgebase-schema": "^1.2.3",
+    "@bcgsc/knowledgebase-schema": "^1.3.0",
     "ajv": "^5.5.2",
     "bluebird": "^3.5.0",
     "body-parser": "^1.15.2",
@@ -74,6 +74,7 @@
     "unit": "nyc mocha test/*/{unit,schema,query}*",
     "test": "nyc mocha test/{routes,repo}",
     "test-import": "nyc mocha test/migrations",
+    "test-all": "nyc mocha test/{repo,routes,migrations}",
     "lint": "eslint -c .eslintrc.jon app test",
     "jsdoc": "jsdoc -r app -r migrations -R README.md -d jsdoc --package package.json -c config/jsdoc.config.js",
     "version": "echo $npm_package_version"
