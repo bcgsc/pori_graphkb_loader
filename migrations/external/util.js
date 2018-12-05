@@ -10,6 +10,12 @@ const parse = require('csv-parse/lib/sync');
 const xml2js = require('xml2js');
 const {progress, logger} = require('./logging');
 
+const PUBMED_DEFAULT_QS = {
+    retmode: 'json',
+    db: 'pubmed'
+};
+
+const PUBMED_CACHE = {};
 
 /**
  * wrapper to make requests less verbose
@@ -253,15 +259,14 @@ const preferredDrugs = (term1, term2) => {
 
 
 const getPubmedArticle = async (pmid) => {
+    if (PUBMED_CACHE[pmid] !== undefined) {
+        return PUBMED_CACHE[pmid];
+    }
     // try getting the title from the pubmed api
     const opt = {
         method: 'GET',
         uri: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi',
-        qs: {
-            id: pmid,
-            retmode: 'json',
-            db: 'pubmed'
-        },
+        qs: Object.assign({id: pmid}, PUBMED_DEFAULT_QS),
         headers: {Accept: 'application/json'},
         json: true
     };
@@ -281,7 +286,9 @@ const getPubmedArticle = async (pmid) => {
             }
             return article;
         }
+        PUBMED_CACHE[pmid] = pubmedRecord;
     } catch (err) {}
+    PUBMED_CACHE[pmid] = null;
     throw new Error(`failed to retrieve pubmed article (${pmid})`);
 };
 
@@ -370,5 +377,6 @@ module.exports = {
     preferredDrugs,
     loadDelimToJson,
     loadXmlToJson,
-    ApiConnection
+    ApiConnection,
+    PUBMED_DEFAULT_QS
 };
