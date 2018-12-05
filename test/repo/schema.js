@@ -1,7 +1,14 @@
 const {expect} = require('chai');
 const {types} = require('orientjs');
 
-const {ClassModel, splitSchemaClassLevels, Property} = require('./../../app/repo/schema');
+const {
+    splitSchemaClassLevels,
+    SCHEMA_DEFN
+} = require('./../../app/repo/schema');
+const {
+    ClassModel,
+    Property
+} = require('./../../app/repo/model');
 
 
 const OJS_TYPES = {};
@@ -33,6 +40,78 @@ describe('splitSchemaClassLevels', () => {
 });
 
 
+describe('SCHEMA', () => {
+    describe('PositionalVariant.formatRecord', () => {
+        it('error on missing reference1', () => {
+            expect(() => {
+                SCHEMA_DEFN.PositionalVariant.formatRecord({
+                    reference2: '#33:1',
+                    break1Start: {'@class': 'ProteinPosition', pos: 1},
+                    type: '#33:2',
+                    createdBy: '#44:1'
+                }, {addDefaults: true});
+            }).to.throw('missing required attribute');
+        });
+        it('error on missing break1Start', () => {
+            expect(() => {
+                const formatted = SCHEMA_DEFN.PositionalVariant.formatRecord({
+                    reference1: '#33:1',
+                    break2Start: {'@class': 'ProteinPosition', pos: 1, refAA: 'A'},
+                    type: '#33:2',
+                    createdBy: '#44:1'
+                }, {addDefaults: true});
+                console.error(formatted);
+            }).to.throw('missing required attribute');
+        });
+        it('error on position without @class attribute', () => {
+            expect(() => {
+                const formatted = SCHEMA_DEFN.PositionalVariant.formatRecord({
+                    reference1: '#33:1',
+                    break1Start: {pos: 1, refAA: 'A'},
+                    type: '#33:2',
+                    createdBy: '#44:1'
+                }, {addDefaults: true});
+                console.error(formatted);
+            }).to.throw('positions must include the @class attribute');
+        });
+        it('error on break2End without break2Start', () => {
+            expect(() => {
+                const formatted = SCHEMA_DEFN.PositionalVariant.formatRecord({
+                    reference1: '#33:1',
+                    break1Start: {'@class': 'ProteinPosition', pos: 1, refAA: 'A'},
+                    type: '#33:2',
+                    break2End: {'@class': 'ProteinPosition', pos: 10, refAA: 'B'},
+                    createdBy: '#44:1'
+                }, {addDefaults: true});
+                console.error(formatted);
+            }).to.throw('both start and end');
+        });
+        it('auto generates the breakRepr', () => {
+            const formatted = SCHEMA_DEFN.PositionalVariant.formatRecord({
+                reference1: '#33:1',
+                type: '#33:2',
+                createdBy: '#44:1',
+                break1Start: {'@class': 'ProteinPosition', pos: 1, refAA: 'A'},
+                break2Start: {'@class': 'ExonicPosition', pos: 1},
+                break2End: {'@class': 'ExonicPosition', pos: 3}
+            }, {addDefaults: true});
+            expect(formatted).to.have.property('break1Repr', 'p.A1');
+            expect(formatted).to.have.property('break2Repr', 'e.(1_3)');
+        });
+        it('ignores the input breakrepr if given', () => {
+            const formatted = SCHEMA_DEFN.PositionalVariant.formatRecord({
+                reference1: '#33:1',
+                type: '#33:2',
+                createdBy: '#44:1',
+                break1Start: {'@class': 'ProteinPosition', pos: 1, refAA: 'A'},
+                break1Repr: 'bad'
+            }, {addDefaults: true});
+            expect(formatted).to.have.property('break1Repr', 'p.A1');
+        });
+    });
+});
+
+
 describe('ClassModel', () => {
     describe('compareToDbClass', () => {
         const model = new ClassModel({
@@ -42,7 +121,7 @@ describe('ClassModel', () => {
         });
         it('error on abstract mismatch', () => {
             expect(() => {
-                model.compareToDbClass({
+                ClassModel.compareToDbClass(model, {
                     name: 'Pathway',
                     shortName: null,
                     defaultClusterId: -1,
@@ -53,7 +132,7 @@ describe('ClassModel', () => {
         });
         it('error on undefined property', () => {
             expect(() => {
-                model.compareToDbClass({
+                ClassModel.compareToDbClass(model, {
                     name: 'Pathway',
                     shortName: null,
                     defaultClusterId: 65,
@@ -64,7 +143,7 @@ describe('ClassModel', () => {
         });
         it('error on wrong property type', () => {
             expect(() => {
-                model.compareToDbClass({
+                ClassModel.compareToDbClass(model, {
                     name: 'Pathway',
                     shortName: null,
                     defaultClusterId: 65,
@@ -164,7 +243,6 @@ describe('ClassModel', () => {
             expect(child.isEdge).to.be.true;
         });
     });
-
     describe('formatRecord', () => {
         let model;
         beforeEach(() => {

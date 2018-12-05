@@ -44,27 +44,6 @@ describe('API', () => {
         mockToken = await auth.generateToken(db, admin.name, REALLY_LONG_TIME);
     });
 
-    describe('parser', () => {
-        it('parses a variant', async () => {
-            const res = await chai.request(app.app)
-                .post(`${app.prefix}/parser/variant`)
-                .type('json')
-                .send({
-                    content: 'KRAS:p.R12K'
-                });
-            expect(res.body).to.have.property('result');
-            expect(res.body.result).to.eql({
-                break1Start: {'@class': 'ProteinPosition', pos: 12, refAA: 'R'},
-                untemplatedSeq: 'K',
-                untemplatedSeqSize: 1,
-                refSeq: 'R',
-                type: 'substitution',
-                break1Repr: 'p.R12',
-                reference1: 'KRAS',
-                multiFeature: false
-            });
-        });
-    });
     describe('stats', () => {
         it('gathers table stats', async () => {
             const res = await chai.request(app.app)
@@ -102,6 +81,45 @@ describe('API', () => {
                 expect(res.body.result[0].name).to.equal('admin');
             });
         });
+        describe('POST /users/search', () => {
+            it('name', async () => {
+                const res = await chai.request(app.app)
+                    .post(`${app.prefix}/users/search`)
+                    .set('Authorization', mockToken)
+                    .type('json')
+                    .send({
+                        where: [
+                            {attr: 'name', value: 'admin'}
+                        ],
+                        neighbors: 1,
+                        limit: 10
+                    });
+                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res.body.result).to.be.a('array');
+                expect(res.body.result.length).to.equal(1);
+                expect(res.body.result[0].name).to.equal('admin');
+            });
+            it('BAD REQUEST for query params', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .post(`${app.prefix}/users/search?neighbors=1`)
+                        .set('Authorization', mockToken)
+                        .type('json')
+                        .send({
+                            where: [
+                                {attr: 'name', value: 'admin'}
+                            ],
+                            neighbors: 1,
+                            limit: 10
+                        });
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('name', 'AttributeError');
+            });
+        });
         describe('GET /features', () => {
             it('BAD REQUEST on invalid biotype', async () => {
                 let res;
@@ -127,7 +145,7 @@ describe('API', () => {
                     res = err;
                 }
                 expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
-                expect(res.response.body).to.have.property('name', 'InputValidationError');
+                expect(res.response.body).to.have.property('name', 'AttributeError');
             });
         });
         describe('POST /users', () => {
@@ -611,19 +629,26 @@ describe('API', () => {
                 expect(res.body.result[0]).to.have.property('out_AliasOf');
                 expect(res.body.result[0].out_AliasOf).to.eql([]);
             });
+            it('neighborhood query returns both', async () => {
+                const res = await chai.request(app.app)
+                    .post(`${app.prefix}/diseases/search`)
+                    .set('Authorization', mockToken)
+                    .type('json')
+                    .send({
+                        type: 'neighborhood',
+                        where: {attr: 'sourceId', value: 'cancer'},
+                        neighbors: 2
+                    });
+                expect(res.body.result[0]).to.have.property('sourceId', 'cancer');
+                expect(res.body.result[0]).to.have.property('out_AliasOf');
+                expect(res.body.result[0].out_AliasOf).to.eql([]);
+            });
             it('includes deleted when not limited to active', async () => {
                 const res = await chai.request(app.app)
                     .get(`${app.prefix}/diseases`)
                     .set('Authorization', mockToken)
                     .query({neighbors: 2, activeOnly: false});
                 expect(res.body.result).to.have.property('length', 6);
-            });
-            it('query on related node', async () => {
-                const res = await chai.request(app.app)
-                    .get(`${app.prefix}/diseases`)
-                    .set('Authorization', mockToken)
-                    .query({aliasOf: {v: {name: 'bob'}}});
-                expect(res.body.result).to.have.property('length', 0);
             });
         });
         describe('GET /ontologies', () => {
@@ -646,24 +671,6 @@ describe('API', () => {
                     .set('Authorization', mockToken);
                 expect(resp.body).to.have.property('result');
                 expect(resp.body.result).to.have.property('length', 1);
-            });
-            it('query by subsets list', async () => {
-                const resp = await chai.request(app.app)
-                    .get(`${app.prefix}/ontologies`)
-                    .type('json')
-                    .query({subsets: ['a', 'b']})
-                    .set('Authorization', mockToken);
-                expect(resp.body).to.have.property('result');
-                expect(resp.body.result).to.have.property('length', 1);
-            });
-            it('query by subsets list require all terms', async () => {
-                const resp = await chai.request(app.app)
-                    .get(`${app.prefix}/ontologies`)
-                    .type('json')
-                    .query({subsets: ['a', 'b', 'x']})
-                    .set('Authorization', mockToken);
-                expect(resp.body).to.have.property('result');
-                expect(resp.body.result).to.have.property('length', 0);
             });
             it('query by subset single term', async () => {
                 const resp = await chai.request(app.app)

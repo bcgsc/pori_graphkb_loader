@@ -13,28 +13,11 @@
 const rdf = require('rdflib');
 const fs = require('fs');
 const {
-    addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms
+    addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, rid
 } = require('./util');
+const {logger, progress} = require('./logging');
 
-
-const parseUberonId = (string) => {
-    const match = /.*\/UBERON_(\d+)$/.exec(string);
-    if (match) {
-        return `uberon:${match[1]}`;
-    }
-    throw new Error(`failed to parser ID from ${string}`);
-};
-
-const parseSubsetName = (string) => {
-    const match = /.*\/([^/]+)$/.exec(string);
-    if (match) {
-        return match[1];
-    }
-    return string;
-};
-
-
-const PRED_MAP = {
+const PREDICATES = {
     CROSS_REF: 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
     SUBCLASSOF: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
     SUBSETOF: 'http://www.geneontology.org/formats/oboInOwl#inSubset',
@@ -42,72 +25,111 @@ const PRED_MAP = {
     DESCRIPTION: 'http://purl.obolibrary.org/obo/IAO_0000115',
     DEPRECATED: 'http://www.w3.org/2002/07/owl#deprecated'
 };
+const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/uberon.owl';
+const SOURCE_NAME = 'uberon';
+
+/**
+ * Parse the ID from a url
+ *
+ * @param {string} url the url to be parsed
+ * @returns {string} the ID
+ * @throws {Error} the ID did not match the expected format
+ */
+const parseUberonId = (url) => {
+    const match = /.*\/UBERON_(\d+)$/.exec(url);
+    if (match) {
+        return `uberon:${match[1]}`;
+    }
+    throw new Error(`failed to parser ID from ${url}`);
+};
+
+/**
+ * Parse the subset ID from a url
+ *
+ * @param {string} url the url to be parsed
+ * @returns {string} the susbet ID
+ * @throws {Error} the subset ID did not match the expected format
+ */
+const parseSubsetName = (url) => {
+    const match = /.*\/([^/]+)$/.exec(url);
+    if (match) {
+        return match[1];
+    }
+    return url;
+};
 
 
-const uploadUberon = async ({filename, conn}) => {
-    console.log('Loading the external uberon data');
-    console.log(`reading: ${filename}`);
+/**
+ * Given the path to an OWL file, upload the parsed ontology
+ *
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input OWL file
+ * @param {ApiConnection} opt.conn the API connection object
+ */
+const uploadFile = async ({filename, conn}) => {
+    logger.info('Loading the external uberon data');
+    logger.info(`reading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
     const graph = rdf.graph();
     const records = {};
     const ncitLinks = [];
-    console.log(`parsing: ${filename}`);
-    rdf.parse(content, graph, 'http://purl.obolibrary.org/obo/uberon.owl', 'application/rdf+xml');
+    logger.info(`parsing: ${filename}`);
+    rdf.parse(content, graph, OWL_NAMESPACE, 'application/rdf+xml');
 
     const nodesByCode = convertOwlGraphToJson(graph, parseUberonId);
 
     const subclassEdges = [];
-    const source = await addRecord('sources', {name: 'uberon'}, conn, {existsOk: true});
+    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
 
-    console.log(`Adding the uberon ${Object.keys(nodesByCode).length} entity nodes`);
+    logger.info(`Adding the uberon ${Object.keys(nodesByCode).length} entity nodes`);
     for (const node of Object.values(nodesByCode)) {
-        if (!node[PRED_MAP.LABEL] || !node.code) {
+        if (!node[PREDICATES.LABEL] || !node.code) {
             continue;
         }
         const body = {
-            source: source['@rid'],
-            name: node[PRED_MAP.LABEL][0],
+            source: rid(source),
+            name: node[PREDICATES.LABEL][0],
             sourceId: node.code
         };
-        if (node[PRED_MAP.DESCRIPTION]) {
-            body.description = node[PRED_MAP.DESCRIPTION][0];
+        if (node[PREDICATES.DESCRIPTION]) {
+            body.description = node[PREDICATES.DESCRIPTION][0];
         }
-        if (node[PRED_MAP.SUBSETOF]) {
-            body.subsets = Array.from(node[PRED_MAP.SUBSETOF], parseSubsetName);
+        if (node[PREDICATES.SUBSETOF]) {
+            body.subsets = Array.from(node[PREDICATES.SUBSETOF], parseSubsetName);
         }
-        if (node[PRED_MAP.SUBCLASSOF]) {
-            for (const parentCode of node[PRED_MAP.SUBCLASSOF]) {
+        if (node[PREDICATES.SUBCLASSOF]) {
+            for (const parentCode of node[PREDICATES.SUBCLASSOF]) {
                 subclassEdges.push({src: node.code, tgt: parentCode});
             }
         }
-        if (node[PRED_MAP.CROSS_REF]) {
-            for (let aliasCode of node[PRED_MAP.CROSS_REF]) {
+        if (node[PREDICATES.CROSS_REF]) {
+            for (let aliasCode of node[PREDICATES.CROSS_REF]) {
                 aliasCode = aliasCode.toLowerCase();
                 if (/^ncit:c\d+$/.exec(aliasCode)) {
-                    ncitLinks.push({src: node.code, tgt: aliasCode.slice('ncit:'.length), source: source['@rid']});
+                    ncitLinks.push({src: node.code, tgt: aliasCode.slice('ncit:'.length), source: rid(source)});
                 }
             }
         }
-        if (node[PRED_MAP.DEPRECATED] && node[PRED_MAP.DEPRECATED][0] === 'true') {
+        if (node[PREDICATES.DEPRECATED] && node[PREDICATES.DEPRECATED][0] === 'true') {
             body.deprecated = true;
         }
         const dbEntry = await addRecord('anatomicalentities', body, conn, {existsOk: true});
         records[dbEntry.sourceId] = dbEntry;
     }
-    console.log(`\nAdding the ${subclassEdges.length} subclassof relationships`);
+    logger.info(`\nAdding the ${subclassEdges.length} subclassof relationships`);
     for (const {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
             await addRecord('subclassof', {
                 out: records[src]['@rid'],
                 in: records[tgt]['@rid'],
-                source: source['@rid']
+                source: rid(source)
             }, conn, {existsOk: true});
         } else {
-            process.stdout.write('x');
+            progress('x');
         }
     }
 
-    console.log(`\nAdding the ${ncitLinks.length} uberon/ncit aliasof relationships`);
+    logger.info(`\nAdding the ${ncitLinks.length} uberon/ncit aliasof relationships`);
     for (const {src, tgt} of ncitLinks) {
         if (records[src] === undefined) {
             continue;
@@ -116,15 +138,15 @@ const uploadUberon = async ({filename, conn}) => {
             const ncitRecord = await getRecordBy('anatomicalentities', {source: {name: 'ncit'}, sourceId: tgt}, conn, orderPreferredOntologyTerms);
             await addRecord('aliasof', {
                 out: records[src]['@rid'],
-                in: ncitRecord['@rid'],
-                source: source['@rid']
+                in: rid(ncitRecord),
+                source: rid(source)
             }, conn, {existsOk: true});
         } catch (err) {
             // ignore missing vocabulary
-            process.stdout.write('x');
+            progress('x');
         }
     }
     console.log();
 };
 
-module.exports = {uploadUberon};
+module.exports = {uploadFile};

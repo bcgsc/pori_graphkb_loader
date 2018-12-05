@@ -1,6 +1,7 @@
 const _ = require('lodash');
 
-const {addRecord} = require('./util');
+const {addRecord, rid} = require('./util');
+const {logger} = require('./logging');
 
 const SOURCE_NAME = 'bcgsc';
 
@@ -17,6 +18,7 @@ const VOCABULARY = [
         name: 'any rna expression', subclassof: ['any expression'], aliasof: ['rna expression'], oppositeof: ['no rna expression']
     },
     {name: 'associated with'},
+    {name: 'benign', subclassof: ['biological']},
     {name: 'biological'},
     {name: 'copy gain', subclassof: ['copy variant'], aliasof: ['copy number gain']},
     {name: 'copy loss', subclassof: ['copy variant'], aliasof: ['copy number loss']},
@@ -74,6 +76,7 @@ const VOCABULARY = [
     {name: 'inversion', subclassof: ['structural variant']},
     {name: 'inverted translocation', subclassof: ['translocation']},
     {name: 'is characteristic of', subclassof: ['favours diagnosis'], description: 'a hallmark of this disease type'},
+    {name: 'likely benign', subclassof: ['benign']},
     {name: 'likely gain of function', subclassof: ['gain of function'], description: 'gain-of-function is predicted or assumed (by the literature) based on an inference of similar events or data'},
     {name: 'likely loss of function', subclassof: ['loss of function'], description: 'loss-of-function is predicted or assumed (by the literature) based on an inference of similar events or data'},
     {name: 'likely no functional effect', subclassof: ['no functional effect'], aliasof: ['likely neutral']},
@@ -127,8 +130,9 @@ const VOCABULARY = [
     {name: 'phosphorylation', subclassof: ['post-translational modification']},
     {name: 'polymorphism', subclassof: ['mutation']},
     {name: 'post-translational modification', subclassof: ['biological']},
-    {name: 'predisposing', subclassof: ['biological']},
+    {name: 'predisposing', subclassof: ['biological'], aliasof: ['risk factor']},
     {name: 'prognostic indicator'},
+    {name: 'protective', subclassof: ['benign'], description: 'protect against some disease or phenotype. Associated with decreased risk of the disease or phenotype'},
     {name: 'protein expression variant', subclassof: ['expression variant']},
     {name: 'recurrent', subclassof: ['biological'], description: 'commonly observed'},
     {name: 'reduced expression', subclassof: ['any expression'], aliasof: ['underexpression', 'down-regulated expression']},
@@ -162,21 +166,62 @@ const VOCABULARY = [
     {name: 'unfavourable prognosis', subclassof: ['prognostic indicator'], description: 'event is associated with a specifed, unfavouable outcome'},
     {name: 'weakly reduced function', subclassof: ['reduced function']},
     {name: 'weakly increased function', subclassof: ['increased function']},
-    {name: 'wild type', subclassof: ['no functional effect']}
+    {name: 'wild type', subclassof: ['no functional effect'], aliasof: ['wildtype']}
 ];
 
 
-const upload = async (conn) => {
-    console.log('Loading custom vocabulary terms');
+/**
+ * For any term which has an alias, they should also share subclassof relationships
+ */
+(() => {
     const termsByName = {};
-    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, true);
+    for (const term of VOCABULARY) {
+        termsByName[term.name.toLowerCase()] = term;
+    }
+    for (const term of Object.values(termsByName)) {
+        term.subclassof = term.subclassof || [];
+
+        for (const aliasName of term.aliasof || []) {
+            if (termsByName[aliasName.toLowerCase()] === undefined) {
+                termsByName[aliasName.toLowerCase()] = {
+                    name: aliasName,
+                    aliasof: [],
+                    subclassof: []
+                };
+                VOCABULARY.push(termsByName[aliasName.toLowerCase()]);
+            }
+            const alias = termsByName[aliasName.toLowerCase()];
+            alias.subclassof = alias.subclassof || [];
+
+            for (const superClass of alias.subclassof || []) {
+                term.subclassof.push(superClass);
+            }
+
+            for (const superClass of term.subclassof || []) {
+                alias.subclassof.push(superClass);
+            }
+        }
+    }
+})();
+
+/**
+ * Upload the JSON constant above into GraphKB
+ *
+ * @param {object} opt options
+ * @param {ApiConnection} opt.conn the database connection object for GraphKB
+ */
+const upload = async (opt) => {
+    const {conn} = opt;
+    logger.info('Loading custom vocabulary terms');
+    const termsByName = {};
+    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
     // add the records
     for (const term of VOCABULARY) {
         term.name = term.name.toLowerCase();
         const content = {
             name: term.name,
             sourceId: term.name,
-            source: source['@rid']
+            source: rid(source)
         };
         if (term.description) {
             content.description = term.description;
@@ -188,33 +233,33 @@ const upload = async (conn) => {
         termsByName[record.name] = record;
     }
     // now add the edge links
-    console.log('\nRelating custom vocabulary');
+    logger.info('\nRelating custom vocabulary');
     for (const term of VOCABULARY) {
         term.name = term.name.toLowerCase();
         for (const parent of term.subclassof || []) {
             await addRecord('subclassof', {
                 out: termsByName[term.name]['@rid'],
                 in: termsByName[parent.toLowerCase()]['@rid'],
-                source: source['@rid']
+                source: rid(source)
             }, conn, {existsOk: true});
         }
         for (let parent of term.aliasof || []) {
             parent = await addRecord('vocabulary', {
                 name: parent,
                 sourceId: parent,
-                source: source['@rid']
+                source: rid(source)
             }, conn, {existsOk: true});
             await addRecord('aliasof', {
                 out: termsByName[term.name]['@rid'],
-                in: parent['@rid'],
-                source: source['@rid']
+                in: rid(parent),
+                source: rid(source)
             }, conn, {existsOk: true});
         }
         for (const parent of term.oppositeof || []) {
             await addRecord('oppositeof', {
                 out: termsByName[term.name]['@rid'],
                 in: termsByName[parent.toLowerCase()]['@rid'],
-                source: source['@rid']
+                source: rid(source)
             }, conn, {existsOk: true});
         }
     }

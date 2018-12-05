@@ -33,8 +33,6 @@
  *
  * @module migrations/external/cosmic
  */
-const parse = require('csv-parse/lib/sync');
-const fs = require('fs');
 const request = require('request-promise');
 const {
     addRecord,
@@ -42,13 +40,18 @@ const {
     orderPreferredOntologyTerms,
     getPubmedArticle,
     preferredDrugs,
-    preferredDiseases
+    preferredDiseases,
+    loadDelimToJson,
+    rid
 } = require('./util');
 
 const THERAPY_MAPPING = {
     'tyrosine kinase inhibitor - ns': 'tyrosine kinase inhibitor',
     'endocrine therapy': 'hormone therapy agent'
 };
+
+const SOURCE_NAME = 'cosmic';
+
 
 const processCosmicRecord = async (conn, record, source) => {
     // get the hugo gene
@@ -63,8 +66,8 @@ const processCosmicRecord = async (conn, record, source) => {
         uri: 'parser/variant',
         body: {content: variant}
     }))).result;
-    variant.reference1 = gene['@rid'];
-    variant.type = (await getRecordBy('vocabulary', {name: variant.type}, conn))['@rid'];
+    variant.reference1 = rid(gene);
+    variant.type = rid(await getRecordBy('vocabulary', {name: variant.type}, conn));
     variant = await addRecord('positionalvariants', variant, conn, {existsOk: true});
     // get the enst transcript
     // const gene = await getRecordBy('features', {name: record['Transcript'], source: {name: 'ensembl'}, biotype: 'transcript'}, conn, orderPreferredOntologyTerms);
@@ -93,9 +96,9 @@ const processCosmicRecord = async (conn, record, source) => {
     await addRecord('statements', {
         relevance,
         appliesTo: drug,
-        impliedBy: [{target: variant['@rid']}, {target: disease['@rid']}],
-        supportedBy: [{target: record.publication['@rid'], source}],
-        source: source['@rid'],
+        impliedBy: [{target: rid(variant)}, {target: rid(disease)}],
+        supportedBy: [{target: rid(record.publication), source}],
+        source: rid(source),
         reviewStatus: 'not required'
     }, conn, {
         existsOk: true,
@@ -103,28 +106,30 @@ const processCosmicRecord = async (conn, record, source) => {
         getWhere: {
             relevance,
             appliesTo: drug,
-            implies: {direction: 'in', v: [variant['@rid'], disease['@rid']]},
-            supportedBy: {v: [record.publication['@rid']], direction: 'out'},
-            source: source['@rid'],
+            implies: {direction: 'in', v: [rid(variant), rid(disease)]},
+            supportedBy: {v: [rid(record.publication)], direction: 'out'},
+            source: rid(source),
             reviewStatus: 'not required'
         }
     });
 };
 
-const upload = async (opt) => {
+/**
+ * Given some TAB delimited file, upload the resulting statements to GraphKB
+ *
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input tab delimited file
+ * @param {ApiConnection} opt.conn the API connection object
+ */
+const uploadFile = async (opt) => {
     const {filename, conn} = opt;
-    console.log(`loading: ${filename}`);
-    const content = fs.readFileSync(filename, 'utf8');
-    console.log('parsing into json');
-    const jsonList = parse(content, {
-        delimiter: '\t', escape: null, quote: null, comment: '##', columns: true, auto_parse: true
-    });
+    const jsonList = loadDelimToJson(filename);
     // get the dbID for the source
-    const source = (await addRecord('sources', {
-        name: 'cosmic',
+    const source = rid(await addRecord('sources', {
+        name: SOURCE_NAME,
         url: 'https://cancer.sanger.ac.uk',
         usage: 'https://cancer.sanger.ac.uk/cosmic/terms'
-    }, conn, {existsOk: true}))['@rid'];
+    }, conn, {existsOk: true}));
     const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, {existsOk: true});
     const counts = {success: 0, error: 0, skip: 0};
     const errorCache = {};
@@ -140,7 +145,7 @@ const upload = async (opt) => {
         } catch (err) {
             publication = await getPubmedArticle(record['Pubmed Id']);
             publication = await addRecord('publications', Object.assign(publication, {
-                source: pubmedSource['@rid']
+                source: rid(pubmedSource)
             }), conn, {existsOk: true});
         }
         record.publication = publication;
@@ -161,4 +166,4 @@ const upload = async (opt) => {
     console.log(`${Object.keys(errorCache).length} unique errors`);
 };
 
-module.exports = {upload};
+module.exports = {uploadFile};

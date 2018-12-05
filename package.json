@@ -1,12 +1,14 @@
 {
-  "name": "knowledgebase-api",
+  "name": "@bcgsc/knowledgebase-api",
   "main": "server.js",
-  "version": "0.6.0",
+  "version": "1.0.0",
   "repository": {
     "type": "git",
-    "url": "ssh://git@svn.bcgsc.ca:7999/vdb/knowledgebase_api.git"
+    "url": "https://svn.bcgsc.ca/bitbucket/projects/VDB/repos/knowledgebase_api/browse"
   },
   "dependencies": {
+    "@bcgsc/knowledgebase-parser": "^0.4.1",
+    "@bcgsc/knowledgebase-schema": "^1.3.0",
     "ajv": "^5.5.2",
     "bluebird": "^3.5.0",
     "body-parser": "^1.15.2",
@@ -24,12 +26,11 @@
     "json-cycle": "^1.2.0",
     "jsonfile": "^4.0.0",
     "jsonwebtoken": "^8.2.0",
-    "knowledgebase-parser": "git+ssh://git@svn.bcgsc.ca:7999/vdb/knowledgebase_parser.git#v0.2.0",
     "lodash": "^4.17.4",
     "mocha-bamboo-reporter": "^1.1.1",
     "moment": "^2.18.1",
     "named-js-regexp": "^1.3.2",
-    "orientjs": "^2.2.10",
+    "orientjs": "~2.2.11",
     "rdflib": "^0.16.8",
     "request-promise": "^4.2.1",
     "shelljs": "^0.8.1",
@@ -59,12 +60,21 @@
     "qs": "^6.5.2",
     "rewire": "^4.0.1"
   },
+  "nyc": {
+    "reporter": [
+      "html",
+      "text",
+      "clover"
+    ]
+  },
   "scripts": {
     "start": "node server.js",
     "import": "node --stack-size=8192  --max-old-space-size=20000 migrations/external/index.js",
-    "unit": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive test/*/{unit,schema,query}.js",
-    "test": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive --exit --timeout 100000 test/{repo,routes}",
-    "test-ext": "nyc --reporter=html --reporter=text --reporter=clover mocha -R mocha-multi-reporters --reporter-options configFile=config/coverage.json --recursive --exit --timeout 100000 test/migrations",
+    "livetest": "nyc mocha test/{routes,repo}/livedb.js --exit",
+    "unit": "nyc mocha test/*/{unit,schema,query}*",
+    "test": "nyc mocha test/{routes,repo}",
+    "test-import": "nyc mocha test/migrations",
+    "test-all": "nyc mocha test/{repo,routes,migrations}",
     "lint": "eslint -c .eslintrc.jon app test",
     "jsdoc": "jsdoc -r app -r migrations -R README.md -d jsdoc --package package.json -c config/jsdoc.config.js",
     "version": "echo $npm_package_version"

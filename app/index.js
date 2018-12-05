@@ -11,9 +11,6 @@ const cors = require('cors');
 const HTTP_STATUS = require('http-status-codes');
 const swaggerUi = require('swagger-ui-express');
 
-const {parse} = require('knowledgebase-parser').variant;
-const {ParsingError} = require('knowledgebase-parser').error;
-
 const auth = require('./middleware/auth');
 const {logger} = require('./repo/logging');
 const {selectCounts} = require('./repo/base');
@@ -91,7 +88,7 @@ class AppServer {
 
         // set up the routes
         this.router = express.Router();
-        this.prefix = `/api/v${process.env.npm_package_version || 'test'}`;
+        this.prefix = '/api';
         this.app.use(this.prefix, this.router);
 
         this.router.route('/token').post(async (req, res) => {
@@ -116,20 +113,6 @@ class AppServer {
                 return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
             }
             return res.status(HTTP_STATUS.OK).json({kbToken: token, catsToken: cats.token});
-        });
-
-        // add the variant parser route
-        this.router.post('/parser/variant', async (req, res) => {
-            try {
-                const parsed = parse(req.body.content);
-                return res.status(HTTP_STATUS.OK).json({result: parsed});
-            } catch (err) {
-                if (err instanceof ParsingError) {
-                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
-                }
-                logger.log('error', err.message || err);
-                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
-            }
         });
     }
 
@@ -157,6 +140,12 @@ class AppServer {
 
         this.router.get('/schema', async (req, res) => {
             res.status(HTTP_STATUS.OK).json({schema: jc.decycle(schema)});
+        });
+        this.router.get('/version', async (req, res) => {
+            res.status(HTTP_STATUS.OK).json({
+                api: process.env.npm_package_version,
+                db: this.conf.db.name
+            });
         });
 
         this.router.use(checkToken);
@@ -216,7 +205,15 @@ class AppServer {
         }));
 
         this.server = await http.createServer(this.app).listen(this.conf.app.port);
-        logger.log('info', `started application server (${this.server.address().host || process.env.HOSTNAME}:${this.server.address().port})`);
+        logger.log('info', `started application server (${this.host || process.env.HOSTNAME}:${this.port})`);
+    }
+
+    get host() {
+        return this.server.address().host || 'localhost';
+    }
+
+    get port() {
+        return this.server.address().port;
     }
 
     async close() {

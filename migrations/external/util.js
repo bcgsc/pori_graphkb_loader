@@ -4,7 +4,55 @@
  */
 const request = require('request-promise');
 const jc = require('json-cycle');
+const fs = require('fs');
 const _ = require('lodash');
+const parse = require('csv-parse/lib/sync');
+const xml2js = require('xml2js');
+const {progress, logger} = require('./logging');
+
+const PUBMED_DEFAULT_QS = {
+    retmode: 'json',
+    db: 'pubmed'
+};
+
+const PUBMED_CACHE = {};
+
+/**
+ * wrapper to make requests less verbose
+ */
+class ApiConnection {
+    constructor(opt) {
+        this.baseUrl = `http://${opt.host}:${opt.port}/api`;
+        this.headers = {};
+    }
+
+    async setAuth({username, password}) {
+        const token = await request({
+            method: 'POST',
+            uri: `${this.baseUrl}/token`,
+            json: true,
+            body: {username, password}
+        });
+        this.headers.Authorization = token.kbToken;
+    }
+
+    async request(opt) {
+        const req = {
+            method: opt.method || 'GET',
+            headers: this.headers,
+            uri: `${this.baseUrl}/${opt.uri}`,
+            json: true
+        };
+        if (opt.body) {
+            req.body = opt.body;
+        }
+        if (opt.qs) {
+            req.qs = opt.qs;
+        }
+        return request(req);
+    }
+}
+
 
 const convertNulls = (where) => {
     const queryParams = {};
@@ -24,10 +72,10 @@ const getRecordBy = async (className, where, conn, sortFunc = () => 0) => {
     const queryParams = convertNulls(where);
     let newRecord;
     try {
-        newRecord = await request(conn.request({
+        newRecord = await conn.request({
             uri: className,
             qs: Object.assign({neighbors: 1}, queryParams)
-        }));
+        });
         newRecord = jc.retrocycle(newRecord).result;
     } catch (err) {
         throw err;
@@ -35,8 +83,7 @@ const getRecordBy = async (className, where, conn, sortFunc = () => 0) => {
     newRecord.sort(sortFunc);
     if (newRecord.length > 1) {
         if (sortFunc(newRecord[0], newRecord[1]) === 0) {
-            throw new Error(`\nexpected a single ${className} record: ${
-                where.name || where.sourceId || Object.keys(where)}`);
+            throw new Error(`expected a single ${className} record but found multiple: ${rid(newRecord[0])} and ${rid(newRecord[1])}`);
         }
     } else if (newRecord.length === 0) {
         throw new Error(`\nmissing ${className} record: ${where.name || where.sourceId || Object.entries(where)} (${where.sourceId})`);
@@ -81,50 +128,61 @@ const succinctRepresentation = (record) => {
 /**
  * Add a disease record to the DB
  * @param {object} where
- * @param {ApiRequest} conn
+ * @param {ApiConnection} conn
  * @param {boolean} exists_ok
  */
 const addRecord = async (className, where, conn, optIn = {}) => {
     const opt = Object.assign({
         existsOk: false,
         getWhere: null,
-        verbose: false
+        verbose: false,
+        get: true
     }, optIn);
     try {
-        const newRecord = jc.retrocycle(await request(conn.request({
+        const newRecord = jc.retrocycle(await conn.request({
             method: 'POST',
             uri: className,
             body: where
-        })));
+        }));
 
-        process.stdout.write(where.out && where.in
+        progress(where.out && where.in
             ? '-'
             : '.');
         return newRecord.result;
     } catch (err) {
         err.error = jc.retrocycle(err.error);
-        if (opt.verbose) {
-            console.log('Record Attempted');
-            console.log(where);
+        if (opt.verbose || process.env.VERBOSE === '1') {
+            logger.error('Record Attempted');
+            logger.error(where);
             if (err.error.current) {
-                console.log('vs record(s) retrieved');
+                logger.error('vs record(s) retrieved');
                 for (const record of err.error ? err.error.current : []) {
-                    console.log(succinctRepresentation(record));
+                    logger.error(succinctRepresentation(record));
                 }
             }
         }
         if (opt.existsOk && err.statusCode === 409) {
-            process.stdout.write(where.out && where.in
+            progress(where.out && where.in
                 ? '='
                 : '*');
-            const result = await getRecordBy(className, opt.getWhere || where, conn);
-            return result;
+            if (opt.get) {
+                const result = await getRecordBy(className, opt.getWhere || where, conn);
+                return result;
+            }
+            return null;
         }
         throw err;
     }
 };
 
-
+/**
+ * Given two ontology terms, return the newer, non-deprecated, independant, term first.
+ *
+ * @param {object} term1 the first term record
+ * @param {object} term2 the second term record
+ *
+ * @returns {Number} the sorting number (-1, 0, +1)
+ */
 const orderPreferredOntologyTerms = (term1, term2) => {
     if (term1.deprecated && !term2.deprecated) {
         return 1;
@@ -134,6 +192,16 @@ const orderPreferredOntologyTerms = (term1, term2) => {
         return -1;
     } if (term2.dependency == null & term1.dependency != null) {
         return 1;
+    } if (term1.sourceId === term2.sourceId) {
+        if (term1.sourceIdVersion < term2.sourceIdVersion) {
+            return -1;
+        } if (term1.sourceIdVersion > term2.sourceIdVersion) {
+            return 1;
+        } if (term1.source.version < term2.source.version) {
+            return -1;
+        } if (term1.source.version > term2.source.version) {
+            return 1;
+        }
     }
     return 0;
 };
@@ -191,15 +259,14 @@ const preferredDrugs = (term1, term2) => {
 
 
 const getPubmedArticle = async (pmid) => {
+    if (PUBMED_CACHE[pmid] !== undefined) {
+        return PUBMED_CACHE[pmid];
+    }
     // try getting the title from the pubmed api
     const opt = {
         method: 'GET',
         uri: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi',
-        qs: {
-            id: pmid,
-            retmode: 'json',
-            db: 'pubmed'
-        },
+        qs: Object.assign({id: pmid}, PUBMED_DEFAULT_QS),
         headers: {Accept: 'application/json'},
         json: true
     };
@@ -219,12 +286,14 @@ const getPubmedArticle = async (pmid) => {
             }
             return article;
         }
+        PUBMED_CACHE[pmid] = pubmedRecord;
     } catch (err) {}
+    PUBMED_CACHE[pmid] = null;
     throw new Error(`failed to retrieve pubmed article (${pmid})`);
 };
 
 
-const convertOwlGraphToJson = (graph, idParser) => {
+const convertOwlGraphToJson = (graph, idParser = x => x) => {
     const initialRecords = {};
     for (const statement of graph.statements) {
         let src;
@@ -265,6 +334,49 @@ const convertOwlGraphToJson = (graph, idParser) => {
     return nodesByCode;
 };
 
+
+const loadDelimToJson = async (filename, delim = '\t') => {
+    logger.info(`loading: ${filename}`);
+    const content = fs.readFileSync(filename, 'utf8');
+    logger.info('parsing into json');
+    const jsonList = parse(content, {
+        delimiter: delim, escape: null, quote: null, comment: '##', columns: true, auto_parse: true
+    });
+    return jsonList;
+};
+
+
+const loadXmlToJson = (filename) => {
+    logger.info(`reading: ${filename}`);
+    const xmlContent = fs.readFileSync(filename).toString();
+    logger.info(`parsing: ${filename}`);
+    return new Promise((resolve, reject) => {
+        xml2js.parseString(xmlContent, (err, result) => {
+            logger.error(err);
+            if (err !== null) {
+                reject(err);
+            } else {
+                resolve(result);
+            }
+        });
+    });
+};
+
+
+const rid = record => (record['@rid'] || record).toString();
+
+
 module.exports = {
-    addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs
+    rid,
+    addRecord,
+    getRecordBy,
+    convertOwlGraphToJson,
+    orderPreferredOntologyTerms,
+    getPubmedArticle,
+    preferredDiseases,
+    preferredDrugs,
+    loadDelimToJson,
+    loadXmlToJson,
+    ApiConnection,
+    PUBMED_DEFAULT_QS
 };

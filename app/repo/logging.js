@@ -8,7 +8,7 @@ const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
 
 const transports = [
-    new winston.transports.Console({level: process.env.LOG_LEVEL || 'warn', timestamp: true, colorize: true})
+    new winston.transports.Console({level: process.env.LOG_LEVEL || 'info', timestamp: true, colorize: true})
 ];
 if (process.env.LOG_DIR) {
     transports.push(new DailyRotateFile({

@@ -1,0 +1,27 @@
+const {ORIENTDB_HOME} = process.env;
+
+const dbName = 'kbapi_v0.6.0';
+
+const server = {
+    pass: process.env.DATABASE_SERVER_PASS || 'root',
+    user: process.env.DATABASE_SERVER_USER || 'root',
+    port: process.env.DATABASE_PORT || 2426,
+    host: process.env.DATABASE_HOST || 'orientdb02.bcgsc.ca'
+};
+
+const db = {
+    name: dbName,
+    url: `plocal:${ORIENTDB_HOME}/databases/${dbName}`,
+    pass: process.env.DATABASE_PASS || 'admin',
+    user: process.env.DATABASE_USER || 'admin',
+    host: server.host,
+    port: server.port
+};
+
+module.exports = {
+    server,
+    db,
+    app: {port: process.env.PORT || 8080},
+    private_key: 'id_rsa' || process.env.KEY_FILE,
+    disableCats: process.env.DISABLE_CATS === '1'
+};

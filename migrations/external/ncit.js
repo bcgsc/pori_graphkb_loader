@@ -20,7 +20,10 @@ const fs = require('fs');
 const _ = require('lodash');
 
 
-const {addRecord, convertOwlGraphToJson, getRecordBy} = require('./util');
+const {
+    addRecord, convertOwlGraphToJson, getRecordBy, rid
+} = require('./util');
+const {logger, progress} = require('./logging');
 
 const ROOT_NODES = {
     AGONIST: 'c1514',
@@ -30,7 +33,7 @@ const ROOT_NODES = {
     ANATOMY: 'c12219'
 };
 
-const PRED_MAP = {
+const PREDICATES = {
     LABEL: 'http://www.w3.org/2000/01/rdf-schema#label',
     CODE: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#NHC0',
     DESCRIPTION: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P97',
@@ -43,13 +46,21 @@ const PRED_MAP = {
     CLASS: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P106'
 };
 
+const SOURCE_NAME = 'ncit';
 
-const parseNcitID = (string) => {
-    const match = /.*#(C\d+)$/.exec(string);
+/**
+ * Parse the ID from a url
+ *
+ * @param {string} url the url to be parsed
+ * @returns {string} the ID
+ * @throws {Error} the ID did not match the expected format
+ */
+const parseNcitID = (url) => {
+    const match = /.*#(C\d+)$/.exec(url);
     if (match) {
         return `${match[1].toLowerCase()}`;
     }
-    throw new Error(`failed to parse: ${string}`);
+    throw new Error(`failed to parse: ${url}`);
 };
 
 
@@ -75,32 +86,32 @@ const subclassTree = (nodesByCode, roots) => {
  */
 const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource) => {
     const records = {};
-    console.log(`\nLoading ${Object.keys(inputRecords).length} ${dbClassName} nodes`);
+    logger.info(`\nLoading ${Object.keys(inputRecords).length} ${dbClassName} nodes`);
     for (const node of Object.values(inputRecords)) {
-        if (!node[PRED_MAP.CODE] || !node[PRED_MAP.LABEL]) { // do not include anything that does not have at minimum these values
+        if (!node[PREDICATES.CODE] || !node[PREDICATES.LABEL]) { // do not include anything that does not have at minimum these values
             continue;
         }
         const body = {
-            source: source['@rid'],
-            name: node[PRED_MAP.LABEL][0],
+            source: rid(source),
+            name: node[PREDICATES.LABEL][0],
             sourceId: node.code
         };
-        if (node[PRED_MAP.DESCRIPTION]) {
-            body.description = node[PRED_MAP.DESCRIPTION][0];
+        if (node[PREDICATES.DESCRIPTION]) {
+            body.description = node[PREDICATES.DESCRIPTION][0];
         }
-        if (node[PRED_MAP.SUBSETOF]) {
-            body.subsets = node[PRED_MAP.SUBSETOF];
+        if (node[PREDICATES.SUBSETOF]) {
+            body.subsets = node[PREDICATES.SUBSETOF];
         }
-        if (node[PRED_MAP.DEPRECATED] && node[PRED_MAP.DEPRECATED][0] === 'true') {
+        if (node[PREDICATES.DEPRECATED] && node[PREDICATES.DEPRECATED][0] === 'true') {
             body.deprecated = true;
         }
         const dbEntry = await addRecord(dbClassName, body, conn, {existsOk: true});
         // add the aliasof links
-        for (const alias of node[PRED_MAP.SYNONYM] || []) {
+        for (const alias of node[PREDICATES.SYNONYM] || []) {
             const aliasBody = {
-                source: source['@rid'],
+                source: rid(source),
                 sourceId: node.code,
-                dependency: dbEntry['@rid'],
+                dependency: rid(dbEntry),
                 name: alias
             };
             const aliasRecord = await addRecord(
@@ -111,24 +122,24 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
             );
             await addRecord(
                 'aliasof',
-                {source: source['@rid'], out: aliasRecord['@rid'], in: dbEntry['@rid']},
+                {source: rid(source), out: rid(aliasRecord), in: rid(dbEntry)},
                 conn,
                 {existsOk: true}
             );
         }
         // add the link to the FDA
-        if (fdaSource && node[PRED_MAP.FDA] && node[PRED_MAP.FDA].length) {
+        if (fdaSource && node[PREDICATES.FDA] && node[PREDICATES.FDA].length) {
             let fdaRec;
             try {
-                fdaRec = await getRecordBy(dbClassName, {source: fdaSource['@rid'], name: node[PRED_MAP.FDA][0]}, conn);
+                fdaRec = await getRecordBy(dbClassName, {source: rid(fdaSource), name: node[PREDICATES.FDA][0]}, conn);
             } catch (err) {
                 process.write('?');
             }
             if (fdaRec) {
                 await addRecord('aliasof', {
-                    source: source['@rid'],
-                    out: dbEntry['@rid'],
-                    in: fdaRec['@rid']
+                    source: rid(source),
+                    out: rid(dbEntry),
+                    in: rid(fdaRec)
                 }, conn, {existsOk: true});
             }
         }
@@ -138,26 +149,33 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
 };
 
 
-const uploadNCIT = async ({filename, conn}) => {
-    console.log('Loading external NCIT data');
-    console.log(`loading: ${filename}`);
+/**
+ * Given the path to some NCIT OWL file, upload the parsed ontology records
+ *
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input OWL file
+ * @param {ApiRequst} opt.conn the API connection object
+ */
+const uploadFile = async ({filename, conn}) => {
+    logger.info('Loading external NCIT data');
+    logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
-    console.log(`parsing: ${filename}`);
+    logger.info(`parsing: ${filename}`);
     const graph = rdf.graph();
     rdf.parse(content, graph, 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl', 'application/rdf+xml');
     const nodesByCode = convertOwlGraphToJson(graph, parseNcitID);
 
-    const source = await addRecord('sources', {name: 'ncit'}, conn, {existsOk: true});
+    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
     let fdaSource;
     try {
         fdaSource = await getRecordBy('sources', {name: 'fda'}, conn);
     } catch (err) {
-        process.stdout.write('?');
+        progress('x');
     }
 
     // for the given source nodes, include all descendents Has_NICHD_Parentdants/subclasses
     for (const node of Object.values(nodesByCode)) {
-        for (const parentCode of node[PRED_MAP.SUBCLASSOF] || []) {
+        for (const parentCode of node[PREDICATES.SUBCLASSOF] || []) {
             if (!nodesByCode[parentCode]) {
                 continue;
             }
@@ -171,7 +189,7 @@ const uploadNCIT = async ({filename, conn}) => {
     const diseaseNodes = subclassTree(nodesByCode, [nodesByCode[ROOT_NODES.DISEASE]]);
     for (const node of Object.values(nodesByCode)) {
         if (diseaseNodes.tree[node.code] === undefined) {
-            if (node[PRED_MAP.CLASS] && node[PRED_MAP.CLASS][0] === 'Neoplastic Process') {
+            if (node[PREDICATES.CLASS] && node[PREDICATES.CLASS][0] === 'Neoplastic Process') {
                 diseaseNodes[node.code] = node;
             }
         }
@@ -197,12 +215,12 @@ const uploadNCIT = async ({filename, conn}) => {
     result = await createRecords(diseaseNodes.tree, 'diseases', conn, source, fdaSource);
     Object.assign(records, result);
 
-    console.log(`\nLoading ${subclassEdges.length} subclassof relationships`);
+    logger.info(`\nLoading ${subclassEdges.length} subclassof relationships`);
     for (const {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
-            await addRecord('subclassof', {out: records[src]['@rid'], in: records[tgt]['@rid'], source: source['@rid']}, conn, {existsOk: true});
+            await addRecord('subclassof', {out: rid(records[src]), in: rid(records[tgt]), source: rid(source)}, conn, {existsOk: true});
         } else {
-            process.stdout.write('x');
+            progress('x');
         }
     }
     console.log();
@@ -210,4 +228,4 @@ const uploadNCIT = async ({filename, conn}) => {
 };
 
 
-module.exports = {uploadNCIT};
+module.exports = {uploadFile};

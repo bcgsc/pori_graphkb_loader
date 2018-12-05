@@ -10,8 +10,9 @@
  * @module migrations/external/oncokb
  */
 const request = require('request-promise');
+const kbParser = require('@bcgsc/knowledgebase-parser');
 const {
-    addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs
+    addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs, rid
 } = require('./util');
 const {ParsingError} = require('./../../app/repo/error');
 
@@ -50,10 +51,10 @@ const addTherapyCombination = async (conn, source, name) => {
     const combination = await addRecord('therapies', {
         name: combinationName,
         sourceId: combinationName,
-        source: source['@rid']
+        source: rid(source)
     }, conn, {existsOk: true});
     for (const drug of drugRec) {
-        await addRecord('elementOf', {source: source['@rid'], out: drug['@rid'], in: combination['@rid']}, conn, {existsOk: true});
+        await addRecord('elementOf', {source: rid(source), out: rid(drug), in: rid(combination)}, conn, {existsOk: true});
     }
     return combination;
 };
@@ -127,16 +128,13 @@ const processVariant = async (opt) => {
             variantUrl = 'categoryvariants';
             variant = {};
         } catch (err) {
-            variant = await request(conn.request({
-                method: 'POST',
-                uri: 'parser/variant',
-                body: {
-                    content: `${variant.startsWith('e.')
-                        ? ''
-                        : 'p.'}${variant}`
-                }
-            }));
-            variant = variant.result;
+            variant = kbParser.variant.parse(
+                `${variant.startsWith('e.')
+                    ? ''
+                    : 'p.'}${variant}`,
+                false
+            ).toJSON();
+
             variantUrl = 'positionalvariants';
             variantType = await getRecordBy('vocabulary', {name: variant.type}, conn);
             Object.assign(defaults, {
@@ -149,11 +147,11 @@ const processVariant = async (opt) => {
                 truncation: null
             });
         }
-        variant.reference1 = gene1['@rid'];
+        variant.reference1 = rid(gene1);
         if (gene2) {
-            variant.reference2 = gene2['@rid'];
+            variant.reference2 = rid(gene2);
         }
-        variant.type = variantType['@rid'];
+        variant.type = rid(variantType);
         // create the variant
         variant = await addRecord(variantUrl, variant, conn, {existsOk: true, getWhere: Object.assign(defaults, variant)});
     }
@@ -197,7 +195,7 @@ const processPublicationsList = async (opt) => {
         } catch (err) {
             publication = await getPubmedArticle(pmid);
             publication = await addRecord('publications', Object.assign(publication, {
-                source: pubmedSource['@rid']
+                source: rid(pubmedSource)
             }), conn, {existsOk: true});
         }
         publications.push(publication);
@@ -253,7 +251,7 @@ const processActionableRecord = async (opt) => {
     }
 
     // get the evidence level and determine the relevance
-    const level = await getRecordBy('evidencelevels', {sourceId: rawRecord.level, source: source['@rid']}, conn);
+    const level = await getRecordBy('evidencelevels', {sourceId: rawRecord.level, source: rid(source)}, conn);
 
     let relevance = level.name.startsWith('r')
         ? 'resistance'
@@ -264,25 +262,17 @@ const processActionableRecord = async (opt) => {
     const publications = await processPublicationsList({conn, pubmedSource, pmidList: rawRecord.pmids});
 
     // make the actual statement
-    const statement = await addRecord('statements', {
-        impliedBy: [{target: variant['@rid']}, {target: disease['@rid']}],
-        supportedBy: Array.from(publications, x => ({target: x['@rid'], source: source['@rid'], level: level['@rid']})),
-        relevance: relevance['@rid'],
-        appliesTo: drug['@rid'],
-        source: source['@rid'],
+    await addRecord('statements', {
+        impliedBy: [{target: rid(variant)}, {target: rid(disease)}],
+        supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(source), level: rid(level)})),
+        relevance: rid(relevance),
+        appliesTo: rid(drug),
+        source: rid(source),
         reviewStatus: 'not required'
     }, conn, {
         existsOk: true,
-        getWhere: {
-            implies: {direction: 'in', v: [variant['@rid'], disease['@rid']]},
-            supportedBy: {direction: 'out', v: Array.from(publications, x => x['@rid'])},
-            relevance: relevance['@rid'],
-            appliesTo: drug['@rid'],
-            source: source['@rid'],
-            reviewStatus: 'not required'
-        }
+        get: false
     });
-    return statement;
 };
 
 /**
@@ -315,30 +305,23 @@ const processAnnotatedRecord = async (opt) => {
         throw new Error(`unable to find vocabulary terms: ${rawRecord.mutationEffect} or ${rawRecord.oncogenicity}`);
     }
     // make the actual functional statement
-    const impliedBy = [{target: variant['@rid']}];
+    const impliedBy = [{target: rid(variant)}];
     if (disease) {
-        impliedBy.push({target: disease['@rid']});
+        impliedBy.push({target: rid(disease)});
     }
     let count = 0;
     if (relevance1) {
         await addRecord('statements', {
             impliedBy,
-            supportedBy: Array.from(publications, x => ({target: x['@rid'], source: source['@rid']})),
-            relevance: relevance1['@rid'],
-            appliesTo: variant.reference1,
-            source: source['@rid'],
+            supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(source)})),
+            relevance: rid(relevance1),
+            appliesTo: rid(variant.reference1),
+            source: rid(source),
             reviewStatus: 'not required'
         }, conn, {
             verbose: true,
             existsOk: true,
-            getWhere: {
-                implies: {v: Array.from(impliedBy, x => x.target)},
-                supportedBy: {v: Array.from(publications, x => x['@rid'])},
-                relevance: relevance1['@rid'],
-                appliesTo: variant.reference1,
-                source: source['@rid'],
-                reviewStatus: 'not required'
-            }
+            get: false
         });
         count++;
     }
@@ -346,22 +329,15 @@ const processAnnotatedRecord = async (opt) => {
     if (relevance2) {
         await addRecord('statements', {
             impliedBy,
-            supportedBy: Array.from(publications, x => ({target: x['@rid'], source: source['@rid']})),
-            relevance: relevance2['@rid'],
+            supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(source)})),
+            relevance: rid(relevance2),
             appliesTo: null,
-            source: source['@rid'],
+            source: rid(source),
             reviewStatus: 'not required'
         }, conn, {
             verbose: true,
             existsOk: true,
-            getWhere: {
-                implies: {v: Array.from(impliedBy, x => x.target)},
-                supportedBy: {v: Array.from(publications, x => x['@rid'])},
-                relevance: relevance2['@rid'],
-                appliesTo: null,
-                reviewStatus: 'not required',
-                source: source['@rid']
-            }
+            get: false
         });
         count++;
     }
@@ -390,7 +366,7 @@ const addEvidenceLevels = async (conn, source) => {
         }
         level = level.slice('LEVEL_'.length);
         const record = await addRecord('evidencelevels', {
-            source: source['@rid'],
+            source: rid(source),
             sourceId: level,
             name: level,
             description: desc,
@@ -401,9 +377,16 @@ const addEvidenceLevels = async (conn, source) => {
     return result;
 };
 
-
-const upload = async (conn) => {
-    const URL = 'http://oncokb.org/api/v1/utils';
+/**
+ * Upload the OncoKB statements from the OncoKB API into GraphKB
+ *
+ * @param {object} opt options
+ * @param {string} [opt.url] the base url for fetching from the OncoKB Api
+ * @param {ApiConnection} opt.conn the GraphKB api connection object
+ */
+const upload = async (opt) => {
+    const {conn} = opt;
+    const URL = opt.url || 'http://oncokb.org/api/v1/utils';
 
     // load directly from their api:
     console.log(`loading: ${URL}`);
@@ -448,6 +431,7 @@ const upload = async (conn) => {
                     ? err.error.message
                     : err.message || err, `variant: ${rawRecord.variant}`);
                 counts.errors++;
+                console.log(err.error || err);
             }
         }
     }
@@ -494,6 +478,7 @@ const upload = async (conn) => {
                 ? err.error.message
                 : err.message || err, `variant: ${rawRecord.variant}`);
             counts.errors++;
+            console.log(err.error || err);
         }
     }
     console.log('\n', counts);

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<drugbank xmlns="http://www.drugbank.ca" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.drugbank.ca http://www.drugbank.ca/docs/drugbank.xsd" version="5.1" exported-on="2018-07-03">
+<drug type="biotech" created="2005-06-13" updated="2018-07-02">
+  <drugbank-id primary="true">DB00001</drugbank-id>
+  <drugbank-id>secondary ID</drugbank-id>
+  <drugbank-id>tertiary ID</drugbank-id>
+  <name>Drug name</name>
+  <description>some description</description>
+  <unii>Y43GF64R34</unii>
+  <mechanism-of-action>Does something</mechanism-of-action>
+  <categories>
+    <category>
+      <category>Subset name</category>
+    </category>
+  </categories>
+  <atc-codes>
+    <atc-code code="B01AE02">
+      <level code="B01AE">superclass 1</level>
+      <level code="B01A">superclass 2</level>
+      <level code="B01">superclass 3</level>
+      <level code="B">superclass 4</level>
+    </atc-code>
+  </atc-codes>
+</drug>
+</drugbank>

@@ -7,9 +7,11 @@ const jwt = require('jsonwebtoken');
 const jc = require('json-cycle');
 const request = require('request-promise');
 const moment = require('moment');
+
+const {constants: {PERMISSIONS}} = require('@bcgsc/knowledgebase-schema');
+
 const {AuthenticationError, PermissionError} = require('./../repo/error');
 const {getUserByName} = require('./../repo/base');
-const {PERMISSIONS} = require('./../repo/constants');
 
 const keys = {};
 const SERVICE_NAME = 'kb';
@@ -91,7 +93,10 @@ const checkToken = async (req, res, next) => {
  */
 const checkClassPermissions = async (req, res, next) => {
     const {model, user} = req;
-    const operation = req.method;
+    let operation = req.method;
+    if (req.url.endsWith('/search')) {
+        operation = 'GET';
+    }
     const mapping = {
         GET: PERMISSIONS.READ,
         UPDATE: PERMISSIONS.UPDATE,

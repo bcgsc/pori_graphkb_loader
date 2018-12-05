@@ -5,13 +5,15 @@
  * @module app/repo/base
  */
 const _ = require('lodash');
-const {RID, RIDBag} = require('orientjs');
+
+const {util: {castToRID, timeStampNow}, error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 
 const {logger} = require('./logging');
-const {SelectionQuery} = require('./query');
+const {
+    Query, Comparison, Clause, Traversal, constants: {TRAVERSAL_TYPE, OPERATORS}
+} = require('./query');
 const {SCHEMA_DEFN} = require('./schema');
 const {
-    AttributeError,
     MultipleRecordsFoundError,
     NoRecordFoundError,
     NotImplementedError,
@@ -19,9 +21,9 @@ const {
     PermissionError
 } = require('./error');
 const {
-    timeStampNow, castToRID, groupRecordsBy
+    groupRecordsBy,
+    trimRecords
 } = require('./util');
-const {PERMISSIONS} = require('./constants');
 
 
 const STATS_GROUPING = new Set(['@class', 'source']);
@@ -43,113 +45,6 @@ const wrapIfTypeError = (err) => {
         }
     }
     return err;
-};
-
-/**
- * Given a list of records, removes any object which contains a non-null deletedAt property
- *
- * @param {Array.<Object>} recordList list of records to be trimmed
- * @param {Object} opt options
- * @param {boolean} [opt.activeOnly=true] trim deleted records
- * @param {User} [opt.user=null] if the user object is given, will check record-level permissions and trim any non-permitted content
- */
-const trimRecords = (recordList, opt = {}) => {
-    const {activeOnly, user} = Object.assign({
-        activeOnly: true,
-        user: null
-    }, opt);
-    const queue = recordList.slice();
-    const visited = new Set();
-    const readableClasses = new Set();
-    const allGroups = new Set();
-
-    if (user) {
-        for (const group of user.groups) {
-            allGroups.add(castToRID(group).toString());
-            for (const [cls, permissions] of Object.entries(group.permissions || {})) {
-                if (permissions & PERMISSIONS.READ) {
-                    readableClasses.add(cls);
-                }
-            }
-        }
-    }
-
-    const accessOk = (record) => {
-        if (user) {
-            const cls = record['@rid'] === undefined // embedded records cannot have class-level permissions checks and will not have @rid's
-                ? null
-                : record['@class'];
-            if (cls && !readableClasses.has(cls)) {
-                return false;
-            }
-            if (!record.groupRestrictions || record.groupRestrictions.length === 0) {
-                return true;
-            }
-            for (let group of record.groupRestrictions || []) {
-                group = castToRID(group).toString();
-                if (allGroups.has(group)) {
-                    return true;
-                }
-            }
-            return false;
-        }
-        return true;
-    };
-
-    while (queue.length > 0) {
-        const curr = queue.shift(); // remove the first element from the list
-        const currRID = curr['@rid']
-            ? castToRID(curr['@rid'])
-            : null;
-
-        if (visited.has(curr)) { // avoid infinite look from cycles
-            continue;
-        }
-        visited.add(curr);
-        const keys = Array.from(Object.keys(curr));
-        for (const attr of keys) {
-            const value = curr[attr];
-            if (attr === '@type' || attr === '@version') {
-                delete curr[attr];
-            } else if (attr === 'history' && activeOnly) {
-                curr[attr] = castToRID(value);
-            } else if (value instanceof RID) {
-                if (value.cluster < 0) { // abstract, remove
-                    delete curr[attr];
-                }
-            } else if (value instanceof RIDBag) {
-                // check here for updated edges that have not been removed
-                // https://github.com/orientechnologies/orientjs/issues/32
-                const arr = [];
-                for (const edge of value.all()) {
-                    if (edge.out
-                        && edge.in
-                        && castToRID(edge.out) !== currRID
-                        && castToRID(edge.in) !== currRID
-                    ) {
-                        continue;
-                    }
-                    queue.push(edge);
-                    arr.push(edge);
-                }
-                curr[attr] = arr;
-            } else if (typeof value === 'object' && value && value['@rid'] !== undefined) {
-                if (!accessOk(value) || (activeOnly && value.deletedAt)) {
-                    delete curr[attr];
-                } else {
-                    queue.push(value);
-                }
-            }
-        }
-    }
-    // remove the top level elements last
-    const result = [];
-    for (const record of recordList) {
-        if (accessOk(record) && (!activeOnly || !record.deletedAt)) {
-            result.push(record);
-        }
-    }
-    return result;
 };
 
 
@@ -243,14 +138,9 @@ const createUser = async (db, opt) => {
         .set(record)
         .one();
     try {
-        return await select(db, {
-            schema: SCHEMA_DEFN,
-            where: {name: userName},
-            model: SCHEMA_DEFN.User,
-            exactlyN: 1,
-            fetchPlan: 'groups:1'
-        });
+        return await getUserByName(db, userName);
     } catch (err) {
+        console.log(err);
         throw wrapIfTypeError(err);
     }
 };
@@ -291,6 +181,7 @@ const createEdge = async (db, opt) => {
  * @param {string} username the name of the user to select
  */
 const getUserByName = async (db, username) => {
+    logger.debug(`getUserByName: ${username}`);
     // raw SQL to avoid having to load db models in the middleware
     const user = await db.query(
         'SELECT * from User where name = :param0 AND deletedAt IS NULL',
@@ -313,70 +204,63 @@ const getUserByName = async (db, username) => {
  * Builds the query statement for selecting or matching records from the database
  *
  * @param {orientjs.Db} db Database connection from orientjs
+ * @param {Query} query the query object
  *
  * @param {Object} opt Selection options
- * @param {boolean} [opt.activeOnly=true] Return only non-deleted records
- * @param {ClassModel} opt.model the current model to be selected from
- * @param {string} [opt.fetchPlan] key value mapping of class names to depths of edges to follow or '*' for any class
- * @param {Array} [opt.where=[]] the query requirements
  * @param {?number} [opt.exactlyN=null] if not null, check that the returned record list is the same length as this value
- * @param {?number} [opt.limit=QUERY_LIMIT] the maximum number of records to return
- * @param {number} [opt.skip=0] the number of records to skip (for pagination)
- * @param {Object.<string,ClassModel>} schema mapping of class names to db models
+ * @param {User} [opt.user] the current user
+ * @param {string} [opt.fetchPlan] overrides the default fetch plan created from the neighbors
  *
  * @todo Add support for permissions base-d fetch plans
  *
  * @returns {Array.<Object>} array of database records
  */
-const select = async (db, opt) => {
+const select = async (db, query, opt) => {
     // set the default options
-    opt.where = opt.where || {};
-    opt = Object.assign({
-        activeOnly: true,
+    const {exactlyN, user, fetchPlan} = Object.assign({
         exactlyN: null,
-        limit: QUERY_LIMIT,
-        skip: 0,
-        schema: SCHEMA_DEFN
-    }, opt.where, opt);
-    const query = SelectionQuery.parseQuery(opt.schema, opt.model, opt.where || {}, opt);
+        fetchPlan: null
+    }, opt);
     logger.log('debug', query.displayString());
 
     // send the query statement to the database
     const {params, query: statement} = query.toString();
     const queryOpt = {
         params,
-        limit: opt.limit
+        limit: query.limit
     };
-    if (opt.fetchPlan) {
-        queryOpt.fetchPlan = opt.fetchPlan;
+    if (fetchPlan) {
+        queryOpt.fetchPlan = fetchPlan;
+    } else if (query.neighbors !== null) {
+        queryOpt.fetchPlan = `*:${query.neighbors}`;
     }
     // add history if not explicity specified already
-    if (opt.activeOnly && (!queryOpt.fetchPlan || !queryOpt.fetchPlan.includes('history'))) {
+    if (query.activeOnly && (!queryOpt.fetchPlan || !queryOpt.fetchPlan.includes('history'))) {
         if (!queryOpt.fetchPlan) {
             queryOpt.fetchPlan = `history:${FETCH_OMIT}`;
         } else if (!queryOpt.fetchPlan.includes(`history:${FETCH_OMIT}`)) {
             queryOpt.fetchPlan = `${queryOpt.fetchPlan} history:${FETCH_OMIT}`;
         }
     }
+    logger.log('debug', JSON.stringify(queryOpt));
     let recordList = await db.query(`${statement}`, queryOpt).all();
 
-    if (process.env.DEBUG === '1') {
-        logger.log('debug', `selected ${recordList.length} records`);
-    }
-    recordList = trimRecords(recordList, {activeOnly: opt.activeOnly, user: opt.user});
+    logger.log('debug', `selected ${recordList.length} records`);
 
-    if (opt.exactlyN !== null) {
+    recordList = trimRecords(recordList, {activeOnly: query.activeOnly, user});
+
+    if (exactlyN !== null) {
         if (recordList.length === 0) {
-            if (opt.exactlyN === 0) {
+            if (exactlyN === 0) {
                 return [];
             }
             throw new NoRecordFoundError({
                 message: 'query expected results but returned an empty list',
                 sql: query.displayString()
             });
-        } else if (opt.exactlyN !== recordList.length) {
+        } else if (exactlyN !== recordList.length) {
             throw new MultipleRecordsFoundError({
-                message: `query returned unexpected number of results. Found ${recordList.length} results but expected ${opt.exactlyN} results`,
+                message: `query returned unexpected number of results. Found ${recordList.length} results but expected ${exactlyN} results`,
                 sql: query.displayString()
             });
         } else {
@@ -597,16 +481,16 @@ const deleteNodeTx = async (db, opt) => {
  *
  * @param {orientjs.Db} db orientjs database connection
  * @param {Object} opt options
+ * @param {ClassModel} opt.model the model to use in formatting the record changes
  * @param {Object} opt.changes the content for the new node (any unspecified attributes are assumed to be unchanged)
- * @param {Array} opt.where the selection criteria for the original node
+ * @param {Query} opt.query the selection criteria for the original node
  * @param {Object} opt.user the user updating the record
  */
 const modify = async (db, opt) => {
     const {
-        model, user, where
+        model, user, query
     } = opt;
-    const schema = opt.schema || SCHEMA_DEFN;
-    if (!where || !model || !user) {
+    if (!query || !model || !user) {
         throw new AttributeError('missing required argument');
     }
     const changes = opt.changes === null
@@ -619,12 +503,8 @@ const modify = async (db, opt) => {
         }));
     // select the original record and check permissions
     // select will also throw an error when the user attempts to modify a deleted record
-    const [original] = await select(db, {
-        schema,
-        model,
-        where,
+    const [original] = await select(db, query, {
         exactlyN: 1,
-        activeOnly: true,
         fetchPlan: 'in_*:2 out_*:2 history:0'
     });
     if (!hasRecordAccess(user, original)) {
@@ -662,7 +542,7 @@ const modify = async (db, opt) => {
  * @param {orientjs.Db} db orientjs database connection
  * @param {Object} opt options
  * @param {Object} opt.changes the new content to be set for the node/edge
- * @param {Array} opt.where the selection criteria for the original node
+ * @param {Query} opt.query the selection criteria for the original node
  * @param {Object} opt.user the user updating the record
  */
 const update = async (db, opt) => {
@@ -677,7 +557,7 @@ const update = async (db, opt) => {
  *
  * @param {orientjs.Db} db orientjs database connection
  * @param {Object} opt options
- * @param {Array} opt.where the selection criteria for the original node
+ * @param {Query} opt.query the selection criteria for the original node
  * @param {Object} opt.user the user updating the record
  */
 const remove = async (db, opt) => modify(db, Object.assign({}, opt, {changes: null}));
@@ -711,10 +591,21 @@ const createStatement = async (db, opt) => {
     } = opt;
     content.impliedBy = content.impliedBy || [];
     content.supportedBy = content.supportedBy || [];
-    const query = {
-        SupportedBy: {direction: 'out', v: new Set(), size: content.supportedBy.length},
-        Implies: {direction: 'in', v: new Set(), size: content.impliedBy.length}
-    };
+    const query = new Query(model.name, new Clause('AND', []), {activeOnly: true});
+
+    // Enusre the edge multiple plicity is as expected
+    query.where.push(new Comparison(
+        new Traversal({
+            type: TRAVERSAL_TYPE.EDGE, edges: ['SupportedBy'], direction: 'out', child: 'size()'
+        }),
+        content.supportedBy.length
+    ));
+    query.where.push(new Comparison(
+        new Traversal({
+            type: TRAVERSAL_TYPE.EDGE, edges: ['Implies'], direction: 'in', child: 'size()'
+        }),
+        content.impliedBy.length
+    ));
 
     let dependencies = [];
     // ensure the RIDs look valid for the support
@@ -725,6 +616,10 @@ const createStatement = async (db, opt) => {
     if (content.impliedBy.length === 0) {
         throw new AttributeError('statement must include an array property impliedBy with 1 or more elements');
     }
+
+    const suppTraversal = new Traversal({
+        type: TRAVERSAL_TYPE.EDGE, edges: ['SupportedBy'], direction: 'out', child: 'inV()'
+    });
     for (const edge of content.supportedBy) {
         if (edge.target === undefined) {
             throw new AttributeError('expected supportedBy edge object to have target attribute');
@@ -738,9 +633,13 @@ const createStatement = async (db, opt) => {
         }
         dependencies.push(rid);
         edges.push(Object.assign(edge, {'@class': 'SupportedBy', in: rid}));
-        query.SupportedBy.v.add(rid);
+        query.where.push(new Comparison(suppTraversal, rid, OPERATORS.CONTAINS));
     }
+
     // ensure the RIDs look valid for the impliedBy
+    const impTraversal = new Traversal({
+        type: TRAVERSAL_TYPE.EDGE, edges: ['Implies'], direction: 'in', child: 'outV()'
+    });
     for (const edge of content.impliedBy) {
         if (edge.target === undefined) {
             throw new AttributeError('expected impliedBy edge object to have target attribute');
@@ -754,7 +653,7 @@ const createStatement = async (db, opt) => {
         }
         dependencies.push(rid);
         edges.push(Object.assign(edge, {'@class': 'Implies', out: rid}));
-        query.Implies.v.add(rid);
+        query.where.push(new Comparison(impTraversal, rid, OPERATORS.CONTAINS));
     }
 
     if (content.appliesTo === undefined) {
@@ -765,7 +664,7 @@ const createStatement = async (db, opt) => {
             content.appliesTo = castToRID(content.appliesTo);
             dependencies.push(content.appliesTo);
         }
-        query.appliesTo = content.appliesTo;
+        query.where.push(new Comparison('appliesTo', content.appliesTo || null));
     } catch (err) {
         throw new AttributeError(
             `statement appliesTo record ID does not look like a valid record ID: ${content.appliesTo}`
@@ -776,8 +675,8 @@ const createStatement = async (db, opt) => {
     }
     try {
         content.relevance = castToRID(content.relevance);
-        query.relevance = content.relevance;
         dependencies.push(content.relevance);
+        query.where.push(new Comparison('relevance', content.relevance));
     } catch (err) {
         throw new AttributeError(
             `statement relevance record ID does not look like a valid record ID: ${content.relevance}`
@@ -786,11 +685,9 @@ const createStatement = async (db, opt) => {
     if (content.source) {
         content.source = castToRID(content.source);
         dependencies.push(content.source);
-        query.source = content.source;
-    } else {
-        query.source = null;
     }
-    query.sourceId = content.sourceId || null;
+    query.where.push(new Comparison('source', content.source || null));
+    query.where.push(new Comparison('sourceId', content.sourceId || null));
     // check the DB to ensure all dependencies already exist (and are not deleted)
     try {
         // ensure that the dependency records are valid
@@ -805,11 +702,7 @@ const createStatement = async (db, opt) => {
     }
     const userRID = castToRID(user);
     // try to select the statement to see if it exists
-    const records = await select(db, {
-        where: query,
-        activeOnly: true,
-        model,
-        schema,
+    const records = await select(db, query, {
         fetchPlan: '*:2'
     });
     if (records.length !== 0) {
@@ -899,8 +792,6 @@ module.exports = {
     RELATED_NODE_DEPTH,
     remove,
     select,
-    SelectionQuery,
-    trimRecords,
     update,
     modify,
     wrapIfTypeError,

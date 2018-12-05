@@ -15,6 +15,11 @@
  */
 const request = require('request-promise');
 const _ = require('lodash');
+
+
+const kbParser = require('@bcgsc/knowledgebase-parser');
+
+
 const {
     addRecord,
     getRecordBy,
@@ -274,17 +279,13 @@ const processEvidenceRecord = async (opt) => {
             }
         );
     } catch (err) {
-        variant = await request(conn.request({
-            method: 'POST',
-            uri: 'parser/variant',
-            body: {
-                content: `${variant.startsWith('e.')
-                    ? ''
-                    : 'p.'}${variant}`
-            }
-        }));
-        const variantClass = await getRecordBy('vocabulary', {name: variant.result.type}, conn);
-        variant = Object.assign(variant.result, {
+        variant = kbParser.variant.parse(
+            `${variant.startsWith('e.')
+                ? ''
+                : 'p.'}${variant}`, false
+        ).toJSON();
+        const variantClass = await getRecordBy('vocabulary', {name: variant.type}, conn);
+        Object.assign(variant, {
             reference1: feature['@rid'],
             type: variantClass['@rid']
         });
@@ -397,8 +398,16 @@ const downloadVariantRecords = async () => {
 };
 
 
-const upload = async (conn) => {
-    const urlTemplate = `${BASE_URL}/evidence_items?count=500&status=accepted`;
+/**
+ * Access the CIVic API, parse content, transform and load into GraphKB
+ *
+ * @param {object} opt options
+ * @param {ApiConnection} opt.conn the api connection object for GraphKB
+ * @param {string} [opt.url] url to use as the base for accessing the civic api
+ */
+const upload = async (opt) => {
+    const {conn} = opt;
+    const urlTemplate = `${opt.url || BASE_URL}/evidence_items?count=500&status=accepted`;
     // load directly from their api
     const counts = {error: 0, success: 0, skip: 0};
     let expectedPages = 1,

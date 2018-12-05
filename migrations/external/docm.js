@@ -13,7 +13,7 @@
  */
 const request = require('request-promise');
 const {
-    addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle
+    addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, rid
 } = require('./util');
 
 const SOURCE_NAME = 'database of curated mutations (docm)';
@@ -87,8 +87,8 @@ const processRecord = async (opt) => {
         zygosity: null,
         germline: null
     };
-    variant.reference1 = gene['@rid'];
-    variant.type = variantType['@rid'];
+    variant.reference1 = rid(gene);
+    variant.type = rid(variantType);
     // create the variant
     variant = await addRecord('positionalvariants', variant, conn, {existsOk: true, getWhere: Object.assign(defaults, variant)});
 
@@ -113,25 +113,25 @@ const processRecord = async (opt) => {
             } catch (err) {
                 publication = await getPubmedArticle(diseaseRec.source_pubmed_id);
                 publication = await addRecord('publications', Object.assign(publication, {
-                    source: pubmedSource['@rid']
+                    source: rid(pubmedSource)
                 }), conn, {existsOk: true});
             }
             // now create the statement
             await addRecord('statements', {
-                impliedBy: [{target: disease['@rid']}, {target: variant['@rid']}],
-                supportedBy: [{target: publication['@rid'], source: source['@rid']}],
-                relevance: relevance['@rid'],
-                appliesTo: disease['@rid'],
-                source: source['@rid'],
+                impliedBy: [{target: rid(disease)}, {target: rid(variant)}],
+                supportedBy: [{target: rid(publication), source: rid(source)}],
+                relevance: rid(relevance),
+                appliesTo: rid(disease),
+                source: rid(source),
                 reviewStatus: 'not required'
             }, conn, {
                 existsOk: true,
                 getWhere: {
-                    implies: {direction: 'in', v: [disease['@rid'], variant['@rid']]},
-                    supportedBy: {v: [publication['@rid']], direction: 'out'},
-                    relevance: relevance['@rid'],
-                    appliesTo: disease['@rid'],
-                    source: source['@rid'],
+                    implies: {direction: 'in', v: [rid(disease), rid(variant)]},
+                    supportedBy: {v: [rid(publication)], direction: 'out'},
+                    relevance: rid(relevance),
+                    appliesTo: rid(disease),
+                    source: rid(source),
                     reviewStatus: 'not required'
                 }
             });
@@ -145,9 +145,17 @@ const processRecord = async (opt) => {
 };
 
 
-const upload = async (conn) => {
+/**
+ * Uses the DOCM API to pull content, parse it and load it into GraphKB
+ *
+ * @param {object} opt options
+ * @param {ApiConnection} opt.conn the api connection object for GraphKB
+ * @param {string} [opt.url] the base url for the DOCM api
+ */
+const upload = async (opt) => {
+    const {conn} = opt;
     // load directly from their api:
-    console.log(`loading: ${BASE_URL}.json`);
+    console.log(`loading: ${opt.url || BASE_URL}.json`);
     const recordsList = await request({
         method: 'GET',
         json: true,
