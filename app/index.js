@@ -135,7 +135,8 @@ class AppServer {
                 operationsSorter: 'alpha',
                 tagsSorter: 'alpha',
                 docExpansion: 'none'
-            }
+            },
+            customCss: '.swagger-ui .info pre > code { display: block; color: #373939}'
         }));
 
         this.router.get('/schema', async (req, res) => {
