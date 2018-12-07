@@ -98,7 +98,7 @@ class AppServer {
             }
             // first level authentication
             let cats = {user: req.body.username, token: null};
-            if (!this.conf.disableCats) { // FOR TESTING
+            if (!this.conf.disableAuth) { // FOR TESTING
                 try {
                     cats = await catsToken(req.body.username, req.body.password);
                 } catch (err) {
@@ -135,7 +135,8 @@ class AppServer {
                 operationsSorter: 'alpha',
                 tagsSorter: 'alpha',
                 docExpansion: 'none'
-            }
+            },
+            customCss: '.swagger-ui .info pre > code { display: block; color: #373939}'
         }));
 
         this.router.get('/schema', async (req, res) => {

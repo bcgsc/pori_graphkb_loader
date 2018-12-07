@@ -135,8 +135,12 @@ class Traversal {
             optAttr.property = prop;
         } else if (optAttr.attr === SIZE_COMPUTATION) {
             optAttr.cast = castDecimalInteger;
-        } else {
-            throw new AttributeError(`The expected property (${optAttr.attr}) has no property on the current model (${model.name})`);
+        } else if (!/^(out|in|both)[VE]?\(\)$/.exec(optAttr.attr)) {
+            throw new AttributeError(`The expected property (${optAttr.attr}) has no property on the current model (${
+                model
+                    ? model.name
+                    : ''
+            })`);
         }
         optAttr.type = TRAVERSAL_TYPE.DIRECT;
         return new this(optAttr);

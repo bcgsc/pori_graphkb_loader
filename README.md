@@ -5,7 +5,6 @@
 The KB is implemented using [orientDB](https://github.com/orientechnologies/orientdb) and [orientjs](https://github.com/orientechnologies/orientjs).
 It is a graph database which is used to store variants, ontologies, and the relevance of this terms and variants. The KB uses strict controlled vocabulary to provide a parseable and machine-readable interface for other applications to build on. The API is a REST API built on node/express.
 
-
 ### Table Of Contents
 
 - [Getting Started](#getting-started)
@@ -15,28 +14,25 @@ It is a graph database which is used to store variants, ontologies, and the rele
 - [Guidelines for Contributors](#guidelines-for-contributors)
 - [Running the Tests](#running-the-tests)
 - [Logging](#logging)
-- [Migrating External Content](#migrating-external-content)
-
+- [Importing External Content](#importing-external-content)
 
 ## Getting Started
 
 To start the API server you must first have the database server running. Then starting is as simple as running
 
-```
+```bash
 npm install
 npm start
 ```
 
-
 ## Database Schema
 
-The schema for the database consist of four major types of data: ontology terms, variants, literature/evidence, and statements.
-
-![schema](schema.svg)
+The [schema](http://npm.bcgsc.ca:8080/#/detail/@bcgsc/knowledgebase-schema) is defined in a separate NPM package.
+In general it consists of four major types of data: ontology terms, variants, evidence, and statements.
 
 ## OpenAPI Specification
 
-All KB API routes are documented with openapi specification. The specification is hosted with the api under `/api/<version>/spec`
+All KB API routes are documented with openapi specification. The specification is hosted with the api under `/api/spec`
 
 ## Authentication
 
@@ -62,26 +58,25 @@ In summary, KB Client will send user credentials and recieve a token which will 
 
 The orientDB instance must already be running. To configure where the tests will point to the user can either modify `test/config/empty.js` or set the environment variables which override this config (default values are shown below, this will change depending on how you db server is configured).
 
-```
-DATABASE_SERVER_PASS=root
-DATABASE_SERVER_USER=root
-DATABASE_HOST='orientdb02.bcgsc.ca'
-DATABASE_PORT=2480
-KEY_FILE='id_rsa'  // used in generating the tokens
+```bash
+DBS_PASS=root
+DBS_USER=root
+DB_HOST='orientdb02.bcgsc.ca'
+DB_PORT=2480
+KEY_FILE='id_rsa'  # used in generating the tokens
 ```
 
 After these options are configured, the full set of tests can be run
 
-```
+```bash
 npm run test
 ```
 
 The non-database tests can be run without the above configuration
 
-```
+```bash
 npm run unit
 ```
-
 
 ## Logging
 
@@ -89,29 +84,26 @@ By default the API will log at the warning level. This can be configured using t
 variable `LOG_LEVEL` which must be one of: info, error, warn, info, verbose, or debug
 ([corresponding to the npm logging levels](https://www.npmjs.com/package/winston#logging-levels))
 
-```
+```bash
 export LOG_LEVEL=error
 ```
 
 Additionally logging can be recorded in a file. To do this the `LOG_DIR` environment variable must be set.
-```
+
+```bash
 export LOG_DIR=/path/to/dir
 ```
 
 This will be used as the directly to write logs to. If the variable is not set, no log files will be written and only console will be logged to.
 
-
-## Migrating External Content
+## Importing External Content
 
 Automatic Import modules are provided for a variety of input sources. To Start importing external data, first the GraphKB API
 must already be running. Then the command line interface can be used for upload. Get the help menu
 detailing the commands and required inputs as follows
 
-```
+```bash
 npm run import -- --help
 ```
 
-If loaded in order, some modules will link to one another. The relationships between external sources is
-detailed below.
-
-![external content relationships](external.svg)
+If loaded in order, some modules will link to one another.

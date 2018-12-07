@@ -1,19 +1,19 @@
 const {ORIENTDB_HOME} = process.env;
 
-const dbName = 'kbapi_v0.6.0';
+const dbName = process.env.DB_NAME || 'kbapi_v1.0.0';
 
 const server = {
-    pass: process.env.DATABASE_SERVER_PASS || 'root',
-    user: process.env.DATABASE_SERVER_USER || 'root',
-    port: process.env.DATABASE_PORT || 2426,
-    host: process.env.DATABASE_HOST || 'orientdb02.bcgsc.ca'
+    pass: process.env.DBS_PASS || 'root',
+    user: process.env.DBS_USER || 'root',
+    port: process.env.DB_PORT || 2426,
+    host: process.env.DB_HOST || 'orientdb02.bcgsc.ca'
 };
 
 const db = {
     name: dbName,
     url: `plocal:${ORIENTDB_HOME}/databases/${dbName}`,
-    pass: process.env.DATABASE_PASS || 'admin',
-    user: process.env.DATABASE_USER || 'admin',
+    pass: process.env.DB_PASS || 'admin',
+    user: process.env.DB_USER || 'admin',
     host: server.host,
     port: server.port
 };
@@ -22,6 +22,6 @@ module.exports = {
     server,
     db,
     app: {port: process.env.PORT || 8080},
-    private_key: 'id_rsa' || process.env.KEY_FILE,
-    disableCats: process.env.DISABLE_CATS === '1'
+    private_key: process.env.KEY_FILE || 'id_rsa',
+    disableAuth: process.env.DISABLE_AUTH === '1'
 };

@@ -16,7 +16,7 @@ const auth = require('./../../app/middleware/auth');
 chai.use(chaiHttp);
 
 const REALLY_LONG_TIME = 10000000000;
-conf.disableCats = true;
+conf.disableAuth = true;
 conf.db = Object.assign({}, conf.db);
 conf.verbose = true;
 conf.db.name = `test_${uuidV4()}`;
