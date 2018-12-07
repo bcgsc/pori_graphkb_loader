@@ -22,6 +22,6 @@ module.exports = {
     server,
     db,
     app: {port: process.env.PORT || 8080},
-    private_key: 'id_rsa' || process.env.KEY_FILE,
-    disableCats: process.env.DISABLE_CATS === '1'
+    private_key: process.env.KEY_FILE || 'id_rsa',
+    disableAuth: process.env.DISABLE_AUTH === '1'
 };

@@ -98,7 +98,7 @@ class AppServer {
             }
             // first level authentication
             let cats = {user: req.body.username, token: null};
-            if (!this.conf.disableCats) { // FOR TESTING
+            if (!this.conf.disableAuth) { // FOR TESTING
                 try {
                     cats = await catsToken(req.body.username, req.body.password);
                 } catch (err) {
