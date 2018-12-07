@@ -14,6 +14,7 @@ It is a graph database which is used to store variants, ontologies, and the rele
     - [Authentication](#authentication)
 - [Guidelines for Contributors](#guidelines-for-contributors)
 - [Install (Developers)](#install-developers)
+    - [Generate the User Manual](#generate-the-user-manual)
 - [Deploy with PM2](#deploy-with-pm2)
 - [Importing External Content](#importing-external-content)
 
@@ -99,6 +100,13 @@ Import/Migration tests can be run with
 
 ```bash
 npm run test-import
+```
+
+### Generate the User Manual
+
+```bash
+npm run build-docs
+npm run serve-docs
 ```
 
 ## Deploy with PM2
