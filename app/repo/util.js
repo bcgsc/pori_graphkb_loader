@@ -166,8 +166,8 @@ const trimRecords = (recordList, opt = {}) => {
                 for (const edge of value.all()) {
                     if (edge.out
                         && edge.in
-                        && castToRID(edge.out) !== currRID
-                        && castToRID(edge.in) !== currRID
+                        && castToRID(edge.out).toString() !== currRID.toString()
+                        && castToRID(edge.in).toString() !== currRID.toString()
                     ) {
                         continue;
                     }
