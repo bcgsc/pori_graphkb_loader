@@ -59,11 +59,11 @@ In summary, KB Client will send user credentials and recieve a token which will 
 The orientDB instance must already be running. To configure where the tests will point to the user can either modify `test/config/empty.js` or set the environment variables which override this config (default values are shown below, this will change depending on how you db server is configured).
 
 ```bash
-DATABASE_SERVER_PASS=root
-DATABASE_SERVER_USER=root
-DATABASE_HOST='orientdb02.bcgsc.ca'
-DATABASE_PORT=2480
-KEY_FILE='id_rsa'  // used in generating the tokens
+DBS_PASS=root
+DBS_USER=root
+DB_HOST='orientdb02.bcgsc.ca'
+DB_PORT=2480
+KEY_FILE='id_rsa'  # used in generating the tokens
 ```
 
 After these options are configured, the full set of tests can be run
@@ -95,7 +95,6 @@ export LOG_DIR=/path/to/dir
 ```
 
 This will be used as the directly to write logs to. If the variable is not set, no log files will be written and only console will be logged to.
-
 
 ## Importing External Content
 
