@@ -2,7 +2,7 @@ const {expect} = require('chai');
 
 const {
     schema: SCHEMA_DEFN,
-    util: {castDecimalInteger}
+    util: {castDecimalInteger, castToRID}
 } = require('@bcgsc/knowledgebase-schema');
 
 const {
@@ -13,11 +13,55 @@ const {quoteWrap} = require('./../../../app/repo/util');
 const SOURCE_PROPS = SCHEMA_DEFN.Source.queryProperties;
 const VERTEX_PROPS = SCHEMA_DEFN.V.queryProperties;
 const DISEASE_PROPS = SCHEMA_DEFN.Disease.queryProperties;
+const FEATURE_PROPS = SCHEMA_DEFN.Feature.queryProperties;
 
 const {stripSQL} = require('./util');
 
 
 describe('Query Parsing', () => {
+    it('parses a complex traversal', () => {
+        const parsed = Query.parse(SCHEMA_DEFN, SCHEMA_DEFN.V, {
+            where: {
+                attr: 'inE(implies).vertex',
+                value: {
+                    type: 'neighborhood',
+                    where: [
+                        {
+                            attr: 'name',
+                            value: 'KRAS'
+                        }
+                    ],
+                    class: 'Feature',
+                    depth: 3
+                }
+            },
+            neighbors: 3,
+            limit: 1000
+        });
+        const expected = new Query(
+            SCHEMA_DEFN.V.name,
+            new Clause('AND', [
+                new Comparison(
+                    new Traversal({
+                        type: 'EDGE', edges: ['implies'], direction: 'in', child: new Traversal({attr: 'outV()', cast: castToRID})
+                    }),
+                    new Query(
+                        'Feature',
+                        new Clause('AND', [
+                            new Comparison(
+                                new Traversal({attr: 'name', property: FEATURE_PROPS.name}), 'KRAS'
+                            ),
+                            new Comparison('deletedAt', null, 'IS')]),
+                        {type: 'neighborhood'}
+                    )
+                ),
+                new Comparison(
+                    'deletedAt', null, 'IS'
+                )]),
+            {limit: 1000, neighbors: 3}
+        );
+        expect(parsed).to.eql(expected);
+    });
     it('parses a simple single Comparison', () => {
         const parsed = Query.parse(SCHEMA_DEFN, SCHEMA_DEFN.Disease, {
             where: [{
