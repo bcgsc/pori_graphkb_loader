@@ -1,6 +1,6 @@
 const {ORIENTDB_HOME} = process.env;
 
-const dbName = 'kbapi_v0.6.0';
+const dbName = process.env.DB_NAME || 'kbapi_v1.0.0';
 
 const server = {
     pass: process.env.DATABASE_SERVER_PASS || 'root',
