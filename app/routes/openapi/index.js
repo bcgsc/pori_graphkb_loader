@@ -11,7 +11,7 @@ const responses = require('./responses');
 const schemas = require('./schemas');
 const {GENERAL_QUERY_PARAMS, BASIC_HEADER_PARAMS, ONTOLOGY_QUERY_PARAMS} = require('./params');
 const {
-    MAX_QUERY_LIMIT, MAX_JUMPS, ABOUT_FILE, SEARCH_ABOUT
+    MAX_QUERY_LIMIT, MAX_JUMPS, ABOUT_FILE, SEARCH_ABOUT, QUERY_ABOUT
 } = require('./constants');
 
 
@@ -66,7 +66,7 @@ const STUB = {
         responses
     },
     tags: [
-        {name: 'User', description: 'Administrative operations for adding, editing, and removing users'}
+        {name: 'Metadata', description: 'Routes returning data related to the API or DB contents'}
     ]
 };
 
@@ -416,12 +416,17 @@ const generateSwaggerSpec = (schema, metadata) => {
     );
     // Add the MD about section
 
-    const about = fs.readFileSync(ABOUT_FILE).toString();
-    const search = fs.readFileSync(SEARCH_ABOUT).toString();
-    docs.info.description = `${about}\n${search}`;
+    const about = Array.from(
+        [ABOUT_FILE, QUERY_ABOUT, SEARCH_ABOUT],
+        filename => fs.readFileSync(filename).toString()
+    ).join('\n\n');
+    docs.info.description = about;
 
     // simple routes
     for (const model of Object.values(schema)) {
+        if (model.description) {
+            docs.tags.push({name: model.name, description: model.description});
+        }
         // create the model in the schemas section
         docs.components.schemas[model.name] = {
             type: 'object',

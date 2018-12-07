@@ -1,11 +1,16 @@
 # Complex Queries
 
+- [Examples](#examples)
+    - [Query by related vertices](#query-by-related-vertices)
+    - [Query by link in neighborhood](#query-by-link-in-neighborhood)
+    - [Tree Queries: Query Ancestors or Descendants](#tree-queries--query-ancestors-or-descendants)
+
 For simple queries, the GET routes and builtin query parameters should suffice. However, for more
 complex queries the user may want to use the search endpoints instead. All exposed models will
 have a search endpoint (POST) which follows the pattern
 
 ```text
-/api/<model>/search
+/api/<CLASSNAME>/search
 ```
 
 The body contains the query specification.
@@ -21,20 +26,7 @@ POST /api/statements/search
 {
     "where": [
         {
-            "attr": {
-                "type": "EDGE",
-                "edges": ["Implies"],
-                "direction": "in",
-                "child": {
-                    "attr": "vertex",
-                    "type": "LINK",
-                    "child": {
-                        "attr": "reference1",
-                        "type": "LINK",
-                        "child": "name"
-                    }
-                }
-            },
+            "attr": "inE(implies).vertex.reference1.name",
             "value": "KRAS"
         }
     ]
@@ -47,53 +39,12 @@ This becomes the query
 SELECT * FROM Statement WHERE inE('Implies').outV().reference1.name = "KRAS"
 ```
 
-It can be written using the less verbose compound syntax
-
-```json
-POST /api/statements/search
-{
-    "compoundSyntax": true,
-    "where": [
-        {
-            "attr": "inE(implies).vertex.reference1.name",
-            "value": "KRAS"
-        }
-    ]
-}
-```
-
 The above example is fairly simple. Where the search endpoint showcases its utitlity is in the pre-boxed queries.
 
 ### Query by link in neighborhood
 
 Here we are trying to find all statements that are implied by a variant on KRAS or any of the KRAS aliases, previous terms etc.
 To do this we can use a neighborhood subquery as follows
-
-```json
-POST /api/statements/search
-{
-    "where": [
-        {
-            "attr": {
-                "type": "EDGE",
-                "edges": ["Implies"],
-                "direction": "in",
-                "child": {
-                    "attr": "vertex"
-                }
-            },
-            "value": {
-                "type": "neighborhood",
-                "where": [{"attr": "name", "value": "KRAS"}],
-                "class": "Feature",
-                "depth": 3
-            }
-        }
-    ]
-}
-```
-
-or in compound form
 
 ```json
 POST /api/statements/search
@@ -137,3 +88,5 @@ POST /api/diseases/search
     "type": "ancestors"
 }
 ```
+
+<p style="page-break-after: always;">&nbsp;</p>
