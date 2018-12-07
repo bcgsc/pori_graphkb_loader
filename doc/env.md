@@ -22,3 +22,21 @@
 | DISABLE_AUTH | | Set to `1` to disable CATS/KeyCloak Authentication (For testing) |
 | LOG_DIR | | Write log files to this directory |
 | LOG_LEVEL | info | The level of information to log to the screen and log files |
+
+## Logging
+
+By default the API will log at the warning level. This can be configured using the environment
+variable `LOG_LEVEL` which must be one of: info, error, warn, info, verbose, or debug
+([corresponding to the npm logging levels](https://www.npmjs.com/package/winston#logging-levels))
+
+```bash
+export LOG_LEVEL=error
+```
+
+Additionally logging can be recorded in a file. To do this the `LOG_DIR` environment variable must be set.
+
+```bash
+export LOG_DIR=/path/to/dir
+```
+
+This will be used as the directly to write logs to. If the variable is not set, no log files will be written and only console will be logged to.

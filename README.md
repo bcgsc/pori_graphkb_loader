@@ -8,12 +8,14 @@ It is a graph database which is used to store variants, ontologies, and the rele
 ### Table Of Contents
 
 - [Getting Started](#getting-started)
-- [Database Schema](#database-schema)
-- [OpenAPI Specification](#openapi-specification)
-- [Authentication](#authentication)
+- [About](#about)
+    - [Database Schema](#database-schema)
+    - [OpenAPI Specification](#openapi-specification)
+    - [Authentication](#authentication)
 - [Guidelines for Contributors](#guidelines-for-contributors)
-- [Running the Tests](#running-the-tests)
-- [Logging](#logging)
+- [Install (Developers)](#install-developers)
+    - [Generate the User Manual](#generate-the-user-manual)
+- [Deploy with PM2](#deploy-with-pm2)
 - [Importing External Content](#importing-external-content)
 
 ## Getting Started
@@ -25,16 +27,18 @@ npm install
 npm start
 ```
 
-## Database Schema
+## About
+
+### Database Schema
 
 The [schema](http://npm.bcgsc.ca:8080/#/detail/@bcgsc/knowledgebase-schema) is defined in a separate NPM package.
 In general it consists of four major types of data: ontology terms, variants, evidence, and statements.
 
-## OpenAPI Specification
+### OpenAPI Specification
 
 All KB API routes are documented with openapi specification. The specification is hosted with the api under `/api/spec`
 
-## Authentication
+### Authentication
 
 Authentication in the KB uses tokens. KB API tokens can be generated using the token route defined in the API specification.
 The first layer of authentication happens when KB uses [CATS](https://www.bcgsc.ca/wiki/display/lims/CATS+Documentation) to authenticate users against the LDAP. A request is sent
@@ -48,15 +52,29 @@ In summary, KB Client will send user credentials and recieve a token which will 
 
 ## Guidelines for Contributors
 
-1. In-code documentation should follow JSDocs format see http://usejsdoc.org
+1. In-code documentation should follow [JSDocs](http://usejsdoc.org) format
 2. TDD. New tests should be added for any new functionality. Using mocha (https://mochajs.org/) for testing. As mocha has several
    test styles, please match the existing style in the current tests.
 3. API must follow REST guidelines (for example see https://github.com/Microsoft/api-guidelines/blob/vNext/Guidelines.md)
 4. JS code should be written with ES6 syntax (where possible) see https://github.com/lukehoban/es6features
 
-## Running the Tests
+## Install (Developers)
 
-The orientDB instance must already be running. To configure where the tests will point to the user can either modify `test/config/empty.js` or set the environment variables which override this config (default values are shown below, this will change depending on how you db server is configured).
+Clone the repository
+
+```bash
+git clone https://svn.bcgsc.ca/bitbucket/scm/vdb/knowledgebase_api.git
+cd knowledgebase_api
+git checkout develop
+```
+
+Install the dependencies
+
+```bash
+npm install
+```
+
+To actually use the API, the orientDB instance must already be running. To configure where the tests will point to the user can either modify `config/config.js` or set the [environment variables](env.md) which override this config (default values are shown below, this will change depending on how you db server is configured).
 
 ```bash
 DBS_PASS=root
@@ -78,23 +96,77 @@ The non-database tests can be run without the above configuration
 npm run unit
 ```
 
-## Logging
-
-By default the API will log at the warning level. This can be configured using the environment
-variable `LOG_LEVEL` which must be one of: info, error, warn, info, verbose, or debug
-([corresponding to the npm logging levels](https://www.npmjs.com/package/winston#logging-levels))
+Import/Migration tests can be run with
 
 ```bash
-export LOG_LEVEL=error
+npm run test-import
 ```
 
-Additionally logging can be recorded in a file. To do this the `LOG_DIR` environment variable must be set.
+### Generate the User Manual
 
 ```bash
-export LOG_DIR=/path/to/dir
+npm run build-docs
+npm run serve-docs
 ```
 
-This will be used as the directly to write logs to. If the variable is not set, no log files will be written and only console will be logged to.
+## Deploy with PM2
+
+This example deploys a tag named v1.1.0
+
+Ssh to the host server and clone the repository
+
+```bash
+ssh kbapi01
+cd /var/www/kb/knowledgebase-api
+git clone https://svn.bcgsc.ca/bitbucket/scm/vdb/knowledgebase_api.git v1.1.0
+cd v1.1.0
+git checkout v1.1.0
+```
+
+Install the dependencies
+
+```bash
+npm install
+```
+
+Create the keyfile
+
+```bash
+yes | ssh-keygen -t rsa -b 4096 -f id_rsa -N ''
+```
+
+Create the logging directories
+
+```bash
+mkdir logs
+```
+
+Create an env.sh file to hold the [configurable environment variables](env.md) as well as the PM2 ones
+
+```bash
+export PM2_HOME=/var/www/kb/knowledgebase-api/pm2_logs
+export LOG_DIR=logs
+export DB_CREATE=1
+```
+
+Set the Database password (It is better not to store this)
+
+```bash
+export DBS_PASS=<some password>
+```
+
+Now source the file and start your pm2 process
+
+```bash
+source env.sh
+pm2 start npm --name kbapi-v1.1.0  -- start
+```
+
+You should now be able to view the running process with
+
+```bash
+pm2 ls
+```
 
 ## Importing External Content
 

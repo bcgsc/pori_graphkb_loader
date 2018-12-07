@@ -1,7 +1,7 @@
 {
   "name": "@bcgsc/knowledgebase-api",
   "main": "server.js",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/VDB/repos/knowledgebase_api/browse"
@@ -47,6 +47,8 @@
     "chai": "^3.5.0",
     "chai-http": "^3.0.0",
     "docdash": "^1.0.0",
+    "docsify": "^4.8.6",
+    "docsify-cli": "^4.3.0",
     "eslint": "^4.19.1",
     "eslint-config-airbnb": "^17.0.0",
     "eslint-plugin-import": "^2.13.0",
@@ -76,7 +78,8 @@
     "test-import": "nyc mocha test/migrations",
     "test-all": "nyc mocha test/{repo,routes,migrations}",
     "lint": "eslint -c .eslintrc.jon app test",
-    "jsdoc": "jsdoc -r app -r migrations -R README.md -d jsdoc --package package.json -c config/jsdoc.config.js",
+    "build-docs": "jsdoc2md --files app/{*,*/*,*/*/*}.js -c config/jsdoc.config.js > doc/jsdoc.md; cp README.md doc",
+    "serve-docs": "docsify serve doc",
     "version": "echo $npm_package_version"
   }
 }
