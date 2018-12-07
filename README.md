@@ -138,13 +138,13 @@ yes | ssh-keygen -t rsa -b 4096 -f id_rsa -N ''
 Create the logging directories
 
 ```bash
-mkdir logs pm2_logs
+mkdir logs
 ```
 
 Create an env.sh file to hold the [configurable environment variables](env.md) as well as the PM2 ones
 
 ```bash
-export PM2_HOME=/var/www/kb/knowledgebase-api/v1.1.0/pmd2_logs
+export PM2_HOME=/var/www/kb/knowledgebase-api/pm2_logs
 export LOG_DIR=logs
 export DB_CREATE=1
 ```
