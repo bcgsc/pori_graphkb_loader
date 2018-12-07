@@ -157,6 +157,7 @@ const trimRecords = (recordList, opt = {}) => {
                 curr[attr] = castToRID(value);
             } else if (value instanceof RID) {
                 if (value.cluster < 0) { // abstract, remove
+                    console.log('delete abstract attr', attr);
                     delete curr[attr];
                 }
             } else if (value instanceof RIDBag) {
@@ -166,8 +167,8 @@ const trimRecords = (recordList, opt = {}) => {
                 for (const edge of value.all()) {
                     if (edge.out
                         && edge.in
-                        && castToRID(edge.out) !== currRID
-                        && castToRID(edge.in) !== currRID
+                        && castToRID(edge.out).toString() !== currRID.toString()
+                        && castToRID(edge.in).toString() !== currRID.toString()
                     ) {
                         continue;
                     }
@@ -177,6 +178,7 @@ const trimRecords = (recordList, opt = {}) => {
                 curr[attr] = arr;
             } else if (typeof value === 'object' && value && value['@rid'] !== undefined) {
                 if (!accessOk(value) || (activeOnly && value.deletedAt)) {
+                    console.log('trim', attr);
                     delete curr[attr];
                 } else {
                     queue.push(value);
@@ -189,6 +191,8 @@ const trimRecords = (recordList, opt = {}) => {
     for (const record of recordList) {
         if (accessOk(record) && (!activeOnly || !record.deletedAt)) {
             result.push(record);
+        } else {
+            console.log('drop record', record);
         }
     }
     return result;
