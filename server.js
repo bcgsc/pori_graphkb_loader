@@ -14,14 +14,9 @@ const {logger} = require('./app/repo/logging');
 
 // process.on('uncaughtException', app.close);
 let app;
-conf.db.name = `kbapi_${process.env.DATABASE_NAME
-    ? process.env.DATABASE_NAME
-    : `v${process.env.npm_package_version}`}`;
-delete conf.port;
 
 (async () => {
     try {
-        const verbose = conf.verbose || process.env.VERBOSE !== '';
         // set up the database server
         const server = OrientDB({
             host: conf.server.host,
@@ -37,21 +32,25 @@ delete conf.port;
         let db,
             schema;
         if (!exists) {
-            logger.log('info', `creating the database: ${conf.db.name}`);
-            db = await server.create({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
-            await db.query('alter database custom standardElementConstraints=false');
-            logger.log('verbose', 'create the schema');
-            await createSchema(db, verbose);
-            schema = await loadSchema(db, verbose);
-            // create the admin user
-            const user = await createUser(db, {
-                model: schema.User,
-                userName: process.env.USER || 'admin',
-                groupNames: ['admin'],
-                schema
-            });
-            logger.log('verbose', `created the user: ${user.name}`);
-            await db.close();
+            if (conf.db.create) {
+                logger.log('info', `creating the database: ${conf.db.name}`);
+                db = await server.create({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
+                await db.query('alter database custom standardElementConstraints=false');
+                logger.log('verbose', 'create the schema');
+                await createSchema(db);
+                schema = await loadSchema(db);
+                // create the admin user
+                const user = await createUser(db, {
+                    model: schema.User,
+                    userName: process.env.USER || 'admin',
+                    groupNames: ['admin'],
+                    schema
+                });
+                logger.log('verbose', `created the user: ${user.name}`);
+                await db.close();
+            } else {
+                throw new Error('The database does not exist and creation mode is not enabled');
+            }
         }
 
         logger.log('verbose', 'creating certificate');
