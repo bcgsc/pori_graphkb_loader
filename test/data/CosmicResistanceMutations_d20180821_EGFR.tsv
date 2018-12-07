@@ -1,0 +1,21 @@
+Sample Name	Sample ID	Gene Name	Transcript	Census Gene	Drug Name	ID Mutation	AA Mutation	CDS Mutation	Primary Tissue	Tissue Subtype 1	Tissue Subtype 2	Histology	Histology Subtype 1	Histology Subtype 2	Pubmed Id	CGP Study	Somatic Status	Sample Type	Zygosity	Genome Coordinates (GRCh38)	Tier
+1040049	1040049	EGFR	ENST00000275493	Yes	Gefitinib	COSM6240	p.T790M	c.2369C>T	lung	right_lower_lobe	NS	carcinoma	adenocarcinoma	NS	17180521		Previously Reported	Tumour Sample	Unknown	7:55181378..55181378	1
+1103809	1103809	EGFR	ENST00000275493	Yes	Gefitinib	COSM6240	p.T790M	c.2369C>T	lung	NS	NS	carcinoma	adenocarcinoma	NS	18271876		Previously Reported	Tumour Sample	Unknown	7:55181378..55181378	1
+1140670	1140670	EGFR	ENST00000275493	Yes	Gefitinib	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	squamous_cell_carcinoma	NS	19238633		Previously Reported	Tumour Sample	Unknown		1
+1319151	1319151	EGFR	ENST00000275493	Yes	Erlotinib	COSM6240	p.T790M	c.2369C>T	lung	NS	NS	carcinoma	adenocarcinoma	NS	20146086		Previously Reported	Tumour Sample	Unknown	7:55181378..55181378	1
+1445184	1445184	EGFR	ENST00000275493	Yes	Gefitinib	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	adenocarcinoma	NS	20682976		Previously Reported	Tumour Sample	Unknown		1
+1469860	1469860	EGFR	ENST00000275493	Yes	Tyrosine kinase inhibitor - NS	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	adenocarcinoma	NS	21135146		Previously Reported	Tumour Sample	Unknown		1
+1547758	1547758	EGFR	ENST00000275493	Yes	Erlotinib	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	non_small_cell_carcinoma	NS	21430269		Previously Reported	Tumour Sample	Unknown		1
+1774678	1774678	EGFR	ENST00000275493	Yes	Gefitinib	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	adenocarcinoma	NS	22993320		Previously Reported	Tumour Sample	Unknown		1
+1992087	1992087	EGFR	ENST00000275493	Yes	Gefitinib	COSM6240	p.T790M	c.2369C>T	lung	NS	NS	carcinoma	non_small_cell_carcinoma	NS	23886554		Previously Reported	Tumour Sample	Unknown	7:55181378..55181378	1
+2027722	2027722	EGFR	ENST00000275493	Yes	Tyrosine kinase inhibitor - NS	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	non_small_cell_carcinoma	NS	24035188		Previously Reported	Tumour Sample	Unknown		1
+2032250	2032250	EGFR	ENST00000275493	Yes	Tyrosine kinase inhibitor - NS	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	adenocarcinoma	NS	24105277		Previously Reported	Tumour Sample	Unknown		1
+2141402	2141402	EGFR	ENST00000275493	Yes	Erlotinib	COSM21943	p.T790M	c.?	lung	right_middle_lobe	NS	carcinoma	acinar_adenocarcinoma	NS	24636847		Previously Reported	Tumour Sample	Unknown		1
+2161695	2161695	EGFR	ENST00000275493	Yes	Afatinib	COSM6240	p.T790M	c.2369C>T	lung	NS	NS	carcinoma	bronchioloalveolar_adenocarcinoma	NS	24813888		Previously Reported	Tumour Sample	Unknown	7:55181378..55181378	1
+2426831	2426831	EGFR	ENST00000275493	Yes	Osimertinib	COSM5010368	p.C797S	c.?	lung	NS	NS	carcinoma	non_small_cell_carcinoma	NS	25939061		Previously Reported	Tumour Sample	Unknown		1
+2591371	2591371	EGFR	ENST00000275493	Yes	Tyrosine kinase inhibitor - NS	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	non_small_cell_carcinoma	NS	27528220		Confirmed Somatic	Tumour Sample	Unknown		1
+2591451	2591451	EGFR	ENST00000275493	Yes	Tyrosine kinase inhibitor - NS	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	non_small_cell_carcinoma	NS	27528220		Confirmed Somatic	Tumour Sample	Unknown		1
+NCI-H1975	1028949	EGFR	ENST00000275493	Yes	Gefitinib	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	adenocarcinoma	NS	17145836		Previously Reported	Cultured	Unknown		1
+1108052	1108052	EGFR	ENST00000275493	Yes	Gefitinib	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	bronchioloalveolar_adenocarcinoma	NS	17973572		Previously Reported	Tumour Sample	Unknown		1
+1162972	1162972	EGFR	ENST00000275493	Yes	Gefitinib	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	adenocarcinoma	NS	18992959		Previously Reported	Tumour Sample	Unknown		1
+1469786	1469786	EGFR	ENST00000275493	Yes	Tyrosine kinase inhibitor - NS	COSM21943	p.T790M	c.?	lung	NS	NS	carcinoma	adenocarcinoma	NS	21135146		Previously Reported	Tumour Sample	Unknown		1
