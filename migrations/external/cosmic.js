@@ -103,14 +103,7 @@ const processCosmicRecord = async (conn, record, source) => {
     }, conn, {
         existsOk: true,
         verbose: true,
-        getWhere: {
-            relevance,
-            appliesTo: drug,
-            implies: {direction: 'in', v: [rid(variant), rid(disease)]},
-            supportedBy: {v: [rid(record.publication)], direction: 'out'},
-            source: rid(source),
-            reviewStatus: 'not required'
-        }
+        get: false
     });
 };
 

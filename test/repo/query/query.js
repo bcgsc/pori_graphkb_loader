@@ -11,7 +11,6 @@ const {
 const {quoteWrap} = require('./../../../app/repo/util');
 
 const SOURCE_PROPS = SCHEMA_DEFN.Source.queryProperties;
-const VERTEX_PROPS = SCHEMA_DEFN.V.queryProperties;
 const DISEASE_PROPS = SCHEMA_DEFN.Disease.queryProperties;
 const FEATURE_PROPS = SCHEMA_DEFN.Feature.queryProperties;
 
@@ -22,7 +21,7 @@ describe('Query Parsing', () => {
     it('parses a complex traversal', () => {
         const parsed = Query.parse(SCHEMA_DEFN, SCHEMA_DEFN.V, {
             where: {
-                attr: 'inE(implies).vertex',
+                attr: 'inE(ImpliedBy).vertex',
                 value: {
                     type: 'neighborhood',
                     where: [
@@ -43,7 +42,7 @@ describe('Query Parsing', () => {
             new Clause('AND', [
                 new Comparison(
                     new Traversal({
-                        type: 'EDGE', edges: ['implies'], direction: 'in', child: new Traversal({attr: 'outV()', cast: castToRID})
+                        type: 'EDGE', edges: ['ImpliedBy'], direction: 'in', child: new Traversal({attr: 'outV()', cast: castToRID})
                     }),
                     new Query(
                         'Feature',
