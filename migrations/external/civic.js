@@ -341,7 +341,7 @@ const processEvidenceRecord = async (opt) => {
         sourceId: rawRecord.id
     };
     const getWhere = Object.assign({
-        implies: {v: [variant['@rid']]},
+        ImpliedBy: {v: [variant['@rid']]},
         supportedBy: {v: [publication['@rid']], source: source['@rid'], level: level['@rid']}
 
     }, content);
@@ -356,7 +356,7 @@ const processEvidenceRecord = async (opt) => {
         content.appliesTo = getWhere.appliesTo = disease['@rid'];
     } else {
         content.impliedBy.push({target: disease['@rid']});
-        getWhere.implies = {v: [variant['@rid'], disease['@rid']]};
+        getWhere.ImpliedBy = {v: [variant['@rid'], disease['@rid']]};
     }
 
     if (rawRecord.evidence_type === 'Predictive' && drug) {

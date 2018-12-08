@@ -221,7 +221,7 @@ const GET_STATS = {
                                 Cites: 0,
                                 DeprecatedBy: 15673,
                                 ElementOf: 22,
-                                Implies: 7957,
+                                ImpliedBy: 7957,
                                 Infers: 0,
                                 OppositeOf: 15,
                                 SubClassOf: 66691,

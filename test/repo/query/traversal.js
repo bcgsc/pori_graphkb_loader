@@ -41,30 +41,30 @@ describe('Traversal', () => {
         it('edge with classes', () => {
             const parsed = Traversal.parse(SCHEMA_DEFN, SCHEMA_DEFN.Disease, {
                 type: TRAVERSAL_TYPE.EDGE,
-                edges: ['Implies', 'SupportedBy']
+                edges: ['ImpliedBy', 'SupportedBy']
             });
             const exp = new Traversal({
                 type: TRAVERSAL_TYPE.EDGE,
                 cast: castToRID,
-                edges: ['Implies', 'SupportedBy']
+                edges: ['ImpliedBy', 'SupportedBy']
             });
             expect(parsed).to.eql(exp);
-            expect(parsed.toString()).to.equal('bothE(\'Implies\', \'SupportedBy\')');
+            expect(parsed.toString()).to.equal('bothE(\'ImpliedBy\', \'SupportedBy\')');
         });
         it('edge with classes and direction', () => {
             const parsed = Traversal.parse(SCHEMA_DEFN, SCHEMA_DEFN.Disease, {
                 type: TRAVERSAL_TYPE.EDGE,
-                edges: ['Implies', 'SupportedBy'],
+                edges: ['ImpliedBy', 'SupportedBy'],
                 direction: 'out'
             });
             const exp = new Traversal({
                 type: TRAVERSAL_TYPE.EDGE,
                 cast: castToRID,
-                edges: ['Implies', 'SupportedBy'],
+                edges: ['ImpliedBy', 'SupportedBy'],
                 direction: 'out'
             });
             expect(parsed).to.eql(exp);
-            expect(parsed.toString()).to.equal('outE(\'Implies\', \'SupportedBy\')');
+            expect(parsed.toString()).to.equal('outE(\'ImpliedBy\', \'SupportedBy\')');
         });
         it('edge with direction', () => {
             const parsed = Traversal.parse(SCHEMA_DEFN, SCHEMA_DEFN.Disease, {

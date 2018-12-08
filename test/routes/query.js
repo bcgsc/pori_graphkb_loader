@@ -154,11 +154,11 @@ describe('parseCompoundAttr', () => {
         });
     });
     it('parses edge with classes', () => {
-        const parsed = parseCompoundAttr('out(implies, supportedby).vertex.name');
+        const parsed = parseCompoundAttr('out(ImpliedBy, supportedby).vertex.name');
         expect(parsed).to.eql({
             type: 'EDGE',
             direction: 'out',
-            edges: ['implies', 'supportedby'],
+            edges: ['ImpliedBy', 'supportedby'],
             child: {
                 attr: 'inV',
                 type: 'LINK',
@@ -186,14 +186,14 @@ describe('parseCompoundAttr', () => {
         });
     });
     it('parses link.edge', () => {
-        const parsed = parseCompoundAttr('source.out(implies,supportedby)');
+        const parsed = parseCompoundAttr('source.out(ImpliedBy,supportedby)');
         expect(parsed).to.eql({
             attr: 'source',
             type: 'LINK',
             child: {
                 type: 'EDGE',
                 direction: 'out',
-                edges: ['implies', 'supportedby']
+                edges: ['ImpliedBy', 'supportedby']
             }
         });
     });

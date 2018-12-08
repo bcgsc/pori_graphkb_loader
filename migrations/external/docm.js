@@ -126,14 +126,7 @@ const processRecord = async (opt) => {
                 reviewStatus: 'not required'
             }, conn, {
                 existsOk: true,
-                getWhere: {
-                    implies: {direction: 'in', v: [rid(disease), rid(variant)]},
-                    supportedBy: {v: [rid(publication)], direction: 'out'},
-                    relevance: rid(relevance),
-                    appliesTo: rid(disease),
-                    source: rid(source),
-                    reviewStatus: 'not required'
-                }
+                get: false
             });
             counts.success++;
         } catch (err) {

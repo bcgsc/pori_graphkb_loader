@@ -602,7 +602,7 @@ const createStatement = async (db, opt) => {
     ));
     query.where.push(new Comparison(
         new Traversal({
-            type: TRAVERSAL_TYPE.EDGE, edges: ['Implies'], direction: 'in', child: 'size()'
+            type: TRAVERSAL_TYPE.EDGE, edges: ['ImpliedBy'], direction: 'out', child: 'size()'
         }),
         content.impliedBy.length
     ));
@@ -638,7 +638,7 @@ const createStatement = async (db, opt) => {
 
     // ensure the RIDs look valid for the impliedBy
     const impTraversal = new Traversal({
-        type: TRAVERSAL_TYPE.EDGE, edges: ['Implies'], direction: 'in', child: 'outV()'
+        type: TRAVERSAL_TYPE.EDGE, edges: ['ImpliedBy'], direction: 'out', child: 'inV()'
     });
     for (const edge of content.impliedBy) {
         if (edge.target === undefined) {
@@ -652,7 +652,7 @@ const createStatement = async (db, opt) => {
             throw new AttributeError(`the impliedBy dependency does not look like a valid RID: ${rid}`);
         }
         dependencies.push(rid);
-        edges.push(Object.assign(edge, {'@class': 'Implies', out: rid}));
+        edges.push(Object.assign(edge, {'@class': 'ImpliedBy', in: rid}));
         query.where.push(new Comparison(impTraversal, rid, OPERATORS.CONTAINS));
     }
 
