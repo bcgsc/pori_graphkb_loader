@@ -1,6 +1,8 @@
 /**
  * Repsonsible for defining and loading the database schema.
- * @module app/repo/schema
+ */
+/**
+ * @ignore
  */
 const _ = require('lodash');
 

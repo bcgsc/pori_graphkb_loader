@@ -1,6 +1,8 @@
 /**
  * Module resposible for authentication and authroization related middleware functions
- * @module app/middleware/auth
+ */
+/**
+ * @ignore
  */
 const HTTP_STATUS = require('http-status-codes');
 const jwt = require('jsonwebtoken');

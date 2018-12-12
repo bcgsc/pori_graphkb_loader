@@ -2,7 +2,9 @@
 /**
  * reuseable schema objects (components/schemas)
  */
-
+/**
+ * @ignore
+ */
 const {schema: SCHEMA_DEFN} = require('@bcgsc/knowledgebase-schema');
 
 const {
