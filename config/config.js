@@ -24,7 +24,8 @@ const keycloak = {
         ? 'https://sso.bcgsc.ca/auth/realms/GSC/protocol/openid-connect/token'
         : 'http://ga4ghdev01.bcgsc.ca:8080/auth/realms/TestKB/protocol/openid-connect/token'),
     clientID: process.env.KEYCLOAK_CLIENTID || 'GraphKB',
-    publicKeyFile: process.env.KEYCLOAK_KEYFILE || 'keycloak.id_rsa.pub'
+    publicKeyFile: process.env.KEYCLOAK_KEYFILE || 'keycloak.id_rsa.pub',
+    role: process.env.KEYCLOAK_ROLE || 'GraphKB'
 };
 
 module.exports = {

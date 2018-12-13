@@ -29,6 +29,7 @@
 | KEYCLOAK_URI | http://ga4ghdev01.bcgsc.ca:8080/auth/realms/TestKB/protocol/openid-connect/token | defaults to https://sso.bcgsc.ca/auth/realms/GSC/protocol/openid-connect/token for production environments |
 | KEYCLOAK_CLIENTID | GraphKB | |
 | KEYCLOAK_KEYFILE | keycloak.id_rsa.pub | path to the public key file used to verify keycloak tokens |
+| KEYCLOAK_ROLE | GraphKB | The required role to get from the keycloak user registration |
 | DISABLE_AUTH | | Set to `1` to disable the external (keycloak) authentication (For testing) |
 
 ## Logging
