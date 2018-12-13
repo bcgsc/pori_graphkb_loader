@@ -9,7 +9,6 @@ const {createSchema, loadSchema} = require('./app/repo/schema');
 const {createUser} = require('./app/repo/base');
 const conf = require('./config/config'); // get the database connection configuration
 const {AppServer} = require('./app');
-const auth = require('./app/middleware/auth');
 const {logger} = require('./app/repo/logging');
 
 // process.on('uncaughtException', app.close);
@@ -53,8 +52,6 @@ let app;
             }
         }
 
-        logger.log('verbose', 'creating certificate');
-        auth.keys.private = fs.readFileSync(conf.private_key);
         // conf.disableCats = true;
         app = new AppServer(conf);
         await app.listen();

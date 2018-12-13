@@ -11,18 +11,18 @@ const cors = require('cors');
 const HTTP_STATUS = require('http-status-codes');
 const swaggerUi = require('swagger-ui-express');
 
-const auth = require('./middleware/auth');
 const {logger} = require('./repo/logging');
 const {selectCounts} = require('./repo/base');
 const {AttributeError} = require('./repo/error');
 const {
-    checkToken, generateToken, catsToken
+    checkToken
 } = require('./middleware/auth'); // WARNING: middleware fails if function is not imported by itself
 
 const {loadSchema} = require('./repo/schema');
 
 const {generateSwaggerSpec} = require('./routes/openapi');
 const {addResourceRoutes} = require('./routes/util');
+const {addPostToken} = require('./routes/auth');
 
 
 const logRequests = (req, res, next) => {
@@ -90,30 +90,6 @@ class AppServer {
         this.router = express.Router();
         this.prefix = '/api';
         this.app.use(this.prefix, this.router);
-
-        this.router.route('/token').post(async (req, res) => {
-            // generate a token to return to the user
-            if (req.body.username === undefined || req.body.password === undefined) {
-                return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'body requires both username and password to generate a token'});
-            }
-            // first level authentication
-            let cats = {user: req.body.username, token: null};
-            if (!this.conf.disableAuth) { // FOR TESTING
-                try {
-                    cats = await catsToken(req.body.username, req.body.password);
-                } catch (err) {
-                    return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
-                }
-            }
-            // kb-level authentication
-            let token;
-            try {
-                token = await generateToken(this.db, cats.user, cats.exp);
-            } catch (err) {
-                return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
-            }
-            return res.status(HTTP_STATUS.OK).json({kbToken: token, catsToken: cats.token});
-        });
     }
 
     /**
@@ -148,13 +124,23 @@ class AppServer {
                 db: this.conf.db.name
             });
         });
-
-        this.router.use(checkToken);
-
-        // create the authentication certificate for managing tokens
-        if (!auth.keys.private) {
-            auth.keys.private = fs.readFileSync(this.conf.private_key);
+        // read the key file if it wasn't already set
+        if (!this.conf.privateKey) {
+            logger.log('info', `reading the private key file: ${this.conf.privateKeyFile}`);
+            this.conf.privateKey = fs.readFileSync(this.conf.privateKeyFile);
         }
+        // if external auth is enabled, read the keycloak public key file for verifying the tokens
+        if (!this.disableAuth) {
+            if (this.conf.keycloak && this.conf.keycloak.publicKeyFile && !this.conf.keycloak.publicKey) {
+                logger.log('info', `reading the keycloak public key file: ${this.conf.keycloak.publicKeyFile}`);
+                this.conf.keycloak.publicKey = fs.readFileSync(this.conf.keycloak.publicKeyFile);
+            }
+        }
+        // add the addPostToken
+        addPostToken({router: this.router, db, config: this.conf});
+
+        this.router.use(checkToken(this.conf.privateKey));
+
         // simple routes
         for (const model of Object.values(schema)) {
             addResourceRoutes({

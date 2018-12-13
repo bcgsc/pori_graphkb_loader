@@ -7,7 +7,7 @@ const {
     setUpEmptyDB
 } = require('./../util');
 const conf = require('./../../config/config.js');
-const auth = require('./../../app/middleware/auth');
+const {generateToken} = require('./../../app/routes/auth');
 
 const ensembl = require('./../../migrations/external/ensembl');
 const refseq = require('./../../migrations/external/refseq');
@@ -24,6 +24,7 @@ conf.disableAuth = true;
 conf.db = Object.assign({}, conf.db);
 conf.verbose = true;
 conf.db.name = `test_${uuidV4()}`;
+conf.privateKey = 'testKey';
 
 const DATA_DIR = path.join(__dirname, './../data');
 
@@ -64,7 +65,7 @@ describe('external migrations', () => {
         app = new AppServer(conf, false);
 
         await app.listen();
-        mockToken = await auth.generateToken(db, admin.name, REALLY_LONG_TIME);
+        mockToken = await generateToken(db, admin.name, conf.privateKey, REALLY_LONG_TIME);
         connection = new ApiConnection(app);
         connection.headers.Authorization = mockToken;
     });
