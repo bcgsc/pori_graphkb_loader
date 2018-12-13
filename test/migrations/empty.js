@@ -62,7 +62,7 @@ describe('external migrations', () => {
 
         const {AppServer} = require('./../../app'); // eslint-disable-line global-require
         delete conf.app.port;
-        app = new AppServer(conf, false);
+        app = new AppServer(conf);
 
         await app.listen();
         mockToken = await generateToken(db, admin.name, conf.privateKey, REALLY_LONG_TIME);
