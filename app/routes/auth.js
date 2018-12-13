@@ -38,7 +38,19 @@ const generateToken = async (db, username, key, exp = null) => {
  * @param {string} keycloakSettings.clientID key cloak client id
  * @param {string} keycloakSettings.uri the url to post to, to retrieve the token
  *
- * @returns {string} the token
+ * @returns {string} the access token
+ *
+ * @example
+ * // The response we expect from KeyCloak
+ * {
+ *      access_token: 'eyJhbGciOiJSUzI1NiIsInR5cCIgOi...',
+ *      expires_in: 43200,
+ *      refresh_expires_in: 43200,
+ *      refresh_token: 'eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6IC...'
+ *      token_type: 'bearer',
+ *      'not-before-policy': 0,
+ *      session_state: '1ecbceaf-bf4f-4fd8-96e7-...'
+ * }
  */
 const fetchKeyCloakToken = async (username, password, keycloakSettings) => {
     const {uri, clientID} = keycloakSettings;
@@ -51,7 +63,7 @@ const fetchKeyCloakToken = async (username, password, keycloakSettings) => {
         }),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'}
     }));
-    return resp;
+    return resp.access_token;
 };
 
 /**
@@ -92,6 +104,7 @@ const validateKeyCloakToken = (token, key, role) => {
  */
 const addPostToken = ({router, db, config}) => {
     const {keycloak, privateKey, disableAuth} = config;
+
     router.route('/token').post(async (req, res) => {
         // generate a token to return to the user
         if ((req.body.username === undefined || req.body.password === undefined) && req.body.keyCloakToken === undefined) {
