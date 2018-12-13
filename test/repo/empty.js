@@ -252,7 +252,8 @@ describe('schema', () => {
         });
         it('limit 1', async () => {
             const query = Query.parse(schema, schema.Disease, {
-                limit: 1
+                limit: 1,
+                orderBy: ['createdAt']
             });
             const records = await select(db, query, {user: admin});
             expect(records).to.have.property('length', 1);
@@ -260,7 +261,7 @@ describe('schema', () => {
         });
         it('limit 1, skip 1', async () => {
             const query = Query.parse(schema, schema.Disease, {
-                limit: 1, skip: 1
+                limit: 1, skip: 1, orderBy: ['createdAt']
             });
             const records = await select(db, query, {user: admin});
             expect(records).to.have.property('length', 1);

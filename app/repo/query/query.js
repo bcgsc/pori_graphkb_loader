@@ -213,6 +213,8 @@ class Query {
      * @param {string} [opt.type] the type of pre-fabricated query (should match an export name in the match module)
      * @param {boolean} [opt.activeOnly=true] select only non-deleted records
      * @param {Number} [opt.neighbors] select records N jumps away from the resulting selection of records (fetch)
+     * @param {Array.<string>} [opt.orderBy] list of property names to use in ordering the results
+     * @param {string} [opt.orderByDirection='ASC'] ordering direction, either DESC or ASC
      *
      */
     constructor(modelName, where, opt = {}) {
@@ -230,6 +232,8 @@ class Query {
         this.activeOnly = opt.activeOnly === undefined
             ? true
             : opt.activeOnly;
+        this.orderBy = opt.orderBy || null;
+        this.orderByDirection = opt.orderByDirection || 'ASC';
     }
 
     /**
@@ -251,12 +255,18 @@ class Query {
             activeOnly: true,
             where: [],
             returnProperties: null,
+            orderBy: null,
+            orderByDirection: 'ASC',
             limit: null,
             type: null,
             edges: null,
             depth: null,
             neighbors: null
         }, opt);
+
+        if (!['ASC', 'DESC'].includes(opt.orderByDirection)) {
+            throw new AttributeError(`orderByDirection must be ASC or DESC not ${opt.orderByDirection}`);
+        }
 
         const schemaMap = {};
         for (const currModel of Object.values(schema)) {
@@ -280,12 +290,12 @@ class Query {
         }
         const properties = model.queryProperties;
 
-        // can only return properties which belong to this class
-        for (const propName of opt.returnProperties || []) {
+        // can only return properties or order by properties which belong to this class
+        for (const propName of (opt.returnProperties || []).concat(opt.orderBy || [])) {
             const [prefix] = propName.split('.');
             if (properties[propName] === undefined && properties[prefix] === undefined) {
                 throw new AttributeError(
-                    `invalid return property '${
+                    `invalid return/ordering property '${
                         propName
                     }' is not a valid member of class '${
                         model.name
@@ -347,6 +357,9 @@ class Query {
         queryString = `SELECT ${selectionElements} FROM ${this.modelName}`;
         if (subQuery) {
             queryString = `${queryString} WHERE ${subQuery}`;
+        }
+        if (this.orderBy && this.orderBy.length > 0) {
+            queryString = `${queryString} ORDER BY ${this.orderBy.join(', ')} ${this.orderByDirection}`;
         }
         if (this.skip != null) {
             queryString = `${queryString} SKIP ${this.skip}`;
