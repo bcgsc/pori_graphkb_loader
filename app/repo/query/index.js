@@ -3,8 +3,9 @@
  */
 
 /**
-  * @ignore
-  */
+ * @constant
+ * @ignore
+ */
 const {Comparison, Clause, Query} = require('./query');
 const {Traversal} = require('./traversal');
 const match = require('./match');

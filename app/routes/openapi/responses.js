@@ -2,6 +2,7 @@
  * Reuseable response (components/responses) definitions for generating the swagger specification
  */
 /**
+ * @constant
  * @ignore
  */
 const Forbidden = {
