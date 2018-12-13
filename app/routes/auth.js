@@ -5,6 +5,7 @@ const request = require('request-promise');
 const HTTP_STATUS = require('http-status-codes');
 
 const {getUserByName} = require('./../repo/base');
+const {logger} = require('./../repo/logging');
 const {AuthenticationError, PermissionError} = require('./../repo/error');
 
 const TOKEN_TIMEOUT = 60 * 60 * 8; // default timeout is 8 hours
@@ -41,6 +42,7 @@ const generateToken = async (db, username, key, exp = null) => {
  */
 const fetchKeyCloakToken = async (username, password, keycloakSettings) => {
     const {uri, clientID} = keycloakSettings;
+    logger.log('debug', `[POST] ${uri}`);
     const resp = JSON.parse(await request({
         method: 'POST',
         uri,
