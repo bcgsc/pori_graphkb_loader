@@ -45,6 +45,7 @@
     "year": "^0.2.1"
   },
   "devDependencies": {
+    "@bcgsc/jsdocref": "^1.0.1",
     "chai": "^3.5.0",
     "chai-http": "^3.0.0",
     "docdash": "^1.0.0",
@@ -80,7 +81,7 @@
     "test-import": "nyc mocha test/migrations",
     "test-all": "nyc mocha test/{repo,routes,migrations}",
     "lint": "eslint -c .eslintrc.jon app test",
-    "build-docs": "jsdoc2md --files app/{*,*/*,*/*/*}.js -c config/jsdoc.config.js > doc/jsdoc.md; cp README.md doc",
+    "build-docs": "jsdocref --input app --output doc; cp README.md doc",
     "serve-docs": "docsify serve doc",
     "version": "echo $npm_package_version"
   }
