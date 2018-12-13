@@ -2,6 +2,7 @@
  * Route definition components (components/routes) that cannot be auto generated only from the schema
  */
 /**
+ * @constant
  * @ignore
  */
 const POST_STATEMENT = {

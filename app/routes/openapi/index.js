@@ -3,6 +3,7 @@
  */
 
 /**
+ * @constant
  * @ignore
  */
 const _ = require('lodash');

@@ -3,6 +3,7 @@
  * surrounding verticies
  */
 /**
+ * @constant
  * @ignore
  */
 const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
