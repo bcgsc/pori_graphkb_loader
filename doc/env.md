@@ -19,9 +19,17 @@
 |----------|---------|------------|
 | PORT | 8080 | Port for the API to start on |
 | KEY_FILE | id_rsa | Path to the private key to use for generating tokens |
-| DISABLE_AUTH | | Set to `1` to disable CATS/KeyCloak Authentication (For testing) |
 | LOG_DIR | | Write log files to this directory |
 | LOG_LEVEL | info | The level of information to log to the screen and log files |
+
+## Key Cloak Settings
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| KEYCLOAK_URI | http://ga4ghdev01.bcgsc.ca:8080/auth/realms/TestKB/protocol/openid-connect/token | defaults to https://sso.bcgsc.ca/auth/realms/GSC/protocol/openid-connect/token for production environments |
+| KEYCLOAK_CLIENTID | GraphKB | |
+| KEYCLOAK_KEYFILE | keycloak.id_rsa.pub | path to the public key file used to verify keycloak tokens |
+| DISABLE_AUTH | | Set to `1` to disable the external (keycloak) authentication (For testing) |
 
 ## Logging
 
