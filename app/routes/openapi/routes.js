@@ -88,10 +88,21 @@ const POST_TOKEN = {
             'application/json': {
                 schema: {
                     type: 'object',
-                    properties: {
-                        username: {type: 'string', description: 'The username'},
-                        password: {type: 'string', description: 'The password associated with this username'}
-                    }
+                    oneOf: [
+                        {
+                            type: 'object',
+                            properties: {
+                                username: {type: 'string', description: 'The username'},
+                                password: {type: 'string', description: 'The password associated with this username'}
+                            }
+                        },
+                        {
+                            type: 'object',
+                            properties: {
+                                keyCloakToken: {type: 'string', description: 'The token from keycloak'}
+                            }
+                        }
+                    ]
                 }
             }
         }
@@ -109,10 +120,10 @@ const POST_TOKEN = {
                                 format: 'token',
                                 description: 'The token for KB API requests'
                             },
-                            catsToken: {
+                            keyCloakToken: {
                                 type: 'string',
                                 format: 'token',
-                                description: 'The token from CATS'
+                                description: 'The token from keycloak'
                             }
                         }
                     }
