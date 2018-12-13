@@ -130,7 +130,7 @@ class AppServer {
             this.conf.privateKey = fs.readFileSync(this.conf.privateKeyFile);
         }
         // if external auth is enabled, read the keycloak public key file for verifying the tokens
-        if (!this.disableAuth) {
+        if (!this.conf.disableAuth) {
             if (this.conf.keycloak && this.conf.keycloak.publicKeyFile && !this.conf.keycloak.publicKey) {
                 logger.log('info', `reading the keycloak public key file: ${this.conf.keycloak.publicKeyFile}`);
                 this.conf.keycloak.publicKey = fs.readFileSync(this.conf.keycloak.publicKeyFile);
