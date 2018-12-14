@@ -1,8 +1,11 @@
 /**
  * The query module is reponsible for building the complex psuedo-SQL statements
- * @module app/repo/query
  */
 
+/**
+ * @constant
+ * @ignore
+ */
 const {Comparison, Clause, Query} = require('./query');
 const {Traversal} = require('./traversal');
 const match = require('./match');

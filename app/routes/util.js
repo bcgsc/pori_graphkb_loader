@@ -1,6 +1,3 @@
-/**
- * @module app/routes/util
- */
 const HTTP_STATUS = require('http-status-codes');
 const jc = require('json-cycle');
 const _ = require('lodash');

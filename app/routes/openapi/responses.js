@@ -1,6 +1,10 @@
 /**
  * Reuseable response (components/responses) definitions for generating the swagger specification
  */
+/**
+ * @constant
+ * @ignore
+ */
 const Forbidden = {
     description: 'The current user does not have the required permissions to access this content',
     content: {

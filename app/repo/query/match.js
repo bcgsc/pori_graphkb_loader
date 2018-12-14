@@ -2,6 +2,10 @@
  * Create neighborhood queries where some conditions are loosely matched and then expanded to
  * surrounding verticies
  */
+/**
+ * @constant
+ * @ignore
+ */
 const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 const {quoteWrap} = require('./../util');
 

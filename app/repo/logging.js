@@ -1,8 +1,9 @@
 /**
  * module responsible for setting up logging
- * @module app/repo/logging
  */
-
+/**
+ * @ignore
+ */
 const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');

@@ -11,7 +11,7 @@ const {
     setUpEmptyDB
 } = require('./../util');
 const conf = require('./../../config/config.js');
-const auth = require('./../../app/middleware/auth');
+const {generateToken} = require('./../../app/routes/auth');
 
 chai.use(chaiHttp);
 
@@ -20,6 +20,7 @@ conf.disableAuth = true;
 conf.db = Object.assign({}, conf.db);
 conf.verbose = true;
 conf.db.name = `test_${uuidV4()}`;
+conf.privateKey = 'testKey';
 
 
 describe('API', () => {
@@ -41,7 +42,7 @@ describe('API', () => {
         app = new AppServer(conf, false);
 
         await app.listen();
-        mockToken = await auth.generateToken(db, admin.name, REALLY_LONG_TIME);
+        mockToken = await generateToken(db, admin.name, conf.privateKey, REALLY_LONG_TIME);
     });
 
     describe('stats', () => {

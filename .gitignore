@@ -25,5 +25,5 @@ ncit_temp.json
 setup_sample_server.js
 target/
 test_transaction.sql
-doc/jsdoc.md
+doc/jsdoc_reference
 doc/README.md

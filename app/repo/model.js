@@ -1,6 +1,8 @@
 /**
  * Classes for enforcing constraints on DB classes and properties
- * @module app/repo/model
+ */
+/**
+ * @ignore
  */
 const orientjs = require('orientjs');
 const kbSchema = require('@bcgsc/knowledgebase-schema');

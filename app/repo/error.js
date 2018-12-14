@@ -1,6 +1,5 @@
 
 
-/** @module app/repo/error */
 const {error: {ErrorMixin}} = require('@bcgsc/knowledgebase-parser');
 const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 

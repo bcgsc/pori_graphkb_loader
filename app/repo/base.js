@@ -2,7 +2,9 @@
 
 /**
  * Contains all functions for directly interacting with the database
- * @module app/repo/base
+ */
+/**
+ * @ignore
  */
 const _ = require('lodash');
 

@@ -141,6 +141,63 @@ describe('Query Parsing', () => {
 
         });
     });
+    describe('orderBy', () => {
+        it('parses a single order column', () => {
+            const parsed = Query.parse(SCHEMA_DEFN, SCHEMA_DEFN.Disease, {
+                where: [],
+                activeOnly: false,
+                orderBy: ['@rid']
+            });
+
+            const expected = new Query(
+                SCHEMA_DEFN.Disease.name,
+                new Clause('AND', []),
+                {activeOnly: false, orderBy: ['@rid']}
+            );
+            expect(parsed).to.eql(expected);
+            const sql = 'SELECT * FROM Disease ORDER BY @rid ASC';
+            const {query, params} = parsed.toString();
+            expect(params).to.eql({});
+            expect(stripSQL(query)).to.equal(stripSQL(sql));
+        });
+        it('descending order', () => {
+            const parsed = Query.parse(SCHEMA_DEFN, SCHEMA_DEFN.Disease, {
+                where: [],
+                activeOnly: false,
+                orderBy: ['name'],
+                orderByDirection: 'DESC'
+            });
+
+            const expected = new Query(
+                SCHEMA_DEFN.Disease.name,
+                new Clause('AND', []),
+                {activeOnly: false, orderBy: ['name'], orderByDirection: 'DESC'}
+            );
+            expect(parsed).to.eql(expected);
+            const sql = 'SELECT * FROM Disease ORDER BY name DESC';
+            const {query, params} = parsed.toString();
+            expect(params).to.eql({});
+            expect(stripSQL(query)).to.equal(stripSQL(sql));
+        });
+        it('parses a multiple ordering columns', () => {
+            const parsed = Query.parse(SCHEMA_DEFN, SCHEMA_DEFN.Disease, {
+                where: [],
+                activeOnly: false,
+                orderBy: ['@rid', '@class']
+            });
+
+            const expected = new Query(
+                SCHEMA_DEFN.Disease.name,
+                new Clause('AND', []),
+                {activeOnly: false, orderBy: ['@rid', '@class']}
+            );
+            expect(parsed).to.eql(expected);
+            const sql = 'SELECT * FROM Disease ORDER BY @rid, @class ASC';
+            const {query, params} = parsed.toString();
+            expect(params).to.eql({});
+            expect(stripSQL(query)).to.equal(stripSQL(sql));
+        });
+    });
     describe('subquery', () => {
         it('link in subquery', () => {
             const parsed = Query.parse(SCHEMA_DEFN, SCHEMA_DEFN.Disease, {

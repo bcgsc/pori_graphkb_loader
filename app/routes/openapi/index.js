@@ -1,9 +1,11 @@
 /**
  * Generates the openAPI specification for the Graph KB
- * @module app/routes/openapi
  */
 
-
+/**
+ * @constant
+ * @ignore
+ */
 const _ = require('lodash');
 const fs = require('fs');
 const routes = require('./routes');

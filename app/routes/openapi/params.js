@@ -1,6 +1,10 @@
 /**
  * Parameter definitions (components/params) for use in generating the swagger specification
  */
+/**
+ * @constant
+ * @ignore
+ */
 const {MAX_JUMPS, MAX_QUERY_LIMIT, DEFAULT_QUERY_LIMIT} = require('./constants');
 
 const GENERAL_QUERY_PARAMS = {
