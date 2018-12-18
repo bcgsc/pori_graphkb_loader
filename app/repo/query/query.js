@@ -374,8 +374,8 @@ class Query {
      * @warning
      *      use the toString and params to query the db. This method is for VERBOSE/logging only
      */
-    displayString() {
-        let {query: statement, params} = this.toString();
+    static displayString(queryObj) {
+        let {query: statement, params} = queryObj.toString();
         for (const key of Object.keys(params)) {
             let value = params[key];
             if (typeof value === 'string') {
@@ -386,6 +386,10 @@ class Query {
             statement = statement.replace(new RegExp(`:${key}`, 'g'), `${value}`);
         }
         return statement;
+    }
+
+    displayString() {
+        return this.constructor.displayString(this);
     }
 }
 

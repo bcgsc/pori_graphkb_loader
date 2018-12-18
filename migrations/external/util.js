@@ -8,7 +8,10 @@ const fs = require('fs');
 const _ = require('lodash');
 const parse = require('csv-parse/lib/sync');
 const xml2js = require('xml2js');
+const jwt = require('jsonwebtoken');
 const {progress, logger} = require('./logging');
+
+const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
 
 const PUBMED_DEFAULT_QS = {
     retmode: 'json',
@@ -24,19 +27,33 @@ class ApiConnection {
     constructor(opt) {
         this.baseUrl = `http://${opt.host}:${opt.port}/api`;
         this.headers = {};
+        this.username = null;
+        this.password = null;
+        this.exp = null;
     }
 
     async setAuth({username, password}) {
+        this.username = username;
+        this.password = password;
+        await this.login();
+    }
+
+    async login() {
         const token = await request({
             method: 'POST',
             uri: `${this.baseUrl}/token`,
             json: true,
-            body: {username, password}
+            body: {username: this.username, password: this.password}
         });
         this.headers.Authorization = token.kbToken;
+        const tokenContent = jwt.decode(token.kbToken);
+        this.exp = tokenContent.exp;
     }
 
     async request(opt) {
+        if (this.exp >= epochSeconds()) {
+            await this.login();
+        }
         const req = {
             method: opt.method || 'GET',
             headers: this.headers,

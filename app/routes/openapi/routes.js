@@ -175,6 +175,36 @@ const GET_VERSION = {
     }
 };
 
+const GET_KEYWORD = {
+    summary: 'search related records by a single keyword',
+    parameters: [
+        {$ref: '#/components/parameters/Accept'},
+        {
+            in: 'query',
+            name: 'keyword',
+            schema: {type: 'string'},
+            description: 'the keyword to search for',
+            required: true
+        },
+        {$ref: '#components/parameters/neighbors'},
+        {$ref: '#components/parameters/limit'}
+    ],
+    responses: {
+        200: {
+            content: {
+                'application/json': {
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            result: {$ref: '#/components/schemas/V'}
+                        }
+                    }
+                }
+            }
+        }
+    }
+};
+
 
 const GET_STATS = {
     summary: 'Returns counts for all non-abstract database classes',
@@ -252,5 +282,5 @@ const GET_STATS = {
 };
 
 module.exports = {
-    POST_STATEMENT, POST_TOKEN, GET_SCHEMA, GET_STATS, GET_VERSION
+    POST_STATEMENT, POST_TOKEN, GET_SCHEMA, GET_STATS, GET_VERSION, GET_KEYWORD
 };

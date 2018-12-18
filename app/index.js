@@ -23,7 +23,7 @@ const {loadSchema} = require('./repo/schema');
 const {generateSwaggerSpec} = require('./routes/openapi');
 const {addResourceRoutes} = require('./routes/util');
 const {addPostToken} = require('./routes/auth');
-
+const {addKeywordSearchRoute} = require('./routes');
 
 const logRequests = (req, res, next) => {
     logger.log('info', `[${req.method}] ${req.url}`);
@@ -147,6 +147,7 @@ class AppServer {
                 router: this.router, model, db, schema
             });
         }
+        addKeywordSearchRoute({router: this.router, db, config: this.conf});
         // add the stats route
         const classList = Object.keys(this.schema).filter(
             name => !this.schema[name].isAbstract
