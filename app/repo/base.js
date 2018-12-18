@@ -279,12 +279,13 @@ const select = async (db, query, opt) => {
  * @param {Query} query the query object
  * @param {Object} opt Selection options
  * @param {?Number} opt.limit max number of records to return
+ * @param {?Number} opt.skip number of records to skip
  * @param {?Number} opt.neighbors number of related records to fetch
  * @param {User} [opt.user] the current user
  */
 const selectByKeyword = async (db, keywords, opt) => {
     const queryObj = Object.assign({
-        toString: () => generalKeywordSearch(keywords),
+        toString: () => generalKeywordSearch(keywords, opt.skip || 0),
         activeOnly: true
     }, opt);
     queryObj.displayString = () => Query.displayString(queryObj);

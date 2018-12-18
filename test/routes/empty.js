@@ -744,6 +744,15 @@ describe('API', () => {
                 expect(res).to.have.status(HTTP_STATUS.OK);
                 expect(res.body.result).to.have.property('length', 2);
             });
+            it('using search endpoint with skip', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/search`)
+                    .type('json')
+                    .query({keyword: 'cancer', skip: 1})
+                    .set('Authorization', mockToken);
+                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res.body.result).to.have.property('length', 1);
+            });
             it('ignores case (due to cast)', async () => {
                 const res = await chai.request(app.app)
                     .get(`${app.prefix}/diseases`)

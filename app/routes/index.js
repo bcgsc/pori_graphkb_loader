@@ -22,7 +22,7 @@ const addKeywordSearchRoute = (opt) => {
     router.get('/search',
         async (req, res) => {
             const {
-                keyword, neighbors, limit, ...other
+                keyword, neighbors, limit, skip, ...other
             } = req.query;
 
             const options = {user: req.user};
@@ -32,6 +32,9 @@ const addKeywordSearchRoute = (opt) => {
                 }
                 if (neighbors !== undefined) {
                     options.neighbors = castRangeInt(neighbors, 0, MAX_JUMPS);
+                }
+                if (skip !== undefined) {
+                    options.skip = castRangeInt(skip, 0);
                 }
             } catch (err) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
