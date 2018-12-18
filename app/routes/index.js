@@ -29,7 +29,8 @@ const addKeywordSearchRoute = (opt) => {
             try {
                 if (limit !== undefined) {
                     options.limit = castRangeInt(limit, 1, MAX_LIMIT);
-                } else if (neighbors !== undefined) {
+                }
+                if (neighbors !== undefined) {
                     options.neighbors = castRangeInt(neighbors, 0, MAX_JUMPS);
                 }
             } catch (err) {
