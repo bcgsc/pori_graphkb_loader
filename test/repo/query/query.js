@@ -136,19 +136,6 @@ describe('Query Parsing', () => {
             expect(parsed).to.eql(expected);
         });
     });
-    describe('search content', () => {
-        it('allows content as attr', () => {
-            const parsed = Query.parse(SCHEMA_DEFN, SCHEMA_DEFN.Disease, {
-                where: [{attr: 'content', operator: OPERATORS.CONTAINSTEXT, value: 'blargh'}],
-                activeOnly: false
-            });
-
-            const sql = 'SELECT * FROM Disease WHERE content CONTAINSTEXT :param0';
-            const {query, params} = parsed.toString();
-            expect(params).to.eql({param0: 'blargh'});
-            expect(stripSQL(query)).to.equal(stripSQL(sql));
-        });
-    });
     describe('list attributes', () => {
         it('uses contains if the input value is not also a list', () => {
 
