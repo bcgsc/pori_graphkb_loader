@@ -728,7 +728,7 @@ describe('API', () => {
                 const res = await chai.request(app.app)
                     .get(`${app.prefix}/search`)
                     .type('json')
-                    .query({keyword: 'liver cancer'})
+                    .query({keyword: 'liver cancer', limit: 10, neighbors: 0})
                     .set('Authorization', mockToken);
                 expect(res).to.have.status(HTTP_STATUS.OK);
                 expect(res.body.result).to.have.property('length', 1);

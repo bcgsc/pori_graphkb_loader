@@ -18,6 +18,7 @@ const util = require('./util');
  * For the GUI to speed up the main search query until we can migrate to v3 odb
  */
 const generalKeywordSearch = (keywords) => {
+    console.log('generalKeywordSearch');
     const params = {};
 
     for (const keyword of keywords) {
