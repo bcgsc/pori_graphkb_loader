@@ -243,5 +243,5 @@ const parse = (queryParams) => {
 };
 
 module.exports = {
-    parse, flattenQueryParams, formatTraversal, parseValue, parseCompoundAttr
+    parse, flattenQueryParams, formatTraversal, parseValue, parseCompoundAttr, castRangeInt, MAX_JUMPS, MAX_LIMIT
 };
