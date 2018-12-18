@@ -33,7 +33,6 @@ const addKeywordSearchRoute = (opt) => {
                     options.neighbors = castRangeInt(neighbors, 0, MAX_JUMPS);
                 }
             } catch (err) {
-                console.log(err);
                 return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
             }
 
