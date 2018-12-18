@@ -12,7 +12,7 @@ const {util: {castToRID, timeStampNow}, error: {AttributeError}} = require('@bcg
 
 const {logger} = require('./logging');
 const {
-    Query, Comparison, Clause, Traversal, constants: {TRAVERSAL_TYPE, OPERATORS}
+    Query, Comparison, Clause, Traversal, constants: {TRAVERSAL_TYPE, OPERATORS}, generalKeywordSearch
 } = require('./query');
 const {SCHEMA_DEFN} = require('./schema');
 const {
@@ -233,7 +233,7 @@ const select = async (db, query, opt) => {
     };
     if (fetchPlan) {
         queryOpt.fetchPlan = fetchPlan;
-    } else if (query.neighbors !== null) {
+    } else if (query.neighbors !== null && query.neighbors !== undefined) {
         queryOpt.fetchPlan = `*:${query.neighbors}`;
     }
     // add history if not explicity specified already
@@ -271,6 +271,24 @@ const select = async (db, query, opt) => {
     } else {
         return recordList;
     }
+};
+
+
+/**
+ * @param {orientjs.Db} db Database connection from orientjs
+ * @param {Query} query the query object
+ * @param {Object} opt Selection options
+ * @param {?Number} opt.limit max number of records to return
+ * @param {?Number} opt.neighbors number of related records to fetch
+ * @param {User} [opt.user] the current user
+ */
+const selectByKeyword = async (db, keywords, opt) => {
+    const queryObj = Object.assign({
+        toString: () => generalKeywordSearch(keywords),
+        activeOnly: true
+    }, opt);
+    queryObj.displayString = () => Query.displayString(queryObj);
+    return select(db, queryObj);
 };
 
 
@@ -797,5 +815,6 @@ module.exports = {
     update,
     modify,
     wrapIfTypeError,
-    selectCounts
+    selectCounts,
+    selectByKeyword
 };

@@ -683,7 +683,7 @@ describe('API', () => {
                 expect(resp.body.result).to.have.property('length', 1);
             });
         });
-        describe('GET /diseases query FULLTEXT index', () => {
+        describe('query using FULLTEXT index', () => {
             beforeEach(async () => {
                 await chai.request(app.app)
                     .post(`${app.prefix}/diseases`)
@@ -721,7 +721,28 @@ describe('API', () => {
                     .set('Authorization', mockToken);
                 expect(res).to.have.status(HTTP_STATUS.OK);
                 expect(res.body.result).to.have.property('length', 1);
+
                 expect(res.body.result[0]).to.have.property('name', 'liver cancer');
+            });
+            it('using search endpoint still splits whitespace', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/search`)
+                    .type('json')
+                    .query({keyword: 'liver cancer'})
+                    .set('Authorization', mockToken);
+                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res.body.result).to.have.property('length', 1);
+
+                expect(res.body.result[0]).to.have.property('name', 'liver cancer');
+            });
+            it('using search endpoint without split terms', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/search`)
+                    .type('json')
+                    .query({keyword: 'cancer'})
+                    .set('Authorization', mockToken);
+                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res.body.result).to.have.property('length', 2);
             });
             it('ignores case (due to cast)', async () => {
                 const res = await chai.request(app.app)

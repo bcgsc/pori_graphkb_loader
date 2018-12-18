@@ -7,14 +7,12 @@
  *
  * @param {Object} inputQuery
  */
-const escapeStringRegexp = require('escape-string-regexp');
 
-const {constants: {INDEX_SEP_CHARS}, error: {AttributeError}, util: {castDecimalInteger}} = require('@bcgsc/knowledgebase-schema');
+const {error: {AttributeError}, util: {castDecimalInteger}} = require('@bcgsc/knowledgebase-schema');
 
 const {constants: {TRAVERSAL_TYPE, OPERATORS}, util: {parseCompoundAttr}} = require('./../repo/query');
 
 const MAX_JUMPS = 4; // fetchplans beyond 6 are very slow
-const INDEX_SEP_REGEX = new RegExp(`[${escapeStringRegexp(INDEX_SEP_CHARS)}]+`, 'g');
 const MIN_WORD_SIZE = 4;
 const MAX_LIMIT = 1000;
 
@@ -96,23 +94,22 @@ const parseValue = (attr, value) => {
             operator = OPERATORS.CONTAINSTEXT;
             subValue = subValue.slice(1);
 
-            if (INDEX_SEP_REGEX.exec(subValue)) { // contains a separator char, should split into AND clause
-                INDEX_SEP_REGEX.lastIndex = 0; // https://siderite.blogspot.com/2011/11/careful-when-reusing-javascript-regexp.html
+            const wordList = subValue.split(/\s+/);
+
+            if (wordList.length > 1) { // contains a separator char, should split into AND clause
                 const andClause = {
                     operator: OPERATORS.AND,
                     comparisons: Array.from(
-                        subValue.split(INDEX_SEP_REGEX), word => ({
+                        wordList, word => ({
                             attr, value: word, operator, negate
                         })
                     )
                 };
                 if (andClause.comparisons.some(comp => comp.value.length < MIN_WORD_SIZE)) {
                     throw new AttributeError(
-                        `Word is too short to query with ~ operator. Must be at least ${
+                        `Word "${subValue}" is too short to query with ~ operator. Must be at least ${
                             MIN_WORD_SIZE
-                        } letters after splitting on separator characters: ${
-                            INDEX_SEP_CHARS
-                        }`
+                        } letters after splitting on whitespace characters`
                     );
                 }
                 clause.comparisons.push(andClause);
