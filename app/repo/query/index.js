@@ -17,7 +17,7 @@ const util = require('./util');
 /**
  * For the GUI to speed up the main search query until we can migrate to v3 odb
  */
-const generalKeywordSearch = (keywords) => {
+const generalKeywordSearch = (keywords, skip = 0) => {
     const params = {};
 
     for (const keyword of keywords) {
@@ -33,14 +33,17 @@ const generalKeywordSearch = (keywords) => {
         const subqueryName = `$ont${attr}`;
         ontQueries[subqueryName] = `${subqueryName} = (SELECT * from Ontology WHERE ${where})`;
     }
-    const ontSubquery = `LET ${Object.values(ontQueries).join(',\n')},
+    let query = `LET ${Object.values(ontQueries).join(',\n')},
     $ont = UNIONALL(${Object.keys(ontQueries).join(', ')})`;
-    const query = `SELECT * FROM (SELECT expand($v)
-${ontSubquery},
+    query = `SELECT * FROM (SELECT expand($v)
+${query},
     $variants = (SELECT * FROM Variant WHERE type IN $ont OR reference1 in $ont OR reference2 in $ont),
     $implicable = UNIONALL($ont, $variants),
     $statements = (SELECT * FROM Statement WHERE inE('impliedBy').outV() in $implicable OR outE('supportedBy').inV() in $ont),
     $v = UNIONALL($implicable, $statements)) WHERE deletedAt IS NULL`;
+    if (skip && skip > 0) {
+        query = `${query} SKIP ${skip}`;
+    }
     return {query, params};
 };
 

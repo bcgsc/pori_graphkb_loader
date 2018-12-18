@@ -187,7 +187,8 @@ const GET_KEYWORD = {
             required: true
         },
         {$ref: '#components/parameters/neighbors'},
-        {$ref: '#components/parameters/limit'}
+        {$ref: '#components/parameters/limit'},
+        {$ref: '#components/parameters/skip'}
     ],
     responses: {
         200: {
