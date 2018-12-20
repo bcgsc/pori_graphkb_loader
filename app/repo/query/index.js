@@ -39,7 +39,14 @@ const generalKeywordSearch = (keywords, skip = 0) => {
 ${query},
     $variants = (SELECT * FROM Variant WHERE type IN $ont OR reference1 in $ont OR reference2 in $ont),
     $implicable = UNIONALL($ont, $variants),
-    $statements = (SELECT * FROM Statement WHERE inE('impliedBy').outV() in $implicable OR outE('supportedBy').inV() in $ont),
+    $statements = (
+        SELECT * FROM Statement
+        WHERE
+            inE('impliedBy').outV() in $implicable
+            OR outE('supportedBy').inV() in $ont
+            OR appliesTo in $implicable
+            OR relevance in $implicable
+        ),
     $v = UNIONALL($implicable, $statements)) WHERE deletedAt IS NULL`;
     if (skip && skip > 0) {
         query = `${query} SKIP ${skip}`;
