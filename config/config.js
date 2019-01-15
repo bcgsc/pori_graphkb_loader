@@ -20,7 +20,7 @@ const db = {
 };
 
 const keycloak = {
-    uri: process.env.KEYCLOAK_URI || (process.env.NODE_ENV === 'production'
+    uri: process.env.KEYCLOAK_URI || (process.env.NODE_ENV !== 'local'
         ? 'https://sso.bcgsc.ca/auth/realms/GSC/protocol/openid-connect/token'
         : 'http://ga4ghdev01.bcgsc.ca:8080/auth/realms/TestKB/protocol/openid-connect/token'),
     clientID: process.env.KEYCLOAK_CLIENTID || 'GraphKB',

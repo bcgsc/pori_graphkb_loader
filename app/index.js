@@ -86,6 +86,10 @@ class AppServer {
         this.server = null;
         this.conf = conf;
 
+        // app server info
+        this.host = conf.host || process.env.HOSTNAME || 'localhost';
+        this.port = conf.port || process.env.PORT || 8080;
+
         // set up the routes
         this.router = express.Router();
         this.prefix = '/api';
@@ -192,16 +196,8 @@ class AppServer {
             method: req.method
         }));
 
-        this.server = await http.createServer(this.app).listen(this.conf.app.port);
-        logger.log('info', `started application server (${this.host || process.env.HOSTNAME}:${this.port})`);
-    }
-
-    get host() {
-        return this.server.address().host || 'localhost';
-    }
-
-    get port() {
-        return this.server.address().port;
+        this.server = http.createServer(this.app).listen(this.port, this.host);
+        logger.log('info', `started application server (${this.host}:${this.port})`);
     }
 
     async close() {
