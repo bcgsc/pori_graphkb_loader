@@ -27,3 +27,4 @@ target/
 test_transaction.sql
 doc/jsdoc_reference
 doc/README.md
+keycloak.id_rsa.pub
