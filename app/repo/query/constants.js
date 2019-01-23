@@ -3,13 +3,25 @@
  * @type {Number}
  * @default
  */
-const RELATED_NODE_DEPTH = 3;
+const DEFAULT_NEIGHBORS = 3;
+/**
+ * @constant
+ * @type {Number}
+ * @default
+ */
+const MAX_NEIGHBORS = 4;
 /**
  * @constant
  * @type {Number}
  * @default
  */
 const MAX_TRAVEL_DEPTH = 50;
+/**
+ * @constant
+ * @type {Number}
+ * @default
+ */
+const MAX_LIMIT = 1000;
 /**
  * @constant
  * @type {string}
@@ -98,14 +110,16 @@ const SIZE_COMPUTATION = 'size()';
 
 
 module.exports = {
-    RELATED_NODE_DEPTH,
-    PARAM_PREFIX,
-    FUZZY_CLASSES,
-    SPECIAL_QUERY_ARGS,
-    OPERATORS,
     DIRECTIONS,
+    FUZZY_CLASSES,
+    MAX_LIMIT,
+    MAX_NEIGHBORS,
+    MAX_TRAVEL_DEPTH,
     NEIGHBORHOOD_EDGES,
-    TRAVERSAL_TYPE,
+    OPERATORS,
+    PARAM_PREFIX,
+    DEFAULT_NEIGHBORS,
     SIZE_COMPUTATION,
-    MAX_TRAVEL_DEPTH
+    SPECIAL_QUERY_ARGS,
+    TRAVERSAL_TYPE
 };

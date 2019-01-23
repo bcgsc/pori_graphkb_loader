@@ -7,8 +7,9 @@ const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 const openapi = require('./openapi');
 const util = require('./util');
 const {logger} = require('./../repo/logging');
+const {constants: {MAX_LIMIT, MAX_NEIGHBORS}, util: {castRangeInt}} = require('./../repo/query');
 const {
-    castRangeInt, MAX_LIMIT, MAX_JUMPS, MIN_WORD_SIZE
+    MIN_WORD_SIZE
 } = require('./query');
 const {selectByKeyword} = require('../repo/base');
 
@@ -31,7 +32,7 @@ const addKeywordSearchRoute = (opt) => {
                     options.limit = castRangeInt(limit, 1, MAX_LIMIT);
                 }
                 if (neighbors !== undefined) {
-                    options.neighbors = castRangeInt(neighbors, 0, MAX_JUMPS);
+                    options.neighbors = castRangeInt(neighbors, 0, MAX_NEIGHBORS);
                 }
                 if (skip !== undefined) {
                     options.skip = castRangeInt(skip, 0);

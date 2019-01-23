@@ -1,4 +1,7 @@
-const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
+const {
+    error: {AttributeError},
+    util: {castDecimalInteger}
+} = require('@bcgsc/knowledgebase-schema');
 
 
 const {TRAVERSAL_TYPE} = require('./constants');
@@ -49,5 +52,37 @@ const parseCompoundAttr = (compoundAttr) => {
     return expanded.child;
 };
 
+/**
+ * Format a value as an Integer. Throw an error if it is not an integer or does not
+ * fall within the given range
+ *
+ * @param value the value to be cast
+ * @param {?Number} min the minimum allowed value. If null then no minimum is enforced
+ * @param {?Number} max the maximum allowed value. If null then no maximum is enforced
+ *
+ * @returns {Number} the cast integer value
+ * @throws {AttributeError} on bad input
+ */
+const castRangeInt = (value, min, max) => {
+    const castValue = castDecimalInteger(value);
+    if (min !== null && castValue < min) {
+        throw new AttributeError(`value (${castValue}) must be greater than or equal to ${min}`);
+    }
+    if (max !== null && castValue > max) {
+        throw new AttributeError(`value (${castValue}) must be less than or equal to ${max}`);
+    }
+    return castValue;
+};
 
-module.exports = {parseCompoundAttr};
+const castBoolean = (value) => {
+    const castValue = value.toString().toLowerCase();
+    if (['t', 'true', '1'].includes(castValue)) {
+        return true;
+    } if (['f', 'false', '0', 'null'].includes(castValue)) {
+        return false;
+    }
+    throw new AttributeError(`Expected a boolean value but found ${castValue}`);
+};
+
+
+module.exports = {parseCompoundAttr, castRangeInt, castBoolean};
