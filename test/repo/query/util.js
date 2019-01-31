@@ -2,7 +2,8 @@ const stripSQL = string => string
     .replace(/\s+\./g, '.')
     .replace(/\(\s+/g, '(')
     .replace(/\s+\)/g, ')')
-    .replace(/\s+/g, ' ');
+    .replace(/\s+/g, ' ')
+    .trim();
 
 
 const printFunctionName = (func, value) => {

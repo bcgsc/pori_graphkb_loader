@@ -49,14 +49,12 @@ describe('Query Parsing', () => {
                         new Clause('AND', [
                             new Comparison(
                                 new Traversal({attr: 'name', property: FEATURE_PROPS.name}), 'KRAS'
-                            ),
-                            new Comparison('deletedAt', null, 'IS')]),
+                            )
+                        ]),
                         {type: 'neighborhood'}
                     )
-                ),
-                new Comparison(
-                    'deletedAt', null, 'IS'
-                )]),
+                )
+            ]),
             {limit: 1000, neighbors: 3}
         );
         expect(parsed).to.eql(expected);
@@ -75,12 +73,8 @@ describe('Query Parsing', () => {
                 new Comparison(
                     new Traversal({attr: 'name', property: DISEASE_PROPS.name}),
                     'thing'
-                ),
-                new Comparison(
-                    'deletedAt',
-                    null,
-                    'IS'
-                )])
+                )
+            ])
         );
         expect(expected).to.eql(parsed);
     });
@@ -208,11 +202,12 @@ describe('Query Parsing', () => {
                             class: 'Source',
                             where: [
                                 {attr: 'name', value: 'disease-ontology'}
-                            ]
+                            ],
+                            activeOnly: true
                         }
                     }
                 ],
-                activeOnly: false
+                activeOnly: true
             });
             const expected = new Query(
                 SCHEMA_DEFN.Disease.name,
@@ -223,17 +218,24 @@ describe('Query Parsing', () => {
                             SCHEMA_DEFN.Source.name,
                             new Clause(
                                 'AND', [
-                                    new Comparison({attr: 'name', property: SOURCE_PROPS.name}, 'disease-ontology'),
-                                    new Comparison({attr: 'deletedAt'}, null, 'IS')
+                                    new Comparison({attr: 'name', property: SOURCE_PROPS.name}, 'disease-ontology')
                                 ]
-                            )
+                            ),
+                            {activeOnly: true}
                         )
                     )
                 ]),
-                {activeOnly: false}
+                {activeOnly: true}
             );
             expect(parsed).to.eql(expected);
-            const sql = 'SELECT * FROM Disease WHERE source IN (SELECT * FROM Source WHERE name = :param0 AND deletedAt IS NULL)';
+            const sql = stripSQL(`
+                SELECT *
+                    FROM (SELECT *
+                        FROM Disease
+                        WHERE source IN
+                            (SELECT * FROM (SELECT * FROM Source WHERE name = :param0) WHERE deletedAt IS NULL)
+                        )
+                    WHERE deletedAt IS NULL`);
             const {query, params} = parsed.toString();
             expect(params).to.eql({param0: 'disease-ontology'});
             expect(query).to.equal(sql);
@@ -248,7 +250,8 @@ describe('Query Parsing', () => {
                             where: [
                                 {attr: 'name', value: 'disease-ontology'}
                             ],
-                            type: 'neighborhood'
+                            type: 'neighborhood',
+                            activeOnly: false
                         }
                     }
                 ],
@@ -263,11 +266,10 @@ describe('Query Parsing', () => {
                             SCHEMA_DEFN.Source.name,
                             new Clause(
                                 'AND', [
-                                    new Comparison({attr: 'name', property: SOURCE_PROPS.name}, 'disease-ontology'),
-                                    new Comparison({attr: 'deletedAt'}, null, 'IS')
+                                    new Comparison({attr: 'name', property: SOURCE_PROPS.name}, 'disease-ontology')
                                 ]
                             ),
-                            {type: 'neighborhood'}
+                            {type: 'neighborhood', activeOnly: false}
                         )
                     )
                 ]),
@@ -276,7 +278,7 @@ describe('Query Parsing', () => {
             expect(parsed).to.eql(expected);
             const sql = `SELECT * FROM Disease
                 WHERE source IN (SELECT * FROM (
-                    MATCH {class: Source, WHERE: (name = :param0 AND deletedAt IS NULL)}.both(
+                    MATCH {class: Source, WHERE: (name = :param0)}.both(
                         ${Array.from(NEIGHBORHOOD_EDGES, quoteWrap).join(', ')}
                     ){WHILE: ($depth < 3)} RETURN $pathElements))`;
             const {query, params} = parsed.toString();

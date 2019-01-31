@@ -9,7 +9,10 @@
 const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 const {quoteWrap} = require('./../util');
 
-const {NEIGHBORHOOD_EDGES, MAX_TRAVEL_DEPTH, RELATED_NODE_DEPTH} = require('./constants');
+const {
+    NEIGHBORHOOD_EDGES, MAX_TRAVEL_DEPTH, MAX_NEIGHBORS, DEFAULT_NEIGHBORS
+} = require('./constants');
+const {castRangeInt} = require('./util');
 
 
 /**
@@ -22,11 +25,10 @@ const {NEIGHBORHOOD_EDGES, MAX_TRAVEL_DEPTH, RELATED_NODE_DEPTH} = require('./co
  */
 const treeQuery = (opt) => {
     const {
-        whereClause, modelName, paramIndex, direction, depth
-    } = Object.assign({
-        paramIndex: 0
-    }, opt);
+        whereClause, modelName, paramIndex = 0, direction
+    } = opt;
     const edges = opt.edges || ['SubclassOf'];
+    const depth = castRangeInt(opt.depth || MAX_TRAVEL_DEPTH, 1, MAX_TRAVEL_DEPTH);
 
     if (!['out', 'in'].includes(direction)) {
         throw new AttributeError(`direction (${direction}) must be in or out`);
@@ -36,7 +38,7 @@ const treeQuery = (opt) => {
     const edgeList = Array.from(edges, quoteWrap).join(', ');
     const statement = `SELECT * FROM (MATCH
     {class: ${modelName}, WHERE: (${query})}
-        .${direction}(${edgeList}){WHILE: (${direction}(${edgeList}).size() > 0 AND $depth < ${depth || MAX_TRAVEL_DEPTH})}
+        .${direction}(${edgeList}){WHILE: (${direction}(${edgeList}).size() > 0 AND $depth < ${depth})}
 RETURN $pathElements)`;
     return {query: statement, params};
 };
@@ -51,12 +53,10 @@ RETURN $pathElements)`;
  */
 const neighborhood = (opt) => {
     const {
-        whereClause, modelName, paramIndex
-    } = Object.assign({
-        paramIndex: 0
-    }, opt);
+        whereClause, modelName, paramIndex = 0
+    } = opt;
     const edges = opt.edges || NEIGHBORHOOD_EDGES;
-    const depth = opt.depth || RELATED_NODE_DEPTH;
+    const depth = castRangeInt(opt.depth || DEFAULT_NEIGHBORS, 0, MAX_NEIGHBORS);
 
     const {query, params} = whereClause.toString(paramIndex);
     const statement = `SELECT * FROM (MATCH

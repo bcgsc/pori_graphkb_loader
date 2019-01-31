@@ -7,25 +7,17 @@ It is a graph database which is used to store variants, ontologies, and the rele
 
 ### Table Of Contents
 
-- [Getting Started](#getting-started)
 - [About](#about)
-    - [Database Schema](#database-schema)
-    - [OpenAPI Specification](#openapi-specification)
-    - [Authentication](#authentication)
-- [Guidelines for Contributors](#guidelines-for-contributors)
-- [Install (Developers)](#install-developers)
-    - [Generate the User Manual](#generate-the-user-manual)
+  - [Database Schema](#database-schema)
+  - [OpenAPI Specification](#openapi-specification)
+  - [Authentication](#authentication)
+- [Guidelines for Developers](#guidelines-for-developers)
+  - [Style](#style)
+  - [Getting Started](#getting-started)
+  - [Test Envinronments](#test-envinronments)
+  - [Generate the User Manual](#generate-the-user-manual)
 - [Deploy with PM2](#deploy-with-pm2)
 - [Importing External Content](#importing-external-content)
-
-## Getting Started
-
-To start the API server you must first have the database server running. Then starting is as simple as running
-
-```bash
-npm install
-npm start
-```
 
 ## About
 
@@ -50,7 +42,9 @@ The next step happens when KB looks up the username in the KB database. Each use
 
 In summary, KB Client will send user credentials and recieve a token which will be used in the header of all subsequent requests.
 
-## Guidelines for Contributors
+## Guidelines for Developers
+
+### Style
 
 1. In-code documentation should follow [JSDocs](http://usejsdoc.org) format
 2. TDD. New tests should be added for any new functionality. Using mocha (https://mochajs.org/) for testing. As mocha has several
@@ -58,7 +52,7 @@ In summary, KB Client will send user credentials and recieve a token which will 
 3. API must follow REST guidelines (for example see https://github.com/Microsoft/api-guidelines/blob/vNext/Guidelines.md)
 4. JS code should be written with ES6 syntax (where possible) see https://github.com/lukehoban/es6features
 
-## Install (Developers)
+### Getting Started
 
 Clone the repository
 
@@ -93,20 +87,32 @@ npm run test
 The non-database tests can be run without the above configuration
 
 ```bash
-npm run unit
+npm run test:unit
 ```
 
 Import/Migration tests can be run with
 
 ```bash
-npm run test-import
+npm run test:import
 ```
+
+### Test Envinronments
+
+Default configurations for all non-sensitive content can be found under
+
+```text
+config/env/{local,test}.sh
+```
+
+The local test envinronment should be used for testing without authentication
+
+The test test environment should be used for developing against the test keycloak server (can only be used within the GSC network)
 
 ### Generate the User Manual
 
 ```bash
-npm run build-docs
-npm run serve-docs
+npm run build:docs
+npm run start:docs
 ```
 
 ## Deploy with PM2
