@@ -87,13 +87,13 @@ npm run test
 The non-database tests can be run without the above configuration
 
 ```bash
-npm run unit
+npm run test:unit
 ```
 
 Import/Migration tests can be run with
 
 ```bash
-npm run test-import
+npm run test:import
 ```
 
 ### Test Envinronments
@@ -111,8 +111,8 @@ The test test environment should be used for developing against the test keycloa
 ### Generate the User Manual
 
 ```bash
-npm run build-docs
-npm run serve-docs
+npm run build:docs
+npm run start:docs
 ```
 
 ## Deploy with PM2
