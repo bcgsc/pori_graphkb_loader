@@ -283,18 +283,13 @@ describe('parse', () => {
                     new Traversal({attr: 'name', property: DISEASE_PROPS.name}),
                     'pediat',
                     OPERATORS.CONTAINSTEXT
-                ),
-                new Comparison(
-                    'deletedAt',
-                    null,
-                    OPERATORS.IS
                 )
             ]),
             {neighbors: 1}
         );
         expect(query).to.eql(exp);
         const {query: sql, params} = query.toString();
-        expect(sql).to.equal('SELECT * FROM Disease WHERE source.name = :param0 AND name CONTAINSTEXT :param1 AND deletedAt IS NULL');
+        expect(sql).to.equal('SELECT * FROM (SELECT * FROM Disease WHERE source.name = :param0 AND name CONTAINSTEXT :param1) WHERE deletedAt IS NULL');
         expect(params).to.eql({
             param0: 'disease ontology',
             param1: 'pediat'

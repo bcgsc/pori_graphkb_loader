@@ -1,7 +1,7 @@
 {
   "name": "@bcgsc/knowledgebase-api",
   "main": "server.js",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/VDB/repos/knowledgebase_api/browse"
@@ -32,6 +32,7 @@
     "moment": "^2.18.1",
     "named-js-regexp": "^1.3.2",
     "orientjs": "~2.2.11",
+    "portfinder": "^1.0.20",
     "rdflib": "^0.16.8",
     "request-promise": "^4.2.1",
     "shelljs": "^0.8.1",
@@ -75,14 +76,14 @@
   "scripts": {
     "start": "node server.js",
     "import": "node --stack-size=8192  --max-old-space-size=20000 migrations/external/index.js",
-    "livetest": "nyc mocha test/{routes,repo}/livedb.js --exit",
-    "unit": "nyc mocha test/*/{unit,schema,query}*",
     "test": "nyc mocha test/{routes,repo}",
-    "test-import": "nyc mocha test/migrations",
+    "test:live": "nyc mocha test/{routes,repo}/livedb.js --exit",
+    "test:unit": "nyc mocha test/*/{unit,schema,query}*",
+    "test:import": "nyc mocha test/migrations",
     "test-all": "nyc mocha test/{repo,routes,migrations}",
     "lint": "eslint -c .eslintrc.jon app test",
-    "build-docs": "jsdocref --input app --output doc; cp README.md doc",
-    "serve-docs": "docsify serve doc",
+    "build:docs": "jsdocref --input app --output doc; cp README.md doc",
+    "start:docs": "docsify serve doc",
     "version": "echo $npm_package_version"
   }
 }

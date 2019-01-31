@@ -47,7 +47,7 @@ ${query},
             OR appliesTo in $implicable
             OR relevance in $implicable
         ),
-    $v = UNIONALL($implicable, $statements)) WHERE deletedAt IS NULL`;
+    $v = UNIONALL($statements, $variants, $ont)) WHERE deletedAt IS NULL`;
     if (skip && skip > 0) {
         query = `${query} SKIP ${skip}`;
     }

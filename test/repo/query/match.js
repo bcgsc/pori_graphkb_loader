@@ -25,9 +25,9 @@ describe('neighborhood', () => {
             modelName: 'Disease',
             edges: ['AliasOf'],
             direction: 'both',
-            depth: 10
+            depth: 1
         });
-        expect(stripSQL(query)).to.equal('SELECT * FROM (MATCH {class: Disease, WHERE: (name = :param0)}.both(\'AliasOf\'){WHILE: ($depth < 10)} RETURN $pathElements)');
+        expect(stripSQL(query)).to.equal('SELECT * FROM (MATCH {class: Disease, WHERE: (name = :param0)}.both(\'AliasOf\'){WHILE: ($depth < 1)} RETURN $pathElements)');
         expect(params).to.eql({param0: 'blargh'});
     });
 });

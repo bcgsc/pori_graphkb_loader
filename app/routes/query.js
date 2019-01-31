@@ -8,13 +8,23 @@
  * @param {Object} inputQuery
  */
 
-const {error: {AttributeError}, util: {castDecimalInteger}} = require('@bcgsc/knowledgebase-schema');
+const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 
-const {constants: {TRAVERSAL_TYPE, OPERATORS}, util: {parseCompoundAttr}} = require('./../repo/query');
+const {
+    constants: {
+        MAX_LIMIT,
+        MAX_NEIGHBORS,
+        OPERATORS,
+        TRAVERSAL_TYPE
+    },
+    util: {
+        castBoolean,
+        castRangeInt,
+        parseCompoundAttr
+    }
+} = require('./../repo/query');
 
-const MAX_JUMPS = 4; // fetchplans beyond 6 are very slow
 const MIN_WORD_SIZE = 4;
-const MAX_LIMIT = 1000;
 
 
 /**
@@ -143,39 +153,6 @@ const parseValue = (attr, value) => {
 
 
 /**
- * Format a value as an Integer. Throw an error if it is not an integer or does not
- * fall within the given range
- *
- * @param value the value to be cast
- * @param {?Number} min the minimum allowed value. If null then no minimum is enforced
- * @param {?Number} max the maximum allowed value. If null then no maximum is enforced
- *
- * @returns {Number} the cast integer value
- * @throws {AttributeError} on bad input
- */
-const castRangeInt = (value, min, max) => {
-    value = castDecimalInteger(value);
-    if (min !== null && value < min) {
-        throw new AttributeError(`value (${value}) must be greater than or equal to ${min}`);
-    }
-    if (max !== null && value > max) {
-        throw new AttributeError(`value (${value}) must be less than or equal to ${max}`);
-    }
-    return value;
-};
-
-const castBoolean = (value) => {
-    value = value.toString().toLowerCase();
-    if (['t', 'true', '1'].includes(value)) {
-        return true;
-    } if (['f', 'false', '0', 'null'].includes(value)) {
-        return false;
-    }
-    throw new AttributeError(`Expected a boolean value but found ${value}`);
-};
-
-
-/**
  * @param {Object} queryParams Object representing the input query parameters
  */
 const parse = (queryParams) => {
@@ -192,7 +169,7 @@ const parse = (queryParams) => {
             attr = attrList[0];
         }
         if (attr === 'neighbors') {
-            specialArgs[attr] = castRangeInt(value, 0, MAX_JUMPS);
+            specialArgs[attr] = castRangeInt(value, 0, MAX_NEIGHBORS);
         } else if (attr === 'limit') {
             specialArgs[attr] = castRangeInt(value, 1, MAX_LIMIT);
         } else if (attr === 'skip') {
@@ -243,5 +220,5 @@ const parse = (queryParams) => {
 };
 
 module.exports = {
-    parse, flattenQueryParams, formatTraversal, parseValue, parseCompoundAttr, castRangeInt, MAX_JUMPS, MAX_LIMIT
+    parse, flattenQueryParams, formatTraversal, parseValue, parseCompoundAttr
 };

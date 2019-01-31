@@ -142,7 +142,7 @@ const createUser = async (db, opt) => {
     try {
         return await getUserByName(db, userName);
     } catch (err) {
-        console.log(err);
+        logger.log('debug', err);
         throw wrapIfTypeError(err);
     }
 };

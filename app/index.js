@@ -10,6 +10,7 @@ const jc = require('json-cycle');
 const cors = require('cors');
 const HTTP_STATUS = require('http-status-codes');
 const swaggerUi = require('swagger-ui-express');
+const {getPortPromise} = require('portfinder');
 
 const {logger} = require('./repo/logging');
 const {selectCounts} = require('./repo/base');
@@ -86,9 +87,13 @@ class AppServer {
         this.server = null;
         this.conf = conf;
 
+        const {app: {host, port}} = conf;
         // app server info
-        this.host = conf.host || process.env.HOSTNAME || 'localhost';
-        this.port = conf.port || process.env.PORT || 8080;
+        this.host = host || process.env.HOSTNAME || 'localhost';
+
+        this.port = port !== null
+            ? port || process.env.port
+            : null;
 
         // set up the routes
         this.router = express.Router();
@@ -196,6 +201,10 @@ class AppServer {
             method: req.method
         }));
 
+        if (!this.port) {
+            logger.log('info', 'finding an available port');
+            this.port = await getPortPromise();
+        }
         this.server = http.createServer(this.app).listen(this.port, this.host);
         logger.log('info', `started application server (${this.host}:${this.port})`);
     }

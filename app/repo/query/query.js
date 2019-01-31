@@ -3,7 +3,10 @@ const {RID} = require('orientjs');
 const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 
 const match = require('./match');
-const {PARAM_PREFIX, OPERATORS} = require('./constants');
+const {
+    PARAM_PREFIX, OPERATORS, MAX_LIMIT, MAX_NEIGHBORS
+} = require('./constants');
+const {castRangeInt} = require('./util');
 const {Traversal} = require('./traversal');
 
 
@@ -218,22 +221,25 @@ class Query {
      *
      */
     constructor(modelName, where, opt = {}) {
+        const {
+            limit = MAX_LIMIT,
+            neighbors = 0,
+            orderBy = null,
+            orderByDirection = 'ASC',
+            returnProperties = null,
+            activeOnly = true,
+            skip = null
+        } = opt;
         this.modelName = modelName;
         this.where = where || new Clause(OPERATORS.AND); // conditions that make up the terms of the query
-        this.skip = opt.skip
-            ? opt.skip
-            : null;
+        this.skip = skip;
         this.type = match[opt.type] || null;
-        this.returnProperties = opt.returnProperties
-            ? opt.returnProperties
-            : null;
-        this.neighbors = opt.neighbors || 0;
-        this.limit = opt.limit || null;
-        this.activeOnly = opt.activeOnly === undefined
-            ? true
-            : opt.activeOnly;
-        this.orderBy = opt.orderBy || null;
-        this.orderByDirection = opt.orderByDirection || 'ASC';
+        this.returnProperties = returnProperties;
+        this.neighbors = neighbors;
+        this.limit = limit;
+        this.activeOnly = activeOnly;
+        this.orderBy = orderBy;
+        this.orderByDirection = orderByDirection;
     }
 
     /**
@@ -242,7 +248,6 @@ class Query {
      *
      * @param {Object.<string,ClassModel>} schema the set of models avaiable for build queries from
      * @param {ClassModel} currModel the current model
-     * @param {Object} query the query to be parsed
      * @param {Object} opt options
      * @param {?Number} [opt.skip=null] number of records to skip
      * @param {boolean} [opt.activeOnly=true] select only active records
@@ -250,23 +255,32 @@ class Query {
      * @param {string} [opt.defaultOperator='='] the default operator to be used for subsequent comparisons
      */
     static parse(schema, model, opt = {}) {
-        opt = Object.assign({
-            skip: null,
-            activeOnly: true,
-            where: [],
-            returnProperties: null,
-            orderBy: null,
-            orderByDirection: 'ASC',
-            limit: null,
-            type: null,
-            edges: null,
-            depth: null,
-            neighbors: null
-        }, opt);
+        const {
+            skip = null,
+            activeOnly = true,
+            returnProperties = null,
+            orderBy = null,
+            orderByDirection = 'ASC',
+            limit = MAX_LIMIT,
+            neighbors = 0,
+            type = null,
+            edges = null,
+            depth = null
+        } = opt;
 
-        if (!['ASC', 'DESC'].includes(opt.orderByDirection)) {
-            throw new AttributeError(`orderByDirection must be ASC or DESC not ${opt.orderByDirection}`);
+        let where = [];
+        if (opt.where) {
+            where = !(opt.where instanceof Array)
+                ? [opt.where]
+                : opt.where;
         }
+
+        if (!['ASC', 'DESC'].includes(orderByDirection)) {
+            throw new AttributeError(`orderByDirection must be ASC or DESC not ${orderByDirection}`);
+        }
+        // will throw errors on invalid inputs
+        castRangeInt(limit, 1, MAX_LIMIT);
+        castRangeInt(neighbors, 0, MAX_NEIGHBORS);
 
         const schemaMap = {};
         for (const currModel of Object.values(schema)) {
@@ -275,10 +289,8 @@ class Query {
 
         const conditions = new Clause(OPERATORS.AND);
 
-        if (!(opt.where instanceof Array)) {
-            opt.where = [opt.where];
-        }
-        for (const condition of opt.where) {
+
+        for (const condition of where) {
             // condition must be a Clause or a Comparison
             if (condition.comparisons !== undefined || condition.attr === undefined) {
                 // clause
@@ -291,7 +303,7 @@ class Query {
         const properties = model.queryProperties;
 
         // can only return properties or order by properties which belong to this class
-        for (const propName of (opt.returnProperties || []).concat(opt.orderBy || [])) {
+        for (const propName of (returnProperties || []).concat(orderBy || [])) {
             const [prefix] = propName.split('.');
             if (properties[propName] === undefined && properties[prefix] === undefined) {
                 throw new AttributeError(
@@ -304,13 +316,18 @@ class Query {
             }
         }
 
-        if (opt.activeOnly) {
-            conditions.push(new Comparison('deletedAt', null, OPERATORS.IS));
-        }
-
-        const {where, ...queryOpt} = opt;
-
-        return new this(model.name, conditions, queryOpt);
+        return new this(model.name, conditions, {
+            skip,
+            activeOnly,
+            returnProperties,
+            orderBy,
+            orderByDirection,
+            limit,
+            neighbors,
+            type,
+            edges,
+            depth
+        });
     }
 
     /**
@@ -343,20 +360,29 @@ class Query {
             ? this.returnProperties.join(', ')
             : '*';
 
-        let queryString;
+        let queryString,
+            params;
+
         if (this.type) {
-            return this.type({
+            const {query, params: subParams} = this.type({
                 whereClause: this.where,
                 modelName: this.modelName,
                 edges: this.edges,
                 depth: this.depth,
                 paramIndex
             });
+            queryString = query;
+            params = subParams;
+        } else {
+            const {query, params: subParams} = this.where.toString(paramIndex);
+            params = subParams;
+            queryString = `SELECT ${selectionElements} FROM ${this.modelName}`;
+            if (query) {
+                queryString = `${queryString} WHERE ${query}`;
+            }
         }
-        const {query: subQuery, params} = this.where.toString(paramIndex);
-        queryString = `SELECT ${selectionElements} FROM ${this.modelName}`;
-        if (subQuery) {
-            queryString = `${queryString} WHERE ${subQuery}`;
+        if (this.activeOnly) {
+            queryString = `SELECT * FROM (${queryString}) WHERE deletedAt IS NULL`; // Fix for indexing error in OrientDB v2
         }
         if (this.orderBy && this.orderBy.length > 0) {
             queryString = `${queryString} ORDER BY ${this.orderBy.join(', ')} ${this.orderByDirection}`;
