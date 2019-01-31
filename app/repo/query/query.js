@@ -316,10 +316,6 @@ class Query {
             }
         }
 
-        if (activeOnly) {
-            conditions.push(new Comparison('deletedAt', null, OPERATORS.IS));
-        }
-
         return new this(model.name, conditions, {
             skip,
             activeOnly,
@@ -364,20 +360,29 @@ class Query {
             ? this.returnProperties.join(', ')
             : '*';
 
-        let queryString;
+        let queryString,
+            params;
+
         if (this.type) {
-            return this.type({
+            const {query, params: subParams} = this.type({
                 whereClause: this.where,
                 modelName: this.modelName,
                 edges: this.edges,
                 depth: this.depth,
                 paramIndex
             });
+            queryString = query;
+            params = subParams;
+        } else {
+            const {query, params: subParams} = this.where.toString(paramIndex);
+            params = subParams;
+            queryString = `SELECT ${selectionElements} FROM ${this.modelName}`;
+            if (query) {
+                queryString = `${queryString} WHERE ${query}`;
+            }
         }
-        const {query: subQuery, params} = this.where.toString(paramIndex);
-        queryString = `SELECT ${selectionElements} FROM ${this.modelName}`;
-        if (subQuery) {
-            queryString = `${queryString} WHERE ${subQuery}`;
+        if (this.activeOnly) {
+            queryString = `SELECT * FROM (${queryString}) WHERE deletedAt IS NULL`; // Fix for indexing error in OrientDB v2
         }
         if (this.orderBy && this.orderBy.length > 0) {
             queryString = `${queryString} ORDER BY ${this.orderBy.join(', ')} ${this.orderByDirection}`;
