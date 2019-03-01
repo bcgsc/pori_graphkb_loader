@@ -336,7 +336,7 @@ const updateNodeTx = async (db, opt) => {
     }
     commit
         .let('updated', tx => tx.update(original['@rid'])
-            .set(changes)
+            .set(omitDBAttributes(changes))
             .set('history = $copy')
             .where({createdAt: original.createdAt})
             .return('AFTER @rid'))
@@ -797,7 +797,7 @@ const create = async (db, opt) => {
         {dropExtra: false, addDefaults: true},
     );
     try {
-        return await db.insert().into(model.name).set(record).one();
+        return await db.insert().into(model.name).set(omitDBAttributes(record)).one();
     } catch (err) {
         throw wrapIfTypeError(err);
     }
