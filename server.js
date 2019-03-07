@@ -2,11 +2,10 @@
 
 // required packages
 
-const fs = require('fs');
 const OrientDB = require('orientjs');
 
 const {createSchema, loadSchema} = require('./app/repo/schema');
-const {createUser} = require('./app/repo/base');
+const {createUser} = require('./app/repo/commands');
 const conf = require('./config/config'); // get the database connection configuration
 const {AppServer} = require('./app');
 const {logger} = require('./app/repo/logging');
@@ -65,6 +64,7 @@ let app;
         });
     } catch (err) {
         logger.log('error', `Failed to start server: ${err}`);
+        logger.log('error', err.stack);
         app.close();
         throw err;
     }

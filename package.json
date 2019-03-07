@@ -1,7 +1,7 @@
 {
   "name": "@bcgsc/knowledgebase-api",
   "main": "server.js",
-  "version": "1.3.6",
+  "version": "1.4.0",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/VDB/repos/knowledgebase_api/browse"

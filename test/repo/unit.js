@@ -8,7 +8,7 @@ const {
 } = require('./../../app/repo/util');
 const {
     hasRecordAccess
-} = require('./../../app/repo/base');
+} = require('./../../app/repo/commands/util');
 
 
 describe('groupRecordsBy', () => {
