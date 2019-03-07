@@ -11,7 +11,7 @@ const {
 const {logger} = require('./../repo/logging');
 const {
     select, create, update, remove
-} = require('./../repo/base');
+} = require('./../repo/commands');
 const {checkClassPermissions} = require('./../middleware/auth');
 const {
     Query

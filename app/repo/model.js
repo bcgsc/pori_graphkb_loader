@@ -45,18 +45,33 @@ class ClassModel extends kbSchema.ClassModel {
      *
      * @param {ClassModel} model the model to create
      * @param {orientjs.Db} db the database connection
+     * @param {object} opt optional parameters
+     * @param {bool} opt.properties flag which if false properties are not created
+     * @param {bool} opt.indices flag which if false indices are not created
      */
-    static async create(model, db) {
+    static async create(model, db, opt = {}) {
+        const {
+            properties = true,
+            indices = true
+        } = opt;
         const inherits = model._inherits
             ? Array.from(model._inherits, x => x.name).join(',')
             : null;
-
-        const cls = await db.class.create(model.name, inherits, null, model.isAbstract); // create the class first
-        await Promise.all(Array.from(
-            Object.values(model._properties).filter(prop => !prop.name.startsWith('@')),
-            async prop => Property.create(prop, cls)
-        ));
-        await Promise.all(Array.from(model.indices, i => db.index.create(i)));
+        let cls;
+        try {
+            cls = await db.class.get(model.name);
+        } catch (err) {
+            cls = await db.class.create(model.name, inherits, null, model.isAbstract); // create the class first
+        }
+        if (properties) {
+            await Promise.all(Array.from(
+                Object.values(model._properties).filter(prop => !prop.name.startsWith('@')),
+                async prop => Property.create(prop, cls)
+            ));
+        }
+        if (indices) {
+            await Promise.all(Array.from(model.indices, i => db.index.create(i)));
+        }
         return cls;
     }
 

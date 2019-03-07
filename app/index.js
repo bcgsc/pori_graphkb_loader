@@ -13,7 +13,7 @@ const swaggerUi = require('swagger-ui-express');
 const {getPortPromise} = require('portfinder');
 
 const {logger} = require('./repo/logging');
-const {selectCounts} = require('./repo/base');
+const {selectCounts} = require('./repo/commands');
 const {AttributeError} = require('./repo/error');
 const {
     checkToken

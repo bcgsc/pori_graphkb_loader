@@ -11,7 +11,7 @@ const {constants: {MAX_LIMIT, MAX_NEIGHBORS}, util: {castRangeInt}} = require('.
 const {
     MIN_WORD_SIZE
 } = require('./query');
-const {selectByKeyword} = require('../repo/base');
+const {selectByKeyword} = require('../repo/commands');
 
 
 const addKeywordSearchRoute = (opt) => {
