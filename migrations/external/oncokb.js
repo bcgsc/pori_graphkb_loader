@@ -11,10 +11,13 @@
  */
 const request = require('request-promise');
 const kbParser = require('@bcgsc/knowledgebase-parser');
+
 const {
-    addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, preferredDiseases, preferredDrugs, rid
+    preferredDiseases, preferredDrugs, rid
 } = require('./util');
 const {ParsingError} = require('./../../app/repo/error');
+const _pubmed = require('./pubmed');
+const _hgnc = require('./hgnc');
 
 const SOURCE_NAME = 'oncokb';
 
@@ -45,16 +48,28 @@ const addTherapyCombination = async (conn, source, name) => {
     }
     const drugRec = [];
     for (const drug of drugs) {
-        drugRec.push(await getRecordBy('therapies', {name: drug}, conn, preferredDrugs));
+        drugRec.push(await conn.getUniqueRecordBy({
+            endpoint: 'therapies',
+            where: {name: drug},
+            sortFunc: preferredDrugs
+        }));
     }
     const combinationName = Array.from(drugRec, x => x.name || x.sourceId).join(' + ');
-    const combination = await addRecord('therapies', {
-        name: combinationName,
-        sourceId: combinationName,
-        source: rid(source)
-    }, conn, {existsOk: true});
+    const combination = await conn.addRecord({
+        endpoint: 'therapies',
+        content: {
+            name: combinationName,
+            sourceId: combinationName,
+            source: rid(source)
+        },
+        existsOk: true
+    });
     for (const drug of drugRec) {
-        await addRecord('elementOf', {source: rid(source), out: rid(drug), in: rid(combination)}, conn, {existsOk: true});
+        await conn.addRecord({
+            endpoint: 'elementOf',
+            content: {source: rid(source), out: rid(drug), in: rid(combination)},
+            existsOk: true
+        });
     }
     return combination;
 };
@@ -68,15 +83,14 @@ const processVariant = async (opt) => {
     let variant;
     if (rawRecord.gene === 'other biomarkers') {
         try {
-            variant = await getRecordBy('vocabulary', {name: rawRecord.variant}, conn);
+            variant = await conn.getUniqueRecordBy({
+                endpoint: 'vocabulary',
+                where: {name: rawRecord.variant}
+            });
         } catch (err) {}
     }
     if (!variant) {
-        let gene1 = await getRecordBy('features', {
-            biotype: 'gene',
-            name: rawRecord.gene,
-            source: {name: 'hgnc'}
-        }, conn, orderPreferredOntologyTerms);
+        let gene1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.gene});
         let gene2 = null;
 
         // determine the type of variant we are dealing with
@@ -88,18 +102,10 @@ const processVariant = async (opt) => {
             variant = variant.replace('_splice', 'spl');
         } else if (match = /^([^-\s]+)-([^-\s]+) fusion$/.exec(variant)) {
             if (match[1].toLowerCase() === gene1.name) {
-                gene2 = await getRecordBy('features', {
-                    name: match[2],
-                    biotype: 'gene',
-                    source: {name: 'hgnc'}
-                }, conn, orderPreferredOntologyTerms);
+                gene2 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: match[2]});
             } else if (match[2].toLowerCase() === gene1.name) {
                 gene2 = gene1;
-                gene1 = await getRecordBy('features', {
-                    name: match[1],
-                    biotype: 'gene',
-                    source: {name: 'hgnc'}
-                }, conn, orderPreferredOntologyTerms);
+                gene1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: match[1]});
             } else {
                 throw new Error(`the fusion in the variant ${variant} does not match the name of the gene feature ${gene1.name}`);
             }
@@ -124,7 +130,10 @@ const processVariant = async (opt) => {
             reference2: null
         };
         try {
-            variantType = await getRecordBy('vocabulary', {name: variant}, conn);
+            variantType = await conn.getUniqueRecordBy({
+                endpoint: 'vocabulary',
+                where: {name: variant}
+            });
             variantUrl = 'categoryvariants';
             variant = {};
         } catch (err) {
@@ -136,7 +145,10 @@ const processVariant = async (opt) => {
             ).toJSON();
 
             variantUrl = 'positionalvariants';
-            variantType = await getRecordBy('vocabulary', {name: variant.type}, conn);
+            variantType = await conn.getUniqueRecordBy({
+                endpoint: 'vocabulary',
+                where: {name: variant.type}
+            });
             Object.assign(defaults, {
                 untemplatedSeq: null,
                 break1Start: null,
@@ -153,7 +165,13 @@ const processVariant = async (opt) => {
         }
         variant.type = rid(variantType);
         // create the variant
-        variant = await addRecord(variantUrl, variant, conn, {existsOk: true, getWhere: Object.assign(defaults, variant)});
+        variant = await conn.addRecord({
+            endpoint: variantUrl,
+            content: variant,
+            existsOk: true,
+            fetchConditions: Object.assign(defaults, variant),
+            fetchExisting: true
+        });
     }
     return variant;
 };
@@ -164,14 +182,18 @@ const processDisease = async (opt) => {
     // next attempt to find the cancer type (oncotree?)
     let disease;
     try {
-        disease = await getRecordBy('diseases', {
-            name: diseaseName
-        }, conn, preferredDiseases);
+        disease = await conn.getUniqueRecordBy({
+            endpoint: 'diseases',
+            where: {name: diseaseName},
+            sortFunc: preferredDiseases
+        });
     } catch (err) {
         if (diseaseName.includes('/')) {
-            disease = await getRecordBy('diseases', {
-                name: diseaseName.split('/')[0].trim()
-            }, conn, preferredDiseases);
+            disease = await conn.getUniqueRecordBy({
+                endpoint: 'diseases',
+                where: {name: diseaseName.split('/')[0].trim()},
+                sortFunc: preferredDiseases
+            });
         } else {
             throw err;
         }
@@ -185,20 +207,14 @@ const processDisease = async (opt) => {
  */
 const processPublicationsList = async (opt) => {
     // find/add the publications
-    const {conn, pmidList, pubmedSource} = opt;
-    const publications = [];
+    const {conn, pmidList} = opt;
+
     const pubmedIds = Array.from(pmidList.split(/[,\s]+/)).filter(x => x.trim().length > 0);
-    for (const pmid of pubmedIds) {
-        let publication;
-        try {
-            publication = await getRecordBy('publications', {sourceId: pmid, source: {name: 'pubmed'}}, conn);
-        } catch (err) {
-            publication = await getPubmedArticle(pmid);
-            publication = await addRecord('publications', Object.assign(publication, {
-                source: rid(pubmedSource)
-            }), conn, {existsOk: true});
-        }
-        publications.push(publication);
+    const articles = await _pubmed.fetchArticlesByPmids(pubmedIds);
+    const publications = [];
+    // throttle
+    for (const article of articles) {
+        publications.push(await _pubmed.uploadArticle(conn, article));
     }
     return publications;
 };
@@ -230,7 +246,7 @@ const processPublicationsList = async (opt) => {
 const processActionableRecord = async (opt) => {
     // first try to retrieve the gene rawRecord
     const {
-        conn, rawRecord, source, pubmedSource
+        conn, rawRecord, sources: {oncokb, pubmed}
     } = opt;
     rawRecord.gene = rawRecord.gene.toLowerCase().trim();
     const variant = await processVariant(opt);
@@ -240,38 +256,50 @@ const processActionableRecord = async (opt) => {
     // find the drug
     let drug;
     try {
-        drug = await getRecordBy('therapies', {name: rawRecord.drug}, conn, preferredDrugs);
+        drug = await conn.getUniqueRecordBy({
+            endpoint: 'therapies',
+            where: {name: rawRecord.drug},
+            sortFunc: preferredDrugs
+        });
     } catch (err) {
         if (rawRecord.drug.includes('+')) {
             // add the combination therapy as a new therapy defined by oncokb
-            drug = await addTherapyCombination(conn, source, rawRecord.drug);
+            drug = await addTherapyCombination(conn, oncokb, rawRecord.drug);
         } else {
             throw err;
         }
     }
 
     // get the evidence level and determine the relevance
-    const level = await getRecordBy('evidencelevels', {sourceId: rawRecord.level, source: rid(source)}, conn);
+    const level = await conn.getUniqueRecordBy({
+        endpoint: 'evidencelevels',
+        where: {sourceId: rawRecord.level, source: rid(oncokb)}
+    });
 
     let relevance = level.name.startsWith('r')
         ? 'resistance'
         : 'sensitivity';
-    relevance = await getRecordBy('vocabulary', {name: relevance}, conn);
+    relevance = await conn.getUniqueRecordBy({
+        endpoint: 'vocabulary',
+        where: {name: relevance}
+    });
 
     // find/add the publications
-    const publications = await processPublicationsList({conn, pubmedSource, pmidList: rawRecord.pmids});
+    const publications = await processPublicationsList({conn, pubmed, pmidList: rawRecord.pmids});
 
     // make the actual statement
-    await addRecord('statements', {
-        impliedBy: [{target: rid(variant)}, {target: rid(disease)}],
-        supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(source), level: rid(level)})),
-        relevance: rid(relevance),
-        appliesTo: rid(drug),
-        source: rid(source),
-        reviewStatus: 'not required'
-    }, conn, {
+    await conn.addRecord({
+        endpoint: 'statements',
+        content: {
+            impliedBy: [{target: rid(variant)}, {target: rid(disease)}],
+            supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(oncokb), level: rid(level)})),
+            relevance: rid(relevance),
+            appliesTo: rid(drug),
+            source: rid(oncokb),
+            reviewStatus: 'not required'
+        },
         existsOk: true,
-        get: false
+        fetchExisting: false
     });
 };
 
@@ -280,7 +308,7 @@ const processActionableRecord = async (opt) => {
  */
 const processAnnotatedRecord = async (opt) => {
     const {
-        conn, rawRecord, source, pubmedSource
+        conn, rawRecord, sources: {oncokb, pubmed}
     } = opt;
     rawRecord.gene = rawRecord.gene.toLowerCase().trim();
     const variant = await processVariant(opt);
@@ -290,15 +318,21 @@ const processAnnotatedRecord = async (opt) => {
         disease = await processDisease({conn, diseaseName: rawRecord.cancerType});
     }
     // find/add the publications
-    const publications = await processPublicationsList({conn, pubmedSource, pmidList: rawRecord.mutationEffectPmids});
+    const publications = await processPublicationsList({conn, pubmed, pmidList: rawRecord.mutationEffectPmids});
     rawRecord.mutationEffect = rawRecord.mutationEffect.replace(/-/g, ' ');
     let relevance1;
     try {
-        relevance1 = await getRecordBy('vocabulary', {name: rawRecord.mutationEffect}, conn);
+        relevance1 = await conn.getUniqueRecordBy({
+            endpoint: 'vocabulary',
+            where: {name: rawRecord.mutationEffect}
+        });
     } catch (err) {}
     let relevance2;
     try {
-        relevance2 = await getRecordBy('vocabulary', {name: rawRecord.oncogenicity}, conn);
+        relevance2 = await conn.getUniqueRecordBy({
+            endpoint: 'vocabulary',
+            where: {name: rawRecord.oncogenicity}
+        });
     } catch (err) {}
 
     if (!relevance1 && !relevance2) {
@@ -311,33 +345,35 @@ const processAnnotatedRecord = async (opt) => {
     }
     let count = 0;
     if (relevance1) {
-        await addRecord('statements', {
-            impliedBy,
-            supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(source)})),
-            relevance: rid(relevance1),
-            appliesTo: rid(variant.reference1),
-            source: rid(source),
-            reviewStatus: 'not required'
-        }, conn, {
-            verbose: true,
+        await conn.addRecord({
+            endpoint: 'statements',
+            content: {
+                impliedBy,
+                supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(oncokb)})),
+                relevance: rid(relevance1),
+                appliesTo: rid(variant.reference1),
+                source: rid(oncokb),
+                reviewStatus: 'not required'
+            },
             existsOk: true,
-            get: false
+            fetchExisting: false
         });
         count++;
     }
     // make the oncogenicity statement
     if (relevance2) {
-        await addRecord('statements', {
-            impliedBy,
-            supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(source)})),
-            relevance: rid(relevance2),
-            appliesTo: null,
-            source: rid(source),
-            reviewStatus: 'not required'
-        }, conn, {
-            verbose: true,
+        await conn.addRecord({
+            endpoint: 'statements',
+            content: {
+                impliedBy,
+                supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(oncokb)})),
+                relevance: rid(relevance2),
+                appliesTo: null,
+                source: rid(oncokb),
+                reviewStatus: 'not required'
+            },
             existsOk: true,
-            get: false
+            fetchExisting: false
         });
         count++;
     }
@@ -365,13 +401,17 @@ const addEvidenceLevels = async (conn, source) => {
             });
         }
         level = level.slice('LEVEL_'.length);
-        const record = await addRecord('evidencelevels', {
-            source: rid(source),
-            sourceId: level,
-            name: level,
-            description: desc,
-            url: URL
-        }, conn, {existsOk: true});
+        const record = await conn.addRecord({
+            endpoint: 'evidencelevels',
+            content: {
+                source: rid(source),
+                sourceId: level,
+                name: level,
+                description: desc,
+                url: URL
+            },
+            existsOk: true
+        });
         result[level] = record;
     }
     return result;
@@ -397,15 +437,23 @@ const upload = async (opt) => {
     });
     console.log(`loaded ${recordsList.length} records`);
     // add the source node
-    const source = await addRecord('sources', {
-        name: SOURCE_NAME,
-        usage: 'http://oncokb.org/#/terms',
-        url: 'http://oncokb.org'
-    }, conn, {existsOk: true});
+    const oncokb = await conn.addRecord({
+        endpoint: 'sources',
+        content: {
+            name: SOURCE_NAME,
+            usage: 'http://oncokb.org/#/terms',
+            url: 'http://oncokb.org'
+        },
+        existsOk: true
+    });
 
-    const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, {existsOk: true});
+    const pubmed = await conn.addRecord({
+        endpoint: 'sources',
+        content: {name: 'pubmed'},
+        existsOk: true
+    });
     const counts = {errors: 0, success: 0, skip: 0};
-    await addEvidenceLevels(conn, source);
+    await addEvidenceLevels(conn, oncokb);
     // console.log(Object.keys(terms));
     for (const rawRecord of recordsList) {
         for (const drug of Array.from(rawRecord.drugs.split(','), x => x.trim().toLowerCase()).filter(x => x.length > 0)) {
@@ -423,10 +471,11 @@ const upload = async (opt) => {
 
             try {
                 await processActionableRecord({
-                    conn, rawRecord, source, pubmedSource
+                    conn, rawRecord, sources: {oncokb, pubmed}
                 });
                 counts.success++;
             } catch (err) {
+                throw err;
                 console.log('\n', err.error
                     ? err.error.message
                     : err.message || err, `variant: ${rawRecord.variant}`);
@@ -468,7 +517,7 @@ const upload = async (opt) => {
 
         try {
             const statementCount = await processAnnotatedRecord({
-                conn, rawRecord, source, pubmedSource
+                conn, rawRecord, sources: {oncokb, pubmed}
             });
             counts.success += statementCount;
             counts.errors += expect - statementCount;

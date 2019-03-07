@@ -40,12 +40,150 @@
  *
  * @module migrations/external/hgnc
  */
-const {getRecordBy, addRecord, rid} = require('./util');
+const request = require('request-promise');
+
+
+const {
+    rid, orderPreferredOntologyTerms
+} = require('./util');
 const {logger, progress} = require('./logging');
 
-
+const HGNC_API = 'http://rest.genenames.org/fetch/symbol';
 const SOURCE_NAME = 'hgnc';
 const CLASS_NAME = 'features';
+
+
+const fetchAndLoadBySymbol = async ({conn, symbol}) => {
+    console.log('fetchAndLoadBySymbol', symbol);
+    try {
+        const record = await conn.getUniqueRecordBy({
+            endpoint: CLASS_NAME,
+            sortFunc: orderPreferredOntologyTerms,
+            where: {source: {name: SOURCE_NAME}, name: symbol}
+        });
+        return record;
+    } catch (err) {}
+    // fetch from the HGNC API and upload
+    const {response: {docs}} = await request(`${HGNC_API}/${symbol}`, {
+        method: 'GET',
+        headers: {Accept: 'application/json'},
+        json: true
+    });
+    const [gene] = docs;
+
+    const hgnc = await conn.addRecord({
+        endpoint: 'sources',
+        content: {name: 'hgnc'},
+        fetchFirst: true,
+        existsOk: true,
+        fetchExisting: true
+    });
+    let ensembl;
+    try {
+        ensembl = await conn.getUniqueRecordBy({
+            endpoint: 'sources',
+            where: {name: 'ensembl'},
+            fetchFirst: true
+        });
+    } catch (err) {}
+
+    return conn.uploadRecord({conn, gene, sources: {hgnc, ensembl}});
+};
+
+/**
+ * Upload a gene record and relationships from the corresponding HGNC record
+ * @param {object} opt
+ * @param {ApiConnection} opt.conn the graphkb api connection
+ * @param {object.<string,object>} opt.source the source records
+ * @param {object} opt.gene the gene record from HGNC
+ */
+const uploadRecord = async ({conn, sources: {hgnc, ensembl}, gene}) => {
+    const body = {
+        hgnc,
+        sourceIdVersion: gene.date_modified,
+        sourceId: gene.hgnc_id,
+        name: gene.symbol,
+        longName: gene.name,
+        biotype: 'gene'
+    };
+
+    const currentRecord = await conn.addRecord({
+        endpoint: CLASS_NAME,
+        content: body,
+        existsOk: true
+    });
+
+    if (gene.ensembl_gene_id && ensembl) {
+        try {
+            const ensg = await conn.getUniqueRecordBy({
+                endpoint: CLASS_NAME,
+                where: {source: 'ensembl', biotype: 'gene', sourceId: gene.ensembl_gene_id}
+            });
+            // try adding the cross reference relationship
+            await conn.addRecord({
+                endpoint: 'crossreferenceof',
+                content: {src: rid(currentRecord), tgt: rid(ensg), source: rid(hgnc)},
+                existsOk: true,
+                fetchExisting: false
+            });
+        } catch (err) {
+            progress('x');
+        }
+    }
+    for (const symbol of gene.prev_symbol || []) {
+        const {sourceId, biotype} = currentRecord;
+        const deprecatedRecord = await conn.addRecord({
+            endpoint: CLASS_NAME,
+            content: {
+                source: rid(hgnc),
+                sourceId,
+                dependency: rid(currentRecord),
+                deprecated: true,
+                biotype,
+                name: symbol
+            },
+            existsOk: true,
+            fetchConditions: {
+                source: rid(hgnc), sourceId, name: symbol, deprecated: true
+            },
+            fetchExisting: true
+        });
+        // link to the current record
+        await conn.addRecord({
+            endpoint: 'deprecatedby',
+            content: {src: rid(deprecatedRecord), tgt: rid(currentRecord), source: rid(hgnc)},
+            existsOk: true,
+            fetchExisting: false
+        });
+    }
+    for (const symbol of gene.alias_symbol || []) {
+        const {sourceId, biotype} = currentRecord;
+        try {
+            const aliasRecord = await this.addRecord({
+                endpoint: CLASS_NAME,
+                content: {
+                    source: rid(hgnc),
+                    name: symbol,
+                    sourceId,
+                    biotype,
+                    dependency: rid(currentRecord)
+                },
+                existsOk: true,
+                fetchConditions: {
+                    source: rid(hgnc), sourceId, name: symbol
+                }
+            });
+            await conn.addRecord({
+                endpoint: 'aliasof',
+                content: {src: rid(aliasRecord), tgt: rid(currentRecord), source: rid(hgnc)},
+                existsOk: true,
+                fetchExisting: false
+            });
+        } catch (err) {
+            progress('x');
+        }
+    }
+};
 
 /**
  * Upload the HGNC genes and ensembl links
@@ -57,96 +195,31 @@ const uploadFile = async (opt) => {
     console.log('Loading the external HGNC data');
     const {filename, conn} = opt;
     console.log(`loading: ${filename}`);
-    const hgnc = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
-    const genes = hgnc.response.docs;
-    const aliasOf = [];
-    const ensemblLinks = [];
-    const deprecatedBy = [];
-    const records = {};
-    let source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
-    source = rid(source);
-    let ensemblSource;
+    const hgncContent = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
+    const genes = hgncContent.response.docs;
+    const hgnc = await conn.addRecord({
+        endpoint: 'sources',
+        content: {name: SOURCE_NAME},
+        existsOk: true
+    });
+    let ensembl;
     try {
-        ensemblSource = await getRecordBy('sources', {name: 'ensembl'}, conn);
+        ensembl = await conn.getUniqueRecordBy({
+            endpoint: 'sources',
+            where: {name: 'ensembl'}
+        });
     } catch (err) {
-        logger.info('Unable to fetch ensembl source for llinking records:', err);
+        logger.info('Unable to fetch ensembl source for linking records:', err);
     }
 
     logger.info(`\nAdding ${genes.length} feature records`);
     for (const gene of genes) {
-        const body = {
-            source,
-            sourceIdVersion: gene.date_modified,
-            sourceId: gene.hgnc_id,
-            name: gene.symbol,
-            longName: gene.name,
-            biotype: 'gene'
-        };
         if (gene.longName && gene.longName.toLowerCase().trim() === 'entry withdrawn') {
             continue;
         }
-        const record = await addRecord(CLASS_NAME, body, conn, {existsOk: true});
-        records[record.sourceId] = record;
-
-        if (gene.ensembl_gene_id && ensemblSource) {
-            try {
-                const ensembl = await getRecordBy(CLASS_NAME, {source: 'ensembl', biotype: 'gene', sourceId: gene.ensembl_gene_id}, conn);
-                ensemblLinks.push({src: rid(record), tgt: rid(ensembl)});
-            } catch (err) {
-                progress('x');
-            }
-        }
-        for (const symbol of gene.prev_symbol || []) {
-            const related = await addRecord(CLASS_NAME, {
-                source,
-                sourceId: record.sourceId,
-                dependency: rid(record),
-                deprecated: true,
-                biotype: record.biotype,
-                name: symbol
-            }, conn, {
-                existsOk: true,
-                getWhere: {
-                    source, sourceId: record.sourceId, name: symbol, deprecated: true
-                }
-            });
-            deprecatedBy.push({src: rid(related), tgt: rid(record)});
-        }
-        for (const symbol of gene.alias_symbol || []) {
-            try {
-                const related = await addRecord(CLASS_NAME, {
-                    source,
-                    name: symbol,
-                    sourceId: record.sourceId,
-                    biotype: record.biotype,
-                    dependency: rid(record)
-                }, conn, {
-                    existsOk: true,
-                    getWhere: {
-                        source, sourceId: record.sourceId, name: symbol
-                    }
-                });
-                aliasOf.push({src: rid(record), tgt: rid(related)});
-            } catch (err) {
-                progress('x');
-            }
-        }
-    }
-    if (ensemblSource) {
-        logger.info(`\nAdding the ${ensemblLinks.length} ensembl links`);
-        for (const {src, tgt} of ensemblLinks) {
-            await addRecord('aliasof', {out: src, in: tgt, source}, conn, {existsOk: true});
-        }
-    }
-    logger.info(`\nAdding the ${aliasOf.length} aliasof links`);
-    for (const {src, tgt} of aliasOf) {
-        await addRecord('aliasof', {out: src, in: tgt, source}, conn, {existsOk: true});
-    }
-    logger.info(`\nAdding the ${deprecatedBy.length} deprecatedby links`);
-    for (const {src, tgt} of deprecatedBy) {
-        await addRecord('deprecatedby', {out: src, in: tgt, source}, conn, {existsOk: true});
+        await uploadRecord({conn, sources: {hgnc, ensembl}, gene});
     }
     console.log();
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, fetchAndLoadBySymbol, uploadRecord};

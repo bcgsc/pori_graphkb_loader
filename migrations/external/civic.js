@@ -26,8 +26,15 @@ const {
     getPubmedArticle,
     orderPreferredOntologyTerms,
     preferredDrugs,
-    preferredDiseases
+    preferredDiseases,
+    rid
 } = require('./util');
+
+const {
+    fetchArticle,
+    fetchArticlesByPmids,
+    uploadArticle
+} = require('./pubmed');
 
 const SOURCE_NAME = 'civic';
 const BASE_URL = 'https://civicdb.org/api';
@@ -206,10 +213,16 @@ const getFeature = async (conn, name) => {
 
 /**
  * Transform a CIViC evidence record into a GraphKB statement
+ *
+ * @param {object} opt
+ * @param {ApiConnection} opt.conn the API connection object for GraphKB
+ * @param {object} opt.rawRecord the unparsed record from CIViC
+ * @param {object} opt.sources the sources by name
+ * @param
  */
 const processEvidenceRecord = async (opt) => {
     const {
-        conn, rawRecord, source, pubmedSource
+        conn, rawRecord, sources
     } = opt;
     // get the evidenceLevel
     let level = `${rawRecord.evidence_level}${rawRecord.rating}`.toLowerCase();
@@ -218,12 +231,12 @@ const processEvidenceRecord = async (opt) => {
             'evidencelevels', {
                 name: level,
                 sourceId: level,
-                source: source['@rid'],
+                source: rid(sources.civic),
                 description: `${VOCAB[rawRecord.evidence_level]} ${VOCAB[rawRecord.rating]}`,
                 url: VOCAB.url
             }, conn, {
                 existsOk: true,
-                getWhere: {sourceId: level, name: level, source: source['@rid']}
+                getWhere: {sourceId: level, name: level, source: rid(sources.civic)}
             }
         );
         EVIDENCE_LEVEL_CACHE[level.sourceId] = level;
@@ -324,43 +337,36 @@ const processEvidenceRecord = async (opt) => {
         drug = await getDrug(conn, rawRecord.drug.name.toLowerCase().trim());
     }
     // get the publication by pubmed ID
-    let publication;
-    try {
-        publication = await getRecordBy('publications', {
-            sourceId: rawRecord.source.pubmed_id, source: {name: 'pubmed'}
-        }, conn);
-    } catch (err) {
-        publication = await getPubmedArticle(rawRecord.source.pubmed_id);
-        publication = await addRecord('publications', Object.assign(publication, {source: pubmedSource['@rid']}), conn, {existsOk: true});
-    }
+    const publication = await fetchArticle(conn, rawRecord.source.pubmed_id);
+
     // common content
     const content = {
-        relevance: relevance['@rid'],
-        source: source['@rid'],
+        relevance: rid(relevance),
+        source: rid(sources.civic),
         reviewStatus: 'not required',
         sourceId: rawRecord.id
     };
     const getWhere = Object.assign({
-        ImpliedBy: {v: [variant['@rid']]},
-        supportedBy: {v: [publication['@rid']], source: source['@rid'], level: level['@rid']}
+        ImpliedBy: {v: [rid(variant)]},
+        supportedBy: {v: [rid(publication)], source: rid(sources.civic), level: rid(level)}
 
     }, content);
-    content.supportedBy = [{target: publication['@rid'], source: source['@rid'], level: level['@rid']}];
-    content.impliedBy = [{target: variant['@rid']}];
+    content.supportedBy = [{target: rid(publication), source: rid(sources.civic), level: rid(level)}];
+    content.impliedBy = [{target: rid(variant)}];
     content.description = rawRecord.description;
     // create the statement and connecting edges
     if (!['Diagnostic', 'Predictive', 'Prognostic'].includes(rawRecord.evidence_type)) {
         throw new Error('unable to make statement', rawRecord.evidence_type, relevance.name);
     }
     if (rawRecord.evidence_type === 'Diagnostic') {
-        content.appliesTo = getWhere.appliesTo = disease['@rid'];
+        content.appliesTo = getWhere.appliesTo = rid(disease);
     } else {
-        content.impliedBy.push({target: disease['@rid']});
-        getWhere.ImpliedBy = {v: [variant['@rid'], disease['@rid']]};
+        content.impliedBy.push({target: rid(disease)});
+        getWhere.ImpliedBy = {v: [rid(variant), rid(disease)]};
     }
 
     if (rawRecord.evidence_type === 'Predictive' && drug) {
-        content.appliesTo = getWhere.appliesTo = drug['@rid'];
+        content.appliesTo = getWhere.appliesTo = rid(drug);
     } if (rawRecord.evidence_type === 'Prognostic') {
         content.appliesTo = getWhere.appliesTo = null;
     }
@@ -434,6 +440,16 @@ const upload = async (opt) => {
         expectedPages = resp._meta.total_pages;
         console.log(`loaded ${resp.records.length} records`);
 
+        // fetch and cache the current pubmed records first
+        const pmidList = Array.from((new Set(resp.records.map(rec => rec.source.citation_id).filter(pmid => pmid))).values());
+        console.log(`Fetching article metadata for ${pmidList.length} articles from ${resp.records.length} records`);
+        const pubmedList = await fetchArticlesByPmids(pmidList);
+        console.log(`Uploading ${pubmedList.length} publications`);
+        // throttle
+        for (const article of pubmedList) {
+            await uploadArticle(conn, article, {cache: true, fetchFirst: true});
+        }
+
         for (const record of resp.records) {
             if (record.evidence_direction === 'Does Not Support' || (record.clinical_significance === null && record.evidence_type === 'Predictive')) {
                 counts.skip++;
@@ -447,13 +463,12 @@ const upload = async (opt) => {
                 try {
                     await processEvidenceRecord({
                         conn,
-                        source,
-                        pubmedSource,
+                        sources: {civic: source, pubmed: pubmedSource},
                         rawRecord: Object.assign({drug}, _.omit(record, ['drugs']))
                     });
                     counts.success++;
                 } catch (err) {
-                    console.error((err.error || err).message);
+                    // console.error((err.error || err).message);
                     counts.error++;
                 }
             }
