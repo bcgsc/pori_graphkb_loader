@@ -735,10 +735,10 @@ const createStatement = async (db, opt) => {
     // create the main statement node
     const commit = db
         .let('statement', tx => tx.create('VERTEX', model.name)
-            .set(model.formatRecord(
-                Object.assign({createdBy: userRID}, _.omit(content, ['impledBy', 'supportedBy'])),
+            .set(omitDBAttributes(model.formatRecord(
+                Object.assign({createdBy: userRID}, _.omit(content, ['impliedBy', 'supportedBy'])),
                 {addDefaults: true}
-            )));
+            ))));
     // link to the dependencies
     let edgeCount = 0;
     for (const edge of edges) {
@@ -752,7 +752,7 @@ const createStatement = async (db, opt) => {
             eRecord.in = '$statement';
         }
         commit.let(`edge${edgeCount++}`, tx => tx.create('EDGE', eModel.name)
-            .set(_.omit(eRecord, ['out', 'in', '@class']))
+            .set(omitDBAttributes(_.omit(eRecord, ['out', 'in'])))
             .from(eRecord.out)
             .to(eRecord.in));
     }
