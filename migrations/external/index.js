@@ -7,6 +7,7 @@
 const {fileExists, createOptionsMenu} = require('./../cli');
 
 const {ApiConnection, PUBMED_DEFAULT_QS} = require('./util');
+const {logger} = require('./logging');
 
 const IMPORT_MODULES = {};
 IMPORT_MODULES.civic = require('./civic');
@@ -24,6 +25,7 @@ IMPORT_MODULES.refseq = require('./refseq');
 IMPORT_MODULES.uberon = require('./uberon');
 IMPORT_MODULES.vocab = require('./vocab');
 IMPORT_MODULES.vario = require('./vario');
+IMPORT_MODULES.sequenceOntology = require('./sequence_ontology');
 
 
 const optionDefinitions = [
@@ -145,6 +147,12 @@ const optionDefinitions = [
         name: 'vario',
         description: 'load the variation ontology file (OWL format)',
         type: fileExists
+    },
+    {
+        name: 'sequenceOntology',
+        alias: 's',
+        description: 'path the sequence ontology owl file',
+        type: fileExists
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
@@ -162,9 +170,10 @@ if (options.pubmed) {
 
 const upload = async () => {
     await apiConnection.setAuth(options);
-    console.log('Login Succeeded\n');
+    logger.info('Login Succeeded');
     const moduleOrder = [
         'vocab',
+        'sequenceOntology',
         'vario',
         'ncit',
         'fda',
@@ -195,6 +204,7 @@ const upload = async () => {
             }
         }
     }
+    logger.info('upload complete');
 };
 
 upload();
