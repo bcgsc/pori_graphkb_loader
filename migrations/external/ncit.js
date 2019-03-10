@@ -21,9 +21,9 @@ const _ = require('lodash');
 
 
 const {
-    addRecord, convertOwlGraphToJson, getRecordBy, rid
+    convertOwlGraphToJson, rid
 } = require('./util');
-const {logger, progress} = require('./logging');
+const {logger} = require('./logging');
 
 const ROOT_NODES = {
     AGONIST: 'c1514',
@@ -83,10 +83,14 @@ const subclassTree = (nodesByCode, roots) => {
 
 /**
  * Given some list of OWL records, convert to json format and upload to KB through the API
+ *
+ * @param inputRecords
+ * @param dbClassName
+ * @param {ApiConnection} conn
  */
 const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource) => {
     const records = {};
-    logger.info(`\nLoading ${Object.keys(inputRecords).length} ${dbClassName} nodes`);
+    logger.info(`loading ${Object.keys(inputRecords).length} ${dbClassName} nodes`);
     for (const node of Object.values(inputRecords)) {
         if (!node[PREDICATES.CODE] || !node[PREDICATES.LABEL]) { // do not include anything that does not have at minimum these values
             continue;
@@ -105,7 +109,15 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
         if (node[PREDICATES.DEPRECATED] && node[PREDICATES.DEPRECATED][0] === 'true') {
             body.deprecated = true;
         }
-        const dbEntry = await addRecord(dbClassName, body, conn, {existsOk: true});
+        const dbEntry = await conn.addRecord({
+            endpoint: dbClassName,
+            content: body,
+            existsOk: true,
+            fetchConditions: _.omit(body, ['subsets', 'description'])
+        });
+        if (records[dbEntry.sourceId]) { // already dealt with this record
+            continue;
+        }
         // add the aliasof links
         for (const alias of node[PREDICATES.SYNONYM] || []) {
             const aliasBody = {
@@ -114,33 +126,41 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
                 dependency: rid(dbEntry),
                 name: alias
             };
-            const aliasRecord = await addRecord(
-                dbClassName,
-                aliasBody,
-                conn,
-                {existsOk: true, getWhere: _.omit(aliasBody, ['dependency'])}
-            );
-            await addRecord(
-                'aliasof',
-                {source: rid(source), out: rid(aliasRecord), in: rid(dbEntry)},
-                conn,
-                {existsOk: true}
-            );
+            try {
+                const aliasRecord = await conn.addRecord({
+                    endpoint: dbClassName,
+                    content: aliasBody,
+                    existsOk: true,
+                    fetchConditions: _.omit(aliasBody, ['dependency'])
+                });
+                await conn.addRecord({
+                    endpoint: 'aliasof',
+                    content: {source: rid(source), out: rid(aliasRecord), in: rid(dbEntry)},
+                    existsOk: true,
+                    fetchExisting: false
+                });
+            } catch (err) {
+                logger.log('warn', `Unable to alias record ${body.sourceId} to ${aliasBody.sourceId}`);
+            }
         }
         // add the link to the FDA
         if (fdaSource && node[PREDICATES.FDA] && node[PREDICATES.FDA].length) {
             let fdaRec;
             try {
-                fdaRec = await getRecordBy(dbClassName, {source: rid(fdaSource), name: node[PREDICATES.FDA][0]}, conn);
+                fdaRec = await conn.getUniqueRecordBy({
+                    endpoint: dbClassName,
+                    content: {source: rid(fdaSource), name: node[PREDICATES.FDA][0]}
+                });
             } catch (err) {
-                process.write('?');
+                logger.log('warn', `Unable to cross-reference record ${body.sourceId} to fda record ${node[PREDICATES.FDA][0]}`);
             }
             if (fdaRec) {
-                await addRecord('aliasof', {
-                    source: rid(source),
-                    out: rid(dbEntry),
-                    in: rid(fdaRec)
-                }, conn, {existsOk: true});
+                await conn.addRecord({
+                    endpoint: 'crossreferenceof',
+                    content: {source: rid(source), out: rid(dbEntry), in: rid(fdaRec)},
+                    existsOk: true,
+                    fetchExisting: false
+                });
             }
         }
         records[dbEntry.sourceId] = dbEntry;
@@ -165,12 +185,19 @@ const uploadFile = async ({filename, conn}) => {
     rdf.parse(content, graph, 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl', 'application/rdf+xml');
     const nodesByCode = convertOwlGraphToJson(graph, parseNcitID);
 
-    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
+    const source = await conn.addRecord({
+        endpoint: 'sources',
+        content: {name: SOURCE_NAME},
+        existsOk: true
+    });
     let fdaSource;
     try {
-        fdaSource = await getRecordBy('sources', {name: 'fda'}, conn);
+        fdaSource = await conn.getUniqueRecordBy({
+            endpoint: 'sources',
+            content: {name: 'fda'}
+        });
     } catch (err) {
-        progress('x');
+        logger.log('warn', 'cannot find fda source record. Will not be able to load cross-references');
     }
 
     // for the given source nodes, include all descendents Has_NICHD_Parentdants/subclasses
@@ -218,12 +245,14 @@ const uploadFile = async ({filename, conn}) => {
     logger.info(`\nLoading ${subclassEdges.length} subclassof relationships`);
     for (const {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
-            await addRecord('subclassof', {out: rid(records[src]), in: rid(records[tgt]), source: rid(source)}, conn, {existsOk: true});
-        } else {
-            progress('x');
+            await conn.addRecord({
+                endpoint: 'subclassof',
+                content: {out: rid(records[src]), in: rid(records[tgt]), source: rid(source)},
+                existsOk: true,
+                fetchExisting: false
+            });
         }
     }
-    console.log();
     return nodesByCode;
 };
 

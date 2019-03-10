@@ -111,17 +111,25 @@ const uploadFile = async ({filename, conn}) => {
     logger.info('Loading the external drugbank data');
     const xml = await loadXmlToJson(filename);
 
-    const source = await addRecord('sources', {
-        name: SOURCE_NAME,
-        usage: 'https://www.drugbank.ca/legal/terms_of_use',
-        url: 'https://www.drugbank.ca'
-    }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME}});
+    const source = await conn.addRecord({
+        endpoint: 'sources',
+        content: {
+            name: SOURCE_NAME,
+            usage: 'https://www.drugbank.ca/legal/terms_of_use',
+            url: 'https://www.drugbank.ca'
+        },
+        existsOk: true,
+        fetchConditions: {name: SOURCE_NAME}
+    });
     logger.info(`uploading ${xml.drugbank.drug.length} records`);
 
     const ATC = {};
     let fdaSource;
     try {
-        fdaSource = await getRecordBy('sources', {name: 'FDA'}, conn);
+        fdaSource = await conn.getUniqueRecordBy({
+            endpoint: 'sources',
+            where: {name: 'FDA'}
+        });
     } catch (err) {
         progress('x');
     }
@@ -149,35 +157,51 @@ const uploadFile = async ({filename, conn}) => {
                     body.subsets.push(cat.category[0]);
                 }
             }
-            const record = await addRecord('therapies', body, conn, {
+            const record = await conn.addRecord({
+                endpoint: 'therapies',
+                content: body,
                 existsOk: true,
-                getWhere: _.omit(body, ['subsets', 'mechanismOfAction', 'description'])
+                fetchConditions: _.omit(body, ['subsets', 'mechanismOfAction', 'description'])
             });
             // create the categories
             for (const atcLevel of atcLevels) {
                 if (ATC[atcLevel.sourceId] === undefined) {
-                    const level = await addRecord('therapies', {
-                        source: rid(source),
-                        name: atcLevel.name,
-                        sourceId: atcLevel.sourceId
-                    }, conn, {existsOk: true});
+                    const level = await conn.addRecord({
+                        endpoint: 'therapies',
+                        content: {
+                            source: rid(source),
+                            name: atcLevel.name,
+                            sourceId: atcLevel.sourceId
+                        },
+                        existsOk: true
+                    });
                     ATC[level.sourceId] = level;
                 }
             }
             if (atcLevels.length > 0) {
                 // link the current record to the lowest subclass
-                await addRecord('subclassof', {
-                    source: rid(source),
-                    out: rid(record),
-                    in: rid(ATC[atcLevels[0].sourceId])
-                }, conn, {existsOk: true});
+                await conn.addRecord({
+                    endpoint: 'subclassof',
+                    content: {
+                        source: rid(source),
+                        out: rid(record),
+                        in: rid(ATC[atcLevels[0].sourceId])
+                    },
+                    existsOk: true,
+                    fetchExisting: false
+                });
                 // link the subclassing
                 for (let i = 0; i < atcLevels.length - 1; i++) {
-                    await addRecord('subclassof', {
-                        source: rid(source),
-                        out: rid(ATC[atcLevels[i].sourceId]),
-                        in: rid(ATC[atcLevels[i + 1].sourceId])
-                    }, conn, {existsOk: true});
+                    await conn.addRecord({
+                        endpoint: 'subclassof',
+                        content: {
+                            source: rid(source),
+                            out: rid(ATC[atcLevels[i].sourceId]),
+                            in: rid(ATC[atcLevels[i + 1].sourceId])
+                        },
+                        existsOk: true,
+                        fetchExisting: false
+                    });
                 }
             }
             // link to the FDA UNII
@@ -185,14 +209,25 @@ const uploadFile = async ({filename, conn}) => {
                 for (const unii of drug[HEADER.unii]) {
                     let fdaRec;
                     try {
-                        fdaRec = await getRecordBy('therapies', {source: rid(fdaSource), sourceId: unii}, conn);
+                        if (!unii || !unii.trim()) {
+                            continue;
+                        }
+                        fdaRec = await conn.getUniqueRecordBy({
+                            endpoint: 'therapies',
+                            where: {source: rid(fdaSource), sourceId: unii.trim()}
+                        });
                     } catch (err) {
                         progress('x');
                     }
                     if (fdaRec) {
-                        await addRecord('aliasof', {
-                            source: rid(source), out: rid(record), in: rid(fdaRec)
-                        }, conn, {existsOk: true});
+                        await conn.addRecord({
+                            endpoint: 'crossreferenceof',
+                            content: {
+                                source: rid(source), out: rid(record), in: rid(fdaRec)
+                            },
+                            existsOk: true,
+                            fetchExisting: false
+                        });
                     }
                 }
             }

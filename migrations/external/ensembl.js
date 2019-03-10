@@ -36,16 +36,26 @@ const uploadFile = async (opt) => {
     const {filename, conn} = opt;
     const contentList = await loadDelimToJson(filename);
 
-    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
+    const source = await conn.addRecord({
+        endpoint: 'sources',
+        content: {name: SOURCE_NAME},
+        existsOk: true
+    });
     let refseqSource;
     try {
-        refseqSource = await getRecordBy('sources', {name: 'refseq'}, conn);
+        refseqSource = await conn.getUniqueRecordBy({
+            endpoint: 'sources',
+            where: {name: 'refseq'}
+        });
     } catch (err) {
         progress('x');
     }
     let hgncSource;
     try {
-        hgncSource = await getRecordBy('sources', {name: 'hgnc'}, conn);
+        hgncSource = await conn.getUniqueRecordBy({
+            endpoint: 'sources',
+            where: {name: 'hgnc'}
+        });
     } catch (err) {
         progress('x');
     }
@@ -63,54 +73,90 @@ const uploadFile = async (opt) => {
         let newGene = false;
 
         if (visited[`${geneId}.${geneIdVersion}`] === undefined) {
-            visited[`${geneId}.${geneIdVersion}`] = await addRecord('features', {
-                source: rid(source),
-                sourceId: geneId,
-                sourceIdVersion: geneIdVersion,
-                biotype: 'gene'
-            }, conn, {existsOk: true});
+            visited[`${geneId}.${geneIdVersion}`] = await conn.addRecord({
+                endpoint: 'features',
+                content: {
+                    source: rid(source),
+                    sourceId: geneId,
+                    sourceIdVersion: geneIdVersion,
+                    biotype: 'gene'
+                },
+                existsOk: true
+            });
         }
 
         if (visited[geneId] === undefined) {
             newGene = true;
-            visited[geneId] = await addRecord('features', {
-                source: rid(source),
-                sourceId: geneId,
-                sourceIdVersion: null,
-                biotype: 'gene'
-            }, conn, {existsOk: true});
+            visited[geneId] = await conn.addRecord({
+                endpoint: 'features',
+                content: {
+                    source: rid(source),
+                    sourceId: geneId,
+                    sourceIdVersion: null,
+                    biotype: 'gene'
+                },
+                existsOk: true
+            });
         }
         const gene = visited[geneId];
         const versionedGene = visited[`${geneId}.${geneIdVersion}`];
 
-        await addRecord('generalizationof', {
-            out: rid(gene), in: rid(versionedGene), source: rid(source)
-        }, conn, {existsOk: true, get: false});
+        await conn.addRecord({
+            endpoint: 'generalizationof',
+            content: {
+                out: rid(gene), in: rid(versionedGene), source: rid(source)
+            },
+            existsOk: true,
+            fetchExisting: false
+        });
 
         // transcript
-        const versionedTranscript = await addRecord('features', {
-            source: rid(source),
-            sourceId: record[HEADER.transcriptId],
-            sourceIdVersion: record[HEADER.transcriptIdVersion],
-            biotype: 'transcript'
-        }, conn, {existsOk: true});
-        const transcript = await addRecord('features', {
-            source: rid(source),
-            sourceId: record[HEADER.transcriptId],
-            sourceIdVersion: null,
-            biotype: 'transcript'
-        }, conn, {existsOk: true});
-        await addRecord('generalizationof', {
-            out: rid(transcript), in: rid(versionedTranscript), source: rid(source)
-        }, conn, {existsOk: true, get: false});
+        const versionedTranscript = await conn.addRecord({
+            endpoint: 'features',
+            content: {
+                source: rid(source),
+                sourceId: record[HEADER.transcriptId],
+                sourceIdVersion: record[HEADER.transcriptIdVersion],
+                biotype: 'transcript'
+            },
+            existsOk: true
+        });
+        const transcript = await conn.addRecord({
+            endpoint: 'features',
+            content: {
+                source: rid(source),
+                sourceId: record[HEADER.transcriptId],
+                sourceIdVersion: null,
+                biotype: 'transcript'
+            },
+            existsOk: true
+        });
+        await conn.addRecord({
+            endpoint: 'generalizationof',
+            content: {
+                out: rid(transcript), in: rid(versionedTranscript), source: rid(source)
+            },
+            existsOk: true,
+            fetchExisting: false
+        });
 
         // transcript -> elementof -> gene
-        await addRecord('elementof', {
-            out: rid(transcript), in: rid(gene), source: rid(source)
-        }, conn, {existsOk: true, get: false});
-        await addRecord('elementof', {
-            out: rid(versionedTranscript), in: rid(versionedGene), source: rid(source)
-        }, conn, {existsOk: true, get: false});
+        await conn.addRecord({
+            endpoint: 'elementof',
+            content: {
+                out: rid(transcript), in: rid(gene), source: rid(source)
+            },
+            existsOk: true,
+            fetchExisting: false
+        });
+        await conn.addRecord({
+            endpoint: 'elementof',
+            content: {
+                out: rid(versionedTranscript), in: rid(versionedGene), source: rid(source)
+            },
+            existsOk: true,
+            fetchExisting: false
+        });
 
         // TODO: protein
         // TODO: protein -> elementof -> transcript
@@ -118,14 +164,23 @@ const uploadFile = async (opt) => {
         // transcript -> aliasof -> refseq
         if (refseqSource && record[HEADER.refseqId]) {
             try {
-                const refseq = await getRecordBy('features', {
-                    source: rid(refseqSource),
-                    sourceId: record[HEADER.refseqId],
-                    sourceIdVersion: null
-                }, conn, orderPreferredOntologyTerms);
-                await addRecord('crossreferenceof', {
-                    out: rid(transcript), in: rid(refseq), source: rid(source)
-                }, conn, {existsOk: true, get: false});
+                const refseq = await conn.getUniqueRecordBy({
+                    endpoint: 'features',
+                    where: {
+                        source: rid(refseqSource),
+                        sourceId: record[HEADER.refseqId],
+                        sourceIdVersion: null
+                    },
+                    sort: orderPreferredOntologyTerms
+                });
+                await conn.addRecord({
+                    endpoint: 'crossreferenceof',
+                    content: {
+                        out: rid(transcript), in: rid(refseq), source: rid(source)
+                    },
+                    existsOk: true,
+                    fetchExisting: false
+                });
             } catch (err) {
                 progress(`[missing: ${record[HEADER.refseqId]}]`);
                 progress('x');
@@ -134,14 +189,23 @@ const uploadFile = async (opt) => {
         // gene -> aliasof -> hgnc
         if (hgncSource && record[HEADER.hgncId] && record.hgncName && newGene) {
             try {
-                const hgnc = await getRecordBy('features', {
-                    source: rid(hgncSource),
-                    sourceId: record[HEADER.hgncId],
-                    name: record.hgncName
-                }, conn, orderPreferredOntologyTerms);
-                await addRecord('crossreferenceof', {
-                    out: rid(gene), in: rid(hgnc), source: rid(source)
-                }, conn, {existsOk: true, get: false});
+                const hgnc = await conn.getUniqueRecordBy({
+                    endpoint: 'features',
+                    where: {
+                        source: rid(hgncSource),
+                        sourceId: record[HEADER.hgncId],
+                        name: record.hgncName
+                    },
+                    sort: orderPreferredOntologyTerms
+                });
+                await conn.addRecord({
+                    endpoint: 'crossreferenceof',
+                    content: {
+                        out: rid(gene), in: rid(hgnc), source: rid(source)
+                    },
+                    existsOk: true,
+                    fetchExisting: false
+                });
             } catch (err) {
                 progress(`[missing: ${record[HEADER.hgncId]}/${record.hgncName}]`);
                 progress('x');

@@ -196,14 +196,22 @@ const upload = async (opt) => {
     logger.info('writing test.json');
     fs.writeFileSync('test.json', JSON.stringify(jc.decycle(records)));
 
-    const source = await addRecord('sources', {
-        name: SOURCE_NAME,
-        url: ONCOTREE_API
-    }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME}});
+    const source = await conn.addRecord({
+        endpoint: 'sources',
+        content: {
+            name: SOURCE_NAME,
+            url: ONCOTREE_API
+        },
+        existsOk: true,
+        fetchConditions: {name: SOURCE_NAME}
+    });
 
     let ncitSource;
     try {
-        ncitSource = await getRecordBy('sources', {name: 'ncit'}, conn);
+        ncitSource = await conn.getUniqueRecordBy({
+            endpoint: 'sources',
+            where: {name: 'ncit'}
+        });
     } catch (err) {
         progress('x');
     }
@@ -217,14 +225,26 @@ const upload = async (opt) => {
             sourceId: record.sourceId,
             sourceIdVersion: record.sourceIdVersion
         };
-        const rec = await addRecord('diseases', body, conn, {existsOk: true});
+        const rec = await conn.addRecord({
+            endpoint: 'diseases',
+            content: body,
+            existsOk: true
+        });
         dbRecordsByCode[record.sourceId] = rec;
 
         for (const xref of record.crossReferenceOf) {
             if (xref.source === 'NCI' && ncitSource) {
                 try {
-                    const ncitXref = await getRecordBy('diseases', {source: rid(ncitSource), sourceId: xref.sourceId}, conn);
-                    await addRecord('crossReferenceOf', {out: rid(rec), in: rid(ncitXref), source: rid(source)}, conn, {existsOk: true});
+                    const ncitXref = await conn.getUniqueRecordBy({
+                        endpoint: 'diseases',
+                        where: {source: rid(ncitSource), sourceId: xref.sourceId}
+                    });
+                    await conn.addRecord({
+                        endpoint: 'crossReferenceOf',
+                        content: {out: rid(rec), in: rid(ncitXref), source: rid(source)},
+                        existsOk: true,
+                        fetchExisting: false
+                    });
                 } catch (err) {
                     progress('x');
                 }

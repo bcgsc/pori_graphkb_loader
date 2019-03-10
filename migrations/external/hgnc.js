@@ -46,7 +46,7 @@ const request = require('request-promise');
 const {
     rid, orderPreferredOntologyTerms
 } = require('./util');
-const {logger, progress} = require('./logging');
+const {logger} = require('./logging');
 
 const HGNC_API = 'http://rest.genenames.org/fetch/symbol';
 const SOURCE_NAME = 'hgnc';
@@ -54,7 +54,6 @@ const CLASS_NAME = 'features';
 
 
 const fetchAndLoadBySymbol = async ({conn, symbol}) => {
-    console.log('fetchAndLoadBySymbol', symbol);
     try {
         const record = await conn.getUniqueRecordBy({
             endpoint: CLASS_NAME,
@@ -82,8 +81,7 @@ const fetchAndLoadBySymbol = async ({conn, symbol}) => {
     try {
         ensembl = await conn.getUniqueRecordBy({
             endpoint: 'sources',
-            where: {name: 'ensembl'},
-            fetchFirst: true
+            where: {name: 'ensembl'}
         });
     } catch (err) {}
 
@@ -97,9 +95,11 @@ const fetchAndLoadBySymbol = async ({conn, symbol}) => {
  * @param {object.<string,object>} opt.source the source records
  * @param {object} opt.gene the gene record from HGNC
  */
-const uploadRecord = async ({conn, sources: {hgnc, ensembl}, gene}) => {
+const uploadRecord = async ({
+    conn, sources: {hgnc, ensembl}, gene, ensemblMissingRecords = new Set()
+}) => {
     const body = {
-        hgnc,
+        source: rid(hgnc),
         sourceIdVersion: gene.date_modified,
         sourceId: gene.hgnc_id,
         name: gene.symbol,
@@ -117,7 +117,7 @@ const uploadRecord = async ({conn, sources: {hgnc, ensembl}, gene}) => {
         try {
             const ensg = await conn.getUniqueRecordBy({
                 endpoint: CLASS_NAME,
-                where: {source: 'ensembl', biotype: 'gene', sourceId: gene.ensembl_gene_id}
+                where: {source: rid(ensembl), biotype: 'gene', sourceId: gene.ensembl_gene_id}
             });
             // try adding the cross reference relationship
             await conn.addRecord({
@@ -127,7 +127,7 @@ const uploadRecord = async ({conn, sources: {hgnc, ensembl}, gene}) => {
                 fetchExisting: false
             });
         } catch (err) {
-            progress('x');
+            ensemblMissingRecords.add(gene.ensembl_gene_id);
         }
     }
     for (const symbol of gene.prev_symbol || []) {
@@ -151,7 +151,7 @@ const uploadRecord = async ({conn, sources: {hgnc, ensembl}, gene}) => {
         // link to the current record
         await conn.addRecord({
             endpoint: 'deprecatedby',
-            content: {src: rid(deprecatedRecord), tgt: rid(currentRecord), source: rid(hgnc)},
+            content: {out: rid(deprecatedRecord), in: rid(currentRecord), source: rid(hgnc)},
             existsOk: true,
             fetchExisting: false
         });
@@ -175,13 +175,11 @@ const uploadRecord = async ({conn, sources: {hgnc, ensembl}, gene}) => {
             });
             await conn.addRecord({
                 endpoint: 'aliasof',
-                content: {src: rid(aliasRecord), tgt: rid(currentRecord), source: rid(hgnc)},
+                content: {out: rid(aliasRecord), in: rid(currentRecord), source: rid(hgnc)},
                 existsOk: true,
                 fetchExisting: false
             });
-        } catch (err) {
-            progress('x');
-        }
+        } catch (err) {}
     }
 };
 
@@ -192,9 +190,9 @@ const uploadRecord = async ({conn, sources: {hgnc, ensembl}, gene}) => {
  * @param {ApiConnection} opt.conn the API connection object
  */
 const uploadFile = async (opt) => {
-    console.log('Loading the external HGNC data');
+    logger.info('loading the external HGNC data');
     const {filename, conn} = opt;
-    console.log(`loading: ${filename}`);
+    logger.info(`loading: ${filename}`);
     const hgncContent = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
     const genes = hgncContent.response.docs;
     const hgnc = await conn.addRecord({
@@ -203,23 +201,26 @@ const uploadFile = async (opt) => {
         existsOk: true
     });
     let ensembl;
+    const ensemblMissingRecords = new Set();
     try {
         ensembl = await conn.getUniqueRecordBy({
             endpoint: 'sources',
             where: {name: 'ensembl'}
         });
     } catch (err) {
-        logger.info('Unable to fetch ensembl source for linking records:', err);
+        logger.info('Unable to fetch ensembl source for linking records');
     }
 
-    logger.info(`\nAdding ${genes.length} feature records`);
+    logger.info(`adding ${genes.length} feature records`);
     for (const gene of genes) {
         if (gene.longName && gene.longName.toLowerCase().trim() === 'entry withdrawn') {
             continue;
         }
         await uploadRecord({conn, sources: {hgnc, ensembl}, gene});
     }
-    console.log();
+    if (ensemblMissingRecords.size) {
+        logger.warn(`Unable to retrieve ${ensemblMissingRecords.size} ensembl records for linking`);
+    }
 };
 
 module.exports = {uploadFile, fetchAndLoadBySymbol, uploadRecord};

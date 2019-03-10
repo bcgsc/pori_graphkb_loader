@@ -214,7 +214,11 @@ const upload = async (opt) => {
     const {conn} = opt;
     logger.info('Loading custom vocabulary terms');
     const termsByName = {};
-    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
+    const source = await conn.addRecord({
+        endpoint: 'sources',
+        content: {name: SOURCE_NAME},
+        existsOk: true
+    });
     // add the records
     for (const term of VOCABULARY) {
         term.name = term.name.toLowerCase();
@@ -226,9 +230,12 @@ const upload = async (opt) => {
         if (term.description) {
             content.description = term.description;
         }
-        const record = await addRecord('vocabulary', content, conn, {
+        const record = await conn.addRecord({
+            endpoint: 'vocabulary',
+            content,
+
             existsOk: true,
-            getWhere: _.omit(content, ['description'])
+            fetchConditions: _.omit(content, ['description'])
         });
         termsByName[record.name] = record;
     }
@@ -237,30 +244,49 @@ const upload = async (opt) => {
     for (const term of VOCABULARY) {
         term.name = term.name.toLowerCase();
         for (const parent of term.subclassof || []) {
-            await addRecord('subclassof', {
-                out: termsByName[term.name]['@rid'],
-                in: termsByName[parent.toLowerCase()]['@rid'],
-                source: rid(source)
-            }, conn, {existsOk: true});
+            await conn.addRecord({
+                endpoint: 'subclassof',
+                content: {
+                    out: termsByName[term.name]['@rid'],
+                    in: termsByName[parent.toLowerCase()]['@rid'],
+                    source: rid(source)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
         }
         for (let parent of term.aliasof || []) {
-            parent = await addRecord('vocabulary', {
-                name: parent,
-                sourceId: parent,
-                source: rid(source)
-            }, conn, {existsOk: true});
-            await addRecord('aliasof', {
-                out: termsByName[term.name]['@rid'],
-                in: rid(parent),
-                source: rid(source)
-            }, conn, {existsOk: true});
+            parent = await conn.addRecord({
+                endpoint: 'vocabulary',
+                content: {
+                    name: parent,
+                    sourceId: parent,
+                    source: rid(source)
+                },
+                existsOk: true
+            });
+            await conn.addRecord({
+                endpoint: 'aliasof',
+                content: {
+                    out: termsByName[term.name]['@rid'],
+                    in: rid(parent),
+                    source: rid(source)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
         }
         for (const parent of term.oppositeof || []) {
-            await addRecord('oppositeof', {
-                out: termsByName[term.name]['@rid'],
-                in: termsByName[parent.toLowerCase()]['@rid'],
-                source: rid(source)
-            }, conn, {existsOk: true});
+            await conn.addRecord({
+                endpoint: 'oppositeof',
+                content: {
+                    out: termsByName[term.name]['@rid'],
+                    in: termsByName[parent.toLowerCase()]['@rid'],
+                    source: rid(source)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
         }
     }
     console.log();

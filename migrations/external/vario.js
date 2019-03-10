@@ -7,7 +7,7 @@ const fs = require('fs');
 
 
 const {
-    addRecord, convertOwlGraphToJson, rid
+    convertOwlGraphToJson, rid
 } = require('./util');
 const {logger} = require('./logging');
 
@@ -60,10 +60,14 @@ const uploadFile = async ({filename, conn}) => {
     rdf.parse(content, graph, OWL_NAMESPACE, 'application/rdf+xml');
     const nodesByCode = convertOwlGraphToJson(graph, parseId);
 
-    const source = await addRecord('sources', {
-        url: SOURCE_URL,
-        name: SOURCE_NAME
-    }, conn, {existsOk: true});
+    const source = await conn.addRecord({
+        endpoint: 'sources',
+        content: {
+            url: SOURCE_URL,
+            name: SOURCE_NAME
+        },
+        existsOk: true
+    });
 
     const recordsByCode = {};
     const subclassEdges = [];
@@ -81,15 +85,20 @@ const uploadFile = async ({filename, conn}) => {
         for (const tgt of original[PREDICATES.subclassOf] || []) {
             subclassEdges.push([code, tgt]);
         }
-        recordsByCode[code] = await addRecord('vocabulary', node, conn, {existsOk: true});
+        recordsByCode[code] = await conn.addRecord({endpoint: 'vocabulary', content: node, existsOk: true});
     }
     for (const [srcCode, tgtCode] of subclassEdges) {
         const src = recordsByCode[srcCode];
         const tgt = recordsByCode[tgtCode];
         if (src && tgt) {
-            await addRecord('subclassof', {
-                out: rid(src), in: rid(tgt), source: rid(source)
-            }, conn, {existsOk: true});
+            await conn.addRecord({
+                endpoint: 'subclassof',
+                content: {
+                    out: rid(src), in: rid(tgt), source: rid(source)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
         }
     }
     console.log();

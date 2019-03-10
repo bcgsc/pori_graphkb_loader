@@ -55,7 +55,11 @@ const SOURCE_NAME = 'cosmic';
 
 const processCosmicRecord = async (conn, record, source) => {
     // get the hugo gene
-    const gene = await getRecordBy('features', {name: record['Gene Name'], source: {name: 'hgnc'}}, conn, orderPreferredOntologyTerms);
+    const gene = await conn.getUniqueRecordBy({
+        endpoint: 'features',
+        where: {name: record['Gene Name'], source: {name: 'hgnc'}},
+        sort: orderPreferredOntologyTerms
+    });
     // add the protein variant
     let variant = record['AA Mutation'];
     if (variant.startsWith('p.') && variant.includes('>')) {
@@ -67,8 +71,15 @@ const processCosmicRecord = async (conn, record, source) => {
         body: {content: variant}
     }))).result;
     variant.reference1 = rid(gene);
-    variant.type = rid(await getRecordBy('vocabulary', {name: variant.type}, conn));
-    variant = await addRecord('positionalvariants', variant, conn, {existsOk: true});
+    variant.type = rid(await conn.getUniqueRecordBy({
+        endpoint: 'vocabulary',
+        where: {name: variant.type}
+    }));
+    variant = await conn.addRecord({
+        endpoint: 'positionalvariants',
+        content: variant,
+        existsOk: true
+    });
     // get the enst transcript
     // const gene = await getRecordBy('features', {name: record['Transcript'], source: {name: 'ensembl'}, biotype: 'transcript'}, conn, orderPreferredOntologyTerms);
     // add the cds variant
@@ -82,7 +93,11 @@ const processCosmicRecord = async (conn, record, source) => {
     if (THERAPY_MAPPING[record['Drug Name']] !== undefined) {
         record['Drug Name'] = THERAPY_MAPPING[record['Drug Name']];
     }
-    const drug = await getRecordBy('therapies', {name: record['Drug Name']}, conn, preferredDrugs);
+    const drug = await conn.getUniqueRecordBy({
+        endpoint: 'therapies',
+        where: {name: record['Drug Name']},
+        sort: preferredDrugs
+    });
     // get the disease by name
     let diseaseName = record['Histology Subtype 1'] === 'NS'
         ? record.Histology
@@ -90,20 +105,28 @@ const processCosmicRecord = async (conn, record, source) => {
     diseaseName = diseaseName.replace(/_/g, ' ');
     diseaseName = diseaseName.replace('leukaemia', 'leukemia');
     diseaseName = diseaseName.replace('tumour', 'tumor');
-    const disease = await getRecordBy('diseases', {name: diseaseName}, conn, preferredDiseases);
+    const disease = await conn.getUniqueRecordBy({
+        endpoint: 'diseases',
+        where: {name: diseaseName},
+        sort: preferredDiseases
+    });
     // create the resistance statement
-    const relevance = await getRecordBy('vocabulary', {name: 'resistance'}, conn);
-    await addRecord('statements', {
-        relevance,
-        appliesTo: drug,
-        impliedBy: [{target: rid(variant)}, {target: rid(disease)}],
-        supportedBy: [{target: rid(record.publication), source}],
-        source: rid(source),
-        reviewStatus: 'not required'
-    }, conn, {
+    const relevance = await conn.getUniqueRecordBy({
+        endpoint: 'vocabulary',
+        where: {name: 'resistance'}
+    });
+    await conn.addRecord({
+        endpoint: 'statements',
+        content: {
+            relevance,
+            appliesTo: drug,
+            impliedBy: [{target: rid(variant)}, {target: rid(disease)}],
+            supportedBy: [{target: rid(record.publication), source}],
+            source: rid(source),
+            reviewStatus: 'not required'
+        },
         existsOk: true,
-        verbose: true,
-        get: false
+        fetchExisting: false
     });
 };
 
@@ -118,12 +141,15 @@ const uploadFile = async (opt) => {
     const {filename, conn} = opt;
     const jsonList = loadDelimToJson(filename);
     // get the dbID for the source
-    const source = rid(await addRecord('sources', {
-        name: SOURCE_NAME,
-        url: 'https://cancer.sanger.ac.uk',
-        usage: 'https://cancer.sanger.ac.uk/cosmic/terms'
-    }, conn, {existsOk: true}));
-    const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, {existsOk: true});
+    const source = rid(await conn.addRecord({
+        endpoint: 'sources',
+        content: {
+            name: SOURCE_NAME,
+            url: 'https://cancer.sanger.ac.uk',
+            usage: 'https://cancer.sanger.ac.uk/cosmic/terms'
+        },
+        existsOk: true
+    }));
     const counts = {success: 0, error: 0, skip: 0};
     const errorCache = {};
     console.log(`Processing ${jsonList.length} records`);
