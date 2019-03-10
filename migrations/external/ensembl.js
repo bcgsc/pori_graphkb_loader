@@ -3,9 +3,9 @@
  */
 
 const {
-    loadDelimToJson, addRecord, getRecordBy, rid, orderPreferredOntologyTerms
+    loadDelimToJson, rid, orderPreferredOntologyTerms
 } = require('./util');
-const {progress} = require('./logging');
+const {logger} = require('./logging');
 
 const HEADER = {
     geneId: 'Gene stable ID',
@@ -48,7 +48,7 @@ const uploadFile = async (opt) => {
             where: {name: 'refseq'}
         });
     } catch (err) {
-        progress('x');
+        logger.warn('Unable to find refseq source. Will not attempt to create cross-reference links');
     }
     let hgncSource;
     try {
@@ -57,10 +57,14 @@ const uploadFile = async (opt) => {
             where: {name: 'hgnc'}
         });
     } catch (err) {
-        progress('x');
+        logger.warn('Unable to find hgnc source. Will not attempt to create cross-reference links');
     }
 
     const visited = {}; // cache genes to speed up adding records
+    const hgncMissingRecords = new Set();
+    const refseqMissingRecords = new Set();
+
+    logger.info(`processing ${contentList.length} records`);
 
     for (const record of contentList) {
         record.hgncName = record[HEADER.geneNameSource] === 'HGNC Symbol'
@@ -182,8 +186,7 @@ const uploadFile = async (opt) => {
                     fetchExisting: false
                 });
             } catch (err) {
-                progress(`[missing: ${record[HEADER.refseqId]}]`);
-                progress('x');
+                refseqMissingRecords.add(record[HEADER.refseqId]);
             }
         }
         // gene -> aliasof -> hgnc
@@ -207,10 +210,15 @@ const uploadFile = async (opt) => {
                     fetchExisting: false
                 });
             } catch (err) {
-                progress(`[missing: ${record[HEADER.hgncId]}/${record.hgncName}]`);
-                progress('x');
+                hgncMissingRecords.add(record[HEADER.hgncId]);
             }
         }
+    }
+    if (hgncMissingRecords.size) {
+        logger.warn(`Unable to retrieve ${hgncMissingRecords.size} hgnc records for linking`);
+    }
+    if (refseqMissingRecords.size) {
+        logger.warn(`Unable to retrieve ${refseqMissingRecords.size} refseq records for linking`);
     }
 };
 

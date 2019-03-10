@@ -13,7 +13,7 @@
  */
 
 const {
-    addRecord, getRecordBy, orderPreferredOntologyTerms, loadDelimToJson, rid
+    orderPreferredOntologyTerms, loadDelimToJson, rid
 } = require('./util');
 const {logger, progress} = require('./logging');
 
@@ -46,13 +46,16 @@ const uploadFile = async (opt) => {
     logger.info(`loading ${jsonList.length} records`);
     let skipCount = 0;
     for (const record of jsonList) {
-        if (record.NCIT.length === 0 && !/\S+[mn][ia]b\b/i.exec(record.PT)) {
+        if (!record.PT.length || !record.UNII.length || !record.PT.trim().toLowerCase()) {
             skipCount++;
             continue;
         }
-        if (!record.PT.length || !record.UNII.length) {
-            skipCount++;
-            continue;
+        const name = record.PT.trim().toLowerCase();
+        if (record.NCIT.length === 0) {
+            if (!/\S+[mn][ia]b\b/i.exec(name) && !name.includes('interferon')) {
+                skipCount++;
+                continue;
+            }
         }
         // only load records with at min these 3 values filled out
         let drug;

@@ -84,9 +84,9 @@
 
 const _ = require('lodash');
 const {
-    addRecord, getRecordBy, loadXmlToJson, rid
+    loadXmlToJson, rid
 } = require('./util');
-const {logger, progress} = require('./logging');
+const {logger} = require('./logging');
 
 const SOURCE_NAME = 'drugbank';
 
@@ -131,8 +131,9 @@ const uploadFile = async ({filename, conn}) => {
             where: {name: 'FDA'}
         });
     } catch (err) {
-        progress('x');
+        logger.warn('Unable to find fda source record. Will not attemp cross-reference links');
     }
+    const fdaMissingRecords = new Set();
 
     for (const drug of xml.drugbank.drug) {
         let atcLevels = [];
@@ -217,7 +218,7 @@ const uploadFile = async ({filename, conn}) => {
                             where: {source: rid(fdaSource), sourceId: unii.trim()}
                         });
                     } catch (err) {
-                        progress('x');
+                        fdaMissingRecords.add(unii);
                     }
                     if (fdaRec) {
                         await conn.addRecord({
@@ -232,10 +233,18 @@ const uploadFile = async ({filename, conn}) => {
                 }
             }
         } catch (err) {
-            throw err;
+            let label;
+            try {
+                label = drug[HEADER.ident][0]._;
+            } catch (err) {}  // eslint-disable-line
+            logger.error(err);
+            logger.error(`Unable to process record ${label}`);
         }
     }
-    console.log();
+
+    if (fdaMissingRecords.size) {
+        logger.warn(`Unable to retrieve ${fdaMissingRecords.size} fda records for cross-linking`);
+    }
 };
 
 module.exports = {uploadFile, dependencies: ['fda']};

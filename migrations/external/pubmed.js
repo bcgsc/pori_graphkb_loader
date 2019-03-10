@@ -1,6 +1,4 @@
-const request = require('request-promise');
-
-const {rid} = require('./util');
+const {rid, requestWithRetry} = require('./util');
 
 const PUBMED_DEFAULT_QS = {
     retmode: 'json',
@@ -12,7 +10,6 @@ const PUBMED_CACHE = {};
 
 const PUBMED_API = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi';
 const MAX_CONSEC_IDS = 150;
-
 
 /**
  * Given an article record retrieved from pubmed, parse it into its equivalent
@@ -47,7 +44,7 @@ const fetchArticlesByPmids = async (pmidListIn, url = PUBMED_API) => {
             .map(id => id.toString())
             .join(',');
 
-        const {result} = await request({
+        const {result} = await requestWithRetry({
             method: 'GET',
             uri: url,
             qs: Object.assign({id: pmidString}, PUBMED_DEFAULT_QS),
@@ -69,7 +66,7 @@ const fetchArticlesByPmids = async (pmidListIn, url = PUBMED_API) => {
  */
 const fetchArticle = async (api, sourceId) => {
     if (PUBMED_CACHE[sourceId]) {
-        return sourceId;
+        return PUBMED_CACHE[sourceId];
     }
     const record = api.getUniqueRecord({
         uri: 'publications',
@@ -130,10 +127,24 @@ const uploadArticle = async (api, article, opt) => {
     return result;
 };
 
+/**
+ * Given some list of pubmed IDs, return if cached,
+ * If they do not exist, grab from the pubmed api
+ * and then upload to GraphKB
+ *
+ * @param {ApiConnection} api connection to GraphKB
+ * @param {Array.<string>} pmidList list of pubmed IDs
+ */
+const uploadArticlesByPmid = async (api, pmidListIn) => {
+    const articles = await fetchArticlesByPmids(pmidListIn);
+    return Promise.all(articles.map(async article => uploadArticle(api, article)));
+};
+
 
 module.exports = {
     fetchArticle,
     fetchArticlesByPmids,
     parseArticleRecord,
-    uploadArticle
+    uploadArticle,
+    uploadArticlesByPmid
 };

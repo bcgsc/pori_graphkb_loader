@@ -18,6 +18,7 @@ const {
 const {ParsingError} = require('./../../app/repo/error');
 const _pubmed = require('./pubmed');
 const _hgnc = require('./hgnc');
+const {logger} = require('./logging');
 
 const SOURCE_NAME = 'oncokb';
 
@@ -90,8 +91,8 @@ const processVariant = async (opt) => {
         } catch (err) {}
     }
     if (!variant) {
-        let gene1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.gene});
-        let gene2 = null;
+        let gene1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.gene}),
+            gene2 = null;
 
         // determine the type of variant we are dealing with
         variant = rawRecord.variant.toLowerCase();
@@ -429,13 +430,13 @@ const upload = async (opt) => {
     const URL = opt.url || 'http://oncokb.org/api/v1/utils';
 
     // load directly from their api:
-    console.log(`loading: ${URL}`);
+    logger.info(`loading: ${URL}`);
     let recordsList = await request({
         method: 'GET',
         json: true,
         uri: `${URL}/allActionableVariants.json`
     });
-    console.log(`loaded ${recordsList.length} records`);
+    logger.info(`loaded ${recordsList.length} records`);
     // add the source node
     const oncokb = await conn.addRecord({
         endpoint: 'sources',
@@ -454,7 +455,7 @@ const upload = async (opt) => {
     });
     const counts = {errors: 0, success: 0, skip: 0};
     await addEvidenceLevels(conn, oncokb);
-    // console.log(Object.keys(terms));
+    // logger.info(Object.keys(terms));
     for (const rawRecord of recordsList) {
         for (const drug of Array.from(rawRecord.drugs.split(','), x => x.trim().toLowerCase()).filter(x => x.length > 0)) {
             rawRecord.drug = THERAPY_MAPPING[drug] === undefined
@@ -475,23 +476,19 @@ const upload = async (opt) => {
                 });
                 counts.success++;
             } catch (err) {
-                throw err;
-                console.log('\n', err.error
-                    ? err.error.message
-                    : err.message || err, `variant: ${rawRecord.variant}`);
                 counts.errors++;
-                console.log(err.error || err);
+                logger.error(err.error || err);
             }
         }
     }
     // load directly from their api:
-    console.log(`\nloading: ${URL}`);
+    logger.info(`loading: ${URL}`);
     recordsList = await request({
         method: 'GET',
         json: true,
         uri: `${URL}/allAnnotatedVariants.json`
     });
-    console.log(`loaded ${recordsList.length} records`);
+    logger.info(`loaded ${recordsList.length} records`);
     for (const rawRecord of recordsList) {
         if (rawRecord.mutationEffect === 'Inconclusive' && rawRecord.oncogenicity === 'Inconclusive') {
             counts.skip += 2;
@@ -523,14 +520,11 @@ const upload = async (opt) => {
             counts.errors += expect - statementCount;
             counts.skip += 2 - expect;
         } catch (err) {
-            console.log('\n', err.error
-                ? err.error.message
-                : err.message || err, `variant: ${rawRecord.variant}`);
             counts.errors++;
-            console.log(err.error || err);
+            logger.error(err.error || err);
         }
     }
-    console.log('\n', counts);
+    logger.info(JSON.stringify(counts));
 };
 
 module.exports = {upload, preferredDrugs, preferredDiseases};

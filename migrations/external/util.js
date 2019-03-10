@@ -9,6 +9,9 @@ const _ = require('lodash');
 const parse = require('csv-parse/lib/sync');
 const xml2js = require('xml2js');
 const jwt = require('jsonwebtoken');
+const sleep = require('sleep-promise');
+
+
 const {logger} = require('./logging');
 
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
@@ -68,7 +71,7 @@ class ApiConnection {
      * @param {object} opt.qs the query parameters
      */
     async request(opt) {
-        if (this.exp >= epochSeconds()) {
+        if (this.exp < epochSeconds()) {
             await this.login();
         }
         const req = {
@@ -105,7 +108,7 @@ class ApiConnection {
         const {
             where,
             endpoint,
-            sortFunc = () => 0
+            sort: sortFunc = () => 0
         } = opt;
 
         const queryParams = convertNulls(where);
@@ -131,6 +134,15 @@ class ApiConnection {
         return newRecord;
     }
 
+    /**
+     * @param {object} opt
+     * @param {string} opt.endpoint
+     * @param {boolean} [opt.existsOk=false] do not error if a record cannot be created because it already exists
+     * @param {object} [opt.fetchConditions=null] the where clause to be used in attempting to fetch this record
+     * @param {boolean} [opt.fetchExisting=true] return the record if it already exists
+     * @param {boolean} [opt.fetchFirst=false] attempt to fetch the record before trying to create it
+     * @param {function} opt.sortFunc function to be used in order records if multiple are returned to limit the result to 1
+     */
     async addRecord(opt) {
         const {
             content,
@@ -161,7 +173,6 @@ class ApiConnection {
             return result;
         } catch (err) {
             if (err.statusCode === 409 && existsOk) {
-                console.log('exists error', content);
                 if (fetchExisting) {
                     return this.getUniqueRecordBy({
                         where: fetchConditions || content,
@@ -169,6 +180,7 @@ class ApiConnection {
                         sortFunc
                     });
                 }
+                return null;
             }
             throw err;
         }
@@ -360,6 +372,19 @@ const loadXmlToJson = (filename) => {
     });
 };
 
+const requestWithRetry = async (requestOpt, {waitSeconds = 1, retries = 1} = {}) => {
+    try {
+        const result = await request(requestOpt);
+        return result;
+    } catch (err) {
+        if (err.statusCode === 429 && retries > 0) {
+            await sleep(waitSeconds);
+            return requestWithRetry(requestOpt, {waitSeconds, retries: retries - 1});
+        }
+        throw err;
+    }
+};
+
 
 module.exports = {
     rid,
@@ -369,5 +394,6 @@ module.exports = {
     preferredDrugs,
     loadDelimToJson,
     loadXmlToJson,
-    ApiConnection
+    ApiConnection,
+    requestWithRetry
 };

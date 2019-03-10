@@ -35,15 +35,17 @@
  */
 const request = require('request-promise');
 const {
-    addRecord,
-    getRecordBy,
     orderPreferredOntologyTerms,
-    getPubmedArticle,
     preferredDrugs,
     preferredDiseases,
     loadDelimToJson,
     rid
 } = require('./util');
+const {
+    fetchArticle,
+    uploadArticlesByPmid
+} = require('./pubmed');
+const {logger} = require('./logging');
 
 const THERAPY_MAPPING = {
     'tyrosine kinase inhibitor - ns': 'tyrosine kinase inhibitor',
@@ -152,37 +154,29 @@ const uploadFile = async (opt) => {
     }));
     const counts = {success: 0, error: 0, skip: 0};
     const errorCache = {};
-    console.log(`Processing ${jsonList.length} records`);
+    logger.info(`Processing ${jsonList.length} records`);
+    // Upload the list of pubmed IDs
+    await uploadArticlesByPmid(conn, jsonList.map(rec => rec['Pubmed ID']));
+
     for (const record of jsonList) {
         if (record['AA Mutation'] === 'p.?') {
             counts.skip++;
             continue;
         }
-        let publication;
-        try {
-            publication = await getRecordBy('publications', {sourceId: record['Pubmed Id'], source: {name: 'pubmed'}}, conn);
-        } catch (err) {
-            publication = await getPubmedArticle(record['Pubmed Id']);
-            publication = await addRecord('publications', Object.assign(publication, {
-                source: rid(pubmedSource)
-            }), conn, {existsOk: true});
-        }
-        record.publication = publication;
+        record.publication = await fetchArticle(conn, record['Pubmed Id']);
         try {
             await processCosmicRecord(conn, record, source);
             counts.success++;
         } catch (err) {
             const {message} = (err.error || err);
             if (errorCache[message] === undefined) {
-                console.log('\nfailed', message);
                 errorCache[message] = err;
             }
             counts.error++;
         }
     }
-    console.log();
-    console.log(counts);
-    console.log(`${Object.keys(errorCache).length} unique errors`);
+    logger.info(JSON.stringify(counts));
+    logger.info(`${Object.keys(errorCache).length} unique errors`);
 };
 
 module.exports = {uploadFile};

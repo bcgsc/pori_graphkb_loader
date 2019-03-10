@@ -17,8 +17,8 @@ const fs = require('fs');
 const jc = require('json-cycle');
 
 
-const {addRecord, getRecordBy, rid} = require('./util');
-const {logger, progress} = require('./logging');
+const {rid} = require('./util');
+const {logger} = require('./logging');
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
 const SOURCE_NAME = 'oncotree';
@@ -213,10 +213,11 @@ const upload = async (opt) => {
             where: {name: 'ncit'}
         });
     } catch (err) {
-        progress('x');
+        logger.log('warn', 'cannot find ncit source. Will not be able to generate cross-reference links');
     }
 
     const dbRecordsByCode = {};
+    const ncitMissingRecords = new Set();
     // upload the results
     for (const record of records) {
         const body = {
@@ -233,7 +234,7 @@ const upload = async (opt) => {
         dbRecordsByCode[record.sourceId] = rec;
 
         for (const xref of record.crossReferenceOf) {
-            if (xref.source === 'NCI' && ncitSource) {
+            if (xref.source === 'NCI' && ncitSource && !ncitMissingRecords.has(xref.sourceId)) {
                 try {
                     const ncitXref = await conn.getUniqueRecordBy({
                         endpoint: 'diseases',
@@ -246,7 +247,7 @@ const upload = async (opt) => {
                         fetchExisting: false
                     });
                 } catch (err) {
-                    progress('x');
+                    ncitMissingRecords.add(xref.sourceId);
                 }
             }
         }
@@ -254,22 +255,33 @@ const upload = async (opt) => {
 
     for (const record of records) {
         for (const parentRecord of record.subclassOf || []) {
-            await addRecord('subclassOf', {
-                out: rid(dbRecordsByCode[record.sourceId]),
-                in: rid(dbRecordsByCode[parentRecord.sourceId]),
-                source: rid(source)
-            }, conn, {existsOk: true});
+            await conn.addRecord({
+                endpoint: 'subclassOf',
+                content: {
+                    out: rid(dbRecordsByCode[record.sourceId]),
+                    in: rid(dbRecordsByCode[parentRecord.sourceId]),
+                    source: rid(source)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
         }
         for (const deprecated of record.deprecates || []) {
-            await addRecord('deprecatedBy', {
-                out: rid(dbRecordsByCode[deprecated.sourceId]),
-                in: rid(dbRecordsByCode[record.sourceId]),
-                source: rid(source)
-            }, conn, {existsOk: true});
+            await conn.addRecord({
+                endpoint: 'deprecatedBy',
+                content: {
+                    out: rid(dbRecordsByCode[deprecated.sourceId]),
+                    in: rid(dbRecordsByCode[record.sourceId]),
+                    source: rid(source)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
         }
     }
-
-    console.log();
+    if (ncitMissingRecords.size) {
+        logger.warn(`Unable to retrieve ${ncitMissingRecords.size} ncit records for linking`);
+    }
 };
 
 

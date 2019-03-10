@@ -1,6 +1,6 @@
 const _ = require('lodash');
 
-const {addRecord, rid} = require('./util');
+const {rid} = require('./util');
 const {logger} = require('./logging');
 
 const SOURCE_NAME = 'bcgsc';
@@ -134,6 +134,8 @@ const VOCABULARY = [
     {name: 'prognostic indicator'},
     {name: 'protective', subclassof: ['benign'], description: 'protect against some disease or phenotype. Associated with decreased risk of the disease or phenotype'},
     {name: 'protein expression variant', subclassof: ['expression variant']},
+    {name: 'promoter hypermethylation', subclassof: ['promoter variant']},
+    {name: 'promoter hypomethylation', subclassof: ['promoter variant']},
     {name: 'recurrent', subclassof: ['biological'], description: 'commonly observed'},
     {name: 'reduced expression', subclassof: ['any expression'], aliasof: ['underexpression', 'down-regulated expression']},
     {
