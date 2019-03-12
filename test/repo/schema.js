@@ -362,7 +362,7 @@ describe('ClassModel', () => {
                 model.formatRecord({
                     req1: 'term1', opt2: 4, req2: 1
                 }, {dropExtra: false, addDefaults: false});
-            }).to.throw('not in the list of valid choices');
+            }).to.throw('Violated the choices constraint of opt2');
         });
         it('allow nullable enum', () => {
             const record = model.formatRecord({

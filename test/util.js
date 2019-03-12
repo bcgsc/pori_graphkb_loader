@@ -3,7 +3,7 @@
 const OrientDB = require('orientjs');
 
 const {createSchema, loadSchema} = require('./../app/repo/schema');
-const {createUser} = require('./../app/repo/base');
+const {createUser} = require('./../app/repo/commands');
 
 const VERBOSE = process.env.VERBOSE === '1';
 const emptyConf = require('./../config/config');
@@ -76,4 +76,13 @@ const setUpEmptyDB = async (conf = emptyConf, createDB = true) => {
 };
 
 
-module.exports = {setUpEmptyDB};
+const clearDB = async (db, admin) => {
+    // clear all V/E records
+    await db.query('delete edge e');
+    await db.query('delete vertex v');
+    await db.query(`delete from user where name != '${admin.name}'`);
+    await db.query('delete from usergroup where name != \'readonly\' and name != \'admin\' and name != \'regular\'');
+};
+
+
+module.exports = {setUpEmptyDB, clearDB};

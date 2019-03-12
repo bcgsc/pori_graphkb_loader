@@ -13,7 +13,7 @@
  */
 
 const {
-    addRecord, getRecordBy, orderPreferredOntologyTerms, loadDelimToJson, rid
+    orderPreferredOntologyTerms, loadDelimToJson, rid
 } = require('./util');
 const {logger, progress} = require('./logging');
 
@@ -27,43 +27,65 @@ const SOURCE_NAME = 'fda';
  * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async (opt) => {
-    const {filename, conn} = opt;
+    const {filename, conn: api} = opt;
     const jsonList = await loadDelimToJson(filename);
-    const source = await addRecord('sources', {name: SOURCE_NAME, url: 'https://fdasis.nlm.nih.gov/srs'}, conn, {existsOk: true});
+    const source = await api.addRecord({
+        endpoint: 'sources',
+        content: {name: SOURCE_NAME, url: 'https://fdasis.nlm.nih.gov/srs'},
+        existsOk: true
+    });
     let ncitSource;
     try {
-        ncitSource = await getRecordBy('sources', {name: 'NCIT'}, conn);
+        ncitSource = await api.getUniqueRecordBy({
+            endpoint: 'sources',
+            where: {name: 'NCIT'}
+        });
     } catch (err) {
         progress('x\n');
     }
     logger.info(`loading ${jsonList.length} records`);
     let skipCount = 0;
     for (const record of jsonList) {
-        if (record.NCIT.length === 0 && !/\S+[mn][ia]b\b/i.exec(record.PT)) {
+        if (!record.PT.length || !record.UNII.length || !record.PT.trim().toLowerCase()) {
             skipCount++;
             continue;
         }
-        if (!record.PT.length || !record.UNII.length) {
-            skipCount++;
-            continue;
+        const name = record.PT.trim().toLowerCase();
+        if (record.NCIT.length === 0) {
+            if (!/\S+[mn][ia]b\b/i.exec(name) && !name.includes('interferon')) {
+                skipCount++;
+                continue;
+            }
         }
         // only load records with at min these 3 values filled out
-        const drug = await addRecord('therapies', {
-            name: record.PT, sourceId: record.UNII, source: rid(source)
-        }, conn, {existsOk: true});
+        let drug;
+        try {
+            drug = await api.addRecord({
+                endpoint: 'therapies',
+                content: {name, sourceId: record.UNII, source: rid(source)},
+                existsOk: true
+            });
+        } catch (err) {
+            logger.error(`Unable to add drug Record (UNII: ${record.UNII}) (error: ${err})`);
+            continue;
+        }
         if (ncitSource && record.NCIT.length) {
             let ncitRec;
             try {
-                ncitRec = await getRecordBy('therapies', {source: {name: 'ncit'}, sourceId: record.NCIT}, conn, orderPreferredOntologyTerms);
+                ncitRec = await api.getUniqueRecordBy({
+                    endpoint: 'therapies',
+                    where: {source: {name: 'ncit'}, sourceId: record.NCIT},
+                    sort: orderPreferredOntologyTerms
+                });
             } catch (err) {
                 progress('x');
             }
             if (ncitRec) {
-                await addRecord('aliasof', {
-                    source: rid(source),
-                    out: rid(drug),
-                    in: rid(ncitRec)
-                }, conn, {existsOk: true});
+                await api.addRecord({
+                    endpoint: 'aliasof',
+                    content: {source: rid(source), out: rid(drug), in: rid(ncitRec)},
+                    existsOk: true
+                });
             }
         }
     }

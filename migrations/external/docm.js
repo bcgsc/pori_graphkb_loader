@@ -12,12 +12,31 @@
  * @module migrations/external/docm
  */
 const request = require('request-promise');
+const Ajv = require('ajv');
+const jsonpath = require('jsonpath');
+
+const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
+
 const {
-    addRecord, getRecordBy, orderPreferredOntologyTerms, getPubmedArticle, rid
+    orderPreferredOntologyTerms, rid
 } = require('./util');
+const _pubmed = require('./pubmed');
+const {logger} = require('./logging');
+
+const ajv = new Ajv();
 
 const SOURCE_NAME = 'database of curated mutations (docm)';
 const BASE_URL = 'http://www.docm.info/api/v1/variants';
+
+
+const validateVariantSummarySpec = ajv.compile({
+    type: 'object',
+    properties: {
+        hgvs: {type: 'string'},
+        gene: {type: 'string'},
+        amino_acid: {type: 'string', pattern: '^p\\..*'}
+    }
+});
 
 
 /**
@@ -55,27 +74,30 @@ const parseDocmVariant = (variant) => {
     return variant;
 };
 
+
 const processRecord = async (opt) => {
     const {
-        conn, pubmedSource, source, record
+        conn, source
     } = opt;
+    const {details, ...record} = opt.record;
     // get the feature by name
-    const gene = await getRecordBy('features', {source: {name: 'hgnc'}, name: record.gene}, conn, orderPreferredOntologyTerms);
-    // get the record details
-    const details = await request({
-        method: 'GET',
-        json: true,
-        uri: `${BASE_URL}/${record.hgvs}.json`
+    const gene = await conn.getUniqueRecordBy({
+        endpoint: 'features',
+        where: {source: {name: 'hgnc'}, name: record.gene},
+        sort: orderPreferredOntologyTerms
     });
+    // get the record details
     const counts = {error: 0, success: 0, skip: 0};
 
     // get the variant
-    let variant = (await request(conn.request({
-        method: 'POST',
-        uri: 'parser/variant',
-        body: {content: parseDocmVariant(record.amino_acid)}
-    }))).result;
-    const variantType = await getRecordBy('vocabulary', {name: variant.type}, conn);
+    let {
+        noFeatures, prefix, multiFeature, ...variant
+    } = variantParser(parseDocmVariant(record.amino_acid), false);
+
+    const variantType = await conn.getUniqueRecordBy({
+        endpoint: 'vocabulary',
+        where: {name: variant.type, source: {name: 'bcgsc'}}
+    });
     const defaults = {
         untemplatedSeq: null,
         break1Start: null,
@@ -90,7 +112,12 @@ const processRecord = async (opt) => {
     variant.reference1 = rid(gene);
     variant.type = rid(variantType);
     // create the variant
-    variant = await addRecord('positionalvariants', variant, conn, {existsOk: true, getWhere: Object.assign(defaults, variant)});
+    variant = await conn.addRecord({
+        endpoint: 'positionalvariants',
+        content: variant,
+        existsOk: true,
+        getConditions: Object.assign(defaults, variant)
+    });
 
     for (const diseaseRec of details.diseases) {
         if (!diseaseRec.tags || diseaseRec.tags.length !== 1) {
@@ -99,38 +126,40 @@ const processRecord = async (opt) => {
         }
         try {
             // get the vocabulary term
-            const relevance = await getRecordBy('vocabulary', {name: diseaseRec.tags[0]}, conn);
+            const relevance = await conn.getUniqueRecordBy({
+                endpoint: 'vocabulary',
+                where: {name: diseaseRec.tags[0], source: {name: 'bcgsc'}}
+            });
             // get the disease by name
-            const disease = await getRecordBy('diseases', {
-                sourceId: `doid:${diseaseRec.doid}`,
-                name: diseaseRec.disease,
-                source: {name: 'disease ontology'}
-            }, conn, orderPreferredOntologyTerms);
+            const disease = await conn.getUniqueRecordBy({
+                endpoint: 'diseases',
+                where: {
+                    sourceId: `doid:${diseaseRec.doid}`,
+                    name: diseaseRec.disease,
+                    source: {name: 'disease ontology'}
+                },
+                sort: orderPreferredOntologyTerms
+            });
             // get the pubmed article
-            let publication;
-            try {
-                publication = await getRecordBy('publications', {sourceId: diseaseRec.source_pubmed_id, source: {name: 'pubmed'}}, conn);
-            } catch (err) {
-                publication = await getPubmedArticle(diseaseRec.source_pubmed_id);
-                publication = await addRecord('publications', Object.assign(publication, {
-                    source: rid(pubmedSource)
-                }), conn, {existsOk: true});
-            }
+            const publication = await _pubmed.fetchArticle(conn, diseaseRec.source_pubmed_id);
             // now create the statement
-            await addRecord('statements', {
-                impliedBy: [{target: rid(disease)}, {target: rid(variant)}],
-                supportedBy: [{target: rid(publication), source: rid(source)}],
-                relevance: rid(relevance),
-                appliesTo: rid(disease),
-                source: rid(source),
-                reviewStatus: 'not required'
-            }, conn, {
+            await conn.addRecord({
+                endpoint: 'statements',
+                content: {
+                    impliedBy: [{target: rid(disease)}, {target: rid(variant)}],
+                    supportedBy: [{target: rid(publication), source: rid(source)}],
+                    relevance: rid(relevance),
+                    appliesTo: rid(disease),
+                    source: rid(source),
+                    reviewStatus: 'not required'
+                },
                 existsOk: true,
-                get: false
+                fetchExisting: false
             });
             counts.success++;
         } catch (err) {
-            console.log(err.error || err);
+            logger.error((err.error || err).message);
+            console.error(err);
             counts.error++;
         }
     }
@@ -148,40 +177,82 @@ const processRecord = async (opt) => {
 const upload = async (opt) => {
     const {conn} = opt;
     // load directly from their api:
-    console.log(`loading: ${opt.url || BASE_URL}.json`);
+    logger.info(`loading: ${opt.url || BASE_URL}.json`);
     const recordsList = await request({
         method: 'GET',
         json: true,
         uri: `${BASE_URL}.json`
     });
-    console.log(`loaded ${recordsList.length} records`);
+    logger.info(`loaded ${recordsList.length} records`);
     // add the source node
-    const source = await addRecord('sources', {
-        name: SOURCE_NAME,
-        usage: 'http://www.docm.info/terms',
-        url: 'http://www.docm.info'
-    }, conn, {existsOk: true, getWhere: {name: SOURCE_NAME}});
-    const pubmedSource = await addRecord('sources', {name: 'pubmed'}, conn, {existsOk: true});
+    const source = await conn.addRecord({
+        endpoint: 'sources',
+        content: {
+            name: SOURCE_NAME,
+            usage: 'http://www.docm.info/terms',
+            url: 'http://www.docm.info'
+        },
+        existsOk: true,
+        fetchConditions: {name: SOURCE_NAME}
+    });
 
-    const counts = {error: 0, success: 0, skip: 0};
+    const counts = {
+        error: 0, success: 0, skip: 0, highlight: 0
+    };
+    const filtered = [];
+    const pmidList = new Set();
 
     for (const record of recordsList) {
-        if (record.drug_interactions) {
-            console.log(record);
+        if (!validateVariantSummarySpec(record)) {
+            logger.error(
+                `Spec Validation failed for actionable record #${
+                    validateVariantSummarySpec.errors[0].dataPath
+                } ${
+                    validateVariantSummarySpec.errors[0].message
+                } found ${
+                    jsonpath.query(record, `$${validateVariantSummarySpec.errors[0].dataPath}`)
+                }`
+            );
+            counts.error++;
+            continue;
         }
+        if (record.drug_interactions) {
+            logger.warn(`Found a record with drug interactions! ${JSON.stringify(record)}`);
+            counts.highlight++;
+        }
+        const details = await request({
+            method: 'GET',
+            json: true,
+            uri: `${BASE_URL}/${record.hgvs}.json`
+        });
+        record.details = details;
+
+        filtered.push(record);
+        for (const diseaseRec of details.diseases) {
+            if (diseaseRec.source_pubmed_id) {
+                pmidList.add(`${diseaseRec.source_pubmed_id}`);
+            }
+        }
+    }
+    logger.info(`loading ${pmidList.size} pubmed articles`);
+    await _pubmed.uploadArticlesByPmid(conn, pmidList);
+    logger.info(`processing ${filtered.length} remaining docm records`);
+    for (const record of filtered) {
+        logger.info(record.hgvs);
         try {
             const updates = await processRecord({
-                conn, source, record, pubmedSource
+                conn, source, record
             });
             counts.success += updates.success;
             counts.error += updates.error;
             counts.skip += updates.skip;
         } catch (err) {
             counts.error++;
-            console.log(err.error || err);
+            console.error(err);
+            logger.error((err.error || err).message);
         }
     }
-    console.log('\n', counts);
+    logger.info(JSON.stringify(counts));
 };
 
 module.exports = {upload};

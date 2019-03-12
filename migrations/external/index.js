@@ -7,6 +7,7 @@
 const {fileExists, createOptionsMenu} = require('./../cli');
 
 const {ApiConnection, PUBMED_DEFAULT_QS} = require('./util');
+const {logger} = require('./logging');
 
 const IMPORT_MODULES = {};
 IMPORT_MODULES.civic = require('./civic');
@@ -17,13 +18,15 @@ IMPORT_MODULES.drugbank = require('./drugbank');
 IMPORT_MODULES.ensembl = require('./ensembl');
 IMPORT_MODULES.fda = require('./fda');
 IMPORT_MODULES.hgnc = require('./hgnc');
+IMPORT_MODULES.ipr = require('./ipr');
 IMPORT_MODULES.ncit = require('./ncit');
 IMPORT_MODULES.oncokb = require('./oncokb');
 IMPORT_MODULES.oncotree = require('./oncotree');
 IMPORT_MODULES.refseq = require('./refseq');
+IMPORT_MODULES.sequenceOntology = require('./sequence_ontology');
 IMPORT_MODULES.uberon = require('./uberon');
-IMPORT_MODULES.vocab = require('./vocab');
 IMPORT_MODULES.vario = require('./vario');
+IMPORT_MODULES.vocab = require('./vocab');
 
 
 const optionDefinitions = [
@@ -52,7 +55,7 @@ const optionDefinitions = [
     },
     {
         name: 'host',
-        default: '127.0.0.1',
+        default: process.env.HOSTNAME || '127.0.0.1',
         description: 'server hosting the KB API',
         env: 'KB_HOST'
     },
@@ -145,6 +148,17 @@ const optionDefinitions = [
         name: 'vario',
         description: 'load the variation ontology file (OWL format)',
         type: fileExists
+    },
+    {
+        name: 'sequenceOntology',
+        alias: 's',
+        description: 'path the sequence ontology owl file',
+        type: fileExists
+    },
+    {
+        name: 'ipr',
+        description: 'path to the IPR CSV export file',
+        type: fileExists
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
@@ -162,9 +176,10 @@ if (options.pubmed) {
 
 const upload = async () => {
     await apiConnection.setAuth(options);
-    console.log('Login Succeeded\n');
+    logger.info('Login Succeeded');
     const moduleOrder = [
         'vocab',
+        'sequenceOntology',
         'vario',
         'ncit',
         'fda',
@@ -178,7 +193,8 @@ const upload = async () => {
         'cosmic',
         'oncokb',
         'civic',
-        'docm'
+        'docm',
+        'ipr'
     ];
     for (const moduleName of moduleOrder) {
         if (options[moduleName] !== undefined) {
@@ -195,6 +211,7 @@ const upload = async () => {
             }
         }
     }
+    logger.info('upload complete');
 };
 
 upload();

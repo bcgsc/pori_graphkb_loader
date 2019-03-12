@@ -9,21 +9,39 @@ const _ = require('lodash');
 const parse = require('csv-parse/lib/sync');
 const xml2js = require('xml2js');
 const jwt = require('jsonwebtoken');
-const {progress, logger} = require('./logging');
+const sleep = require('sleep-promise');
+const HTTP_STATUS_CODES = require('http-status-codes');
+
+
+const {logger} = require('./logging');
 
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
 
-const PUBMED_DEFAULT_QS = {
-    retmode: 'json',
-    db: 'pubmed'
-};
+const rid = record => (record['@rid'] || record).toString();
 
-const PUBMED_CACHE = {};
+const convertNulls = (where) => {
+    const queryParams = {};
+    for (const param of Object.keys(where)) {
+        if (where[param] === null) {
+            queryParams[param] = 'null';
+        } else if (typeof where[param] === 'object') {
+            queryParams[param] = convertNulls(where[param]);
+        } else {
+            queryParams[param] = where[param];
+        }
+    }
+    return queryParams;
+};
 
 /**
  * wrapper to make requests less verbose
  */
 class ApiConnection {
+    /**
+     * @param {object} opt
+     * @param {string} opt.host GraphKB base url host
+     * @param {number} opt.port GraphKB base url port
+     */
     constructor(opt) {
         this.baseUrl = `http://${opt.host}:${opt.port}/api`;
         this.headers = {};
@@ -50,8 +68,16 @@ class ApiConnection {
         this.exp = tokenContent.exp;
     }
 
+    /**
+     * Make a request to the currently connected API
+     * @param {object} opt
+     * @param {string} opt.method the request method
+     * @param {string} opt.uri the uri endpoint
+     * @param {object} opt.body the request body
+     * @param {object} opt.qs the query parameters
+     */
     async request(opt) {
-        if (this.exp >= epochSeconds()) {
+        if (this.exp < epochSeconds()) {
             await this.login();
         }
         const req = {
@@ -68,46 +94,104 @@ class ApiConnection {
         }
         return request(req);
     }
+
+    async getUniqueRecord(opt) {
+        const {result} = await this.request(opt);
+        if (result.length !== 1) {
+            throw new Error('Did not find unique record');
+        }
+        return result[0];
+    }
+
+    /**
+     *
+     * @param {object} opt
+     * @param {object} opt.where the conditions/query parameters for the selection
+     * @param {string} opt.endpoint the endpoint to query
+     * @param {function} opt.sortFunc the function to use in sorting if multiple results are found
+     */
+    async getUniqueRecordBy(opt) {
+        const {
+            where,
+            endpoint,
+            sort: sortFunc = () => 0
+        } = opt;
+
+        const queryParams = convertNulls(where);
+        let newRecord;
+        try {
+            newRecord = await this.request({
+                uri: endpoint,
+                qs: Object.assign({neighbors: 1}, queryParams)
+            });
+            newRecord = jc.retrocycle(newRecord).result;
+        } catch (err) {
+            throw err;
+        }
+        newRecord.sort(sortFunc);
+        if (newRecord.length > 1) {
+            if (sortFunc(newRecord[0], newRecord[1]) === 0) {
+                throw new Error(`expected a single ${endpoint} record but found multiple: ${rid(newRecord[0])} and ${rid(newRecord[1])}`);
+            }
+        } else if (newRecord.length === 0) {
+            throw new Error(`missing ${endpoint} record where ${JSON.stringify(where)}`);
+        }
+        [newRecord] = newRecord;
+        return newRecord;
+    }
+
+    /**
+     * @param {object} opt
+     * @param {string} opt.endpoint
+     * @param {boolean} [opt.existsOk=false] do not error if a record cannot be created because it already exists
+     * @param {object} [opt.fetchConditions=null] the where clause to be used in attempting to fetch this record
+     * @param {boolean} [opt.fetchExisting=true] return the record if it already exists
+     * @param {boolean} [opt.fetchFirst=false] attempt to fetch the record before trying to create it
+     * @param {function} opt.sortFunc function to be used in order records if multiple are returned to limit the result to 1
+     */
+    async addRecord(opt) {
+        const {
+            content,
+            endpoint,
+            existsOk = false,
+            fetchConditions = null,
+            fetchExisting = true,
+            fetchFirst = false,
+            sortFunc = () => 0
+        } = opt;
+
+        if (fetchFirst) {
+            try {
+                return this.getUniqueRecordBy({
+                    where: fetchConditions || content,
+                    endpoint,
+                    sortFunc
+                });
+            } catch (err) {}
+        }
+
+        try {
+            const {result} = jc.retrocycle(await this.request({
+                method: 'POST',
+                uri: endpoint,
+                body: content
+            }));
+            return result;
+        } catch (err) {
+            if (err.statusCode === 409 && existsOk) {
+                if (fetchExisting) {
+                    return this.getUniqueRecordBy({
+                        where: fetchConditions || content,
+                        endpoint,
+                        sortFunc
+                    });
+                }
+                return null;
+            }
+            throw err;
+        }
+    }
 }
-
-
-const convertNulls = (where) => {
-    const queryParams = {};
-    for (const param of Object.keys(where)) {
-        if (where[param] === null) {
-            queryParams[param] = 'null';
-        } else if (typeof where[param] === 'object') {
-            queryParams[param] = convertNulls(where[param]);
-        } else {
-            queryParams[param] = where[param];
-        }
-    }
-    return queryParams;
-};
-
-const getRecordBy = async (className, where, conn, sortFunc = () => 0) => {
-    const queryParams = convertNulls(where);
-    let newRecord;
-    try {
-        newRecord = await conn.request({
-            uri: className,
-            qs: Object.assign({neighbors: 1}, queryParams)
-        });
-        newRecord = jc.retrocycle(newRecord).result;
-    } catch (err) {
-        throw err;
-    }
-    newRecord.sort(sortFunc);
-    if (newRecord.length > 1) {
-        if (sortFunc(newRecord[0], newRecord[1]) === 0) {
-            throw new Error(`expected a single ${className} record but found multiple: ${rid(newRecord[0])} and ${rid(newRecord[1])}`);
-        }
-    } else if (newRecord.length === 0) {
-        throw new Error(`\nmissing ${className} record: ${where.name || where.sourceId || Object.entries(where)} (${where.sourceId})`);
-    }
-    newRecord = newRecord[0];
-    return newRecord;
-};
 
 
 const succinctRepresentation = (record) => {
@@ -143,56 +227,6 @@ const succinctRepresentation = (record) => {
 
 
 /**
- * Add a disease record to the DB
- * @param {object} where
- * @param {ApiConnection} conn
- * @param {boolean} exists_ok
- */
-const addRecord = async (className, where, conn, optIn = {}) => {
-    const opt = Object.assign({
-        existsOk: false,
-        getWhere: null,
-        verbose: false,
-        get: true
-    }, optIn);
-    try {
-        const newRecord = jc.retrocycle(await conn.request({
-            method: 'POST',
-            uri: className,
-            body: where
-        }));
-
-        progress(where.out && where.in
-            ? '-'
-            : '.');
-        return newRecord.result;
-    } catch (err) {
-        err.error = jc.retrocycle(err.error);
-        if (opt.verbose || process.env.VERBOSE === '1') {
-            logger.error('Record Attempted');
-            logger.error(where);
-            if (err.error.current) {
-                logger.error('vs record(s) retrieved');
-                for (const record of err.error ? err.error.current : []) {
-                    logger.error(succinctRepresentation(record));
-                }
-            }
-        }
-        if (opt.existsOk && err.statusCode === 409) {
-            progress(where.out && where.in
-                ? '='
-                : '*');
-            if (opt.get) {
-                const result = await getRecordBy(className, opt.getWhere || where, conn);
-                return result;
-            }
-            return null;
-        }
-        throw err;
-    }
-};
-
-/**
  * Given two ontology terms, return the newer, non-deprecated, independant, term first.
  *
  * @param {object} term1 the first term record
@@ -224,12 +258,7 @@ const orderPreferredOntologyTerms = (term1, term2) => {
 };
 
 
-const preferredDiseases = (term1, term2) => {
-    const sourceRank = {
-        oncotree: 0,
-        'disease ontology': 1
-    };
-
+const preferredSources = (sourceRank, term1, term2) => {
     if (orderPreferredOntologyTerms(term1, term2) === 0) {
         if (term1.source.name !== term2.source.name) {
             const rank1 = sourceRank[term1.source.name] === undefined
@@ -247,6 +276,25 @@ const preferredDiseases = (term1, term2) => {
         return 0;
     }
     return orderPreferredOntologyTerms(term1, term2);
+};
+
+
+const preferredVocabulary = (term1, term2) => {
+    const sourceRank = {
+        bcgsc: 0,
+        'sequence ontology': 1,
+        'variation ontology': 2
+    };
+    return preferredSources(sourceRank, term1, term2);
+};
+
+
+const preferredDiseases = (term1, term2) => {
+    const sourceRank = {
+        oncotree: 0,
+        'disease ontology': 1
+    };
+    return preferredSources(sourceRank, term1, term2);
 };
 
 const preferredDrugs = (term1, term2) => {
@@ -254,59 +302,7 @@ const preferredDrugs = (term1, term2) => {
         drugbank: 0,
         ncit: 1
     };
-
-    if (orderPreferredOntologyTerms(term1, term2) === 0) {
-        if (term1.source.name !== term2.source.name) {
-            const rank1 = sourceRank[term1.source.name] === undefined
-                ? 2
-                : sourceRank[term1.source.name];
-            const rank2 = sourceRank[term2.source.name] === undefined
-                ? 2
-                : sourceRank[term2.source.name];
-            if (rank1 !== rank2) {
-                return rank1 < rank2
-                    ? -1
-                    : 1;
-            }
-        }
-        return 0;
-    }
-    return orderPreferredOntologyTerms(term1, term2);
-};
-
-
-const getPubmedArticle = async (pmid) => {
-    if (PUBMED_CACHE[pmid] !== undefined) {
-        return PUBMED_CACHE[pmid];
-    }
-    // try getting the title from the pubmed api
-    const opt = {
-        method: 'GET',
-        uri: 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi',
-        qs: Object.assign({id: pmid}, PUBMED_DEFAULT_QS),
-        headers: {Accept: 'application/json'},
-        json: true
-    };
-    try {
-        let pubmedRecord = await request(opt);
-        if (pubmedRecord && pubmedRecord.result && pubmedRecord.result[pmid]) {
-            pubmedRecord = pubmedRecord.result[pmid];
-            const article = {
-                sourceId: pmid,
-                name: pubmedRecord.title,
-                journalName: pubmedRecord.fulljournalname
-            };
-            // sortpubdate: '1992/06/01 00:00'
-            const match = /^(\d\d\d\d)\//.exec(pubmedRecord.sortpubdate);
-            if (match) {
-                article.year = parseInt(match[1], 10);
-            }
-            return article;
-        }
-        PUBMED_CACHE[pmid] = pubmedRecord;
-    } catch (err) {}
-    PUBMED_CACHE[pmid] = null;
-    throw new Error(`failed to retrieve pubmed article (${pmid})`);
+    return preferredSources(sourceRank, term1, term2);
 };
 
 
@@ -379,21 +375,32 @@ const loadXmlToJson = (filename) => {
     });
 };
 
-
-const rid = record => (record['@rid'] || record).toString();
+/**
+ *  Try again for too many requests errors. Helpful for APIs with a rate limit (ex. pubmed)
+ */
+const requestWithRetry = async (requestOpt, {waitSeconds = 2, retries = 1} = {}) => {
+    try {
+        const result = await request(requestOpt);
+        return result;
+    } catch (err) {
+        if (err.statusCode === HTTP_STATUS_CODES.TOO_MANY_REQUESTS && retries > 0) {
+            await sleep(waitSeconds);
+            return requestWithRetry(requestOpt, {waitSeconds, retries: retries - 1});
+        }
+        throw err;
+    }
+};
 
 
 module.exports = {
     rid,
-    addRecord,
-    getRecordBy,
     convertOwlGraphToJson,
     orderPreferredOntologyTerms,
-    getPubmedArticle,
     preferredDiseases,
     preferredDrugs,
+    preferredVocabulary,
     loadDelimToJson,
     loadXmlToJson,
     ApiConnection,
-    PUBMED_DEFAULT_QS
+    requestWithRetry
 };

@@ -3,8 +3,10 @@ const {
 } = require('chai');
 const uuidV4 = require('uuid/v4');
 const path = require('path');
+const jwt = require('jsonwebtoken');
+
 const {
-    setUpEmptyDB
+    setUpEmptyDB, clearDB
 } = require('./../util');
 const conf = require('./../../config/config.js');
 const {generateToken} = require('./../../app/routes/auth');
@@ -36,15 +38,6 @@ const VARIO_INPUT = path.join(DATA_DIR, 'vario_v2018-04-27.owl');
 const DRUGBANK_INPUT = path.join(DATA_DIR, 'drugbank_sample.xml');
 
 
-const clearDB = async (db, admin) => {
-    // clear all V/E records
-    await db.query('delete edge e');
-    await db.query('delete vertex v');
-    await db.query(`delete from user where name != '${admin.name}'`);
-    await db.query('delete from usergroup where name != \'readonly\' and name != \'admin\' and name != \'regular\'');
-};
-
-
 describe('external migrations', () => {
     let db,
         admin,
@@ -66,8 +59,11 @@ describe('external migrations', () => {
 
         await app.listen();
         mockToken = await generateToken(db, admin.name, conf.privateKey, REALLY_LONG_TIME);
+        const {exp} = jwt.decode(mockToken);
+
         connection = new ApiConnection(app);
         connection.headers.Authorization = mockToken;
+        connection.exp = exp;
     });
     describe('loads input files', () => {
         describe('ensembl', () => {
