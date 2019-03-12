@@ -230,7 +230,7 @@ const getRelevance = async ({rawRecord, conn}) => {
     if (RELEVANCE_CACHE[relevance] === undefined) {
         relevance = await conn.getUniqueRecordBy({
             endpoint: 'vocabulary',
-            where: {name: relevance}
+            where: {name: relevance, source: {name: 'bcgsc'}}
         });
         RELEVANCE_CACHE[relevance.name] = relevance;
     } else {
@@ -396,7 +396,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
     try {
         const variantClass = await conn.getUniqueRecordBy({
             endpoint: 'vocabulary',
-            where: {name: variantName}
+            where: {name: variantName, source: {name: 'bcgsc'}}
         });
         const body = {
             type: rid(variantClass),
@@ -424,7 +424,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
         ).toJSON();
         const variantClass = await conn.getUniqueRecordBy({
             endpoint: 'vocabulary',
-            where: {name: parsed.type}
+            where: {name: parsed.type, source: {name: 'bcgsc'}}
         });
         Object.assign(parsed, {
             reference1: rid(feature),
@@ -697,4 +697,4 @@ const upload = async (opt) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {upload};
+module.exports = {upload, getVariantName};
