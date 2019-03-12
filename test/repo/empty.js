@@ -6,14 +6,13 @@ const {
 const uuidV4 = require('uuid/v4');
 
 
-const {util: {castToRID}} = require('@bcgsc/knowledgebase-schema');
 const {
     create,
     update,
     remove,
     select,
     selectCounts
-} = require('./../../app/repo/base');
+} = require('./../../app/repo/commands');
 const {
     RecordExistsError
 } = require('./../../app/repo/error');
@@ -21,7 +20,7 @@ const {
     setUpEmptyDB
 } = require('./../util');
 const {
-    Query, Clause, Comparison
+    Query
 } = require('./../../app/repo/query');
 
 const emptyConf = Object.assign({}, require('./../../config/config.js'));

@@ -13,7 +13,7 @@ const swaggerUi = require('swagger-ui-express');
 const {getPortPromise} = require('portfinder');
 
 const {logger} = require('./repo/logging');
-const {selectCounts} = require('./repo/base');
+const {selectCounts} = require('./repo/commands');
 const {AttributeError} = require('./repo/error');
 const {
     checkToken
@@ -72,11 +72,11 @@ class AppServer {
      */
     constructor(conf = {app: {}}) {
         this.app = express();
+        this.app.use(logRequests);
         // set up middleware parser to deal with jsons
         this.app.use(bodyParser.urlencoded({extended: true}));
         this.app.use(bodyParser.json());
         // add some basic logging
-        this.app.use(logRequests);
         this.app.use(cors({
             origin: true
         }));

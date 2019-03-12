@@ -92,6 +92,7 @@ const parseValue = (attr, value) => {
     }
     const clause = {operator: 'OR', comparisons: []};
     for (let subValue of value.split('|')) {
+        subValue = decodeURIComponent(subValue); // fix for qs not properly decoding nested components
         let negate = false;
         if (subValue.startsWith('!')) {
             negate = true;

@@ -4,7 +4,7 @@ const form = require('form-urlencoded').default;
 const request = require('request-promise');
 const HTTP_STATUS = require('http-status-codes');
 
-const {getUserByName} = require('./../repo/base');
+const {getUserByName} = require('./../repo/commands');
 const {logger} = require('./../repo/logging');
 const {AuthenticationError, PermissionError} = require('./../repo/error');
 

@@ -5,9 +5,10 @@
  * @ignore
  */
 const _ = require('lodash');
+const path = require('path');
 
 const {RID} = require('orientjs');
-const {constants, schema: SCHEMA_DEFN} = require('@bcgsc/knowledgebase-schema');
+const {constants, schema: SCHEMA_DEFN, util: {timeStampNow}} = require('@bcgsc/knowledgebase-schema');
 
 const {PERMISSIONS} = constants;
 
@@ -57,17 +58,69 @@ const splitSchemaClassLevels = (schema) => {
 
 
 /**
+ * Uses a table to track the last version of the schema for this db
+ *
+ * @param {orientjs.Db} db the orientjs database connection object
+ */
+const createSchemaHistory = async (db) => {
+    logger.log('info', 'creating the schema metadata table');
+    const cls = await db.class.create('SchemaHistory', null, null, false);
+    await cls.property.create({
+        name: 'name',
+        type: 'string',
+        notNull: true,
+        mandatory: true
+    });
+    await cls.property.create({
+        name: 'version',
+        type: 'string',
+        notNull: true,
+        mandatory: true
+    });
+    await cls.property.create({
+        name: 'url',
+        type: 'string',
+        notNull: false,
+        mandatory: false
+    });
+    await cls.property.create({
+        name: 'createdAt',
+        type: 'long',
+        notNull: true,
+        mandatory: true
+    });
+    const pathToVersionInfo = path.join(
+        path.dirname(require.resolve('@bcgsc/knowledgebase-schema')),
+        '../package.json'
+    );
+    // must be a global require, currently no other way to obtain dependency package version info of the actual install
+    const {version, name, _resolved} = require(pathToVersionInfo); // eslint-disable-line
+
+    // now insert the current schema version
+    await cls.create({
+        version,
+        name,
+        url: _resolved,
+        createdAt: timeStampNow()
+    });
+    return cls;
+};
+
+
+/**
  * Defines and uilds the schema in the database
  *
  * @param {orientjs.Db} db the orientjs database connection object
  */
 const createSchema = async (db) => {
+    // create the schema_history model
+    await createSchemaHistory(db);
     // create the permissions class
     await ClassModel.create(SCHEMA_DEFN.Permissions, db); // (name, extends, clusters, abstract)
     // create the user class
-    await ClassModel.create(SCHEMA_DEFN.UserGroup, db);
-
+    await ClassModel.create(SCHEMA_DEFN.UserGroup, db, {properties: false, indices: false});
     await ClassModel.create(SCHEMA_DEFN.User, db);
+    await ClassModel.create(SCHEMA_DEFN.UserGroup, db, {properties: true, indices: true});
     // modify the existing vertex and edge classes to add the minimum required attributes for tracking etc
     const V = await db.class.get('V');
     await Promise.all(Array.from(
@@ -159,6 +212,9 @@ const loadSchema = async (db) => {
     const classes = await db.class.list();
 
     for (const cls of classes) {
+        if (cls.name === 'SchemaHistory') {
+            continue;
+        }
         if (/^(O[A-Z]|_)/.exec(cls.name)) { // orientdb builtin classes
             continue;
         }
