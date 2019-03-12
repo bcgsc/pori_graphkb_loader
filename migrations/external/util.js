@@ -10,6 +10,7 @@ const parse = require('csv-parse/lib/sync');
 const xml2js = require('xml2js');
 const jwt = require('jsonwebtoken');
 const sleep = require('sleep-promise');
+const HTTP_STATUS_CODES = require('http-status-codes');
 
 
 const {logger} = require('./logging');
@@ -128,7 +129,7 @@ class ApiConnection {
                 throw new Error(`expected a single ${endpoint} record but found multiple: ${rid(newRecord[0])} and ${rid(newRecord[1])}`);
             }
         } else if (newRecord.length === 0) {
-            throw new Error(`\nmissing ${endpoint} record where ${JSON.stringify(where)}`);
+            throw new Error(`missing ${endpoint} record where ${JSON.stringify(where)}`);
         }
         [newRecord] = newRecord;
         return newRecord;
@@ -252,12 +253,7 @@ const orderPreferredOntologyTerms = (term1, term2) => {
 };
 
 
-const preferredDiseases = (term1, term2) => {
-    const sourceRank = {
-        oncotree: 0,
-        'disease ontology': 1
-    };
-
+const preferredSources = (sourceRank, term1, term2) => {
     if (orderPreferredOntologyTerms(term1, term2) === 0) {
         if (term1.source.name !== term2.source.name) {
             const rank1 = sourceRank[term1.source.name] === undefined
@@ -277,29 +273,31 @@ const preferredDiseases = (term1, term2) => {
     return orderPreferredOntologyTerms(term1, term2);
 };
 
+
+const preferredVocabulary = (term1, term2) => {
+    const sourceRank = {
+        bcgsc: 0,
+        'sequence ontology': 1,
+        'variation ontology': 2
+    };
+    return preferredSources(sourceRank, term1, term2);
+};
+
+
+const preferredDiseases = (term1, term2) => {
+    const sourceRank = {
+        oncotree: 0,
+        'disease ontology': 1
+    };
+    return preferredSources(sourceRank, term1, term2);
+};
+
 const preferredDrugs = (term1, term2) => {
     const sourceRank = {
         drugbank: 0,
         ncit: 1
     };
-
-    if (orderPreferredOntologyTerms(term1, term2) === 0) {
-        if (term1.source.name !== term2.source.name) {
-            const rank1 = sourceRank[term1.source.name] === undefined
-                ? 2
-                : sourceRank[term1.source.name];
-            const rank2 = sourceRank[term2.source.name] === undefined
-                ? 2
-                : sourceRank[term2.source.name];
-            if (rank1 !== rank2) {
-                return rank1 < rank2
-                    ? -1
-                    : 1;
-            }
-        }
-        return 0;
-    }
-    return orderPreferredOntologyTerms(term1, term2);
+    return preferredSources(sourceRank, term1, term2);
 };
 
 
@@ -372,12 +370,15 @@ const loadXmlToJson = (filename) => {
     });
 };
 
-const requestWithRetry = async (requestOpt, {waitSeconds = 1, retries = 1} = {}) => {
+/**
+ *  Try again for too many requests errors. Helpful for APIs with a rate limit (ex. pubmed)
+ */
+const requestWithRetry = async (requestOpt, {waitSeconds = 2, retries = 1} = {}) => {
     try {
         const result = await request(requestOpt);
         return result;
     } catch (err) {
-        if (err.statusCode === 429 && retries > 0) {
+        if (err.statusCode === HTTP_STATUS_CODES.TOO_MANY_REQUESTS && retries > 0) {
             await sleep(waitSeconds);
             return requestWithRetry(requestOpt, {waitSeconds, retries: retries - 1});
         }
@@ -392,6 +393,7 @@ module.exports = {
     orderPreferredOntologyTerms,
     preferredDiseases,
     preferredDrugs,
+    preferredVocabulary,
     loadDelimToJson,
     loadXmlToJson,
     ApiConnection,
