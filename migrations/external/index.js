@@ -18,14 +18,15 @@ IMPORT_MODULES.drugbank = require('./drugbank');
 IMPORT_MODULES.ensembl = require('./ensembl');
 IMPORT_MODULES.fda = require('./fda');
 IMPORT_MODULES.hgnc = require('./hgnc');
+IMPORT_MODULES.ipr = require('./ipr');
 IMPORT_MODULES.ncit = require('./ncit');
 IMPORT_MODULES.oncokb = require('./oncokb');
 IMPORT_MODULES.oncotree = require('./oncotree');
 IMPORT_MODULES.refseq = require('./refseq');
-IMPORT_MODULES.uberon = require('./uberon');
-IMPORT_MODULES.vocab = require('./vocab');
-IMPORT_MODULES.vario = require('./vario');
 IMPORT_MODULES.sequenceOntology = require('./sequence_ontology');
+IMPORT_MODULES.uberon = require('./uberon');
+IMPORT_MODULES.vario = require('./vario');
+IMPORT_MODULES.vocab = require('./vocab');
 
 
 const optionDefinitions = [
@@ -54,7 +55,7 @@ const optionDefinitions = [
     },
     {
         name: 'host',
-        default: '127.0.0.1',
+        default: process.env.HOSTNAME || '127.0.0.1',
         description: 'server hosting the KB API',
         env: 'KB_HOST'
     },
@@ -153,6 +154,11 @@ const optionDefinitions = [
         alias: 's',
         description: 'path the sequence ontology owl file',
         type: fileExists
+    },
+    {
+        name: 'ipr',
+        description: 'path to the IPR CSV export file',
+        type: fileExists
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
@@ -187,7 +193,8 @@ const upload = async () => {
         'cosmic',
         'oncokb',
         'civic',
-        'docm'
+        'docm',
+        'ipr'
     ];
     for (const moduleName of moduleOrder) {
         if (options[moduleName] !== undefined) {

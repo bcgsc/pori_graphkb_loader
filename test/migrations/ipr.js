@@ -3,7 +3,7 @@
 const {expect} = require('chai');
 const {
     convertDeprecatedSyntax
-} = require('./../../migrations/ipr_v0/migrate');
+} = require('./../../migrations/external/ipr');
 
 describe('convertDeprecatedSyntax', () => {
     it('SV_e.fusion(FGFR2,?)(?,?)', () => {
@@ -13,6 +13,12 @@ describe('convertDeprecatedSyntax', () => {
     it('SV_e.fusion(?,RET)(?,?)', () => {
         const result = convertDeprecatedSyntax('SV_e.fusion(?,RET)(?,?)');
         expect(result).to.eql({type: 'fusion', reference1: 'ret'});
+    });
+    it('fusion with specific exons', () => {
+        const result = convertDeprecatedSyntax('(CLTC,ALK):fusion(e.31,e.20)');
+        expect(result).to.eql({
+            positional: '(cltc,alk):fusion(e.31,e.20)'
+        });
     });
     it('CNV_ERBB2_amplification_na', () => {
         const result = convertDeprecatedSyntax('CNV_ERBB2_amplification_na');
