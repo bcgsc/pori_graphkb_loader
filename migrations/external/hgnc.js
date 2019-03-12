@@ -41,52 +41,35 @@
  * @module migrations/external/hgnc
  */
 const request = require('request-promise');
-
+const Ajv = require('ajv');
+const jsonpath = require('jsonpath');
 
 const {
     rid, orderPreferredOntologyTerms
 } = require('./util');
 const {logger} = require('./logging');
 
+const ajv = new Ajv();
+
 const HGNC_API = 'http://rest.genenames.org/fetch/symbol';
 const SOURCE_NAME = 'hgnc';
 const CLASS_NAME = 'features';
 
-
-const fetchAndLoadBySymbol = async ({conn, symbol}) => {
-    try {
-        const record = await conn.getUniqueRecordBy({
-            endpoint: CLASS_NAME,
-            sortFunc: orderPreferredOntologyTerms,
-            where: {source: {name: SOURCE_NAME}, name: symbol}
-        });
-        return record;
-    } catch (err) {}
-    // fetch from the HGNC API and upload
-    const {response: {docs}} = await request(`${HGNC_API}/${symbol}`, {
-        method: 'GET',
-        headers: {Accept: 'application/json'},
-        json: true
-    });
-    const [gene] = docs;
-
-    const hgnc = await conn.addRecord({
-        endpoint: 'sources',
-        content: {name: 'hgnc'},
-        fetchFirst: true,
-        existsOk: true,
-        fetchExisting: true
-    });
-    let ensembl;
-    try {
-        ensembl = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: 'ensembl'}
-        });
-    } catch (err) {}
-
-    return conn.uploadRecord({conn, gene, sources: {hgnc, ensembl}});
-};
+/**
+ * This defines the expected format of a response from the HGNC API
+ */
+const validateHgncSpec = ajv.compile({
+    type: 'object',
+    properties: {
+        date_modified: {type: 'string'},
+        hgnc_id: {type: 'string', pattern: '^HGNC:[0-9]+$'},
+        name: {type: 'string'},
+        symbol: {type: 'string'},
+        ensembl_gene_id: {type: 'string', pattern: '^ENSG[0-9]+$'},
+        prev_symbol: {type: 'array', items: {type: 'string'}},
+        alias_symbol: {type: 'array', items: {type: 'string'}}
+    }
+});
 
 /**
  * Upload a gene record and relationships from the corresponding HGNC record
@@ -183,6 +166,58 @@ const uploadRecord = async ({
     }
 };
 
+
+const fetchAndLoadBySymbol = async ({conn, symbol}) => {
+    try {
+        const record = await conn.getUniqueRecordBy({
+            endpoint: CLASS_NAME,
+            sort: orderPreferredOntologyTerms,
+            where: {source: {name: SOURCE_NAME}, name: symbol}
+        });
+        return record;
+    } catch (err) {}
+    // fetch from the HGNC API and upload
+    logger.info(`loading: ${HGNC_API}/${symbol}`);
+    const {response: {docs}} = await request(`${HGNC_API}/${symbol}`, {
+        method: 'GET',
+        headers: {Accept: 'application/json'},
+        json: true
+    });
+    for (const record of docs) {
+        if (!validateHgncSpec(record)) {
+            throw new Error(
+                `Spec Validation failed for fetch response of symbol ${
+                    symbol
+                } #${
+                    validateHgncSpec.errors[0].dataPath
+                } ${
+                    validateHgncSpec.errors[0].message
+                } found ${
+                    jsonpath.query(record, `$${validateHgncSpec.errors[0].dataPath}`)
+                }`
+            );
+        }
+    }
+    const [gene] = docs;
+
+    const hgnc = await conn.addRecord({
+        endpoint: 'sources',
+        content: {name: 'hgnc'},
+        fetchFirst: true,
+        existsOk: true,
+        fetchExisting: true
+    });
+    let ensembl;
+    try {
+        ensembl = await conn.getUniqueRecordBy({
+            endpoint: 'sources',
+            where: {name: 'ensembl'}
+        });
+    } catch (err) {}
+
+    return uploadRecord({conn, gene, sources: {hgnc, ensembl}});
+};
+
 /**
  * Upload the HGNC genes and ensembl links
  * @param {object} opt options
@@ -213,6 +248,18 @@ const uploadFile = async (opt) => {
 
     logger.info(`adding ${genes.length} feature records`);
     for (const gene of genes) {
+        if (!validateHgncSpec(gene)) {
+            logger.warn(`Spec Validation failed for fetch response of symbol ${
+                gene && gene.hgnc_id
+            } #${
+                validateHgncSpec.errors[0].dataPath
+            } ${
+                validateHgncSpec.errors[0].message
+            } found ${
+                jsonpath.query(gene, `$${validateHgncSpec.errors[0].dataPath}`)
+            }`);
+            continue;
+        }
         if (gene.longName && gene.longName.toLowerCase().trim() === 'entry withdrawn') {
             continue;
         }
