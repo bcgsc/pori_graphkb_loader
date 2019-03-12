@@ -123,6 +123,9 @@ class AppServer {
             },
             customCss: '.swagger-ui .info pre > code { display: block; color: #373939}'
         }));
+        this.router.get('/spec.json', (req, res) => {
+            res.status(HTTP_STATUS.OK).json(this.spec);
+        });
 
         this.router.get('/schema', async (req, res) => {
             res.status(HTTP_STATUS.OK).json({schema: jc.decycle(schema)});
