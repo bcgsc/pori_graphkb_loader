@@ -1,4 +1,5 @@
 const {rid, requestWithRetry} = require('./util');
+const {logger} = require('./logging');
 
 const PUBMED_DEFAULT_QS = {
     retmode: 'json',
@@ -36,7 +37,9 @@ const parseArticleRecord = (record) => {
  */
 const fetchArticlesByPmids = async (pmidListIn, url = PUBMED_API) => {
     const allArticles = [];
-    const pmidList = Array.from((new Set(pmidListIn)).values()); // remove dups
+    const pmidList = Array.from((new Set(Array.from(pmidListIn))).values()) // remove dups
+        .map(pmid => pmid.trim())
+        .filter(pmid => pmid);
 
     for (let startIndex = 0; startIndex < pmidList.length; startIndex += MAX_CONSEC_IDS) {
         const pmidString = pmidList
@@ -44,6 +47,7 @@ const fetchArticlesByPmids = async (pmidListIn, url = PUBMED_API) => {
             .map(id => id.toString())
             .join(',');
 
+        logger.info(`loading: ${url}`);
         const {result} = await requestWithRetry({
             method: 'GET',
             uri: url,
@@ -68,9 +72,9 @@ const fetchArticle = async (api, sourceId) => {
     if (PUBMED_CACHE[sourceId]) {
         return PUBMED_CACHE[sourceId];
     }
-    const record = api.getUniqueRecord({
-        uri: 'publications',
-        qs: {sourceId}
+    const record = api.getUniqueRecordBy({
+        endpoint: 'publications',
+        where: {sourceId, source: {name: 'pubmed'}}
     });
     return record;
 };
@@ -83,23 +87,24 @@ const fetchArticle = async (api, sourceId) => {
  * @param {boolean} opt.cache add the GraphKB Publication record to the cache
  * @param {boolean} opt.fetchFirst attempt to get the record by source Id before uploading it
  */
-const uploadArticle = async (api, article, opt) => {
+const uploadArticle = async (api, article, opt = {}) => {
     const {
         cache = true,
         fetchFirst = true
     } = opt;
 
+    const {sourceId} = article;
+
     if (cache && PUBMED_CACHE[article.sourceId]) {
         return PUBMED_CACHE[article.sourceId];
     } if (fetchFirst) {
         try {
-            const record = await api.getUniqueRecord({
-                uri: 'publications',
-                method: 'GET',
-                qs: {sourceId: article.sourceId}
+            const record = await api.getUniqueRecordBy({
+                endpoint: 'publications',
+                where: {sourceId}
             });
             if (cache) {
-                PUBMED_CACHE[article.sourceId] = record;
+                PUBMED_CACHE[sourceId] = record;
             }
             return record;
         } catch (err) {}
@@ -108,21 +113,25 @@ const uploadArticle = async (api, article, opt) => {
         ? PUBMED_CACHE.source
         : null;
     if (!pubmedSource) {
-        pubmedSource = await api.getUniqueRecord({
-            uri: 'sources',
-            qs: {name: 'pubmed'}
+        pubmedSource = await api.getUniqueRecordBy({
+            endpoint: 'sources',
+            where: {name: 'pubmed'}
         });
         if (cache) {
             PUBMED_CACHE.source = pubmedSource;
         }
     }
-    const {result} = await api.request({
-        uri: 'publications',
-        method: 'POST',
-        body: Object.assign({source: rid(pubmedSource)}, article)
+    const result = await api.addRecord({
+        endpoint: 'publications',
+        content: Object.assign({source: rid(pubmedSource)}, article),
+        existsOk: true,
+        fetchConditions: {
+            sourceId,
+            source: rid(pubmedSource)
+        }
     });
     if (cache) {
-        PUBMED_CACHE[result.sourceId] = result;
+        PUBMED_CACHE[sourceId] = result;
     }
     return result;
 };
