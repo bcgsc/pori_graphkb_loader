@@ -37,6 +37,11 @@ const convertNulls = (where) => {
  * wrapper to make requests less verbose
  */
 class ApiConnection {
+    /**
+     * @param {object} opt
+     * @param {string} opt.host GraphKB base url host
+     * @param {number} opt.port GraphKB base url port
+     */
     constructor(opt) {
         this.baseUrl = `http://${opt.host}:${opt.port}/api`;
         this.headers = {};

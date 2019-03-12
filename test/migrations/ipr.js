@@ -17,7 +17,7 @@ describe('convertDeprecatedSyntax', () => {
     it('fusion with specific exons', () => {
         const result = convertDeprecatedSyntax('(CLTC,ALK):fusion(e.31,e.20)');
         expect(result).to.eql({
-            positional: '(cltc,alk):fusion(e.31,e.20)'
+            positional: '(CLTC,ALK):fusion(e.31,e.20)'
         });
     });
     it('CNV_ERBB2_amplification_na', () => {
@@ -26,7 +26,7 @@ describe('convertDeprecatedSyntax', () => {
     });
     it('MUT_ARAF:p.S214A', () => {
         const result = convertDeprecatedSyntax('MUT_ARAF:p.S214A');
-        expect(result).to.eql({positional: 'p.S214A', reference1: 'araf'});
+        expect(result).to.eql({positional: 'ARAF:p.S214A'});
     });
     it('MUT_ERBB2_any', () => {
         const result = convertDeprecatedSyntax('MUT_ERBB2_any');
