@@ -7,8 +7,9 @@ const chai = require('chai');
 const chaiHttp = require('chai-http');
 const uuidV4 = require('uuid/v4');
 const HTTP_STATUS = require('http-status-codes');
+
 const {
-    setUpEmptyDB
+    setUpEmptyDB, clearDB
 } = require('./../util');
 const conf = require('./../../config/config.js');
 const {generateToken} = require('./../../app/routes/auth');
@@ -118,7 +119,7 @@ describe('API', () => {
                     res = err;
                 }
                 expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
-                expect(res.response.body).to.have.property('name', 'AttributeError');
+                expect(res.response.body).to.have.property('name', 'ValidationError');
             });
         });
         describe('GET /features', () => {
@@ -133,7 +134,7 @@ describe('API', () => {
                     res = err;
                 }
                 expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
-                expect(res.response.body).to.have.property('name', 'AttributeError');
+                expect(res.response.body).to.have.property('name', 'ValidationError');
             });
             it('BAD REQUEST on invalid special query param', async () => {
                 let res;
@@ -146,7 +147,7 @@ describe('API', () => {
                     res = err;
                 }
                 expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
-                expect(res.response.body).to.have.property('name', 'AttributeError');
+                expect(res.response.body).to.have.property('name', 'ValidationError');
             });
         });
         describe('POST /users', () => {
@@ -175,7 +176,7 @@ describe('API', () => {
                     res = err;
                 }
                 expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
-                expect(res.response.body).to.have.property('name', 'AttributeError');
+                expect(res.response.body).to.have.property('name', 'ValidationError');
             });
             it('UNAUTHORIZED', async () => {
                 let res;
@@ -369,7 +370,7 @@ describe('API', () => {
                     res = err;
                 }
                 expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
-                expect(res.response.body).to.have.property('name', 'AttributeError');
+                expect(res.response.body).to.have.property('name', 'ValidationError');
             });
             it('BAD REQUEST (no sourceId given)', async () => {
                 let res;
@@ -385,7 +386,7 @@ describe('API', () => {
                     res = err;
                 }
                 expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
-                expect(res.response.body).to.have.property('name', 'AttributeError');
+                expect(res.response.body).to.have.property('name', 'ValidationError');
             });
             it('UNAUTHORIZED', async () => {
                 let res;
@@ -986,10 +987,7 @@ describe('API', () => {
         });
         afterEach(async () => {
             // clear all V/E records
-            await db.query('delete edge e');
-            await db.query('delete vertex v');
-            await db.query(`delete from user where name != '${admin.name}'`);
-            await db.query('delete from usergroup where name != \'readonly\' and name != \'admin\' and name != \'regular\'');
+            await clearDB(db, admin);
         });
     });
     after(async () => {

@@ -1,6 +1,6 @@
 const _ = require('lodash');
 
-const {addRecord, rid} = require('./util');
+const {rid} = require('./util');
 const {logger} = require('./logging');
 
 const SOURCE_NAME = 'bcgsc';
@@ -72,7 +72,7 @@ const VOCABULARY = [
     {name: 'indel', subclassof: ['structural variant']},
     {name: 'innate resistance', subclassof: ['resistance']},
     {name: 'insertion', subclassof: ['indel']},
-    {name: 'internal tandem duplication (ITD)', subclassof: ['tandem duplication']},
+    {name: 'internal tandem duplication (ITD)', subclassof: ['tandem duplication'], aliasof: ['internal tandem duplication']},
     {name: 'inversion', subclassof: ['structural variant']},
     {name: 'inverted translocation', subclassof: ['translocation']},
     {name: 'is characteristic of', subclassof: ['favours diagnosis'], description: 'a hallmark of this disease type'},
@@ -90,6 +90,9 @@ const VOCABULARY = [
     {
         name: 'loss of function', subclassof: ['reduced function'], aliasof: ['deletrious'], description: 'some normal functionality has been lost'
     },
+    {
+        name: 'loss of function mutation', subclassof: ['loss of function', 'mutation'], alias: ['deletrious mutation'], description: 'some normal functionality has been lost as a result of a mutation'
+    },
     {name: 'low microsatellite instability', subclassof: ['microsatellite instability'], aliasof: ['MSI-low']},
     {name: 'metabolism', subclassof: ['therapeutic indicator']},
     {name: 'methylation', subclassof: ['methylation variant']},
@@ -99,7 +102,9 @@ const VOCABULARY = [
     {name: 'microsatellite stable', subclassof: ['microsatellite phenotype'], aliasof: ['MSS']},
     {name: 'missense mutation', subclassof: ['substitution'], aliasof: ['missense']},
     {name: 'mutation hotspot', subclassof: ['recurrent'], description: 'the specific residue noted has been observed to be recurrently and commonly mutated at some signifiant frequency above random in numerrous independent observations'},
-    {name: 'mutation', subclassof: ['biological'], description: 'generally small mutations or intra-chromosomal rearrangements'},
+    {
+        name: 'mutation', subclassof: ['biological'], aliasof: ['alteration'], description: 'generally small mutations or intra-chromosomal rearrangements'
+    },
     {name: 'no expression', subclassof: ['expression variant']},
     {
         name: 'no functional effect', subclassof: ['biological'], aliasof: ['neutral'], description: 'does not result in altered functionality as compared to the wild-type'
@@ -127,6 +132,7 @@ const VOCABULARY = [
     {name: 'opposes diagnosis', subclassof: ['diagnostic indicator']},
     {name: 'pathogenic', subclassof: ['predisposing']},
     {name: 'phenotype', subclassof: ['biological']},
+    {name: 'patient', description: 'Used in statements (primarily prognostic) to indicate when something applies to a patient (ex. increased survival)'},
     {name: 'phosphorylation', subclassof: ['post-translational modification']},
     {name: 'polymorphism', subclassof: ['mutation']},
     {name: 'post-translational modification', subclassof: ['biological']},
@@ -134,6 +140,9 @@ const VOCABULARY = [
     {name: 'prognostic indicator'},
     {name: 'protective', subclassof: ['benign'], description: 'protect against some disease or phenotype. Associated with decreased risk of the disease or phenotype'},
     {name: 'protein expression variant', subclassof: ['expression variant']},
+    {name: 'promoter hypermethylation', subclassof: ['promoter variant']},
+    {name: 'promoter hypomethylation', subclassof: ['promoter variant']},
+    {name: 'promoter variant', subclassof: ['variant']},
     {name: 'recurrent', subclassof: ['biological'], description: 'commonly observed'},
     {name: 'reduced expression', subclassof: ['any expression'], aliasof: ['underexpression', 'down-regulated expression']},
     {
@@ -164,6 +173,7 @@ const VOCABULARY = [
     {name: 'tumour suppressive', subclassof: ['tumourigenesis'], description: 'suppresses or blocks the development of cancer'},
     {name: 'tumourigenesis', subclassof: ['biological']},
     {name: 'unfavourable prognosis', subclassof: ['prognostic indicator'], description: 'event is associated with a specifed, unfavouable outcome'},
+    {name: 'variant', aliasof: ['alteration']},
     {name: 'weakly reduced function', subclassof: ['reduced function']},
     {name: 'weakly increased function', subclassof: ['increased function']},
     {name: 'wild type', subclassof: ['no functional effect'], aliasof: ['wildtype']}
@@ -212,9 +222,13 @@ const VOCABULARY = [
  */
 const upload = async (opt) => {
     const {conn} = opt;
-    logger.info('Loading custom vocabulary terms');
+    logger.info(`Loading ${VOCABULARY.length} custom vocabulary terms`);
     const termsByName = {};
-    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
+    const source = await conn.addRecord({
+        endpoint: 'sources',
+        content: {name: SOURCE_NAME},
+        existsOk: true
+    });
     // add the records
     for (const term of VOCABULARY) {
         term.name = term.name.toLowerCase();
@@ -226,44 +240,66 @@ const upload = async (opt) => {
         if (term.description) {
             content.description = term.description;
         }
-        const record = await addRecord('vocabulary', content, conn, {
+        const record = await conn.addRecord({
+            endpoint: 'vocabulary',
+            content,
+
             existsOk: true,
-            getWhere: _.omit(content, ['description'])
+            fetchConditions: _.omit(content, ['description'])
         });
         termsByName[record.name] = record;
     }
     // now add the edge links
-    logger.info('\nRelating custom vocabulary');
+    logger.info('Relating custom vocabulary');
     for (const term of VOCABULARY) {
+        logger.info(`relationships for ${term.name}`);
         term.name = term.name.toLowerCase();
         for (const parent of term.subclassof || []) {
-            await addRecord('subclassof', {
-                out: termsByName[term.name]['@rid'],
-                in: termsByName[parent.toLowerCase()]['@rid'],
-                source: rid(source)
-            }, conn, {existsOk: true});
+            await conn.addRecord({
+                endpoint: 'subclassof',
+                content: {
+                    out: rid(termsByName[term.name]),
+                    in: rid(termsByName[parent.toLowerCase()]),
+                    source: rid(source)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
         }
         for (let parent of term.aliasof || []) {
-            parent = await addRecord('vocabulary', {
-                name: parent,
-                sourceId: parent,
-                source: rid(source)
-            }, conn, {existsOk: true});
-            await addRecord('aliasof', {
-                out: termsByName[term.name]['@rid'],
-                in: rid(parent),
-                source: rid(source)
-            }, conn, {existsOk: true});
+            parent = await conn.addRecord({
+                endpoint: 'vocabulary',
+                content: {
+                    name: parent,
+                    sourceId: parent,
+                    source: rid(source)
+                },
+                existsOk: true
+            });
+            await conn.addRecord({
+                endpoint: 'aliasof',
+                content: {
+                    out: rid(termsByName[term.name]),
+                    in: rid(parent),
+                    source: rid(source)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
         }
         for (const parent of term.oppositeof || []) {
-            await addRecord('oppositeof', {
-                out: termsByName[term.name]['@rid'],
-                in: termsByName[parent.toLowerCase()]['@rid'],
-                source: rid(source)
-            }, conn, {existsOk: true});
+            await conn.addRecord({
+                endpoint: 'oppositeof',
+                content: {
+                    out: rid(termsByName[term.name]),
+                    in: rid(termsByName[parent.toLowerCase()]),
+                    source: rid(source)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
         }
     }
-    console.log();
     return termsByName;
 };
 

@@ -13,9 +13,9 @@
 const rdf = require('rdflib');
 const fs = require('fs');
 const {
-    addRecord, getRecordBy, convertOwlGraphToJson, orderPreferredOntologyTerms, rid
+    convertOwlGraphToJson, orderPreferredOntologyTerms, rid
 } = require('./util');
-const {logger, progress} = require('./logging');
+const {logger} = require('./logging');
 
 const PREDICATES = {
     CROSS_REF: 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
@@ -79,8 +79,13 @@ const uploadFile = async ({filename, conn}) => {
     const nodesByCode = convertOwlGraphToJson(graph, parseUberonId);
 
     const subclassEdges = [];
-    const source = await addRecord('sources', {name: SOURCE_NAME}, conn, {existsOk: true});
-
+    const source = await conn.addRecord({
+        endpoint:
+        'sources',
+        content: {name: SOURCE_NAME},
+        existsOk: true
+    });
+    const ncitMissingRecords = new Set();
     logger.info(`Adding the uberon ${Object.keys(nodesByCode).length} entity nodes`);
     for (const node of Object.values(nodesByCode)) {
         if (!node[PREDICATES.LABEL] || !node.code) {
@@ -113,40 +118,56 @@ const uploadFile = async ({filename, conn}) => {
         if (node[PREDICATES.DEPRECATED] && node[PREDICATES.DEPRECATED][0] === 'true') {
             body.deprecated = true;
         }
-        const dbEntry = await addRecord('anatomicalentities', body, conn, {existsOk: true});
+        const dbEntry = await conn.addRecord({endpoint: 'anatomicalentities', content: body, existsOk: true});
         records[dbEntry.sourceId] = dbEntry;
     }
-    logger.info(`\nAdding the ${subclassEdges.length} subclassof relationships`);
+    logger.info(`Adding the ${subclassEdges.length} subclassof relationships`);
     for (const {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
-            await addRecord('subclassof', {
-                out: records[src]['@rid'],
-                in: records[tgt]['@rid'],
-                source: rid(source)
-            }, conn, {existsOk: true});
+            await conn.addRecord({
+                endpoint: 'subclassof',
+                content: {
+                    out: records[src]['@rid'],
+                    in: records[tgt]['@rid'],
+                    source: rid(source)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
         } else {
-            progress('x');
+            logger.error(`Failed to create the subclass relationship from ${src.sourceId} to ${tgt.sourceId}`);
         }
     }
 
-    logger.info(`\nAdding the ${ncitLinks.length} uberon/ncit aliasof relationships`);
+    logger.info(`Adding the ${ncitLinks.length} uberon/ncit aliasof relationships`);
     for (const {src, tgt} of ncitLinks) {
         if (records[src] === undefined) {
             continue;
         }
         try {
-            const ncitRecord = await getRecordBy('anatomicalentities', {source: {name: 'ncit'}, sourceId: tgt}, conn, orderPreferredOntologyTerms);
-            await addRecord('aliasof', {
-                out: records[src]['@rid'],
-                in: rid(ncitRecord),
-                source: rid(source)
-            }, conn, {existsOk: true});
+            const ncitRecord = await conn.getUniqueRecordBy({
+                endpoint: 'anatomicalentities',
+                where: {source: {name: 'ncit'}, sourceId: tgt},
+                sort: orderPreferredOntologyTerms
+            });
+            await conn.addRecord({
+                endpoint: 'aliasof',
+                content: {
+                    out: records[src]['@rid'],
+                    in: rid(ncitRecord),
+                    source: rid(source)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
         } catch (err) {
             // ignore missing vocabulary
-            progress('x');
+            ncitMissingRecords.add(tgt);
         }
     }
-    console.log();
+    if (ncitMissingRecords.size) {
+        logger.warn(`Unable to retrieve ${ncitMissingRecords.size} ncit records for linking`);
+    }
 };
 
 module.exports = {uploadFile};
