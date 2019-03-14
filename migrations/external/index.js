@@ -27,6 +27,7 @@ IMPORT_MODULES.sequenceOntology = require('./sequence_ontology');
 IMPORT_MODULES.uberon = require('./uberon');
 IMPORT_MODULES.vario = require('./vario');
 IMPORT_MODULES.vocab = require('./vocab');
+IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
 
 
 const optionDefinitions = [
@@ -141,6 +142,11 @@ const optionDefinitions = [
         type: fileExists
     },
     {
+        name: 'ctg',
+        description: 'load trials information from an XML export of a search result downloaded fomr clinicaltrials.gov',
+        type: fileExists
+    },
+    {
         name: 'docm',
         description: 'load mutations from DOCM database api'
     },
@@ -181,6 +187,7 @@ const upload = async () => {
         'vocab',
         'sequenceOntology',
         'vario',
+        'ctg',
         'ncit',
         'fda',
         'drugbank',
