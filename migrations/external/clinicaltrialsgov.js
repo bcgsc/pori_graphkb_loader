@@ -1,7 +1,13 @@
 /**
- * Module to import active clinical trials from clinicaltrials.gov
+ * Module to import clinical trials data exported from clinicaltrials.gov
  *
- * Use their REST API to retrieve XML data and download it, then upload it here
+ * 1. Perform a search on their site, for example https://clinicaltrials.gov/ct2/results?recrs=ab&cond=Cancer&term=&cntry=CA&state=&city=&dist=
+ * 2. Click their Download link/Button
+ * 3. Adjust the settings in the Pop up dialog (Include all studies, all columns, and export as XML)
+ * 4. Download and save the file
+ * 5. Upload the file to GraphKB using this module
+ *
+ * @module migrations/external/clinicaltrialsgov
  */
 
 const {
@@ -9,11 +15,14 @@ const {
 } = require('./util');
 const {logger} = require('./logging');
 
-const SEARCH_URL = 'https://clinicaltrials.gov/ct2/results?displayxml=true&type=Intr&recrs=ab&cond=cancer&cntry=CA';
-
-
 /**
  * Process the XML trial record. Attempt to link the drug and/or disease information
+ *
+ * @param {object} opt
+ * @param {ApiConnection} opt.conn the GraphKB connection object
+ * @param {object} opt.record the XML record (pre-parsed into JSON)
+ * @param {object|string} opt.source the 'source' record for clinicaltrials.gov
+ * @param {object} opt.counts the counts object for reporting errors
  */
 const processRecord = async ({
     conn, record, source, counts
@@ -87,6 +96,12 @@ const processRecord = async ({
 };
 
 
+/**
+ * Uploads a file exported from clinicaltrials.gov as XML
+ * @param {object} opt
+ * @param {ApiConnection} opt.conn the GraphKB connection object
+ * @param {string} opt.filename the path to the XML export
+ */
 const uploadFile = async ({conn, filename}) => {
     logger.info(`loading: ${filename}`);
     const data = await loadXmlToJson(filename);
