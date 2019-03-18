@@ -181,6 +181,13 @@ const parse = (queryParams) => {
             specialArgs[attr] = castBoolean(value);
         } else if (attr === 'compoundSyntax') {
             compoundSyntax = value;
+        } else if (attr === 'orderByDirection') {
+            specialArgs[attr] = value.toString().toUpperCase();
+            if (!['ASC', 'DESC'].includes(specialArgs[attr])) {
+                throw new AttributeError(`Invalid direction value ${value} expected ASC or DESC`);
+            }
+        } else if (attr === 'orderBy') {
+            specialArgs[attr] = value.split(',');
         } else {
             if (!attr) {
                 attr = formatTraversal(attrList);
