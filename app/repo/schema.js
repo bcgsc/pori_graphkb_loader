@@ -5,7 +5,6 @@
  * @ignore
  */
 const _ = require('lodash');
-const path = require('path');
 
 const {RID} = require('orientjs');
 const {constants, schema: SCHEMA_DEFN, util: {timeStampNow}} = require('@bcgsc/knowledgebase-schema');
@@ -16,6 +15,7 @@ constants.RID = RID; // IMPORTANT: Without this all castToRID will do is convert
 
 const {logger} = require('./logging');
 const {ClassModel, Property} = require('./model');
+const {getLoadVersion} = require('./migrate');
 
 /**
  * Split class models into an array or with dependencies
@@ -89,18 +89,13 @@ const createSchemaHistory = async (db) => {
         notNull: true,
         mandatory: true
     });
-    const pathToVersionInfo = path.join(
-        path.dirname(require.resolve('@bcgsc/knowledgebase-schema')),
-        '../package.json'
-    );
-    // must be a global require, currently no other way to obtain dependency package version info of the actual install
-    const {version, name, _resolved} = require(pathToVersionInfo); // eslint-disable-line
+    const {version, name, url} = getLoadVersion();
 
     // now insert the current schema version
     await cls.create({
         version,
         name,
-        url: _resolved,
+        url,
         createdAt: timeStampNow()
     });
     return cls;
