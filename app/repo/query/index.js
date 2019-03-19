@@ -73,7 +73,7 @@ const generalKeywordSearch = (keywordsIn, skip = 0) => {
         'relevance.sourceId'
     ])
 }),
-                $v = UNIONALL($statements, $variants, $implicable)
+                $v = UNIONALL($statements, $variants, $implicable, $ont)
         ) WHERE deletedAt IS NULL
     )`;
     if (skip && skip > 0) {
