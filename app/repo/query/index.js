@@ -91,7 +91,7 @@ const generalKeywordSearch = (keywordsIn, opt) => {
             throw new AttributeError(`Invalid orderBy (${orderBy.join(', ')}) ${err}`);
         }
 
-        query = `${query} ORDER BY ${orderBy.join(', ')} ${orderByDirection}`;
+        query = `${query} ORDER BY ${orderBy.map(param => `${param} ${orderByDirection}`).join(', ')}`;
     }
     if (count) {
         query = `SELECT count(*) from (${query})`;

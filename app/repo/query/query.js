@@ -386,7 +386,7 @@ class Query {
             queryString = `SELECT * FROM (${queryString}) WHERE deletedAt IS NULL`; // Fix for indexing error in OrientDB v2
         }
         if (this.orderBy && this.orderBy.length > 0) {
-            queryString = `${queryString} ORDER BY ${this.orderBy.join(', ')} ${this.orderByDirection}`;
+            queryString = `${queryString} ORDER BY ${this.orderBy.map(param => `${param} ${this.orderByDirection}`).join(', ')}`;
         }
         if (this.count) {
             queryString = `SELECT count(*) FROM (${queryString})`;
