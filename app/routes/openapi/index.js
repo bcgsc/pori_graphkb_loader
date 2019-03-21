@@ -261,6 +261,9 @@ const describeGet = (model) => {
     }
 
     for (const prop of Object.values(model.properties)) {
+        if (prop.name === '@class') {
+            continue;
+        }
         const isList = !!/(list|set)/g.exec(prop.type);
         const isLink = !!prop.type.includes('link');
 
@@ -358,7 +361,10 @@ const describePostSearch = (model) => {
                 min: 0,
                 max: MAX_JUMPS,
                 description: 'For the final query result, fetch records up to this many links away (warning: may significantly increase query time)'
-            }
+            },
+            count: {type: 'boolean', default: 'false', description: 'return a count of the resulting records instead of the records themselves'},
+            orderBy: {type: 'string', description: 'CSV delimited list of property names (traversals) to sort the results by'},
+            orderByDirection: {type: 'string', enum: ['ASC', 'DESC'], description: 'When orderBy is given, this is used to determine the ordering direction'}
         }
     };
     const description = {
