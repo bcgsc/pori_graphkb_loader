@@ -81,7 +81,7 @@ const generalKeywordSearch = (keywordsIn, opt) => {
         'relevance.sourceId'
     ])
 }),
-                $v = UNIONALL($statements, $variants, $implicable, $ont)
+                $v = UNIONALL($statements, $implicable)
         ) WHERE deletedAt IS NULL
     )`;
     if (orderBy) {
