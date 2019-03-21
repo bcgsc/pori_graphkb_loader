@@ -6,6 +6,8 @@
  * @constant
  * @ignore
  */
+const {error: {AttributeError}, schema: SCHEMA_DEFN} = require('@bcgsc/knowledgebase-schema');
+
 const {Comparison, Clause, Query} = require('./query');
 const {Traversal} = require('./traversal');
 const match = require('./match');
@@ -16,7 +18,13 @@ const util = require('./util');
 /**
  * For the GUI to speed up the main search query until we can migrate to v3 odb
  */
-const generalKeywordSearch = (keywordsIn, skip = 0) => {
+const generalKeywordSearch = (keywordsIn, opt) => {
+    const {
+        skip = 0,
+        orderBy,
+        orderByDirection = 'ASC',
+        count = false
+    } = opt;
     const params = {};
     const paramMapping = {};
 
@@ -76,7 +84,18 @@ const generalKeywordSearch = (keywordsIn, skip = 0) => {
                 $v = UNIONALL($statements, $variants, $implicable, $ont)
         ) WHERE deletedAt IS NULL
     )`;
-    if (skip && skip > 0) {
+    if (orderBy) {
+        try {
+            orderBy.map(orderProp => Traversal.parse(SCHEMA_DEFN, SCHEMA_DEFN.V, orderProp));
+        } catch (err) {
+            throw new AttributeError(`Invalid orderBy (${orderBy.join(', ')}) ${err}`);
+        }
+
+        query = `${query} ORDER BY ${orderBy.join(', ')} ${orderByDirection}`;
+    }
+    if (count) {
+        query = `SELECT count(*) from (${query})`;
+    } else if (skip && skip > 0) {
         query = `${query} SKIP ${skip}`;
     }
     return {query, params};

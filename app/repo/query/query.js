@@ -6,7 +6,7 @@ const match = require('./match');
 const {
     PARAM_PREFIX, OPERATORS, MAX_LIMIT, MAX_NEIGHBORS
 } = require('./constants');
-const {castRangeInt} = require('./util');
+const {castRangeInt, castBoolean} = require('./util');
 const {Traversal} = require('./traversal');
 
 
@@ -228,7 +228,8 @@ class Query {
             orderByDirection = 'ASC',
             returnProperties = null,
             activeOnly = true,
-            skip = null
+            skip = null,
+            count = false
         } = opt;
         this.modelName = modelName;
         this.where = where || new Clause(OPERATORS.AND); // conditions that make up the terms of the query
@@ -240,6 +241,7 @@ class Query {
         this.activeOnly = activeOnly;
         this.orderBy = orderBy;
         this.orderByDirection = orderByDirection;
+        this.count = count;
     }
 
     /**
@@ -262,6 +264,7 @@ class Query {
             orderBy = null,
             orderByDirection = 'ASC',
             limit = MAX_LIMIT,
+            count = false,
             neighbors = 0,
             type = null,
             edges = null,
@@ -278,9 +281,6 @@ class Query {
         if (!['ASC', 'DESC'].includes(orderByDirection)) {
             throw new AttributeError(`orderByDirection must be ASC or DESC not ${orderByDirection}`);
         }
-        // will throw errors on invalid inputs
-        castRangeInt(limit, 1, MAX_LIMIT);
-        castRangeInt(neighbors, 0, MAX_NEIGHBORS);
 
         const schemaMap = {};
         for (const currModel of Object.values(schema)) {
@@ -322,11 +322,12 @@ class Query {
             returnProperties,
             orderBy,
             orderByDirection,
-            limit,
-            neighbors,
+            limit: castRangeInt(limit, 1, MAX_LIMIT),
+            neighbors: castRangeInt(neighbors, 0, MAX_NEIGHBORS),
             type,
             edges,
-            depth
+            depth,
+            count: castBoolean(count)
         });
     }
 
@@ -387,7 +388,9 @@ class Query {
         if (this.orderBy && this.orderBy.length > 0) {
             queryString = `${queryString} ORDER BY ${this.orderBy.join(', ')} ${this.orderByDirection}`;
         }
-        if (this.skip != null) {
+        if (this.count) {
+            queryString = `SELECT count(*) FROM (${queryString})`;
+        } else if (this.skip != null) {
             queryString = `${queryString} SKIP ${this.skip}`;
         }
         return {query: queryString, params};
