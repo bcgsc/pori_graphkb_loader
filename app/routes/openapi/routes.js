@@ -188,7 +188,10 @@ const GET_KEYWORD = {
         },
         {$ref: '#components/parameters/neighbors'},
         {$ref: '#components/parameters/limit'},
-        {$ref: '#components/parameters/skip'}
+        {$ref: '#components/parameters/skip'},
+        {$ref: '#components/parameters/orderBy'},
+        {$ref: '#components/parameters/orderByDirection'},
+        {$ref: '#components/parameters/count'}
     ],
     responses: {
         200: {

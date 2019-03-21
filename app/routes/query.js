@@ -175,10 +175,15 @@ const parse = (queryParams) => {
             specialArgs[attr] = castRangeInt(value, 1, MAX_LIMIT);
         } else if (attr === 'skip') {
             specialArgs[attr] = castRangeInt(value, 0, null);
-        } else if (attr === 'or' || attr === 'returnProperties') {
+        } else if (attr === 'or' || attr === 'returnProperties' || attr === 'orderBy') {
             specialArgs[attr] = value.split(',');
-        } else if (attr === 'activeOnly') {
+        } else if (attr === 'activeOnly' || attr === 'count') {
             specialArgs[attr] = castBoolean(value);
+        } else if (attr === 'orderByDirection') {
+            if (!['ASC', 'DESC'].includes(`${value}`.toUpperCase())) {
+                throw new AttributeError(`Bad value (${value}) for orderByDirection. Must be one of DESC or ASC`);
+            }
+            specialArgs[attr] = `${value}`.toUpperCase();
         } else if (attr === 'compoundSyntax') {
             compoundSyntax = value;
         } else if (attr === 'orderByDirection') {

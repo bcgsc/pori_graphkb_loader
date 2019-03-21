@@ -75,6 +75,27 @@ const GENERAL_QUERY_PARAMS = {
         schema: {type: 'string'},
         nullable: false,
         description: 'CSV list of class properties which should be joined as an OR statment instead of the default AND'
+    },
+    orderBy: {
+        in: 'query',
+        name: 'orderBy',
+        schema: {type: 'string'},
+        nullable: false,
+        description: 'CSV list of properties to order the results by'
+    },
+    orderByDirection: {
+        in: 'query',
+        name: 'orderByDirection',
+        nullable: false,
+        description: 'When orderBy is given, this property is used to determine the direction of that ordering',
+        schema: {type: 'string', enum: ['ASC', 'DESC']}
+    },
+    count: {
+        in: 'query',
+        name: 'count',
+        nullable: false,
+        description: 'Return a count of the records for this query instead of the query itself',
+        schema: {type: 'boolean'}
     }
 };
 

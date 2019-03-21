@@ -12,6 +12,7 @@
 | DB_PASS | admin | Database password |
 | DB_NAME | `kbapi_<VERSION>` | Database name to use |
 | DB_CREATE | false | Set this to `1` to create the database if it does not exist |
+| DB_MIGRATE | false | Set this to `1` to attempt to migrate the database if it exists and requires migration |
 
 ## API Settings
 
