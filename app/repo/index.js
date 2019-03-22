@@ -19,25 +19,30 @@ const connectDB = async (conf) => {
         : 'does not exist'}`);
 
     let db;
-    if (!exists && conf.db.create) {
-        // the db does not exist, create it
-        try {
-            logger.log('info', `creating the database: ${conf.db.name}`);
-            db = await server.create({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
-        } catch (err) {
-            server.close();
-            throw err;
-        }
-        // now create the schema
-        try {
-            await createSchema(db);
-        } catch (err) {
-            // drop the newly created db
-            await server.drop({name: conf.db.name});
-            server.close();
-            throw err;
+    if (conf.db.create) {
+        if (!exists) {
+            // the db does not exist, create it
+            try {
+                logger.log('info', `creating the database: ${conf.db.name}`);
+                db = await server.create({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
+            } catch (err) {
+                server.close();
+                throw err;
+            }
+            // now create the schema
+            try {
+                await createSchema(db);
+            } catch (err) {
+                // drop the newly created db
+                await server.drop({name: conf.db.name});
+                server.close();
+                throw err;
+            }
+        } else {
+            throw new Error(`Cannot create the database ${conf.db.name} it already exists`);
         }
     }
+
     if (!db) {
         logger.log('info', `connecting to the database (${conf.db.name}) as ${conf.db.user}`);
         try {
