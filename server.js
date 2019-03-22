@@ -1,5 +1,3 @@
-
-
 // required packages
 const createConfig = require('./config/config'); // get the database connection configuration
 const {AppServer} = require('./app');

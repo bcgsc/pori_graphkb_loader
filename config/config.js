@@ -34,7 +34,8 @@ const create = () => {
         app: {port: process.env.PORT || 8080},
         privateKeyFile: process.env.KEY_FILE || 'id_rsa',
         disableAuth: process.env.DISABLE_AUTH === '1',
-        keycloak
+        keycloak,
+        createUser: true
     };
 };
 

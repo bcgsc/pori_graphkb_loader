@@ -3,6 +3,8 @@ const OrientDB = require('orientjs');
 const {logger} = require('./logging');
 const {loadSchema, createSchema} = require('./schema');
 const {migrate} = require('./migrate');
+const {createUser} = require('./commands');
+const {RecordExistsError} = require('./error');
 
 
 const connectDB = async (conf) => {
@@ -52,6 +54,22 @@ const connectDB = async (conf) => {
             throw err;
         }
     }
+
+    if (conf.createUser && process.env.USER) {
+        try {
+            logger.log('info', `create the current user (${process.env.USER}) as admin`);
+            await createUser(db, {
+                userName: process.env.USER,
+                groupNames: ['admin'],
+                existsOk: true
+            });
+        } catch (err) {
+            if (!(err instanceof RecordExistsError)) {
+                logger.log('error', `Error in creating the current user ${err}`);
+            }
+        }
+    }
+
     // check if migration is required
     try {
         await migrate(db, {checkOnly: !conf.db.migrate});

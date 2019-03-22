@@ -16,9 +16,10 @@ const {
  */
 const wrapIfTypeError = (err) => {
     if (err && err.type) {
-        if (err.type.toLowerCase().includes('orecordduplicatedexception')) {
+        const type = err.type.toLowerCase();
+        if (type.includes('orecordduplicatedexception')) {
             return new RecordExistsError(err);
-        } if (err.type.toLowerCase().includes('orecordnotfoundexception')) {
+        } if (type.includes('orecordnotfoundexception')) {
             return new NoRecordFoundError(err);
         }
     }
