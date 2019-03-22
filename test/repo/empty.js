@@ -3,8 +3,6 @@
 const {
     expect
 } = require('chai');
-const uuidV4 = require('uuid/v4');
-
 
 const {
     create,
@@ -23,11 +21,7 @@ const {
     Query
 } = require('./../../app/repo/query');
 
-const emptyConf = Object.assign({}, require('./../../config/config.js'));
-
-emptyConf.db = Object.assign({}, emptyConf.db);
-emptyConf.verbose = true;
-emptyConf.db.name = `test_${uuidV4()}`;
+const createConfig = require('./../../config/config.js');
 
 
 describe('schema', () => {
@@ -36,17 +30,16 @@ describe('schema', () => {
         admin,
         doSource,
         otherVertex,
-        server;
+        server,
+        conf;
     before(async () => {
         ({
             db,
             schema,
             admin,
-            server
-        } = await setUpEmptyDB(emptyConf));
-        if (process.env.VERBOSE === '1') {
-            console.log('finished DB setup');
-        }
+            server,
+            conf
+        } = await setUpEmptyDB(createConfig()));
     });
     describe('SelectionQuery', () => {
         it('select statements related to a particular publication pmid');
@@ -464,9 +457,7 @@ describe('schema', () => {
             expect(statement).to.have.property('appliesTo', null);
         });
         describe('query', () => {
-            let statement1,
-                statement2,
-                relevance3;
+            let relevance3;
             beforeEach(async () => {
                 relevance3 = await create(db, {
                     model: schema.Vocabulary,
@@ -477,7 +468,7 @@ describe('schema', () => {
                     },
                     user: admin
                 });
-                [, , statement1, statement2] = await Promise.all(Array.from([
+                await Promise.all(Array.from([
                     {
                         model: schema.AliasOf,
                         content: {out: relevance1['@rid'], in: relevance2['@rid'], source}
@@ -570,7 +561,7 @@ describe('schema', () => {
     });
     after(async () => {
         if (server) {
-            await server.drop({name: emptyConf.db.name});
+            await server.drop({name: conf.db.name});
             await server.close();
         }
     });

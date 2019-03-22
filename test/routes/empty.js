@@ -5,23 +5,17 @@ const {
 } = require('chai');
 const chai = require('chai');
 const chaiHttp = require('chai-http');
-const uuidV4 = require('uuid/v4');
 const HTTP_STATUS = require('http-status-codes');
 
 const {
     setUpEmptyDB, clearDB
 } = require('./../util');
-const conf = require('./../../config/config.js');
+const createConfig = require('./../../config/config.js');
 const {generateToken} = require('./../../app/routes/auth');
 
 chai.use(chaiHttp);
 
 const REALLY_LONG_TIME = 10000000000;
-conf.disableAuth = true;
-conf.db = Object.assign({}, conf.db);
-conf.verbose = true;
-conf.db.name = `test_${uuidV4()}`;
-conf.privateKey = 'testKey';
 
 
 describe('API', () => {
@@ -29,24 +23,31 @@ describe('API', () => {
         admin,
         app,
         mockToken,
-        server;
+        server,
+        conf;
     before(async () => {
-        conf.verbose = true;
         ({
             db,
             admin,
-            server
-        } = await setUpEmptyDB(conf));
+            server,
+            conf
+        } = await setUpEmptyDB({
+            ...createConfig(),
+            verbose: true,
+            privateKey: 'testKey',
+            disableAuth: true
+        }));
 
         const {AppServer} = require('./../../app'); // eslint-disable-line global-require
         delete conf.app.port;
+        conf.db.create = false; // already created
         app = new AppServer(conf, false);
 
         await app.listen();
         mockToken = await generateToken(db, admin.name, conf.privateKey, REALLY_LONG_TIME);
     });
 
-    describe('stats', () => {
+    describe('GET /stats', () => {
         it('gathers table stats', async () => {
             const res = await chai.request(app.app)
                 .get(`${app.prefix}/stats`)
@@ -82,6 +83,13 @@ describe('API', () => {
                 expect(res.body.result.length).to.equal(1);
                 expect(res.body.result[0].name).to.equal('admin');
             });
+            it('aggregates the count', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/users?count=true`)
+                    .set('Authorization', mockToken);
+                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res.body.result).to.eql([{count: 1}]);
+            });
         });
         describe('POST /users/search', () => {
             it('name', async () => {
@@ -115,34 +123,6 @@ describe('API', () => {
                             neighbors: 1,
                             limit: 10
                         });
-                } catch (err) {
-                    res = err;
-                }
-                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
-                expect(res.response.body).to.have.property('name', 'ValidationError');
-            });
-        });
-        describe('GET /features', () => {
-            it('BAD REQUEST on invalid biotype', async () => {
-                let res;
-                try {
-                    res = await chai.request(app.app)
-                        .get(`${app.prefix}/features?biotype=blargh`)
-                        .type('json')
-                        .set('Authorization', mockToken);
-                } catch (err) {
-                    res = err;
-                }
-                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
-                expect(res.response.body).to.have.property('name', 'ValidationError');
-            });
-            it('BAD REQUEST on invalid special query param', async () => {
-                let res;
-                try {
-                    res = await chai.request(app.app)
-                        .get(`${app.prefix}/features?neighbors=-1`)
-                        .type('json')
-                        .set('Authorization', mockToken);
                 } catch (err) {
                     res = err;
                 }
@@ -339,6 +319,56 @@ describe('API', () => {
                 ).body.result;
                 expect(updated).to.have.property('@rid', group['@rid'].toString());
                 expect(updated).to.have.property('history');
+            });
+        });
+        describe('GET /features', () => {
+            it('BAD REQUEST on invalid biotype', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .get(`${app.prefix}/features?biotype=blargh`)
+                        .type('json')
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('name', 'ValidationError');
+            });
+            it('BAD REQUEST on invalid special query param', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .get(`${app.prefix}/features?neighbors=-1`)
+                        .type('json')
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('name', 'ValidationError');
+            });
+            it('aggregates on count', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/features?count=t`)
+                    .type('json')
+                    .set('Authorization', mockToken);
+                expect(res.body.result).to.eql([{count: 0}]);
+            });
+        });
+        describe('GET /features/{rid}', () => {
+            it('BAD REQUEST on invalid rid', async () => {
+                let res;
+                try {
+                    res = await chai.request(app.app)
+                        .get(`${app.prefix}/features/kme`)
+                        .type('json')
+                        .set('Authorization', mockToken);
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('name', 'ValidationError');
             });
         });
         describe('POST /diseases', () => {
@@ -684,7 +714,7 @@ describe('API', () => {
                 expect(resp.body.result).to.have.property('length', 1);
             });
         });
-        describe('query using FULLTEXT index', () => {
+        describe('Query FULLTEXT index', () => {
             beforeEach(async () => {
                 await chai.request(app.app)
                     .post(`${app.prefix}/diseases`)
@@ -725,35 +755,6 @@ describe('API', () => {
 
                 expect(res.body.result[0]).to.have.property('name', 'liver cancer');
             });
-            it('using search endpoint still splits whitespace', async () => {
-                const res = await chai.request(app.app)
-                    .get(`${app.prefix}/search`)
-                    .type('json')
-                    .query({keyword: 'liver cancer', limit: 10, neighbors: 0})
-                    .set('Authorization', mockToken);
-                expect(res).to.have.status(HTTP_STATUS.OK);
-                expect(res.body.result).to.have.property('length', 1);
-
-                expect(res.body.result[0]).to.have.property('name', 'liver cancer');
-            });
-            it('using search endpoint without split terms', async () => {
-                const res = await chai.request(app.app)
-                    .get(`${app.prefix}/search`)
-                    .type('json')
-                    .query({keyword: 'cancer'})
-                    .set('Authorization', mockToken);
-                expect(res).to.have.status(HTTP_STATUS.OK);
-                expect(res.body.result).to.have.property('length', 2);
-            });
-            it('using search endpoint with skip', async () => {
-                const res = await chai.request(app.app)
-                    .get(`${app.prefix}/search`)
-                    .type('json')
-                    .query({keyword: 'cancer', skip: 1})
-                    .set('Authorization', mockToken);
-                expect(res).to.have.status(HTTP_STATUS.OK);
-                expect(res.body.result).to.have.property('length', 1);
-            });
             it('ignores case (due to cast)', async () => {
                 const res = await chai.request(app.app)
                     .get(`${app.prefix}/diseases`)
@@ -764,21 +765,165 @@ describe('API', () => {
                 expect(res.body.result).to.have.property('length', 2);
             });
         });
+
+        describe('/api/search?keyword', () => {
+            let liverCancer,
+                breastCancer,
+                liverAngiosarc,
+                publication,
+                vocab,
+                feature;
+            beforeEach(async () => {
+                liverCancer = (await chai.request(app.app)
+                    .post(`${app.prefix}/diseases`)
+                    .type('json')
+                    .send({
+                        sourceId: '2',
+                        name: 'liver cancer',
+                        source
+                    })
+                    .set('Authorization', mockToken)).body.result['@rid'];
+                breastCancer = (await chai.request(app.app)
+                    .post(`${app.prefix}/diseases`)
+                    .type('json')
+                    .send({
+                        sourceId: '3',
+                        name: 'breast cancer',
+                        source
+                    })
+                    .set('Authorization', mockToken)).body.result['@rid'];
+                liverAngiosarc = (await chai.request(app.app)
+                    .post(`${app.prefix}/diseases`)
+                    .type('json')
+                    .send({
+                        sourceId: '1',
+                        name: 'liver angiosarcoma',
+                        source
+                    })
+                    .set('Authorization', mockToken)).body.result['@rid'];
+                publication = (await chai.request(app.app)
+                    .post(`${app.prefix}/publications`)
+                    .type('json')
+                    .send({
+                        sourceId: 'article',
+                        name: 'article',
+                        source
+                    })
+                    .set('Authorization', mockToken)).body.result['@rid'];
+                vocab = (await chai.request(app.app)
+                    .post(`${app.prefix}/vocabulary`)
+                    .type('json')
+                    .send({
+                        sourceId: 'vocab',
+                        name: 'vocab',
+                        source
+                    })
+                    .set('Authorization', mockToken)).body.result['@rid'];
+                feature = (await chai.request(app.app)
+                    .post(`${app.prefix}/features`)
+                    .type('json')
+                    .send({
+                        sourceId: 'gene',
+                        name: 'gene',
+                        source,
+                        biotype: 'gene'
+                    })
+                    .set('Authorization', mockToken)).body.result['@rid'];
+                // now create the statements
+                await chai.request(app.app)
+                    .post(`${app.prefix}/statements`)
+                    .type('json')
+                    .send({
+                        appliesTo: feature,
+                        relevance: vocab,
+                        impliedBy: [{target: liverAngiosarc}],
+                        supportedBy: [{target: publication}]
+                    })
+                    .set('Authorization', mockToken);
+                await chai.request(app.app)
+                    .post(`${app.prefix}/statements`)
+                    .type('json')
+                    .send({
+                        appliesTo: feature,
+                        relevance: vocab,
+                        impliedBy: [{target: liverAngiosarc}, {target: liverCancer}],
+                        supportedBy: [{target: publication}]
+                    })
+                    .set('Authorization', mockToken);
+                await chai.request(app.app)
+                    .post(`${app.prefix}/statements`)
+                    .type('json')
+                    .send({
+                        appliesTo: breastCancer,
+                        relevance: vocab,
+                        impliedBy: [{target: liverAngiosarc}],
+                        supportedBy: [{target: publication}]
+                    })
+                    .set('Authorization', mockToken);
+            });
+            it('retrieves by appliesTo', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/search`)
+                    .type('json')
+                    .query({keyword: 'breast cancer', limit: 10, neighbors: 0})
+                    .set('Authorization', mockToken);
+                expect(res.body.result).to.have.property('length', 1);
+            });
+            it('retrieves by impliedBy', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/search`)
+                    .type('json')
+                    .query({keyword: 'liver cancer', limit: 10, neighbors: 0})
+                    .set('Authorization', mockToken);
+                expect(res.body.result).to.have.property('length', 1);
+            });
+            it('Ignores supportedBy', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/search`)
+                    .type('json')
+                    .query({keyword: 'article', limit: 10, neighbors: 0})
+                    .set('Authorization', mockToken);
+                expect(res.body.result).to.have.property('length', 0);
+            });
+            it('retrieves by relevance', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/search`)
+                    .type('json')
+                    .query({keyword: 'vocab', limit: 10, neighbors: 0})
+                    .set('Authorization', mockToken);
+                expect(res.body.result).to.have.property('length', 3);
+            });
+            it('retrieves by either', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/search`)
+                    .type('json')
+                    .query({keyword: 'cancer'})
+                    .set('Authorization', mockToken);
+                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res.body.result).to.have.property('length', 2);
+            });
+            it('with skip', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/search`)
+                    .type('json')
+                    .query({keyword: 'cancer', skip: 1})
+                    .set('Authorization', mockToken);
+                expect(res).to.have.status(HTTP_STATUS.OK);
+                expect(res.body.result).to.have.property('length', 1);
+            });
+        });
         describe('POST /statement', () => {
             let disease1,
                 disease2,
                 publication1,
-                publication2,
-                relevance1,
-                relevance2;
+                relevance1;
             beforeEach(async () => {
                 [
                     disease1,
                     disease2,
-                    publication1,
-                    publication2,
-                    relevance1,
-                    relevance2
+                    publication1,,
+                    relevance1
+
                 ] = await Promise.all(Array.from([
                     {content: {name: 'disease1', sourceId: 'disease1'}, route: 'diseases'},
                     {content: {name: 'disease2', sourceId: 'disease2'}, route: 'diseases'},
