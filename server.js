@@ -1,7 +1,7 @@
 
 
 // required packages
-const conf = require('./config/config'); // get the database connection configuration
+const createConfig = require('./config/config'); // get the database connection configuration
 const {AppServer} = require('./app');
 const {logger} = require('./app/repo/logging');
 
@@ -10,7 +10,7 @@ let app;
 
 (async () => {
     try {
-        app = new AppServer(conf);
+        app = new AppServer(createConfig());
         await app.listen();
 
         // cleanup
