@@ -8,7 +8,7 @@ const jwt = require('jsonwebtoken');
 const {
     setUpEmptyDB, clearDB
 } = require('./../util');
-const conf = require('./../../config/config.js');
+const createConfig = require('./../../config/config.js');
 const {generateToken} = require('./../../app/routes/auth');
 
 const ensembl = require('./../../migrations/external/ensembl');
@@ -22,11 +22,6 @@ const {ApiConnection} = require('./../../migrations/external/util');
 
 
 const REALLY_LONG_TIME = 10000000000;
-conf.disableAuth = true;
-conf.db = Object.assign({}, conf.db);
-conf.verbose = true;
-conf.db.name = `test_${uuidV4()}`;
-conf.privateKey = 'testKey';
 
 const DATA_DIR = path.join(__dirname, './../data');
 
@@ -44,17 +39,23 @@ describe('external migrations', () => {
         app,
         mockToken,
         server,
-        connection;
+        connection,
+        conf;
     before(async () => {
-        conf.verbose = true;
         ({
             db,
             admin,
-            server
-        } = await setUpEmptyDB(conf));
+            server,
+            conf
+        } = await setUpEmptyDB({
+            ...createConfig(),
+            disableAuth: true,
+            privateKey: 'testKey'
+        }));
 
         const {AppServer} = require('./../../app'); // eslint-disable-line global-require
         delete conf.app.port;
+        conf.db.create = false; // already created above
         app = new AppServer(conf);
 
         await app.listen();

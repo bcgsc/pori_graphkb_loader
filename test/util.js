@@ -15,8 +15,6 @@ const setUpEmptyDB = async (conf) => {
     conf.db.name = `test_${uuidV4()}`;
     conf.db.create = true;
 
-    console.log('setUpEmptyDB', conf);
-
     const {server, db, schema} = await connectDB(conf);
 
     const user = await createUser(db, {
