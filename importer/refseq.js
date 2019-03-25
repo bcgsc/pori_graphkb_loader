@@ -8,7 +8,7 @@
  * | Data Format| Tab-delimited |
  *
  * Import the RefSeq transcripts, ignoring version numbers for now
- * @module migrations/external/refseq
+ * @module importer/refseq
  */
 const {
     orderPreferredOntologyTerms, loadDelimToJson, rid

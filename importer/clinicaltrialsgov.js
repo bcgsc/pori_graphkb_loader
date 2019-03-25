@@ -7,7 +7,7 @@
  * 4. Download and save the file
  * 5. Upload the file to GraphKB using this module
  *
- * @module migrations/external/clinicaltrialsgov
+ * @module importer/clinicaltrialsgov
  */
 
 const {

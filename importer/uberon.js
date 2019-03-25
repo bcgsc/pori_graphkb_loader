@@ -8,7 +8,7 @@
  * | Data Format| OWL |
  *
  * Module responsible for parsing uberon OWL files and uploading them to the graph KB
- * @module migrations/external/uberon
+ * @module importer/uberon
  */
 const rdf = require('rdflib');
 const fs = require('fs');

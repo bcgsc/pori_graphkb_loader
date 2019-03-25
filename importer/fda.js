@@ -9,7 +9,7 @@
  *
  * Import the UNII for drugs from the FDA
  *
- * @module migrations/external/fda
+ * @module importer/fda
  */
 
 const {

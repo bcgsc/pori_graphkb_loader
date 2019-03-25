@@ -9,7 +9,7 @@
  *
  * Module to import variant information from http://www.docm.info/api
  *
- * @module migrations/external/docm
+ * @module importer/docm
  */
 const request = require('request-promise');
 const Ajv = require('ajv');

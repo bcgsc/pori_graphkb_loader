@@ -11,14 +11,14 @@ const {
 const createConfig = require('./../../config/config.js');
 const {generateToken} = require('./../../app/routes/auth');
 
-const ensembl = require('./../../migrations/external/ensembl');
-const refseq = require('./../../migrations/external/refseq');
-const fda = require('./../../migrations/external/fda');
-const oncotree = require('./../../migrations/external/oncotree');
-const vario = require('./../../migrations/external/vario');
-const drugbank = require('./../../migrations/external/drugbank');
+const ensembl = require('./../../importer/ensembl');
+const refseq = require('./../../importer/refseq');
+const fda = require('./../../importer/fda');
+const oncotree = require('./../../importer/oncotree');
+const vario = require('./../../importer/vario');
+const drugbank = require('./../../importer/drugbank');
 
-const {ApiConnection} = require('./../../migrations/external/util');
+const {ApiConnection} = require('./../../importer/util');
 
 
 const REALLY_LONG_TIME = 10000000000;
@@ -33,7 +33,7 @@ const VARIO_INPUT = path.join(DATA_DIR, 'vario_v2018-04-27.owl');
 const DRUGBANK_INPUT = path.join(DATA_DIR, 'drugbank_sample.xml');
 
 
-describe('external migrations', () => {
+describe('importers', () => {
     let db,
         admin,
         app,

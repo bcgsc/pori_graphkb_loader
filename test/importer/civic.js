@@ -5,7 +5,7 @@ const {
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
 
-const {getVariantName} = require('./../../migrations/external/civic');
+const {getVariantName} = require('./../../importer/civic');
 
 
 describe('civic', () => {

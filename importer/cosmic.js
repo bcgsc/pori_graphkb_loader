@@ -31,7 +31,7 @@
  * - Genome Coordinates (GRCh38)
  * - Tier
  *
- * @module migrations/external/cosmic
+ * @module importer/cosmic
  */
 const request = require('request-promise');
 const {

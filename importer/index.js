@@ -4,7 +4,7 @@
  * @ignore
  */
 
-const {fileExists, createOptionsMenu} = require('./../cli');
+const {fileExists, createOptionsMenu} = require('./cli');
 
 const {ApiConnection, PUBMED_DEFAULT_QS} = require('./util');
 const {logger} = require('./logging');

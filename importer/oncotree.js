@@ -9,7 +9,7 @@
  *
  *
  * Module for Loading content from the oncotree web API
- * @module migrations/external/oncotree
+ * @module importer/oncotree
  */
 
 const request = require('request-promise');

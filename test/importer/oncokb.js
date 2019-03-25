@@ -2,7 +2,7 @@ const {
     expect
 } = require('chai');
 
-const {parseVariantName} = require('./../../migrations/external/oncokb');
+const {parseVariantName} = require('./../../importer/oncokb');
 
 
 describe('oncokb', () => {

@@ -12,7 +12,7 @@
  *
  * NCIT owl file is very large. When uploading additional arguments were specified for node (--stack-size=8192  --max-old-space-size=20000)
  * Additionally node v10 is required since the string size is too small in previous versions
- * @module migrations/external/ncit
+ * @module importer/ncit
  */
 
 const rdf = require('rdflib');

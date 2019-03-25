@@ -7,7 +7,7 @@
  * | Data Example| Direct API Access |
  * | Data Format| JSON |
  *
- * @module migrations/external/oncokb
+ * @module importer/oncokb
  */
 const request = require('request-promise');
 const Ajv = require('ajv');
