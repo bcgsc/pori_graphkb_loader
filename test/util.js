@@ -2,7 +2,7 @@
 
 const uuidV4 = require('uuid/v4');
 
-const {createUser} = require('../app/repo/commands');
+const {getUserByName} = require('../app/repo/commands');
 const {connectDB} = require('../app/repo');
 
 const VERBOSE = process.env.VERBOSE === '1';
@@ -14,12 +14,11 @@ const setUpEmptyDB = async (conf) => {
     }
     conf.db.name = `test_${uuidV4()}`;
     conf.db.create = true;
+    conf.createUser = true;
 
     const {server, db, schema} = await connectDB(conf);
 
-    const user = await createUser(db, {
-        schema, model: schema.User, userName: 'admin', groupNames: ['admin']
-    });
+    const user = await getUserByName(db, process.env.USER || 'admin');
 
     return {
         server, db, schema, admin: user, conf

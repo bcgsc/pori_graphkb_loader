@@ -76,12 +76,12 @@ describe('API', () => {
         describe('GET /users', () => {
             it('name', async () => {
                 const res = await chai.request(app.app)
-                    .get(`${app.prefix}/users?name=admin`)
+                    .get(`${app.prefix}/users?name=${admin.name}`)
                     .set('Authorization', mockToken);
                 expect(res).to.have.status(HTTP_STATUS.OK);
                 expect(res.body.result).to.be.a('array');
                 expect(res.body.result.length).to.equal(1);
-                expect(res.body.result[0].name).to.equal('admin');
+                expect(res.body.result[0].name).to.equal(admin.name);
             });
             it('aggregates the count', async () => {
                 const res = await chai.request(app.app)
@@ -99,7 +99,7 @@ describe('API', () => {
                     .type('json')
                     .send({
                         where: [
-                            {attr: 'name', value: 'admin'}
+                            {attr: 'name', value: admin.name}
                         ],
                         neighbors: 1,
                         limit: 10
@@ -107,7 +107,7 @@ describe('API', () => {
                 expect(res).to.have.status(HTTP_STATUS.OK);
                 expect(res.body.result).to.be.a('array');
                 expect(res.body.result.length).to.equal(1);
-                expect(res.body.result[0].name).to.equal('admin');
+                expect(res.body.result[0].name).to.equal(admin.name);
             });
             it('BAD REQUEST for query params', async () => {
                 let res;
@@ -118,7 +118,7 @@ describe('API', () => {
                         .type('json')
                         .send({
                             where: [
-                                {attr: 'name', value: 'admin'}
+                                {attr: 'name', value: admin.name}
                             ],
                             neighbors: 1,
                             limit: 10
@@ -180,7 +180,7 @@ describe('API', () => {
                         .type('json')
                         .set('Authorization', mockToken)
                         .send({
-                            name: 'admin'
+                            name: admin.name
                         });
                 } catch (err) {
                     res = err;
@@ -1137,7 +1137,9 @@ describe('API', () => {
     });
     after(async () => {
         if (server) {
-            await server.drop({name: conf.db.name});
+            if (db && conf.db.create) {
+                await server.drop({name: conf.db.name});
+            }
             await server.close();
         }
     });

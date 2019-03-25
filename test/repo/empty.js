@@ -561,7 +561,9 @@ describe('schema', () => {
     });
     after(async () => {
         if (server) {
-            await server.drop({name: conf.db.name});
+            if (db && conf.db.create) {
+                await server.drop({name: conf.db.name});
+            }
             await server.close();
         }
     });
