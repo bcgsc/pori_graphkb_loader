@@ -8,25 +8,20 @@ const jwt = require('jsonwebtoken');
 const {
     setUpEmptyDB, clearDB
 } = require('./../util');
-const conf = require('./../../config/config.js');
+const createConfig = require('./../../config/config.js');
 const {generateToken} = require('./../../app/routes/auth');
 
-const ensembl = require('./../../migrations/external/ensembl');
-const refseq = require('./../../migrations/external/refseq');
-const fda = require('./../../migrations/external/fda');
-const oncotree = require('./../../migrations/external/oncotree');
-const vario = require('./../../migrations/external/vario');
-const drugbank = require('./../../migrations/external/drugbank');
+const ensembl = require('./../../importer/ensembl');
+const refseq = require('./../../importer/refseq');
+const fda = require('./../../importer/fda');
+const oncotree = require('./../../importer/oncotree');
+const vario = require('./../../importer/vario');
+const drugbank = require('./../../importer/drugbank');
 
-const {ApiConnection} = require('./../../migrations/external/util');
+const {ApiConnection} = require('./../../importer/util');
 
 
 const REALLY_LONG_TIME = 10000000000;
-conf.disableAuth = true;
-conf.db = Object.assign({}, conf.db);
-conf.verbose = true;
-conf.db.name = `test_${uuidV4()}`;
-conf.privateKey = 'testKey';
 
 const DATA_DIR = path.join(__dirname, './../data');
 
@@ -38,23 +33,29 @@ const VARIO_INPUT = path.join(DATA_DIR, 'vario_v2018-04-27.owl');
 const DRUGBANK_INPUT = path.join(DATA_DIR, 'drugbank_sample.xml');
 
 
-describe('external migrations', () => {
+describe('importers', () => {
     let db,
         admin,
         app,
         mockToken,
         server,
-        connection;
+        connection,
+        conf;
     before(async () => {
-        conf.verbose = true;
         ({
             db,
             admin,
-            server
-        } = await setUpEmptyDB(conf));
+            server,
+            conf
+        } = await setUpEmptyDB({
+            ...createConfig(),
+            disableAuth: true,
+            privateKey: 'testKey'
+        }));
 
         const {AppServer} = require('./../../app'); // eslint-disable-line global-require
         delete conf.app.port;
+        conf.db.create = false; // already created above
         app = new AppServer(conf);
 
         await app.listen();
@@ -221,7 +222,9 @@ describe('external migrations', () => {
 
     after(async () => {
         if (server) {
-            await server.drop({name: conf.db.name});
+            if (db && conf.db.create) {
+                await server.drop({name: conf.db.name});
+            }
             await server.close();
         }
     });

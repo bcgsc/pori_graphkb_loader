@@ -186,7 +186,7 @@ describe('Query Parsing', () => {
                 {activeOnly: false, orderBy: ['@rid', '@class']}
             );
             expect(parsed).to.eql(expected);
-            const sql = 'SELECT * FROM Disease ORDER BY @rid, @class ASC';
+            const sql = 'SELECT * FROM Disease ORDER BY @rid ASC, @class ASC';
             const {query, params} = parsed.toString();
             expect(params).to.eql({});
             expect(stripSQL(query)).to.equal(stripSQL(sql));

@@ -1,5 +1,5 @@
 /**
- * @module migrations/external/vario
+ * @module importer/vario
  */
 
 const rdf = require('rdflib');

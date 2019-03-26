@@ -9,7 +9,7 @@
  *
  * Given the DOID JSON file. Upload the diseases and relationships to the knowledgebase using the REST API
  *
- * @module migrations/external/disease_ontology
+ * @module importer/disease_ontology
  */
 const _ = require('lodash');
 const {

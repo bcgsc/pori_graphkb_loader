@@ -1,14 +1,14 @@
 {
   "name": "@bcgsc/knowledgebase-api",
   "main": "server.js",
-  "version": "1.4.0",
+  "version": "1.5.0",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/VDB/repos/knowledgebase_api/browse"
   },
   "dependencies": {
     "@bcgsc/knowledgebase-parser": "^0.5.2",
-    "@bcgsc/knowledgebase-schema": "^1.6.2",
+    "@bcgsc/knowledgebase-schema": "^1.7.2",
     "ajv": "^5.5.2",
     "bluebird": "^3.5.0",
     "body-parser": "^1.18.3",
@@ -78,12 +78,12 @@
   },
   "scripts": {
     "start": "node server.js",
-    "import": "node --stack-size=8192  --max-old-space-size=20000 migrations/external/index.js",
+    "import": "node --stack-size=8192  --max-old-space-size=20000 importer/index.js",
     "test": "nyc mocha test/{routes,repo}",
     "test:live": "nyc mocha test/{routes,repo}/livedb.js --exit",
-    "test:unit": "nyc mocha test/*/{unit,schema,query}* test/migrations/{oncokb,civic,ipr}.js",
-    "test:import": "nyc mocha test/migrations",
-    "test-all": "nyc mocha test/{repo,routes,migrations}",
+    "test:unit": "nyc mocha test/*/{unit,schema,query}* test/importer/{oncokb,civic,ipr}.js",
+    "test:import": "nyc mocha test/importer",
+    "test-all": "nyc mocha test/{repo,routes,importer}",
     "lint": "eslint -c .eslintrc.jon app test",
     "build:docs": "jsdocref --input app --output doc; cp README.md doc",
     "start:docs": "docsify serve doc",

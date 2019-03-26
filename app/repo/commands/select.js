@@ -122,9 +122,11 @@ const select = async (db, query, opt) => {
     // send the query statement to the database
     const {params, query: statement} = query.toString();
     const queryOpt = {
-        params,
-        limit: query.limit
+        params
     };
+    if (!query.count) {
+        queryOpt.limit = query.limit;
+    }
     if (fetchPlan) {
         queryOpt.fetchPlan = fetchPlan;
     } else if (query.neighbors !== null && query.neighbors !== undefined) {
@@ -179,7 +181,7 @@ const select = async (db, query, opt) => {
  */
 const selectByKeyword = async (db, keywords, opt) => {
     const queryObj = Object.assign({
-        toString: () => generalKeywordSearch(keywords, opt.skip || 0),
+        toString: () => generalKeywordSearch(keywords, {...opt, skip: opt.skip || 0}),
         activeOnly: true
     }, opt);
     queryObj.displayString = () => Query.displayString(queryObj);

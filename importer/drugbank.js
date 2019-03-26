@@ -79,7 +79,7 @@
  *  enzymes: [ '' ],
  *  carriers: [ '' ],
  *  transporters: [ '' ] }
- * @module migrations/external/drugbank
+ * @module importer/drugbank
  */
 
 const _ = require('lodash');

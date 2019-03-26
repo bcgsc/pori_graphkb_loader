@@ -11,7 +11,7 @@
  *
  * http://griffithlab.org/civic-api-docs/#endpoint-types
  * https://civicdb.org/api/evidence_items
- * @module migrations/external/civic
+ * @module importer/civic
  */
 const request = require('request-promise');
 const _ = require('lodash');

@@ -7,7 +7,7 @@ const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
 const openapi = require('./openapi');
 const util = require('./util');
 const {logger} = require('./../repo/logging');
-const {constants: {MAX_LIMIT, MAX_NEIGHBORS}, util: {castRangeInt}} = require('./../repo/query');
+const {constants: {MAX_LIMIT, MAX_NEIGHBORS}, util: {castRangeInt, castBoolean}} = require('./../repo/query');
 const {
     MIN_WORD_SIZE
 } = require('./query');
@@ -23,7 +23,7 @@ const addKeywordSearchRoute = (opt) => {
     router.get('/search',
         async (req, res) => {
             const {
-                keyword, neighbors, limit, skip, ...other
+                keyword, neighbors, limit, skip, orderBy, orderByDirection, count, ...other
             } = req.query;
 
             const options = {user: req.user};
@@ -36,6 +36,18 @@ const addKeywordSearchRoute = (opt) => {
                 }
                 if (skip !== undefined) {
                     options.skip = castRangeInt(skip, 0);
+                }
+                if (orderBy) {
+                    options.orderBy = orderBy.split(',').map(prop => prop.trim());
+                }
+                if (orderByDirection) {
+                    options.orderByDirection = `${orderByDirection}`.trim().toUpperCase();
+                    if (!['ASC', 'DESC'].includes(options.orderByDirection)) {
+                        throw new AttributeError(`Bad value (${options.orderByDirection}). orderByDirection must be one of ASC or DESC`);
+                    }
+                }
+                if (count) {
+                    options.count = castBoolean(count);
                 }
             } catch (err) {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json(err);

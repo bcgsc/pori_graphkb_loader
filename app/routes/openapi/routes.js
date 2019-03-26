@@ -176,7 +176,7 @@ const GET_VERSION = {
 };
 
 const GET_KEYWORD = {
-    summary: 'search related records by a single keyword',
+    summary: 'Search statement records by a single keyword',
     parameters: [
         {$ref: '#/components/parameters/Accept'},
         {
@@ -186,9 +186,12 @@ const GET_KEYWORD = {
             description: 'the keyword to search for',
             required: true
         },
-        {$ref: '#components/parameters/neighbors'},
-        {$ref: '#components/parameters/limit'},
-        {$ref: '#components/parameters/skip'}
+        {$ref: '#/components/parameters/neighbors'},
+        {$ref: '#/components/parameters/limit'},
+        {$ref: '#/components/parameters/skip'},
+        {$ref: '#/components/parameters/orderBy'},
+        {$ref: '#/components/parameters/orderByDirection'},
+        {$ref: '#/components/parameters/count'}
     ],
     responses: {
         200: {
@@ -197,7 +200,7 @@ const GET_KEYWORD = {
                     schema: {
                         type: 'object',
                         properties: {
-                            result: {$ref: '#/components/schemas/V'}
+                            result: {$ref: '#/components/schemas/Statement'}
                         }
                     }
                 }

@@ -7,7 +7,7 @@
  * | Data Example| Direct API Access |
  * | Data Format| JSON |
  *
- * @module migrations/external/oncokb
+ * @module importer/oncokb
  */
 const request = require('request-promise');
 const Ajv = require('ajv');
@@ -18,7 +18,7 @@ const kbParser = require('@bcgsc/knowledgebase-parser');
 const {
     preferredDiseases, preferredDrugs, rid
 } = require('./util');
-const {ParsingError} = require('./../../app/repo/error');
+const {ParsingError} = require('./../app/repo/error');
 const _pubmed = require('./pubmed');
 const _hgnc = require('./hgnc');
 const {logger} = require('./logging');

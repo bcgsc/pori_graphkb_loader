@@ -3,7 +3,6 @@
 // required packages
 const express = require('express');
 const bodyParser = require('body-parser');
-const OrientDB = require('orientjs');
 const fs = require('fs');
 const http = require('http');
 const jc = require('json-cycle');
@@ -19,7 +18,7 @@ const {
     checkToken
 } = require('./middleware/auth'); // WARNING: middleware fails if function is not imported by itself
 
-const {loadSchema} = require('./repo/schema');
+const {connectDB} = require('./repo');
 
 const {generateSwaggerSpec} = require('./routes/openapi');
 const {addResourceRoutes} = require('./routes/util');
@@ -30,35 +29,6 @@ const logRequests = (req, res, next) => {
     logger.log('info', `[${req.method}] ${req.url}`);
     return next();
 };
-
-
-const connectDB = async (conf) => {
-    // set up the database server
-    const server = OrientDB({
-        host: conf.server.host,
-        port: conf.server.port,
-        username: conf.server.user,
-        password: conf.server.pass
-    });
-    logger.log('info', `connecting to the database (${conf.db.name}) as ${conf.db.user}`);
-    let db;
-    try {
-        db = await server.use({name: conf.db.name, username: conf.db.user, password: conf.db.pass});
-    } catch (err) {
-        server.close();
-        throw err;
-    }
-    let schema;
-    try {
-        schema = await loadSchema(db);
-    } catch (err) {
-        db.close();
-        throw err;
-    }
-    // create the admin user
-    return {server, db, schema};
-};
-
 
 class AppServer {
     /**

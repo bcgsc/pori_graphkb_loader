@@ -38,7 +38,7 @@
  *      location_sortable: '19q13.43'
  * }
  *
- * @module migrations/external/hgnc
+ * @module importer/hgnc
  */
 const request = require('request-promise');
 const Ajv = require('ajv');

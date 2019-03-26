@@ -6,49 +6,96 @@
  * @constant
  * @ignore
  */
+const {error: {AttributeError}, schema: SCHEMA_DEFN} = require('@bcgsc/knowledgebase-schema');
+
 const {Comparison, Clause, Query} = require('./query');
 const {Traversal} = require('./traversal');
 const match = require('./match');
 const constants = require('./constants');
 
-const {OPERATORS} = constants;
 const util = require('./util');
 
 /**
  * For the GUI to speed up the main search query until we can migrate to v3 odb
  */
-const generalKeywordSearch = (keywords, skip = 0) => {
+const generalKeywordSearch = (keywordsIn, opt) => {
+    const {
+        skip = 0,
+        orderBy,
+        orderByDirection = 'ASC',
+        count = false
+    } = opt;
     const params = {};
+    const paramMapping = {};
+
+    // remove any duplicate words
+    const keywords = Array.from(new Set(keywordsIn.map(word => word.trim().toLowerCase())));
 
     for (const keyword of keywords) {
-        params[`param${Object.keys(params).length}`] = keyword;
+        const pname = `param${Object.keys(params).length}`;
+        params[pname] = keyword;
+        paramMapping[keyword] = pname;
     }
-    const ontQueries = {};
 
-    for (const attr of ['name', 'sourceId']) {
-        let where = Array.from(Object.keys(params), p => `${attr} ${OPERATORS.CONTAINSTEXT} :${p}`).join(' AND ');
-        if (Object.keys(params).length > 1) {
-            where = `(${where})`;
+    const subContainsClause = (props) => {
+        const whereClause = [];
+        // must contains all words but words can exist in any prop
+        for (const keyword of keywords) {
+            const orClause = [];
+            for (const prop of props) {
+                orClause.push(`${prop} CONTAINSTEXT :${paramMapping[keyword]}`);
+            }
+            let inner = orClause.join(' OR ');
+
+            if (orClause.length > 1) {
+                inner = `(${inner})`;
+            }
+            whereClause.push(inner);
         }
-        const subqueryName = `$ont${attr}`;
-        ontQueries[subqueryName] = `${subqueryName} = (SELECT * from Ontology WHERE ${where})`;
+        return whereClause.join(' AND ');
+    };
+
+    let query = `
+    SELECT expand(distinct) FROM (
+        SELECT distinct(@rid) FROM (
+            SELECT expand($v)
+            LET $ont = (SELECT * from Ontology WHERE ${
+    subContainsClause(['sourceId', 'name'])
+}),
+                $variants = (SELECT * FROM Variant WHERE ${
+    subContainsClause([
+        'type.name',
+        'type.sourceId',
+        'reference1.name',
+        'reference1.sourceId',
+        'reference2.name',
+        'reference2.sourceId'
+    ])
+}),
+                $implicable = (SELECT expand(inE('ImpliedBy').outV()) from (select expand(UNIONALL($ont, $variants)))),
+                $statements = (SELECT * FROM Statement WHERE ${
+    subContainsClause([
+        'appliesTo.name',
+        'appliesTo.sourceId',
+        'relevance.name',
+        'relevance.sourceId'
+    ])
+}),
+                $v = UNIONALL($statements, $implicable)
+        ) WHERE deletedAt IS NULL
+    )`;
+    if (orderBy) {
+        try {
+            orderBy.map(orderProp => Traversal.parse(SCHEMA_DEFN, SCHEMA_DEFN.V, orderProp));
+        } catch (err) {
+            throw new AttributeError(`Invalid orderBy (${orderBy.join(', ')}) ${err}`);
+        }
+
+        query = `${query} ORDER BY ${orderBy.map(param => `${param} ${orderByDirection}`).join(', ')}`;
     }
-    let query = `LET ${Object.values(ontQueries).join(',\n')},
-    $ont = UNIONALL(${Object.keys(ontQueries).join(', ')})`;
-    query = `SELECT * FROM (SELECT expand($v)
-${query},
-    $variants = (SELECT * FROM Variant WHERE type IN $ont OR reference1 in $ont OR reference2 in $ont),
-    $implicable = UNIONALL($ont, $variants),
-    $statements = (
-        SELECT * FROM Statement
-        WHERE
-            inE('impliedBy').outV() in $implicable
-            OR outE('supportedBy').inV() in $ont
-            OR appliesTo in $implicable
-            OR relevance in $implicable
-        ),
-    $v = UNIONALL($statements, $variants, $ont)) WHERE deletedAt IS NULL`;
-    if (skip && skip > 0) {
+    if (count) {
+        query = `SELECT count(*) from (${query})`;
+    } else if (skip && skip > 0) {
         query = `${query} SKIP ${skip}`;
     }
     return {query, params};
