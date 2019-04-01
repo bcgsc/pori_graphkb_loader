@@ -48,7 +48,7 @@ const parseArticleRecord = (record) => {
 const fetchArticlesByPmids = async (pmidListIn, url = PUBMED_API) => {
     const allArticles = [];
     const pmidList = Array.from((new Set(Array.from(pmidListIn))).values()) // remove dups
-        .map(pmid => pmid.trim())
+        .map(pmid => pmid.toString().trim())
         .filter(pmid => pmid);
 
     for (let startIndex = 0; startIndex < pmidList.length; startIndex += MAX_CONSEC_IDS) {
