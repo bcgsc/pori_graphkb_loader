@@ -52,8 +52,17 @@ const {logger} = require('./logging');
 const ajv = new Ajv();
 
 const HGNC_API = 'http://rest.genenames.org/fetch/symbol';
-const SOURCE_NAME = 'hgnc';
 const CLASS_NAME = 'features';
+
+const SOURCE_DEFN = {
+    name: 'hgnc',
+    url: 'https://www.genenames.org/about',
+    usage: 'https://www.ebi.ac.uk/about/terms-of-use',
+    description: `
+        The HGNC is responsible for approving unique symbols and names for human loci, including
+        protein coding genes, ncRNA genes and pseudogenes, to allow unambiguous scientific
+        communication.`.replace(/\s+/, ' ')
+};
 
 /**
  * This defines the expected format of a response from the HGNC API
@@ -172,7 +181,7 @@ const fetchAndLoadBySymbol = async ({conn, symbol}) => {
         const record = await conn.getUniqueRecordBy({
             endpoint: CLASS_NAME,
             sort: orderPreferredOntologyTerms,
-            where: {source: {name: SOURCE_NAME}, name: symbol}
+            where: {source: {name: SOURCE_DEFN.name}, name: symbol}
         });
         return record;
     } catch (err) {}
@@ -232,8 +241,9 @@ const uploadFile = async (opt) => {
     const genes = hgncContent.response.docs;
     const hgnc = await conn.addRecord({
         endpoint: 'sources',
-        content: {name: SOURCE_NAME},
-        existsOk: true
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
     let ensembl;
     const ensemblMissingRecords = new Set();
@@ -270,4 +280,6 @@ const uploadFile = async (opt) => {
     }
 };
 
-module.exports = {uploadFile, fetchAndLoadBySymbol, uploadRecord};
+module.exports = {
+    uploadFile, fetchAndLoadBySymbol, uploadRecord, SOURCE_DEFN
+};

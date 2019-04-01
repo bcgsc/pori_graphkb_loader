@@ -12,6 +12,16 @@ const PUBMED_CACHE = {};
 const PUBMED_API = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi';
 const MAX_CONSEC_IDS = 150;
 
+const SOURCE_DEFN = {
+    name: 'pubmed',
+    url: 'https://www.ncbi.nlm.nih.gov/pubmed',
+    usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
+    description: `
+        pubmed comprises more than 29 million citations for biomedical literature from medline,
+        life science journals, and online books. citations may include links to full-text content
+        from pubmed central and publisher web sites`.replace(/\s+/, ' ')
+};
+
 /**
  * Given an article record retrieved from pubmed, parse it into its equivalent
  * GraphKB representation
@@ -155,5 +165,6 @@ module.exports = {
     fetchArticlesByPmids,
     parseArticleRecord,
     uploadArticle,
-    uploadArticlesByPmid
+    uploadArticlesByPmid,
+    SOURCE_DEFN
 };

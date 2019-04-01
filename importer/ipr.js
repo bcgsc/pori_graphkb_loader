@@ -10,6 +10,13 @@ const {
     preferredDiseases, rid, preferredDrugs, orderPreferredOntologyTerms
 } = require('./util');
 
+
+const SOURCE_DEFN = {
+    name: 'ipr',
+    url: 'https://ipr.bcgsc.ca/knowledgebase/references',
+    description: 'The predecessor to GraphKB'
+};
+
 const TYPE_MAPPING = {
     MUT: 'mutation',
     SV: 'structural',
@@ -570,8 +577,9 @@ const uploadFile = async ({filename, conn}) => {
     logger.info(`${records.length} non-skipped records`);
     const source = await conn.addRecord({
         endpoint: 'sources',
-        content: {name: 'ipr'},
-        existsOk: true
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
 
     records = cleanHistory(records);
@@ -617,4 +625,4 @@ const uploadFile = async ({filename, conn}) => {
     logger.info(JSON.stringify(users));
 };
 
-module.exports = {uploadFile, convertDeprecatedSyntax};
+module.exports = {uploadFile, convertDeprecatedSyntax, SOURCE_DEFN};

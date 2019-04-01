@@ -23,7 +23,13 @@ const HEADER = {
     geneNameSource: 'Source of gene name'
 };
 
-const SOURCE_NAME = 'ensembl';
+const SOURCE_DEFN = {
+    name: 'ensembl',
+    usage: 'https://uswest.ensembl.org/info/about/legal/disclaimer.html',
+    url: 'https://uswest.ensembl.org',
+    description: 'Ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. Ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. Ensembl tools include BLAST, BLAT, BioMart and the Variant Effect Predictor (VEP) for all supported species.'
+};
+
 
 /**
  * Given a TAB delmited biomart export of Ensembl data, upload the features to GraphKB
@@ -38,8 +44,9 @@ const uploadFile = async (opt) => {
 
     const source = await conn.addRecord({
         endpoint: 'sources',
-        content: {name: SOURCE_NAME},
-        existsOk: true
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
     let refseqSource;
     try {
@@ -222,4 +229,4 @@ const uploadFile = async (opt) => {
     }
 };
 
-module.exports = {uploadFile, dependencies: ['refseq', 'hgnc']};
+module.exports = {uploadFile, dependencies: ['refseq', 'hgnc'], SOURCE_DEFN};

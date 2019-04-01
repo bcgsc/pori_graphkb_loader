@@ -16,7 +16,12 @@ const {
 const {logger} = require('./logging');
 
 
-const SOURCE_NAME = 'refseq';
+const SOURCE_DEFN = {
+    name: 'refseq',
+    url: 'https://www.ncbi.nlm.nih.gov/refseq',
+    usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
+    description: 'A comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.'
+};
 
 /**
  * Parse the tab delimited file to upload features and their relationships
@@ -33,8 +38,9 @@ const uploadFile = async (opt) => {
 
     const source = await conn.addRecord({
         endpoint: 'sources',
-        content: {name: SOURCE_NAME},
-        existsOk: true
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
     let hgncSource;
     try {
@@ -148,4 +154,4 @@ const uploadFile = async (opt) => {
     }
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, SOURCE_DEFN};

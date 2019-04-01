@@ -88,7 +88,12 @@ const {
 } = require('./util');
 const {logger} = require('./logging');
 
-const SOURCE_NAME = 'drugbank';
+const SOURCE_DEFN = {
+    name: 'drugbank',
+    usage: 'https://www.drugbank.ca/legal/terms_of_use',
+    url: 'https://www.drugbank.ca',
+    description: 'The DrugBank database is a unique bioinformatics and cheminformatics resource that combines detailed drug data with comprehensive drug target information.'
+};
 
 // Lists most of the commonly required 'Tags' and Attributes
 const HEADER = {
@@ -113,13 +118,9 @@ const uploadFile = async ({filename, conn}) => {
 
     const source = await conn.addRecord({
         endpoint: 'sources',
-        content: {
-            name: SOURCE_NAME,
-            usage: 'https://www.drugbank.ca/legal/terms_of_use',
-            url: 'https://www.drugbank.ca'
-        },
+        content: SOURCE_DEFN,
         existsOk: true,
-        fetchConditions: {name: SOURCE_NAME}
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
     logger.info(`uploading ${xml.drugbank.drug.length} records`);
 
@@ -247,4 +248,4 @@ const uploadFile = async ({filename, conn}) => {
     }
 };
 
-module.exports = {uploadFile, dependencies: ['fda']};
+module.exports = {uploadFile, dependencies: ['fda'], SOURCE_DEFN};

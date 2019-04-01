@@ -13,6 +13,14 @@ const {
 } = require('./util');
 const {logger} = require('./logging');
 
+
+const SOURCE_DEFN = {
+    name: 'sequence ontology',
+    description: 'The Sequence Ontology is a set of terms and relationships used to describe the features and attributes of biological sequence. SO includes different kinds of features which can be located on the sequence.',
+    url: 'http://www.sequenceontology.org',
+    usage: 'http://www.sequenceontology.org/?page_id=269'
+};
+
 const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/so/so-simple.owl';
 
 const PREDICATES = {
@@ -84,12 +92,9 @@ const uploadFile = async ({filename, conn}) => {
 
     const source = await conn.addRecord({
         endpoint: 'sources',
-        content: {
-            name: 'sequence ontology',
-            url: 'http://www.sequenceontology.org',
-            usage: 'http://www.sequenceontology.org/?page_id=269'
-        },
-        existsOk: true
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
 
     const nodesByCode = convertOwlGraphToJson(graph, parseId);
@@ -133,4 +138,4 @@ const uploadFile = async ({filename, conn}) => {
     }
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, SOURCE_DEFN};

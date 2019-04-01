@@ -17,7 +17,12 @@ const {
 } = require('./util');
 const {logger, progress} = require('./logging');
 
-const SOURCE_NAME = 'fda';
+const SOURCE_DEFN = {
+    name: 'fda',
+    url: 'https://fdasis.nlm.nih.gov/srs',
+    comment: 'https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/default.htm',
+    description: 'The overall purpose of the joint FDA/USP Substance Registration System (SRS) is to support health information technology initiatives by generating unique ingredient identifiers (UNIIs) for substances in drugs, biologics, foods, and devices. The UNII is a non- proprietary, free, unique, unambiguous, non semantic, alphanumeric identifier based on a substance’s molecular structure and/or descriptive information.'
+};
 
 /**
  * Given the TAB delimited UNII records file. Load therapy records and NCIT links
@@ -31,8 +36,9 @@ const uploadFile = async (opt) => {
     const jsonList = await loadDelimToJson(filename);
     const source = await api.addRecord({
         endpoint: 'sources',
-        content: {name: SOURCE_NAME, url: 'https://fdasis.nlm.nih.gov/srs'},
-        existsOk: true
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
     let ncitSource;
     try {
@@ -92,4 +98,4 @@ const uploadFile = async (opt) => {
     logger.info(`\nskipped ${skipCount} records`);
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, SOURCE_DEFN};

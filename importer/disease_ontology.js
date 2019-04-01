@@ -18,7 +18,20 @@ const {
 const {logger} = require('./logging');
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
-const SOURCE_NAME = 'disease ontology';
+
+const SOURCE_DEFN = {
+    name: 'disease ontology',
+    url: 'http://disease-ontology.org',
+    description: `
+        The Disease Ontology has been developed as a standardized ontology for human disease
+        with the purpose of providing the biomedical community with consistent, reusable and
+        sustainable descriptions of human disease terms, phenotype characteristics and related
+        medical vocabulary disease concepts through collaborative efforts of researchers at
+        Northwestern University, Center for Genetic Medicine and the University of Maryland
+        School of Medicine, Institute for Genome Sciences. The Disease Ontology semantically
+        integrates disease and medical vocabularies through extensive cross mapping of DO
+        terms to MeSH, ICD, NCI’s thesaurus, SNOMED and OMIM.`.replace(/\s+/, ' ')
+};
 
 const parseDoid = (ident) => {
     const match = /.*(DOID_\d+)$/.exec(ident);
@@ -54,10 +67,11 @@ const uploadFile = async ({filename, conn}) => {
     let source = await conn.addRecord({
         endpoint: 'sources',
         content: {
-            name: SOURCE_NAME,
+            ...SOURCE_DEFN,
             version: doVersion
         },
-        existsOk: true
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name, version: doVersion}
     });
     source = rid(source);
     logger.info(`processing ${DOID.graphs[0].nodes.length} nodes`);

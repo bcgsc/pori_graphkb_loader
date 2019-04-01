@@ -25,7 +25,13 @@ const {logger} = require('./logging');
 
 const ajv = new Ajv();
 
-const SOURCE_NAME = 'database of curated mutations (docm)';
+const SOURCE_DEFN = {
+    name: 'database of curated mutations (docm)',
+    description: 'DoCM, the Database of Curated Mutations, is a highly curated database of known, disease-causing mutations that provides easily explorable variant lists with direct links to source citations for easy verification.',
+    url: 'http://www.docm.info',
+    usage: 'http://www.docm.info/terms'
+};
+
 const BASE_URL = 'http://www.docm.info/api/v1/variants';
 
 
@@ -187,13 +193,9 @@ const upload = async (opt) => {
     // add the source node
     const source = await conn.addRecord({
         endpoint: 'sources',
-        content: {
-            name: SOURCE_NAME,
-            usage: 'http://www.docm.info/terms',
-            url: 'http://www.docm.info'
-        },
+        content: SOURCE_DEFN,
         existsOk: true,
-        fetchConditions: {name: SOURCE_NAME}
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
 
     const counts = {
@@ -255,4 +257,4 @@ const upload = async (opt) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {upload};
+module.exports = {upload, SOURCE_DEFN};

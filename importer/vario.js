@@ -20,8 +20,13 @@ const PREDICATES = {
 };
 
 const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/vario.owl';
-const SOURCE_URL = 'http://variationontology.org';
-const SOURCE_NAME = 'VariO';
+
+const SOURCE_DEFN = {
+    name: 'vario',
+    usage: 'http://variationontology.org/citing.shtml',
+    url: 'http://variationontology.org',
+    description: 'Variation Ontology, VariO, is an ontology for standardized, systematic description of effects, consequences and mechanisms of variations. VariO allows unambiguous description of variation effects as well as computerized analyses over databases utilizing the ontology for annotation. VariO is a position specific ontology that can be used to describe effects of variations on DNA, RNA and/or protein level, whatever is appropriate.'
+};
 
 /**
  * Parse the ID from a url string
@@ -52,7 +57,7 @@ const parseId = (url) => {
  * @param {ApiConnection} opt.conn the api request connection object
  */
 const uploadFile = async ({filename, conn}) => {
-    logger.info(`Loading external ${SOURCE_NAME} data`);
+    logger.info(`Loading external ${SOURCE_DEFN.name} data`);
     logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
     logger.info(`parsing: ${filename}`);
@@ -62,11 +67,9 @@ const uploadFile = async ({filename, conn}) => {
 
     const source = await conn.addRecord({
         endpoint: 'sources',
-        content: {
-            url: SOURCE_URL,
-            name: SOURCE_NAME
-        },
-        existsOk: true
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
 
     const recordsByCode = {};
@@ -104,4 +107,4 @@ const uploadFile = async ({filename, conn}) => {
     console.log();
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, SOURCE_DEFN};
