@@ -38,12 +38,10 @@ const convertNulls = (where) => {
  */
 class ApiConnection {
     /**
-     * @param {object} opt
-     * @param {string} opt.host GraphKB base url host
-     * @param {number} opt.port GraphKB base url port
+     * @param {string} url the base url for the api
      */
-    constructor(opt) {
-        this.baseUrl = `http://${opt.host}:${opt.port}/api`;
+    constructor(url) {
+        this.baseUrl = url;
         this.headers = {};
         this.username = null;
         this.password = null;
@@ -57,6 +55,7 @@ class ApiConnection {
     }
 
     async login() {
+        logger.log('info', `login to ${this.baseUrl}`);
         const token = await request({
             method: 'POST',
             uri: `${this.baseUrl}/token`,

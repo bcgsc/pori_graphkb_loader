@@ -55,17 +55,10 @@ const optionDefinitions = [
         description: 'Flag to indicate if we should try loading the disease ontology'
     },
     {
-        name: 'host',
-        default: process.env.HOSTNAME || '127.0.0.1',
-        description: 'server hosting the KB API',
-        env: 'KB_HOST'
-    },
-    {
-        name: 'port',
-        type: Number,
-        default: 8080,
-        env: 'KB_PORT',
-        description: 'port number for the server hosting the KB API'
+        name: 'graphkb',
+        default: `${process.env.KB_API_URL || 'https://graphkb-api.bcgsc.ca/api'}`,
+        description: 'URL for the KB API',
+        env: 'KB_API_URL'
     },
     {
         name: 'username',
@@ -174,7 +167,7 @@ const options = createOptionsMenu(optionDefinitions,
     });
 
 
-const apiConnection = new ApiConnection(options);
+const apiConnection = new ApiConnection(options.graphkb);
 
 if (options.pubmed) {
     PUBMED_DEFAULT_QS.api_key = options.pubmed;
