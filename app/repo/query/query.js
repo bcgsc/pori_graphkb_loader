@@ -172,7 +172,13 @@ class Comparison {
      */
     toString(paramIndex = 0) {
         const params = {};
-        let query;
+        let query,
+            cast = this.attr.terminalCast();
+        const prop = this.attr.terminalProperty();
+
+        if (prop && prop.cast) {
+            ({cast} = prop);
+        }
         const attr = this.attr.toString();
         if (this.value instanceof Query) {
             const {query: subQuery, params: subParams} = this.value.toString(paramIndex);
@@ -189,7 +195,9 @@ class Comparison {
         } else {
             const pname = `${PARAM_PREFIX}${paramIndex}`;
             if (this.value !== null) {
-                params[pname] = this.value;
+                params[pname] = cast
+                    ? cast(this.value)
+                    : this.value;
                 query = `${attr} ${this.operator} :${pname}`;
             } else {
                 query = `${attr} ${OPERATORS.IS} NULL`;
