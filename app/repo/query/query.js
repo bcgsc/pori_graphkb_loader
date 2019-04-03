@@ -412,7 +412,7 @@ class Query {
             } else if (value instanceof RID) {
                 value = `#${value.cluster}:${value.position}`;
             }
-            statement = statement.replace(new RegExp(`:${key}`, 'g'), `${value}`);
+            statement = statement.replace(new RegExp(`:${key}\\b`, 'g'), `${value}`);
         }
         return statement;
     }
