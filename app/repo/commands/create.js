@@ -194,8 +194,8 @@ const createStatement = async (db, opt) => {
         content.source = castToRID(content.source);
         dependencies.push(content.source);
     }
-    query.where.push(new Comparison('source', content.source || null));
-    query.where.push(new Comparison('sourceId', content.sourceId || null));
+    query.where.push(Comparison.parse(schema, schema.Statement, {attr: 'source', value: content.source || null}));
+    query.where.push(Comparison.parse(schema, schema.Statement, {attr: 'sourceId', value: content.sourceId || null}));
     // check the DB to ensure all dependencies already exist (and are not deleted)
     try {
         // ensure that the dependency records are valid
