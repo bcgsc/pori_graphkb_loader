@@ -126,18 +126,18 @@ const select = async (db, query, opt) => {
     };
     if (!query.count) {
         queryOpt.limit = query.limit;
-    }
-    if (fetchPlan) {
-        queryOpt.fetchPlan = fetchPlan;
-    } else if (query.neighbors !== null && query.neighbors !== undefined) {
-        queryOpt.fetchPlan = `*:${query.neighbors}`;
-    }
-    // add history if not explicity specified already
-    if (query.activeOnly && (!queryOpt.fetchPlan || !queryOpt.fetchPlan.includes('history'))) {
-        if (!queryOpt.fetchPlan) {
-            queryOpt.fetchPlan = `history:${FETCH_OMIT}`;
-        } else if (!queryOpt.fetchPlan.includes(`history:${FETCH_OMIT}`)) {
-            queryOpt.fetchPlan = `${queryOpt.fetchPlan} history:${FETCH_OMIT}`;
+        if (fetchPlan) {
+            queryOpt.fetchPlan = fetchPlan;
+        } else if (query.neighbors !== null && query.neighbors !== undefined) {
+            queryOpt.fetchPlan = `*:${query.neighbors}`;
+        }
+        // add history if not explicity specified already
+        if (query.activeOnly && (!queryOpt.fetchPlan || !queryOpt.fetchPlan.includes('history'))) {
+            if (!queryOpt.fetchPlan) {
+                queryOpt.fetchPlan = `history:${FETCH_OMIT}`;
+            } else if (!queryOpt.fetchPlan.includes(`history:${FETCH_OMIT}`)) {
+                queryOpt.fetchPlan = `${queryOpt.fetchPlan} history:${FETCH_OMIT}`;
+            }
         }
     }
     logger.log('debug', JSON.stringify(queryOpt));
