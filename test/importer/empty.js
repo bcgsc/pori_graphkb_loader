@@ -62,7 +62,7 @@ describe('importers', () => {
         mockToken = await generateToken(db, admin.name, conf.privateKey, REALLY_LONG_TIME);
         const {exp} = jwt.decode(mockToken);
 
-        connection = new ApiConnection(app);
+        connection = new ApiConnection(`http://${app.host}:${app.port}/api`);
         connection.headers.Authorization = mockToken;
         connection.exp = exp;
     });

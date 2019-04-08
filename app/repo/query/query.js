@@ -382,16 +382,21 @@ class Query {
             });
             queryString = query;
             params = subParams;
+            if (this.activeOnly) {
+                queryString = `SELECT * FROM (${queryString}) WHERE deletedAt IS NULL`; // Fix for indexing error in OrientDB v2
+            }
         } else {
             const {query, params: subParams} = this.where.toString(paramIndex);
             params = subParams;
             queryString = `SELECT ${selectionElements} FROM ${this.modelName}`;
             if (query) {
                 queryString = `${queryString} WHERE ${query}`;
+                if (this.activeOnly) {
+                    queryString = `SELECT * FROM (${queryString}) WHERE deletedAt IS NULL`; // Fix for indexing error in OrientDB v2
+                }
+            } else if (this.activeOnly) {
+                queryString = `${queryString} WHERE deletedAt IS NULL`; // Fix for indexing error in OrientDB v2
             }
-        }
-        if (this.activeOnly) {
-            queryString = `SELECT * FROM (${queryString}) WHERE deletedAt IS NULL`; // Fix for indexing error in OrientDB v2
         }
         if (this.orderBy && this.orderBy.length > 0) {
             queryString = `${queryString} ORDER BY ${this.orderBy.map(param => `${param} ${this.orderByDirection}`).join(', ')}`;
