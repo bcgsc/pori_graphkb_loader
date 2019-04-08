@@ -77,7 +77,9 @@
     ]
   },
   "scripts": {
-    "start": "node server.js",
+    "start": "NODE_ENV=production node server.js",
+    "start:dev": "NODE_ENV=development node server.js",
+    "start:local": "NODE_ENV=local node server.js",
     "import": "node --stack-size=8192  --max-old-space-size=20000 importer/index.js",
     "test": "nyc mocha test/{routes,repo}",
     "test:live": "nyc mocha test/{routes,repo}/livedb.js --exit",
