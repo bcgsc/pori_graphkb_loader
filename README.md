@@ -151,7 +151,7 @@ Create the logging directories
 mkdir logs
 ```
 
-Create an env.sh file to hold the [configurable environment variables](env.md) as well as the PM2 ones
+Create an env.sh file to hold the [configurable environment variables](doc/env.md) as well as the PM2 ones
 
 ```bash
 export PM2_HOME=/var/www/kb/knowledgebase-api/pm2_logs
