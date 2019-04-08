@@ -11,9 +11,12 @@ const {constants, schema: SCHEMA_DEFN, util: {timeStampNow}} = require('@bcgsc/k
 constants.RID = RID; // IMPORTANT: Without this all castToRID will do is convert to a string
 
 const {logger} = require('./../logging');
+const {Property} = require('../model');
 
 /**
  * Get the current schema version to detect if a migration is required
+ *
+ * @param {orientjs.Db} db the database connection
  */
 const getCurrentVersion = async (db) => {
     const [{version}] = await db.query('SELECT * FROM SchemaHistory ORDER BY createdAt DESC', {limit: 1});
@@ -22,6 +25,8 @@ const getCurrentVersion = async (db) => {
 
 /**
  * Gets the current version with respect to the node modules installed
+ *
+ * @returns {object} metadata about the installed schema package
  */
 const getLoadVersion = () => {
     const pathToVersionInfo = path.join(
@@ -35,6 +40,11 @@ const getLoadVersion = () => {
 
 /**
  * Checks if the current version is more than a patch change
+ *
+ * @param {string} currentVersion the version last installed in the db instance (schema history table)
+ * @param {string} targetVersion the version of the currently installed node package (node_modules)
+ *
+ * @returns {boolean} true when more than a patch level change between the versions
  */
 const requiresMigration = (currentVersion, targetVersion) => {
     const compatibleVersion = `~${targetVersion.replace(/\.[^.]+$/, '')}`;
@@ -43,8 +53,10 @@ const requiresMigration = (currentVersion, targetVersion) => {
 
 /**
  * Migrate any 1.6.X database to any 1.7.X database
+ *
+ * @param {orientjs.Db} db the database connection
  */
-const migrateMajor1Minor6to7 = async (db) => {
+const migrate16Xto17X = async (db) => {
     logger.info('Indexing Variant.type');
     await db.index.create(
         SCHEMA_DEFN.Variant.indices.find(item => item.name === 'Variant.type')
@@ -59,9 +71,25 @@ const migrateMajor1Minor6to7 = async (db) => {
     );
 };
 
+
+/**
+ * Migrate any 1.7.X database to any 1.8.X database
+ *
+ * @param {orientjs.Db} db the database connection
+ */
+const migrate17Xto18X = async (db) => {
+    logger.info('Add evidence level to Statement');
+    const {evidenceLevel} = SCHEMA_DEFN.Statement.properties;
+    const dbClass = db.class.get(SCHEMA_DEFN.Statement.name);
+    await Property.create(evidenceLevel, dbClass);
+};
+
+
 /**
  * Detects the current version of the db, the version of the node module and attempts
  * to migrate from one to the other
+ *
+ * @param {orientjs.Db} db the database connection
  */
 const migrate = async (db, opt) => {
     const {checkOnly = false} = opt;
@@ -75,24 +103,42 @@ const migrate = async (db, opt) => {
         throw new Error(`Versions (${currentVersion}, ${targetVersion}) are not compatible and require migration`);
     }
 
+    let migrationResolved = false;
+
     if (semver.satisfies(currentVersion, '>=1.6.2 <1.7.0')) {
         if (semver.satisfies(targetVersion, '>=1.7.0 <1.8.0')) {
-            // 1.6 to 1.7 upgrade: changes to the indexing
+            // 1.6.X to 1.7.X
             logger.info(`Migrating from 1.6.X series (${currentVersion}) to v1.7.X series (${targetVersion})`);
-
-            await migrateMajor1Minor6to7(db);
-            // update the schema history table
-            const schemaHistory = await db.class.get('SchemaHistory');
-            await schemaHistory.create({
-                version: targetVersion,
-                name,
-                url,
-                createdAt: timeStampNow()
-            });
-            return;
+            await migrate16Xto17X(db);
+            migrationResolved = true;
+        } else if (semver.satisfies(targetVersion, '>=1.8.0 <1.9.0')) {
+            // 1.6.X to 1.8.X
+            logger.info(`Migrating from 1.6.X series (${currentVersion}) to v1.8.X series (${targetVersion})`);
+            await migrate16Xto17X(db);
+            await migrate17Xto18X(db);
+            migrationResolved = true;
+        }
+    } if (semver.satisfies(currentVersion, '>=1.7.0 <1.8.0')) {
+        if (semver.satisfies(targetVersion, '>=1.8.0 <1.9.0')) {
+            // 1.7.X to 1.8.X
+            logger.info(`Migrating from 1.7.X series (${currentVersion}) to v1.8.X series (${targetVersion})`);
+            await migrate17Xto18X(db);
+            migrationResolved = true;
         }
     }
-    throw new Error(`Unable to find migration scripts from ${currentVersion} to ${targetVersion}`);
+
+    if (migrationResolved) {
+        // update the schema history table
+        const schemaHistory = await db.class.get('SchemaHistory');
+        await schemaHistory.create({
+            version: targetVersion,
+            name,
+            url,
+            createdAt: timeStampNow()
+        });
+    } else {
+        throw new Error(`Unable to find migration scripts from ${currentVersion} to ${targetVersion}`);
+    }
 };
 
 module.exports = {
