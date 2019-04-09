@@ -17,6 +17,62 @@ chai.use(chaiHttp);
 
 const REALLY_LONG_TIME = 10000000000;
 
+/**
+ * Mocks a set of 3 disease records related as aliases
+ */
+const mockRelatedDiseases = async ({app, mockToken, source}) => {
+    const res1 = await chai.request(app.app)
+        .post(`${app.prefix}/diseases`)
+        .type('json')
+        .send({
+            sourceId: 'cancer',
+            source
+        })
+        .set('Authorization', mockToken);
+    const res2 = await chai.request(app.app)
+        .post(`${app.prefix}/diseases`)
+        .type('json')
+        .send({
+            sourceId: 'carcinoma',
+            source
+        })
+        .set('Authorization', mockToken);
+    await chai.request(app.app)
+        .post(`${app.prefix}/aliasof`)
+        .type('json')
+        .send({
+            out: res1.body.result['@rid'],
+            in: res2.body.result['@rid'],
+            source
+        })
+        .set('Authorization', mockToken);
+    const res3 = await chai.request(app.app)
+        .post(`${app.prefix}/diseases`)
+        .type('json')
+        .send({
+            sourceId: 'disease of cellular proliferation',
+            source
+        })
+        .set('Authorization', mockToken);
+    const res4 = await chai.request(app.app)
+        .post(`${app.prefix}/aliasof`)
+        .type('json')
+        .send({
+            out: res1.body.result['@rid'],
+            in: res3.body.result['@rid'],
+            source
+        })
+        .set('Authorization', mockToken);
+    await chai.request(app.app)
+        .delete(`${app.prefix}/diseases/${res2.body.result['@rid'].slice(1)}`)
+        .set('Authorization', mockToken);
+    await chai.request(app.app)
+        .delete(`${app.prefix}/aliasof/${res4.body.result['@rid'].slice(1)}`)
+        .set('Authorization', mockToken);
+
+    return [res1.body.result, res2.body.result, res3.body.result];
+};
+
 
 describe('API', () => {
     let db,
@@ -601,56 +657,9 @@ describe('API', () => {
             });
         });
         // select neighbors that are not deleted
-        describe('GET /diseases: propogating active record selection', () => {
+        describe('GET /<class> active and related records', () => {
             beforeEach(async () => {
-                const res1 = await chai.request(app.app)
-                    .post(`${app.prefix}/diseases`)
-                    .type('json')
-                    .send({
-                        sourceId: 'cancer',
-                        source
-                    })
-                    .set('Authorization', mockToken);
-                const res2 = await chai.request(app.app)
-                    .post(`${app.prefix}/diseases`)
-                    .type('json')
-                    .send({
-                        sourceId: 'carcinoma',
-                        source
-                    })
-                    .set('Authorization', mockToken);
-                await chai.request(app.app)
-                    .post(`${app.prefix}/aliasof`)
-                    .type('json')
-                    .send({
-                        out: res1.body.result['@rid'],
-                        in: res2.body.result['@rid'],
-                        source
-                    })
-                    .set('Authorization', mockToken);
-                const res3 = await chai.request(app.app)
-                    .post(`${app.prefix}/diseases`)
-                    .type('json')
-                    .send({
-                        sourceId: 'disease of cellular proliferation',
-                        source
-                    })
-                    .set('Authorization', mockToken);
-                const res4 = await chai.request(app.app)
-                    .post(`${app.prefix}/aliasof`)
-                    .type('json')
-                    .send({
-                        out: res1.body.result['@rid'],
-                        in: res3.body.result['@rid'],
-                        source
-                    })
-                    .set('Authorization', mockToken);
-                await chai.request(app.app)
-                    .delete(`${app.prefix}/diseases/${res2.body.result['@rid'].slice(1)}`)
-                    .set('Authorization', mockToken);
-                await chai.request(app.app)
-                    .delete(`${app.prefix}/aliasof/${res4.body.result['@rid'].slice(1)}`)
-                    .set('Authorization', mockToken);
+                await mockRelatedDiseases({app, source, mockToken});
             });
             it('default limits to active records', async () => {
                 const res = await chai.request(app.app)
@@ -681,6 +690,110 @@ describe('API', () => {
                     .set('Authorization', mockToken)
                     .query({neighbors: 2, activeOnly: false});
                 expect(res.body.result).to.have.property('length', 6);
+            });
+        });
+        describe('GET /records Records by ID list', () => {
+            let record1,
+                record2,
+                deletedRecord;
+            beforeEach(async () => {
+                const result = await mockRelatedDiseases({app, source, mockToken});
+                ([record1, deletedRecord, record2] = result.map(rec => rec['@rid'].slice(1)));
+            });
+            it('ok for 2 existing records', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/records`)
+                    .set('Authorization', mockToken)
+                    .query({rid: `${record1},${record2}`});
+                expect(res.body.result).to.have.property('length', 2);
+            });
+            it('fails for properly formatted non-existant cluster RID', async () => {
+                let res;
+                try {
+                    await chai.request(app.app)
+                        .get(`${app.prefix}/records`)
+                        .set('Authorization', mockToken)
+                        .query({rid: `${record1},1111:1111`});
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.NOT_FOUND);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('One or more invalid record cluster IDs (<cluster>:#)');
+            });
+            it('Ignores non-existant RID on a valid cluster', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/records`)
+                    .set('Authorization', mockToken)
+                    .query({rid: `${record1},1:1111`});
+                expect(res.body.result).to.have.property('length', 1);
+            });
+            it('error on bad neighbors argument', async () => {
+                let res;
+                try {
+                    await chai.request(app.app)
+                        .get(`${app.prefix}/records`)
+                        .set('Authorization', mockToken)
+                        .query({
+                            rid: `${record1}`,
+                            neighbors: 'k'
+                        });
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('k is not a valid decimal integer');
+            });
+            it('error on unrecognized argument', async () => {
+                let res;
+                try {
+                    await chai.request(app.app)
+                        .get(`${app.prefix}/records`)
+                        .set('Authorization', mockToken)
+                        .query({
+                            rid: `${record1}`,
+                            limit: 100
+                        });
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('Invalid query parameter(s) (limit)');
+            });
+            it('error on malformed RID', async () => {
+                let res;
+                try {
+                    await chai.request(app.app)
+                        .get(`${app.prefix}/records`)
+                        .set('Authorization', mockToken)
+                        .query({
+                            rid: `${record1},7`
+                        });
+                } catch (err) {
+                    res = err;
+                }
+                expect(res).to.have.status(HTTP_STATUS.BAD_REQUEST);
+                expect(res.response.body).to.have.property('message');
+                expect(res.response.body.message).to.include('not a valid RID');
+            });
+            it('ignores deleted records', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/records`)
+                    .set('Authorization', mockToken)
+                    .query({rid: `${record1},${record2},${deletedRecord}`});
+                expect(res.body.result).to.have.property('length', 2);
+            });
+            it('includes deleted records when activeOnly off', async () => {
+                const res = await chai.request(app.app)
+                    .get(`${app.prefix}/records`)
+                    .set('Authorization', mockToken)
+                    .query({
+                        rid: `${record1},${record2},${deletedRecord}`,
+                        activeOnly: false
+                    });
+                expect(res.body.result).to.have.property('length', 3);
             });
         });
         describe('GET /ontologies', () => {
@@ -766,7 +879,7 @@ describe('API', () => {
             });
         });
 
-        describe('/api/search?keyword', () => {
+        describe('GET /api/search?keyword', () => {
             let liverCancer,
                 breastCancer,
                 liverAngiosarc,
