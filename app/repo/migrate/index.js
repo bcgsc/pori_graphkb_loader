@@ -118,7 +118,7 @@ const migrate = async (db, opt) => {
             await migrate17Xto18X(db);
             migrationResolved = true;
         }
-    } if (semver.satisfies(currentVersion, '>=1.7.0 <1.8.0')) {
+    } else if (semver.satisfies(currentVersion, '>=1.7.0 <1.8.0')) {
         if (semver.satisfies(targetVersion, '>=1.8.0 <1.9.0')) {
             // 1.7.X to 1.8.X
             logger.info(`Migrating from 1.7.X series (${currentVersion}) to v1.8.X series (${targetVersion})`);
