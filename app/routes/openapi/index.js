@@ -79,7 +79,8 @@ const STUB = {
             }
         },
         responses
-    }
+    },
+    tags: []
 };
 
 
