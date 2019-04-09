@@ -5,7 +5,8 @@ const {
     RELATED_NODE_DEPTH,
     select,
     selectCounts,
-    selectByKeyword
+    selectByKeyword,
+    selectFromList
 } = require('./select');
 const {remove, update} = require('./update');
 
@@ -19,5 +20,6 @@ module.exports = {
     select,
     selectByKeyword,
     selectCounts,
+    selectFromList,
     update
 };

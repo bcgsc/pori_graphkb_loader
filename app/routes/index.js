@@ -11,7 +11,7 @@ const {constants: {MAX_LIMIT, MAX_NEIGHBORS}, util: {castRangeInt, castBoolean}}
 const {
     MIN_WORD_SIZE
 } = require('./query');
-const {selectByKeyword} = require('../repo/commands');
+const {selectByKeyword, selectFromList} = require('../repo/commands');
 
 
 const addKeywordSearchRoute = (opt) => {
@@ -87,4 +87,43 @@ const addKeywordSearchRoute = (opt) => {
         });
 };
 
-module.exports = {openapi, util, addKeywordSearchRoute};
+
+const addGetRecordsByList = ({router, db}) => {
+    router.get('/records',
+        async (req, res) => {
+            const {
+                rid = '', neighbors, ...other
+            } = req.query;
+
+            const options = {user: req.user};
+            try {
+                if (neighbors !== undefined) {
+                    options.neighbors = castRangeInt(neighbors, 0, MAX_NEIGHBORS);
+                }
+            } catch (err) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+            }
+            if (Object.keys(other).length) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                    message: 'Invalid query parameter',
+                    invalidParams: other
+                });
+            }
+
+            try {
+                const result = await selectFromList(db, rid.split(',').map(r => r.trim()), options);
+                return res.json(jc.decycle({result}));
+            } catch (err) {
+                logger.log('debug', err);
+                if (err instanceof AttributeError) {
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                }
+                logger.log('error', err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+            }
+        });
+};
+
+module.exports = {
+    openapi, util, addKeywordSearchRoute, addGetRecordsByList
+};
