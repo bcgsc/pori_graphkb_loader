@@ -32,12 +32,24 @@ const STUB = {
         '/schema': {get: routes.GET_SCHEMA},
         '/version': {get: routes.GET_VERSION},
         '/search': {get: routes.GET_KEYWORD},
+        '/records': {get: routes.GET_RECORDS},
         '/spec': {
             get: {
                 summary: 'Returns this specification',
-                tags: ['Metadata'],
+                tags: ['General'],
                 responses: {
                     200: {}
+                }
+            }
+        },
+        '/spec.json': {
+            get: {
+                summary: 'Returns the JSON format of this specification',
+                tags: ['General'],
+                responses: {
+                    200: {
+                        schema: {type: 'object'}
+                    }
                 }
             }
         },
@@ -68,9 +80,7 @@ const STUB = {
         },
         responses
     },
-    tags: [
-        {name: 'Metadata', description: 'Routes returning data related to the API or DB contents'}
-    ]
+    tags: []
 };
 
 

@@ -23,7 +23,7 @@ const {connectDB} = require('./repo');
 const {generateSwaggerSpec} = require('./routes/openapi');
 const {addResourceRoutes} = require('./routes/util');
 const {addPostToken} = require('./routes/auth');
-const {addKeywordSearchRoute} = require('./routes');
+const {addKeywordSearchRoute, addGetRecordsByList} = require('./routes');
 
 const logRequests = (req, res, next) => {
     logger.log('info', `[${req.method}] ${req.url}`);
@@ -88,7 +88,15 @@ class AppServer {
                 displayOperationId: true,
                 defaultModelRendering: 'model',
                 operationsSorter: 'alpha',
-                tagsSorter: 'alpha',
+                tagsSorter: (tag1, tag2) => {
+                    // show the 'default' group at the top
+                    if (tag1 === 'General') {
+                        return -1;
+                    } if (tag2 === 'General') {
+                        return 1;
+                    }
+                    return tag1.localeCompare(tag2);
+                },
                 docExpansion: 'none'
             },
             customCss: '.swagger-ui .info pre > code { display: block; color: #373939}'
@@ -130,6 +138,7 @@ class AppServer {
             });
         }
         addKeywordSearchRoute({router: this.router, db, config: this.conf});
+        addGetRecordsByList({router: this.router, db, config: this.conf});
         // add the stats route
         const classList = Object.keys(this.schema).filter(
             name => !this.schema[name].isAbstract

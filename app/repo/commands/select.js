@@ -6,7 +6,7 @@
 /**
  * @ignore
  */
-const {error: {AttributeError}} = require('@bcgsc/knowledgebase-schema');
+const {error: {AttributeError}, util: {castToRID}} = require('@bcgsc/knowledgebase-schema');
 
 const {logger} = require('../logging');
 const {
@@ -20,6 +20,7 @@ const {
     groupRecordsBy,
     trimRecords
 } = require('../util');
+const {wrapIfTypeError} = require('./util');
 
 
 const STATS_GROUPING = new Set(['@class', 'source']);
@@ -141,7 +142,17 @@ const select = async (db, query, opt) => {
         }
     }
     logger.log('debug', JSON.stringify(queryOpt));
-    let recordList = await db.query(`${statement}`, queryOpt).all();
+
+    let recordList;
+
+    try {
+        recordList = await db.query(`${statement}`, queryOpt).all();
+    } catch (err) {
+        logger.log('debug', `Error in executing the query statement (${statement})`);
+        logger.log('debug', err);
+        // will be listed as connection error but only happens when selecting from non-existent RID (sepcifically bad cluster)
+        throw new NoRecordFoundError({query: statement, message: 'One or more invalid record cluster IDs (<cluster>:#)'});
+    }
 
     logger.log('debug', `selected ${recordList.length} records`);
 
@@ -172,17 +183,46 @@ const select = async (db, query, opt) => {
 
 /**
  * @param {orientjs.Db} db Database connection from orientjs
- * @param {Query} query the query object
+ * @param {Array.<string>} keywords array of keywords to search for
  * @param {Object} opt Selection options
- * @param {?Number} opt.limit max number of records to return
- * @param {?Number} opt.skip number of records to skip
- * @param {?Number} opt.neighbors number of related records to fetch
- * @param {User} [opt.user] the current user
  */
 const selectByKeyword = async (db, keywords, opt) => {
     const queryObj = Object.assign({
         toString: () => generalKeywordSearch(keywords, {...opt, skip: opt.skip || 0}),
         activeOnly: true
+    }, opt);
+    queryObj.displayString = () => Query.displayString(queryObj);
+    return select(db, queryObj);
+};
+
+
+/**
+ * @param {orientjs.Db} db Database connection from orientjs
+ * @param {Array.<string|RID>} recordList array of record IDs to select from
+ * @param {Object} opt Selection options
+ * @param {?Number} opt.neighbors number of related records to fetch
+ * @param {?Boolean} opt.activeOnly exclude deleted records
+ */
+const selectFromList = async (db, recordList, opt) => {
+    const {neighbors = 0, activeOnly = true} = opt;
+    const params = {};
+    recordList.forEach((rec) => {
+        const rid = castToRID(rec);
+        params[`param${Object.keys(params).length}`] = rid;
+    });
+    if (recordList.length < 1) {
+        throw new AttributeError('Must select a minimum of 1 record');
+    }
+    let query = `SELECT * FROM [${Object.keys(params).sort().map(p => `:${p}`).join(', ')}]`;
+
+    if (activeOnly) {
+        query = `${query} WHERE deletedAt IS NULL`;
+    }
+    const queryObj = Object.assign({
+        toString: () => ({query, params}),
+        activeOnly,
+        neighbors,
+        params
     }, opt);
     queryObj.displayString = () => Query.displayString(queryObj);
     return select(db, queryObj);
@@ -195,5 +235,6 @@ module.exports = {
     RELATED_NODE_DEPTH,
     select,
     selectCounts,
-    selectByKeyword
+    selectByKeyword,
+    selectFromList
 };

@@ -78,7 +78,7 @@ const POST_STATEMENT = {
 
 const POST_TOKEN = {
     summary: 'Generate an authentication token to be used for requests to the KB API server',
-    tags: ['Authentication'],
+    tags: ['General'],
     parameters: [
         {$ref: '#/components/parameters/Content-Type'},
         {$ref: '#/components/parameters/Accept'}
@@ -140,7 +140,7 @@ const POST_TOKEN = {
 
 const GET_SCHEMA = {
     summary: 'Returns a JSON representation of the current database schema',
-    tags: ['Metadata'],
+    tags: ['General'],
     parameters: [
         {$ref: '#/components/parameters/Accept'}
     ],
@@ -154,7 +154,7 @@ const GET_SCHEMA = {
 
 const GET_VERSION = {
     summary: 'Returns the version information for the API and database',
-    tags: ['Metadata'],
+    tags: ['General'],
     parameters: [
         {$ref: '#/components/parameters/Accept'}
     ],
@@ -177,12 +177,14 @@ const GET_VERSION = {
 
 const GET_KEYWORD = {
     summary: 'Search statement records by a single keyword',
+    tags: ['General'],
     parameters: [
         {$ref: '#/components/parameters/Accept'},
         {
             in: 'query',
             name: 'keyword',
             schema: {type: 'string'},
+            example: 'kras',
             description: 'the keyword to search for',
             required: true
         },
@@ -200,19 +202,60 @@ const GET_KEYWORD = {
                     schema: {
                         type: 'object',
                         properties: {
-                            result: {$ref: '#/components/schemas/Statement'}
+                            result: {
+                                type: 'array', items: {$ref: '#/components/schemas/Statement'}
+                            }
                         }
                     }
                 }
             }
-        }
+        },
+        401: {$ref: '#/components/responses/NotAuthorized'},
+        403: {$ref: '#/components/responses/Forbidden'},
+        400: {$ref: '#/components/responses/BadInput'}
+    }
+};
+
+
+const GET_RECORDS = {
+    summary: 'Get a list of records from their record IDs',
+    tags: ['General'],
+    parameters: [
+        {$ref: '#/components/parameters/Accept'},
+        {
+            in: 'query',
+            name: 'rid',
+            schema: {type: 'string'},
+            example: '69:780,59:4927,84:12673',
+            description: 'the record IDs (CSV list) to search for',
+            required: true
+        },
+        {$ref: '#/components/parameters/neighbors'}
+    ],
+    responses: {
+        200: {
+            content: {
+                'application/json': {
+                    schema: {
+                        type: 'object',
+                        properties: {
+                            result: {schema: {type: 'array', items: {type: 'object'}}}
+                        },
+                        description: 'The list of records from the database'
+                    }
+                }
+            }
+        },
+        401: {$ref: '#/components/responses/NotAuthorized'},
+        400: {$ref: '#/components/responses/BadInput'},
+        403: {$ref: '#/components/responses/Forbidden'}
     }
 };
 
 
 const GET_STATS = {
     summary: 'Returns counts for all non-abstract database classes',
-    tags: ['Metadata'],
+    tags: ['General'],
     parameters: [
         {$ref: '#/components/parameters/Accept'},
         {$ref: '#/components/parameters/Authorization'},
@@ -286,5 +329,5 @@ const GET_STATS = {
 };
 
 module.exports = {
-    POST_STATEMENT, POST_TOKEN, GET_SCHEMA, GET_STATS, GET_VERSION, GET_KEYWORD
+    POST_STATEMENT, POST_TOKEN, GET_SCHEMA, GET_STATS, GET_VERSION, GET_KEYWORD, GET_RECORDS
 };
