@@ -71,11 +71,11 @@ npm install
 To actually use the API, the orientDB instance must already be running. To configure where the tests will point to the user can either modify `config/config.js` or set the [environment variables](env.md) which override this config (default values are shown below, this will change depending on how you db server is configured).
 
 ```bash
-DBS_PASS=root
-DBS_USER=root
-DB_HOST='orientdb02.bcgsc.ca'
-DB_PORT=2480
-KEY_FILE='id_rsa'  # used in generating the tokens
+GKB_DBS_PASS=root
+GKB_DBS_USER=root
+GKB_DB_HOST='orientdb02.bcgsc.ca'
+GKB_DB_PORT=2480
+GKB_KEY_FILE='id_rsa'  # used in generating the tokens
 ```
 
 After these options are configured, the full set of tests can be run
@@ -98,15 +98,19 @@ npm run test:import
 
 ### Test Envinronments
 
-Default configurations for all non-sensitive content can be found under
-
-```text
-config/env/{local,test}.sh
-```
+Default configurations for all non-sensitive content can be set using the various start commands
 
 The local test envinronment should be used for testing without authentication
 
-The test test environment should be used for developing against the test keycloak server (can only be used within the GSC network)
+```bash
+npm run start:local
+```
+
+The test/dev test environment should be used for developing against the test keycloak server (can only be used within the GSC network)
+
+```bash
+npm run start:dev
+```
 
 ### Generate the User Manual
 
@@ -147,18 +151,18 @@ Create the logging directories
 mkdir logs
 ```
 
-Create an env.sh file to hold the [configurable environment variables](env.md) as well as the PM2 ones
+Create an env.sh file to hold the [configurable environment variables](doc/env.md) as well as the PM2 ones
 
 ```bash
 export PM2_HOME=/var/www/kb/knowledgebase-api/pm2_logs
-export LOG_DIR=logs
-export DB_CREATE=1
+export GKB_LOG_DIR=logs
+export GKB_DB_CREATE=1
 ```
 
 Set the Database password (It is better not to store this)
 
 ```bash
-export DBS_PASS=<some password>
+export GKB_DBS_PASS=<some password>
 ```
 
 Now source the file and start your pm2 process

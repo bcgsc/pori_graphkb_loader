@@ -33,26 +33,28 @@
  *
  * @module importer/cosmic
  */
-const request = require('request-promise');
+const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
+
 const {
     orderPreferredOntologyTerms,
     preferredDrugs,
     preferredDiseases,
     loadDelimToJson,
     rid
-} = require('./util');
+} = require('../util');
 const {
     fetchArticle,
     uploadArticlesByPmid
-} = require('./pubmed');
-const {logger} = require('./logging');
+} = require('../pubmed');
+const {logger} = require('../logging');
+
 
 const THERAPY_MAPPING = {
     'tyrosine kinase inhibitor - ns': 'tyrosine kinase inhibitor',
     'endocrine therapy': 'hormone therapy agent'
 };
 
-const SOURCE_NAME = 'cosmic';
+const {SOURCE_DEFN} = require('./constants');
 
 
 const processCosmicRecord = async (conn, record, source) => {
@@ -63,25 +65,23 @@ const processCosmicRecord = async (conn, record, source) => {
         sort: orderPreferredOntologyTerms
     });
     // add the protein variant
-    let variant = record['AA Mutation'];
-    if (variant.startsWith('p.') && variant.includes('>')) {
-        variant = variant.replace('>', 'delins');
+    let variantString = record['AA Mutation'];
+    if (variantString.startsWith('p.') && variantString.includes('>')) {
+        variantString = variantString.replace('>', 'delins');
     }
-    variant = (await request(conn.request({
-        method: 'POST',
-        uri: 'parser/variant',
-        body: {content: variant}
-    }))).result;
+    const {
+        noFeatures, multiFeature, prefix, ...variant
+    } = variantParser(variantString, false);
     variant.reference1 = rid(gene);
     variant.type = rid(await conn.getUniqueRecordBy({
         endpoint: 'vocabulary',
-        where: {name: variant.type}
+        where: {name: variant.type, source: {name: 'bcgsc'}}
     }));
-    variant = await conn.addRecord({
+    const variantId = rid(await conn.addRecord({
         endpoint: 'positionalvariants',
         content: variant,
         existsOk: true
-    });
+    }));
     // get the enst transcript
     // const gene = await getRecordBy('features', {name: record['Transcript'], source: {name: 'ensembl'}, biotype: 'transcript'}, conn, orderPreferredOntologyTerms);
     // add the cds variant
@@ -115,14 +115,14 @@ const processCosmicRecord = async (conn, record, source) => {
     // create the resistance statement
     const relevance = await conn.getUniqueRecordBy({
         endpoint: 'vocabulary',
-        where: {name: 'resistance'}
+        where: {name: 'resistance', source: {name: 'bcgsc'}}
     });
     await conn.addRecord({
         endpoint: 'statements',
         content: {
             relevance,
             appliesTo: drug,
-            impliedBy: [{target: rid(variant)}, {target: rid(disease)}],
+            impliedBy: [{target: variantId}, {target: rid(disease)}],
             supportedBy: [{target: rid(record.publication), source}],
             source: rid(source),
             reviewStatus: 'not required'
@@ -141,22 +141,19 @@ const processCosmicRecord = async (conn, record, source) => {
  */
 const uploadFile = async (opt) => {
     const {filename, conn} = opt;
-    const jsonList = loadDelimToJson(filename);
+    const jsonList = await loadDelimToJson(filename);
     // get the dbID for the source
     const source = rid(await conn.addRecord({
         endpoint: 'sources',
-        content: {
-            name: SOURCE_NAME,
-            url: 'https://cancer.sanger.ac.uk',
-            usage: 'https://cancer.sanger.ac.uk/cosmic/terms'
-        },
-        existsOk: true
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name}
     }));
     const counts = {success: 0, error: 0, skip: 0};
     const errorCache = {};
     logger.info(`Processing ${jsonList.length} records`);
     // Upload the list of pubmed IDs
-    await uploadArticlesByPmid(conn, jsonList.map(rec => rec['Pubmed ID']));
+    await uploadArticlesByPmid(conn, jsonList.map(rec => rec['Pubmed Id']));
 
     for (const record of jsonList) {
         if (record['AA Mutation'] === 'p.?') {
@@ -168,6 +165,7 @@ const uploadFile = async (opt) => {
             await processCosmicRecord(conn, record, source);
             counts.success++;
         } catch (err) {
+            logger.log('error', err);
             const {message} = (err.error || err);
             if (errorCache[message] === undefined) {
                 errorCache[message] = err;
@@ -179,4 +177,4 @@ const uploadFile = async (opt) => {
     logger.info(`${Object.keys(errorCache).length} unique errors`);
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, SOURCE_DEFN};

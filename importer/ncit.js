@@ -46,7 +46,12 @@ const PREDICATES = {
     CLASS: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P106'
 };
 
-const SOURCE_NAME = 'ncit';
+const SOURCE_DEFN = {
+    url: 'https://github.com/NCI-Thesaurus/thesaurus-obo-edition',
+    usage: 'https://creativecommons.org/licenses/by/4.0',
+    name: 'ncit',
+    description: 'NCI Thesaurus (NCIt) provides reference terminology for many NCI and other systems. It covers vocabulary for clinical care, translational and basic research, and public information and administrative activities.'
+};
 
 /**
  * Parse the ID from a url
@@ -187,7 +192,8 @@ const uploadFile = async ({filename, conn}) => {
 
     const source = await conn.addRecord({
         endpoint: 'sources',
-        content: {name: SOURCE_NAME},
+        content: SOURCE_DEFN,
+        fetchConditions: {name: SOURCE_DEFN.name},
         existsOk: true
     });
     let fdaSource;

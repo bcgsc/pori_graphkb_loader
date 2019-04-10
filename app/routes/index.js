@@ -11,7 +11,8 @@ const {constants: {MAX_LIMIT, MAX_NEIGHBORS}, util: {castRangeInt, castBoolean}}
 const {
     MIN_WORD_SIZE
 } = require('./query');
-const {selectByKeyword} = require('../repo/commands');
+const {selectByKeyword, selectFromList} = require('../repo/commands');
+const {NoRecordFoundError} = require('../repo/error');
 
 
 const addKeywordSearchRoute = (opt) => {
@@ -77,8 +78,8 @@ const addKeywordSearchRoute = (opt) => {
                 const result = await selectByKeyword(db, wordList, options);
                 return res.json(jc.decycle({result}));
             } catch (err) {
-                logger.log('debug', err);
                 if (err instanceof AttributeError) {
+                    logger.log('debug', err);
                     return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
                 }
                 logger.log('error', err);
@@ -87,4 +88,50 @@ const addKeywordSearchRoute = (opt) => {
         });
 };
 
-module.exports = {openapi, util, addKeywordSearchRoute};
+
+const addGetRecordsByList = ({router, db}) => {
+    router.get('/records',
+        async (req, res) => {
+            const {
+                rid = '', neighbors, activeOnly, ...other
+            } = req.query;
+
+            const options = {user: req.user};
+            try {
+                if (neighbors !== undefined) {
+                    options.neighbors = castRangeInt(neighbors, 0, MAX_NEIGHBORS);
+                }
+                if (activeOnly !== undefined) {
+                    options.activeOnly = castBoolean(activeOnly);
+                }
+            } catch (err) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+            }
+            if (Object.keys(other).length) {
+                return res.status(HTTP_STATUS.BAD_REQUEST).json({
+                    message: `Invalid query parameter(s) (${Object.keys(other).join(', ')})`,
+                    invalidParams: other
+                });
+            }
+
+            try {
+                const result = await selectFromList(db, rid.split(',').map(r => r.trim()), options);
+                return res.json(jc.decycle({result}));
+            } catch (err) {
+                if (err instanceof AttributeError) {
+                    logger.log('debug', err);
+                    return res.status(HTTP_STATUS.BAD_REQUEST).json(err);
+                }
+                if (err instanceof NoRecordFoundError) {
+                    logger.log('debug', err);
+                    return res.status(HTTP_STATUS.NOT_FOUND).json(err);
+                }
+                logger.log('error', err);
+                return res.status(HTTP_STATUS.INTERNAL_SERVER_ERROR).json(err);
+            }
+        });
+};
+
+module.exports = {
+    openapi, util, addKeywordSearchRoute, addGetRecordsByList
+};

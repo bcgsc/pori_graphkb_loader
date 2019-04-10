@@ -33,7 +33,13 @@ const {
 const {logger} = require('./logging');
 const _pubmed = require('./pubmed');
 
-const SOURCE_NAME = 'civic';
+const SOURCE_DEFN = {
+    name: 'civic',
+    url: 'https://civicdb.org',
+    description: 'CIViC is an open access, open source, community-driven web resource for Clinical Interpretation of Variants in Cancer',
+    usage: 'https://creativecommons.org/publicdomain/zero/1.0'
+};
+
 const BASE_URL = 'https://civicdb.org/api';
 
 /**
@@ -605,12 +611,9 @@ const upload = async (opt) => {
     // add the source node
     const source = await conn.addRecord({
         endpoint: 'sources',
-        content: {
-            name: SOURCE_NAME,
-            usage: 'https://creativecommons.org/publicdomain/zero/1.0',
-            url: 'https://civicdb.org'
-        },
-        existsOk: true
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
 
     const pubmedSource = await conn.addRecord({
@@ -697,4 +700,4 @@ const upload = async (opt) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {upload, getVariantName};
+module.exports = {upload, getVariantName, SOURCE_DEFN};

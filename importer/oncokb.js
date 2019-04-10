@@ -49,7 +49,12 @@ const validateAnnotatedRecordSpec = ajv.compile({
     }
 });
 
-const SOURCE_NAME = 'oncokb';
+const SOURCE_DEFN = {
+    name: 'oncokb',
+    description: 'OncoKB is a precision oncology knowledge base and contains information about the effects and treatment implications of specific cancer gene alterations. It is developed and maintained by the Knowledge Systems group in the Marie Josée and Henry R. Kravis Center for Molecular Oncology at Memorial Sloan Kettering Cancer Center (MSK), in partnership with Quest Diagnostics and Watson for Genomics, IBM.',
+    usage: 'http://oncokb.org/#/terms',
+    url: 'http://oncokb.org'
+};
 
 const VOCABULARY_MAPPING = {
     'oncogenic mutations': 'oncogenic mutation',
@@ -695,12 +700,9 @@ const upload = async (opt) => {
     // add the source node
     const oncokb = await conn.addRecord({
         endpoint: 'sources',
-        content: {
-            name: SOURCE_NAME,
-            usage: 'http://oncokb.org/#/terms',
-            url: 'http://oncokb.org'
-        },
-        existsOk: true
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
 
     const counts = {errors: 0, success: 0, skip: 0};
@@ -716,5 +718,5 @@ const upload = async (opt) => {
 };
 
 module.exports = {
-    upload, parseVariantName
+    upload, parseVariantName, SOURCE_DEFN
 };

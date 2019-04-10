@@ -28,6 +28,7 @@ IMPORT_MODULES.uberon = require('./uberon');
 IMPORT_MODULES.vario = require('./vario');
 IMPORT_MODULES.vocab = require('./vocab');
 IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
+IMPORT_MODULES.mutsig = require('./cosmic/mutationSignatures');
 
 
 const optionDefinitions = [
@@ -55,17 +56,10 @@ const optionDefinitions = [
         description: 'Flag to indicate if we should try loading the disease ontology'
     },
     {
-        name: 'host',
-        default: process.env.HOSTNAME || '127.0.0.1',
-        description: 'server hosting the KB API',
-        env: 'KB_HOST'
-    },
-    {
-        name: 'port',
-        type: Number,
-        default: 8080,
-        env: 'KB_PORT',
-        description: 'port number for the server hosting the KB API'
+        name: 'graphkb',
+        default: `${process.env.KB_API_URL || 'https://graphkb-api.bcgsc.ca/api'}`,
+        description: 'URL for the KB API',
+        env: 'KB_API_URL'
     },
     {
         name: 'username',
@@ -142,6 +136,11 @@ const optionDefinitions = [
         type: fileExists
     },
     {
+        name: 'mutsig',
+        description: 'load the cosmic mutation signatures (ex. JSON file parsed from the COSMIC site)',
+        type: fileExists
+    },
+    {
         name: 'ctg',
         description: 'load trials information from an XML export of a search result downloaded fomr clinicaltrials.gov',
         type: fileExists
@@ -174,7 +173,7 @@ const options = createOptionsMenu(optionDefinitions,
     });
 
 
-const apiConnection = new ApiConnection(options);
+const apiConnection = new ApiConnection(options.graphkb);
 
 if (options.pubmed) {
     PUBMED_DEFAULT_QS.api_key = options.pubmed;
@@ -197,6 +196,7 @@ const upload = async () => {
         'ensembl',
         'uberon',
         'oncotree',
+        'mutsig',
         'cosmic',
         'oncokb',
         'civic',

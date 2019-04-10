@@ -26,7 +26,14 @@ const PREDICATES = {
     DEPRECATED: 'http://www.w3.org/2002/07/owl#deprecated'
 };
 const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/uberon.owl';
-const SOURCE_NAME = 'uberon';
+
+const SOURCE_DEFN = {
+    name: 'uberon',
+    url: 'http://uberon.github.io',
+    description: 'Uberon is an integrated cross-species ontology covering anatomical structures in animals.',
+    usage: 'http://obofoundry.github.io/principles/fp-001-open.html',
+    comment: 'https://github.com/obophenotype/uberon/issues/1139'
+};
 
 /**
  * Parse the ID from a url
@@ -82,8 +89,9 @@ const uploadFile = async ({filename, conn}) => {
     const source = await conn.addRecord({
         endpoint:
         'sources',
-        content: {name: SOURCE_NAME},
-        existsOk: true
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
     const ncitMissingRecords = new Set();
     logger.info(`Adding the uberon ${Object.keys(nodesByCode).length} entity nodes`);
@@ -170,4 +178,4 @@ const uploadFile = async ({filename, conn}) => {
     }
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, SOURCE_DEFN};

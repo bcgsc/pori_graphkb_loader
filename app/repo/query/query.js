@@ -172,7 +172,13 @@ class Comparison {
      */
     toString(paramIndex = 0) {
         const params = {};
-        let query;
+        let query,
+            cast = this.attr.terminalCast();
+        const prop = this.attr.terminalProperty();
+
+        if (prop && prop.cast) {
+            ({cast} = prop);
+        }
         const attr = this.attr.toString();
         if (this.value instanceof Query) {
             const {query: subQuery, params: subParams} = this.value.toString(paramIndex);
@@ -189,7 +195,9 @@ class Comparison {
         } else {
             const pname = `${PARAM_PREFIX}${paramIndex}`;
             if (this.value !== null) {
-                params[pname] = this.value;
+                params[pname] = cast
+                    ? cast(this.value)
+                    : this.value;
                 query = `${attr} ${this.operator} :${pname}`;
             } else {
                 query = `${attr} ${OPERATORS.IS} NULL`;
@@ -374,16 +382,21 @@ class Query {
             });
             queryString = query;
             params = subParams;
+            if (this.activeOnly) {
+                queryString = `SELECT * FROM (${queryString}) WHERE deletedAt IS NULL`; // Fix for indexing error in OrientDB v2
+            }
         } else {
             const {query, params: subParams} = this.where.toString(paramIndex);
             params = subParams;
             queryString = `SELECT ${selectionElements} FROM ${this.modelName}`;
             if (query) {
                 queryString = `${queryString} WHERE ${query}`;
+                if (this.activeOnly) {
+                    queryString = `SELECT * FROM (${queryString}) WHERE deletedAt IS NULL`; // Fix for indexing error in OrientDB v2
+                }
+            } else if (this.activeOnly) {
+                queryString = `${queryString} WHERE deletedAt IS NULL`; // Fix for indexing error in OrientDB v2
             }
-        }
-        if (this.activeOnly) {
-            queryString = `SELECT * FROM (${queryString}) WHERE deletedAt IS NULL`; // Fix for indexing error in OrientDB v2
         }
         if (this.orderBy && this.orderBy.length > 0) {
             queryString = `${queryString} ORDER BY ${this.orderBy.map(param => `${param} ${this.orderByDirection}`).join(', ')}`;
@@ -412,7 +425,7 @@ class Query {
             } else if (value instanceof RID) {
                 value = `#${value.cluster}:${value.position}`;
             }
-            statement = statement.replace(new RegExp(`:${key}`, 'g'), `${value}`);
+            statement = statement.replace(new RegExp(`:${key}\\b`, 'g'), `${value}`);
         }
         return statement;
     }
