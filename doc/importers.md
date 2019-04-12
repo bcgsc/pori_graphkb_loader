@@ -12,6 +12,21 @@ A link to the terms of usage for each data source is included (where found) in t
 - [Ontologies](#ontologies)
   - [clinicaltrials.gov](#clinicaltrialsgov)
   - [Disease Ontology](#disease-ontology)
+  - [DrugBank](#drugbank)
+  - [Ensembl](#ensembl)
+  - [FDA](#fda)
+  - [HGNC](#hgnc)
+  - [NCIT](#ncit)
+  - [Oncotree](#oncotree)
+  - [Refseq](#refseq)
+  - [Sequence Ontology](#sequence-ontology)
+  - [Uberon](#uberon)
+  - [VariO](#vario)
+- [Knowledgebases](#knowledgebases)
+  - [CIViC](#civic)
+  - [COSMIC](#cosmic)
+  - [DoCM](#docm)
+  - [OncoKB](#oncokb)
 
 ## Ontologies
 
@@ -57,7 +72,7 @@ Once downloaded the JSON file can be loaded as follows
 
 ```bash
 npm run import -- --diseaseOntology doid.json
-``
+```
 
 
 ---
