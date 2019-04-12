@@ -12,21 +12,6 @@ A link to the terms of usage for each data source is included (where found) in t
 - [Ontologies](#ontologies)
   - [clinicaltrials.gov](#clinicaltrialsgov)
   - [Disease Ontology](#disease-ontology)
-  - [DrugBank](#drugbank)
-  - [Ensembl](#ensembl)
-  - [FDA](#fda)
-  - [HGNC](#hgnc)
-  - [NCIT](#ncit)
-  - [Oncotree](#oncotree)
-  - [Refseq](#refseq)
-  - [Sequence Ontology](#sequence-ontology)
-  - [Uberon](#uberon)
-  - [VariO](#vario)
-- [Knowledgebases](#knowledgebases)
-  - [CIViC](#civic)
-  - [COSMIC](#cosmic)
-  - [DoCM](#docm)
-  - [OncoKB](#oncokb)
 
 ## Ontologies
 
@@ -52,6 +37,7 @@ the expected file, follow the steps below
 npm run import -- --clinicaltrialsgov download.xml
 ```
 
+
 ---
 
 ### [Disease Ontology](http://disease-ontology.org/about/)
@@ -71,7 +57,8 @@ Once downloaded the JSON file can be loaded as follows
 
 ```bash
 npm run import -- --diseaseOntology doid.json
-```
+``
+
 
 ---
 
@@ -87,6 +74,7 @@ npm run import -- --diseaseOntology doid.json
 ```bash
 npm run import -- --drugbank data.xml
 ```
+
 
 ---
 
@@ -119,6 +107,7 @@ This requires a BioMart Export with the minimum following columns included
 npm run import -- --ensembl ensembl_mart_export.tab
 ```
 
+
 ---
 
 ### [FDA](https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/default.htm)
@@ -133,6 +122,7 @@ npm run import -- --ensembl ensembl_mart_export.tab
 ```bash
 npm run import -- --fda UNII_Records_25Oct2018.txt
 ```
+
 
 ---
 
@@ -149,6 +139,7 @@ npm run import -- --fda UNII_Records_25Oct2018.txt
 npm run import -- --hgnc hgnc_complete_set.json
 ```
 
+
 ---
 
 ### [NCIT]( https://cbiit.cancer.gov/about/about-cbiit)
@@ -163,6 +154,7 @@ npm run import -- --hgnc hgnc_complete_set.json
 ```bash
 npm run import -- --ncit Thesaurus_18.06d.OWL
 ```
+
 
 ---
 
@@ -181,6 +173,7 @@ This importer pulls all versions of Oncotree directly from the Oncotree API and 
 npm run import -- --oncotree
 ```
 
+
 ---
 
 ### [Refseq](https://www.ncbi.nlm.nih.gov/refseq)
@@ -197,6 +190,7 @@ npm run import -- --oncotree
 npm run import -- --refseq LRG_RefSeqGene.tab
 ```
 
+
 ---
 
 ### [Sequence Ontology](http://www.sequenceontology.org)
@@ -211,6 +205,7 @@ npm run import -- --refseq LRG_RefSeqGene.tab
 ```bash
 npm run import -- --sequenceOntology so-simple.owl
 ```
+
 
 ---
 
@@ -242,6 +237,8 @@ npm run import -- --uberon uberon.owl
 ```bash
 npm run import -- --vario vario.owl
 ```
+
+
 
 ## Knowledgebases
 
@@ -300,6 +297,7 @@ Expects column names like
 npm run import -- --cosmic CosmicResistanceMutations.tsv
 ```
 
+
 ---
 
 ### [DoCM](http://www.docm.info/about)
@@ -313,6 +311,7 @@ npm run import -- --cosmic CosmicResistanceMutations.tsv
 ```bash
 npm run import -- --docm
 ```
+
 
 ---
 
