@@ -4,7 +4,10 @@
   "version": "1.6.0",
   "repository": {
     "type": "git",
-    "url": "https://svn.bcgsc.ca/bitbucket/projects/VDB/repos/knowledgebase_api/browse"
+    "url": "https://svn.bcgsc.ca/bitbucket/projects/dat/repos/knowledgebase_api/browse"
+  },
+  "bugs": {
+    "email": "graphkb@bcgsc.ca"
   },
   "dependencies": {
     "@bcgsc/knowledgebase-parser": "^0.5.2",
