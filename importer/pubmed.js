@@ -1,3 +1,7 @@
+/**
+ * @module importer/pubmed
+ */
+
 const {rid, requestWithRetry} = require('./util');
 const {logger} = require('./logging');
 

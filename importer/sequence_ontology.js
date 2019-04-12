@@ -3,6 +3,7 @@
  *
  * http://www.sequenceontology.org/browser
  *
+ * @module importer/sequence_ontology
  */
 
 const rdf = require('rdflib');

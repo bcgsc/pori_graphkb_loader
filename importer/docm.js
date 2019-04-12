@@ -1,12 +1,4 @@
 /**
- * | | |
- * | --- | --- |
- * | Source | DoCM |
- * | About | http://www.docm.info/about |
- * | Source Type | Knowledgebase |
- * | Data Example|Direct API Access|
- * | Data Format| JSON |
- *
  * Module to import variant information from http://www.docm.info/api
  *
  * @module importer/docm
