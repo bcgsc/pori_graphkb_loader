@@ -159,6 +159,35 @@ describe('Traversal', () => {
             expect(parsed).to.eql(exp);
             expect(parsed.toString()).to.equal('inE().size()');
         });
+        it('attributes post edges', () => {
+            const parsed = Traversal.parse(SCHEMA_DEFN, SCHEMA_DEFN.Disease, {
+                type: TRAVERSAL_TYPE.EDGE,
+                edges: ['ImpliedBy'],
+                direction: 'out',
+                child: {
+                    attr: 'inV',
+                    child: {
+                        attr: 'reference1',
+                        child: 'name'
+                    }
+                }
+            });
+            const exp = new Traversal({
+                type: 'EDGE',
+                edges: ['ImpliedBy'],
+                direction: 'out',
+                child: new Traversal({
+                    attr: 'inV()',
+                    cast: castToRID,
+                    child: new Traversal({
+                        attr: 'reference1',
+                        child: 'name'
+                    })
+                })
+            });
+            expect(parsed.toString()).to.eql(exp.toString());
+            expect(parsed.toString()).to.equal('outE(\'ImpliedBy\').inV().reference1.name');
+        });
         it('error on attr for edge', () => {
             expect(() => {
                 Traversal.parse(SCHEMA_DEFN, null, {attr: 'edge', type: TRAVERSAL_TYPE.EDGE, child: null});
