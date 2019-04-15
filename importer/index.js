@@ -1,6 +1,6 @@
 /**
  * Migrates the data from the flatfiles to the graph database
- * @module
+ * @module importer
  * @ignore
  */
 

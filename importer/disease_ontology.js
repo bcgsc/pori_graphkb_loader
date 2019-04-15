@@ -1,11 +1,4 @@
 /**
- * | | |
- * | --- | --- |
- * |Source | Disease Ontology |
- * | About | http://disease-ontology.org/about/ |
- * | Source Type |  Ontology |
- * | Data Example | https://raw.githubusercontent.com/DiseaseOntology/HumanDiseaseOntology/v2018-07/05/src/ontology/releases/2018-07-05/doid.json |
- * | Data Format | JSON |
  *
  * Given the DOID JSON file. Upload the diseases and relationships to the knowledgebase using the REST API
  *

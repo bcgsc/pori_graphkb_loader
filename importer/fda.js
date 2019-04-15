@@ -1,12 +1,4 @@
 /**
- * | | |
- * | --- | --- |
- * | Source | FDA |
- * | About | https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/default.htm |
- * | Source Type | Ontology |
- * | Data Example| https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip |
- * | Data Format| Tab Delimited |
- *
  * Import the UNII for drugs from the FDA
  *
  * @module importer/fda

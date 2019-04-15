@@ -1,13 +1,4 @@
 /**
- * | | |
- * | --- | --- |
- * | Source | NCIT |
- * | About |  https://cbiit.cancer.gov/about/about-cbiit |
- * | Source Type | Ontology |
- * | Data Example| http://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus_18.06d.OWL.zip |
- * | Data Format| OWL |
- *
- *
  * Module responsible for parsing the NCIT owl file and uploading the converted records to the Graph KB
  *
  * NCIT owl file is very large. When uploading additional arguments were specified for node (--stack-size=8192  --max-old-space-size=20000)
