@@ -21,7 +21,7 @@ const setUpEmptyDB = async (conf) => {
     const user = await getUserByName(db, process.env.USER || 'admin');
 
     return {
-        server, db, schema, admin: user, conf
+        server, db, schema, admin: user, conf, dbName: conf.db.name
     };
 };
 
