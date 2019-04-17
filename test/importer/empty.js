@@ -1,7 +1,6 @@
 const {
     expect
 } = require('chai');
-const uuidV4 = require('uuid/v4');
 const path = require('path');
 const jwt = require('jsonwebtoken');
 
@@ -40,13 +39,15 @@ describe('importers', () => {
         mockToken,
         server,
         connection,
-        conf;
+        conf,
+        dbName;
     before(async () => {
         ({
             db,
             admin,
             server,
-            conf
+            conf,
+            dbName
         } = await setUpEmptyDB({
             ...createConfig(),
             disableAuth: true,
@@ -222,8 +223,8 @@ describe('importers', () => {
 
     after(async () => {
         if (server) {
-            if (db && conf.db.create) {
-                await server.drop({name: conf.db.name});
+            if (db && dbName) {
+                await server.drop({name: dbName});
             }
             await server.close();
         }
