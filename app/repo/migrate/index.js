@@ -80,7 +80,7 @@ const migrate16Xto17X = async (db) => {
 const migrate17Xto18X = async (db) => {
     logger.info('Add evidence level to Statement');
     const {evidenceLevel} = SCHEMA_DEFN.Statement.properties;
-    const dbClass = db.class.get(SCHEMA_DEFN.Statement.name);
+    const dbClass = await db.class.get(SCHEMA_DEFN.Statement.name);
     await Property.create(evidenceLevel, dbClass);
 };
 

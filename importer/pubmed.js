@@ -170,5 +170,6 @@ module.exports = {
     parseArticleRecord,
     uploadArticle,
     uploadArticlesByPmid,
-    SOURCE_DEFN
+    SOURCE_DEFN,
+    PUBMED_DEFAULT_QS
 };

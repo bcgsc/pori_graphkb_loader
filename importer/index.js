@@ -6,7 +6,8 @@
 
 const {fileExists, createOptionsMenu} = require('./cli');
 
-const {ApiConnection, PUBMED_DEFAULT_QS} = require('./util');
+const {ApiConnection} = require('./util');
+const {PUBMED_DEFAULT_QS} = require('./pubmed');
 const {logger} = require('./logging');
 
 const IMPORT_MODULES = {};
@@ -38,56 +39,46 @@ const optionDefinitions = [
         description: 'Print this help menu'
     },
     {
-        name: 'kb',
-        description: 'The flatfile containing the kb entries',
-        required: false,
-        type: fileExists
-    },
-    {
         name: 'hgnc',
-        alias: 'g',
-        description: 'Flag to indicate if we should try loading the hugo genes',
+        description: 'Flag to indicate if we should try loading the hugo geneSs',
         type: fileExists
     },
     {
         name: 'diseaseOntology',
-        alias: 'd',
         type: fileExists,
         description: 'Flag to indicate if we should try loading the disease ontology'
     },
     {
         name: 'graphkb',
-        default: `${process.env.KB_API_URL || 'https://graphkb-api.bcgsc.ca/api'}`,
+        default: `${process.env.GKB_URL || 'https://graphkb-api.bcgsc.ca/api'}`,
         description: 'URL for the KB API',
-        env: 'KB_API_URL'
+        env: 'GKB_URL'
     },
     {
         name: 'username',
         default: process.env.USER,
         required: true,
-        description: 'ldap username required for access to the kb (KB_USER)',
-        env: 'KB_USER'
+        description: 'ldap username required for access to the kb (USER|GKB_USER)',
+        env: 'GKB_USER'
     },
     {
         name: 'password',
         required: true,
-        env: 'KB_PASSWORD',
-        description: 'the password for access to the kb api (KB_PASSWORD)'
+        env: 'GKB_PASS',
+        description: 'the password for access to the kb api (GKB_PASS)'
     },
     {
         name: 'pubmed',
-        end: 'PUBMED_API_KEY',
+        env: 'PUBMED_API_KEY',
         description: 'The pubmed API key to use for pubmed requests'
     },
     {
         name: 'uberon',
-        alias: 'u',
         description: 'path to the uberon file to upload. Expected format is OWL',
         type: fileExists
     },
     {
         name: 'ncit',
-        alias: 'n',
         description: 'path to the NCIT owl file to upload',
         type: fileExists
     },
@@ -97,7 +88,6 @@ const optionDefinitions = [
     },
     {
         name: 'drugbank',
-        alias: 'b',
         description: 'path tp the drugbank xml file',
         type: fileExists
     },
@@ -112,13 +102,11 @@ const optionDefinitions = [
     },
     {
         name: 'fda',
-        alias: 'f',
         description: 'path to the FDA UNII list with NCIT linking metadata',
         type: fileExists
     },
     {
         name: 'ensembl',
-        alias: 'e',
         description: 'path to the ensembl biomart export tab delimited file',
         type: fileExists
     },
@@ -132,7 +120,7 @@ const optionDefinitions = [
     },
     {
         name: 'cosmic',
-        description: 'load the resistance mutations from cosmic (i.e. CosmicResitanceMutations.tsv)',
+        description: 'load the resistance mutations from cosmic (ex. CosmicResitanceMutations.tsv)',
         type: fileExists
     },
     {
@@ -156,7 +144,6 @@ const optionDefinitions = [
     },
     {
         name: 'sequenceOntology',
-        alias: 's',
         description: 'path the sequence ontology owl file',
         type: fileExists
     },
