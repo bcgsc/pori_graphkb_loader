@@ -130,7 +130,7 @@ const createStatement = async (db, opt) => {
         type: TRAVERSAL_TYPE.EDGE, edges: ['SupportedBy'], direction: 'out', child: 'inV()'
     });
     for (const edge of content.supportedBy) {
-        if (edge.target === undefined) {
+        if (!edge || edge.target === undefined) {
             throw new AttributeError('expected supportedBy edge object to have target attribute');
         }
         let rid = edge.target;
@@ -150,7 +150,7 @@ const createStatement = async (db, opt) => {
         type: TRAVERSAL_TYPE.EDGE, edges: ['ImpliedBy'], direction: 'out', child: 'inV()'
     });
     for (const edge of content.impliedBy) {
-        if (edge.target === undefined) {
+        if (!edge || edge.target === undefined) {
             throw new AttributeError('expected impliedBy edge object to have target attribute');
         }
         let rid = edge.target;
