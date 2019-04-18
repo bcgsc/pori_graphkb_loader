@@ -63,6 +63,7 @@ const createEdge = async (db, opt) => {
     const to = record.in;
     delete record.out;
     delete record.in;
+    delete record['@class']; // Ignore if given since determined by the model
     try {
         return await db.create('EDGE', model.name).from(from).to(to).set(record)
             .one();
