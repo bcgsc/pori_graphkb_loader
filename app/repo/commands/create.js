@@ -224,24 +224,20 @@ const createStatement = async (db, opt) => {
     const commit = db
         .let('statement', tx => tx.create('VERTEX', model.name)
             .set(omitDBAttributes(model.formatRecord(
-                Object.assign({createdBy: userRID}, _.omit(content, ['impliedBy', 'supportedBy'])),
+                {..._.omit(content, ['impliedBy', 'supportedBy']), createdBy: userRID},
                 {addDefaults: true}
             ))));
     // link to the dependencies
     let edgeCount = 0;
     for (const edge of edges) {
         const eModel = schema[edge['@class']];
-        const eRecord = eModel.formatRecord(Object.assign({
-            createdBy: userRID
-        }, edge), {dropExtra: true, addDefaults: true});
-        if (edge.out === undefined) {
-            eRecord.out = '$statement';
-        } else {
-            eRecord.in = '$statement';
-        }
+        const eRecord = eModel.formatRecord(
+            {...edge, createdBy: userRID},
+            {dropExtra: true, addDefaults: true, ignoreMissing: true}
+        );
         commit.let(`edge${edgeCount++}`, tx => tx.create('EDGE', eModel.name)
             .set(omitDBAttributes(_.omit(eRecord, ['out', 'in'])))
-            .from(eRecord.out)
+            .from('$statement')
             .to(eRecord.in));
     }
     commit
