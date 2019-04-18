@@ -31,14 +31,16 @@ describe('schema', () => {
         doSource,
         otherVertex,
         server,
-        conf;
+        conf,
+        dbName;
     before(async () => {
         ({
             db,
             schema,
             admin,
             server,
-            conf
+            conf,
+            dbName
         } = await setUpEmptyDB(createConfig()));
     });
     describe('SelectionQuery', () => {
@@ -561,8 +563,8 @@ describe('schema', () => {
     });
     after(async () => {
         if (server) {
-            if (db && conf.db.create) {
-                await server.drop({name: conf.db.name});
+            if (db && dbName) {
+                await server.drop({name: dbName});
             }
             await server.close();
         }

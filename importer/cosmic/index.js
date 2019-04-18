@@ -1,14 +1,4 @@
 /**
- * | | |
- * | --- | --- |
- * | Source | COSMIC |
- * | About | https://cancer.sanger.ac.uk/cosmic/about |
- * | Source Type | Knowledgebase |
- * | Data Example | https://cancer.sanger.ac.uk/cosmic/download (CosmicResistanceMutations.tsv.gz) |
- * | Data Format | Tab-delimited|
- *
- * Import COSMIC resistance mutation statements
- *
  * Expects column names like
  * - Gene Name
  * - Transcript

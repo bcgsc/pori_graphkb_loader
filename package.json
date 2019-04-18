@@ -1,14 +1,17 @@
 {
   "name": "@bcgsc/knowledgebase-api",
   "main": "server.js",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "repository": {
     "type": "git",
-    "url": "https://svn.bcgsc.ca/bitbucket/projects/VDB/repos/knowledgebase_api/browse"
+    "url": "https://svn.bcgsc.ca/bitbucket/projects/dat/repos/knowledgebase_api/browse"
+  },
+  "bugs": {
+    "email": "graphkb@bcgsc.ca"
   },
   "dependencies": {
     "@bcgsc/knowledgebase-parser": "^0.5.2",
-    "@bcgsc/knowledgebase-schema": "^1.7.2",
+    "@bcgsc/knowledgebase-schema": "^1.8.2",
     "ajv": "^5.5.2",
     "bluebird": "^3.5.0",
     "body-parser": "^1.18.3",
@@ -62,10 +65,10 @@
     "eslint-plugin-react": "^7.10.0",
     "jsdoc": "^3.4.3",
     "jsdoc-to-markdown": "^4.0.1",
-    "mocha": "^5.1.1",
+    "mocha": "^5.2.0",
     "mocha-multi-reporters": "^1.1.7",
-    "nodemon": "^1.11.0",
-    "nyc": "^11.1.0",
+    "nodemon": "^1.18.11",
+    "nyc": "^11.9.0",
     "qs": "^6.5.2",
     "rewire": "^4.0.1"
   },
@@ -82,7 +85,6 @@
     "start:local": "NODE_ENV=local node server.js",
     "import": "node --stack-size=8192  --max-old-space-size=20000 importer/index.js",
     "test": "nyc mocha test/{routes,repo}",
-    "test:live": "nyc mocha test/{routes,repo}/livedb.js --exit",
     "test:unit": "nyc mocha test/*/{unit,schema,query}* test/importer/{oncokb,civic,ipr}.js",
     "test:import": "nyc mocha test/importer",
     "test-all": "nyc mocha test/{repo,routes,importer}",

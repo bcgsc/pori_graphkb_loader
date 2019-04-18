@@ -20,7 +20,6 @@ const {
     groupRecordsBy,
     trimRecords
 } = require('../util');
-const {wrapIfTypeError} = require('./util');
 
 
 const STATS_GROUPING = new Set(['@class', 'source']);

@@ -24,8 +24,8 @@ class Comparison {
         }
         if (operator === undefined) {
             const prop = this.attr.terminalProperty();
-            if (prop && prop.iterable) {
-                if (!(value instanceof Array)) {
+            if (!(value instanceof Array)) {
+                if ((prop && prop.iterable) || this.attr.iterable()) {
                     operator = OPERATORS.CONTAINS;
                 }
             }

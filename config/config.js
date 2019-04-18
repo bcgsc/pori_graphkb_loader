@@ -66,6 +66,8 @@ const create = (envName = NODE_ENV) => {
         [db, 'name', 'DB_NAME'],
         [db, 'user', 'DB_USER'],
         [db, 'pass', 'DB_PASS'],
+        [db, 'create', 'DB_CREATE'],
+        [db, 'migrate', 'DB_MIGRATE'],
         [server, 'host', 'DB_HOST'],
         [server, 'port', 'DB_PORT'],
         [server, 'user', 'DBS_USER'],
@@ -73,7 +75,11 @@ const create = (envName = NODE_ENV) => {
     ]) {
         const envKey = `${ENV_PREFIX}${envVarName}`;
         if (process.env[envKey] !== undefined) {
-            obj[key] = process.env[envKey];
+            if (obj[key] === true || obj[key] === false) {
+                obj[key] = process.env[envKey] === '1';
+            } else {
+                obj[key] = process.env[envKey];
+            }
         }
     }
     return config;

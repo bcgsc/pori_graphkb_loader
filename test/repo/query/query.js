@@ -59,6 +59,40 @@ describe('Query Parsing', () => {
         );
         expect(parsed).to.eql(expected);
     });
+    it('uses contains for an edge traversal', () => {
+        const parsed = Query.parse(SCHEMA_DEFN, SCHEMA_DEFN.V, {
+            where: {
+                attr: 'out(ImpliedBy).vertex.reference1.name',
+                value: 'kras'
+            },
+            neighbors: 3,
+            limit: 1000
+        });
+        const expected = new Query(
+            SCHEMA_DEFN.V.name,
+            new Clause('AND', [
+                new Comparison(
+                    new Traversal({
+                        type: 'EDGE',
+                        edges: ['ImpliedBy'],
+                        direction: 'out',
+                        child: new Traversal({
+                            attr: 'inV()',
+                            cast: castToRID,
+                            child: new Traversal({
+                                attr: 'reference1',
+                                child: 'name'
+                            })
+                        })
+                    }),
+                    'kras',
+                    'CONTAINS'
+                )
+            ]),
+            {limit: 1000, neighbors: 3}
+        );
+        expect(parsed.toString()).to.eql(expected.toString());
+    });
     it('parses a simple single Comparison', () => {
         const parsed = Query.parse(SCHEMA_DEFN, SCHEMA_DEFN.Disease, {
             where: [{

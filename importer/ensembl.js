@@ -1,5 +1,7 @@
 /**
  * Requires a BioMart Export file with the columns given by the values in the HEADER constant
+ *
+ * @module importer/ensembl
  */
 
 const {

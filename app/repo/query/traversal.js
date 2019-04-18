@@ -20,7 +20,9 @@ class Traversal {
             opt = {attr: opt};
         }
         this.attr = opt.attr;
-        this.type = opt.type || TRAVERSAL_TYPE.DIRECT;
+        this.type = opt.type || (opt.child
+            ? TRAVERSAL_TYPE.LINK
+            : TRAVERSAL_TYPE.DIRECT);
         this.child = opt.child || null;
         if (this.child && typeof this.child === 'string') {
             this.child = new this.constructor({attr: this.child});
@@ -105,6 +107,7 @@ class Traversal {
             optAttr.cast = castToRID;
             if (!model || !model.isEdge) {
                 optAttr.attr = `${matchbuiltIn[1]}V()`;
+                optAttr.type = TRAVERSAL_TYPE.LINK;
             }
         }
 
@@ -162,6 +165,33 @@ class Traversal {
             return `${this.attr}.${this.child.toString()}`;
         }
         return this.attr;
+    }
+
+    iterable() {
+        let curr = this,
+            edge = false;
+
+        while (curr && !edge) {
+            edge = Boolean(curr.type === TRAVERSAL_TYPE.EDGE);
+            curr = curr.child;
+        }
+        const child = this.terminalChild();
+        if (child && child.attr && child.attr === 'size()') {
+            return false;
+        }
+        return edge;
+    }
+
+    /**
+     * Retrieve the final child
+     *
+     * @returns {Traversal} the final attr
+     */
+    terminalChild() {
+        if (!this.child) {
+            return this;
+        }
+        return this.child.terminalChild();
     }
 
     /**

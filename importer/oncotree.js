@@ -1,13 +1,4 @@
 /**
- * | | |
- * | --- | --- |
- * | Source | OncoTree |
- * | About | http://oncotree.mskcc.org/#/home |
- * | Source Type | Ontology |
- * | Data Example| Direct API Access |
- * | Data Format| JSON |
- *
- *
  * Module for Loading content from the oncotree web API
  * @module importer/oncotree
  */

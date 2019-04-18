@@ -80,13 +80,15 @@ describe('API', () => {
         app,
         mockToken,
         server,
-        conf;
+        conf,
+        dbName;
     before(async () => {
         ({
             db,
             admin,
             server,
-            conf
+            conf,
+            dbName
         } = await setUpEmptyDB({
             ...createConfig(),
             verbose: true,
@@ -1250,8 +1252,8 @@ describe('API', () => {
     });
     after(async () => {
         if (server) {
-            if (db && conf.db.create) {
-                await server.drop({name: conf.db.name});
+            if (db && dbName) {
+                await server.drop({name: dbName});
             }
             await server.close();
         }

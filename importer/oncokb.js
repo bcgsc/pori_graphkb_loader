@@ -1,12 +1,4 @@
 /**
- * | | |
- * | --- | --- |
- * | Source | OncoKB |
- * | About |  http://oncokb.org/#/about |
- * | Source Type | Knowledgebase |
- * | Data Example| Direct API Access |
- * | Data Format| JSON |
- *
  * @module importer/oncokb
  */
 const request = require('request-promise');

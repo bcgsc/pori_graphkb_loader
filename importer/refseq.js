@@ -1,12 +1,4 @@
 /**
- * | | |
- * | --- | --- |
- * | Source | RefSeq |
- * | About | https://www.ncbi.nlm.nih.gov/refseq/about/ |
- * | Source Type | Ontology |
- * | Data Example|  ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene |
- * | Data Format| Tab-delimited |
- *
  * Import the RefSeq transcripts, ignoring version numbers for now
  * @module importer/refseq
  */

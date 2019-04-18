@@ -64,7 +64,9 @@ const splitSchemaClassLevels = (schema) => {
  */
 const createSchemaHistory = async (db) => {
     logger.log('info', 'creating the schema metadata table');
-    const cls = await db.class.create('SchemaHistory', null, null, false);
+    const tableName = 'SchemaHistory';
+    const cls = await db.class.create(tableName, null, null, false);
+
     await cls.property.create({
         name: 'name',
         type: 'string',
@@ -92,12 +94,13 @@ const createSchemaHistory = async (db) => {
     const {version, name, url} = getLoadVersion();
 
     // now insert the current schema version
-    await cls.create({
+    logger.log('info', `Log the current schema version (${version})`);
+    await db.insert().into(tableName).set({
         version,
         name,
         url,
         createdAt: timeStampNow()
-    });
+    }).one();
     return cls;
 };
 
@@ -111,10 +114,14 @@ const createSchema = async (db) => {
     // create the schema_history model
     await createSchemaHistory(db);
     // create the permissions class
+    logger.log('info', 'create the Permissions class');
     await ClassModel.create(SCHEMA_DEFN.Permissions, db); // (name, extends, clusters, abstract)
     // create the user class
+    logger.log('info', 'create the UserGroup class');
     await ClassModel.create(SCHEMA_DEFN.UserGroup, db, {properties: false, indices: false});
+    logger.log('info', 'create the User class');
     await ClassModel.create(SCHEMA_DEFN.User, db);
+    logger.log('info', 'Add properties to the UserGroup class');
     await ClassModel.create(SCHEMA_DEFN.UserGroup, db, {properties: true, indices: true});
     // modify the existing vertex and edge classes to add the minimum required attributes for tracking etc
     const V = await db.class.get('V');

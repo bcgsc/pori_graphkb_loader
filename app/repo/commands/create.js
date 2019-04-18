@@ -63,6 +63,7 @@ const createEdge = async (db, opt) => {
     const to = record.in;
     delete record.out;
     delete record.in;
+    delete record['@class']; // Ignore if given since determined by the model
     try {
         return await db.create('EDGE', model.name).from(from).to(to).set(record)
             .one();
@@ -129,7 +130,7 @@ const createStatement = async (db, opt) => {
         type: TRAVERSAL_TYPE.EDGE, edges: ['SupportedBy'], direction: 'out', child: 'inV()'
     });
     for (const edge of content.supportedBy) {
-        if (edge.target === undefined) {
+        if (!edge || edge.target === undefined) {
             throw new AttributeError('expected supportedBy edge object to have target attribute');
         }
         let rid = edge.target;
@@ -149,7 +150,7 @@ const createStatement = async (db, opt) => {
         type: TRAVERSAL_TYPE.EDGE, edges: ['ImpliedBy'], direction: 'out', child: 'inV()'
     });
     for (const edge of content.impliedBy) {
-        if (edge.target === undefined) {
+        if (!edge || edge.target === undefined) {
             throw new AttributeError('expected impliedBy edge object to have target attribute');
         }
         let rid = edge.target;
@@ -223,24 +224,20 @@ const createStatement = async (db, opt) => {
     const commit = db
         .let('statement', tx => tx.create('VERTEX', model.name)
             .set(omitDBAttributes(model.formatRecord(
-                Object.assign({createdBy: userRID}, _.omit(content, ['impliedBy', 'supportedBy'])),
+                {..._.omit(content, ['impliedBy', 'supportedBy']), createdBy: userRID},
                 {addDefaults: true}
             ))));
     // link to the dependencies
     let edgeCount = 0;
     for (const edge of edges) {
         const eModel = schema[edge['@class']];
-        const eRecord = eModel.formatRecord(Object.assign({
-            createdBy: userRID
-        }, edge), {dropExtra: true, addDefaults: true});
-        if (edge.out === undefined) {
-            eRecord.out = '$statement';
-        } else {
-            eRecord.in = '$statement';
-        }
+        const eRecord = eModel.formatRecord(
+            {...edge, createdBy: userRID},
+            {dropExtra: true, addDefaults: true, ignoreMissing: true}
+        );
         commit.let(`edge${edgeCount++}`, tx => tx.create('EDGE', eModel.name)
             .set(omitDBAttributes(_.omit(eRecord, ['out', 'in'])))
-            .from(eRecord.out)
+            .from('$statement')
             .to(eRecord.in));
     }
     commit
