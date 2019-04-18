@@ -223,7 +223,7 @@ describe('ClassModel', () => {
                 age: {name: 'age'}
             },
             inherits: [person],
-            edgeRestrictions: []
+            sourceModel: true
         });
 
         it('child required returns person attr', () => {
