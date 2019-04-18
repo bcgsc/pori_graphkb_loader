@@ -1,7 +1,7 @@
 {
   "name": "@bcgsc/knowledgebase-api",
   "main": "server.js",
-  "version": "1.6.0",
+  "version": "1.6.1",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/dat/repos/knowledgebase_api/browse"
@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@bcgsc/knowledgebase-parser": "^0.5.2",
-    "@bcgsc/knowledgebase-schema": "^1.8.0",
+    "@bcgsc/knowledgebase-schema": "^1.8.2",
     "ajv": "^5.5.2",
     "bluebird": "^3.5.0",
     "body-parser": "^1.18.3",
