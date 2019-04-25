@@ -27,8 +27,8 @@ IMPORT_MODULES.refseq = require('./refseq');
 IMPORT_MODULES.sequenceOntology = require('./sequence_ontology');
 IMPORT_MODULES.uberon = require('./uberon');
 IMPORT_MODULES.vario = require('./vario');
-IMPORT_MODULES.vocab = require('./vocab');
 IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
+IMPORT_MODULES.ontology = require('./ontology');
 IMPORT_MODULES.mutsig = require('./cosmic/mutationSignatures');
 
 
@@ -40,13 +40,13 @@ const optionDefinitions = [
     },
     {
         name: 'hgnc',
-        description: 'Flag to indicate if we should try loading the hugo geneSs',
+        description: 'path to the file containting the HGNC hugo gene definitions. Expected format is JSON',
         type: fileExists
     },
     {
         name: 'diseaseOntology',
         type: fileExists,
-        description: 'Flag to indicate if we should try loading the disease ontology'
+        description: 'path to the disease ontology release file. Expected format is JSON'
     },
     {
         name: 'graphkb',
@@ -79,7 +79,7 @@ const optionDefinitions = [
     },
     {
         name: 'ncit',
-        description: 'path to the NCIT owl file to upload',
+        description: 'path to the NCIT file to upload. Expected format is OWL',
         type: fileExists
     },
     {
@@ -88,7 +88,7 @@ const optionDefinitions = [
     },
     {
         name: 'drugbank',
-        description: 'path tp the drugbank xml file',
+        description: 'path to the drugbank file.. Expected format is XML',
         type: fileExists
     },
     {
@@ -113,10 +113,6 @@ const optionDefinitions = [
     {
         name: 'civic',
         description: 'upload civic using their api'
-    },
-    {
-        name: 'vocab',
-        description: 'load the custom vocabulary terms and descriptions'
     },
     {
         name: 'cosmic',
@@ -151,6 +147,11 @@ const optionDefinitions = [
         name: 'ipr',
         description: 'path to the IPR CSV export file',
         type: fileExists
+    },
+    {
+        name: 'ontology',
+        description: 'path to the custom ontology JSON file',
+        type: fileExists
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
@@ -170,7 +171,7 @@ const upload = async () => {
     await apiConnection.setAuth(options);
     logger.info('Login Succeeded');
     const moduleOrder = [
-        'vocab',
+        'ontology',
         'sequenceOntology',
         'vario',
         'ctg',
