@@ -10,25 +10,87 @@ npm run import -- --help
 A link to the terms of usage for each data source is included (where found) in the source record.
 
 - [Ontologies](#ontologies)
-  - [clinicaltrials.gov](#clinicaltrialsgov)
-  - [Disease Ontology](#disease-ontology)
-  - [DrugBank](#drugbank)
-  - [Ensembl](#ensembl)
-  - [FDA](#fda)
-  - [HGNC](#hgnc)
-  - [NCIT](#ncit)
-  - [Oncotree](#oncotree)
-  - [Refseq](#refseq)
-  - [Sequence Ontology](#sequence-ontology)
-  - [Uberon](#uberon)
-  - [VariO](#vario)
-- [Knowledgebases](#knowledgebases)
-  - [CIViC](#civic)
-  - [COSMIC](#cosmic)
-  - [DoCM](#docm)
-  - [OncoKB](#oncokb)
+  - [General Ontology JSON file](#general-ontology-json-file)
 
 ## Ontologies
+
+### General Ontology JSON file
+
+Any ontology can be uploaded (without cross reference links) as long as the JSON file is in the expected format.
+
+The file should have a source definition. This must contain at least a name, but
+may optionally include any of the attributes expected for a source definition (ex. description, url, usage).
+
+```json
+{
+    "source": {
+        "name": "pubmed"
+    }
+}
+```
+
+The class of records this ontology belongs to must also be defined.
+
+```json
+{
+    "source": {
+        "name": "pubmed"
+    },
+    "class": "Publication"
+}
+```
+
+The last top level attribute is the records. This must be an object where the
+sourceId of each record is its key
+
+```json
+{
+    "source": {
+        "name": "pubmed"
+    },
+    "class": "Publication",
+    "records": {
+        "<sourceId1>": {},
+        "<sourceId2>": {}
+    }
+}
+```
+
+Each record will then define the properties of each ontology term.
+
+```json
+{
+    "source": {
+        "name": "pubmed"
+    },
+    "class": "Publication",
+    "records": {
+        "19584866": {
+            "name": "a small molecule blocking oncogenic protein ews-fli1 interaction with rna helicase a inhibits growth of ewing's sarcoma.",
+            "year": "2009",
+            "journalName": "nature medicine"
+        }
+    }
+}
+```
+
+Links within the ontology can also be defined. These are given via a property on
+the ontology term
+
+```json
+{
+    "name": "a small molecule blocking oncogenic protein ews-fli1 interaction with rna helicase a inhibits growth of ewing's sarcoma.",
+    "links": [
+        {"class": "<Relationship type>", "target": "<sourceId of another term>"}
+    ]
+}
+```
+
+Once this file has been built it can be loaded as follows. The script will create records if they do not already exist. Any conflicts will be reported in the logging
+
+```bash
+npm run import -- --ontology /path/to/json/file
+```
 
 ### [clinicaltrials.gov](https://clinicaltrials.gov)
 
