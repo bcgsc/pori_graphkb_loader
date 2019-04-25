@@ -61,6 +61,10 @@ const createEdge = async (db, opt) => {
     const record = model.formatRecord(content, {dropExtra: false, addDefaults: true});
     const from = record.out;
     const to = record.in;
+    // already checked not null in the format method
+    if (from.toString() === to.toString()) {
+        throw new AttributeError('an edge cannot be used to relate a node/vertex to itself');
+    }
     delete record.out;
     delete record.in;
     delete record['@class']; // Ignore if given since determined by the model
