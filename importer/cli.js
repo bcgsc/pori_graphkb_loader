@@ -38,7 +38,11 @@ const createOptionsMenu = (defns, opt) => {
             defn.description = `${defn.description} (${defn.env})`;
         }
         if (defn.default !== undefined) {
-            defn.description = `[default: ${defn.default}] ${defn.description}`;
+            defn.description = `[default: ${
+                /\bpass(word)?\b/.exec(defn.name) === null
+                    ? defn.default
+                    : '****'
+            }] ${defn.description}`;
         }
     }
     const usage = commandLineUsage([
