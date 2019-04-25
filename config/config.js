@@ -20,7 +20,7 @@ const create = (envName = NODE_ENV) => {
         migrate: false
     };
 
-    if (envName !== 'production') {
+    if (envName !== 'production' && envName !== 'test') {
         db.create = true;
         db.migrate = false;
     }
