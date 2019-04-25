@@ -1,5 +1,7 @@
 /**
  * Load a custom JSON file
+ *
+ * @module importer/ontology
  */
 
 const Ajv = require('ajv');
@@ -75,6 +77,13 @@ const validateSpec = ajv.compile({
 });
 
 
+/**
+ * Upload the JSON ontology file
+ *
+ * @param {object} opt
+ * @param {string} opt.filename the path to the JSON input file
+ * @param {ApiConnection} opt.conn the graphKB api connection
+ */
 const uploadFile = async ({filename, conn}) => {
     logger.log('info', `reading: ${filename}`);
     const data = JSON.parse(fs.readFileSync(filename));
