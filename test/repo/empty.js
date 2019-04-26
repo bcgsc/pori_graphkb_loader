@@ -12,7 +12,7 @@ const {
     selectCounts
 } = require('./../../app/repo/commands');
 const {
-    RecordExistsError
+    RecordExistsError, AttributeError
 } = require('./../../app/repo/error');
 const {
     setUpEmptyDB
@@ -31,7 +31,6 @@ describe('schema', () => {
         doSource,
         otherVertex,
         server,
-        conf,
         dbName;
     before(async () => {
         ({
@@ -39,7 +38,6 @@ describe('schema', () => {
             schema,
             admin,
             server,
-            conf,
             dbName
         } = await setUpEmptyDB(createConfig()));
     });
@@ -65,7 +63,7 @@ describe('schema', () => {
             user: admin
         });
     });
-    describe('create', () => {
+    describe('create vertex', () => {
         it('error on source not specified', async () => {
             try {
                 const record = await create(db, {
@@ -147,6 +145,114 @@ describe('schema', () => {
             Source: 2,
             User: 1,
             UserGroup: 3
+        });
+    });
+    describe('create edge', () => {
+        let src,
+            tgt;
+        beforeEach(async () => {
+            src = await create(db, {
+                model: schema.Disease,
+                content: {
+                    sourceId: 'cancer',
+                    source: doSource
+                },
+                user: admin
+            });
+            tgt = await create(db, {
+                model: schema.Disease,
+                content: {
+                    sourceId: 'carcinoma',
+                    source: doSource
+                },
+                user: admin
+            });
+        });
+        it('ok', async () => {
+            const edge = await create(db, {
+                model: schema.AliasOf,
+                content: {
+                    out: src,
+                    in: tgt,
+                    source: doSource
+                },
+                user: admin
+            });
+            expect(edge).to.have.property('source');
+            expect(edge.source).to.eql(doSource['@rid']);
+            expect(edge.out).to.eql(src['@rid']);
+            expect(edge.in).to.eql(tgt['@rid']);
+        });
+        it('error on src = tgt', async () => {
+            try {
+                await create(db, {
+                    model: schema.AliasOf,
+                    content: {
+                        out: src,
+                        in: src,
+                        source: doSource
+                    },
+                    user: admin
+                });
+            } catch (err) {
+                expect(err).to.be.an.instanceof(AttributeError);
+                expect(err.message).to.include('an edge cannot be used to relate a node/vertex to itself');
+                return;
+            }
+            expect.fail('did not throw the expected error');
+        });
+        it('error on no src (out) vertex', async () => {
+            try {
+                await create(db, {
+                    model: schema.AliasOf,
+                    content: {
+                        out: null,
+                        in: tgt,
+                        source: doSource
+                    },
+                    user: admin
+                });
+            } catch (err) {
+                expect(err).to.be.an.instanceof(AttributeError);
+                expect(err.message).to.include('The out property cannot be null');
+                return;
+            }
+            expect.fail('did not throw the expected error');
+        });
+        it('error on no tgt (in) vertex', async () => {
+            try {
+                await create(db, {
+                    model: schema.AliasOf,
+                    content: {
+                        out: src,
+                        in: null,
+                        source: doSource
+                    },
+                    user: admin
+                });
+            } catch (err) {
+                expect(err).to.be.an.instanceof(AttributeError);
+                expect(err.message).to.include('The in property cannot be null');
+                return;
+            }
+            expect.fail('did not throw the expected error');
+        });
+        it('error on no source link given', async () => {
+            try {
+                await create(db, {
+                    model: schema.AliasOf,
+                    content: {
+                        out: src,
+                        in: tgt
+                    },
+                    user: admin
+                });
+            } catch (err) {
+                expect(err).to.be.an.instanceof(AttributeError);
+                expect(err.message).to.include('[AliasOf] missing required attribute source');
+                return;
+            }
+            expect.fail('did not throw the expected error');
         });
     });
     it('"delete" edge', async () => {
