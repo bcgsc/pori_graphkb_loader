@@ -10,6 +10,7 @@ npm run import -- --help
 A link to the terms of usage for each data source is included (where found) in the source record.
 
 - [Ontologies](#ontologies)
+  - [General Ontology JSON file](#general-ontology-json-file)
   - [clinicaltrials.gov](#clinicaltrialsgov)
   - [Disease Ontology](#disease-ontology)
   - [DrugBank](#drugbank)
@@ -30,10 +31,94 @@ A link to the terms of usage for each data source is included (where found) in t
 
 ## Ontologies
 
-### [clinicaltrials.gov](https://clinicaltrials.gov)
+### General Ontology JSON file
+
+Any ontology can be uploaded (without cross reference links) as long as the JSON file is in the expected format.
+
+The file should have a source definition. This must contain at least a name, but
+may optionally include any of the attributes expected for a source definition (ex. description, url, usage).
+
+```json
+{
+    "source": {
+        "name": "pubmed"
+    }
+}
+```
+
+The class of records this ontology belongs to must also be defined.
+
+```json
+{
+    "source": {
+        "name": "pubmed"
+    },
+    "class": "Publication"
+}
+```
+
+The last top level attribute is the records. This must be an object where the
+sourceId of each record is its key
+
+```json
+{
+    "source": {
+        "name": "pubmed"
+    },
+    "class": "Publication",
+    "records": {
+        "<sourceId1>": {},
+        "<sourceId2>": {}
+    }
+}
+```
+
+Each record will then define the properties of each ontology term.
+
+```json
+{
+    "source": {
+        "name": "pubmed"
+    },
+    "class": "Publication",
+    "records": {
+        "19584866": {
+            "name": "a small molecule blocking oncogenic protein ews-fli1 interaction with rna helicase a inhibits growth of ewing's sarcoma.",
+            "year": "2009",
+            "journalName": "nature medicine"
+        }
+    }
+}
+```
+
+Links within the ontology can also be defined. These are given via a property on
+the ontology term
+
+```json
+{
+    "name": "a small molecule blocking oncogenic protein ews-fli1 interaction with rna helicase a inhibits growth of ewing's sarcoma.",
+    "links": [
+        {"class": "<Relationship type>", "target": "<sourceId of another term>"}
+    ]
+}
+```
+
+Once this file has been built it can be loaded as follows. The script will create records if they do not already exist. Any conflicts will be reported in the logging
+
+```bash
+npm run import -- --ontology /path/to/json/file
+```
+
+
+---
+
+
+
+### clinicaltrials.gov
 
 |                 |                                                                |
 | --------------- | -------------------------------------------------------------- |
+| About           | https://clinicaltrials.gov                                     |
 | Usage           | https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use |
 | Example         |                                                                |
 | Format          | XML                                                            |
@@ -55,18 +140,17 @@ npm run import -- --clinicaltrialsgov download.xml
 
 ---
 
-### [Disease Ontology](http://disease-ontology.org/about/)
+### Disease Ontology
 
 |                 |                                                                                                                               |
 | --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| About           | http://disease-ontology.org/about/                                                                                            |
 | Usage           |                                                                                                                               |
 | Example         | https://raw.githubusercontent.com/DiseaseOntology/HumanDiseaseOntology/v2018-07/05/src/ontology/releases/2018-07-05/doid.json |
 | Format          | JSON                                                                                                                          |
 | CrossReferences | [NCIT](#ncit)                                                                                                                 |
 
 The disease ontology releases their data dumps as both XML and JSON from thei github page. We expect the JSON format
-
-For example https://raw.githubusercontent.com/DiseaseOntology/HumanDiseaseOntology/v2018-07/05/src/ontology/releases/2018-07-05/doid.json
 
 Once downloaded the JSON file can be loaded as follows
 
@@ -77,10 +161,11 @@ npm run import -- --diseaseOntology doid.json
 
 ---
 
-### [DrugBank](https://www.drugbank.ca/about)
+### DrugBank
 
 |                 |                                                                    |
 | --------------- | ------------------------------------------------------------------ |
+| About           | https://www.drugbank.ca/about                                      |
 | Usage           | https://www.drugbank.ca/legal/terms_of_use                         |
 | Example         | https://www.drugbank.ca/releases/5-1-1/downloads/all-full-database |
 | Format          | XML                                                                |
@@ -93,10 +178,11 @@ npm run import -- --drugbank data.xml
 
 ---
 
-### [Ensembl](https://uswest.ensembl.org)
+### Ensembl
 
 |                 |                                                             |
 | --------------- | ----------------------------------------------------------- |
+| About           | https://uswest.ensembl.org                                  |
 | Usage           | https://uswest.ensembl.org/info/about/legal/disclaimer.html |
 | Example         |                                                             |
 | Format          | Tab delimited                                               |
@@ -125,14 +211,15 @@ npm run import -- --ensembl ensembl_mart_export.tab
 
 ---
 
-### [FDA](https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/default.htm)
+### FDA
 
-|                 |                                                           |
-| --------------- | --------------------------------------------------------- |
-| Usage           |                                                           |
-| Example         | https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip |
-| Format          | Tab delimited                                             |
-| CrossReferences | [NCIT](#ncit)                                             |
+|                 |                                                                                                                      |
+| --------------- | -------------------------------------------------------------------------------------------------------------------- |
+| About           | https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/default.htm |
+| Usage           |                                                                                                                      |
+| Example         | https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip                                                            |
+| Format          | Tab delimited                                                                                                        |
+| CrossReferences | [NCIT](#ncit)                                                                                                        |
 
 ```bash
 npm run import -- --fda UNII_Records_25Oct2018.txt
@@ -141,10 +228,11 @@ npm run import -- --fda UNII_Records_25Oct2018.txt
 
 ---
 
-### [HGNC](https://www.genenames.org/about/overview)
+### HGNC
 
 |                 |                                                                                                 |
 | --------------- | ----------------------------------------------------------------------------------------------- |
+| About           | https://www.genenames.org/about/overview                                                        |
 | Usage           | https://www.ebi.ac.uk/about/terms-of-use                                                        |
 | Example         | ftp://ftp.ebi.ac.uk/pub/databases/genenames/new/json/locus_types/gene_with_protein_product.json |
 | Format          | JSON                                                                                            |
@@ -157,10 +245,11 @@ npm run import -- --hgnc hgnc_complete_set.json
 
 ---
 
-### [NCIT]( https://cbiit.cancer.gov/about/about-cbiit)
+### NCIT
 
 |                 |                                                                    |
 | --------------- | ------------------------------------------------------------------ |
+| About           | https://cbiit.cancer.gov/about/about-cbiit                         |
 | Usage           | https://creativecommons.org/licenses/by/4.0                        |
 | Example         | http://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus_18.06d.OWL.zip |
 | Format          | OWL                                                                |
@@ -173,14 +262,15 @@ npm run import -- --ncit Thesaurus_18.06d.OWL
 
 ---
 
-### [Oncotree](http://oncotree.mskcc.org/#/home)
+### Oncotree
 
-|                 |                               |
-| --------------- | ----------------------------- |
-| Usage           |                               |
-| Example         | http://oncotree.mskcc.org/api |
-| Format          | REST (JSON)                   |
-| CrossReferences | [NCIT](#ncit)                 |
+|                 |                                  |
+| --------------- | -------------------------------- |
+| About           | http://oncotree.mskcc.org/#/home |
+| Usage           |                                  |
+| Example         | http://oncotree.mskcc.org/api    |
+| Format          | REST (JSON)                      |
+| CrossReferences | [NCIT](#ncit)                    |
 
 This importer pulls all versions of Oncotree directly from the Oncotree API and links them together
 
@@ -191,10 +281,11 @@ npm run import -- --oncotree
 
 ---
 
-### [Refseq](https://www.ncbi.nlm.nih.gov/refseq)
+### Refseq
 
 |                 |                                                                   |
 | --------------- | ----------------------------------------------------------------- |
+| About           | https://www.ncbi.nlm.nih.gov/refseq                               |
 | Usage           | https://www.ncbi.nlm.nih.gov/home/about/policies                  |
 | Example         | ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene |
 | Format          | Tab delimited                                                     |
@@ -208,10 +299,11 @@ npm run import -- --refseq LRG_RefSeqGene.tab
 
 ---
 
-### [Sequence Ontology](http://www.sequenceontology.org)
+### Sequence Ontology
 
 |                 |                                                                                            |
 | --------------- | ------------------------------------------------------------------------------------------ |
+| About           | http://www.sequenceontology.org                                                            |
 | Usage           | http://www.sequenceontology.org/?page_id=269                                               |
 | Example         | https://raw.githubusercontent.com/The-Sequence-Ontology/SO-Ontologies/master/so-simple.owl |
 | Format          | OWL                                                                                        |
@@ -224,10 +316,12 @@ npm run import -- --sequenceOntology so-simple.owl
 
 ---
 
-### [Uberon](http://uberon.github.io/about.html)
+
+### Uberon
 
 |                 |                                                                      |
 | --------------- | -------------------------------------------------------------------- |
+| About           | http://uberon.github.io/about.html                                   |
 | Usage           | http://obofoundry.github.io/principles/fp-001-open.html              |
 | Example         | http://purl.obolibrary.org/obo/uberon/releases/2018-02-28/uberon.owl |
 | Format          | OWL                                                                  |
@@ -240,10 +334,11 @@ npm run import -- --uberon uberon.owl
 
 ---
 
-### [VariO](http://variationontology.org)
+### VariO
 
 |                 |                                                           |
 | --------------- | --------------------------------------------------------- |
+| About           | http://variationontology.org                              |
 | Usage           | http://variationontology.org/citing.shtml                 |
 | Example         | http://www.variationontology.org/vario_download/vario.owl |
 | Format          | OWL                                                       |
@@ -259,12 +354,13 @@ npm run import -- --vario vario.owl
 
 Knowledgebase imports rely on the Ontology and vocabulary terms having already been loaded. They will use these to build statements as they import
 
-### [CIViC](https://civicdb.org/about)
+### CIViC
 
 Import the Clinical Evidence summaries from the public Civic database
 
 |         |                                                   |
 | ------- | ------------------------------------------------- |
+| About   | https://civicdb.org/about                         |
 | Usage   | https://creativecommons.org/publicdomain/zero/1.0 |
 | Example |                                                   |
 | Format  | REST (JSON)                                       |
@@ -276,11 +372,12 @@ npm run import -- --civic
 
 ---
 
-### [COSMIC](https://cancer.sanger.ac.uk/cosmic/about)
+### COSMIC
 
 
 |         |                                                                                |
 | ------- | ------------------------------------------------------------------------------ |
+| About   | https://cancer.sanger.ac.uk/cosmic/about                                       |
 | Usage   | https://creativecommons.org/publicdomain/zero/1.0                              |
 | Example | https://cancer.sanger.ac.uk/cosmic/download (CosmicResistanceMutations.tsv.gz) |
 | Format  | Tab Delimited                                                                  |
@@ -315,10 +412,11 @@ npm run import -- --cosmic CosmicResistanceMutations.tsv
 
 ---
 
-### [DoCM](http://www.docm.info/about)
+### DoCM
 
 |         |                            |
 | ------- | -------------------------- |
+| About   | http://www.docm.info/about |
 | Usage   | http://www.docm.info/terms |
 | Example |                            |
 | Format  | REST (JSON)                |
@@ -330,12 +428,13 @@ npm run import -- --docm
 
 ---
 
-### [OncoKB](http://oncokb.org/#/about)
+### OncoKB
 
 This module pulls directly from the OncoKB API to import statements from OncoKB into GraphKB
 
 |         |                           |
 | ------- | ------------------------- |
+| About   | http://oncokb.org/#/about |
 | Usage   | http://oncokb.org/#/terms |
 | Example |                           |
 | Format  | REST (JSON)               |

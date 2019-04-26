@@ -1,0 +1,95 @@
+{
+    "class": "Signature",
+    "records": {
+        "msi": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "microsatellite instability"
+                }
+            ],
+            "name": "msi"
+        },
+        "mss": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "microsatellite stable"
+                }
+            ],
+            "name": "mss"
+        },
+        "cd8+ cell infiltration": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "immune infiltration"
+                }
+            ],
+            "name": "cd8+ cell infiltration"
+        },
+        "erv load": {
+            "name": "erv load"
+        },
+        "hla genotype": {
+            "name": "hla genotype"
+        },
+        "hrd": {
+            "name": "hrd",
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "homologous repair deficiency"
+                }
+            ]
+        },
+        "homologous repair deficiency": {
+            "name": "homologous repair deficiency"
+        },
+        "immune infiltration": {
+            "name": "immune infiltration"
+        },
+        "microsatellite instability": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "microsatellite phenotype"
+                }
+            ],
+            "name": "microsatellite instability"
+        },
+        "microsatellite phenotype": {
+            "name": "microsatellite phenotype"
+        },
+        "microsatellite stable": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "microsatellite phenotype"
+                }
+            ],
+            "name": "microsatellite stable"
+        },
+        "mutation burden": {
+            "name": "mutation burden"
+        },
+        "neoantigen load": {
+            "name": "neoantigen load"
+        },
+        "t cell infiltration": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "immune infiltration"
+                }
+            ],
+            "name": "t cell infiltration"
+        }
+    },
+    "source": {
+        "name": "bcgsc"
+    }
+}
