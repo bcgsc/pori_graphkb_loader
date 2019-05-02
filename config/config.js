@@ -7,7 +7,7 @@ const create = () => {
         pass: process.env.GKB_DBS_PASS || 'root',
         user: process.env.GKB_DBS_USER || 'root',
         port: process.env.GKB_DB_PORT || 2424,
-        host: process.env.GKB_DB_HOST || 'localhost'
+        host: process.env.GKB_DB_HOST || 'orientdbdev.bcgsc.ca'
     };
 
     const db = {
