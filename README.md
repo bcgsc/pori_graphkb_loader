@@ -155,8 +155,6 @@ Create an env.sh file to hold the [configurable environment variables](doc/env.m
 
 ```bash
 export PM2_HOME=/var/www/kb/knowledgebase-api/pm2_logs
-export GKB_LOG_DIR=logs
-export GKB_DB_CREATE=1
 ```
 
 Set the Database password (It is better not to store this)
