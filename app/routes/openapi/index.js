@@ -422,7 +422,6 @@ const describePostSearch = (model) => {
  * @returns {Object} the JSON object representing the swagger API specification
  */
 const generateSwaggerSpec = (schema, metadata) => {
-    metadata = Object.assign({port: 8088, host: process.env.HOSTNAME}, metadata);
     const docs = Object.assign({}, STUB);
     docs.servers = [{
         url: `http://${metadata.host}:${metadata.port}/api`

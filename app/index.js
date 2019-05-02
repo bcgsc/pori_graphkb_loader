@@ -59,11 +59,9 @@ class AppServer {
 
         const {app: {host, port}} = conf;
         // app server info
-        this.host = host || process.env.HOSTNAME || 'localhost';
+        this.host = host;
 
-        this.port = port !== null
-            ? port || process.env.port
-            : null;
+        this.port = port;
 
         // set up the routes
         this.router = express.Router();
