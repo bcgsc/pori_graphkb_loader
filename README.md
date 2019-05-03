@@ -106,7 +106,8 @@ The local test envinronment should be used for testing without authentication
 npm run start:local
 ```
 
-The test/dev test environment should be used for developing against the test keycloak server (can only be used within the GSC network)
+The dev test environment should be used for developing against the test keycloak server (can only be used within the GSC network).
+This defaults connecting to the development database (backup of production)
 
 ```bash
 npm run start:dev
