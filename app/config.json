@@ -1,7 +1,6 @@
 {
     "common": {
         "DISABLE_AUTH": false,
-        "GKB_DBS_PASS": "root",
         "GKB_DBS_USER": "root",
         "GKB_DB_CREATE": true,
         "GKB_DB_HOST": "orientdbdev.bcgsc.ca",

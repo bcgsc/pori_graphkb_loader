@@ -8,16 +8,16 @@ const {RecordExistsError} = require('./error');
 
 
 const connectDB = async ({
-    GKB_USER_CREATE,
     GKB_DB_CREATE,
+    GKB_DB_HOST,
     GKB_DB_MIGRATE,
     GKB_DB_NAME,
     GKB_DB_PASS,
+    GKB_DB_PORT,
     GKB_DB_USER,
     GKB_DBS_PASS,
     GKB_DBS_USER,
-    GKB_DB_HOST,
-    GKB_DB_PORT
+    GKB_USER_CREATE
 }) => {
     // set up the database server
     const server = OrientDB({
