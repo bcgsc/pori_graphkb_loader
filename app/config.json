@@ -1,12 +1,12 @@
 {
     "common": {
         "DISABLE_AUTH": false,
-        "GKB_DBS_PORT": 2424,
         "GKB_DBS_USER": "root",
         "GKB_DB_CREATE": true,
         "GKB_DB_HOST": "orientdbdev.bcgsc.ca",
         "GKB_DB_MIGRATE": true,
         "GKB_DB_PASS": "admin",
+        "GKB_DB_PORT": 2424,
         "GKB_DB_USER": "admin",
         "GKB_KEYCLOAK_CLIENT_ID": "GraphKB",
         "GKB_KEYCLOAK_ROLE": "GraphKB",
