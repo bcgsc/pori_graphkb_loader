@@ -28,3 +28,5 @@ test_transaction.sql
 doc/jsdoc_reference
 doc/README.md
 *.id_rsa.pub
+logs
+pm2_logs
