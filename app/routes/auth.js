@@ -52,14 +52,13 @@ const generateToken = async (db, username, key, exp = null) => {
  *      session_state: '1ecbceaf-bf4f-4fd8-96e7-...'
  * }
  */
-const fetchKeyCloakToken = async (username, password, keycloakSettings) => {
-    const {uri, clientID} = keycloakSettings;
-    logger.log('debug', `[POST] ${uri}`);
+const fetchKeyCloakToken = async (username, password, {GKB_KEYCLOAK_URI, GKB_KEYCLOAK_CLIENT_ID}) => {
+    logger.log('debug', `[POST] ${GKB_KEYCLOAK_URI}`);
     const resp = JSON.parse(await request({
         method: 'POST',
-        uri,
+        uri: GKB_KEYCLOAK_URI,
         body: form({
-            client_id: clientID, grant_type: 'password', username, password
+            client_id: GKB_KEYCLOAK_CLIENT_ID, grant_type: 'password', username, password
         }),
         headers: {'Content-Type': 'application/x-www-form-urlencoded'}
     }));
@@ -95,16 +94,15 @@ const validateKeyCloakToken = (token, key, role) => {
  * @param {orientjs.db} db the database connection
  * @param {express.Router} router the router to add the route to
  * @param {object} config
- * @param {string} config.privateKey the key file contents for generating and signing tokens (private key file)
- * @param {object} config.keycloak keycloak configurable settings
- * @param {string} config.keycloak.uri the uri to post to to get a token from keycloak
- * @param {string} config.keycloak.role the required keycloak role
- * @param {string} config.keycloak.clientID the keycloak client ID for the post body in getting tokens
- * @param {string} config.keycloak.publicKey the content of the public key file used for verifying keycloak tokens
+ * @param {string} config.GKB_KEY the key file contents for generating and signing tokens (private key file)
+ * @param {string} config.GKB_KEYCLOAK_ROLE the required keycloak role
+ * @param {string} config.GKB_KEYCLOAK_KEY the content of the public key file used for verifying keycloak tokens
+ * @param {string} config.GKB_DISABLE_AUTH bypass the authentication server (for testing)
  */
 const addPostToken = ({router, db, config}) => {
-    const {keycloak, privateKey, disableAuth} = config;
-
+    const {
+        GKB_DISABLE_AUTH, GKB_KEYCLOAK_KEY, GKB_KEYCLOAK_ROLE, GKB_KEY
+    } = config;
     router.route('/token').post(async (req, res) => {
         // generate a token to return to the user
         if ((req.body.username === undefined || req.body.password === undefined) && req.body.keyCloakToken === undefined) {
@@ -117,23 +115,26 @@ const addPostToken = ({router, db, config}) => {
                 return res.status(HTTP_STATUS.BAD_REQUEST).json({message: 'body requires both username and password to generate a token or an external keycloak token (keyCloakToken)'});
             }
             // get the keyCloakToken
-            if (!disableAuth) {
+            if (!GKB_DISABLE_AUTH) {
                 try {
-                    keyCloakToken = await fetchKeyCloakToken(req.body.username, req.body.password, keycloak);
+                    keyCloakToken = await fetchKeyCloakToken(req.body.username, req.body.password, config);
                 } catch (err) {
+                    logger.log('debug', err);
                     return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
                 }
             }
         }
         // verify the keyCloakToken
         let kcTokenContent;
-        if (!disableAuth) {
+        if (!GKB_DISABLE_AUTH) {
             try {
-                kcTokenContent = validateKeyCloakToken(keyCloakToken, keycloak.publicKey, keycloak.role);
+                kcTokenContent = validateKeyCloakToken(keyCloakToken, GKB_KEYCLOAK_KEY, GKB_KEYCLOAK_ROLE);
             } catch (err) {
                 if (err instanceof PermissionError) {
+                    logger.log('debug', err);
                     return res.status(HTTP_STATUS.FORBIDDEN).json(err);
                 }
+                logger.log('debug', err);
                 return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
             }
         } else {
@@ -143,8 +144,9 @@ const addPostToken = ({router, db, config}) => {
         // kb-level authentication
         let token;
         try {
-            token = await generateToken(db, kcTokenContent.preferred_username, privateKey, kcTokenContent.exp);
+            token = await generateToken(db, kcTokenContent.preferred_username, GKB_KEY, kcTokenContent.exp);
         } catch (err) {
+            logger.log('debug', err);
             return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
         }
         return res.status(HTTP_STATUS.OK).json({kbToken: token, keyCloakToken});

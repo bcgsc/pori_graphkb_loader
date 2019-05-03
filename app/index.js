@@ -63,7 +63,6 @@ const createConfig = (overrides = {}) => {
             ENV[flag] = Boolean(ENV[flag]);
         }
     }
-    console.log(ENV);
 
     return ENV;
 };

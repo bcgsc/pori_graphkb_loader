@@ -10,6 +10,7 @@ const jwt = require('jsonwebtoken');
 const {constants: {PERMISSIONS}} = require('@bcgsc/knowledgebase-schema');
 
 const {PermissionError} = require('./../repo/error');
+const {logger} = require('./../repo/logging');
 
 
 /*
@@ -28,6 +29,7 @@ const checkToken = privateKey => async (req, res, next) => {
         req.user = decoded.user; // eslint-disable-line no-param-reassign
         return next();
     } catch (err) {
+        logger.log('debug', err);
         return res.status(HTTP_STATUS.UNAUTHORIZED).json(err);
     }
 };
