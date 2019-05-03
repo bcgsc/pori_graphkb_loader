@@ -166,7 +166,6 @@ export GKB_DBS_PASS=<some password>
 Now source the file and start your pm2 process
 
 ```bash
-source env.sh
 pm2 start config/pm2.config.js --env development
 ```
 
