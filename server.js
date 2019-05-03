@@ -7,7 +7,7 @@ let app;
 
 (async () => {
     try {
-        app = new AppServer(createConfig());
+        app = new AppServer(createConfig({GKB_DBS_PASS: process.env.GKB_DBS_PASS}));
         await app.listen();
 
         // cleanup
