@@ -5,14 +5,14 @@ const packageData = require('./../package.json'); // eslint-disable-line
 const env = require('./../app/config');
 
 let suffix = '';
-if (process.env['bamboo.deploy.environment']) {
-    suffix = `_${process.env['bamboo.deploy.environment']}`;
+if (process.env.PM2_SUFFIX) {
+    suffix = `_${process.env.PM2_SUFFIX}`;
 }
 
 module.exports = {
     apps: [
         {
-            name: `${packageData.name.replace(/^@bcgsc\//, '')}_v${packageData.version}${suffix}`,
+            name: `${packageData.name.replace(/^@bcgsc\//, '')}${suffix}`,
             script: 'npm',
             args: 'start',
             watch: false,
