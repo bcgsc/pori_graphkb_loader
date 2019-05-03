@@ -167,7 +167,7 @@ Now source the file and start your pm2 process
 
 ```bash
 source env.sh
-pm2 start npm --name kbapi-v1.1.0  -- start
+pm2 start config/pm2.config.js --env development
 ```
 
 You should now be able to view the running process with
