@@ -5,23 +5,17 @@ const uuidV4 = require('uuid/v4');
 const {getUserByName} = require('../app/repo/commands');
 const {connectDB} = require('../app/repo');
 
-const VERBOSE = process.env.VERBOSE === '1';
-
-
 const setUpEmptyDB = async (conf) => {
-    if (VERBOSE) {
-        console.log(`connecting to the database server:${conf.server.host}${conf.server.port}`);
-    }
-    conf.db.name = `test_${uuidV4()}`;
-    conf.db.create = true;
-    conf.createUser = true;
+    conf.GKB_DB_NAME = `test_${uuidV4()}`;
+    conf.GKB_DB_CREATE = true;
+    conf.GKB_USER_CREATE = true;
 
     const {server, db, schema} = await connectDB(conf);
 
     const user = await getUserByName(db, process.env.USER || 'admin');
 
     return {
-        server, db, schema, admin: user, conf, dbName: conf.db.name
+        server, db, schema, admin: user, conf, dbName: conf.GKB_DB_NAME
     };
 };
 

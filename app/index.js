@@ -95,11 +95,9 @@ class AppServer {
         this.server = null;
         this.conf = conf;
 
-        const {app: {host, port}} = conf;
         // app server info
-        this.host = host;
-
-        this.port = port;
+        this.host = conf.GKB_HOST;
+        this.port = conf.GKB_PORT;
 
         // set up the routes
         this.router = express.Router();
@@ -112,12 +110,21 @@ class AppServer {
      */
     async listen() {
         // connect to the database
-        logger.log('info', `starting db connection (${this.conf.server.host}:${this.conf.server.port})`);
+        const {
+            GKB_DB_HOST,
+            GKB_DB_PORT,
+            GKB_KEY_FILE,
+            GKB_DB_NAME,
+            GKB_DISABLE_AUTH,
+            GKB_KEYCLOAK_KEY_FILE
+        } = this.conf;
+
+        logger.log('info', `starting db connection (${GKB_DB_HOST}:${GKB_DB_PORT})`);
         const {db, schema} = await connectDB(this.conf);
         this.db = db;
         this.schema = schema;
         // set up the swagger docs
-        this.spec = generateSwaggerSpec(schema, {port: this.conf.app.port});
+        this.spec = generateSwaggerSpec(schema, {port: this.port});
         this.router.use('/spec', swaggerUi.serve, swaggerUi.setup(this.spec, {
             swaggerOptions: {
                 deepLinking: true,
@@ -147,25 +154,23 @@ class AppServer {
         this.router.get('/version', async (req, res) => {
             res.status(HTTP_STATUS.OK).json({
                 api: process.env.npm_package_version,
-                db: this.conf.db.name
+                db: GKB_DB_NAME
             });
         });
         // read the key file if it wasn't already set
-        if (!this.conf.privateKey) {
-            logger.log('info', `reading the private key file: ${this.conf.privateKeyFile}`);
-            this.conf.privateKey = fs.readFileSync(this.conf.privateKeyFile);
+        if (!this.conf.GKB_KEY) {
+            logger.log('info', `reading the private key file: ${GKB_KEY_FILE}`);
+            this.conf.GKB_KEY = fs.readFileSync(GKB_KEY_FILE);
         }
         // if external auth is enabled, read the keycloak public key file for verifying the tokens
-        if (!this.conf.disableAuth) {
-            if (this.conf.keycloak && this.conf.keycloak.publicKeyFile && !this.conf.keycloak.publicKey) {
-                logger.log('info', `reading the keycloak public key file: ${this.conf.keycloak.publicKeyFile}`);
-                this.conf.keycloak.publicKey = fs.readFileSync(this.conf.keycloak.publicKeyFile);
-            }
+        if (!GKB_DISABLE_AUTH && GKB_KEYCLOAK_KEY_FILE && !this.conf.GKB_KEYCLOAK_KEY) {
+            logger.log('info', `reading the keycloak public key file: ${GKB_KEYCLOAK_KEY_FILE}`);
+            this.conf.GKB_KEYCLOAK_KEY = fs.readFileSync(GKB_KEYCLOAK_KEY_FILE);
         }
         // add the addPostToken
         addPostToken({router: this.router, db, config: this.conf});
 
-        this.router.use(checkToken(this.conf.privateKey));
+        this.router.use(checkToken(this.conf.GKB_KEY));
 
         // simple routes
         for (const model of Object.values(schema)) {
@@ -246,4 +251,4 @@ class AppServer {
     }
 }
 
-module.exports = {AppServer};
+module.exports = {AppServer, createConfig};

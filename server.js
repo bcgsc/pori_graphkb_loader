@@ -1,6 +1,5 @@
 // required packages
-const createConfig = require('./config/config'); // get the database connection configuration
-const {AppServer} = require('./app');
+const {AppServer, createConfig} = require('./app');
 const {logger} = require('./app/repo/logging');
 
 // process.on('uncaughtException', app.close);

@@ -21,7 +21,7 @@ const {
     Query
 } = require('./../../app/repo/query');
 
-const createConfig = require('./../../config/config.js');
+const {createConfig} = require('./../../app');
 
 
 describe('schema', () => {
