@@ -24,10 +24,48 @@ const {generateSwaggerSpec} = require('./routes/openapi');
 const {addResourceRoutes} = require('./routes/util');
 const {addPostToken} = require('./routes/auth');
 const {addKeywordSearchRoute, addGetRecordsByList} = require('./routes');
+const config = require('./config');
+
+const BOOLEAN_FLAGS = [
+    'GKB_USER_CREATE',
+    'GKB_DB_CREATE',
+    'GKB_DISABLE_AUTH',
+    'GKB_DB_MIGRATE'
+];
 
 const logRequests = (req, res, next) => {
     logger.log('info', `[${req.method}] ${req.url}`);
     return next();
+};
+
+
+const createConfig = (overrides = {}) => {
+    const ENV = {
+        GKB_HOST: process.env.HOSTNAME,
+        ...config.common,
+        ...config[process.env.NODE_ENV] || {}
+    };
+    for (const [key, value] of Object.entries(process.env)) {
+        if (key.startsWith('GKB_')) {
+            ENV[key] = value;
+        }
+    }
+    Object.assign(ENV, overrides);
+
+    for (const flag of BOOLEAN_FLAGS) {
+        if (typeof ENV[flag] === 'string') {
+            if (['0', 'f', 'false'].includes(ENV[flag].toLowerCase().trim())) {
+                ENV[flag] = false;
+            } else {
+                ENV[flag] = true;
+            }
+        } else {
+            ENV[flag] = Boolean(ENV[flag]);
+        }
+    }
+    console.log(ENV);
+
+    return ENV;
 };
 
 class AppServer {
@@ -40,7 +78,7 @@ class AppServer {
      * @property {Object} conf the configuration object
      * @property {?Object.<string,ClassModel>} schema the mapping of class names to models for the db
      */
-    constructor(conf = {app: {}}) {
+    constructor(conf = createConfig()) {
         this.app = express();
         this.app.use(logRequests);
         // set up middleware parser to deal with jsons
