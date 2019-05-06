@@ -1,6 +1,5 @@
 // required packages
-const createConfig = require('./config/config'); // get the database connection configuration
-const {AppServer} = require('./app');
+const {AppServer, createConfig} = require('./app');
 const {logger} = require('./app/repo/logging');
 
 // process.on('uncaughtException', app.close);
@@ -8,7 +7,7 @@ let app;
 
 (async () => {
     try {
-        app = new AppServer(createConfig());
+        app = new AppServer(createConfig({GKB_DBS_PASS: process.env.GKB_DBS_PASS}));
         await app.listen();
 
         // cleanup

@@ -106,7 +106,8 @@ The local test envinronment should be used for testing without authentication
 npm run start:local
 ```
 
-The test/dev test environment should be used for developing against the test keycloak server (can only be used within the GSC network)
+The dev test environment should be used for developing against the test keycloak server (can only be used within the GSC network).
+This defaults connecting to the development database (backup of production)
 
 ```bash
 npm run start:dev
@@ -155,8 +156,6 @@ Create an env.sh file to hold the [configurable environment variables](doc/env.m
 
 ```bash
 export PM2_HOME=/var/www/kb/knowledgebase-api/pm2_logs
-export GKB_LOG_DIR=logs
-export GKB_DB_CREATE=1
 ```
 
 Set the Database password (It is better not to store this)
@@ -168,8 +167,7 @@ export GKB_DBS_PASS=<some password>
 Now source the file and start your pm2 process
 
 ```bash
-source env.sh
-pm2 start npm --name kbapi-v1.1.0  -- start
+pm2 start config/pm2.config.js --env development
 ```
 
 You should now be able to view the running process with

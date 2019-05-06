@@ -10,7 +10,6 @@ const HTTP_STATUS = require('http-status-codes');
 const {
     setUpEmptyDB, clearDB
 } = require('./../util');
-const createConfig = require('./../../config/config.js');
 const {generateToken} = require('./../../app/routes/auth');
 
 chai.use(chaiHttp);
@@ -83,26 +82,20 @@ describe('API', () => {
         conf,
         dbName;
     before(async () => {
+        const {AppServer, createConfig} = require('./../../app'); // eslint-disable-line global-require
         ({
             db,
             admin,
             server,
             conf,
             dbName
-        } = await setUpEmptyDB({
-            ...createConfig(),
-            verbose: true,
-            privateKey: 'testKey',
-            disableAuth: true
-        }));
+        } = await setUpEmptyDB(createConfig({GKB_DISABLE_AUTH: true, GKB_PORT: null})));
 
-        const {AppServer} = require('./../../app'); // eslint-disable-line global-require
-        delete conf.app.port;
-        conf.db.create = false; // already created
+        conf.GKB_DB_CREATE = false; // already created
         app = new AppServer(conf, false);
 
         await app.listen();
-        mockToken = await generateToken(db, admin.name, conf.privateKey, REALLY_LONG_TIME);
+        mockToken = await generateToken(db, admin.name, conf.GKB_KEY, REALLY_LONG_TIME);
     });
 
     describe('GET /stats', () => {
