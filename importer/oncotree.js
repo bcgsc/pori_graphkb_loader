@@ -4,9 +4,6 @@
  */
 
 const request = require('request-promise');
-const fs = require('fs');
-const jc = require('json-cycle');
-
 
 const {rid} = require('./util');
 const {logger} = require('./logging');
