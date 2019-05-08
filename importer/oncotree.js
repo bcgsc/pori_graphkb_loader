@@ -184,9 +184,6 @@ const upload = async (opt) => {
     const versions = await oncotreeApi.getVersions();
     const records = await oncotreeApi.getAllRecords(versions);
 
-    logger.info('writing test.json');
-    fs.writeFileSync('test.json', JSON.stringify(jc.decycle(records)));
-
     const source = await conn.addRecord({
         endpoint: 'sources',
         content: {
@@ -276,4 +273,4 @@ const upload = async (opt) => {
 };
 
 
-module.exports = {upload, OncotreeAPI};
+module.exports = {upload, OncotreeAPI, dependencies: ['ncit']};
