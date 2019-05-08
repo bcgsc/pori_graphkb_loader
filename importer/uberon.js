@@ -170,4 +170,4 @@ const uploadFile = async ({filename, conn}) => {
     }
 };
 
-module.exports = {uploadFile, SOURCE_DEFN};
+module.exports = {uploadFile, SOURCE_DEFN, dependencies: ['ncit']};

@@ -254,4 +254,4 @@ const uploadFile = async ({filename, conn}) => {
 };
 
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, dependencies: ['fda']};
