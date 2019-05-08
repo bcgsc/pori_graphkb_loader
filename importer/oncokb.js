@@ -8,7 +8,7 @@ const jsonpath = require('jsonpath');
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const {
-    preferredDiseases, preferredDrugs, rid
+    preferredDiseases, preferredDrugs, rid, INTERNAL_SOURCE_NAME
 } = require('./util');
 const {ParsingError} = require('./../app/repo/error');
 const _pubmed = require('./pubmed');
@@ -51,9 +51,7 @@ const SOURCE_DEFN = {
 const VOCABULARY_MAPPING = {
     'oncogenic mutations': 'oncogenic mutation',
     fusions: 'fusion',
-    'truncating mutations': 'truncating',
-    'microsatellite instability-high': 'high microsatellite instability'
-
+    'truncating mutations': 'truncating'
 };
 
 const DISEASE_MAPPING = {
@@ -62,8 +60,19 @@ const DISEASE_MAPPING = {
     'non-langerhans cell histiocytosis/erdheim-chester disease': 'non-langerhans-cell histiocytosis'
 };
 
-const THERAPY_MAPPING = {
-    debio1347: 'debio 1347'
+const VOCABULARY_CACHE = {};
+
+const getVocabulary = async (conn, term) => {
+    const stdTerm = term.trim().toLowerCase();
+    if (VOCABULARY_CACHE[stdTerm]) {
+        return VOCABULARY_CACHE[stdTerm];
+    }
+    const rec = await conn.getUniqueRecordBy({
+        endpoint: 'vocabulary',
+        where: {name: stdTerm, source: {name: INTERNAL_SOURCE_NAME}}
+    });
+    VOCABULARY_CACHE[rec.sourceId] = rec;
+    return rec;
 };
 
 
@@ -165,52 +174,54 @@ const processVariant = async (opt) => {
     const {
         conn, rawRecord
     } = opt;
+    let gene1,
+        type,
+        reference2,
+        gene2;
+
     if (rawRecord.gene === 'other biomarkers') {
         try {
-            let vocab = rawRecord.variant.trim().toLowerCase();
-            if (VOCABULARY_MAPPING[vocab]) {
-                vocab = VOCABULARY_MAPPING[vocab];
+            const vocab = rawRecord.variant.trim().toLowerCase();
+            if (vocab !== 'microsatellite instability-high') {
+                throw new Error(`unsupported biomarker variant ${rawRecord.variant}`);
             }
-            const variant = await conn.getUniqueRecordBy({
-                endpoint: 'vocabulary',
-                where: {name: vocab, source: {name: 'bcgsc'}}
-            });
-            return variant;
+            ([gene1, type] = await Promise.all([
+                conn.getUniqueRecordBy({
+                    endpoint: 'signatures',
+                    content: {name: 'microsatellite instability'}
+                }),
+                getVocabulary(conn, 'strong signature')
+            ]));
         } catch (err) {
             logger.warn(`failed to retrieve the associated vocabulary (variant=${rawRecord.variant})`);
             throw err;
         }
-    }
-
-    let gene1;
-    try {
-        gene1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.gene});
-    } catch (err) {
-        logger.warn(`Failed to find the gene symbol (${rawRecord.gene})`);
-        throw err;
-    }
-
-    // determine the type of variant we are dealing with
-    let type,
-        reference2;
-    try {
-        const parsed = parseVariantName(
-            rawRecord.variant,
-            {reference1: gene1.name}
-        );
-        type = parsed.type;
-        reference2 = parsed.reference2;
-    } catch (err) {
-        type = rawRecord.variant;
-    }
-    let gene2;
-    try {
-        if (reference2) {
-            gene2 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: reference2});
+    } else {
+        // gene-base variant
+        try {
+            gene1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.gene});
+        } catch (err) {
+            logger.warn(`Failed to find the gene symbol (${rawRecord.gene})`);
+            throw err;
         }
-    } catch (err) {
-        logger.warn(`Failed to retrieve hugo gene ${reference2}`);
-        throw err;
+
+        // determine the type of variant we are dealing with
+        try {
+            ({type, reference2} = parseVariantName(
+                rawRecord.variant,
+                {reference1: gene1.name}
+            ));
+        } catch (err) {
+            type = rawRecord.variant;
+        }
+        try {
+            if (reference2) {
+                gene2 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: reference2});
+            }
+        } catch (err) {
+            logger.warn(`Failed to retrieve hugo gene ${reference2}`);
+            throw err;
+        }
     }
     // swap them for fusions listed in opposite order
     if (reference2
@@ -231,10 +242,7 @@ const processVariant = async (opt) => {
     let variant,
         variantType = type;
     try {
-        variantType = await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: variantType, source: {name: 'bcgsc'}}
-        });
+        variantType = await getVocabulary(conn, variantType);
         variantUrl = 'categoryvariants';
         variant = {};
     } catch (err) {}
@@ -249,10 +257,7 @@ const processVariant = async (opt) => {
 
         variantUrl = 'positionalvariants';
         try {
-            variantType = await conn.getUniqueRecordBy({
-                endpoint: 'vocabulary',
-                where: {name: variant.type, source: {name: 'bcgsc'}}
-            });
+            variantType = await getVocabulary(conn, variant.type);
         } catch (err) {
             logger.warn(`failed to retrieve the variant type (${variant.type})`);
         }
@@ -368,10 +373,7 @@ const processActionableRecord = async (opt) => {
     let relevance = level.name.startsWith('r')
         ? 'resistance'
         : 'sensitivity';
-    relevance = await conn.getUniqueRecordBy({
-        endpoint: 'vocabulary',
-        where: {name: relevance, source: {name: 'bcgsc'}}
-    });
+    relevance = await getVocabulary(conn, relevance);
 
     // find/add the publications
     const publications = await Promise.all(
@@ -415,17 +417,11 @@ const processAnnotatedRecord = async (opt) => {
     rawRecord.mutationEffect = rawRecord.mutationEffect.replace(/-/g, ' ');
     let relevance1;
     try {
-        relevance1 = await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: rawRecord.mutationEffect, source: {name: 'bcgsc'}}
-        });
+        relevance1 = await getVocabulary(conn, rawRecord.mutationEffect);
     } catch (err) {}
     let relevance2;
     try {
-        relevance2 = await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: rawRecord.oncogenicity, source: {name: 'bcgsc'}}
-        });
+        relevance2 = await getVocabulary(conn, rawRecord.oncogenicity);
     } catch (err) {}
 
     if (!relevance1 && !relevance2) {
@@ -568,9 +564,7 @@ const processActionableRecords = async ({
 
     for (const rawRecord of records) {
         for (const drug of Array.from(rawRecord.drugs.split(','), x => x.trim().toLowerCase()).filter(x => x.length > 0)) {
-            rawRecord.drug = THERAPY_MAPPING[drug] === undefined
-                ? drug
-                : THERAPY_MAPPING[drug];
+            rawRecord.drug = drug;
             rawRecord.cancerType = rawRecord.cancerType.toLowerCase().trim();
             rawRecord.cancerType = DISEASE_MAPPING[rawRecord.cancerType] === undefined
                 ? rawRecord.cancerType
