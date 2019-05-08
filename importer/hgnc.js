@@ -63,7 +63,7 @@ const SOURCE_DEFN = {
         protein coding genes, ncRNA genes and pseudogenes, to allow unambiguous scientific
         communication.`.replace(/\s+/, ' ')
 };
-
+const CACHE = {};
 /**
  * This defines the expected format of a response from the HGNC API
  */
@@ -104,6 +104,9 @@ const uploadRecord = async ({
         content: body,
         existsOk: true
     });
+
+    CACHE[currentRecord.sourceId] = currentRecord;
+    CACHE[currentRecord.name] = currentRecord;
 
     if (gene.ensembl_gene_id && ensembl) {
         try {
@@ -229,13 +232,19 @@ const fetchAndLoadBySymbol = async ({
     }
     const [gene] = docs;
 
-    const hgnc = await conn.addRecord({
-        endpoint: 'sources',
-        content: {name: 'hgnc'},
-        fetchFirst: true,
-        existsOk: true,
-        fetchExisting: true
-    });
+    let hgnc;
+    if (CACHE.SOURCE) {
+        hgnc = CACHE.SOURCE;
+    } else {
+        hgnc = await conn.addRecord({
+            endpoint: 'sources',
+            content: SOURCE_DEFN,
+            fetchConditions: {name: SOURCE_DEFN.name},
+            existsOk: true,
+            fetchExisting: true
+        });
+        CACHE.SOURCE = hgnc;
+    }
     let ensembl;
     try {
         ensembl = await conn.getUniqueRecordBy({
@@ -243,7 +252,6 @@ const fetchAndLoadBySymbol = async ({
             where: {name: 'ensembl'}
         });
     } catch (err) {}
-
     return uploadRecord({conn, gene, sources: {hgnc, ensembl}});
 };
 
