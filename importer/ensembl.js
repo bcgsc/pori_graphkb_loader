@@ -8,6 +8,7 @@ const {
     loadDelimToJson, rid, orderPreferredOntologyTerms
 } = require('./util');
 const {logger} = require('./logging');
+const _hgnc = require('./hgnc');
 
 const HEADER = {
     geneId: 'Gene stable ID',
@@ -58,15 +59,6 @@ const uploadFile = async (opt) => {
         });
     } catch (err) {
         logger.warn('Unable to find refseq source. Will not attempt to create cross-reference links');
-    }
-    let hgncSource;
-    try {
-        hgncSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: 'hgnc'}
-        });
-    } catch (err) {
-        logger.warn('Unable to find hgnc source. Will not attempt to create cross-reference links');
     }
 
     const visited = {}; // cache genes to speed up adding records
@@ -199,17 +191,9 @@ const uploadFile = async (opt) => {
             }
         }
         // gene -> aliasof -> hgnc
-        if (hgncSource && record[HEADER.hgncId] && record.hgncName && newGene) {
+        if (record[HEADER.hgncId] && newGene) {
             try {
-                const hgnc = await conn.getUniqueRecordBy({
-                    endpoint: 'features',
-                    where: {
-                        source: rid(hgncSource),
-                        sourceId: record[HEADER.hgncId],
-                        name: record.hgncName
-                    },
-                    sort: orderPreferredOntologyTerms
-                });
+                const hgnc = await _hgnc.fetchAndLoadBySymbol({conn, paramType: 'hgnc_id', symbol: record[HEADER.hgncId]});
                 await conn.addRecord({
                     endpoint: 'crossreferenceof',
                     content: {
@@ -220,6 +204,7 @@ const uploadFile = async (opt) => {
                 });
             } catch (err) {
                 hgncMissingRecords.add(record[HEADER.hgncId]);
+                logger.log('error', `failed cross-linking from ${gene.sourceid} to ${record[HEADER.hgncId]}`);
             }
         }
     }
@@ -231,4 +216,4 @@ const uploadFile = async (opt) => {
     }
 };
 
-module.exports = {uploadFile, dependencies: ['refseq', 'hgnc'], SOURCE_DEFN};
+module.exports = {uploadFile, dependencies: ['refseq'], SOURCE_DEFN};
