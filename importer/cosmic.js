@@ -32,17 +32,8 @@ const {
     loadDelimToJson,
     rid
 } = require('./util');
-const {
-    fetchArticle,
-    uploadArticlesByPmid
-} = require('./pubmed');
+const _pubmed = require('./pubmed');
 const {logger} = require('./logging');
-
-
-const THERAPY_MAPPING = {
-    'tyrosine kinase inhibitor - ns': 'tyrosine kinase inhibitor',
-    'endocrine therapy': 'hormone therapy agent'
-};
 
 const SOURCE_DEFN = {
     url: 'https://cancer.sanger.ac.uk/cosmic',
@@ -86,13 +77,9 @@ const processCosmicRecord = async (conn, record, source) => {
     // add the cosmic ID entry
     // link the cosmic ID to all variants
     // get the drug by name
-    record['Drug Name'] = record['Drug Name'].toLowerCase();
-    if (THERAPY_MAPPING[record['Drug Name']] !== undefined) {
-        record['Drug Name'] = THERAPY_MAPPING[record['Drug Name']];
-    }
     const drug = await conn.getUniqueRecordBy({
         endpoint: 'therapies',
-        where: {name: record['Drug Name']},
+        where: {name: record['Drug Name'].toLowerCase()},
         sort: preferredDrugs
     });
     // get the disease by name
@@ -148,14 +135,14 @@ const uploadFile = async (opt) => {
     const errorCache = {};
     logger.info(`Processing ${jsonList.length} records`);
     // Upload the list of pubmed IDs
-    await uploadArticlesByPmid(conn, jsonList.map(rec => rec['Pubmed Id']));
+    await _pubmed.uploadArticlesByPmid(conn, jsonList.map(rec => rec['Pubmed Id']));
 
     for (const record of jsonList) {
         if (record['AA Mutation'] === 'p.?') {
             counts.skip++;
             continue;
         }
-        record.publication = await fetchArticle(conn, record['Pubmed Id']);
+        record.publication = await _pubmed.fetchArticle(conn, record['Pubmed Id']);
         try {
             await processCosmicRecord(conn, record, source);
             counts.success++;
