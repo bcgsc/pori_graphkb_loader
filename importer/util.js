@@ -359,19 +359,29 @@ const loadDelimToJson = async (filename, delim = '\t') => {
 };
 
 
-const loadXmlToJson = (filename) => {
+const loadXmlToJson = (filename, opts = {}) => {
     logger.info(`reading: ${filename}`);
     const xmlContent = fs.readFileSync(filename).toString();
     logger.info(`parsing: ${filename}`);
     return new Promise((resolve, reject) => {
-        xml2js.parseString(xmlContent, (err, result) => {
-            logger.error(err);
-            if (err !== null) {
-                reject(err);
-            } else {
-                resolve(result);
+        xml2js.parseString(
+            xmlContent,
+            {
+                trim: true,
+                emptyTag: null,
+                mergeAttrs: true,
+                normalize: true,
+                ...opts
+            },
+            (err, result) => {
+                logger.error(err);
+                if (err !== null) {
+                    reject(err);
+                } else {
+                    resolve(result);
+                }
             }
-        });
+        );
     });
 };
 
