@@ -7,7 +7,7 @@
 const {
     orderPreferredOntologyTerms, loadDelimToJson, rid
 } = require('./util');
-const {logger, progress} = require('./logging');
+const {logger} = require('./logging');
 
 const SOURCE_DEFN = {
     name: 'fda',
@@ -39,7 +39,7 @@ const uploadFile = async (opt) => {
             where: {name: 'NCIT'}
         });
     } catch (err) {
-        progress('x\n');
+        logger.log('info', 'Cannot link to NCIT, Unable to dind source record');
     }
     logger.info(`loading ${jsonList.length} records`);
     let skipCount = 0;
@@ -76,7 +76,7 @@ const uploadFile = async (opt) => {
                     sort: orderPreferredOntologyTerms
                 });
             } catch (err) {
-                progress('x');
+                logger.log('error', `failed cross-linking from ${name} to ${record.NCIT}`);
             }
             if (ncitRec) {
                 await api.addRecord({
@@ -87,7 +87,7 @@ const uploadFile = async (opt) => {
             }
         }
     }
-    logger.info(`\nskipped ${skipCount} records`);
+    logger.info(`skipped ${skipCount} records`);
 };
 
-module.exports = {uploadFile, SOURCE_DEFN};
+module.exports = {uploadFile, SOURCE_DEFN, dependencies: ['ncit']};
