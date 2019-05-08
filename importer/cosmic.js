@@ -31,12 +31,12 @@ const {
     preferredDiseases,
     loadDelimToJson,
     rid
-} = require('../util');
+} = require('./util');
 const {
     fetchArticle,
     uploadArticlesByPmid
-} = require('../pubmed');
-const {logger} = require('../logging');
+} = require('./pubmed');
+const {logger} = require('./logging');
 
 
 const THERAPY_MAPPING = {
@@ -44,7 +44,12 @@ const THERAPY_MAPPING = {
     'endocrine therapy': 'hormone therapy agent'
 };
 
-const {SOURCE_DEFN} = require('./constants');
+const SOURCE_DEFN = {
+    url: 'https://cancer.sanger.ac.uk/cosmic',
+    name: 'cosmic',
+    usage: 'https://cancer.sanger.ac.uk/cosmic/license',
+    description: 'COSMIC, the Catalogue Of Somatic Mutations In Cancer, is the world\'s largest and most comprehensive resource for exploring the impact of somatic mutations in human cancer.'
+};
 
 
 const processCosmicRecord = async (conn, record, source) => {

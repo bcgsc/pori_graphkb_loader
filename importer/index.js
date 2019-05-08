@@ -29,7 +29,6 @@ IMPORT_MODULES.uberon = require('./uberon');
 IMPORT_MODULES.vario = require('./vario');
 IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
 IMPORT_MODULES.ontology = require('./ontology');
-IMPORT_MODULES.mutsig = require('./cosmic/mutationSignatures');
 
 
 const optionDefinitions = [
@@ -120,11 +119,6 @@ const optionDefinitions = [
         type: fileExists
     },
     {
-        name: 'mutsig',
-        description: 'load the cosmic mutation signatures (ex. JSON file parsed from the COSMIC site)',
-        type: fileExists
-    },
-    {
         name: 'ctg',
         description: 'load trials information from an XML export of a search result downloaded fomr clinicaltrials.gov',
         type: fileExists
@@ -174,7 +168,6 @@ const upload = async () => {
         'ontology',
         'sequenceOntology',
         'vario',
-        'ctg',
         'ncit',
         'fda',
         'drugbank',
@@ -184,7 +177,7 @@ const upload = async () => {
         'ensembl',
         'uberon',
         'oncotree',
-        'mutsig',
+        'ctg',
         'cosmic',
         'oncokb',
         'civic',
