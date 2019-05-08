@@ -11,6 +11,7 @@ const xml2js = require('xml2js');
 const jwt = require('jsonwebtoken');
 const sleep = require('sleep-promise');
 const HTTP_STATUS_CODES = require('http-status-codes');
+const jsonpath = require('jsonpath');
 
 
 const {logger} = require('./logging');
@@ -391,8 +392,31 @@ const requestWithRetry = async (requestOpt, {waitSeconds = 2, retries = 1} = {})
 };
 
 
+const shallowObjectKey = obj => JSON.stringify(obj, (k, v) => (k
+    ? `${v}`
+    : v));
+
+
+const checkSpec = (spec, record, idGetter = rec => rec.id) => {
+    if (!spec(record)) {
+        throw new Error(`Spec Validation failed for ${
+            idGetter(record)
+        } #${
+            spec.errors[0].dataPath
+        } ${
+            spec.errors[0].message
+        } found '${
+            shallowObjectKey(jsonpath.query(record, `$${spec.errors[0].dataPath}`))
+        }'`);
+    }
+    return true;
+};
+
+
 module.exports = {
+    INTERNAL_SOURCE_NAME: 'bcgsc',
     rid,
+    checkSpec,
     convertOwlGraphToJson,
     orderPreferredOntologyTerms,
     preferredDiseases,
