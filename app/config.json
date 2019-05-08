@@ -24,7 +24,9 @@
         "GKB_LOG_MAX_FILES": 7,
         "GKB_PORT": 8081
     },
-    "local": {},
+    "local": {
+        "GKB_DB_NAME": "local"
+    },
     "production": {
         "GKB_DB_CREATE": false,
         "GKB_DB_HOST": "orientdb02.bcgsc.ca",
