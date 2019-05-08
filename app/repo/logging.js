@@ -8,17 +8,22 @@ const winston = require('winston');
 const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
 
+const GKB_LOG_LEVEL = process.env.GKB_LOG_LEVEL || 'debug';
+
 const transports = [
     new winston.transports.Console({
-        level: process.env.GKB_LOG_LEVEL || 'debug',
+        level: GKB_LOG_LEVEL,
         timestamp: true,
         colorize: true
     })
 ];
+
+let logfile = null;
 if (process.env.GKB_LOG_DIR) {
+    logfile = path.join(process.env.GKB_LOG_DIR, `${process.env.npm_package_name}-%DATE%-${process.pid}.log`);
     transports.push(new DailyRotateFile({
-        level: 'info',
-        filename: path.join(process.env.GKB_LOG_DIR, `${process.env.npm_package_name}-%DATE%.log`),
+        level: GKB_LOG_LEVEL,
+        filename: logfile,
         maxFiles: `${process.env.GKB_LOG_MAX_FILES || 14}d`, // remove logs more than 2 weeks old
         timestamp: true
     }));
@@ -34,5 +39,9 @@ const logger = winston.createLogger({
         logFormat
     )
 });
+
+if (logfile) {
+    logger.log('info', `writing logs to ${logfile}`);
+}
 
 module.exports = {logger};
