@@ -47,21 +47,6 @@ const VOCAB = {
     5: 'Strong, well supported evidence from a lab or journal with respected academic standing. Experiments are well controlled, and results are clean and reproducible across multiple replicates. Evidence confirmed using separate methods.'
 };
 
-const THERAPY_MAPPING = {
-    ch5132799: 'ch-5132799',
-    ag1296: 'ag 1296',
-    'hormone therapy': 'hormone therapy agent',
-    taxane: 'taxanes',
-    chemotherapy: 'chemotherapeutic agent',
-    cp724714: 'cp-724714',
-    'mk-2206': 'mk2206',
-    'trametinib dmso': 'trametinib dimethyl sulfoxide',
-    'pd-1 inhibitor': 'pd1 inhibitor',
-    'pf 00299804': 'pf-00299804',
-    pd184352: 'pd-184352',
-    'trichostatin a (tsa)': 'trichostatin a'
-};
-
 const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evidence levels
 const RELEVANCE_CACHE = {};
 const FEATURE_CACHE = {}; // store features by name
@@ -237,9 +222,6 @@ const getRelevance = async ({rawRecord, conn}) => {
  * Given some drug name, find the drug that is equivalent by name in GraphKB
  */
 const getDrug = async (conn, name) => {
-    if (THERAPY_MAPPING[name] !== undefined) {
-        name = THERAPY_MAPPING[name];
-    }
     let originalError;
     try {
         const drug = await conn.getUniqueRecordBy({
@@ -277,7 +259,7 @@ const getVariantName = ({name, variant_types: variantTypes = []}) => {
     }
     const SUBS = {
         'frameshift truncation': 'frameshift',
-        itd: 'internal tandem duplication (itd)',
+        itd: 'internal tandem duplication',
         loss: 'copy loss',
         'copy number variation': 'copy variant',
         gain: 'copy gain',
