@@ -127,9 +127,11 @@ const uploadArticle = async (api, article, opt = {}) => {
         ? PUBMED_CACHE.source
         : null;
     if (!pubmedSource) {
-        pubmedSource = await api.getUniqueRecordBy({
+        pubmedSource = await api.addRecord({
             endpoint: 'sources',
-            where: {name: 'pubmed'}
+            content: SOURCE_DEFN,
+            fetchConditions: {name: SOURCE_DEFN.name},
+            existsOk: true
         });
         if (cache) {
             PUBMED_CACHE.source = pubmedSource;
