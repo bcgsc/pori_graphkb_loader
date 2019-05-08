@@ -309,5 +309,5 @@ const uploadFile = async (opt) => {
 };
 
 module.exports = {
-    uploadFile, fetchAndLoadBySymbol, uploadRecord, SOURCE_DEFN
+    uploadFile, fetchAndLoadBySymbol, uploadRecord, SOURCE_DEFN, dependencies: ['ensembl']
 };
