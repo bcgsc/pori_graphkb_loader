@@ -42,16 +42,37 @@ const SOURCE_DEFN = {
     description: 'COSMIC, the Catalogue Of Somatic Mutations In Cancer, is the world\'s largest and most comprehensive resource for exploring the impact of somatic mutations in human cancer.'
 };
 
+const HEADER = {
+    gene: 'Gene Name',
+    mutation: 'AA Mutation',
+    therapy: 'Drug Name',
+    disease: 'Histology Subtype 1',
+    pubmed: 'Pubmed Id'
+};
+
+
+const variantDefaults = {
+    untemplatedSeq: null,
+    break1Start: null,
+    break1End: null,
+    break2Start: null,
+    break2End: null,
+    refSeq: null,
+    truncation: null,
+    zygosity: null,
+    germline: null,
+    reference2: null
+};
 
 const processCosmicRecord = async (conn, record, source) => {
     // get the hugo gene
     const gene = await conn.getUniqueRecordBy({
         endpoint: 'features',
-        where: {name: record['Gene Name'], source: {name: 'hgnc'}},
+        where: {name: record[HEADER.gene], source: {name: 'hgnc'}},
         sort: orderPreferredOntologyTerms
     });
     // add the protein variant
-    let variantString = record['AA Mutation'];
+    let variantString = record[HEADER.mutation];
     if (variantString.startsWith('p.') && variantString.includes('>')) {
         variantString = variantString.replace('>', 'delins');
     }
@@ -65,7 +86,7 @@ const processCosmicRecord = async (conn, record, source) => {
     }));
     const variantId = rid(await conn.addRecord({
         endpoint: 'positionalvariants',
-        content: variant,
+        content: {...variantDefaults, ...variant},
         existsOk: true
     }));
     // get the enst transcript
@@ -79,13 +100,13 @@ const processCosmicRecord = async (conn, record, source) => {
     // get the drug by name
     const drug = await conn.getUniqueRecordBy({
         endpoint: 'therapies',
-        where: {name: record['Drug Name'].toLowerCase()},
+        where: {name: record[HEADER.therapy].toLowerCase()},
         sort: preferredDrugs
     });
     // get the disease by name
-    let diseaseName = record['Histology Subtype 1'] === 'NS'
+    let diseaseName = record[HEADER.disease] === 'NS'
         ? record.Histology
-        : record['Histology Subtype 1'];
+        : record[HEADER.disease];
     diseaseName = diseaseName.replace(/_/g, ' ');
     diseaseName = diseaseName.replace('leukaemia', 'leukemia');
     diseaseName = diseaseName.replace('tumour', 'tumor');
@@ -135,14 +156,14 @@ const uploadFile = async (opt) => {
     const errorCache = {};
     logger.info(`Processing ${jsonList.length} records`);
     // Upload the list of pubmed IDs
-    await _pubmed.uploadArticlesByPmid(conn, jsonList.map(rec => rec['Pubmed Id']));
+    await _pubmed.uploadArticlesByPmid(conn, jsonList.map(rec => rec[HEADER.pubmed]));
 
     for (const record of jsonList) {
-        if (record['AA Mutation'] === 'p.?') {
+        if (record[HEADER.mutation] === 'p.?') {
             counts.skip++;
             continue;
         }
-        record.publication = await _pubmed.fetchArticle(conn, record['Pubmed Id']);
+        record.publication = await _pubmed.fetchArticle(conn, record[HEADER.pubmed]);
         try {
             await processCosmicRecord(conn, record, source);
             counts.success++;
