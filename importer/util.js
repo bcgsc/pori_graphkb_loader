@@ -299,8 +299,10 @@ const preferredDiseases = (term1, term2) => {
 
 const preferredDrugs = (term1, term2) => {
     const sourceRank = {
+        'gsc therapeutic ontology': 1,
         drugbank: 0,
-        ncit: 1
+        fda: 2,
+        ncit: 3
     };
     return preferredSources(sourceRank, term1, term2);
 };
