@@ -30,7 +30,8 @@ const {
     preferredDrugs,
     preferredDiseases,
     loadDelimToJson,
-    rid
+    rid,
+    INTERNAL_SOURCE_NAME
 } = require('./util');
 const _pubmed = require('./pubmed');
 const {logger} = require('./logging');
@@ -47,7 +48,10 @@ const HEADER = {
     mutation: 'AA Mutation',
     therapy: 'Drug Name',
     disease: 'Histology Subtype 1',
-    pubmed: 'Pubmed Id'
+    pubmed: 'Pubmed Id',
+    sampleName: 'Sample Name',
+    sampleId: 'Sample ID',
+    mutationId: 'ID Mutation'
 };
 
 
@@ -63,6 +67,9 @@ const variantDefaults = {
     germline: null,
     reference2: null
 };
+
+
+const getRecordId = record => `${record[HEADER.sampleName]}:${record[HEADER.sampleId]}:${record[HEADER.mutationId]}`;
 
 const processCosmicRecord = async (conn, record, source) => {
     // get the hugo gene
@@ -82,11 +89,12 @@ const processCosmicRecord = async (conn, record, source) => {
     variant.reference1 = rid(gene);
     variant.type = rid(await conn.getUniqueRecordBy({
         endpoint: 'vocabulary',
-        where: {name: variant.type, source: {name: 'bcgsc'}}
+        where: {name: variant.type, source: {name: INTERNAL_SOURCE_NAME}}
     }));
     const variantId = rid(await conn.addRecord({
         endpoint: 'positionalvariants',
-        content: {...variantDefaults, ...variant},
+        content: {...variant},
+        fetchConditions: {...variantDefaults, ...variant},
         existsOk: true
     }));
     // get the enst transcript
@@ -100,7 +108,7 @@ const processCosmicRecord = async (conn, record, source) => {
     // get the drug by name
     const drug = await conn.getUniqueRecordBy({
         endpoint: 'therapies',
-        where: {name: record[HEADER.therapy].toLowerCase()},
+        where: {name: record[HEADER.therapy].toLowerCase().replace(/ - ns$/, '')},
         sort: preferredDrugs
     });
     // get the disease by name
@@ -118,7 +126,7 @@ const processCosmicRecord = async (conn, record, source) => {
     // create the resistance statement
     const relevance = await conn.getUniqueRecordBy({
         endpoint: 'vocabulary',
-        where: {name: 'resistance', source: {name: 'bcgsc'}}
+        where: {name: 'resistance', source: {name: INTERNAL_SOURCE_NAME}}
     });
     await conn.addRecord({
         endpoint: 'statements',
@@ -128,7 +136,8 @@ const processCosmicRecord = async (conn, record, source) => {
             impliedBy: [{target: variantId}, {target: rid(disease)}],
             supportedBy: [{target: rid(record.publication), source}],
             source: rid(source),
-            reviewStatus: 'not required'
+            reviewStatus: 'not required',
+            sourceId: getRecordId(record)
         },
         existsOk: true,
         fetchExisting: false
@@ -153,7 +162,6 @@ const uploadFile = async (opt) => {
         fetchConditions: {name: SOURCE_DEFN.name}
     }));
     const counts = {success: 0, error: 0, skip: 0};
-    const errorCache = {};
     logger.info(`Processing ${jsonList.length} records`);
     // Upload the list of pubmed IDs
     await _pubmed.uploadArticlesByPmid(conn, jsonList.map(rec => rec[HEADER.pubmed]));
@@ -168,16 +176,12 @@ const uploadFile = async (opt) => {
             await processCosmicRecord(conn, record, source);
             counts.success++;
         } catch (err) {
+            logger.log('warn', `failed to process ${getRecordId(record)}`);
             logger.log('error', err);
-            const {message} = (err.error || err);
-            if (errorCache[message] === undefined) {
-                errorCache[message] = err;
-            }
             counts.error++;
         }
     }
     logger.info(JSON.stringify(counts));
-    logger.info(`${Object.keys(errorCache).length} unique errors`);
 };
 
 module.exports = {uploadFile, SOURCE_DEFN};
