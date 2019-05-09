@@ -117,6 +117,7 @@ const processRecord = async ({
                 });
                 links.push(intervention);
             } catch (err) {
+                logger.error(`[${record.nct_id[0]}] failed to find drug by name`);
                 logger.error(err);
             }
         }
@@ -131,6 +132,7 @@ const processRecord = async ({
             });
             links.push(disease);
         } catch (err) {
+            logger.error(`[${record.nct_id[0]}] failed to find disease by name`);
             logger.error(err);
         }
     }
