@@ -8,6 +8,7 @@ const {
     loadDelimToJson, rid, orderPreferredOntologyTerms
 } = require('./util');
 const {logger} = require('./logging');
+const _hgnc = require('./hgnc');
 
 const HEADER = {
     geneId: 'Gene stable ID',
@@ -30,6 +31,30 @@ const SOURCE_DEFN = {
     usage: 'https://uswest.ensembl.org/info/about/legal/disclaimer.html',
     url: 'https://uswest.ensembl.org',
     description: 'Ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. Ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. Ensembl tools include BLAST, BLAT, BioMart and the Variant Effect Predictor (VEP) for all supported species.'
+};
+
+
+const getCurrentGenesList = async (conn) => {
+    const preLoaded = new Set();
+    const limit = 1000;
+    let lastReturn = limit;
+    while (lastReturn >= limit) {
+        const {result: genes} = await conn.request({
+            uri: 'features',
+            qs: {
+                source: {name: SOURCE_DEFN.name},
+                biotype: 'gene',
+                returnProperties: 'sourceId,sourceIdVersion',
+                limit,
+                skip: preLoaded.size
+            }
+        });
+        lastReturn = genes.length;
+        for (const {sourceId, sourceIdVersion} of genes) {
+            preLoaded.add(`${sourceId}.${sourceIdVersion}`.toLowerCase());
+        }
+    }
+    return preLoaded;
 };
 
 
@@ -59,19 +84,18 @@ const uploadFile = async (opt) => {
     } catch (err) {
         logger.warn('Unable to find refseq source. Will not attempt to create cross-reference links');
     }
-    let hgncSource;
-    try {
-        hgncSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: 'hgnc'}
-        });
-    } catch (err) {
-        logger.warn('Unable to find hgnc source. Will not attempt to create cross-reference links');
-    }
 
     const visited = {}; // cache genes to speed up adding records
     const hgncMissingRecords = new Set();
     const refseqMissingRecords = new Set();
+
+    // skip any genes that have already been loaded before we start
+    logger.info('retriving the list of previously loaded genes');
+    const preLoaded = await getCurrentGenesList(conn);
+
+    for (const gene of preLoaded) {
+        logger.info(`${gene} has already been loaded`);
+    }
 
     logger.info(`processing ${contentList.length} records`);
 
@@ -83,10 +107,15 @@ const uploadFile = async (opt) => {
 
         const geneId = record[HEADER.geneId];
         const geneIdVersion = record[HEADER.geneIdVersion];
+        const key = `${geneId}.${geneIdVersion}`.toLowerCase();
+
+        if (preLoaded.has(key)) {
+            continue;
+        }
         let newGene = false;
 
-        if (visited[`${geneId}.${geneIdVersion}`] === undefined) {
-            visited[`${geneId}.${geneIdVersion}`] = await conn.addRecord({
+        if (visited[key] === undefined) {
+            visited[key] = await conn.addRecord({
                 endpoint: 'features',
                 content: {
                     source: rid(source),
@@ -112,7 +141,7 @@ const uploadFile = async (opt) => {
             });
         }
         const gene = visited[geneId];
-        const versionedGene = visited[`${geneId}.${geneIdVersion}`];
+        const versionedGene = visited[key];
 
         await conn.addRecord({
             endpoint: 'generalizationof',
@@ -199,17 +228,9 @@ const uploadFile = async (opt) => {
             }
         }
         // gene -> aliasof -> hgnc
-        if (hgncSource && record[HEADER.hgncId] && record.hgncName && newGene) {
+        if (record[HEADER.hgncId] && newGene) {
             try {
-                const hgnc = await conn.getUniqueRecordBy({
-                    endpoint: 'features',
-                    where: {
-                        source: rid(hgncSource),
-                        sourceId: record[HEADER.hgncId],
-                        name: record.hgncName
-                    },
-                    sort: orderPreferredOntologyTerms
-                });
+                const hgnc = await _hgnc.fetchAndLoadBySymbol({conn, paramType: 'hgnc_id', symbol: record[HEADER.hgncId]});
                 await conn.addRecord({
                     endpoint: 'crossreferenceof',
                     content: {
@@ -220,6 +241,7 @@ const uploadFile = async (opt) => {
                 });
             } catch (err) {
                 hgncMissingRecords.add(record[HEADER.hgncId]);
+                logger.log('error', `failed cross-linking from ${gene.sourceid} to ${record[HEADER.hgncId]}`);
             }
         }
     }
@@ -231,4 +253,4 @@ const uploadFile = async (opt) => {
     }
 };
 
-module.exports = {uploadFile, dependencies: ['refseq', 'hgnc'], SOURCE_DEFN};
+module.exports = {uploadFile, dependencies: ['refseq'], SOURCE_DEFN};

@@ -11,6 +11,7 @@ const xml2js = require('xml2js');
 const jwt = require('jsonwebtoken');
 const sleep = require('sleep-promise');
 const HTTP_STATUS_CODES = require('http-status-codes');
+const jsonpath = require('jsonpath');
 
 
 const {logger} = require('./logging');
@@ -76,7 +77,7 @@ class ApiConnection {
      * @param {object} opt.qs the query parameters
      */
     async request(opt) {
-        if (this.exp < epochSeconds()) {
+        if (this.exp <= epochSeconds()) {
             await this.login();
         }
         const req = {
@@ -298,8 +299,10 @@ const preferredDiseases = (term1, term2) => {
 
 const preferredDrugs = (term1, term2) => {
     const sourceRank = {
+        'gsc therapeutic ontology': 1,
         drugbank: 0,
-        ncit: 1
+        fda: 2,
+        ncit: 3
     };
     return preferredSources(sourceRank, term1, term2);
 };
@@ -358,19 +361,29 @@ const loadDelimToJson = async (filename, delim = '\t') => {
 };
 
 
-const loadXmlToJson = (filename) => {
+const loadXmlToJson = (filename, opts = {}) => {
     logger.info(`reading: ${filename}`);
     const xmlContent = fs.readFileSync(filename).toString();
     logger.info(`parsing: ${filename}`);
     return new Promise((resolve, reject) => {
-        xml2js.parseString(xmlContent, (err, result) => {
-            logger.error(err);
-            if (err !== null) {
-                reject(err);
-            } else {
-                resolve(result);
+        xml2js.parseString(
+            xmlContent,
+            {
+                trim: true,
+                emptyTag: null,
+                mergeAttrs: true,
+                normalize: true,
+                ...opts
+            },
+            (err, result) => {
+                logger.error(err);
+                if (err !== null) {
+                    reject(err);
+                } else {
+                    resolve(result);
+                }
             }
-        });
+        );
     });
 };
 
@@ -391,8 +404,31 @@ const requestWithRetry = async (requestOpt, {waitSeconds = 2, retries = 1} = {})
 };
 
 
+const shallowObjectKey = obj => JSON.stringify(obj, (k, v) => (k
+    ? `${v}`
+    : v));
+
+
+const checkSpec = (spec, record, idGetter = rec => rec.id) => {
+    if (!spec(record)) {
+        throw new Error(`Spec Validation failed for ${
+            idGetter(record)
+        } #${
+            spec.errors[0].dataPath
+        } ${
+            spec.errors[0].message
+        } found '${
+            shallowObjectKey(jsonpath.query(record, `$${spec.errors[0].dataPath}`))
+        }'`);
+    }
+    return true;
+};
+
+
 module.exports = {
+    INTERNAL_SOURCE_NAME: 'bcgsc',
     rid,
+    checkSpec,
     convertOwlGraphToJson,
     orderPreferredOntologyTerms,
     preferredDiseases,

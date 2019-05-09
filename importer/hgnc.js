@@ -51,7 +51,7 @@ const {logger} = require('./logging');
 
 const ajv = new Ajv();
 
-const HGNC_API = 'http://rest.genenames.org/fetch/symbol';
+const HGNC_API = 'http://rest.genenames.org/fetch';
 const CLASS_NAME = 'features';
 
 const SOURCE_DEFN = {
@@ -63,7 +63,7 @@ const SOURCE_DEFN = {
         protein coding genes, ncRNA genes and pseudogenes, to allow unambiguous scientific
         communication.`.replace(/\s+/, ' ')
 };
-
+const CACHE = {};
 /**
  * This defines the expected format of a response from the HGNC API
  */
@@ -104,6 +104,9 @@ const uploadRecord = async ({
         content: body,
         existsOk: true
     });
+
+    CACHE[currentRecord.sourceId] = currentRecord;
+    CACHE[currentRecord.name] = currentRecord;
 
     if (gene.ensembl_gene_id && ensembl) {
         try {
@@ -173,21 +176,41 @@ const uploadRecord = async ({
             });
         } catch (err) {}
     }
+    return currentRecord;
 };
 
 
-const fetchAndLoadBySymbol = async ({conn, symbol}) => {
+const fetchAndLoadBySymbol = async ({
+    conn, symbol, paramType = 'symbol', ignoreCache = false
+}) => {
+    if (CACHE[symbol.toLowerCase()] && !ignoreCache) {
+        return CACHE[symbol.toLowerCase()];
+    }
     try {
+        const where = {source: {name: SOURCE_DEFN.name}};
+        if (paramType === 'symbol') {
+            where.name = symbol;
+        } else {
+            where.sourceId = symbol;
+        }
         const record = await conn.getUniqueRecordBy({
             endpoint: CLASS_NAME,
             sort: orderPreferredOntologyTerms,
-            where: {source: {name: SOURCE_DEFN.name}, name: symbol}
+            where
         });
+        if (!ignoreCache) {
+            CACHE[symbol.toLowerCase()] = record;
+        }
         return record;
     } catch (err) {}
     // fetch from the HGNC API and upload
-    logger.info(`loading: ${HGNC_API}/${symbol}`);
-    const {response: {docs}} = await request(`${HGNC_API}/${symbol}`, {
+    const uri = `${HGNC_API}/${paramType}/${
+        paramType === 'hgnc_id'
+            ? symbol.replace(/^HGNC:/i, '')
+            : symbol
+    }`;
+    logger.info(`loading: ${uri}`);
+    const {response: {docs}} = await request(`${uri}`, {
         method: 'GET',
         headers: {Accept: 'application/json'},
         json: true
@@ -209,13 +232,19 @@ const fetchAndLoadBySymbol = async ({conn, symbol}) => {
     }
     const [gene] = docs;
 
-    const hgnc = await conn.addRecord({
-        endpoint: 'sources',
-        content: {name: 'hgnc'},
-        fetchFirst: true,
-        existsOk: true,
-        fetchExisting: true
-    });
+    let hgnc;
+    if (CACHE.SOURCE) {
+        hgnc = CACHE.SOURCE;
+    } else {
+        hgnc = await conn.addRecord({
+            endpoint: 'sources',
+            content: SOURCE_DEFN,
+            fetchConditions: {name: SOURCE_DEFN.name},
+            existsOk: true,
+            fetchExisting: true
+        });
+        CACHE.SOURCE = hgnc;
+    }
     let ensembl;
     try {
         ensembl = await conn.getUniqueRecordBy({
@@ -223,7 +252,6 @@ const fetchAndLoadBySymbol = async ({conn, symbol}) => {
             where: {name: 'ensembl'}
         });
     } catch (err) {}
-
     return uploadRecord({conn, gene, sources: {hgnc, ensembl}});
 };
 
@@ -281,5 +309,5 @@ const uploadFile = async (opt) => {
 };
 
 module.exports = {
-    uploadFile, fetchAndLoadBySymbol, uploadRecord, SOURCE_DEFN
+    uploadFile, fetchAndLoadBySymbol, uploadRecord, SOURCE_DEFN, dependencies: ['ensembl']
 };

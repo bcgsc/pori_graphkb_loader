@@ -3,10 +3,11 @@
  * @module importer/refseq
  */
 const {
-    orderPreferredOntologyTerms, loadDelimToJson, rid
+    loadDelimToJson, rid
 } = require('./util');
 const {logger} = require('./logging');
 
+const _hgnc = require('./hgnc');
 
 const SOURCE_DEFN = {
     name: 'refseq',
@@ -34,15 +35,6 @@ const uploadFile = async (opt) => {
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
     });
-    let hgncSource;
-    try {
-        hgncSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            name: 'hgnc'
-        });
-    } catch (err) {
-        logger.warn('Unable to retrieve hgnc source. Will not attempt cross-referencing');
-    }
     logger.log('info', `Loading ${json.length} gene records`);
     const hgncMissingRecords = new Set();
 
@@ -71,24 +63,19 @@ const uploadFile = async (opt) => {
             fetchExisting: false
         });
 
-        let hgnc;
-        if (hgncSource) {
-            try {
-                hgnc = await conn.getUniqueRecordBy({
-                    endpoint: 'features',
-                    where: {source: rid(hgncSource), name: record.Symbol},
-                    sort: orderPreferredOntologyTerms
-                });
-                await conn.addRecord({
-                    endpoint: 'elementof',
-                    content: {out: rid(general), in: rid(hgnc), source: rid(source)},
-                    existsOk: true,
-                    fetchExisting: false
-                });
-            } catch (err) {
-                hgncMissingRecords.add(record.symbol);
-            }
+        try {
+            const hgnc = await _hgnc.fetchAndLoadBySymbol({conn, symbol: record.Symbol});
+            await conn.addRecord({
+                endpoint: 'elementof',
+                content: {out: rid(general), in: rid(hgnc), source: rid(source)},
+                existsOk: true,
+                fetchExisting: false
+            });
+        } catch (err) {
+            logger.log('error', `failed cross-linking from ${general.sourceId} to ${record.Symbol}`);
+            hgncMissingRecords.add(record.symbol);
         }
+
         // load the protein
         if (record.Protein) {
             const [proteinName, proteinVersion] = record.Protein.split('.');

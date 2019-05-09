@@ -9,11 +9,69 @@
  *
  * @module importer/clinicaltrialsgov
  */
-
+const Ajv = require('ajv');
 const {
     loadXmlToJson, preferredDrugs, preferredDiseases, rid
 } = require('./util');
 const {logger} = require('./logging');
+
+const ajv = new Ajv();
+
+
+const singleItemArray = (spec = {}) => ({
+    type: 'array', maxItems: 1, minItems: 1, items: {type: 'string', ...spec}
+});
+
+const validateTrialRecord = ajv.compile({
+    type: 'object',
+    required: ['nct_id', 'title', 'last_update_posted', 'url', 'phases', 'interventions', 'conditions'],
+    properties: {
+        nct_id: singleItemArray({pattern: '^NCT\\d+$'}),
+        title: singleItemArray(),
+        url: singleItemArray(),
+        last_update_posted: singleItemArray(),
+        phases: singleItemArray({
+            type: 'object',
+            required: ['phase'],
+            properties: {
+                phase: {type: 'array', minItems: 1, items: {type: 'string'}}
+            }
+        }),
+        conditions: singleItemArray({
+            type: 'object',
+            required: ['condition'],
+            properties: {
+                condition: {type: 'array', minItems: 1, items: {type: 'string'}}
+            }
+        }),
+        interventions: singleItemArray({
+            type: 'object',
+            required: ['intervention'],
+            properties: {
+                intervention: {
+                    type: 'array',
+                    minItems: 1,
+                    items: {
+                        type: 'object',
+                        required: ['_', 'type'],
+                        properties: {
+                            _: {type: 'string'},
+                            type: singleItemArray()
+                        }
+                    }
+                }
+            }
+        })
+    }
+});
+
+
+const SOURCE_DEFN = {
+    name: 'clinicaltrials.gov',
+    url: 'https://clinicaltrials.gov',
+    usage: 'https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use',
+    description: 'ClinicalTrials.gov is a database of privately and publicly funded clinical studies conducted around the world'
+};
 
 /**
  * Process the XML trial record. Attempt to link the drug and/or disease information
@@ -22,10 +80,9 @@ const {logger} = require('./logging');
  * @param {ApiConnection} opt.conn the GraphKB connection object
  * @param {object} opt.record the XML record (pre-parsed into JSON)
  * @param {object|string} opt.source the 'source' record for clinicaltrials.gov
- * @param {object} opt.counts the counts object for reporting errors
  */
 const processRecord = async ({
-    conn, record, source, counts
+    conn, record, source
 }) => {
     const content = {
         sourceId: record.nct_id[0],
@@ -50,8 +107,8 @@ const processRecord = async ({
     }
     const links = [];
     for (const raw of record.interventions[0].intervention) {
-        const {_: name, $: {type}} = raw;
-        if (type.trim().toLowerCase() === 'drug') {
+        const {_: name, type} = raw;
+        if (type[0].trim().toLowerCase() === 'drug') {
             try {
                 const intervention = await conn.getUniqueRecordBy({
                     endpoint: 'therapies',
@@ -60,7 +117,8 @@ const processRecord = async ({
                 });
                 links.push(intervention);
             } catch (err) {
-                counts.drugErrors.add(name);
+                logger.error(`[${record.nct_id[0]}] failed to find drug by name`);
+                logger.error(err);
             }
         }
     }
@@ -74,7 +132,8 @@ const processRecord = async ({
             });
             links.push(disease);
         } catch (err) {
-            counts.diseaseErrors.add(disease);
+            logger.error(`[${record.nct_id[0]}] failed to find disease by name`);
+            logger.error(err);
         }
     }
     // create the clinical trial record
@@ -107,36 +166,29 @@ const uploadFile = async ({conn, filename}) => {
     const data = await loadXmlToJson(filename);
     const source = await conn.addRecord({
         endpoint: 'sources',
-        content: {
-            name: 'clinicaltrials.gov',
-            url: 'https://clinicaltrials.gov',
-            usage: 'https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use',
-            description: 'ClinicalTrials.gov is a database of privately and publicly funded clinical studies conducted around the world'
-        },
-        fetchConditions: {name: 'clinicaltrials.gov'},
+        content: SOURCE_DEFN,
+        fetchConditions: {name: SOURCE_DEFN.name},
         existsOk: true
     });
 
     const {search_results: {study: records}} = data;
     logger.info(`loading ${records.length} records`);
     const counts = {
-        sucess: 0, error: 0, drugErrors: new Set(), diseaseErrors: new Set()
+        success: 0, error: 0
     };
     for (const record of records) {
         try {
             await processRecord({
-                conn, record, source, counts
+                conn, record, source
             });
-            counts.sucess++;
+            counts.success++;
         } catch (err) {
             logger.error(`[${record.nct_id[0]}] ${err}`);
             console.error(err);
             counts.error++;
         }
     }
-    counts.diseaseErrors = counts.diseaseErrors.size;
-    counts.drugErrors = counts.drugErrors.size;
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {uploadFile};
+module.exports = {uploadFile, SOURCE_DEFN, dependencies: ['oncotree', 'dieaseOntology', 'ncit']};

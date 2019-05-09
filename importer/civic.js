@@ -4,22 +4,21 @@
 const request = require('request-promise');
 const _ = require('lodash');
 const Ajv = require('ajv');
-const jsonpath = require('jsonpath');
-
-const ajv = new Ajv();
-
 
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
-
 const {
-    orderPreferredOntologyTerms,
     preferredDrugs,
     preferredDiseases,
-    rid
+    rid,
+    INTERNAL_SOURCE_NAME,
+    checkSpec
 } = require('./util');
 const {logger} = require('./logging');
 const _pubmed = require('./pubmed');
+const _hgnc = require('./hgnc');
+
+const ajv = new Ajv();
 
 const SOURCE_DEFN = {
     name: 'civic',
@@ -47,21 +46,6 @@ const VOCAB = {
     5: 'Strong, well supported evidence from a lab or journal with respected academic standing. Experiments are well controlled, and results are clean and reproducible across multiple replicates. Evidence confirmed using separate methods.'
 };
 
-const THERAPY_MAPPING = {
-    ch5132799: 'ch-5132799',
-    ag1296: 'ag 1296',
-    'hormone therapy': 'hormone therapy agent',
-    taxane: 'taxanes',
-    chemotherapy: 'chemotherapeutic agent',
-    cp724714: 'cp-724714',
-    'mk-2206': 'mk2206',
-    'trametinib dmso': 'trametinib dimethyl sulfoxide',
-    'pd-1 inhibitor': 'pd1 inhibitor',
-    'pf 00299804': 'pf-00299804',
-    pd184352: 'pd-184352',
-    'trichostatin a (tsa)': 'trichostatin a'
-};
-
 const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evidence levels
 const RELEVANCE_CACHE = {};
 const FEATURE_CACHE = {}; // store features by name
@@ -84,11 +68,11 @@ const validateEvidenceSpec = ajv.compile({
                 properties: {
                     id: {type: 'number'},
                     name: {type: 'string'},
-                    pubchem_id: {oneOf: [{type: 'string'}, {type: 'null'}]}
+                    pubchem_id: {type: ['string', 'null']}
                 }
             }
         },
-        rating: {oneOf: [{type: 'number'}, {type: 'null'}]},
+        rating: {type: ['number', 'null']},
         evidence_level: {type: 'string'},
         evidence_type: {
             type: 'string',
@@ -115,13 +99,13 @@ const validateEvidenceSpec = ajv.compile({
                 {type: 'null'}
             ]
         },
-        evidence_direction: {oneOf: [{type: 'string'}, {type: 'null'}]},
+        evidence_direction: {type: ['string', 'null']},
         status: {type: 'string'},
         source: {
             properties: {
                 citation_id: {type: 'string'},
                 source_type: {type: 'string'},
-                name: {oneOf: [{type: 'string'}, {type: 'null'}]}
+                name: {type: ['string', 'null']}
             }
         },
         variant_id: {type: 'number'}
@@ -224,7 +208,7 @@ const getRelevance = async ({rawRecord, conn}) => {
     if (RELEVANCE_CACHE[relevance] === undefined) {
         relevance = await conn.getUniqueRecordBy({
             endpoint: 'vocabulary',
-            where: {name: relevance, source: {name: 'bcgsc'}}
+            where: {name: relevance, source: {name: INTERNAL_SOURCE_NAME}}
         });
         RELEVANCE_CACHE[relevance.name] = relevance;
     } else {
@@ -237,9 +221,6 @@ const getRelevance = async ({rawRecord, conn}) => {
  * Given some drug name, find the drug that is equivalent by name in GraphKB
  */
 const getDrug = async (conn, name) => {
-    if (THERAPY_MAPPING[name] !== undefined) {
-        name = THERAPY_MAPPING[name];
-    }
     let originalError;
     try {
         const drug = await conn.getUniqueRecordBy({
@@ -259,7 +240,7 @@ const getDrug = async (conn, name) => {
             });
         }
     } catch (err) {}
-    logger.warn(`Failed to find therapy record (name=${name})`);
+    logger.error(`Failed to find therapy record (name=${name})`);
     throw originalError;
 };
 
@@ -277,7 +258,7 @@ const getVariantName = ({name, variant_types: variantTypes = []}) => {
     }
     const SUBS = {
         'frameshift truncation': 'frameshift',
-        itd: 'internal tandem duplication (itd)',
+        itd: 'internal tandem duplication',
         loss: 'copy loss',
         'copy number variation': 'copy variant',
         gain: 'copy gain',
@@ -311,31 +292,15 @@ const getVariantName = ({name, variant_types: variantTypes = []}) => {
         return result.replace(/\s*mutation$/i, '');
     } if (result === 'mutation' && variantTypes.length === 1) {
         return variantTypes[0].name.replace(/_/g, ' ');
+    } if (match = /^([A-Z]\d+\S+)\s+\((c\..*)\)$/i.exec(result)) {
+        if (match[1].includes('?')) {
+            return match[2];
+        }
+        return `p.${match[1]}`;
+    } if (match = /^Splicing alteration \((c\..*)\)$/i.exec(result)) {
+        return match[1];
     }
     return result;
-};
-
-
-/**
- * Given some HUGO symbol, find the records in GraphkB and cache it for re-use
- */
-const getFeature = async (conn, name) => {
-    name = name.toString().toLowerCase().trim();
-    if (FEATURE_CACHE[name] !== undefined) {
-        return FEATURE_CACHE[name];
-    }
-    try {
-        const feature = await conn.getUniqueRecordBy({
-            endpoint: 'features',
-            where: {name, source: {name: 'hgnc'}},
-            sort: orderPreferredOntologyTerms
-        });
-        FEATURE_CACHE[feature.name] = feature;
-        return feature;
-    } catch (err) {
-        logger.warn(`Failed to retrieve the hgnc feature: ${name}`);
-        throw err;
-    }
 };
 
 
@@ -383,14 +348,14 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
             [reference1, reference2] = [reference2, reference1];
         }
         reference1 = feature;
-        reference2 = await getFeature(conn, reference2);
+        reference2 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: reference2});
     } else {
         reference1 = feature;
     }
     try {
         const variantClass = await conn.getUniqueRecordBy({
             endpoint: 'vocabulary',
-            where: {name: variantName, source: {name: 'bcgsc'}}
+            where: {name: variantName, source: {name: INTERNAL_SOURCE_NAME}}
         });
         const body = {
             type: rid(variantClass),
@@ -411,14 +376,19 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
         });
         return variant;
     } catch (err) {
-        const parsed = kbParser.variant.parse(
-            `${variantName.startsWith('e.')
-                ? ''
-                : 'p.'}${variantName}`, false
-        ).toJSON();
+        let parsed;
+        try {
+            parsed = kbParser.variant.parse(
+                `${/^[cpe]\..*/.exec(variantName)
+                    ? ''
+                    : 'p.'}${variantName}`, false
+            ).toJSON();
+        } catch (parsingError) {
+            throw err;
+        }
         const variantClass = await conn.getUniqueRecordBy({
             endpoint: 'vocabulary',
-            where: {name: parsed.type, source: {name: 'bcgsc'}}
+            where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}}
         });
         Object.assign(parsed, {
             reference1: rid(feature),
@@ -461,13 +431,14 @@ const processEvidenceRecord = async (opt) => {
     const [level, relevance, feature] = await Promise.all([
         getEvidenceLevel(opt),
         getRelevance(opt),
-        getFeature(conn, rawRecord.variant.entrez_name)
+        _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.variant.entrez_name})
     ]);
     let variant;
     try {
         variant = await processVariantRecord({variantRec: rawRecord.variant, feature, conn});
     } catch (err) {
-        logger.warn(`Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name})`);
+        logger.error(`Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name})`);
+        logger.error(err);
         throw err;
     }
     // get the disease by doid
@@ -485,7 +456,7 @@ const processEvidenceRecord = async (opt) => {
             sort: preferredDiseases
         });
     } catch (err) {
-        logger.warn(`Unable to retrieve disease record (doid=${rawRecord.disease.doid}, name=${rawRecord.disease.name})`);
+        logger.error(`Unable to retrieve disease record (doid=${rawRecord.disease.doid}, name=${rawRecord.disease.name})`);
         throw err;
     }
     // get the drug(s) by name
@@ -498,7 +469,7 @@ const processEvidenceRecord = async (opt) => {
     try {
         publication = await _pubmed.fetchArticle(conn, rawRecord.source.citation_id);
     } catch (err) {
-        logger.warn(`Failed to retrieve the pubmed article ${rawRecord.source.citation_id}`);
+        logger.error(`Failed to retrieve the pubmed article ${rawRecord.source.citation_id}`);
         throw err;
     }
 
@@ -514,11 +485,11 @@ const processEvidenceRecord = async (opt) => {
     content.impliedBy = [{target: rid(variant)}];
     content.description = rawRecord.description;
     // create the statement and connecting edges
-    if (!['Diagnostic', 'Predictive', 'Prognostic'].includes(rawRecord.evidence_type)) {
-        logger.warn(`Unable to make statement (evidence_type=${rawRecord.evidence_type})`);
+    if (!['Diagnostic', 'Predictive', 'Prognostic', 'Predisposing'].includes(rawRecord.evidence_type)) {
+        logger.error(`Unable to make statement (evidence_type=${rawRecord.evidence_type})`);
         throw new Error('unable to make statement', rawRecord.evidence_type, relevance.name);
     }
-    if (rawRecord.evidence_type === 'Diagnostic') {
+    if (rawRecord.evidence_type === 'Diagnostic' || rawRecord.evidence_type === 'Predisposing') {
         content.appliesTo = rid(disease);
     } else {
         content.impliedBy.push({target: rid(disease)});
@@ -559,21 +530,12 @@ const downloadVariantRecords = async () => {
             if (varById[record.id] !== undefined) {
                 throw new Error('variant record ID is not unique', record);
             }
-            if (!validateVariantSpec(record)) {
-                logger.error(
-                    `Spec Validation failed for variant ${
-                        record.id
-                    } #${
-                        validateVariantSpec.errors[0].dataPath
-                    } ${
-                        validateVariantSpec.errors[0].message
-                    } found ${
-                        jsonpath.query(record, `$${validateVariantSpec.errors[0].dataPath}`)
-                    }`
-                );
+            try {
+                checkSpec(validateVariantSpec, record);
+                varById[record.id] = record;
+            } catch (err) {
+                logger.error(err);
             }
-
-            varById[record.id] = record;
         }
         currentPage++;
     }
@@ -603,12 +565,6 @@ const upload = async (opt) => {
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
     });
-
-    const pubmedSource = await conn.addRecord({
-        endpoint: 'sources',
-        content: {name: 'pubmed'},
-        existsOk: true
-    });
     const varById = await downloadVariantRecords();
 
     while (currentPage <= expectedPages) {
@@ -625,27 +581,22 @@ const upload = async (opt) => {
         const records = [];
         // validate the records using the spec
         for (const record of resp.records) {
-            if (!validateEvidenceSpec(record)) {
-                logger.error(
-                    `Spec Validation failed for evidence record ${
-                        record.id
-                    } #${
-                        validateEvidenceSpec.errors[0].dataPath
-                    } ${
-                        validateEvidenceSpec.errors[0].message
-                    } found ${
-                        jsonpath.query(record, `$${validateEvidenceSpec.errors[0].dataPath}`)
-                    }`
-                );
+            try {
+                checkSpec(validateEvidenceSpec, record);
+            } catch (err) {
+                logger.error(err);
                 counts.error++;
-            } else if (
+                continue;
+            }
+            if (
                 record.clinical_significance === 'N/A'
                 || record.evidence_direction === 'Does Not Support'
                 || (record.clinical_significance === null && record.evidence_type === 'Predictive')
             ) {
                 counts.skip++;
+                logger.info(`skipping uninformative record (${record.id})`);
             } else if (record.source.source_type.toLowerCase() !== 'pubmed') {
-                logger.warn(`Currently only loading pubmed sources. Found ${record.source.source_type}`);
+                logger.error(`Currently only loading pubmed sources. Found ${record.source.source_type} (${record.id})`);
                 counts.skip++;
             } else {
                 records.push(record);
@@ -672,13 +623,13 @@ const upload = async (opt) => {
                 try {
                     await processEvidenceRecord({
                         conn,
-                        sources: {civic: source, pubmed: pubmedSource},
+                        sources: {civic: source},
                         rawRecord: Object.assign({drug}, _.omit(record, ['drugs']))
                     });
                     counts.success++;
                 } catch (err) {
                     counts.error++;
-                    logger.warn(`Failed to create statement from evidence record (id=${record.id})`);
+                    logger.error(`Failed to create statement from evidence record (id=${record.id})`);
                 }
             }
         }

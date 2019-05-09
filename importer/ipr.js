@@ -61,54 +61,6 @@ const stripRefSeqVersion = (name) => {
 };
 
 
-const processTherapy = async (conn, name) => {
-    try {
-        const therapy = await conn.getUniqueRecordBy({
-            endpoint: 'therapies',
-            where: {name, sourceId: name, or: 'sourceId,name'},
-            sort: preferredDrugs
-        });
-        return therapy;
-    } catch (err) {}
-    if (name.includes('+')) {
-        const individuals = [];
-        for (const individualName of name.split('+')) {
-            try {
-                const part = await conn.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {name: individualName, sourceId: individualName, or: 'sourceId,name'},
-                    sort: preferredDrugs
-                });
-                individuals.push(part);
-            } catch (err) {
-                throw new Error(`Missing therapy (${name})`);
-            }
-        }
-        const ipr = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: 'ipr'}
-        });
-        const compoundName = individuals.map(n => n.sourceId || n.name).join(' + ');
-        const compoundSourceId = individuals.map(n => n.sourceId).join(' + ');
-        const compoundRecord = await conn.addRecord({
-            endpoint: 'therapies',
-            content: {name: compoundName, sourceId: compoundSourceId, source: rid(ipr)},
-            existsOk: true
-        });
-        for (const record of individuals) {
-            await conn.addRecord({
-                endpoint: 'elementof',
-                content: {out: rid(record), in: rid(compoundRecord), source: rid(ipr)},
-                existsOk: true,
-                fetchExisting: false
-            });
-        }
-        return compoundRecord;
-    }
-    throw new Error(`Missing therapy (${name})`);
-};
-
-
 const assignRelevance = async (conn, record) => {
     const {
         statementType,
@@ -135,7 +87,12 @@ const assignRelevance = async (conn, record) => {
             'response',
             'sensitivity'
         ].includes(relevance)) {
-            return processTherapy(conn, appliesTo);
+            const drugName = appliesTo.toLowerCase().replace(/\binhibitors\b/, 'inhibitor');
+            return conn.getUniqueRecordBy({
+                endpoint: 'therapies',
+                where: {name: drugName, sourceId: drugName, or: 'sourceId,name'},
+                sort: preferredDrugs
+            });
         } if (relevance === 'targetable') {
             return conn.getUniqueRecordBy({
                 endpoint: 'diseases',
@@ -596,7 +553,6 @@ const uploadFile = async ({filename, conn}) => {
     }
     logger.info(`loading ${pubmedIdList.size} articles from pubmed`);
     // await _pubmed.uploadArticlesByPmid(conn, Array.from(pubmedIdList));
-    const errorMessages = new Set();
 
     for (const record of records) {
         users[record.createdBy] = (users[record.createdBy] || 0) + 1;
@@ -607,17 +563,8 @@ const uploadFile = async ({filename, conn}) => {
             await processRecord({conn, record});
             counts.success++;
         } catch (err) {
-            if (!errorMessages.has(err.message)) {
-                if (err.message.includes('fusion')
-                || (record.appliesTo && record.appliesTo.includes('fusion'))
-                ) {
-                    counts.fusionErrors++;
-                    continue;
-                }
-                logger.error(record.ident);
-                logger.error(err.message);
-            }
-            errorMessages.add(err.message);
+            logger.error(record.ident);
+            logger.error(err.message);
             counts.error++;
         }
     }
