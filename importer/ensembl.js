@@ -34,6 +34,30 @@ const SOURCE_DEFN = {
 };
 
 
+const getCurrentGenesList = async (conn) => {
+    const preLoaded = new Set();
+    const limit = 1000;
+    let lastReturn = limit;
+    while (lastReturn >= limit) {
+        const {result: genes} = await conn.request({
+            uri: 'features',
+            qs: {
+                source: {name: SOURCE_DEFN.name},
+                biotype: 'gene',
+                returnProperties: 'sourceId,sourceIdVersion',
+                limit,
+                skip: preLoaded.size
+            }
+        });
+        lastReturn = genes.length;
+        for (const {sourceId, sourceIdVersion} of genes) {
+            preLoaded.add(`${sourceId}.${sourceIdVersion}`.toLowerCase());
+        }
+    }
+    return preLoaded;
+};
+
+
 /**
  * Given a TAB delmited biomart export of Ensembl data, upload the features to GraphKB
  *
@@ -65,6 +89,14 @@ const uploadFile = async (opt) => {
     const hgncMissingRecords = new Set();
     const refseqMissingRecords = new Set();
 
+    // skip any genes that have already been loaded before we start
+    logger.info('retriving the list of previously loaded genes');
+    const preLoaded = await getCurrentGenesList(conn);
+
+    for (const gene of preLoaded) {
+        logger.info(`${gene} has already been loaded`);
+    }
+
     logger.info(`processing ${contentList.length} records`);
 
     for (const record of contentList) {
@@ -75,10 +107,15 @@ const uploadFile = async (opt) => {
 
         const geneId = record[HEADER.geneId];
         const geneIdVersion = record[HEADER.geneIdVersion];
+        const key = `${geneId}.${geneIdVersion}`.toLowerCase();
+
+        if (preLoaded.has(key)) {
+            continue;
+        }
         let newGene = false;
 
-        if (visited[`${geneId}.${geneIdVersion}`] === undefined) {
-            visited[`${geneId}.${geneIdVersion}`] = await conn.addRecord({
+        if (visited[key] === undefined) {
+            visited[key] = await conn.addRecord({
                 endpoint: 'features',
                 content: {
                     source: rid(source),
@@ -104,7 +141,7 @@ const uploadFile = async (opt) => {
             });
         }
         const gene = visited[geneId];
-        const versionedGene = visited[`${geneId}.${geneIdVersion}`];
+        const versionedGene = visited[key];
 
         await conn.addRecord({
             endpoint: 'generalizationof',
