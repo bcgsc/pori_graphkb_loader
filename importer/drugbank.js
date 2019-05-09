@@ -170,7 +170,7 @@ const uploadFile = async ({filename, conn}) => {
         try {
             atcLevels = Array.from(
                 drug[HEADER.superclasses][0][HEADER.superclass][0].level,
-                x => ({name: x._, sourceId: x.$.code.toLowerCase()})
+                x => ({name: x._, sourceId: x.code[0].toLowerCase()})
             );
         } catch (err) {}
         try {
