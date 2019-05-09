@@ -30,10 +30,9 @@ const SOURCE_DEFN = {
  * @param {ApiConnection} opt.conn the GraphKB connection object
  * @param {object} opt.record the XML record (pre-parsed into JSON)
  * @param {object|string} opt.source the 'source' record for clinicaltrials.gov
- * @param {object} opt.counts the counts object for reporting errors
  */
 const processRecord = async ({
-    conn, record, source, counts
+    conn, record, source
 }) => {
     const content = {
         sourceId: record.nct_id[0],
@@ -68,7 +67,7 @@ const processRecord = async ({
                 });
                 links.push(intervention);
             } catch (err) {
-                counts.drugErrors.add(name);
+                logger.error(err);
             }
         }
     }
@@ -82,7 +81,7 @@ const processRecord = async ({
             });
             links.push(disease);
         } catch (err) {
-            counts.diseaseErrors.add(disease);
+            logger.error(err);
         }
     }
     // create the clinical trial record
@@ -123,22 +122,20 @@ const uploadFile = async ({conn, filename}) => {
     const {search_results: {study: records}} = data;
     logger.info(`loading ${records.length} records`);
     const counts = {
-        sucess: 0, error: 0, drugErrors: new Set(), diseaseErrors: new Set()
+        success: 0, error: 0
     };
     for (const record of records) {
         try {
             await processRecord({
-                conn, record, source, counts
+                conn, record, source
             });
-            counts.sucess++;
+            counts.success++;
         } catch (err) {
             logger.error(`[${record.nct_id[0]}] ${err}`);
             console.error(err);
             counts.error++;
         }
     }
-    counts.diseaseErrors = counts.diseaseErrors.size;
-    counts.drugErrors = counts.drugErrors.size;
     logger.info(JSON.stringify(counts));
 };
 
