@@ -69,18 +69,6 @@ run the tests
 npm run test
 ```
 
-The non-database tests can be run without the above configuration
-
-```bash
-npm run test:unit
-```
-
-Import/Migration tests can be run with
-
-```bash
-npm run test
-```
-
 ## Ontology Import Modules
 
 ### General Ontology JSON file
