@@ -3,7 +3,7 @@
 const {expect} = require('chai');
 const {
     convertDeprecatedSyntax
-} = require('./../../importer/ipr');
+} = require('../src/ipr');
 
 describe('convertDeprecatedSyntax', () => {
     it('SV_e.fusion(FGFR2,?)(?,?)', () => {

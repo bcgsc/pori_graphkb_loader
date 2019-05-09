@@ -5,7 +5,7 @@ const {
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
 
-const {getVariantName} = require('./../../importer/civic');
+const {getVariantName} = require('./../src/civic');
 
 
 describe('civic', () => {
