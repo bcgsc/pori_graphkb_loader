@@ -1,6 +1,6 @@
-# Knowledgebase Database and API
+# GraphKB Importer
 
-![Build Status](https://www.bcgsc.ca/bamboo/plugins/servlet/wittified/build-status/KNOW-KNOW)
+This package is used to import content from a variety of sources into GraphKB using the API.
 
 Automatic Import modules are provided for a variety of input sources. To Start importing external data, first the GraphKB API
 must already be running. Then the command line interface can be used for upload. Get the help menu
