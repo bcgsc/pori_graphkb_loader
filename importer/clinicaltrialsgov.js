@@ -9,11 +9,61 @@
  *
  * @module importer/clinicaltrialsgov
  */
-
+const Ajv = require('ajv');
 const {
     loadXmlToJson, preferredDrugs, preferredDiseases, rid
 } = require('./util');
 const {logger} = require('./logging');
+
+const ajv = new Ajv();
+
+
+const singleItemArray = (spec = {}) => ({
+    type: 'array', maxItems: 1, minItems: 1, items: {type: 'string', ...spec}
+});
+
+const validateTrialRecord = ajv.compile({
+    type: 'object',
+    required: ['nct_id', 'title', 'last_update_posted', 'url', 'phases', 'interventions', 'conditions'],
+    properties: {
+        nct_id: singleItemArray({pattern: '^NCT\\d+$'}),
+        title: singleItemArray(),
+        url: singleItemArray(),
+        last_update_posted: singleItemArray(),
+        phases: singleItemArray({
+            type: 'object',
+            required: ['phase'],
+            properties: {
+                phase: {type: 'array', minItems: 1, items: {type: 'string'}}
+            }
+        }),
+        conditions: singleItemArray({
+            type: 'object',
+            required: ['condition'],
+            properties: {
+                condition: {type: 'array', minItems: 1, items: {type: 'string'}}
+            }
+        }),
+        interventions: singleItemArray({
+            type: 'object',
+            required: ['intervention'],
+            properties: {
+                intervention: {
+                    type: 'array',
+                    minItems: 1,
+                    items: {
+                        type: 'object',
+                        required: ['_', 'type'],
+                        properties: {
+                            _: {type: 'string'},
+                            type: singleItemArray()
+                        }
+                    }
+                }
+            }
+        })
+    }
+});
 
 
 const SOURCE_DEFN = {
@@ -57,8 +107,8 @@ const processRecord = async ({
     }
     const links = [];
     for (const raw of record.interventions[0].intervention) {
-        const {_: name, $: {type}} = raw;
-        if (type.trim().toLowerCase() === 'drug') {
+        const {_: name, type} = raw;
+        if (type[0].trim().toLowerCase() === 'drug') {
             try {
                 const intervention = await conn.getUniqueRecordBy({
                     endpoint: 'therapies',
