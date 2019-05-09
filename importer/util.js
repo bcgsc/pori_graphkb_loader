@@ -77,7 +77,7 @@ class ApiConnection {
      * @param {object} opt.qs the query parameters
      */
     async request(opt) {
-        if (this.exp < epochSeconds()) {
+        if (this.exp <= epochSeconds()) {
             await this.login();
         }
         const req = {
