@@ -10,12 +10,13 @@ const kbParser = require('@bcgsc/knowledgebase-parser');
 const {
     preferredDiseases, preferredDrugs, rid, INTERNAL_SOURCE_NAME
 } = require('./util');
-const {ParsingError} = require('./../app/repo/error');
 const _pubmed = require('./pubmed');
 const _hgnc = require('./hgnc');
 const {logger} = require('./logging');
 
+
 const ajv = new Ajv();
+
 
 const validateActionableRecordSpec = ajv.compile({
     type: 'object',
@@ -491,7 +492,7 @@ const addEvidenceLevels = async (conn, source) => {
     const result = {};
     for (let [level, desc] of Object.entries(levels)) {
         if (!/^LEVEL_[A-Z0-9]+$/.exec(level)) {
-            throw new ParsingError({
+            throw new kbParser.error.ParsingError({
                 message: `Error in parsing the level name: ${level}`,
                 expected: '/^LEVEL_[A-Z0-9]+$/',
                 observed: level
