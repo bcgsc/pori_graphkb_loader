@@ -29,6 +29,7 @@ IMPORT_MODULES.uberon = require('./uberon');
 IMPORT_MODULES.vario = require('./vario');
 IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
 IMPORT_MODULES.ontology = require('./ontology');
+IMPORT_MODULES.drugOntology = require('./drug_ontology');
 
 
 const optionDefinitions = [
@@ -146,6 +147,11 @@ const optionDefinitions = [
         name: 'ontology',
         description: 'path to the custom ontology JSON file',
         type: fileExists
+    },
+    {
+        name: 'drugOntology',
+        description: 'path to the gsc drug ontology tab delimited file',
+        type: fileExists
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
@@ -171,6 +177,7 @@ const upload = async () => {
         'ncit',
         'fda',
         'drugbank',
+        'drugOntology',
         'diseaseOntology',
         'hgnc',
         'refseq',
