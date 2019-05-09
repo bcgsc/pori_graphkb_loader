@@ -10,15 +10,16 @@ const jsonpath = require('jsonpath');
 const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
 
 const {
-    orderPreferredOntologyTerms, rid
+    orderPreferredOntologyTerms, rid, INTERNAL_SOURCE_NAME
 } = require('./util');
 const _pubmed = require('./pubmed');
 const {logger} = require('./logging');
+const _hgnc = require('./hgnc');
 
 const ajv = new Ajv();
 
 const SOURCE_DEFN = {
-    name: 'database of curated mutations (docm)',
+    name: 'database of curated mutations',
     description: 'DoCM, the Database of Curated Mutations, is a highly curated database of known, disease-causing mutations that provides easily explorable variant lists with direct links to source citations for easy verification.',
     url: 'http://www.docm.info',
     usage: 'http://www.docm.info/terms'
@@ -79,11 +80,7 @@ const processRecord = async (opt) => {
     } = opt;
     const {details, ...record} = opt.record;
     // get the feature by name
-    const gene = await conn.getUniqueRecordBy({
-        endpoint: 'features',
-        where: {source: {name: 'hgnc'}, name: record.gene},
-        sort: orderPreferredOntologyTerms
-    });
+    const gene = await _hgnc.fetchAndLoadBySymbol({conn, symbol: record.gene});
     // get the record details
     const counts = {error: 0, success: 0, skip: 0};
 
@@ -94,7 +91,7 @@ const processRecord = async (opt) => {
 
     const variantType = await conn.getUniqueRecordBy({
         endpoint: 'vocabulary',
-        where: {name: variant.type, source: {name: 'bcgsc'}}
+        where: {name: variant.type, source: {name: INTERNAL_SOURCE_NAME}}
     });
     const defaults = {
         untemplatedSeq: null,
@@ -126,7 +123,7 @@ const processRecord = async (opt) => {
             // get the vocabulary term
             const relevance = await conn.getUniqueRecordBy({
                 endpoint: 'vocabulary',
-                where: {name: diseaseRec.tags[0], source: {name: 'bcgsc'}}
+                where: {name: diseaseRec.tags[0], source: {name: INTERNAL_SOURCE_NAME}}
             });
             // get the disease by name
             const disease = await conn.getUniqueRecordBy({
@@ -149,7 +146,8 @@ const processRecord = async (opt) => {
                     relevance: rid(relevance),
                     appliesTo: rid(disease),
                     source: rid(source),
-                    reviewStatus: 'not required'
+                    reviewStatus: 'not required',
+                    sourceId: record.hgvs
                 },
                 existsOk: true,
                 fetchExisting: false
@@ -214,6 +212,7 @@ const upload = async (opt) => {
             logger.warn(`Found a record with drug interactions! ${JSON.stringify(record)}`);
             counts.highlight++;
         }
+        logger.info(`loading: ${BASE_URL}/${record.hgvs}.json`);
         const details = await request({
             method: 'GET',
             json: true,
