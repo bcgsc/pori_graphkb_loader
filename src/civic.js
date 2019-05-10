@@ -17,6 +17,7 @@ const {
 const {logger} = require('./logging');
 const _pubmed = require('./pubmed');
 const _hgnc = require('./hgnc');
+const _entrez = require('./entrez');
 
 const ajv = new Ajv();
 
@@ -431,7 +432,7 @@ const processEvidenceRecord = async (opt) => {
     const [level, relevance, feature] = await Promise.all([
         getEvidenceLevel(opt),
         getRelevance(opt),
-        _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.variant.entrez_name})
+        _entrez.fetchAndLoadById(conn, rawRecord.variant.entrez_id)
     ]);
     let variant;
     try {
