@@ -38,7 +38,7 @@ const validateHgncSpec = ajv.compile({
         ensembl_gene_id: {type: 'string', pattern: '^ENSG[0-9]+$'},
         prev_symbol: {type: 'array', items: {type: 'string'}},
         alias_symbol: {type: 'array', items: {type: 'string'}},
-        entrez_id: {type: 'string'}
+        entrez_id: {type: 'string', pattern: '^\\d+$'}
     }
 });
 
