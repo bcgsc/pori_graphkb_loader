@@ -18,7 +18,12 @@ const {logger} = require('./logging');
 
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
 
-const rid = record => (record['@rid'] || record).toString();
+const rid = (record, nullOk) => {
+    if (nullOk && !record) {
+        return null;
+    }
+    return (record['@rid'] || record).toString();
+};
 
 const convertNulls = (where) => {
     const queryParams = {};
@@ -194,38 +199,6 @@ class ApiConnection {
 }
 
 
-const succinctRepresentation = (record) => {
-    const succint = {};
-    const cleanEdge = (edge, target) => {
-        const result = {};
-        if (edge[target] && edge[target]['@rid']) {
-            result[target] = edge[target]['@rid'];
-        } else {
-            result[target] = edge[target];
-        }
-        return succinctRepresentation(Object.assign(result, _.omit(edge, ['in', 'out', 'createdBy', 'uuid', 'createdAt', '@class', '@rid'])));
-    };
-    for (let [attr, value] of Object.entries(record)) {
-        if (['createdBy', 'uuid', 'createdAt'].includes(attr)) {
-            continue;
-        }
-        if (value instanceof Array) {
-            for (let i = 0; i < value.length; i++) {
-                if (attr.startsWith('out_')) {
-                    value[i] = cleanEdge(value[i], 'in');
-                } else if (attr.startsWith('in_')) {
-                    value[i] = cleanEdge(value[i], 'out');
-                }
-            }
-        } else if (value && value['@rid']) {
-            value = value['@rid'];
-        }
-        succint[attr] = value;
-    }
-    return succint;
-};
-
-
 /**
  * Given two ontology terms, return the newer, non-deprecated, independant, term first.
  *
@@ -243,15 +216,18 @@ const orderPreferredOntologyTerms = (term1, term2) => {
         return -1;
     } if (term2.dependency == null & term1.dependency != null) {
         return 1;
-    } if (term1.sourceId === term2.sourceId) {
+    } if (term1.sourceId === term2.sourceId && rid(term1.source, true) === rid(term2.source, true)) {
         if (term1.sourceIdVersion < term2.sourceIdVersion) {
             return -1;
         } if (term1.sourceIdVersion > term2.sourceIdVersion) {
             return 1;
-        } if (term1.source.version < term2.source.version) {
-            return -1;
-        } if (term1.source.version > term2.source.version) {
-            return 1;
+        }
+        if (term1.source && term2.source) {
+            if (term1.source.version < term2.source.version) {
+                return -1;
+            } if (term1.source.version > term2.source.version) {
+                return 1;
+            }
         }
     }
     return 0;
@@ -448,5 +424,6 @@ module.exports = {
     loadDelimToJson,
     loadXmlToJson,
     ApiConnection,
-    requestWithRetry
+    requestWithRetry,
+    convertNulls
 };
