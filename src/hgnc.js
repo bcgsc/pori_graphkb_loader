@@ -3,10 +3,9 @@
  */
 const request = require('request-promise');
 const Ajv = require('ajv');
-const jsonpath = require('jsonpath');
 
 const {
-    rid, orderPreferredOntologyTerms
+    rid, orderPreferredOntologyTerms, checkSpec
 } = require('./util');
 const {logger} = require('./logging');
 const _entrez = require('./entrez');
@@ -191,19 +190,7 @@ const fetchAndLoadBySymbol = async ({
         json: true
     });
     for (const record of docs) {
-        if (!validateHgncSpec(record)) {
-            throw new Error(
-                `Spec Validation failed for fetch response of symbol ${
-                    symbol
-                } #${
-                    validateHgncSpec.errors[0].dataPath
-                } ${
-                    validateHgncSpec.errors[0].message
-                } found ${
-                    jsonpath.query(record, `$${validateHgncSpec.errors[0].dataPath}`)
-                }`
-            );
-        }
+        checkSpec(validateHgncSpec, record, rec => rec.hgnc_id);
     }
     const [gene] = docs;
 
@@ -261,16 +248,10 @@ const uploadFile = async (opt) => {
 
     logger.info(`adding ${genes.length} feature records`);
     for (const gene of genes) {
-        if (!validateHgncSpec(gene)) {
-            logger.warn(`Spec Validation failed for fetch response of symbol ${
-                gene && gene.hgnc_id
-            } #${
-                validateHgncSpec.errors[0].dataPath
-            } ${
-                validateHgncSpec.errors[0].message
-            } found ${
-                jsonpath.query(gene, `$${validateHgncSpec.errors[0].dataPath}`)
-            }`);
+        try {
+            checkSpec(validateHgncSpec, gene, rec => rec.hgnc_id);
+        } catch (err) {
+            logger.error(err);
             continue;
         }
         if (gene.longName && gene.longName.toLowerCase().trim() === 'entry withdrawn') {
