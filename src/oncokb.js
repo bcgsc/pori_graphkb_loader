@@ -12,6 +12,7 @@ const {
 } = require('./util');
 const _pubmed = require('./pubmed');
 const _hgnc = require('./hgnc');
+const _entrez = require('./entrez');
 const {logger} = require('./logging');
 
 
@@ -180,7 +181,7 @@ const processVariant = async (opt) => {
         reference2,
         gene2;
 
-    if (rawRecord.gene === 'other biomarkers') {
+    if (rawRecord.gene.toLowerCase() === 'other biomarkers') {
         try {
             const vocab = rawRecord.variant.trim().toLowerCase();
             if (vocab !== 'microsatellite instability-high') {
@@ -200,9 +201,9 @@ const processVariant = async (opt) => {
     } else {
         // gene-base variant
         try {
-            gene1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.gene});
+            gene1 = await _entrez.fetchAndLoadById(conn, rawRecord.entrezGeneId);
         } catch (err) {
-            logger.warn(`Failed to find the gene symbol (${rawRecord.gene})`);
+            logger.error(err);
             throw err;
         }
 
