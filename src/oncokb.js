@@ -12,7 +12,6 @@ const {
 } = require('./util');
 const _pubmed = require('./pubmed');
 const _hgnc = require('./hgnc');
-const _entrez = require('./entrez');
 const {logger} = require('./logging');
 
 
@@ -201,7 +200,7 @@ const processVariant = async (opt) => {
     } else {
         // gene-base variant
         try {
-            gene1 = await _entrez.fetchAndLoadById(conn, rawRecord.entrezGeneId);
+            gene1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.entrezGeneId, paramType: 'entrez_id'});
         } catch (err) {
             logger.error(err);
             throw err;
