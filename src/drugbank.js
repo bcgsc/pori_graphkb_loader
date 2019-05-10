@@ -5,18 +5,22 @@
 
 const _ = require('lodash');
 const Ajv = require('ajv');
+const XmlStream = require('xml-stream');
+const fs = require('fs');
 
 const {
-    loadXmlToJson, rid, checkSpec
+    rid, checkSpec
 } = require('./util');
 const _hgnc = require('./hgnc');
 const {logger} = require('./logging');
+const _chembl = require('./chembl');
+
 
 const ajv = new Ajv();
 
 const SOURCE_DEFN = {
     name: 'drugbank',
-    usage: 'https://www.drugbank.ca/legal/terms_of_use',
+    usage: 'https://creativecommons.org/licenses/by-nc/4.0/legalcode',
     url: 'https://www.drugbank.ca',
     description: 'The DrugBank database is a unique bioinformatics and cheminformatics resource that combines detailed drug data with comprehensive drug target information.'
 };
@@ -30,17 +34,8 @@ const HEADER = {
     mechanism: 'mechanism-of-action'
 };
 
-const singleItemArray = (spec = {}) => ({
-    type: 'array', maxItems: 1, minItems: 1, items: {type: 'string', ...spec}
-});
-
 const singleReqProp = (name, spec = {}) => ({
-    type: 'array',
-    maxitems: 1,
-    minItems: 1,
-    items: {
-        type: ['object', 'null'], required: [name], properties: {[name]: spec}
-    }
+    oneOf: [{type: 'string', maxLength: 0}, {type: ['object', 'null'], required: [name], properties: {[name]: spec}}]
 });
 
 /**
@@ -48,27 +43,33 @@ const singleReqProp = (name, spec = {}) => ({
  */
 const validateDrugbankSpec = ajv.compile({
     type: 'object',
-    required: ['drugbank-id', 'name'],
+    required: ['drugbank-id', 'name', '$'],
     properties: {
         'drugbank-id': {
             type: 'array',
             items: [{
                 type: 'object',
                 properties: {
-                    _: {type: 'string', pattern: '^DB\\d+$'}
+                    $text: {type: 'string', pattern: '^DB\\d+$'}
                 }
             }],
             minItems: 1
         },
-        name: singleItemArray(),
-        updated: singleItemArray(),
-        description: singleItemArray({type: ['string', 'null']}),
-        unii: singleItemArray({type: ['string', 'null']}),
-        'mechanism-of-action': singleItemArray({type: ['string', 'null']}),
+        name: {type: 'string'},
+        $: {
+            type: 'object',
+            required: ['updated'],
+            properties: {
+                updated: {type: 'string'}
+            }
+        },
+        description: {type: ['string', 'null']},
+        unii: {type: ['string', 'null']},
+        'mechanism-of-action': {type: ['string', 'null']},
         categories: singleReqProp(
             'category', {
                 type: 'array',
-                items: {type: 'object', properties: {category: singleItemArray()}}
+                items: {type: 'object', required: ['category'], properties: {category: {type: 'string'}}}
             }
         ),
         'atc-codes': singleReqProp(
@@ -77,10 +78,14 @@ const validateDrugbankSpec = ajv.compile({
                     type: 'array',
                     items: {
                         type: 'object',
-                        required: ['_', 'code'],
+                        required: ['$text', '$'],
                         properties: {
-                            _: {type: 'string'},
-                            code: singleItemArray()
+                            $text: {type: 'string'},
+                            $: {
+                                type: 'object',
+                                required: ['code'],
+                                properties: {code: {type: 'string'}}
+                            }
                         }
                     }
                 }
@@ -88,43 +93,202 @@ const validateDrugbankSpec = ajv.compile({
         ),
         targets: singleReqProp(
             'target', {
-                type: 'array',
-                items: {
-                    type: 'object',
-                    required: ['actions'],
-                    properties: {
-                        actions: singleReqProp('action', {type: 'array', items: {type: 'string'}}),
-                        polypeptide: {
-                            type: 'array',
-                            items: {
-                                type: 'object',
-                                properties: {
-                                    'external-identifiers': singleReqProp(
-                                        'external-identifier', {
-                                            type: 'array',
-                                            items: {
-                                                type: 'object',
-                                                required: ['resource', 'identifier'],
-                                                properties: {
-                                                    resource: singleItemArray(),
-                                                    identifier: singleItemArray()
-                                                }
+                type: 'object',
+                required: ['actions'],
+                properties: {
+                    actions: singleReqProp('action', {type: 'array', items: {type: 'string'}}),
+                    polypeptide: {
+                        type: 'array',
+                        items: {
+                            type: 'object',
+                            properties: {
+                                'external-identifiers': singleReqProp(
+                                    'external-identifier', {
+                                        type: 'array',
+                                        items: {
+                                            type: 'object',
+                                            required: ['resource', 'identifier'],
+                                            properties: {
+                                                resource: {type: 'string'},
+                                                identifier: {type: 'string'}
                                             }
                                         }
-                                    )
-                                }
+                                    }
+                                )
                             }
                         }
                     }
                 }
             }
+        ),
+        'external-identifiers': singleReqProp(
+            'external-identifier', {
+                type: 'array',
+                items: {
+                    type: 'object',
+                    required: ['resource', 'identifier'],
+                    properties: {
+                        resource: {type: 'string'},
+                        identifier: {type: 'string'}
+                    }
+                }
+            }
         )
-
     }
 });
 
 
-const getDrugBankId = record => record['drugbank-id'][0]._;
+const getDrugBankId = record => record['drugbank-id'][0].$text;
+
+
+const processRecord = async ({
+    conn, drug, sources: {current, fda}, ATC
+}) => {
+    checkSpec(validateDrugbankSpec, drug, getDrugBankId);
+    let atcLevels = [];
+    try {
+        atcLevels = Array.from(
+            drug[HEADER.superclasses][0][HEADER.superclass][0].level,
+            x => ({name: x.$text, sourceId: x.$.code.toLowerCase()})
+        );
+    } catch (err) {}
+    const body = {
+        source: rid(current),
+        sourceId: getDrugBankId(drug),
+        name: drug.name,
+        sourceIdVersion: drug.$.updated,
+        description: drug.description,
+        mechanismOfAction: drug[HEADER.mechanism]
+    };
+    if (drug.categories[0] && drug.categories[0].category) {
+        body.subsets = [];
+        for (const cat of Object.values(drug.categories[0].category)) {
+            body.subsets.push(cat.category[0]);
+        }
+    }
+    const record = await conn.addRecord({
+        endpoint: 'therapies',
+        content: body,
+        existsOk: true,
+        fetchConditions: _.omit(body, ['subsets', 'mechanismOfAction', 'description'])
+    });
+    // create the categories
+    for (const atcLevel of atcLevels) {
+        if (ATC[atcLevel.sourceId] === undefined) {
+            const level = await conn.addRecord({
+                endpoint: 'therapies',
+                content: {
+                    source: rid(current),
+                    name: atcLevel.name,
+                    sourceId: atcLevel.sourceId
+                },
+                existsOk: true
+            });
+            ATC[level.sourceId] = level;
+        }
+    }
+    if (atcLevels.length > 0) {
+        // link the current record to the lowest subclass
+        await conn.addRecord({
+            endpoint: 'subclassof',
+            content: {
+                source: rid(current),
+                out: rid(record),
+                in: rid(ATC[atcLevels[0].sourceId])
+            },
+            existsOk: true,
+            fetchExisting: false
+        });
+        // link the subclassing
+        for (let i = 0; i < atcLevels.length - 1; i++) {
+            await conn.addRecord({
+                endpoint: 'subclassof',
+                content: {
+                    source: rid(current),
+                    out: rid(ATC[atcLevels[i].sourceId]),
+                    in: rid(ATC[atcLevels[i + 1].sourceId])
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
+        }
+    }
+    // link to the FDA UNII
+    if (fda && drug[HEADER.unii]) {
+        let fdaRec;
+        try {
+            fdaRec = await conn.getUniqueRecordBy({
+                endpoint: 'therapies',
+                where: {source: rid(fda), sourceId: drug[HEADER.unii].trim()}
+            });
+        } catch (err) {
+            logger.log('error', `failed cross-linking from ${record.sourceId} to ${drug[HEADER.unii]} (fda)`);
+        }
+        if (fdaRec) {
+            await conn.addRecord({
+                endpoint: 'crossreferenceof',
+                content: {
+                    source: rid(current), out: rid(record), in: rid(fdaRec)
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
+        }
+    }
+    // link to ChemBL
+    const xrefs = [];
+    try {
+        xrefs.push(...drug['external-identifiers']['external-identifier']);
+    } catch (err) {}
+    for (const {resource, identifier} of xrefs) {
+        if (resource.toLowerCase() === 'chembl') {
+            try {
+                const chemblDrug = await _chembl.fetchAndLoadById(conn, identifier);
+                await conn.addRecord({
+                    endpoint: 'crossreferenceof',
+                    content: {out: rid(record), in: rid(chemblDrug), source: rid(current)},
+                    existsOk: true,
+                    fetchExisting: false
+                });
+            } catch (err) {
+                logger.error(err);
+            }
+        }
+    }
+    // try to link this drug to hgnc gene targets
+    if (drug.targets.target) {
+        let interactionType = '';
+        try {
+            interactionType = drug.targets.target.actions.action.join('/');
+        } catch (err) {}
+
+        const genes = [];
+        for (const polypeptide of (drug.targets.target.polypeptide || [])) {
+            for (const gene of polypeptide['external-identifiers']['external-identifier']) {
+                if (gene.resource[0] === 'HUGO Gene Nomenclature Committee (HGNC)') {
+                    genes.push(gene.identifier[0]);
+                }
+            }
+        }
+
+        for (const identifier of genes) {
+            const gene = await _hgnc.fetchAndLoadBySymbol({
+                conn, symbol: identifier, paramType: 'hgnc_id'
+            });
+            await conn.addRecord({
+                endpoint: 'targetof',
+                content: {
+                    out: rid(gene),
+                    source: rid(current),
+                    in: rid(record),
+                    comment: interactionType
+                },
+                existsOk: true,
+                fetchExisting: false
+            });
+        }
+    }
+};
 
 
 /**
@@ -136,7 +300,6 @@ const getDrugBankId = record => record['drugbank-id'][0]._;
  */
 const uploadFile = async ({filename, conn}) => {
     logger.info('Loading the external drugbank data');
-    const xml = await loadXmlToJson(filename);
 
     const source = await conn.addRecord({
         endpoint: 'sources',
@@ -144,7 +307,6 @@ const uploadFile = async ({filename, conn}) => {
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
     });
-    logger.info(`uploading ${xml.drugbank.drug.length} records`);
 
     const ATC = {};
     let fdaSource;
@@ -156,158 +318,59 @@ const uploadFile = async ({filename, conn}) => {
     } catch (err) {
         logger.warn('Unable to find fda source record. Will not attempt cross-reference links');
     }
-    const fdaMissingRecords = new Set();
-    const counts = {success: 0, error: 0};
+    const counts = {success: 0, error: 0, skipped: 0};
 
-    for (const drug of xml.drugbank.drug) {
-        try {
-            checkSpec(validateDrugbankSpec, drug, getDrugBankId);
-        } catch (err) {
-            logger.log('error', err);
-            counts.error++;
-        }
-        let atcLevels = [];
-        try {
-            atcLevels = Array.from(
-                drug[HEADER.superclasses][0][HEADER.superclass][0].level,
-                x => ({name: x._, sourceId: x.code[0].toLowerCase()})
-            );
-        } catch (err) {}
-        try {
-            const body = {
-                source: rid(source),
-                sourceId: drug[HEADER.ident][0]._,
-                name: drug.name[0],
-                sourceIdVersion: drug.updated[0],
-                description: drug.description[0],
-                mechanismOfAction: drug[HEADER.mechanism][0]
-            };
-            if (drug.categories[0] && drug.categories[0].category) {
-                body.subsets = [];
-                for (const cat of Object.values(drug.categories[0].category)) {
-                    body.subsets.push(cat.category[0]);
-                }
+    const records = [];
+
+    const parseXML = new Promise((resolve) => {
+        logger.log('info', `loading XML data from ${filename}`);
+        const stream = fs.createReadStream(filename);
+        const xml = new XmlStream(stream);
+        xml.collect('drug drugbank-id');
+        xml.collect('drug external-identifier');
+        xml.collect('drug synonym');
+        xml.collect('drug categories > category');
+        xml.collect('drug atc-code level');
+        xml.collect('drug target polypeptide');
+        xml.collect('drug target actions action');
+        xml.on('endElement: drug', (item) => {
+            if (Object.keys(item).length < 3) {
+                return;
             }
-            const record = await conn.addRecord({
-                endpoint: 'therapies',
-                content: body,
-                existsOk: true,
-                fetchConditions: _.omit(body, ['subsets', 'mechanismOfAction', 'description'])
+            xml.pause();
+            processRecord({
+                conn, sources: {current: source, fda: fdaSource}, drug: item, ATC
+            }).then((record) => {
+                if (record) {
+                    counts.success++;
+                } else {
+                    counts.skipped++;
+                }
+                xml.resume();
+            }).catch((err) => {
+                let label;
+                try {
+                    label = getDrugBankId(item);
+                } catch (err) {}  // eslint-disable-line
+                records.push(item);
+                if (records.length === 5) {
+                    console.log('write drugbank.json');
+                    fs.writeFileSync('drugbank.json', JSON.stringify({records}, null, 2));
+                }
+                counts.error++;
+                logger.error(err);
+                logger.error(`Unable to process record ${label}`);
+                xml.resume();
             });
-            // create the categories
-            for (const atcLevel of atcLevels) {
-                if (ATC[atcLevel.sourceId] === undefined) {
-                    const level = await conn.addRecord({
-                        endpoint: 'therapies',
-                        content: {
-                            source: rid(source),
-                            name: atcLevel.name,
-                            sourceId: atcLevel.sourceId
-                        },
-                        existsOk: true
-                    });
-                    ATC[level.sourceId] = level;
-                }
-            }
-            if (atcLevels.length > 0) {
-                // link the current record to the lowest subclass
-                await conn.addRecord({
-                    endpoint: 'subclassof',
-                    content: {
-                        source: rid(source),
-                        out: rid(record),
-                        in: rid(ATC[atcLevels[0].sourceId])
-                    },
-                    existsOk: true,
-                    fetchExisting: false
-                });
-                // link the subclassing
-                for (let i = 0; i < atcLevels.length - 1; i++) {
-                    await conn.addRecord({
-                        endpoint: 'subclassof',
-                        content: {
-                            source: rid(source),
-                            out: rid(ATC[atcLevels[i].sourceId]),
-                            in: rid(ATC[atcLevels[i + 1].sourceId])
-                        },
-                        existsOk: true,
-                        fetchExisting: false
-                    });
-                }
-            }
-            // link to the FDA UNII
-            if (fdaSource) {
-                for (const unii of (drug[HEADER.unii] || []).filter(u => u)) {
-                    let fdaRec;
-                    try {
-                        if (!unii || !unii.trim()) {
-                            continue;
-                        }
-                        fdaRec = await conn.getUniqueRecordBy({
-                            endpoint: 'therapies',
-                            where: {source: rid(fdaSource), sourceId: unii.trim()}
-                        });
-                    } catch (err) {
-                        logger.log('error', `failed cross-linking from ${record.sourceId} to ${unii} (fda)`);
-                        fdaMissingRecords.add(unii);
-                    }
-                    if (fdaRec) {
-                        await conn.addRecord({
-                            endpoint: 'crossreferenceof',
-                            content: {
-                                source: rid(source), out: rid(record), in: rid(fdaRec)
-                            },
-                            existsOk: true,
-                            fetchExisting: false
-                        });
-                    }
-                }
-            }
-            // try to link this drug to hgnc gene targets
-            try {
-                const interactionType = drug.targets[0].target[0].actions[0].action.join('/');
-                const genes = [];
-                for (const polypeptide of drug.targets[0].target[0].polypeptide) {
-                    for (const gene of polypeptide['external-identifiers'][0]['external-identifier']) {
-                        if (gene.resource[0] === 'HUGO Gene Nomenclature Committee (HGNC)') {
-                            genes.push(gene.identifier[0]);
-                        }
-                    }
-                }
+        });
+        xml.on('end', () => {
+            logger.info('Parsing stream complete');
+            stream.close();
+            resolve();
+        });
+    });
 
-                for (const identifier of genes) {
-                    const gene = await _hgnc.fetchAndLoadBySymbol({
-                        conn, symbol: identifier, paramType: 'hgnc_id'
-                    });
-                    await conn.addRecord({
-                        endpoint: 'targetof',
-                        content: {
-                            out: rid(gene),
-                            source: rid(source),
-                            in: rid(record),
-                            comment: interactionType
-                        },
-                        existsOk: true,
-                        fetchExisting: false
-                    });
-                }
-            } catch (err) {} // will throw error if this is not filled out
-            counts.success++;
-        } catch (err) {
-            let label;
-            try {
-                label = getDrugBankId(drug);
-            } catch (err) {}  // eslint-disable-line
-            counts.error++;
-            logger.error(err);
-            console.error(err);
-            logger.error(`Unable to process record ${label}`);
-        }
-    }
-
-    if (fdaMissingRecords.size) {
-        logger.warn(`Unable to retrieve ${fdaMissingRecords.size} fda records for cross-linking`);
-    }
+    await parseXML;
     logger.log('info', JSON.stringify(counts));
 };
 

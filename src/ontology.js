@@ -31,6 +31,7 @@ const INPUT_ERROR_CODE = 2;
 const validateSpec = ajv.compile({
     type: 'object',
     properties: {
+        defaultNameToSourceId: {type: 'boolean'},
         source: {
             type: 'object',
             required: ['name'],
@@ -104,10 +105,15 @@ const uploadFile = async ({filename, conn}) => {
     }
     // build the specification for checking records
     // check that all the keys make sense for linking
-    const {records, source, class: recordClass} = data;
+    const {
+        records, source, class: recordClass, defaultNameToSourceId
+    } = data;
     for (const sourceId of Object.keys(records)) {
         const record = records[sourceId];
         record.sourceId = sourceId;
+        if (!record.name && defaultNameToSourceId) {
+            record.name = sourceId;
+        }
         for (const {target, class: edgeClass} of record.links || []) {
             if (records[target] === undefined) {
                 logger.log('error', `Invalid link (${edgeClass}) from ${sourceId} to undefined record ${target}`);

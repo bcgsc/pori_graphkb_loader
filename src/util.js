@@ -278,32 +278,43 @@ const preferredSources = (sourceRank, term1, term2) => {
     return orderPreferredOntologyTerms(term1, term2);
 };
 
+/**
+ * Given some array create an object where elements are mapped to their position in the array
+ */
+const generateRanks = (arr) => {
+    const ranks = {};
+    for (let i = 0; i < arr.length; i++) {
+        ranks[arr[i]] = i;
+    }
+    return ranks;
+};
 
 const preferredVocabulary = (term1, term2) => {
-    const sourceRank = {
-        bcgsc: 0,
-        'sequence ontology': 1,
-        'variation ontology': 2
-    };
+    const sourceRank = generateRanks([
+        'bcgsc',
+        'sequence ontology',
+        'variation ontology'
+    ]);
     return preferredSources(sourceRank, term1, term2);
 };
 
 
 const preferredDiseases = (term1, term2) => {
-    const sourceRank = {
-        oncotree: 0,
-        'disease ontology': 1
-    };
+    const sourceRank = generateRanks([
+        'oncotree',
+        'disease ontology'
+    ]);
     return preferredSources(sourceRank, term1, term2);
 };
 
 const preferredDrugs = (term1, term2) => {
-    const sourceRank = {
-        'gsc therapeutic ontology': 1,
-        drugbank: 0,
-        fda: 2,
-        ncit: 3
-    };
+    const sourceRank = generateRanks([
+        'drugbank',
+        'chembl',
+        'gsc therapeutic ontology',
+        'fda',
+        'ncit'
+    ]);
     return preferredSources(sourceRank, term1, term2);
 };
 

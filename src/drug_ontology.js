@@ -6,6 +6,7 @@
 const {loadDelimToJson, rid} = require('./util');
 const {logger} = require('./logging');
 const {SOURCE_DEFN: {name: drugbankName}} = require('./drugbank');
+const {SOURCE_DEFN: {name: chemblName}} = require('./chembl');
 
 const HEADER = {
     name: 'source',
@@ -21,23 +22,31 @@ const SOURCE_DEFN = {
 };
 
 /**
- * Try to extact match a drugbank record. If there isn't one then add this name as a new record instead
+ * Try to extact match a drugbank/chembl record. If there isn't one then add this name as a new record instead
  */
-const getDrugbankOrAdd = async (conn, source, name) => {
+const getDrugOrAdd = async (conn, source, name) => {
     let record;
     try {
         record = await conn.getUniqueRecordBy({
             endpoint: 'therapies',
             where: {source: {name: drugbankName}, name}
         });
-    } catch (err) {
-        record = await conn.addRecord({
+        return record;
+    } catch (err) {}
+
+    try {
+        record = await conn.getUniqueRecordBy({
             endpoint: 'therapies',
-            content: {name, sourceId: name, source: rid(source)},
-            existsOk: true
+            where: {source: {name: chemblName}, name}
         });
-    }
-    return record;
+        return record;
+    } catch (err) {}
+
+    return conn.addRecord({
+        endpoint: 'therapies',
+        content: {name, sourceId: name, source: rid(source)},
+        existsOk: true
+    });
 };
 
 
@@ -69,7 +78,7 @@ const uploadFile = async (opt) => {
                 record[HEADER.parent],
                 record[HEADER.grandparent1],
                 record[HEADER.grandparent2]
-            ].map(async name => getDrugbankOrAdd(conn, source, name)));
+            ].map(async name => getDrugOrAdd(conn, source, name)));
             // get the mapped drugbank drug
             if (/^DB\d+$/i.exec(record[HEADER.drugbank])) {
                 const dbDrug = rid(await conn.getUniqueRecordBy({

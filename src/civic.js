@@ -17,7 +17,6 @@ const {
 const {logger} = require('./logging');
 const _pubmed = require('./pubmed');
 const _hgnc = require('./hgnc');
-const _entrez = require('./entrez');
 
 const ajv = new Ajv();
 
@@ -49,7 +48,6 @@ const VOCAB = {
 
 const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evidence levels
 const RELEVANCE_CACHE = {};
-const FEATURE_CACHE = {}; // store features by name
 
 
 const validateEvidenceSpec = ajv.compile({
@@ -126,18 +124,18 @@ const validateVariantSpec = ajv.compile({
         coordinates: {
             type: 'object',
             properties: {
-                chromosome: {oneOf: [{type: 'string'}, {type: 'null'}]},
-                start: {oneOf: [{type: 'number'}, {type: 'null'}]},
-                stop: {oneOf: [{type: 'number'}, {type: 'null'}]},
-                reference_bases: {oneOf: [{type: 'string'}, {type: 'null'}]},
-                variant_bases: {oneOf: [{type: 'string'}, {type: 'null'}]},
-                representative_transcript: {oneOf: [{type: 'string'}, {type: 'null'}]},
-                chromosome2: {oneOf: [{type: 'string'}, {type: 'null'}]},
-                start2: {oneOf: [{type: 'number'}, {type: 'null'}]},
-                stop2: {oneOf: [{type: 'number'}, {type: 'null'}]},
-                representative_transcript2: {oneOf: [{type: 'string'}, {type: 'null'}]},
-                ensembl_version: {oneOf: [{type: 'number'}, {type: 'null'}]},
-                reference_build: {oneOf: [{type: 'string'}, {type: 'null'}]}
+                chromosome: {type: ['string', 'null']},
+                start: {type: ['number', 'null']},
+                stop: {type: ['number', 'null']},
+                reference_bases: {type: ['string', 'null']},
+                variant_bases: {type: ['string', 'null']},
+                representative_transcript: {type: ['string', 'null']},
+                chromosome2: {type: ['string', 'null']},
+                start2: {type: ['number', 'null']},
+                stop2: {type: ['number', 'null']},
+                representative_transcript2: {type: ['string', 'null']},
+                ensembl_version: {type: ['number', 'null']},
+                reference_build: {type: ['string', 'null']}
             }
         },
         variant_types: {
@@ -432,7 +430,7 @@ const processEvidenceRecord = async (opt) => {
     const [level, relevance, feature] = await Promise.all([
         getEvidenceLevel(opt),
         getRelevance(opt),
-        _entrez.fetchAndLoadById(conn, rawRecord.variant.entrez_id)
+        _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.variant.entrez_id, paramType: 'entrez_id'})
     ]);
     let variant;
     try {
