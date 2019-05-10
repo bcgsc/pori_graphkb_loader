@@ -5,6 +5,7 @@ const Ajv = require('ajv');
 const request = require('request-promise');
 
 const {checkSpec, rid} = require('./util');
+const {logger} = require('./logging');
 
 const ajv = new Ajv();
 
@@ -14,7 +15,7 @@ const validateDrugRecord = ajv.compile({
     properties: {
         molecule_chembl_id: {type: 'string', pattern: '^CHEMBL\\d+$'},
         pref_name: {type: 'string'},
-        usan_stem_definition: {type: 'string'}
+        usan_stem_definition: {type: ['string', 'null']}
     }
 });
 
@@ -39,21 +40,22 @@ const fetchAndLoadById = async (conn, drugId) => {
     if (CACHE[drugId.toLowerCase()]) {
         return CACHE[drugId.toLowerCase()];
     }
+    logger.info(`loading: ${API}/${drugId}`);
     const chemblRecord = await request({
-        uri:`${API}/${drugId}`,
+        uri: `${API}/${drugId}`,
         json: true
     });
-    checkSpec(validateDrugRecord, record);
+    checkSpec(validateDrugRecord, chemblRecord);
     if (!CACHE.SOURCE) {
         CACHE.SOURCE = await conn.addRecord({
-            endpoints: 'sources',
+            endpoint: 'sources',
             content: SOURCE_DEFN,
-            existsOk: true,
+            existsOk: true
         });
     }
     const source = rid(CACHE.SOURCE);
     const record = await conn.addRecord({
-        endpoints: 'therapies',
+        endpoint: 'therapies',
         content: {
             source,
             sourceId: chemblRecord.molecule_chembl_id,
@@ -65,7 +67,7 @@ const fetchAndLoadById = async (conn, drugId) => {
     if (chemblRecord.usan_stem_definition) {
         try {
             const parent = await conn.addRecord({
-                endpoints: 'therapies',
+                endpoint: 'therapies',
                 content: {
                     source,
                     sourceId: chemblRecord.usan_stem_definition,
@@ -76,7 +78,7 @@ const fetchAndLoadById = async (conn, drugId) => {
             });
 
             await conn.addRecord({
-                endpoints: 'subclassof',
+                endpoint: 'subclassof',
                 content: {
                     source,
                     out: rid(record),
@@ -86,6 +88,7 @@ const fetchAndLoadById = async (conn, drugId) => {
             });
         } catch (err) {}
     }
+    return record;
 };
 
 
