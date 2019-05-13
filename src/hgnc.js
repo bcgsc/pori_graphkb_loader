@@ -67,9 +67,6 @@ const uploadRecord = async ({
         existsOk: true
     });
 
-    CACHE[currentRecord.sourceId] = currentRecord;
-    CACHE[currentRecord.name] = currentRecord;
-
     if (gene.ensembl_gene_id && ensembl) {
         try {
             const ensg = await conn.getUniqueRecordBy({
@@ -157,8 +154,12 @@ const uploadRecord = async ({
 const fetchAndLoadBySymbol = async ({
     conn, symbol, paramType = 'symbol', ignoreCache = false
 }) => {
-    if (CACHE[symbol.toLowerCase()] && !ignoreCache) {
-        return CACHE[symbol.toLowerCase()];
+    symbol = symbol.toString().toLowerCase();
+    if (!CACHE[paramType]) {
+        CACHE[paramType] = {};
+    }
+    if (CACHE[paramType][symbol] && !ignoreCache) {
+        return CACHE[paramType][symbol];
     }
     try {
         const where = {source: {name: SOURCE_DEFN.name}};
@@ -173,7 +174,7 @@ const fetchAndLoadBySymbol = async ({
             where
         });
         if (!ignoreCache) {
-            CACHE[symbol.toLowerCase()] = record;
+            CACHE[paramType][symbol] = record;
         }
         return record;
     } catch (err) {}
@@ -214,7 +215,9 @@ const fetchAndLoadBySymbol = async ({
             where: {name: 'ensembl'}
         });
     } catch (err) {}
-    return uploadRecord({conn, gene, sources: {hgnc, ensembl}});
+    const result = await uploadRecord({conn, gene, sources: {hgnc, ensembl}});
+    CACHE[paramType][symbol] = result;
+    return result;
 };
 
 /**
