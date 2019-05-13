@@ -185,13 +185,11 @@ const processVariant = async (opt) => {
             if (vocab !== 'microsatellite instability-high') {
                 throw new Error(`unsupported biomarker variant ${rawRecord.variant}`);
             }
-            ([gene1, type] = await Promise.all([
-                conn.getUniqueRecordBy({
-                    endpoint: 'signatures',
-                    content: {name: 'microsatellite instability'}
-                }),
-                getVocabulary(conn, 'strong signature')
-            ]));
+            type = 'strong signature';
+            gene1 = await conn.getUniqueRecordBy({
+                endpoint: 'signatures',
+                where: {name: 'microsatellite instability'}
+            });
         } catch (err) {
             logger.warn(`failed to retrieve the associated vocabulary (variant=${rawRecord.variant})`);
             throw err;
@@ -277,6 +275,12 @@ const processVariant = async (opt) => {
     }
     variant.type = rid(variantType);
     // create the variant
+    for (const [key, value] of Object.entries(variant)) {
+        if (value instanceof kbParser.position.Position) {
+            variant[key] = value.toJSON();
+        }
+    }
+
     variant = await conn.addRecord({
         endpoint: variantUrl,
         content: variant,
@@ -507,6 +511,7 @@ const addEvidenceLevels = async (conn, source) => {
                 description: desc,
                 url: URL
             },
+            fetchConditions: {sourceId: level, name: level, source: rid(source)},
             existsOk: true
         });
         result[level] = record;
