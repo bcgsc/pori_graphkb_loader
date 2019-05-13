@@ -61,7 +61,7 @@ const fetchArticlesByPmids = async (pmidListIn, url = PUBMED_API) => {
             .map(id => id.toString())
             .join(',');
 
-        logger.info(`loading: ${url}`);
+        logger.info(`loading: ${url}?db=pubmed`);
         const {result} = await requestWithRetry({
             method: 'GET',
             uri: url,
