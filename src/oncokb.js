@@ -3,12 +3,11 @@
  */
 const request = require('request-promise');
 const Ajv = require('ajv');
-const jsonpath = require('jsonpath');
 
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const {
-    preferredDiseases, preferredDrugs, rid, INTERNAL_SOURCE_NAME
+    preferredDiseases, preferredDrugs, rid, INTERNAL_SOURCE_NAME, checkSpec
 } = require('./util');
 const _pubmed = require('./pubmed');
 const _hgnc = require('./hgnc');
@@ -539,17 +538,12 @@ const processActionableRecords = async ({
     logger.info(`loaded ${recordsList.length} records`);
     const records = [];
     const pmidList = new Set();
-    for (const rawRecord of recordsList) {
-        if (!validateActionableRecordSpec(rawRecord)) {
-            logger.error(
-                `Spec Validation failed for actionable record #${
-                    validateActionableRecordSpec.errors[0].dataPath
-                } ${
-                    validateActionableRecordSpec.errors[0].message
-                } found ${
-                    jsonpath.query(rawRecord, `$${validateActionableRecordSpec.errors[0].dataPath}`)
-                }`
-            );
+    for (let i = 0; i < recordsList.length; i++) {
+        const rawRecord = recordsList[i];
+        try {
+            checkSpec(validateActionableRecordSpec, rawRecord, () => i);
+        } catch (err) {
+            logger.error(err);
             counts.error++;
             continue;
         }
@@ -612,17 +606,12 @@ const processAnnotatedRecords = async ({
     logger.info(`loaded ${recordsList.length} records`);
     const records = [];
     const pmidList = new Set();
-    for (const rawRecord of recordsList) {
-        if (!validateAnnotatedRecordSpec(rawRecord)) {
-            logger.error(
-                `Spec Validation failed for annotated record #${
-                    validateAnnotatedRecordSpec.errors[0].dataPath
-                } ${
-                    validateAnnotatedRecordSpec.errors[0].message
-                } found ${
-                    jsonpath.query(rawRecord, `$${validateAnnotatedRecordSpec.errors[0].dataPath}`)
-                }`
-            );
+    for (let i = 0; i < recordsList.length; i++) {
+        const rawRecord = recordsList[i];
+        try {
+            checkSpec(validateAnnotatedRecordSpec, rawRecord);
+        } catch (err) {
+            logger.error(err);
             counts.error++;
             continue;
         }
