@@ -295,6 +295,17 @@ const preferredDrugs = (term1, term2) => {
 };
 
 
+const preferredFeatures = (term1, term2) => {
+    const sourceRank = generateRanks([
+        'hgnc',
+        'entrez',
+        'ensembl',
+        'refseq'
+    ]);
+    return preferredSources(sourceRank, term1, term2);
+};
+
+
 const convertOwlGraphToJson = (graph, idParser = x => x) => {
     const initialRecords = {};
     for (const statement of graph.statements) {
@@ -421,6 +432,7 @@ module.exports = {
     preferredDiseases,
     preferredDrugs,
     preferredVocabulary,
+    preferredFeatures,
     loadDelimToJson,
     loadXmlToJson,
     ApiConnection,
