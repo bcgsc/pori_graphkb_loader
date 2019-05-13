@@ -27,14 +27,12 @@ const SOURCE_DEFN = {
  * Given an gene record retrieved from entrez, parse it into its equivalent
  * GraphKB representation
  */
-const parseGeneRecord = (record) => {
-    return {
-        sourceId: record.uid,
-        name: record.name,
-        biotype: 'gene',
-        description: record.description
-    };
-};
+const parseGeneRecord = record => ({
+    sourceId: record.uid,
+    name: record.name,
+    biotype: 'gene',
+    description: record.description
+});
 
 /**
  * Given some list of entrex Ids, fetch the minimal parsed aricle summaries
@@ -53,11 +51,11 @@ const fetchGenesByIds = async (geneIdListIn, url = API) => {
             .map(id => id.toString())
             .join(',');
 
-        logger.info(`loading: ${url}`);
+        logger.info(`loading: ${url}?db=gene&id=${geneIdString}`);
         const {result} = await requestWithRetry({
             method: 'GET',
             uri: url,
-            qs: Object.assign({id: geneIdString}, PUBMED_DEFAULT_QS),
+            qs: {...DEFAULT_QS, id: geneIdString},
             headers: {Accept: 'application/json'},
             json: true
         });
