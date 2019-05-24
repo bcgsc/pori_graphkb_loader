@@ -51,7 +51,8 @@ const SOURCE_DEFN = {
 const VOCABULARY_MAPPING = {
     'oncogenic mutations': 'oncogenic mutation',
     fusions: 'fusion',
-    'truncating mutations': 'truncating'
+    'truncating mutations': 'truncating',
+    'promoter Mutations': 'promoter mutation'
 };
 
 const DISEASE_MAPPING = {
