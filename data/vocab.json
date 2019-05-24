@@ -1114,6 +1114,14 @@
                 }
             ]
         },
+        "promoter mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "promoter variant"
+                }
+            ]
+        },
         "promoter variant": {
             "links": [
                 {
