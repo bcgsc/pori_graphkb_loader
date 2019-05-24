@@ -1,5 +1,0 @@
---reporter-options configFile=config/coverage.json
---reporter mocha-multi-reporters
---recursive
---exit
---timeout 100000

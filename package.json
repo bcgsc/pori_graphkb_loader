@@ -32,29 +32,18 @@
     "xml2js": "^0.4.19"
   },
   "devDependencies": {
-    "chai": "^3.5.0",
     "eslint": "^4.19.1",
     "eslint-config-airbnb": "^17.0.0",
     "eslint-plugin-import": "^2.13.0",
     "eslint-plugin-jsx-a11y": "^6.1.1",
-    "mocha": "^5.2.0",
-    "mocha-bamboo-reporter": "^1.1.2",
-    "mocha-multi-reporters": "^1.1.7",
-    "nodemon": "^1.18.11",
-    "nyc": "^11.9.0",
-    "qs": "^6.5.2",
-    "rewire": "^4.0.1"
-  },
-  "nyc": {
-    "reporter": [
-      "html",
-      "text",
-      "clover"
-    ]
+    "jest": "^24.8.0",
+    "jest-bamboo-formatter": "^1.0.1",
+    "jest-circus": "^24.8.0",
+    "jest-junit": "^6.4.0"
   },
   "scripts": {
     "start": "node --stack-size=8192  --max-old-space-size=20000 src/index.js",
-    "test": "NODE_ENV=test nyc mocha test",
+    "test": "NODE_ENV=test jest --config config/jest.config.js",
     "lint": "eslint -c .eslintrc.jon src test",
     "version": "echo $npm_package_version"
   }
