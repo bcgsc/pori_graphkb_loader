@@ -2,12 +2,12 @@ const parse = require('csv-parse/lib/sync');
 const fs = require('fs');
 const moment = require('moment');
 
-const {parse: variantParser} = require('@bcgsc/knowledgebase-parser').variant;
+const {variant: {parse: variantParser}, position: {Position}} = require('@bcgsc/knowledgebase-parser');
 
 const {logger} = require('./logging');
 const _pubmed = require('./pubmed');
 const {
-    preferredDiseases, rid, preferredDrugs, orderPreferredOntologyTerms
+    preferredDiseases, rid, preferredDrugs, preferredFeatures, INTERNAL_SOURCE_NAME, orderPreferredOntologyTerms
 } = require('./util');
 
 
@@ -53,6 +53,12 @@ const REMAPPED_COLUMNS = {
 };
 
 
+const THERAPY_MAPPING = {
+    'gamma secretase inhibitor': 'enzyme inhibitors: gamma secretase inhibitors',
+    'rapamycin (mtor inhibitor)': 'rapamycin'
+};
+
+
 const stripRefSeqVersion = (name) => {
     const match = /^(n[mpg]_\d+)\.\d+$/.exec(name);
     return match
@@ -60,8 +66,12 @@ const stripRefSeqVersion = (name) => {
         : name;
 };
 
-
-const assignRelevance = async (conn, record) => {
+/**
+ * Determine what the statement applies to based on its type, relevance, and context
+ *
+ * @returns {object} the record the statement applies to
+ */
+const extractAppliesTo = async (conn, record) => {
     const {
         statementType,
         appliesTo: appliesToInput,
@@ -87,7 +97,10 @@ const assignRelevance = async (conn, record) => {
             'response',
             'sensitivity'
         ].includes(relevance)) {
-            const drugName = appliesTo.toLowerCase().replace(/\binhibitors\b/, 'inhibitor');
+            let drugName = appliesTo.toLowerCase().replace(/\binhibitors\b/, 'inhibitor');
+            if (THERAPY_MAPPING[drugName]) {
+                drugName = THERAPY_MAPPING[drugName];
+            }
             return conn.getUniqueRecordBy({
                 endpoint: 'therapies',
                 where: {name: drugName, sourceId: drugName, or: 'sourceId,name'},
@@ -114,7 +127,7 @@ const assignRelevance = async (conn, record) => {
                             sourceId: name,
                             or: 'sourceId,name'
                         },
-                        sort: orderPreferredOntologyTerms
+                        sort: preferredFeatures
                     });
                 } if (!positional && reference1) {
                     return conn.getUniqueRecordBy({
@@ -124,7 +137,7 @@ const assignRelevance = async (conn, record) => {
                             sourceId: reference1,
                             or: 'sourceId,name'
                         },
-                        sort: orderPreferredOntologyTerms
+                        sort: preferredFeatures
                     });
                 }
                 try {
@@ -137,12 +150,11 @@ const assignRelevance = async (conn, record) => {
                                 sourceId: parsed.reference1,
                                 or: 'sourceId,name'
                             },
-                            sort: orderPreferredOntologyTerms
+                            sort: preferredFeatures
                         });
                     }
                 } catch (err) {
-                    logger.warn('unable to parse function change applies from variants');
-                    console.log(variants);
+                    logger.warn(`unable to parse applies to from variants ${variants}`);
                     throw err;
                 }
             } else {
@@ -177,7 +189,7 @@ const assignRelevance = async (conn, record) => {
                             sourceId: name,
                             or: 'sourceId,name'
                         },
-                        sort: orderPreferredOntologyTerms
+                        sort: preferredFeatures
                     });
                 }
             }
@@ -200,6 +212,20 @@ const assignRelevance = async (conn, record) => {
     throw new Error(`not implemented (relevance=${relevance}, statementType=${statementType}, disease=${disease || ''})`);
 };
 
+
+const extractRelevance = (record) => {
+    const {
+        statementType,
+        relevance: rawRelevance
+    } = record;
+
+    const relevance = rawRelevance.replace(/-/g, ' ').replace(/\binferred\b/, 'likely');
+
+    if (statementType === 'diagnostic' || statementType === 'prognostic') {
+        return statementType;
+    }
+    return relevance;
+};
 
 /**
  * @param {Object} db the orientjs database connection object
@@ -370,7 +396,12 @@ const convertDeprecatedSyntax = (string) => {
     }
     if (result.positional) {
         try {
-            variantParser(result.positional);
+            result.positional = variantParser(result.positional).toJSON();
+            for (const [key, value] of Object.entries(result.positional)) {
+                if (result.positional[key] instanceof Position) {
+                    result.positional[key] = value.toJSON();
+                }
+            }
         } catch (err) {
             logger.warn(`unable to parse syntax for ${string} from ${result.positional}`);
         }
@@ -463,14 +494,94 @@ const expandRecords = (jsonList) => {
 };
 
 
-const processRecord = async ({conn, record: inputRecord}) => {
+const processVariant = async (conn, variant) => {
+    const reference1 = rid(await conn.getUniqueRecordBy({
+        endpoint: 'features',
+        where: {
+            name: variant.reference1 || variant.positional.reference1,
+            sourceId: variant.reference1 || variant.positional.reference1,
+            or: 'sourceId,name'
+        },
+        sort: preferredFeatures
+    }));
+    let reference2 = null;
+
+    if (variant.reference2 || (variant.positional && variant.positional.reference2)) {
+        reference2 = rid(await conn.getUniqueRecordBy({
+            endpoint: 'features',
+            where: {
+                name: variant.reference2 || variant.positional.reference2,
+                sourceId: variant.reference2 || variant.positional.reference2,
+                or: 'sourceId,name'
+            },
+            sort: preferredFeatures
+        }));
+    }
+    const type = rid(await conn.getUniqueRecordBy({
+        endpoint: 'vocabulary',
+        where: {name: variant.type || variant.positional.type, source: {name: INTERNAL_SOURCE_NAME}},
+        sort: orderPreferredOntologyTerms
+    }));
+
+    if (variant.positional) {
+        const {
+            positional, noFeatures, multiFeature, prefix, ...content
+        } = {
+            ...variant, ...variant.positional, reference1, reference2, type
+        };
+        return conn.addRecord({
+            endpoint: 'positionalvariants',
+            content,
+            fetchConditions: {
+                germline: null,
+                reference2: null,
+                zygosity: null,
+                break1End: null,
+                break2Start: null,
+                break2End: null,
+                untemplatedSeq: null,
+                untemplatedSeqSize: null,
+                refSeq: null,
+                ...content
+            },
+            existsOk: true
+        });
+    }
+    return conn.addRecord({
+        endpoint: 'categoryvariants',
+        content: {
+            ...variant,
+            reference1,
+            reference2,
+            type
+        },
+        fetchConditions: {
+            germline: null,
+            zygosity: null,
+            ...variant,
+            reference1,
+            reference2,
+            type
+        },
+        existsOk: true
+    });
+};
+
+
+const processRecord = async ({conn, record: inputRecord, source}) => {
     const record = Object.assign({}, inputRecord, {variants: []});
+    const impliedBy = [];
+    const supportedBy = [];
+
     for (const variant of inputRecord.variants) {
         record.variants.push(convertDeprecatedSyntax(variant));
     }
-    // try to find the disease names in GraphKB
+    const variants = await Promise.all(record.variants.map(async variant => processVariant(conn, variant)));
+    for (const variant of variants) {
+        impliedBy.push({target: rid(variant)});
+    }
+    // try to find the disease name in GraphKB
     let disease;
-    /*
     if (record.disease) {
         try {
             disease = await conn.getUniqueRecordBy({
@@ -479,23 +590,39 @@ const processRecord = async ({conn, record: inputRecord}) => {
                 sort: preferredDiseases
             });
         } catch (err) {
-            logger.warn(`could not retrieve disease record (name=${record.disease})`);
             throw err;
         }
+        impliedBy.push({target: rid(disease)});
     }
+
     // check that the expected pubmedIds exist in the db
-    const supportedBy = [];
     for (const {sourceId, summary} of record.support) {
-        try {
-            const article = await _pubmed.fetchArticle(conn, sourceId);
-            supportedBy.push({target: rid(article), summary});
-        } catch (err) {
-            logger.warn(`failed to retrieve the pubmed article (sourceId=${sourceId})`);
-            throw err;
-        }
-    } */
-    // determine the relevance/appliesTo
-    const appliesTo = await assignRelevance(conn, record);
+        const article = await _pubmed.fetchArticle(conn, sourceId);
+        supportedBy.push({target: rid(article), summary});
+    }
+    // determine the appliesTo
+    const appliesTo = await extractAppliesTo(conn, record);
+
+    // determine the record relevance
+    const relevance = await conn.getUniqueRecordBy({
+        endpoint: 'vocabulary',
+        where: {name: extractRelevance(record), source: {name: INTERNAL_SOURCE_NAME}},
+        sort: orderPreferredOntologyTerms
+    });
+    // now create the statement
+    return conn.addRecord({
+        endpoint: 'statements',
+        content: {
+            appliesTo: rid(appliesTo),
+            relevance: rid(relevance),
+            supportedBy,
+            impliedBy,
+            source: rid(source),
+            sourceId: record.ident
+        },
+        existsOk: true,
+        fetchExisting: false
+    });
 };
 
 
@@ -555,16 +682,20 @@ const uploadFile = async ({filename, conn}) => {
     // await _pubmed.uploadArticlesByPmid(conn, Array.from(pubmedIdList));
 
     for (const record of records) {
+        logger.info(`processing ${record.ident}`);
         users[record.createdBy] = (users[record.createdBy] || 0) + 1;
         if (record.history) {
             counts.history++;
         }
         try {
-            await processRecord({conn, record});
+            await processRecord({conn, record, source});
             counts.success++;
         } catch (err) {
-            logger.error(record.ident);
-            logger.error(err.message);
+            const error = err.error || err;
+            logger.error(error);
+            if (error.message.includes('is not a function')) {
+                console.error(error);
+            }
             counts.error++;
         }
     }
