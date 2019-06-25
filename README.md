@@ -24,6 +24,7 @@ If loaded in order, some modules will link to one another.
   - [DrugBank](#drugbank)
   - [Ensembl](#ensembl)
   - [FDA](#fda)
+  - [GSC Therapeutic Ontology](#gsc-therapeutic-ontology)
   - [HGNC](#hgnc)
   - [NCIT](#ncit)
   - [Oncotree](#oncotree)
@@ -209,7 +210,7 @@ npm start -- --diseaseOntology doid.json
 | Usage           | https://www.drugbank.ca/legal/terms_of_use                         |
 | Example         | https://www.drugbank.ca/releases/5-1-1/downloads/all-full-database |
 | Format          | XML                                                                |
-| CrossReferences | [FDA](#fda)                                                        |
+| CrossReferences | [FDA](#fda); `CHEMBL (API)`; [HGNC (API)](#hgnc)                   |
 
 ```bash
 npm start -- --drugbank data.xml
@@ -267,6 +268,24 @@ npm start -- --fda UNII_Records_25Oct2018.txt
 
 
 ---
+
+### GSC Therapeutic Ontology
+
+|                 |                                                                                                |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| About           | https://www.bcgsc.ca/jira/browse/KBDEV-496                                                     |
+| Usage           |                                                                                                |
+| Example         | https://www.bcgsc.ca/jira/secure/attachment/168215/Drug_ontology_drugbank_IDs_draft_190507.txt |
+| Format          | Tab delimited                                                                                  |
+| CrossReferences | [Drugbank](#drugbank)                                                                          |
+
+```bash
+npm start -- --drugOntology drug_ontology.txt
+```
+
+
+---
+
 
 ### HGNC
 
