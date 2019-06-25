@@ -226,7 +226,7 @@ npm start -- --drugbank data.xml
 | Usage           | https://uswest.ensembl.org/info/about/legal/disclaimer.html |
 | Example         |                                                             |
 | Format          | Tab delimited                                               |
-| CrossReferences | [RefSeq](#refseq), [HGNC](#hgnc)                            |
+| CrossReferences | [RefSeq](#refseq), [HGNC (API)](#hgnc)                      |
 
 This requires a BioMart Export with the minimum following columns included
 
@@ -329,7 +329,7 @@ npm start -- --oncotree
 | Usage           | https://www.ncbi.nlm.nih.gov/home/about/policies                  |
 | Example         | ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene |
 | Format          | Tab delimited                                                     |
-| CrossReferences | [HGNC](#hgnc)                                                     |
+| CrossReferences | [HGNC (API)](#hgnc)                                               |
 
 
 ```bash
