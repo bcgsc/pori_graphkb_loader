@@ -7,7 +7,7 @@ must already be running. Then the command line interface can be used for upload.
 detailing the commands and required inputs as follows
 
 ```bash
-npm run import -- --help
+npm start -- --help
 ```
 
 If loaded in order, some modules will link to one another.
@@ -52,7 +52,7 @@ If loaded in order, some modules will link to one another.
 Clone the repository
 
 ```bash
-git clone https://svn.bcgsc.ca/bitbucket/scm/vdb/knowledgebase_api.git
+git clone https://svn.bcgsc.ca/bitbucket/scm/dat/knowledgebase_importer.git
 cd knowledgebase_importer
 git checkout develop
 ```
@@ -146,7 +146,7 @@ the ontology term
 Once this file has been built it can be loaded as follows. The script will create records if they do not already exist. Any conflicts will be reported in the logging
 
 ```bash
-npm run import -- --ontology /path/to/json/file
+npm start -- --ontology /path/to/json/file
 ```
 
 
@@ -174,7 +174,7 @@ the expected file, follow the steps below
  * Upload the file to GraphKB using this module
 
 ```bash
-npm run import -- --clinicaltrialsgov download.xml
+npm start -- --clinicaltrialsgov download.xml
 ```
 
 
@@ -195,7 +195,7 @@ The disease ontology releases their data dumps as both XML and JSON from thei gi
 Once downloaded the JSON file can be loaded as follows
 
 ```bash
-npm run import -- --diseaseOntology doid.json
+npm start -- --diseaseOntology doid.json
 ```
 
 
@@ -212,7 +212,7 @@ npm run import -- --diseaseOntology doid.json
 | CrossReferences | [FDA](#fda)                                                        |
 
 ```bash
-npm run import -- --drugbank data.xml
+npm start -- --drugbank data.xml
 ```
 
 
@@ -245,7 +245,7 @@ This requires a BioMart Export with the minimum following columns included
 - Source of gene name
 
 ```bash
-npm run import -- --ensembl ensembl_mart_export.tab
+npm start -- --ensembl ensembl_mart_export.tab
 ```
 
 
@@ -262,7 +262,7 @@ npm run import -- --ensembl ensembl_mart_export.tab
 | CrossReferences | [NCIT](#ncit)                                                                                                        |
 
 ```bash
-npm run import -- --fda UNII_Records_25Oct2018.txt
+npm start -- --fda UNII_Records_25Oct2018.txt
 ```
 
 
@@ -276,10 +276,10 @@ npm run import -- --fda UNII_Records_25Oct2018.txt
 | Usage           | https://www.ebi.ac.uk/about/terms-of-use                                                        |
 | Example         | ftp://ftp.ebi.ac.uk/pub/databases/genenames/new/json/locus_types/gene_with_protein_product.json |
 | Format          | JSON                                                                                            |
-| CrossReferences | [Ensembl](#ensembl)                                                                             |
+| CrossReferences | [Ensembl](#ensembl);  `Entrez Gene (API)`                                                       |
 
 ```bash
-npm run import -- --hgnc hgnc_complete_set.json
+npm start -- --hgnc hgnc_complete_set.json
 ```
 
 
@@ -296,7 +296,7 @@ npm run import -- --hgnc hgnc_complete_set.json
 | CrossReferences | [FDA](#fda)                                                        |
 
 ```bash
-npm run import -- --ncit Thesaurus_18.06d.OWL
+npm start -- --ncit Thesaurus_18.06d.OWL
 ```
 
 
@@ -315,7 +315,7 @@ npm run import -- --ncit Thesaurus_18.06d.OWL
 This importer pulls all versions of Oncotree directly from the Oncotree API and links them together
 
 ```bash
-npm run import -- --oncotree
+npm start -- --oncotree
 ```
 
 
@@ -333,7 +333,7 @@ npm run import -- --oncotree
 
 
 ```bash
-npm run import -- --refseq LRG_RefSeqGene.tab
+npm start -- --refseq LRG_RefSeqGene.tab
 ```
 
 
@@ -350,7 +350,7 @@ npm run import -- --refseq LRG_RefSeqGene.tab
 | CrossReferences |                                                                                            |
 
 ```bash
-npm run import -- --sequenceOntology so-simple.owl
+npm start -- --sequenceOntology so-simple.owl
 ```
 
 
@@ -368,7 +368,7 @@ npm run import -- --sequenceOntology so-simple.owl
 | CrossReferences | [NCIT](#ncit)                                                        |
 
 ```bash
-npm run import -- --uberon uberon.owl
+npm start -- --uberon uberon.owl
 ```
 
 
@@ -385,7 +385,7 @@ npm run import -- --uberon uberon.owl
 | CrossReferences |                                                           |
 
 ```bash
-npm run import -- --vario vario.owl
+npm start -- --vario vario.owl
 ```
 
 
@@ -406,7 +406,7 @@ Import the Clinical Evidence summaries from the public Civic database
 | Format  | REST (JSON)                                       |
 
 ```bash
-npm run import -- --civic
+npm start -- --civic
 ```
 
 
@@ -446,7 +446,7 @@ Expects column names like
 
 
 ```bash
-npm run import -- --cosmic CosmicResistanceMutations.tsv
+npm start -- --cosmic CosmicResistanceMutations.tsv
 ```
 
 
@@ -462,7 +462,7 @@ npm run import -- --cosmic CosmicResistanceMutations.tsv
 | Format  | REST (JSON)                |
 
 ```bash
-npm run import -- --docm
+npm start -- --docm
 ```
 
 
@@ -481,5 +481,5 @@ This module pulls directly from the OncoKB API to import statements from OncoKB 
 
 
 ```bash
-npm run import -- --oncokb
+npm start -- --oncokb
 ```
