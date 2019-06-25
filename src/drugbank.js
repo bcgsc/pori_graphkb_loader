@@ -320,8 +320,6 @@ const uploadFile = async ({filename, conn}) => {
     }
     const counts = {success: 0, error: 0, skipped: 0};
 
-    const records = [];
-
     const parseXML = new Promise((resolve) => {
         logger.log('info', `loading XML data from ${filename}`);
         const stream = fs.createReadStream(filename);
@@ -340,23 +338,14 @@ const uploadFile = async ({filename, conn}) => {
             xml.pause();
             processRecord({
                 conn, sources: {current: source, fda: fdaSource}, drug: item, ATC
-            }).then((record) => {
-                if (record) {
-                    counts.success++;
-                } else {
-                    counts.skipped++;
-                }
+            }).then(() => {
+                counts.success++;
                 xml.resume();
             }).catch((err) => {
                 let label;
                 try {
                     label = getDrugBankId(item);
                 } catch (err) {}  // eslint-disable-line
-                records.push(item);
-                if (records.length === 5) {
-                    console.log('write drugbank.json');
-                    fs.writeFileSync('drugbank.json', JSON.stringify({records}, null, 2));
-                }
                 counts.error++;
                 logger.error(err);
                 logger.error(`Unable to process record ${label}`);
