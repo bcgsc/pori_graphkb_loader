@@ -9,9 +9,13 @@ const {rid} = require('./util');
 const {logger} = require('./logging');
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
-const SOURCE_NAME = 'oncotree';
 
 const CURRENT_VERSION_ID = 'oncotree_latest_stable';
+
+const SOURCE_DEFN = {
+    name: 'oncotree',
+    url: 'http://oncotree.mskcc.org'
+};
 
 
 class OncotreeAPI {
@@ -183,12 +187,9 @@ const upload = async (opt) => {
 
     const source = await conn.addRecord({
         endpoint: 'sources',
-        content: {
-            name: SOURCE_NAME,
-            url: ONCOTREE_API
-        },
+        content: SOURCE_DEFN,
         existsOk: true,
-        fetchConditions: {name: SOURCE_NAME}
+        fetchConditions: SOURCE_DEFN
     });
 
     let ncitSource;
@@ -270,4 +271,6 @@ const upload = async (opt) => {
 };
 
 
-module.exports = {upload, OncotreeAPI, dependencies: ['ncit']};
+module.exports = {
+    upload, OncotreeAPI, dependencies: ['ncit'], SOURCE_DEFN
+};
