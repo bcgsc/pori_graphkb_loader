@@ -390,12 +390,13 @@ const processActionableRecord = async (opt) => {
     await conn.addRecord({
         endpoint: 'statements',
         content: {
-            impliedBy: [{target: rid(variant)}, {target: rid(disease)}],
-            supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(oncokb), level: rid(level)})),
+            impliedBy: [rid(variant), rid(disease)],
+            supportedBy: publications.map(rid),
             relevance: rid(relevance),
             appliesTo: rid(drug),
             source: rid(oncokb),
-            reviewStatus: 'not required'
+            reviewStatus: 'not required',
+            evidenceLevel: rid(level)
         },
         existsOk: true,
         fetchExisting: false
@@ -431,9 +432,9 @@ const processAnnotatedRecord = async (opt) => {
         throw new Error(`unable to find vocabulary terms: ${rawRecord.mutationEffect} or ${rawRecord.oncogenicity}`);
     }
     // make the actual functional statement
-    const impliedBy = [{target: rid(variant)}];
+    const impliedBy = [rid(variant)];
     if (disease) {
-        impliedBy.push({target: rid(disease)});
+        impliedBy.push(rid(disease));
     }
     // find/add the publications
     const publications = await Promise.all(
@@ -449,7 +450,7 @@ const processAnnotatedRecord = async (opt) => {
             endpoint: 'statements',
             content: {
                 impliedBy,
-                supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(oncokb)})),
+                supportedBy: publications.map(rid),
                 relevance: rid(relevance1),
                 appliesTo: rid(variant.reference1),
                 source: rid(oncokb),
@@ -466,7 +467,7 @@ const processAnnotatedRecord = async (opt) => {
             endpoint: 'statements',
             content: {
                 impliedBy,
-                supportedBy: Array.from(publications, x => ({target: rid(x), source: rid(oncokb)})),
+                supportedBy: publications.map(rid),
                 relevance: rid(relevance2),
                 appliesTo: null,
                 source: rid(oncokb),

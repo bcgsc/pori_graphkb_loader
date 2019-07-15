@@ -462,12 +462,12 @@ const processEvidenceRecord = async (opt) => {
         relevance: rid(relevance),
         source: rid(sources.civic),
         reviewStatus: 'not required',
-        sourceId: rawRecord.id
+        sourceId: rawRecord.id,
+        evidenceLevel: rid(level),
+        supportedBy: [rid(publication)],
+        impliedBy: [rid(variant)],
+        description: rawRecord.description
     };
-
-    content.supportedBy = [{target: rid(publication), source: rid(sources.civic), level: rid(level)}];
-    content.impliedBy = [{target: rid(variant)}];
-    content.description = rawRecord.description;
     // create the statement and connecting edges
     if (!['Diagnostic', 'Predictive', 'Prognostic', 'Predisposing'].includes(rawRecord.evidence_type)) {
         throw new Error(`Unable to make statement (evidence_type=${rawRecord.evidence_type})`);
@@ -475,7 +475,7 @@ const processEvidenceRecord = async (opt) => {
     if (rawRecord.evidence_type === 'Diagnostic' || rawRecord.evidence_type === 'Predisposing') {
         content.appliesTo = rid(disease);
     } else {
-        content.impliedBy.push({target: rid(disease)});
+        content.impliedBy.push(rid(disease));
     }
 
     if (rawRecord.evidence_type === 'Predictive' && drug) {

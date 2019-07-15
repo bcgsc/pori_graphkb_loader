@@ -133,8 +133,8 @@ const processCosmicRecord = async (conn, record, source) => {
         content: {
             relevance,
             appliesTo: drug,
-            impliedBy: [{target: variantId}, {target: rid(disease)}],
-            supportedBy: [{target: rid(record.publication), source}],
+            impliedBy: [variantId, rid(disease)],
+            supportedBy: [rid(record.publication)],
             source: rid(source),
             reviewStatus: 'not required',
             sourceId: getRecordId(record)

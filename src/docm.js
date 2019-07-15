@@ -141,8 +141,8 @@ const processRecord = async (opt) => {
             await conn.addRecord({
                 endpoint: 'statements',
                 content: {
-                    impliedBy: [{target: rid(disease)}, {target: rid(variant)}],
-                    supportedBy: [{target: rid(publication), source: rid(source)}],
+                    impliedBy: [rid(disease), rid(variant)],
+                    supportedBy: [rid(publication)],
                     relevance: rid(relevance),
                     appliesTo: rid(disease),
                     source: rid(source),

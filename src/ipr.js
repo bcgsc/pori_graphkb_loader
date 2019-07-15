@@ -592,7 +592,7 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
             .map(async variant => processVariant(conn, variant))
     );
     for (const variant of variants) {
-        impliedBy.push({target: rid(variant)});
+        impliedBy.push(rid(variant));
     }
     // try to find the disease name in GraphKB
     let disease;
@@ -606,13 +606,13 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         } catch (err) {
             throw err;
         }
-        impliedBy.push({target: rid(disease)});
+        impliedBy.push(rid(disease));
     }
 
     // check that the expected pubmedIds exist in the db
-    for (const {sourceId, summary} of record.support) {
+    for (const {sourceId} of record.support) {
         const article = await _pubmed.fetchArticle(conn, sourceId);
-        supportedBy.push({target: rid(article), summary});
+        supportedBy.push(rid(article));
     }
     // determine the appliesTo
     const appliesTo = await extractAppliesTo(conn, record, source);
