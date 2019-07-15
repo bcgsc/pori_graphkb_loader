@@ -51,7 +51,6 @@ const validateSpec = ajv.compile({
             type: 'object',
             additionalProperties: {
                 type: 'object',
-                minProperties: 1,
                 properties: {
                     name: {type: 'string'},
                     sourceIdVersion: {type: 'string'},
@@ -82,13 +81,10 @@ const validateSpec = ajv.compile({
  * Upload the JSON ontology file
  *
  * @param {object} opt
- * @param {string} opt.filename the path to the JSON input file
+ * @param {string} opt.data the JSON data to be loaded
  * @param {ApiConnection} opt.conn the graphKB api connection
  */
-const uploadFile = async ({filename, conn}) => {
-    logger.log('info', `reading: ${filename}`);
-    const data = JSON.parse(fs.readFileSync(filename));
-
+const uploadFromJSON = async ({data, conn}) => {
     const counts = {success: 0, errors: 0, skipped: 0};
     // validate that it follows the expected pattern
     if (!validateSpec(data)) {
@@ -186,4 +182,19 @@ const uploadFile = async ({filename, conn}) => {
 };
 
 
-module.exports = {uploadFile};
+/**
+ * Upload the JSON ontology file
+ *
+ * @param {object} opt
+ * @param {string} opt.filename the path to the JSON input file
+ * @param {ApiConnection} opt.conn the graphKB api connection
+ */
+const uploadFile = async ({filename, conn}) => {
+    logger.log('info', `reading: ${filename}`);
+    const data = JSON.parse(fs.readFileSync(filename));
+
+    await uploadFromJSON({data, conn});
+};
+
+
+module.exports = {uploadFile, uploadFromJSON};
