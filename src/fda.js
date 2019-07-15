@@ -33,21 +33,28 @@ const uploadFile = async (opt) => {
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
     });
-    let ncitSource;
+    // only load FDA records if we have already loaded NCIT
     try {
-        ncitSource = await api.getUniqueRecordBy({
+        await api.getUniqueRecordBy({
             endpoint: 'sources',
-            where: {name: 'NCIT'}
+            where: {name: ncitSourceName}
         });
     } catch (err) {
         logger.error('Cannot link to NCIT, Unable to find source record');
         throw err;
     }
+    const counts = {success: 0, error: 0, skip: 0};
+
     logger.info(`loading ${jsonList.length} records`);
-    let skipCount = 0;
-    for (const record of jsonList) {
-        if (!record.PT.length || !record.UNII.length || !record.PT.trim().toLowerCase()) {
-            skipCount++;
+
+    for (let i = 0; i < jsonList.length; i++) {
+        const record = jsonList[i];
+        if (!record.PT.length
+            || !record.UNII.length
+            || !record.PT.trim().toLowerCase()
+            || !record.NCIT
+        ) {
+            counts.skip++;
             continue;
         }
         const name = record.PT.trim().toLowerCase();
@@ -71,29 +78,17 @@ const uploadFile = async (opt) => {
                 content: {name, sourceId: record.UNII, source: rid(source)},
                 existsOk: true
             });
+            await api.addRecord({
+                endpoint: 'crossreferenceof',
+                content: {source: rid(source), out: rid(drug), in: rid(ncitRec)},
+                existsOk: true,
+                fetchExisting: false
+            });
+            counts.success++;
         } catch (err) {
             counts.error++;
             logger.error(err);
             continue;
-        }
-        if (ncitSource && record.NCIT.length) {
-            let ncitRec;
-            try {
-                ncitRec = await api.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {source: {name: 'ncit'}, sourceId: record.NCIT},
-                    sort: orderPreferredOntologyTerms
-                });
-            } catch (err) {
-                logger.log('error', `failed cross-linking from ${name} to ${record.NCIT}`);
-            }
-            if (ncitRec) {
-                await api.addRecord({
-                    endpoint: 'aliasof',
-                    content: {source: rid(source), out: rid(drug), in: rid(ncitRec)},
-                    existsOk: true
-                });
-            }
         }
     }
     logger.info(JSON.stringify(counts));
