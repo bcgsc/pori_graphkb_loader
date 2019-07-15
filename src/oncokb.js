@@ -282,12 +282,10 @@ const processVariant = async (opt) => {
         }
     }
 
-    variant = await conn.addRecord({
+    variant = await conn.addVariant({
         endpoint: variantUrl,
         content: variant,
-        existsOk: true,
-        fetchConditions: Object.assign(defaults, variant),
-        fetchExisting: true
+        existsOk: true
     });
 
     return variant;

@@ -196,6 +196,36 @@ class ApiConnection {
             throw err;
         }
     }
+
+    async addVariant(opt) {
+        const {
+            content,
+            endpoint
+        } = opt;
+        const fetchConditions = {
+            zygosity: null,
+            germline: null,
+            reference2: null
+        };
+
+        if (endpoint === 'positionalvariants') {
+            Object.assign(fetchConditions, {
+                untemplatedSeq: null,
+                refSeq: null,
+                break1Repr: null,
+                break2Repr: null,
+                truncation: null
+            });
+        }
+        const {
+            break1Start, break1End, break2Start, break2End, ...rest
+        } = content;
+
+        return this.addRecord({
+            ...opt,
+            fetchConditions: {...fetchConditions, ...rest}
+        });
+    }
 }
 
 

@@ -363,15 +363,10 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
         if (reference2) {
             body.reference2 = rid(reference2);
         }
-        const variant = await conn.addRecord({
+        const variant = await conn.addVariant({
             endpoint: 'categoryvariants',
             content: body,
-            existsOk: true,
-            fetchConditions: Object.assign({
-                zygosity: null,
-                reference2: null,
-                germline: null
-            }, body)
+            existsOk: true
         });
         return variant;
     } catch (err) {
@@ -396,17 +391,10 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
         if (reference2) {
             parsed.reference2 = rid(reference2);
         }
-        const variant = await conn.addRecord({
+        const variant = await conn.addVariant({
             endpoint: 'positionalvariants',
             content: parsed,
-            existsOk: true,
-            fetchConditions: Object.assign({
-                germline: null,
-                zygosity: null,
-                reference2: null,
-                break2Repr: null,
-                untemplatedSeq: null
-            }, parsed)
+            existsOk: true
         });
         return variant;
     }

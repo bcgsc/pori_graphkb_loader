@@ -529,35 +529,21 @@ const processVariant = async (conn, variant) => {
         } = {
             ...variant, ...variant.positional, reference1, reference2, type
         };
-        return conn.addRecord({
+
+        // default genomic variants to hg19 when not given
+        if (content.break1Repr.startsWith('g.') && !content.assembly) {
+            content.assembly = DEFAULT_ASSEMBLY;
+        }
+
+        return conn.addVariant({
             endpoint: 'positionalvariants',
             content,
-            fetchConditions: {
-                germline: null,
-                reference2: null,
-                zygosity: null,
-                break1End: null,
-                break2Start: null,
-                break2End: null,
-                untemplatedSeq: null,
-                untemplatedSeqSize: null,
-                refSeq: null,
-                ...content
-            },
             existsOk: true
         });
     }
-    return conn.addRecord({
+    return conn.addVariant({
         endpoint: 'categoryvariants',
         content: {
-            ...variant,
-            reference1,
-            reference2,
-            type
-        },
-        fetchConditions: {
-            germline: null,
-            zygosity: null,
             ...variant,
             reference1,
             reference2,
@@ -576,7 +562,11 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
     for (const variant of inputRecord.variants) {
         record.variants.push(convertDeprecatedSyntax(variant));
     }
-    const variants = await Promise.all(record.variants.map(async variant => processVariant(conn, variant)));
+    const variants = await Promise.all(
+        record.variants
+            .filter(v => !v.isFeature)
+            .map(async variant => processVariant(conn, variant))
+    );
     for (const variant of variants) {
         impliedBy.push({target: rid(variant)});
     }
