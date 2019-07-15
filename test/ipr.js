@@ -13,6 +13,28 @@ describe('convertDeprecatedSyntax', () => {
         const result = convertDeprecatedSyntax('SV_e.fusion(?,RET)(?,?)');
         expect(result).toEqual({type: 'fusion', reference1: 'ret'});
     });
+    test('CNV_12:y.q13_q14copygain_na', () => {
+        const result = convertDeprecatedSyntax('CNV_12:y.q13_q14copygain_na');
+        const parsed = {
+            break1Repr: 'y.q13',
+            break1Start: {
+                '@class': 'CytobandPosition',
+                arm: 'q',
+                majorBand: 13
+            },
+            break2Start: {
+                '@class': 'CytobandPosition',
+                arm: 'q',
+                majorBand: 14
+            },
+            break2Repr: 'y.q14',
+            reference1: '12',
+            type: 'copy gain'
+        };
+        expect(result).toEqual({
+            positional: parsed
+        });
+    });
     test('fusion with specific exons', () => {
         const result = convertDeprecatedSyntax('(CLTC,ALK):fusion(e.31,e.20)');
         const parsed = {
