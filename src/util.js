@@ -5,7 +5,6 @@
 const request = require('request-promise');
 const jc = require('json-cycle');
 const fs = require('fs');
-const _ = require('lodash');
 const parse = require('csv-parse/lib/sync');
 const xml2js = require('xml2js');
 const jwt = require('jsonwebtoken');
