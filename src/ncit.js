@@ -5,165 +5,66 @@
  * Additionally node v10 is required since the string size is too small in previous versions
  * @module importer/ncit
  */
-
-const rdf = require('rdflib');
-const fs = require('fs');
-const _ = require('lodash');
-
-
 const {
-    convertOwlGraphToJson, rid
+    loadDelimToJson, rid
 } = require('./util');
 const {logger} = require('./logging');
 
-const ROOT_NODES = {
-    AGONIST: 'c1514',
-    CHEM_MOD: 'c1932',
-    PHARMA: 'c1909',
-    DISEASE: 'c2991',
-    ANATOMY: 'c12219'
-};
-
-const PREDICATES = {
-    LABEL: 'http://www.w3.org/2000/01/rdf-schema#label',
-    CODE: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#NHC0',
-    DESCRIPTION: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P97',
-    SUBSETOF: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#A8',
-    SYNONYM: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P90',
-    HASPARENT: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#A11',
-    SUBCLASSOF: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
-    DEPRECATED: 'http://www.w3.org/2002/07/owl#deprecated',
-    UNII: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P319',
-    CLASS: 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#P106'
-};
-
 const SOURCE_DEFN = {
-    url: 'https://github.com/NCI-Thesaurus/thesaurus-obo-edition',
+    url: 'https://ncit.nci.nih.gov/ncitbrowser',
     usage: 'https://creativecommons.org/licenses/by/4.0',
     name: 'ncit',
     description: 'NCI Thesaurus (NCIt) provides reference terminology for many NCI and other systems. It covers vocabulary for clinical care, translational and basic research, and public information and administrative activities.'
 };
 
-/**
- * Parse the ID from a url
- *
- * @param {string} url the url to be parsed
- * @returns {string} the ID
- * @throws {Error} the ID did not match the expected format
- */
-const parseNcitID = (url) => {
-    const match = /.*#(C\d+)$/.exec(url);
-    if (match) {
-        return `${match[1].toLowerCase()}`;
+const diseaseConcepts = [
+    'Disease or Syndrome',
+    'Anatomical Abnormality',
+    'Mental or Behavioral Dysfunction',
+    'Congenital Abnormality'
+];
+
+const anatomyConcepts = ['Anatomical Structure',
+    'Body Part, Organ, or Organ Component',
+    'Tissue',
+    'Body Location or Region'
+];
+
+const therapeuticConcepts = [
+    'Pharmacologic Substance',
+    'Therapeutic or Preventive Procedure',
+    'Immunologic Factor',
+    'Antibiotic',
+    'Organic Chemical',
+    'Inorganic Chemical',
+    'Biologically Active Substance'
+];
+
+const DEPRECATED = [
+    'C61063', // obsolete concept
+    'C85834' // retired concept
+];
+
+
+const pickEndpoint = (conceptName) => {
+    let endpoint = null;
+    if (anatomyConcepts.some(term => conceptName.includes(term))) {
+        endpoint = 'anatomicalentities';
     }
-    throw new Error(`failed to parse: ${url}`);
-};
-
-
-const subclassTree = (nodesByCode, roots) => {
-    const queue = roots.filter(x => x !== undefined);
-    const subtree = {};
-    const subclassEdges = [];
-
-    while (queue.length > 0) {
-        const currNode = queue.shift();
-        subtree[currNode.code] = currNode;
-        for (const childCode of currNode.subclasses || []) {
-            queue.push(nodesByCode[childCode]);
-            subclassEdges.push({tgt: currNode.code, src: childCode});
+    if (diseaseConcepts.some(term => conceptName.includes(term))) {
+        if (endpoint) {
+            throw Error(`Concept must be in a discrete category (${conceptName})`);
         }
+        endpoint = 'diseases';
     }
-    return {edges: subclassEdges, tree: subtree};
-};
-
-
-/**
- * Given some list of OWL records, convert to json format and upload to KB through the API
- *
- * @param inputRecords
- * @param dbClassName
- * @param {ApiConnection} conn
- */
-const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource) => {
-    const records = {};
-    logger.info(`loading ${Object.keys(inputRecords).length} ${dbClassName} nodes`);
-    for (const node of Object.values(inputRecords)) {
-        if (!node[PREDICATES.CODE] || !node[PREDICATES.LABEL]) { // do not include anything that does not have at minimum these values
-            continue;
+    if (therapeuticConcepts.some(term => conceptName.includes(term))) {
+        if (endpoint) {
+            throw Error(`Concept must be in a discrete category (${conceptName})`);
         }
-        const body = {
-            source: rid(source),
-            name: node[PREDICATES.LABEL][0],
-            sourceId: node.code
-        };
-        if (node[PREDICATES.DESCRIPTION]) {
-            body.description = node[PREDICATES.DESCRIPTION][0];
-        }
-        if (node[PREDICATES.SUBSETOF]) {
-            body.subsets = node[PREDICATES.SUBSETOF];
-        }
-        if (node[PREDICATES.DEPRECATED] && node[PREDICATES.DEPRECATED][0] === 'true') {
-            body.deprecated = true;
-        }
-        const dbEntry = await conn.addRecord({
-            endpoint: dbClassName,
-            content: body,
-            existsOk: true,
-            fetchConditions: _.omit(body, ['subsets', 'description'])
-        });
-        if (records[dbEntry.sourceId]) { // already dealt with this record
-            continue;
-        }
-        // add the aliasof links
-        for (const alias of node[PREDICATES.SYNONYM] || []) {
-            const aliasBody = {
-                source: rid(source),
-                sourceId: node.code,
-                dependency: rid(dbEntry),
-                name: alias
-            };
-            try {
-                const aliasRecord = await conn.addRecord({
-                    endpoint: dbClassName,
-                    content: aliasBody,
-                    existsOk: true,
-                    fetchConditions: _.omit(aliasBody, ['dependency'])
-                });
-                await conn.addRecord({
-                    endpoint: 'aliasof',
-                    content: {source: rid(source), out: rid(aliasRecord), in: rid(dbEntry)},
-                    existsOk: true,
-                    fetchExisting: false
-                });
-            } catch (err) {
-                logger.log('warn', `Unable to alias record ${body.sourceId} to ${aliasBody.sourceId}`);
-            }
-        }
-        // add the link to the FDA
-        if (fdaSource && node[PREDICATES.FDA] && node[PREDICATES.FDA].length) {
-            let fdaRec;
-            try {
-                fdaRec = await conn.getUniqueRecordBy({
-                    endpoint: dbClassName,
-                    content: {source: rid(fdaSource), name: node[PREDICATES.FDA][0]}
-                });
-            } catch (err) {
-                logger.log('warn', `Unable to cross-reference record ${body.sourceId} to fda record ${node[PREDICATES.FDA][0]}`);
-            }
-            if (fdaRec) {
-                await conn.addRecord({
-                    endpoint: 'crossreferenceof',
-                    content: {source: rid(source), out: rid(dbEntry), in: rid(fdaRec)},
-                    existsOk: true,
-                    fetchExisting: false
-                });
-            }
-        }
-        records[dbEntry.sourceId] = dbEntry;
+        endpoint = 'therapies';
     }
-    return records;
+    return endpoint;
 };
-
 
 /**
  * Given the path to some NCIT OWL file, upload the parsed ontology records
@@ -175,83 +76,148 @@ const createRecords = async (inputRecords, dbClassName, conn, source, fdaSource)
 const uploadFile = async ({filename, conn}) => {
     logger.info('Loading external NCIT data');
     logger.info(`loading: ${filename}`);
-    const content = fs.readFileSync(filename).toString();
-    logger.info(`parsing: ${filename}`);
-    const graph = rdf.graph();
-    rdf.parse(content, graph, 'http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl', 'application/rdf+xml');
-    const nodesByCode = convertOwlGraphToJson(graph, parseNcitID);
+    const rows = await loadDelimToJson(filename, '\t', [
+        'id',
+        'xmlTag',
+        'parents',
+        'synonyms',
+        'definition',
+        'name',
+        'conceptStatus',
+        'semanticType'
+    ]);
 
-    const source = await conn.addRecord({
+    const source = rid(await conn.addRecord({
         endpoint: 'sources',
         content: SOURCE_DEFN,
         fetchConditions: {name: SOURCE_DEFN.name},
         existsOk: true
-    });
-    let fdaSource;
-    try {
-        fdaSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            content: {name: 'fda'}
-        });
-    } catch (err) {
-        logger.log('warn', 'cannot find fda source record. Will not be able to load cross-references');
-    }
+    }));
+    const recordsById = {};
+    const subclass = [];
+    const rawRecords = {};
 
-    // for the given source nodes, include all descendents Has_NICHD_Parentdants/subclasses
-    for (const node of Object.values(nodesByCode)) {
-        for (const parentCode of node[PREDICATES.SUBCLASSOF] || []) {
-            if (!nodesByCode[parentCode]) {
+    const counts = {skip: 0, success: 0, error: 0};
+    const skippedWhy = {};
+
+    for (let i = 0; i < rows.length; i++) {
+        try {
+            const row = rows[i];
+            const sourceId = row.id.toLowerCase().trim();
+            if (recordsById[sourceId]) {
+                throw new Error(`code is not unique (${sourceId})`);
+            }
+            rawRecords[sourceId] = row;
+            const endpoint = pickEndpoint(row.semanticType);
+            if (!endpoint) {
+                skippedWhy[sourceId] = `semantic type (${row.semanticType})`;
+                counts.skip++;
                 continue;
             }
-            if (!nodesByCode[parentCode].subclasses) {
-                nodesByCode[parentCode].subclasses = [];
+            // use the synonym name if no name given
+            const synonyms = row.synonyms.split('|')
+                .map(s => s.toLowerCase().trim())
+                .filter(s => s);
+
+            if (!row.name) {
+                if (synonyms.length < 1) {
+                    counts.skip++;
+                    skippedWhy[sourceId] = 'no name';
+                    continue;
+                }
+                synonyms.sort();
+                row.name = synonyms[0];
+            } else {
+                // if there is multiple names, demote the extra to synonyms
+                const names = row.name.split('|')
+                    .map(s => s.toLowerCase().trim())
+                    .filter(s => s);
+                names.sort();
+                row.name = names[0];
+                synonyms.push(...names.slice(1));
             }
-            nodesByCode[parentCode].subclasses.push(node.code);
+            logger.info(`processing ${row.id} (${i} of ${rows.length})`);
+
+            const url = row.xmlTag.replace(/^</, '').replace(/>$/, '');
+            const deprecated = row.parents.split('|').some(p => DEPRECATED.includes(p));
+            const record = await conn.addRecord({
+                endpoint,
+                content: {
+                    source,
+                    sourceId,
+                    name: row.name,
+                    description: row.definition,
+                    url,
+                    deprecated
+                },
+                fetchConditions: { // description can contain url malformed characters
+                    source,
+                    sourceId,
+                    name: row.name,
+                    dependency: null
+                },
+                existsOk: true
+            });
+
+            recordsById[sourceId] = rid(record);
+
+            // add the parents
+            subclass.push(
+                ...row.parents.split('|')
+                    .map(parent => parent.trim())
+                    .filter(parent => parent && !DEPRECATED.includes(parent))
+                    .map(parent => [sourceId, parent.toLowerCase()])
+            );
+
+            // add the synonyms
+            const uniqueSynonyms = Array.from(new Set(synonyms)).filter(s => s !== row.name.toLowerCase().trim());
+            await Promise.all(uniqueSynonyms.map(async (synonym) => {
+                const alias = await conn.addRecord({
+                    endpoint,
+                    content: {
+                        source,
+                        sourceId: row.id,
+                        name: synonym,
+                        dependency: rid(record),
+                        deprecated
+                    },
+                    existsOk: true
+                });
+                await conn.addRecord({
+                    endpoint: 'aliasof',
+                    content: {out: rid(alias), in: rid(record), source},
+                    existsOk: true,
+                    fetchExisting: false
+                });
+            }));
+            counts.success++;
+        } catch (err) {
+            logger.error(err);
+            counts.error++;
         }
     }
 
-    const diseaseNodes = subclassTree(nodesByCode, [nodesByCode[ROOT_NODES.DISEASE]]);
-    for (const node of Object.values(nodesByCode)) {
-        if (diseaseNodes.tree[node.code] === undefined) {
-            if (node[PREDICATES.CLASS] && node[PREDICATES.CLASS][0] === 'Neoplastic Process') {
-                diseaseNodes[node.code] = node;
-            }
-        }
-    }
-    const therapyNodes = subclassTree(nodesByCode, [
-        nodesByCode[ROOT_NODES.PHARMA],
-        nodesByCode[ROOT_NODES.CHEM_MOD],
-        nodesByCode[ROOT_NODES.AGONIST]
-    ]);
-    const anatomyNodes = subclassTree(nodesByCode, [nodesByCode[ROOT_NODES.ANATOMY]]);
-    const subclassEdges = [];
-    subclassEdges.push(...diseaseNodes.edges);
-    subclassEdges.push(...therapyNodes.edges);
-    subclassEdges.push(...anatomyNodes.edges);
-
-    const records = {};
-    let result = await createRecords(anatomyNodes.tree, 'anatomicalentities', conn, source, fdaSource);
-    Object.assign(records, result);
-
-    result = await createRecords(therapyNodes.tree, 'therapies', conn, source, fdaSource);
-    Object.assign(records, result);
-
-    result = await createRecords(diseaseNodes.tree, 'diseases', conn, source, fdaSource);
-    Object.assign(records, result);
-
-    logger.info(`\nLoading ${subclassEdges.length} subclassof relationships`);
-    for (const {src, tgt} of subclassEdges) {
-        if (records[src] && records[tgt]) {
+    // now create all the subclass relationships
+    for (const [record, parent] of subclass) {
+        if (recordsById[record] && recordsById[parent]) {
             await conn.addRecord({
                 endpoint: 'subclassof',
-                content: {out: rid(records[src]), in: rid(records[tgt]), source: rid(source)},
+                content: {
+                    out: recordsById[record],
+                    in: recordsById[parent],
+                    source
+                },
                 existsOk: true,
                 fetchExisting: false
             });
+        } else if (skippedWhy[parent]) {
+            logger.info(`failed to link ${record} to ${parent}: ${skippedWhy[parent]}`);
+        } else {
+            logger.info(`failed to link ${record} to ${parent}`);
         }
     }
-    return nodesByCode;
+    logger.info(JSON.stringify(counts));
 };
 
 
-module.exports = {uploadFile, dependencies: ['fda']};
+module.exports = {uploadFile, SOURCE_DEFN};

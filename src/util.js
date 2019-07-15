@@ -348,12 +348,17 @@ const convertOwlGraphToJson = (graph, idParser = x => x) => {
 };
 
 
-const loadDelimToJson = async (filename, delim = '\t') => {
+const loadDelimToJson = async (filename, delim = '\t', header = null) => {
     logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
     logger.info('parsing into json');
     const jsonList = parse(content, {
-        delimiter: delim, escape: null, quote: null, comment: '##', columns: true, auto_parse: true
+        delimiter: delim,
+        escape: null,
+        quote: null,
+        comment: '##',
+        columns: header || true,
+        auto_parse: true
     });
     return jsonList;
 };
@@ -422,6 +427,17 @@ const checkSpec = (spec, record, idGetter = rec => rec.id) => {
     return true;
 };
 
+/**
+ * Remap object property names and return the object
+ */
+const convertRowFields = (header, row) => {
+    const result = {};
+    for (const [name, col] of Object.entries(header)) {
+        result[name] = row[col];
+    }
+    return result;
+};
+
 
 module.exports = {
     INTERNAL_SOURCE_NAME: 'bcgsc',
@@ -437,5 +453,6 @@ module.exports = {
     loadXmlToJson,
     ApiConnection,
     requestWithRetry,
-    convertNulls
+    convertNulls,
+    convertRowFields
 };

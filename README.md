@@ -306,16 +306,16 @@ npm start -- --hgnc hgnc_complete_set.json
 
 ### NCIT
 
-|                 |                                                                    |
-| --------------- | ------------------------------------------------------------------ |
-| About           | https://cbiit.cancer.gov/about/about-cbiit                         |
-| Usage           | https://creativecommons.org/licenses/by/4.0                        |
-| Example         | http://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus_18.06d.OWL.zip |
-| Format          | OWL                                                                |
-| CrossReferences | [FDA](#fda)                                                        |
+|                 |                                                                      |
+| --------------- | -------------------------------------------------------------------- |
+| About           | https://cbiit.cancer.gov/about/about-cbiit                           |
+| Usage           | https://creativecommons.org/licenses/by/4.0                          |
+| Example         | https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus_19.05d.FLAT.zip |
+| Format          | tab-delimited                                                        |
+| CrossReferences |                                                                      |
 
 ```bash
-npm start -- --ncit Thesaurus_18.06d.OWL
+npm start -- --ncit Thesaurus_18.06d.txt
 ```
 
 
