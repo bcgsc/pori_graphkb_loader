@@ -1,7 +1,7 @@
 /**
  * Module to import clinical trials data exported from clinicaltrials.gov
  *
- * 1. Perform a search on their site, for example https://clinicaltrials.gov/ct2/results?recrs=ab&cond=Cancer&term=&cntry=CA&state=&city=&dist=
+ * 1. Perform a search on their site, for example https://clinicaltrials.gov/ct2/results?cond=Cancer&cntry=CA&Search=Apply&recrs=b&recrs=a&age_v=&gndr=&type=Intr&rslt=
  * 2. Click their Download link/Button
  * 3. Adjust the settings in the Pop up dialog (Include all studies, all columns, and export as XML)
  * 4. Download and save the file
@@ -11,7 +11,7 @@
  */
 const Ajv = require('ajv');
 const {
-    loadXmlToJson, preferredDrugs, preferredDiseases, rid
+    loadXmlToJson, preferredDrugs, preferredDiseases, rid, checkSpec
 } = require('./util');
 const {logger} = require('./logging');
 
@@ -178,6 +178,7 @@ const uploadFile = async ({conn, filename}) => {
     };
     for (const record of records) {
         try {
+            checkSpec(validateTrialRecord, record, rec => rec.nct_id[0]);
             await processRecord({
                 conn, record, source
             });
