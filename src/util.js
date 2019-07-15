@@ -314,9 +314,9 @@ const preferredDiseases = (term1, term2) => {
 
 const preferredDrugs = (term1, term2) => {
     const sourceRank = generateRanks([
+        'gsc therapeutic ontology',
         'drugbank',
         'chembl',
-        'gsc therapeutic ontology',
         'fda',
         'ncit'
     ]);
@@ -326,6 +326,7 @@ const preferredDrugs = (term1, term2) => {
 
 const preferredFeatures = (term1, term2) => {
     const sourceRank = generateRanks([
+        'grch',
         'hgnc',
         'entrez',
         'ensembl',
