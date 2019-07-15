@@ -32,7 +32,7 @@
             ]
         },
         "alteration": {
-            "deprecated": true
+            "deprecated": true,
             "links": [
                 {
                     "class": "DeprecatedBy",
@@ -234,7 +234,7 @@
             "description": "evidence is diagnostic for a specific disease type, disease subtype or disease state"
         },
         "disruptive fusion": {
-            "description": "fusion disrupts the wild-type functionality of one or more of its fusion partners"
+            "description": "fusion disrupts the wild-type functionality of one or more of its fusion partners",
             "links": [
                 {
                     "class": "SubClassOf",
@@ -1047,7 +1047,7 @@
             "description": "Used in statements (primarily prognostic) to indicate when something applies to a patient (ex. increased survival)"
         },
         "pharmacogenomic": {
-            "deprecated": true
+            "deprecated": true,
             "links": [
                 {
                     "class": "DeprecatedBy",
