@@ -77,12 +77,13 @@ const uploadFile = async ({filename, conn}) => {
     try {
         ncitSource = await conn.getUniqueRecordBy({
             endpoint: 'sources',
-            where: {name: 'ncit'}
+            where: {name: ncitName}
         });
         ncitSource = rid(ncitSource);
     } catch (err) {}
 
-    for (const node of DOID.graphs[0].nodes) {
+    for (let i = 0; i < DOID.graphs[0].nodes.length; i++) {
+        const node = DOID.graphs[0].nodes[i];
         if (node.id === undefined || node.lbl === undefined) {
             continue;
         }
