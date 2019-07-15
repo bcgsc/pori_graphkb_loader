@@ -6,6 +6,7 @@ const {variant: {parse: variantParser}, position: {Position}} = require('@bcgsc/
 
 const {logger} = require('./logging');
 const _pubmed = require('./pubmed');
+const _hgnc = require('./hgnc');
 const {
     preferredDiseases, rid, preferredDrugs, preferredFeatures, INTERNAL_SOURCE_NAME, orderPreferredOntologyTerms
 } = require('./util');
@@ -25,37 +26,32 @@ const TYPE_MAPPING = {
     'ELV-PROT': 'protein expression'
 };
 
-const RELEVANCE_MAP = {
-    favourable: 'favourable prognosis',
-    oncogene: 'oncogenic',
-    unfavourable: 'unfavourable prognosis',
-    diagnostic: 'favours diagnosis',
-    'putative tumour suppressor': 'likely tumour suppressive',
-    'tumour suppressor': 'tumour suppressive',
-    'putative oncogene': 'likely oncogenic'
-};
+const DEFAULT_ASSEMBLY = 'GRCh37';
+
 
 const REMAPPED_COLUMNS = {
-    'KB Reference UUID': 'ident',
-    'KB Reference Created Date': 'createdAt',
-    'KB Reference Review Status': 'reviewStatus',
-    'KB Reference Created by User': 'createdBy',
-    'KB Reference Reviewed by User': 'reviewedBy',
-    'KB Reference Events Expression': 'variants',
-    'KB Reference Type': 'statementType',
-    'KB Reference Relevance': 'relevance',
-    'KB Reference Context': 'appliesTo',
-    'KB Reference Disease List': 'diseaseList',
-    'KB Reference Evidence': 'evidenceLevel',
-    'KB Reference ID Type': 'evidenceType',
-    'KB Reference Ref ID': 'evidenceId',
-    'KB Reference ID Title': 'evidenceTitle'
+    kb_reference_uuid: 'ident',
+    kb_reference_created_date: 'createdAt',
+    kb_reference_review_status: 'reviewStatus',
+    kb_reference_created_by_user: 'createdBy',
+    kb_reference_reviewed_by_user: 'reviewedBy',
+    kb_reference_events_expression: 'variants',
+    kb_reference_type: 'statementType',
+    kb_reference_relevance: 'relevance',
+    kb_reference_context: 'appliesTo',
+    kb_reference_disease_list: 'diseaseList',
+    kb_reference_evidence: 'evidenceLevel',
+    kb_reference_id_type: 'evidenceType',
+    kb_reference_ref_id: 'evidenceId',
+    kb_reference_id_title: 'evidenceTitle'
 };
 
 
 const THERAPY_MAPPING = {
     'gamma secretase inhibitor': 'enzyme inhibitors: gamma secretase inhibitors',
-    'rapamycin (mtor inhibitor)': 'rapamycin'
+    'rapamycin (mtor inhibitor)': 'rapamycin',
+    asp3026: 'asp-3026',
+    ap26113: 'ap-26113'
 };
 
 
@@ -66,12 +62,80 @@ const stripRefSeqVersion = (name) => {
         : name;
 };
 
+
+/**
+ * Given some string representing a therapy, split on + symbols and find the combined therapy
+ * equivalent or create it if one does not exist
+ */
+const getTherapyOrCreateProtocol = async (conn, source, therapyName) => {
+    // try to get exact name match first
+    try {
+        const result = await conn.getUniqueRecordBy({
+            endpoint: 'therapies',
+            where: {name: therapyName, sourceId: therapyName, or: 'sourceId,name'},
+            sort: preferredDrugs
+        });
+        return result;
+    } catch (err) {
+        if (!therapyName.includes('+')) {
+            throw err;
+        }
+    }
+    // if contains + then try to split and find each element by name/sourceId
+    try {
+        const elements = await Promise.all(therapyName.split(/\s*\+\s*/gi).map(name => conn.getUniqueRecordBy({
+            endpoint: 'therapies',
+            where: {name, sourceId: name, or: 'sourceId,name'},
+            sort: preferredDrugs
+        })));
+        const sourceId = elements.map(e => e.sourceId).sort().join(' + ');
+        const name = elements.map(e => e.name).sort().join(' + ');
+        const combinedTherapy = await conn.addRecord({
+            endpoint: 'therapies',
+            content: {sourceId, name, source: rid(source)},
+            existsOk: true
+        });
+        return combinedTherapy;
+    } catch (err) {
+        logger.error(err);
+        logger.error(`Failed to create the combination therapy (${therapyName})`);
+        throw err;
+    }
+};
+
+
+const getFeature = async (conn, rawName) => {
+    const name = rawName.replace(/\.\d+$/, '');
+    try {
+        return await conn.getUniqueRecordBy({
+            endpoint: 'features',
+            where: {
+                name: stripRefSeqVersion(name),
+                sourceId: stripRefSeqVersion(name),
+                or: 'sourceId,name'
+            },
+            sort: preferredFeatures
+        });
+    } catch (err) {
+        // see if it is a hugo gene
+        try {
+            return await _hgnc.fetchAndLoadBySymbol({conn, symbol: name});
+        } catch (otherErr) {}
+        // or an old symbol for a hugo gene
+        try {
+            return await _hgnc.fetchAndLoadBySymbol({conn, symbol: name, paramType: 'prev_symbol'});
+        } catch (otherErr) {}
+        throw err;
+    }
+};
+
+
 /**
  * Determine what the statement applies to based on its type, relevance, and context
  *
  * @returns {object} the record the statement applies to
  */
-const extractAppliesTo = async (conn, record) => {
+const extractAppliesTo = async (conn, record, source) => {
     const {
         statementType,
         appliesTo: appliesToInput,
@@ -119,42 +183,12 @@ const extractAppliesTo = async (conn, record) => {
                     name, positional, isFeature, reference1
                 }] = variants;
                 if (isFeature) {
-                    return conn.getUniqueRecordBy({
-                        endpoint: 'features',
-                        where: {
-                            name,
-                            sourceId: name,
-                            or: 'sourceId,name'
-                        },
-                        sort: preferredFeatures
-                    });
+                    return getFeature(conn, name);
                 } if (!positional && reference1) {
-                    return conn.getUniqueRecordBy({
-                        endpoint: 'features',
-                        where: {
-                            name: reference1,
-                            sourceId: reference1,
-                            or: 'sourceId,name'
-                        },
-                        sort: preferredFeatures
-                    });
+                    return getFeature(conn, reference1);
                 }
-                try {
-                    const parsed = variantParser(positional);
-                    if (!parsed.reference2) {
-                        return conn.getUniqueRecordBy({
-                            endpoint: 'features',
-                            where: {
-                                name: parsed.reference1,
-                                sourceId: parsed.reference1,
-                                or: 'sourceId,name'
-                            },
-                            sort: preferredFeatures
-                        });
-                    }
-                } catch (err) {
-                    logger.warn(`unable to parse applies to from variants ${variants}`);
-                    throw err;
+                if (positional && !positional.reference2) {
+                    return getFeature(conn, positional.reference1);
                 }
             } else {
                 throw new Error(`Unable to determine feature target (variants=Array[${variants.length}])`);
@@ -181,15 +215,7 @@ const extractAppliesTo = async (conn, record) => {
             if (variants.length === 1) {
                 const [{isFeature, name}] = variants;
                 if (isFeature) {
-                    return conn.getUniqueRecordBy({
-                        endpoint: 'features',
-                        where: {
-                            name,
-                            sourceId: name,
-                            or: 'sourceId,name'
-                        },
-                        sort: preferredFeatures
-                    });
+                    return getFeature(conn, name);
                 }
             }
             throw new Error(`unable to determine the gene being referenced (relevance=${relevance})`);
@@ -218,10 +244,22 @@ const extractRelevance = (record) => {
         relevance: rawRelevance
     } = record;
 
-    const relevance = rawRelevance.replace(/-/g, ' ').replace(/\binferred\b/, 'likely');
+    const relevance = rawRelevance
+        .replace(/-/g, ' ')
+        .replace(/\binferred\b/, 'likely')
+        .replace(/\putative\b/, 'likely')
+        .replace(/\boncogene\b/, 'oncogenic')
+        .replace(/\btumou?r suppressor\b/, 'tumour suppressive');
 
-    if (statementType === 'diagnostic' || statementType === 'prognostic') {
-        return statementType;
+    if (statementType === 'diagnostic') {
+        return 'diagnostic indicator';
+    } if (statementType === 'prognostic') {
+        if (/^favou?rable$/.exec(relevance)) {
+            return 'favourable prognosis';
+        } if (/^unfavou?rable prognosis$/.exec(relevance)) {
+            return 'unfavourable prognosis';
+        }
+        return 'prognostic indicator';
     }
     return relevance;
 };
@@ -231,20 +269,24 @@ const extractRelevance = (record) => {
  * @param {Object.<string,ClassModel>} schema the mapping of all database models
  * @param {Object} user the user creating the records
  */
-const createGRCh37 = async (db, schema, user) => {
-    const source = await selectOrCreate(db, {
-        content: {name: 'GRCh', version: '37'}, schema, user, model: schema.Source
-    });
-    for (const chr of [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 'X', 'Y']) {
-        await selectOrCreate(db, {
-            user,
-            schema,
-            model: schema.Feature,
-            content: {
-                biotype: 'chromosome', name: chr, sourceId: chr, source: source['@rid']
-            }
-        });
-    }
+const createChromosomes = async (conn) => {
+    const source = rid(await conn.addRecord({
+        endpoint: '/sources',
+        content: {name: 'GRCh', version: '37'},
+        existsOk: true
+    }));
+
+    await Promise.all([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 'X', 'Y'].map(async chrom => conn.addRecord({
+        endpoint: '/features',
+        existsOk: true,
+        content: {
+            sourceId: chrom,
+            name: chrom,
+            source,
+            biotype: 'chromosome'
+        },
+        fetchExisting: false
+    })));
 };
 
 
@@ -271,7 +313,7 @@ const convertDeprecatedSyntax = (string) => {
     let match = null;
     if (string.startsWith('FANN_')) {
         Object.assign(result, {name: string.slice(5), isFeature: true});
-    } else if (match = /^SV_e.([^\(]+)\(([^,]+)(,\s*([^\)]+))?\)\(([^,]+),([^\)]+)\)$/.exec(string)) {
+    } else if (match = /^SV_e.([^(]+)\(([^,]+)(,\s*([^)]+))?\)\(([^,]+),([^)]+)\)$/.exec(string)) {
         // exon level structural variant
         result.type = 'structural variant';
         const cytobandPattern = /^(1[0-9]|2[0-2]|[1-9]|X|Y)([pq]\d+(\.\d+)?)$/;
@@ -347,7 +389,7 @@ const convertDeprecatedSyntax = (string) => {
     } else if (!/[.;,:_]/.exec(string)) {
         Object.assign(result, {name: string, isFeature: true});
     } else if (!/[!&$#]/.exec(string) && string.includes(':')) {
-        if (string.startsWith('MUT_')) {
+        if (/^(MUT|CNV)_/.exec(string)) {
             string = string.slice(4);
         }
         if (match = /(X\[(\d+|n)\])$/.exec(string)) {
@@ -408,14 +450,13 @@ const convertDeprecatedSyntax = (string) => {
     return result;
 };
 
-
+/**
+ * Sort through the record history to retrieve the current state of the record
+ * the user who created the record and the user who reviewed the record
+ *
+ * Removes historical records after assigning a review status and created by user
+ */
 const cleanHistory = (jsonList) => {
-    /**
-     * Sort through the record history to retrieve the current state of the record
-     * the user who created the record and the user who reviewed the record
-     *
-     * Removes historical records after assigning a review status and created by user
-     */
     // won't be able to port over the old uuid's for any rows that will be split into multiple statements
     // can still find the correct users though
     // will only port review history for now as well as creation date
@@ -494,27 +535,11 @@ const expandRecords = (jsonList) => {
 
 
 const processVariant = async (conn, variant) => {
-    const reference1 = rid(await conn.getUniqueRecordBy({
-        endpoint: 'features',
-        where: {
-            name: variant.reference1 || variant.positional.reference1,
-            sourceId: variant.reference1 || variant.positional.reference1,
-            or: 'sourceId,name'
-        },
-        sort: preferredFeatures
-    }));
+    const reference1 = rid(await getFeature(conn, variant.reference1 || variant.positional.reference1));
     let reference2 = null;
 
     if (variant.reference2 || (variant.positional && variant.positional.reference2)) {
-        reference2 = rid(await conn.getUniqueRecordBy({
-            endpoint: 'features',
-            where: {
-                name: variant.reference2 || variant.positional.reference2,
-                sourceId: variant.reference2 || variant.positional.reference2,
-                or: 'sourceId,name'
-            },
-            sort: preferredFeatures
-        }));
+        reference2 = rid(await getFeature(conn, variant.reference2 || variant.positional.reference2));
     }
     const type = rid(await conn.getUniqueRecordBy({
         endpoint: 'vocabulary',
@@ -590,7 +615,7 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         supportedBy.push({target: rid(article), summary});
     }
     // determine the appliesTo
-    const appliesTo = await extractAppliesTo(conn, record);
+    const appliesTo = await extractAppliesTo(conn, record, source);
 
     // determine the record relevance
     const relevance = await conn.getUniqueRecordBy({
@@ -626,12 +651,11 @@ const uploadFile = async ({filename, conn}) => {
     logger.info('parsing into json');
 
     const jsonList = parse(content, {
-        delimiter: ',',
+        delimiter: '\t',
         escape: null,
         comment: '##',
         columns: true,
-        auto_parse: true,
-        quote: '"'
+        auto_parse: true
     });
     logger.info(`${jsonList.length} initial records`);
     let records = [];
@@ -660,6 +684,9 @@ const uploadFile = async ({filename, conn}) => {
 
     records = expandRecords(records);
     logger.info(`${records.length} records after list expansion`);
+
+    logger.info('create chromosomes');
+    await createChromosomes(conn);
 
     const pubmedIdList = new Set();
     for (const record of records) {
