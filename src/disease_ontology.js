@@ -90,6 +90,7 @@ const uploadFile = async ({filename, conn}) => {
         } catch (err) {
             continue;
         }
+        logger.info(`processing ${node.id} (${i} / ${DOID.graphs[0].nodes.length})`);
         node.lbl = node.lbl.toLowerCase();
         if (nodesByName[node.lbl] !== undefined) {
             throw new Error(`name is not unique ${node.lbl}`);

@@ -39,7 +39,8 @@ const uploadFile = async (opt) => {
             where: {name: 'NCIT'}
         });
     } catch (err) {
-        logger.log('info', 'Cannot link to NCIT, Unable to dind source record');
+        logger.error('Cannot link to NCIT, Unable to find source record');
+        throw err;
     }
     logger.info(`loading ${jsonList.length} records`);
     let skipCount = 0;
@@ -49,11 +50,17 @@ const uploadFile = async (opt) => {
             continue;
         }
         const name = record.PT.trim().toLowerCase();
-        if (record.NCIT.length === 0) {
-            if (!/\S+[mn][ia]b\b/i.exec(name) && !name.includes('interferon')) {
-                skipCount++;
-                continue;
-            }
+        let ncitRec;
+        logger.info(`processing ${record.UNII} (${i} / ${jsonList.length})`);
+        try {
+            ncitRec = await api.getUniqueRecordBy({
+                endpoint: 'therapies',
+                where: {source: {name: ncitSourceName}, sourceId: record.NCIT},
+                sort: orderPreferredOntologyTerms
+            });
+        } catch (err) {
+            counts.skip++;
+            continue;
         }
         // only load records with at min these 3 values filled out
         let drug;
@@ -64,7 +71,8 @@ const uploadFile = async (opt) => {
                 existsOk: true
             });
         } catch (err) {
-            logger.error(`Unable to add drug Record (UNII: ${record.UNII}) (error: ${err})`);
+            counts.error++;
+            logger.error(err);
             continue;
         }
         if (ncitSource && record.NCIT.length) {
@@ -87,7 +95,7 @@ const uploadFile = async (opt) => {
             }
         }
     }
-    logger.info(`skipped ${skipCount} records`);
+    logger.info(JSON.stringify(counts));
 };
 
 module.exports = {uploadFile, SOURCE_DEFN, dependencies: ['ncit']};

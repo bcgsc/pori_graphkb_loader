@@ -135,6 +135,7 @@ const uploadFile = async ({filename, conn}) => {
             existsOk: true
         }));
     } catch (err) {
+        console.error(err);
         logger.log('error', `unable to create the source record ${err}`);
         process.exit(INPUT_ERROR_CODE);
     }

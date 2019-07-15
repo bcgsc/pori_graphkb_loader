@@ -152,6 +152,7 @@ const processRecord = async ({
             x => ({name: x.$text, sourceId: x.$.code.toLowerCase()})
         );
     } catch (err) {}
+    logger.info(`processing ${getDrugBankId(drug)}`);
     const body = {
         source: rid(current),
         sourceId: getDrugBankId(drug),

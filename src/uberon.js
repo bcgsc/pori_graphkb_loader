@@ -124,18 +124,20 @@ const uploadFile = async ({filename, conn}) => {
     logger.info(`Adding the ${subclassEdges.length} subclassof relationships`);
     for (const {src, tgt} of subclassEdges) {
         if (records[src] && records[tgt]) {
-            await conn.addRecord({
-                endpoint: 'subclassof',
-                content: {
-                    out: records[src]['@rid'],
-                    in: records[tgt]['@rid'],
-                    source: rid(source)
-                },
-                existsOk: true,
-                fetchExisting: false
-            });
-        } else {
-            logger.error(`Failed to create the subclass relationship from ${src.sourceId} to ${tgt.sourceId}`);
+            try {
+                await conn.addRecord({
+                    endpoint: 'subclassof',
+                    content: {
+                        out: records[src]['@rid'],
+                        in: records[tgt]['@rid'],
+                        source: rid(source)
+                    },
+                    existsOk: true,
+                    fetchExisting: false
+                });
+            } catch (err) {
+                logger.error(`Failed to create the subclass relationship from ${src} to ${tgt}`);
+            }
         }
     }
 
@@ -162,11 +164,12 @@ const uploadFile = async ({filename, conn}) => {
             });
         } catch (err) {
             // ignore missing vocabulary
-            ncitMissingRecords.add(tgt);
+                ncitMissingRecords.add(tgt);
+            }
         }
-    }
-    if (ncitMissingRecords.size) {
-        logger.warn(`Unable to retrieve ${ncitMissingRecords.size} ncit records for linking`);
+        if (ncitMissingRecords.size) {
+            logger.warn(`Unable to retrieve ${ncitMissingRecords.size} ncit records for linking`);
+        }
     }
 };
 

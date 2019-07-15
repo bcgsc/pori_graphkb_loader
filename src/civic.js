@@ -239,7 +239,7 @@ const getDrug = async (conn, name) => {
             });
         }
     } catch (err) {}
-    logger.error(`Failed to find therapy record (name=${name})`);
+    logger.error(originalError);
     throw originalError;
 };
 
@@ -425,7 +425,6 @@ const processEvidenceRecord = async (opt) => {
         variant = await processVariantRecord({variantRec: rawRecord.variant, feature, conn});
     } catch (err) {
         logger.error(`Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name})`);
-        logger.error(err);
         throw err;
     }
     // get the disease by doid
@@ -443,7 +442,6 @@ const processEvidenceRecord = async (opt) => {
             sort: preferredDiseases
         });
     } catch (err) {
-        logger.error(`Unable to retrieve disease record (doid=${rawRecord.disease.doid}, name=${rawRecord.disease.name})`);
         throw err;
     }
     // get the drug(s) by name
@@ -456,7 +454,6 @@ const processEvidenceRecord = async (opt) => {
     try {
         publication = await _pubmed.fetchArticle(conn, rawRecord.source.citation_id);
     } catch (err) {
-        logger.error(`Failed to retrieve the pubmed article ${rawRecord.source.citation_id}`);
         throw err;
     }
 
@@ -473,8 +470,7 @@ const processEvidenceRecord = async (opt) => {
     content.description = rawRecord.description;
     // create the statement and connecting edges
     if (!['Diagnostic', 'Predictive', 'Prognostic', 'Predisposing'].includes(rawRecord.evidence_type)) {
-        logger.error(`Unable to make statement (evidence_type=${rawRecord.evidence_type})`);
-        throw new Error('unable to make statement', rawRecord.evidence_type, relevance.name);
+        throw new Error(`Unable to make statement (evidence_type=${rawRecord.evidence_type})`);
     }
     if (rawRecord.evidence_type === 'Diagnostic' || rawRecord.evidence_type === 'Predisposing') {
         content.appliesTo = rid(disease);
@@ -608,6 +604,7 @@ const upload = async (opt) => {
             }
             for (const drug of record.drugs) {
                 try {
+                    logger.info(`processing ${record.id}`);
                     await processEvidenceRecord({
                         conn,
                         sources: {civic: source},
@@ -615,8 +612,8 @@ const upload = async (opt) => {
                     });
                     counts.success++;
                 } catch (err) {
+                    logger.error(err);
                     counts.error++;
-                    logger.error(`Failed to create statement from evidence record (id=${record.id})`);
                 }
             }
         }

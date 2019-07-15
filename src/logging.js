@@ -39,7 +39,7 @@ const logger = winston.createLogger({
 });
 
 if (logfile) {
-    logger.log('info', `writing logs to ${logfile}`);
+    logger.log('info', `writing logs to ${logfile.replace('%DATE%', '*')}`);
 }
 
 module.exports = {logger};

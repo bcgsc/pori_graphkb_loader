@@ -192,7 +192,7 @@ const processVariant = async (opt) => {
                 where: {name: 'microsatellite instability'}
             });
         } catch (err) {
-            logger.warn(`failed to retrieve the associated vocabulary (variant=${rawRecord.variant})`);
+            logger.warn(`failed to retrieve the associated vocabulary for (variant=${rawRecord.variant})`);
             throw err;
         }
     } else {

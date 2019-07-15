@@ -101,12 +101,11 @@ const extractAppliesTo = async (conn, record) => {
             if (THERAPY_MAPPING[drugName]) {
                 drugName = THERAPY_MAPPING[drugName];
             }
-            return conn.getUniqueRecordBy({
-                endpoint: 'therapies',
-                where: {name: drugName, sourceId: drugName, or: 'sourceId,name'},
-                sort: preferredDrugs
-            });
+            return getTherapyOrCreateProtocol(conn, source, drugName);
         } if (relevance === 'targetable') {
+            if (!disease) {
+                throw new Error(`required disease not defined (relevance=${relevance}, statementType=${statementType})`);
+            }
             return conn.getUniqueRecordBy({
                 endpoint: 'diseases',
                 where: {name: disease},
@@ -671,8 +670,9 @@ const uploadFile = async ({filename, conn}) => {
     logger.info(`loading ${pubmedIdList.size} articles from pubmed`);
     // await _pubmed.uploadArticlesByPmid(conn, Array.from(pubmedIdList));
 
-    for (const record of records) {
-        logger.info(`processing ${record.ident}`);
+    for (let i = 0; i < records.length; i++) {
+        const record = records[i];
+        logger.info(`processing ${record.ident} (${i} / ${records.length})`);
         users[record.createdBy] = (users[record.createdBy] || 0) + 1;
         if (record.history) {
             counts.history++;
@@ -681,11 +681,16 @@ const uploadFile = async ({filename, conn}) => {
             await processRecord({conn, record, source});
             counts.success++;
         } catch (err) {
+            const msg = err.toString();
+            if (err.statusCode) {
+                throw err;
+            }
+            if (msg.includes('of undefined') || msg.includes('not a function')) {
+                console.error(err);
+                console.log(record);
+            }
             const error = err.error || err;
             logger.error(error);
-            if (error.message.includes('is not a function')) {
-                console.error(error);
-            }
             counts.error++;
         }
     }

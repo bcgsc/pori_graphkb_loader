@@ -99,7 +99,8 @@ const uploadFile = async (opt) => {
 
     logger.info(`processing ${contentList.length} records`);
 
-    for (const record of contentList) {
+    for (let index = 0; index < contentList.length; index++) {
+        const record = contentList[index];
         record.hgncName = record[HEADER.geneNameSource] === 'HGNC Symbol'
             ? record[HEADER.geneName]
             : null;
@@ -112,6 +113,7 @@ const uploadFile = async (opt) => {
         if (preLoaded.has(key)) {
             continue;
         }
+        logger.info(`processing ${geneId}.${geneIdVersion || ''} (${index} / ${contentList.length})`);
         let newGene = false;
 
         if (visited[key] === undefined) {
