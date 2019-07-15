@@ -86,6 +86,15 @@ const uploadFile = async ({filename, conn}) => {
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
     });
+    let ncitSource = null;
+    try {
+        ncitSource = await conn.getUniqueRecordBy({
+            endpoint: 'sources',
+            where: {name: ncitName}
+        });
+    } catch (err) {
+        logger.error(`Cannot link records to NCIT. Could not find ncit source record: ${err}`);
+    }
     const ncitMissingRecords = new Set();
     logger.info(`Adding the uberon ${Object.keys(nodesByCode).length} entity nodes`);
     for (const node of Object.values(nodesByCode)) {
@@ -119,7 +128,16 @@ const uploadFile = async ({filename, conn}) => {
         if (node[PREDICATES.DEPRECATED] && node[PREDICATES.DEPRECATED][0] === 'true') {
             body.deprecated = true;
         }
-        const dbEntry = await conn.addRecord({endpoint: 'anatomicalentities', content: body, existsOk: true});
+        const dbEntry = await conn.addRecord({
+            endpoint: 'anatomicalentities',
+            content: body,
+            existsOk: true,
+            fetchConditions: {
+                source: rid(source),
+                name: node[PREDICATES.LABEL][0],
+                sourceId: node.code
+            }
+        });
         records[dbEntry.sourceId] = dbEntry;
     }
     logger.info(`Adding the ${subclassEdges.length} subclassof relationships`);
@@ -142,28 +160,29 @@ const uploadFile = async ({filename, conn}) => {
         }
     }
 
-    logger.info(`Adding the ${ncitLinks.length} uberon/ncit aliasof relationships`);
-    for (const {src, tgt} of ncitLinks) {
-        if (records[src] === undefined) {
-            continue;
-        }
-        try {
-            const ncitRecord = await conn.getUniqueRecordBy({
-                endpoint: 'anatomicalentities',
-                where: {source: {name: 'ncit'}, sourceId: tgt},
-                sort: orderPreferredOntologyTerms
-            });
-            await conn.addRecord({
-                endpoint: 'crossreferenceof',
-                content: {
-                    out: records[src]['@rid'],
-                    in: rid(ncitRecord),
-                    source: rid(source)
-                },
-                existsOk: true,
-                fetchExisting: false
-            });
-        } catch (err) {
+    if (ncitSource) {
+        logger.info(`Adding the ${ncitLinks.length} uberon/ncit aliasof relationships`);
+        for (const {src, tgt} of ncitLinks) {
+            if (records[src] === undefined) {
+                continue;
+            }
+            try {
+                const ncitRecord = await conn.getUniqueRecordBy({
+                    endpoint: 'anatomicalentities',
+                    where: {source: {name: ncitName}, sourceId: tgt},
+                    sort: orderPreferredOntologyTerms
+                });
+                await conn.addRecord({
+                    endpoint: 'crossreferenceof',
+                    content: {
+                        out: records[src]['@rid'],
+                        in: rid(ncitRecord),
+                        source: rid(source)
+                    },
+                    existsOk: true,
+                    fetchExisting: false
+                });
+            } catch (err) {
             // ignore missing vocabulary
                 ncitMissingRecords.add(tgt);
             }
