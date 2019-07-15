@@ -115,7 +115,7 @@ const uploadGene = async (api, gene, opt = {}) => {
     }
     const result = await api.addRecord({
         endpoint: 'features',
-        content: Object.assign({source: rid(entrezSource)}, gene),
+        content: {...gene, source: rid(entrezSource), displayName: gene.name.toUpperCase()},
         existsOk: true,
         fetchConditions: {
             sourceId,
@@ -151,7 +151,7 @@ const fetchAndLoadById = async (conn, geneId) => {
     try {
         const gene = await conn.getUniqueRecordBy({
             endpoint: 'features',
-            where: {source: {name: SOURCE_DEFN.name}, souceId: geneId},
+            where: {source: {name: SOURCE_DEFN.name}, sourceId: geneId},
             sort: orderPreferredOntologyTerms
         });
         CACHE[gene.sourceId] = gene;

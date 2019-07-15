@@ -94,6 +94,9 @@ const fetchArticle = async (api, sourceId) => {
 };
 
 
+const createDisplayName = sourceId => `pmid:${sourceId}`;
+
+
 /**
  * Given the parsed content of some article, upload to the api
  * @param {object} article the article contents to be uploaded
@@ -139,7 +142,7 @@ const uploadArticle = async (api, article, opt = {}) => {
     }
     const result = await api.addRecord({
         endpoint: 'publications',
-        content: Object.assign({source: rid(pubmedSource)}, article),
+        content: {...article, source: rid(pubmedSource), displayName: createDisplayName(article.sourceId)},
         existsOk: true,
         fetchConditions: {
             sourceId,

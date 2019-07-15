@@ -44,6 +44,9 @@ const validateHgncSpec = ajv.compile({
     }
 });
 
+const createDisplayName = symbol => symbol.toUpperCase().replace('ORF', 'orf');
+
+
 /**
  * Upload a gene record and relationships from the corresponding HGNC record
  * @param {object} opt
@@ -60,7 +63,8 @@ const uploadRecord = async ({
         sourceId: gene.hgnc_id,
         name: gene.symbol,
         longName: gene.name,
-        biotype: 'gene'
+        biotype: 'gene',
+        displayName: createDisplayName(gene.symbol)
     };
 
     const currentRecord = await conn.addRecord({
@@ -96,7 +100,8 @@ const uploadRecord = async ({
                 dependency: rid(currentRecord),
                 deprecated: true,
                 biotype,
-                name: symbol
+                name: symbol,
+                displayName: createDisplayName(symbol)
             },
             existsOk: true,
             fetchConditions: {
@@ -122,7 +127,8 @@ const uploadRecord = async ({
                     name: symbol,
                     sourceId,
                     biotype,
-                    dependency: rid(currentRecord)
+                    dependency: rid(currentRecord),
+                    displayName: createDisplayName(symbol)
                 },
                 existsOk: true,
                 fetchConditions: {
