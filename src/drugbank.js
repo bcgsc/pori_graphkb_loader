@@ -122,6 +122,14 @@ const validateDrugbankSpec = ajv.compile({
                 }
             }
         ),
+        products: singleReqProp('product', {
+            type: 'array',
+            items: {
+                type: 'object',
+                required: ['name'],
+                properties: {name: {type: 'string'}}
+            }
+        }),
         'external-identifiers': singleReqProp(
             'external-identifier', {
                 type: 'array',
@@ -215,6 +223,32 @@ const processRecord = async ({
             });
         }
     }
+    // process the commerical product names
+    const aliases = new Set(
+        (drug.products.product || [])
+            .map(p => p.name)
+            // only keep simple alias names (over 100k otherwise)
+            .filter(p => /^[a-zA-Z]\w+$/.exec(p) && p.toLowerCase() !== drug.name.toLowerCase())
+    );
+    await Promise.all(Array.from(aliases, async (aliasName) => {
+        const alias = await conn.addRecord({
+            endpoint: 'therapies',
+            content: {
+                source: rid(current),
+                sourceId: getDrugBankId(drug),
+                name: aliasName,
+                dependency: rid(record)
+            },
+            existsOk: true
+        });
+        // link together
+        await conn.addRecord({
+            endpoint: 'aliasof',
+            content: {out: rid(alias), in: rid(record), source: rid(current)},
+            existsOk: true,
+            fetchExisting: false
+        });
+    }));
     // link to the FDA UNII
     if (fda && drug[HEADER.unii]) {
         let fdaRec;
@@ -333,6 +367,7 @@ const uploadFile = async ({filename, conn}) => {
         xml.collect('drug atc-code level');
         xml.collect('drug target polypeptide');
         xml.collect('drug target actions action');
+        xml.collect('drug products product');
         xml.on('endElement: drug', (item) => {
             if (Object.keys(item).length < 3) {
                 return;
