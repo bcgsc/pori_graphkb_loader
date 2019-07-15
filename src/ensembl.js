@@ -9,6 +9,7 @@ const {
 } = require('./util');
 const {logger} = require('./logging');
 const _hgnc = require('./hgnc');
+const {SOURCE_DEFN: {name: refseqName}} = require('./refseq');
 
 const HEADER = {
     geneId: 'Gene stable ID',
@@ -27,7 +28,7 @@ const HEADER = {
 };
 
 const SOURCE_DEFN = {
-    name: 'ensembl',
+    name: _hgnc.ensemblSourceName, // avoid circular dependencies
     usage: 'https://uswest.ensembl.org/info/about/legal/disclaimer.html',
     url: 'https://uswest.ensembl.org',
     description: 'Ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. Ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. Ensembl tools include BLAST, BLAT, BioMart and the Variant Effect Predictor (VEP) for all supported species.'
@@ -79,7 +80,7 @@ const uploadFile = async (opt) => {
     try {
         refseqSource = await conn.getUniqueRecordBy({
             endpoint: 'sources',
-            where: {name: 'refseq'}
+            where: {name: refseqName}
         });
     } catch (err) {
         logger.warn('Unable to find refseq source. Will not attempt to create cross-reference links');
@@ -255,4 +256,4 @@ const uploadFile = async (opt) => {
     }
 };
 
-module.exports = {uploadFile, dependencies: ['refseq'], SOURCE_DEFN};
+module.exports = {uploadFile, dependencies: [refseqName], SOURCE_DEFN};

@@ -7,6 +7,7 @@ const fs = require('fs');
 const {
     convertOwlGraphToJson, orderPreferredOntologyTerms, rid
 } = require('./util');
+const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 const {logger} = require('./logging');
 
 const PREDICATES = {
@@ -173,4 +174,4 @@ const uploadFile = async ({filename, conn}) => {
     }
 };
 
-module.exports = {uploadFile, SOURCE_DEFN, dependencies: ['ncit']};
+module.exports = {uploadFile, SOURCE_DEFN, dependencies: [ncitName]};

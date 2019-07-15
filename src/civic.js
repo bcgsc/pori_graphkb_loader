@@ -623,4 +623,6 @@ const upload = async (opt) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {upload, getVariantName, SOURCE_DEFN};
+module.exports = {
+    upload, getVariantName, SOURCE_DEFN, type: 'kb'
+};

@@ -131,4 +131,4 @@ const uploadFile = async (opt) => {
 };
 
 
-module.exports = {SOURCE_DEFN, uploadFile};
+module.exports = {SOURCE_DEFN, uploadFile, dependencies: [drugbankName]};

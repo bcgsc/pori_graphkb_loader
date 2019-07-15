@@ -15,6 +15,13 @@ const {
 } = require('./util');
 const {logger} = require('./logging');
 
+const SOURCE_DEFN = {
+    name: 'clinicaltrials.gov',
+    url: 'https://clinicaltrials.gov',
+    usage: 'https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use',
+    description: 'ClinicalTrials.gov is a database of privately and publicly funded clinical studies conducted around the world'
+};
+
 const ajv = new Ajv();
 
 
@@ -65,13 +72,6 @@ const validateTrialRecord = ajv.compile({
     }
 });
 
-
-const SOURCE_DEFN = {
-    name: 'clinicaltrials.gov',
-    url: 'https://clinicaltrials.gov',
-    usage: 'https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use',
-    description: 'ClinicalTrials.gov is a database of privately and publicly funded clinical studies conducted around the world'
-};
 
 /**
  * Process the XML trial record. Attempt to link the drug and/or disease information
@@ -191,4 +191,4 @@ const uploadFile = async ({conn, filename}) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {uploadFile, SOURCE_DEFN, dependencies: ['oncotree', 'dieaseOntology', 'ncit']};
+module.exports = {uploadFile, SOURCE_DEFN, type: 'kb'};

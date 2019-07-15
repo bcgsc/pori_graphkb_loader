@@ -7,6 +7,7 @@
 const {
     orderPreferredOntologyTerms, loadDelimToJson, rid
 } = require('./util');
+const {SOURCE_DEFN: {name: ncitSourceName}} = require('./ncit');
 const {logger} = require('./logging');
 
 const SOURCE_DEFN = {
@@ -98,4 +99,4 @@ const uploadFile = async (opt) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {uploadFile, SOURCE_DEFN, dependencies: ['ncit']};
+module.exports = {uploadFile, SOURCE_DEFN, dependencies: [ncitSourceName]};

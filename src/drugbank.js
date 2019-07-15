@@ -14,6 +14,7 @@ const {
 const _hgnc = require('./hgnc');
 const {logger} = require('./logging');
 const _chembl = require('./chembl');
+const {SOURCE_DEFN: {name: fdaName}} = require('./fda');
 
 
 const ajv = new Ajv();
@@ -314,7 +315,7 @@ const uploadFile = async ({filename, conn}) => {
     try {
         fdaSource = await conn.getUniqueRecordBy({
             endpoint: 'sources',
-            where: {name: 'FDA'}
+            where: {name: fdaName}
         });
     } catch (err) {
         logger.warn('Unable to find fda source record. Will not attempt cross-reference links');
@@ -364,4 +365,4 @@ const uploadFile = async ({filename, conn}) => {
     logger.log('info', JSON.stringify(counts));
 };
 
-module.exports = {uploadFile, dependencies: ['fda'], SOURCE_DEFN};
+module.exports = {uploadFile, dependencies: [fdaName], SOURCE_DEFN};

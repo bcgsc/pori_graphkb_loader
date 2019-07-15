@@ -7,6 +7,7 @@ const request = require('request-promise');
 
 const {rid} = require('./util');
 const {logger} = require('./logging');
+const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
 
@@ -196,7 +197,7 @@ const upload = async (opt) => {
     try {
         ncitSource = await conn.getUniqueRecordBy({
             endpoint: 'sources',
-            where: {name: 'ncit'}
+            where: {name: ncitName}
         });
     } catch (err) {
         logger.log('warn', 'cannot find ncit source. Will not be able to generate cross-reference links');
@@ -272,5 +273,5 @@ const upload = async (opt) => {
 
 
 module.exports = {
-    upload, OncotreeAPI, dependencies: ['ncit'], SOURCE_DEFN
+    upload, OncotreeAPI, dependencies: [ncitName], SOURCE_DEFN
 };

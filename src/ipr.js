@@ -698,4 +698,6 @@ const uploadFile = async ({filename, conn}) => {
     logger.info(JSON.stringify(users));
 };
 
-module.exports = {uploadFile, convertDeprecatedSyntax, SOURCE_DEFN};
+module.exports = {
+    uploadFile, convertDeprecatedSyntax, SOURCE_DEFN, type: 'kb'
+};

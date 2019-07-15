@@ -184,4 +184,4 @@ const uploadFile = async (opt) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {uploadFile, SOURCE_DEFN};
+module.exports = {uploadFile, SOURCE_DEFN, type: 'kb'};

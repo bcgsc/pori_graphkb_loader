@@ -9,6 +9,7 @@ const {
     orderPreferredOntologyTerms, rid
 } = require('./util');
 const {logger} = require('./logging');
+const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
 
@@ -257,4 +258,4 @@ const loadEdges = async ({
     }
 };
 
-module.exports = {uploadFile, dependencies: ['ncit']};
+module.exports = {uploadFile, dependencies: [ncitName], SOURCE_DEFN};

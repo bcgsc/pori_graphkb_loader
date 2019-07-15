@@ -698,5 +698,5 @@ const upload = async (opt) => {
 };
 
 module.exports = {
-    upload, parseVariantName, SOURCE_DEFN
+    upload, parseVariantName, SOURCE_DEFN, type: 'kb'
 };

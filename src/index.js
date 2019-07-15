@@ -167,30 +167,64 @@ if (options.pubmed) {
     PUBMED_DEFAULT_QS.api_key = options.pubmed;
 }
 
+const compareLoadModules = (name1, name2) => {
+    const module1 = IMPORT_MODULES[name1];
+    const module2 = IMPORT_MODULES[name2];
+
+    // knowledgebases should always be loaded last
+    if (module1.type !== module2.type) {
+        if (module1.type === 'kb') {
+            return 1;
+        } if (module2.type === 'kb') {
+            return -1;
+        }
+    }
+    if (module1.dependencies && module1.dependencies.includes(IMPORT_MODULES[name2].SOURCE_DEFN.name)) {
+        return 1;
+    } if (module2.dependencies && module2.dependencies.includes(IMPORT_MODULES[name1].SOURCE_DEFN.name)) {
+        return -1;
+    }
+    return 0;
+};
+
+/**
+ * Decide which module goes first (maximize cross-reference links)
+ */
+const sortLoadModules = (modules) => {
+    // initialize the graph
+    const ranks = {};
+    for (const modName of modules) {
+        ranks[modName] = 0;
+    }
+    // use the compare function to assign relative ranks
+    for (let i = 0; i < modules.length; i++) {
+        for (let j = 0; j < modules.length; j++) {
+            const name1 = modules[i];
+            const name2 = modules[j];
+            const cmp = compareLoadModules(name1, name2);
+            if (cmp > 0) {
+                ranks[name1] = Math.max(ranks[name1], ranks[name2]) + 1;
+            } else if (cmp < 0) {
+                ranks[name2] = Math.max(ranks[name1], ranks[name2]) + 1;
+            }
+        }
+    }
+    modules.sort((n1, n2) => ranks[n1] - ranks[n2]);
+    for (const name of modules) {
+        const deps = IMPORT_MODULES[name].dependencies && IMPORT_MODULES[name].dependencies.length > 0
+            ? `(depends on: ${IMPORT_MODULES[name].dependencies.join(', ')})`
+            : '';
+        logger.info(`rank ${ranks[name]}: ${name} ${deps}`);
+    }
+    return modules;
+};
+
 const upload = async () => {
     await apiConnection.setAuth(options);
     logger.info('Login Succeeded');
-    const moduleOrder = [
-        'ontology',
-        'sequenceOntology',
-        'vario',
-        'ncit',
-        'fda',
-        'drugbank',
-        'drugOntology',
-        'diseaseOntology',
-        'hgnc',
-        'refseq',
-        'ensembl',
-        'uberon',
-        'oncotree',
-        'ctg',
-        'cosmic',
-        'oncokb',
-        'civic',
-        'docm',
-        'ipr'
-    ];
+    logger.info('priority loading order');
+    const moduleOrder = sortLoadModules(Object.keys(options).filter(name => IMPORT_MODULES[name]));
+
     for (const moduleName of moduleOrder) {
         if (options[moduleName] !== undefined) {
             const currModule = IMPORT_MODULES[moduleName];

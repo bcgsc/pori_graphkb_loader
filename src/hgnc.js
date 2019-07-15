@@ -10,6 +10,8 @@ const {
 const {logger} = require('./logging');
 const _entrez = require('./entrez');
 
+const ensemblSourceName = 'ensembl';
+
 const ajv = new Ajv();
 
 const HGNC_API = 'http://rest.genenames.org/fetch';
@@ -212,7 +214,7 @@ const fetchAndLoadBySymbol = async ({
     try {
         ensembl = await conn.getUniqueRecordBy({
             endpoint: 'sources',
-            where: {name: 'ensembl'}
+            where: {name: ensemblSourceName}
         });
     } catch (err) {}
     const result = await uploadRecord({conn, gene, sources: {hgnc, ensembl}});
@@ -243,7 +245,7 @@ const uploadFile = async (opt) => {
     try {
         ensembl = await conn.getUniqueRecordBy({
             endpoint: 'sources',
-            where: {name: 'ensembl'}
+            where: {name: ensemblSourceName}
         });
     } catch (err) {
         logger.info('Unable to fetch ensembl source for linking records');
@@ -268,5 +270,5 @@ const uploadFile = async (opt) => {
 };
 
 module.exports = {
-    uploadFile, fetchAndLoadBySymbol, uploadRecord, SOURCE_DEFN, dependencies: ['ensembl']
+    uploadFile, fetchAndLoadBySymbol, uploadRecord, SOURCE_DEFN, dependencies: [ensemblSourceName], ensemblSourceName
 };
