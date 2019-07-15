@@ -18,7 +18,7 @@ const transports = [
 
 let logfile = null;
 if (process.env.GKB_LOG_DIR) {
-    logfile = path.join(process.env.GKB_LOG_DIR, `${process.env.npm_package_name}-importer-%DATE%-${process.pid}.log`);
+    logfile = path.join(process.env.GKB_LOG_DIR, `${process.env.npm_package_name}-%DATE%-${process.pid}.log`);
     transports.push(new DailyRotateFile({
         level: GKB_LOG_LEVEL,
         filename: logfile,
