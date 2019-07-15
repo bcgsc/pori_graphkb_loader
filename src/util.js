@@ -122,6 +122,11 @@ class ApiConnection {
         } = opt;
 
         const queryParams = convertNulls(where);
+        for (const key of Object.keys(queryParams)) {
+            if (queryParams[key] && queryParams[key]['@rid']) {
+                queryParams[key] = rid(queryParams[key]);
+            }
+        }
         let newRecord;
         try {
             newRecord = await this.request({
@@ -394,31 +399,35 @@ const loadDelimToJson = async (filename, delim = '\t', header = null) => {
 };
 
 
+const parseXmlToJson = (xmlContent, opts = {}) => new Promise((resolve, reject) => {
+    xml2js.parseString(
+        xmlContent,
+        {
+            trim: true,
+            emptyTag: null,
+            mergeAttrs: true,
+            normalize: true,
+            ...opts
+        },
+        (err, result) => {
+            logger.error(err);
+            if (err !== null) {
+                reject(err);
+            } else {
+                resolve(result);
+            }
+        }
+    );
+});
+
+
 const loadXmlToJson = (filename, opts = {}) => {
     logger.info(`reading: ${filename}`);
     const xmlContent = fs.readFileSync(filename).toString();
     logger.info(`parsing: ${filename}`);
-    return new Promise((resolve, reject) => {
-        xml2js.parseString(
-            xmlContent,
-            {
-                trim: true,
-                emptyTag: null,
-                mergeAttrs: true,
-                normalize: true,
-                ...opts
-            },
-            (err, result) => {
-                logger.error(err);
-                if (err !== null) {
-                    reject(err);
-                } else {
-                    resolve(result);
-                }
-            }
-        );
-    });
+    return parseXmlToJson(xmlContent, opts);
 };
+
 
 /**
  *  Try again for too many requests errors. Helpful for APIs with a rate limit (ex. pubmed)
@@ -481,6 +490,7 @@ module.exports = {
     preferredFeatures,
     loadDelimToJson,
     loadXmlToJson,
+    parseXmlToJson,
     ApiConnection,
     requestWithRetry,
     convertNulls,
