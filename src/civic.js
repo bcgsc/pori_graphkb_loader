@@ -24,7 +24,8 @@ const SOURCE_DEFN = {
     name: 'civic',
     url: 'https://civicdb.org',
     description: 'CIViC is an open access, open source, community-driven web resource for Clinical Interpretation of Variants in Cancer',
-    usage: 'https://creativecommons.org/publicdomain/zero/1.0'
+    usage: 'https://creativecommons.org/publicdomain/zero/1.0',
+    displayName: 'CIViC'
 };
 
 const BASE_URL = 'https://civicdb.org/api';

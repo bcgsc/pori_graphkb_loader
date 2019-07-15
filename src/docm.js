@@ -20,6 +20,7 @@ const ajv = new Ajv();
 
 const SOURCE_DEFN = {
     name: 'database of curated mutations',
+    displayName: 'DoCM',
     description: 'DoCM, the Database of Curated Mutations, is a highly curated database of known, disease-causing mutations that provides easily explorable variant lists with direct links to source citations for easy verification.',
     url: 'http://www.docm.info',
     usage: 'http://www.docm.info/terms'

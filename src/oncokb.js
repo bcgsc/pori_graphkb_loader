@@ -45,7 +45,8 @@ const SOURCE_DEFN = {
     name: 'oncokb',
     description: 'OncoKB is a precision oncology knowledge base and contains information about the effects and treatment implications of specific cancer gene alterations. It is developed and maintained by the Knowledge Systems group in the Marie Josée and Henry R. Kravis Center for Molecular Oncology at Memorial Sloan Kettering Cancer Center (MSK), in partnership with Quest Diagnostics and Watson for Genomics, IBM.',
     usage: 'http://oncokb.org/#/terms',
-    url: 'http://oncokb.org'
+    url: 'http://oncokb.org',
+    displayName: 'OncoKB'
 };
 
 const VOCABULARY_MAPPING = {
