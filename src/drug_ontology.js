@@ -17,6 +17,12 @@ const HEADER = {
     alias: 'alias'
 };
 
+const TAGS = {
+    [HEADER.parent]: 'specific drug class',
+    [HEADER.grandparent1]: 'general drug class',
+    [HEADER.grandparent2]: 'pathway drug class'
+};
+
 const SOURCE_DEFN = {
     name: 'GSC Therapeutic Ontology',
     description: 'Therapeutic ontology compiled and curated at the Genome Sciences Centre'
@@ -25,9 +31,15 @@ const SOURCE_DEFN = {
 /**
  * Try to extact match a drugbank/chembl record. If there isn't one then add this name as a new record instead
  */
-const getDrugOrAdd = async (conn, source, name) => {
-    if (!name.trim()) {
+const getDrugOrAdd = async (conn, source, name, rawRecord = {}) => {
+    if (!name) {
         return null;
+    }
+    const tags = [];
+    for (const col of [HEADER.parent, HEADER.grandparent1, HEADER.grandparent2]) {
+        if (name === rawRecord[col]) {
+            tags.push(TAGS[col]);
+        }
     }
     let record;
     try {
@@ -50,18 +62,28 @@ const getDrugOrAdd = async (conn, source, name) => {
 
     return conn.addRecord({
         endpoint: 'therapies',
-        content: {name, sourceId: name, source: rid(source)},
+        content: {
+            name, sourceId: name, source: rid(source), subsets: tags
+        },
+        fetchConditions: {name, sourceId: name, source: rid(source)},
         existsOk: true
     });
 };
 
 
 /**
- * Try to extact match a drugbank/chembl record. If there isn't one then add this name as a new record instead
+ * Create the drug class and link to existing drug classes with identical names
  */
-const addDrugClass = async (conn, source, name, tags) => {
-    if (!name.trim()) {
+const addDrugClass = async (conn, source, name, rawRecord) => {
+    if (!name) {
         return null;
+    }
+
+    const tags = [];
+    for (const col of [HEADER.parent, HEADER.grandparent1, HEADER.grandparent2]) {
+        if (name === rawRecord[col]) {
+            tags.push(TAGS[col]);
+        }
     }
 
     const record = await conn.addRecord({
@@ -118,18 +140,24 @@ const uploadFile = async (opt) => {
 
     const counts = {success: 0, error: 0};
 
-    for (const record of content) {
-        logger.info(`processing ${record[HEADER.name]}`);
+    for (let i = 0; i < content.length; i++) {
+        const record = content[i];
+        logger.info(`processing ${record[HEADER.name]} (${i} / ${content.length})`);
+        // clean the names
+        for (const col of [HEADER.name, HEADER.parent, HEADER.grandparent1, HEADER.grandparent2, HEADER.alias]) {
+            record[col] = record[col].trim().toLowerCase().replace(/\binhibitors\b/, 'inhibitor');
+        }
         try {
-            const drug = await getDrugOrAdd(conn, source, record[HEADER.name]);
+            const drug = await getDrugOrAdd(conn, source, record[HEADER.name], record);
+
             const [parent, grandparent1, grandparent2] = await Promise.all([
-                addDrugClass(conn, source, record[HEADER.parent], ['class1']),
-                addDrugClass(conn, source, record[HEADER.grandparent1], ['class2']),
-                addDrugClass(conn, source, record[HEADER.grandparent2], ['class3_pathway'])
+                addDrugClass(conn, source, record[HEADER.parent], record),
+                addDrugClass(conn, source, record[HEADER.grandparent1], record),
+                addDrugClass(conn, source, record[HEADER.grandparent2], record)
             ]);
             const aliases = await Promise.all(
                 record[HEADER.alias].split(/\s*,\s*/)
-                    .filter(term => term)
+                    .filter(term => term && term !== record[HEADER.name])
                     .map(async term => getDrugOrAdd(conn, source, term))
             );
             // link the drug to its alias terms
@@ -154,8 +182,6 @@ const uploadFile = async (opt) => {
                         fetchExistsing: false
                     });
                 }
-            } else {
-                logger.info('No corresponding drugbank drug');
             }
             if (parent) {
                 if (rid(drug) !== rid(parent)) {
