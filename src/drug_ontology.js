@@ -166,23 +166,6 @@ const uploadFile = async (opt) => {
                 content: {out: rid(alias), in: rid(drug), source: rid(source)},
                 existsOk: true
             })));
-            // get the mapped drugbank drug
-            if (/^DB\d+$/i.exec(record[HEADER.drugbank])) {
-                const dbDrug = rid(await conn.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {source: {name: drugbankName}, sourceId: record[HEADER.drugbank]},
-                    sort: orderPreferredOntologyTerms
-                }));
-                // now link the records together
-                if (dbDrug !== rid(drug)) {
-                    await conn.addRecord({
-                        endpoint: 'crossreferenceof',
-                        content: {out: rid(drug), in: dbDrug, source},
-                        existsOk: true,
-                        fetchExistsing: false
-                    });
-                }
-            }
             if (parent) {
                 if (rid(drug) !== rid(parent)) {
                     await conn.addRecord({
@@ -204,6 +187,23 @@ const uploadFile = async (opt) => {
                     await conn.addRecord({
                         endpoint: 'subclassof',
                         content: {out: rid(parent), in: rid(grandparent2), source},
+                        existsOk: true,
+                        fetchExistsing: false
+                    });
+                }
+            }
+            // get the mapped drugbank drug
+            if (/^DB\d+$/i.exec(record[HEADER.drugbank])) {
+                const dbDrug = rid(await conn.getUniqueRecordBy({
+                    endpoint: 'therapies',
+                    where: {source: {name: drugbankName}, sourceId: record[HEADER.drugbank]},
+                    sort: orderPreferredOntologyTerms
+                }));
+                // now link the records together
+                if (dbDrug !== rid(drug)) {
+                    await conn.addRecord({
+                        endpoint: 'crossreferenceof',
+                        content: {out: rid(drug), in: dbDrug, source},
                         existsOk: true,
                         fetchExistsing: false
                     });
