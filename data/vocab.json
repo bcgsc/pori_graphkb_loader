@@ -1,6 +1,16 @@
 {
     "class": "Vocabulary",
+    "defaultNameToSourceId": true,
     "records": {
+        "ITD": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "internal tandem duplication"
+                }
+            ]
+        },
         "acquired resistance": {
             "links": [
                 {
@@ -242,6 +252,14 @@
                 }
             ]
         },
+        "domain duplication": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "duplication"
+                }
+            ]
+        },
         "dominant gain of function": {
             "description": "an event whose product adversely affects the normal product resulting in a gain-of-function phenotype",
             "links": [
@@ -413,28 +431,6 @@
                 }
             ]
         },
-        "in-frame fusion": {
-            "name": "in-frame fusion",
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "fusion"
-                }
-            ]
-        },
-        "out-of-frame fusion": {
-            "name": "out-of-frame fusion",
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "fusion"
-                },
-                {
-                    "class": "OppositeOf",
-                    "target": "in-frame fusion"
-                }
-            ]
-        },
         "gain of function": {
             "description": "event imparts an acquired function on the product leading to a specific observable phenotype",
             "links": [
@@ -454,6 +450,16 @@
                 {
                     "class": "SubClassOf",
                     "target": "tumour suppressive"
+                }
+            ]
+        },
+        "high signature": {
+            "deprecated": true,
+            "description": "Alternative to 'strong signature'",
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "strong signature"
                 }
             ]
         },
@@ -480,6 +486,15 @@
                     "target": "deletion"
                 }
             ]
+        },
+        "in-frame fusion": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "fusion"
+                }
+            ],
+            "name": "in-frame fusion"
         },
         "in-frame insertion": {
             "links": [
@@ -627,15 +642,6 @@
                 }
             ]
         },
-        "ITD": {
-            "deprecated": true,
-            "links": [
-                {
-                    "class": "DeprecatedBy",
-                    "target": "internal tandem duplication"
-                }
-            ]
-        },
         "inversion": {
             "links": [
                 {
@@ -658,6 +664,14 @@
                 {
                     "class": "SubClassOf",
                     "target": "favours diagnosis"
+                }
+            ]
+        },
+        "kinase domain duplication": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "domain duplication"
                 }
             ]
         },
@@ -820,6 +834,14 @@
                 {
                     "class": "SubClassOf",
                     "target": "substitution"
+                }
+            ]
+        },
+        "moderate signature": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "signature present"
                 }
             ]
         },
@@ -1025,6 +1047,19 @@
                     "target": "diagnostic indicator"
                 }
             ]
+        },
+        "out-of-frame fusion": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "fusion"
+                },
+                {
+                    "class": "OppositeOf",
+                    "target": "in-frame fusion"
+                }
+            ],
+            "name": "out-of-frame fusion"
         },
         "overexpression": {
             "deprecated": true,
@@ -1335,44 +1370,6 @@
                 }
             ]
         },
-        "high signature": {
-            "deprecated": true,
-            "description": "Alternative to 'strong signature'",
-            "links": [
-                {
-                    "class": "DeprecatedBy",
-                    "target": "strong signature"
-                }
-            ]
-        },
-        "strong signature": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "signature present"
-                }
-            ]
-        },
-        "weak signature": {
-            "links": [
-                {
-                    "class": "OppositeOf",
-                    "target": "strong signature"
-                },
-                {
-                    "class": "SubClassOf",
-                    "target": "signature present"
-                }
-            ]
-        },
-        "moderate signature": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "signature present"
-                }
-            ]
-        },
         "signature low": {
             "deprecated": true,
             "description": "Alternative to 'weak signature'",
@@ -1428,6 +1425,14 @@
                 {
                     "class": "SubClassOf",
                     "target": "extension"
+                }
+            ]
+        },
+        "strong signature": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "signature present"
                 }
             ]
         },
@@ -1573,6 +1578,18 @@
         "variant": {
             "name": "variant"
         },
+        "weak signature": {
+            "links": [
+                {
+                    "class": "OppositeOf",
+                    "target": "strong signature"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "signature present"
+                }
+            ]
+        },
         "weakly increased function": {
             "links": [
                 {
@@ -1608,7 +1625,6 @@
             ]
         }
     },
-    "defaultNameToSourceId": true,
     "source": {
         "name": "bcgsc"
     }
