@@ -8,7 +8,7 @@ const {logger} = require('./logging');
 const _pubmed = require('./pubmed');
 const _hgnc = require('./hgnc');
 const {
-    preferredDiseases, rid, preferredDrugs, preferredFeatures, INTERNAL_SOURCE_NAME, orderPreferredOntologyTerms
+    preferredDiseases, rid, preferredFeatures, INTERNAL_SOURCE_NAME, orderPreferredOntologyTerms
 } = require('./util');
 
 
@@ -60,47 +60,6 @@ const stripRefSeqVersion = (name) => {
     return match
         ? match[1]
         : name;
-};
-
-
-/**
- * Given some string representing a therapy, split on + symbols and find the combined therapy
- * equivalent or create it if one does not exist
- */
-const getTherapyOrCreateProtocol = async (conn, source, therapyName) => {
-    // try to get exact name match first
-    try {
-        const result = await conn.getUniqueRecordBy({
-            endpoint: 'therapies',
-            where: {name: therapyName, sourceId: therapyName, or: 'sourceId,name'},
-            sort: preferredDrugs
-        });
-        return result;
-    } catch (err) {
-        if (!therapyName.includes('+')) {
-            throw err;
-        }
-    }
-    // if contains + then try to split and find each element by name/sourceId
-    try {
-        const elements = await Promise.all(therapyName.split(/\s*\+\s*/gi).map(name => conn.getUniqueRecordBy({
-            endpoint: 'therapies',
-            where: {name, sourceId: name, or: 'sourceId,name'},
-            sort: preferredDrugs
-        })));
-        const sourceId = elements.map(e => e.sourceId).sort().join(' + ');
-        const name = elements.map(e => e.name).sort().join(' + ');
-        const combinedTherapy = await conn.addRecord({
-            endpoint: 'therapies',
-            content: {sourceId, name, source: rid(source)},
-            existsOk: true
-        });
-        return combinedTherapy;
-    } catch (err) {
-        logger.error(err);
-        logger.error(`Failed to create the combination therapy (${therapyName})`);
-        throw err;
-    }
 };
 
 
@@ -165,7 +124,7 @@ const extractAppliesTo = async (conn, record, source) => {
             if (THERAPY_MAPPING[drugName]) {
                 drugName = THERAPY_MAPPING[drugName];
             }
-            return getTherapyOrCreateProtocol(conn, source, drugName);
+            return conn.addTherapyCombination(source, drugName);
         } if (relevance === 'targetable') {
             if (!disease) {
                 throw new Error(`required disease not defined (relevance=${relevance}, statementType=${statementType})`);

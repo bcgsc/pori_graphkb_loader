@@ -77,42 +77,6 @@ const getVocabulary = async (conn, term) => {
     return rec;
 };
 
-
-const addTherapyCombination = async (conn, source, name) => {
-    const drugs = Array.from(name.split(/\s*\+\s*/), x => x.trim().toLowerCase()).filter(x => x.length > 0);
-    drugs.sort();
-    if (drugs.length < 2) {
-        throw new Error(`${name} is not a combination therapy`);
-    }
-    const drugRec = [];
-    for (const drug of drugs) {
-        drugRec.push(await conn.getUniqueRecordBy({
-            endpoint: 'therapies',
-            where: {name: drug},
-            sort: preferredDrugs
-        }));
-    }
-    const combinationName = Array.from(drugRec, x => x.name || x.sourceId).join(' + ');
-    const combination = await conn.addRecord({
-        endpoint: 'therapies',
-        content: {
-            name: combinationName,
-            sourceId: combinationName,
-            source: rid(source)
-        },
-        existsOk: true
-    });
-    for (const drug of drugRec) {
-        await conn.addRecord({
-            endpoint: 'elementOf',
-            content: {source: rid(source), out: rid(drug), in: rid(combination)},
-            existsOk: true
-        });
-    }
-    return combination;
-};
-
-
 /**
  * Parse the variant string preresentation from oncokb to its graphkB equivalent
  */
@@ -362,7 +326,7 @@ const processActionableRecord = async (opt) => {
     } catch (err) {
         if (rawRecord.drug.includes('+')) {
             // add the combination therapy as a new therapy defined by oncokb
-            drug = await addTherapyCombination(conn, oncokb, rawRecord.drug);
+            drug = await conn.addTherapyCombination(oncokb, rawRecord.drug);
         } else {
             throw err;
         }

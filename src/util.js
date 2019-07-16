@@ -38,6 +38,115 @@ const convertNulls = (where) => {
     return queryParams;
 };
 
+
+/**
+ * Given two ontology terms, return the newer, non-deprecated, independant, term first.
+ *
+ * @param {object} term1 the first term record
+ * @param {object} term2 the second term record
+ *
+ * @returns {Number} the sorting number (-1, 0, +1)
+ */
+const orderPreferredOntologyTerms = (term1, term2) => {
+    if (term1.deprecated && !term2.deprecated) {
+        return 1;
+    } if (term2.deprecated && !term1.deprecated) {
+        return -1;
+    } if (term1.dependency == null & term2.dependency != null) {
+        return -1;
+    } if (term2.dependency == null & term1.dependency != null) {
+        return 1;
+    } if (term1.sourceId === term2.sourceId && rid(term1.source, true) === rid(term2.source, true)) {
+        if (term1.sourceIdVersion < term2.sourceIdVersion) {
+            return -1;
+        } if (term1.sourceIdVersion > term2.sourceIdVersion) {
+            return 1;
+        }
+        if (term1.source && term2.source) {
+            if (term1.source.version < term2.source.version) {
+                return -1;
+            } if (term1.source.version > term2.source.version) {
+                return 1;
+            }
+        }
+    }
+    return 0;
+};
+
+
+const preferredSources = (sourceRank, term1, term2) => {
+    if (orderPreferredOntologyTerms(term1, term2) === 0) {
+        if (term1.source.name !== term2.source.name) {
+            const rank1 = sourceRank[term1.source.name] === undefined
+                ? 2
+                : sourceRank[term1.source.name];
+            const rank2 = sourceRank[term2.source.name] === undefined
+                ? 2
+                : sourceRank[term2.source.name];
+            if (rank1 !== rank2) {
+                return rank1 < rank2
+                    ? -1
+                    : 1;
+            }
+        }
+        return 0;
+    }
+    return orderPreferredOntologyTerms(term1, term2);
+};
+
+/**
+ * Given some array create an object where elements are mapped to their position in the array
+ */
+const generateRanks = (arr) => {
+    const ranks = {};
+    for (let i = 0; i < arr.length; i++) {
+        ranks[arr[i]] = i;
+    }
+    return ranks;
+};
+
+const preferredVocabulary = (term1, term2) => {
+    const sourceRank = generateRanks([
+        'bcgsc',
+        'sequence ontology',
+        'variation ontology'
+    ]);
+    return preferredSources(sourceRank, term1, term2);
+};
+
+
+const preferredDiseases = (term1, term2) => {
+    const sourceRank = generateRanks([
+        'oncotree',
+        'disease ontology'
+    ]);
+    return preferredSources(sourceRank, term1, term2);
+};
+
+const preferredDrugs = (term1, term2) => {
+    const sourceRank = generateRanks([
+        'gsc therapeutic ontology',
+        'drugbank',
+        'chembl',
+        'fda',
+        'ncit'
+    ]);
+    return preferredSources(sourceRank, term1, term2);
+};
+
+
+const preferredFeatures = (term1, term2) => {
+    const sourceRank = generateRanks([
+        'grch',
+        'hgnc',
+        'entrez',
+        'ensembl',
+        'refseq'
+    ]);
+    return preferredSources(sourceRank, term1, term2);
+};
+
+
 /**
  * wrapper to make requests less verbose
  */
@@ -230,115 +339,43 @@ class ApiConnection {
             fetchConditions: {...fetchConditions, ...rest}
         });
     }
+
+    async addTherapyCombination(source, therapyName) {
+        // try to get exact name match first
+        try {
+            const result = await this.getUniqueRecordBy({
+                endpoint: 'therapies',
+                where: {name: therapyName, sourceId: therapyName, or: 'sourceId,name'},
+                sort: preferredDrugs
+            });
+            return result;
+        } catch (err) {
+            if (!therapyName.includes('+')) {
+                throw err;
+            }
+        }
+        // if contains + then try to split and find each element by name/sourceId
+        try {
+            const elements = await Promise.all(therapyName.split(/\s*\+\s*/gi).map(name => this.getUniqueRecordBy({
+                endpoint: 'therapies',
+                where: {name, sourceId: name, or: 'sourceId,name'},
+                sort: preferredDrugs
+            })));
+            const sourceId = elements.map(e => e.sourceId).sort().join(' + ');
+            const name = elements.map(e => e.name).sort().join(' + ');
+            const combinedTherapy = await this.addRecord({
+                endpoint: 'therapies',
+                content: {sourceId, name, source: rid(source)},
+                existsOk: true
+            });
+            return combinedTherapy;
+        } catch (err) {
+            logger.error(err);
+            logger.error(`Failed to create the combination therapy (${therapyName})`);
+            throw err;
+        }
+    }
 }
-
-
-/**
- * Given two ontology terms, return the newer, non-deprecated, independant, term first.
- *
- * @param {object} term1 the first term record
- * @param {object} term2 the second term record
- *
- * @returns {Number} the sorting number (-1, 0, +1)
- */
-const orderPreferredOntologyTerms = (term1, term2) => {
-    if (term1.deprecated && !term2.deprecated) {
-        return 1;
-    } if (term2.deprecated && !term1.deprecated) {
-        return -1;
-    } if (term1.dependency == null & term2.dependency != null) {
-        return -1;
-    } if (term2.dependency == null & term1.dependency != null) {
-        return 1;
-    } if (term1.sourceId === term2.sourceId && rid(term1.source, true) === rid(term2.source, true)) {
-        if (term1.sourceIdVersion < term2.sourceIdVersion) {
-            return -1;
-        } if (term1.sourceIdVersion > term2.sourceIdVersion) {
-            return 1;
-        }
-        if (term1.source && term2.source) {
-            if (term1.source.version < term2.source.version) {
-                return -1;
-            } if (term1.source.version > term2.source.version) {
-                return 1;
-            }
-        }
-    }
-    return 0;
-};
-
-
-const preferredSources = (sourceRank, term1, term2) => {
-    if (orderPreferredOntologyTerms(term1, term2) === 0) {
-        if (term1.source.name !== term2.source.name) {
-            const rank1 = sourceRank[term1.source.name] === undefined
-                ? 2
-                : sourceRank[term1.source.name];
-            const rank2 = sourceRank[term2.source.name] === undefined
-                ? 2
-                : sourceRank[term2.source.name];
-            if (rank1 !== rank2) {
-                return rank1 < rank2
-                    ? -1
-                    : 1;
-            }
-        }
-        return 0;
-    }
-    return orderPreferredOntologyTerms(term1, term2);
-};
-
-/**
- * Given some array create an object where elements are mapped to their position in the array
- */
-const generateRanks = (arr) => {
-    const ranks = {};
-    for (let i = 0; i < arr.length; i++) {
-        ranks[arr[i]] = i;
-    }
-    return ranks;
-};
-
-const preferredVocabulary = (term1, term2) => {
-    const sourceRank = generateRanks([
-        'bcgsc',
-        'sequence ontology',
-        'variation ontology'
-    ]);
-    return preferredSources(sourceRank, term1, term2);
-};
-
-
-const preferredDiseases = (term1, term2) => {
-    const sourceRank = generateRanks([
-        'oncotree',
-        'disease ontology'
-    ]);
-    return preferredSources(sourceRank, term1, term2);
-};
-
-const preferredDrugs = (term1, term2) => {
-    const sourceRank = generateRanks([
-        'gsc therapeutic ontology',
-        'drugbank',
-        'chembl',
-        'fda',
-        'ncit'
-    ]);
-    return preferredSources(sourceRank, term1, term2);
-};
-
-
-const preferredFeatures = (term1, term2) => {
-    const sourceRank = generateRanks([
-        'grch',
-        'hgnc',
-        'entrez',
-        'ensembl',
-        'refseq'
-    ]);
-    return preferredSources(sourceRank, term1, term2);
-};
 
 
 const convertOwlGraphToJson = (graph, idParser = x => x) => {
