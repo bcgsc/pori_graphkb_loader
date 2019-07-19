@@ -14,6 +14,7 @@ const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
 
 const SOURCE_DEFN = {
+    displayName: 'Disease Ontology',
     name: 'disease ontology',
     url: 'http://disease-ontology.org',
     description: `

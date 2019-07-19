@@ -13,17 +13,10 @@ const {
 
 
 const SOURCE_DEFN = {
-    name: 'ipr',
+    name: 'iprkb',
     url: 'https://ipr.bcgsc.ca/knowledgebase/references',
-    description: 'The predecessor to GraphKB'
-};
-
-const TYPE_MAPPING = {
-    MUT: 'mutation',
-    SV: 'structural',
-    CNV: 'copy number',
-    'ELV-RNA': 'RNA expression',
-    'ELV-PROT': 'protein expression'
+    description: 'The predecessor to GraphKB',
+    displayName: 'IPRKB'
 };
 
 const DEFAULT_ASSEMBLY = 'GRCh37';

@@ -21,6 +21,7 @@ const validateDrugRecord = ajv.compile({
 
 const SOURCE_DEFN = {
     name: 'chembl',
+    displayName: 'ChEMBL',
     description: 'ChEMBL is a manually curated database of bioactive molecules with drug-like properties. It brings together chemical, bioactivity and genomic data to aid the translation of genomic information into effective new drugs.',
     url: 'https://www.ebi.ac.uk/chembl',
     usage: 'https://creativecommons.org/licenses/by-sa/3.0'

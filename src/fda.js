@@ -11,6 +11,7 @@ const {SOURCE_DEFN: {name: ncitSourceName}} = require('./ncit');
 const {logger} = require('./logging');
 
 const SOURCE_DEFN = {
+    displayName: 'FDA',
     name: 'fda',
     url: 'https://fdasis.nlm.nih.gov/srs',
     comment: 'https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/default.htm',

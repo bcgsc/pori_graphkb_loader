@@ -20,6 +20,7 @@ const CLASS_NAME = 'features';
 const SOURCE_DEFN = {
     name: 'hgnc',
     url: 'https://www.genenames.org/about',
+    displayName: 'HGNC',
     usage: 'https://www.ebi.ac.uk/about/terms-of-use',
     description: `
         The HGNC is responsible for approving unique symbols and names for human loci, including

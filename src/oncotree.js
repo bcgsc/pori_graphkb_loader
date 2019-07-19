@@ -15,7 +15,8 @@ const CURRENT_VERSION_ID = 'oncotree_latest_stable';
 
 const SOURCE_DEFN = {
     name: 'oncotree',
-    url: 'http://oncotree.mskcc.org'
+    url: 'http://oncotree.mskcc.org',
+    displayName: 'OncoTree'
 };
 
 

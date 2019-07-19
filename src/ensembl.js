@@ -28,6 +28,7 @@ const HEADER = {
 };
 
 const SOURCE_DEFN = {
+    displayName: 'Ensembl',
     name: _hgnc.ensemblSourceName, // avoid circular dependencies
     usage: 'https://uswest.ensembl.org/info/about/legal/disclaimer.html',
     url: 'https://uswest.ensembl.org',
