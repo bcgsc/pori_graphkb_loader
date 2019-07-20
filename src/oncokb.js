@@ -3,6 +3,7 @@
  */
 const request = require('request-promise');
 const Ajv = require('ajv');
+const fs = require('fs');
 
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
@@ -11,13 +12,14 @@ const {
 } = require('./util');
 const _pubmed = require('./pubmed');
 const _hgnc = require('./hgnc');
+const _ncit = require('./ncit');
 const {logger} = require('./logging');
 
 const SOURCE_DEFN = {
     name: 'oncokb',
     description: 'OncoKB is a precision oncology knowledge base and contains information about the effects and treatment implications of specific cancer gene alterations. It is developed and maintained by the Knowledge Systems group in the Marie Josée and Henry R. Kravis Center for Molecular Oncology at Memorial Sloan Kettering Cancer Center (MSK), in partnership with Quest Diagnostics and Watson for Genomics, IBM.',
-    usage: 'http://oncokb.org/#/terms',
-    url: 'http://oncokb.org',
+    usage: 'https://oncokb.org/terms',
+    url: 'https://oncokb.org',
     displayName: 'OncoKB'
 };
 
@@ -47,12 +49,25 @@ const validateAnnotatedRecordSpec = ajv.compile({
         variant: {type: 'string'}
     }
 });
+const drugRecordSpec = ajv.compile({
+    type: 'object',
+    required: ['drugName', 'uuid'],
+    properties: {
+        uuid: {type: 'string', format: 'uuid'},
+        ncitCode: {type: 'string', pattern: '^C\\d+$'},
+        drugName: {type: 'string'},
+        synonyms: {
+            type: 'array',
+            items: {type: 'string'}
+        }
+    }
+});
 
 const VOCABULARY_MAPPING = {
     'oncogenic mutations': 'oncogenic mutation',
     fusions: 'fusion',
     'truncating mutations': 'truncating',
-    'promoter Mutations': 'promoter mutation'
+    'promoter mutations': 'promoter mutation'
 };
 
 const DISEASE_MAPPING = {
@@ -98,7 +113,7 @@ const parseVariantName = (variantIn, {reference1} = {}) => {
         };
     } if (variant.endsWith('_splice')) {
         return {type: `p.${variant.replace('_splice', 'spl')}`};
-    } if (match = /^([^-\s]+)-([^-\s]+) fusion$/.exec(variant)) {
+    } if (match = /^([^-\s]+)-([^-\s]+) fusion$/i.exec(variant)) {
         if (!reference1 || match[1].toLowerCase() === reference1.toLowerCase()) {
             return {
                 type: 'fusion',
@@ -116,9 +131,9 @@ const parseVariantName = (variantIn, {reference1} = {}) => {
         } does not match the name of the gene feature ${
             reference1
         }`);
-    } if (match = /^exon (\d+) (mutation|insertion|deletion|deletion\/insertion|splice mutation)s?$/.exec(variant)) {
+    } if (match = /^exon (\d+) (mutation|insertion|deletion|deletion\/insertion|splice mutation|indel)s?$/i.exec(variant)) {
         const [, pos, type] = match;
-        if (type === 'deletion/insertion') {
+        if (type === 'deletion/insertion' || type === 'indel') {
             return {type: `e.${pos}delins`};
         } if (type === 'splice mutation') {
             return {type: `e.${pos}spl`};
@@ -126,6 +141,8 @@ const parseVariantName = (variantIn, {reference1} = {}) => {
         return {type: `e.${pos}${type.slice(0, 3)}`};
     } if (VOCABULARY_MAPPING[variant.toLowerCase().trim()] !== undefined) {
         return {type: VOCABULARY_MAPPING[variant.toLowerCase().trim()]};
+    } if (match = /^Exon (\d+) and (\d+) deletion$/i.exec(variant)) {
+        return {type: `e.${match[1]}_${match[2]}del`};
     }
     throw new Error(`Unable to parse variant notation (variantIn=${variantIn}, reference1=${reference1})`);
 };
@@ -214,6 +231,10 @@ const processVariant = async (opt) => {
         try {
             variant = kbParser.variant.parse(type, false).toJSON();
         } catch (err) {
+            try {
+                // try with adding a p prefix also
+                variant = kbParser.variant.parse(`p.${type}`, false).toJSON();
+            } catch (err2) {}
             logger.warn(`failed to parse the variant (${type}) for record (gene=${rawRecord.gene}, variant=${rawRecord.variant})`);
             throw err;
         }
@@ -319,17 +340,18 @@ const processActionableRecord = async (opt) => {
     try {
         drug = await conn.getUniqueRecordBy({
             endpoint: 'therapies',
-            where: {name: rawRecord.drug},
+            where: {name: rawRecord.drug, source: rid(oncokb)},
             sort: preferredDrugs
         });
     } catch (err) {
         if (rawRecord.drug.includes('+')) {
             // add the combination therapy as a new therapy defined by oncokb
-            drug = await conn.addTherapyCombination(oncokb, rawRecord.drug);
+            drug = await conn.addTherapyCombination(oncokb, rawRecord.drug, {matchSource: true});
         } else {
             throw err;
         }
     }
+
 
     // get the evidence level and determine the relevance
     const level = await conn.getUniqueRecordBy({
@@ -498,11 +520,12 @@ const processActionableRecords = async ({
     URL, conn, counts, oncokb
 }) => {
     // load directly from their api:
-    logger.info(`loading: ${URL}/allActionableVariants.json`);
+    const errorList = [];
+    logger.info(`loading: ${URL}/utils/allActionableVariants.json`);
     const recordsList = await request({
         method: 'GET',
         json: true,
-        uri: `${URL}/allActionableVariants.json`
+        uri: `${URL}/utils/allActionableVariants.json`
     });
     logger.info(`loaded ${recordsList.length} records`);
     const records = [];
@@ -513,6 +536,7 @@ const processActionableRecords = async ({
             checkSpec(validateActionableRecordSpec, rawRecord, () => i);
         } catch (err) {
             logger.error(err);
+            errorList.push({row: rawRecord, error: err});
             counts.error++;
             continue;
         }
@@ -544,11 +568,13 @@ const processActionableRecords = async ({
                 });
                 counts.success++;
             } catch (err) {
+                errorList.push({row: rawRecord, error: (err.error || err)});
                 counts.errors++;
                 logger.error((err.error || err).message);
             }
         }
     }
+    return errorList;
 };
 
 
@@ -566,11 +592,12 @@ const processAnnotatedRecords = async ({
     URL, conn, counts, oncokb
 }) => {
     // load directly from their api:
-    logger.info(`loading: ${URL}/allAnnotatedVariants.json`);
+    const errorList = [];
+    logger.info(`loading: ${URL}/utils/allAnnotatedVariants.json`);
     const recordsList = await request({
         method: 'GET',
         json: true,
-        uri: `${URL}/allAnnotatedVariants.json`
+        uri: `${URL}/utils/allAnnotatedVariants.json`
     });
     logger.info(`loaded ${recordsList.length} records`);
     const records = [];
@@ -581,6 +608,7 @@ const processAnnotatedRecords = async ({
             checkSpec(validateAnnotatedRecordSpec, rawRecord);
         } catch (err) {
             logger.error(err);
+            errorList.push({row: rawRecord, error: err});
             counts.error++;
             continue;
         }
@@ -626,9 +654,95 @@ const processAnnotatedRecords = async ({
             counts.skip += 2 - expect;
         } catch (err) {
             logger.error((err.error || err).message);
+            errorList.push({row: rawRecord, error: (err.error || err)});
             counts.errors++;
         }
     }
+    return errorList;
+};
+
+/**
+ * Load the drug ontology from OncoKB
+ */
+const uploadAllTherapies = async ({conn, URL, source}) => {
+    const drugs = await request(`${URL}/drugs`, {
+        method: 'GET',
+        json: true
+    });
+
+    const aliases = [];
+
+
+    for (const drug of drugs) {
+        logger.info(`processing drug: ${drug.uuid}`);
+        checkSpec(drugRecordSpec, drug, d => d.uuid);
+        const record = await conn.addRecord({
+            endpoint: 'therapies',
+            content: {source, sourceId: drug.uuid, name: drug.drugName},
+            existsOk: true
+        });
+        // link to NCIT
+        if (drug.ncitCode) {
+            try {
+                const ncit = await conn.getUniqueRecordBy({
+                    endpoint: 'therapies',
+                    where: {sourceId: drug.ncitCode, source: {name: _ncit.SOURCE_DEFN.name}},
+                    sort: preferredDrugs
+                });
+                await conn.addRecord({
+                    endpoint: 'crossreferenceof',
+                    content: {out: rid(record), in: rid(ncit), source},
+                    existsOk: true,
+                    fetchExisting: false
+                });
+            } catch (err) {
+                logger.warn(`Failed to link ${drug.uuid} to ${drug.ncitCode}`);
+            }
+        }
+
+        // link to the alias terms
+        drug.synonyms.forEach(syn => aliases.push([record, syn]));
+    }
+
+    const addAlias = async ([record, aliasName]) => {
+        if (aliasName.toLowerCase().trim() === record.name) {
+            return;
+        }
+        try {
+            const alias = await conn.getUniqueRecordBy({
+                endpoint: 'therapies',
+                where: {
+                    source, name: aliasName
+                }
+            });
+            await conn.addRecord({
+                endpoint: 'AliasOf',
+                content: {out: rid(record), in: rid(alias), source},
+                existsOk: true,
+                fetchExisting: false
+            });
+        } catch (err) {
+            try {
+                const alias = await conn.addRecord({
+                    endpoint: 'therapies',
+                    content: {
+                        source, name: aliasName, sourceId: aliasName
+                    },
+                    existsOk: true
+                });
+                await conn.addRecord({
+                    endpoint: 'AliasOf',
+                    content: {out: rid(record), in: rid(alias), source},
+                    existsOk: true,
+                    fetchExisting: false
+                });
+            } catch (err2) {
+                logger.warn(`Failed to link alias ${record.sourceId} to ${aliasName} (${err2})`);
+            }
+        }
+    };
+
+    await Promise.all(aliases.map(addAlias));
 };
 
 /**
@@ -639,8 +753,8 @@ const processAnnotatedRecords = async ({
  * @param {ApiConnection} opt.conn the GraphKB api connection object
  */
 const upload = async (opt) => {
-    const {conn} = opt;
-    const URL = opt.url || 'http://oncokb.org/api/v1/utils';
+    const {conn, errorLogPrefix} = opt;
+    const URL = opt.url || 'http://oncokb.org/api/v1';
 
     // add the source node
     const oncokb = await conn.addRecord({
@@ -651,17 +765,30 @@ const upload = async (opt) => {
     });
 
     const counts = {errors: 0, success: 0, skip: 0};
+    logger.info('load drug ontology');
+    const errorList = [];
+    await uploadAllTherapies({conn, URL, source: rid(oncokb)});
     await addEvidenceLevels(conn, oncokb);
-    await processActionableRecords({
+    errorList.push(...await processActionableRecords({
         conn, oncokb, URL, counts
-    });
-    await processAnnotatedRecords({
+    }));
+    errorList.push(...await processAnnotatedRecords({
         conn, oncokb, URL, counts
-    });
-
+    }));
+    const errorOutput = `${errorLogPrefix}-oncokbErrors.json`;
+    logger.info(`writing errors to ${errorOutput}`);
+    fs.writeFileSync(errorOutput, JSON.stringify({records: errorList}, null, 2));
     logger.info(JSON.stringify(counts));
 };
 
 module.exports = {
-    upload, parseVariantName, SOURCE_DEFN, type: 'kb'
+    upload,
+    parseVariantName,
+    SOURCE_DEFN,
+    type: 'kb',
+    specs: {
+        validateActionableRecordSpec,
+        validateAnnotatedRecordSpec,
+        drugRecordSpec
+    }
 };

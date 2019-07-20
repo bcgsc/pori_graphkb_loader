@@ -249,7 +249,7 @@ class ApiConnection {
         newRecord.sort(sortFunc);
         if (newRecord.length > 1) {
             if (sortFunc(newRecord[0], newRecord[1]) === 0) {
-                throw new Error(`expected a single ${endpoint} record but found multiple: ${rid(newRecord[0])} and ${rid(newRecord[1])}`);
+                throw new Error(`expected a single ${endpoint} record but found multiple: [${rid(newRecord[0])}, ${rid(newRecord[1])}]`);
             }
         } else if (newRecord.length === 0) {
             throw new Error(`missing ${endpoint} record where ${JSON.stringify(where)}`);
@@ -340,14 +340,26 @@ class ApiConnection {
         });
     }
 
-    async addTherapyCombination(source, therapyName) {
+    async addTherapyCombination(source, therapyName, opt = {}) {
+        const {matchSource = false} = opt;
         // try to get exact name match first
         try {
-            const result = await this.getUniqueRecordBy({
-                endpoint: 'therapies',
-                where: {name: therapyName, sourceId: therapyName, or: 'sourceId,name'},
-                sort: preferredDrugs
-            });
+            let result;
+            if (matchSource) {
+                result = await this.getUniqueRecordBy({
+                    endpoint: 'therapies',
+                    where: {
+                        name: therapyName, sourceId: therapyName, or: 'sourceId,name', source: rid(source)
+                    },
+                    sort: preferredDrugs
+                });
+            } else {
+                result = await this.getUniqueRecordBy({
+                    endpoint: 'therapies',
+                    where: {name: therapyName, sourceId: therapyName, or: 'sourceId,name'},
+                    sort: preferredDrugs
+                });
+            }
             return result;
         } catch (err) {
             if (!therapyName.includes('+')) {
@@ -356,11 +368,22 @@ class ApiConnection {
         }
         // if contains + then try to split and find each element by name/sourceId
         try {
-            const elements = await Promise.all(therapyName.split(/\s*\+\s*/gi).map(name => this.getUniqueRecordBy({
-                endpoint: 'therapies',
-                where: {name, sourceId: name, or: 'sourceId,name'},
-                sort: preferredDrugs
-            })));
+            const elements = await Promise.all(therapyName.split(/\s*\+\s*/gi).map((name) => {
+                if (matchSource) {
+                    return this.getUniqueRecordBy({
+                        endpoint: 'therapies',
+                        where: {
+                            name, sourceId: name, or: 'sourceId,name', source: rid(source)
+                        },
+                        sort: preferredDrugs
+                    });
+                }
+                return this.getUniqueRecordBy({
+                    endpoint: 'therapies',
+                    where: {name, sourceId: name, or: 'sourceId,name'},
+                    sort: preferredDrugs
+                });
+            }));
             const sourceId = elements.map(e => e.sourceId).sort().join(' + ');
             const name = elements.map(e => e.name).sort().join(' + ');
             const combinedTherapy = await this.addRecord({
