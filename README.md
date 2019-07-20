@@ -33,10 +33,12 @@ If loaded in order, some modules will link to one another.
   - [Uberon](#uberon)
   - [VariO](#vario)
 - [Knowledgebase Import Modules](#knowledgebase-import-modules)
+  - [CGI](#cgi)
   - [CIViC](#civic)
   - [COSMIC](#cosmic)
   - [DoCM](#docm)
   - [OncoKB](#oncokb)
+
 
 ## Guidelines for Developers
 
@@ -412,6 +414,22 @@ npm start -- --vario vario.owl
 ## Knowledgebase Import Modules
 
 Knowledgebase imports rely on the Ontology and vocabulary terms having already been loaded. They will use these to build statements as they import
+
+### CGI
+
+This module loads the flatfile dump of Cancer Genome Interpreter (CGI) into GraphKB
+
+|         |                                                                        |
+| ------- | ---------------------------------------------------------------------- |
+| About   | https://www.cancergenomeinterpreter.org                                |
+| Usage   | https://creativecommons.org/publicdomain/zero/1.0                      |
+| Example | https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_latest.zip |
+| Format  | Tab Delimited                                                          |
+
+
+```bash
+npm start -- --cgi cgi_biomarkers_per_variant.tsv
+```
 
 ### CIViC
 
