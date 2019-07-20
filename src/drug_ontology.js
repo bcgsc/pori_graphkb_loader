@@ -24,7 +24,7 @@ const TAGS = {
 };
 
 const SOURCE_DEFN = {
-    name: 'GSC Therapeutic Ontology',
+    name: 'gsc therapeutic ontology',
     displayName: 'GSC-TO',
     description: 'Therapeutic ontology compiled and curated at the Genome Sciences Centre'
 };
