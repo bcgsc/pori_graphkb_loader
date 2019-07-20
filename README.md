@@ -37,6 +37,7 @@ If loaded in order, some modules will link to one another.
   - [CIViC](#civic)
   - [COSMIC](#cosmic)
   - [DoCM](#docm)
+  - [IPRKB](#iprkb)
   - [OncoKB](#oncokb)
 
 
@@ -459,6 +460,21 @@ npm start -- --cosmic CosmicResistanceMutations.tsv
 ```bash
 npm start -- --docm
 ```
+
+### IPRKB
+
+The flatfile dump of the IPR KB (Predecessor to GraphKB)
+
+|         |                                               |
+| ------- | --------------------------------------------- |
+| About   | https://ipr.bcgsc.ca/knowledgebase/references |
+| Example |                                               |
+| Format  | Tab Delimited                                 |
+
+```bash
+npm start -- --iprkb /projects/vardb/downloads/ipr/select_kb_references_ident_as_kb_reference_uuid_kb_references_cr_201905281636.tsv
+```
+
 
 ### OncoKB
 
