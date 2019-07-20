@@ -30,6 +30,7 @@ IMPORT_MODULES.vario = require('./vario');
 IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
 IMPORT_MODULES.ontology = require('./ontology');
 IMPORT_MODULES.drugOntology = require('./drug_ontology');
+IMPORT_MODULES.cgi = require('./cancergenomeinterpreter');
 
 
 const optionDefinitions = [
@@ -79,7 +80,7 @@ const optionDefinitions = [
     },
     {
         name: 'ncit',
-        description: 'path to the NCIT file to upload. Expected format is OWL',
+        description: 'path to the NCIT file to upload. Expected format is tab delimited',
         type: fileExists
     },
     {
@@ -99,6 +100,11 @@ const optionDefinitions = [
     {
         name: 'oncokb',
         description: 'path to the actionable variants JSON from oncokb'
+    },
+    {
+        name: 'cgi',
+        description: 'load the biomarkers flatfile export from cancergenomeinterpreter.org',
+        type: fileExists
     },
     {
         name: 'fda',
@@ -152,12 +158,17 @@ const optionDefinitions = [
         name: 'drugOntology',
         description: 'path to the gsc drug ontology tab delimited file',
         type: fileExists
+    },
+    {
+        name: 'errorLogPrefix',
+        description: 'prefix to use for any module specific log files that are written',
+        default: `${process.cwd()}/errorLog-${process.pid}`
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
     {
-        title: 'External Database Migration',
-        description: 'Migrates the data from the flatfiles into the KB graph structure'
+        title: 'GraphKB ETL Importer',
+        description: 'Migrates data from dumps of (or using direct API connection to) other databases/resources into GraphKB'
     });
 
 
@@ -231,11 +242,13 @@ const upload = async () => {
             if (currModule.uploadFile !== undefined) {
                 await currModule.uploadFile({
                     conn: apiConnection,
-                    filename: options[moduleName]
+                    filename: options[moduleName],
+                    errorLogPrefix: options.errorLogPrefix
                 });
             } else {
                 await currModule.upload({
-                    conn: apiConnection
+                    conn: apiConnection,
+                    errorLogPrefix: options.errorLogPrefix
                 });
             }
         }
