@@ -82,6 +82,9 @@ const getFeature = async (conn, rawName) => {
 };
 
 
+const stripDrugPlurals = name => name.toLowerCase().trim().replace(/\bmimetics\b/, 'mimetic').replace(/\binhibitors\b/, 'inhibitor');
+
+
 /**
  * Determine what the statement applies to based on its type, relevance, and context
  *
@@ -113,7 +116,7 @@ const extractAppliesTo = async (conn, record, source) => {
             'response',
             'sensitivity'
         ].includes(relevance)) {
-            let drugName = appliesTo.toLowerCase().replace(/\binhibitors\b/, 'inhibitor');
+            let drugName = stripDrugPlurals(appliesTo);
             if (THERAPY_MAPPING[drugName]) {
                 drugName = THERAPY_MAPPING[drugName];
             }
@@ -214,31 +217,6 @@ const extractRelevance = (record) => {
         return 'prognostic indicator';
     }
     return relevance;
-};
-
-/**
- * @param {Object} db the orientjs database connection object
- * @param {Object.<string,ClassModel>} schema the mapping of all database models
- * @param {Object} user the user creating the records
- */
-const createChromosomes = async (conn) => {
-    const source = rid(await conn.addRecord({
-        endpoint: '/sources',
-        content: {name: 'GRCh', version: '37'},
-        existsOk: true
-    }));
-
-    await Promise.all([1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 'X', 'Y'].map(async chrom => conn.addRecord({
-        endpoint: '/features',
-        existsOk: true,
-        content: {
-            sourceId: chrom,
-            name: chrom,
-            source,
-            biotype: 'chromosome'
-        },
-        fetchExisting: false
-    })));
 };
 
 
@@ -356,8 +334,10 @@ const convertDeprecatedSyntax = (string) => {
             if (match = /^.+:([^:]+:[^:]+)$/.exec(string)) { // if multiple features are defined, use the most specific
                 string = match[1];
             }
-            if (match = /(:p.[X?][n?](_[X?][n?])?(fs|\*|spl|dup))$/.exec(string)) {
-                result.reference1 = string.slice(0, string.length - match[1].length);
+            const [reference1] = string.split(':');
+            string = string.slice(reference1.length + 1);
+            if (match = /^(p.[X?][n?](_[X?][n?])?(fs|\*|spl|dup))$/.exec(string)) {
+                result.reference1 = reference1;
                 if (match[3] === 'spl') {
                     result.type = 'splice-site';
                 } else if (match[3] === '*') {
@@ -367,14 +347,14 @@ const convertDeprecatedSyntax = (string) => {
                 } else if (match[3] === 'dup') {
                     result.type = 'duplication';
                 }
-            } else if (match = /(:p.[X?]\*)$/.exec(string)) {
-                string = string.slice(0, string.length - match[1].length);
-                Object.assign(result, {reference1: string, type: 'truncating'});
-            } else if (match = /(:p.[X?][n?]fs)$/.exec(string)) {
-                string = string.slice(0, string.length - match[1].length);
-                Object.assign(result, {reference1: string, type: 'frameshift'});
+            } else if (match = /^(p.[X?]\*)$/.exec(string)) {
+                Object.assign(result, {reference1, type: 'truncating'});
+            } else if (match = /^(p.[X?][n?]fs)$/.exec(string)) {
+                Object.assign(result, {reference1, type: 'frameshift'});
+            } else if (match = /^(e\.(\d+)\?)$/.exec(string)) {
+                Object.assign(result, {positional: `${reference1}:e.${match[2]}mut`});
             } else {
-                Object.assign(result, {positional: string});
+                Object.assign(result, {positional: `${reference1}:${string}`});
             }
         }
     } else {
@@ -592,7 +572,7 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
 };
 
 
-const uploadFile = async ({filename, conn}) => {
+const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     logger.info('loading content from IPR');
     const counts = {
         error: 0, skip: 0, history: 0, success: 0, fusionErrors: 0
@@ -617,7 +597,11 @@ const uploadFile = async ({filename, conn}) => {
         for (const [oldName, newName] of Object.entries(REMAPPED_COLUMNS)) {
             newRecord[newName] = record[oldName] || null;
         }
-        if (newRecord.evidenceType !== 'pubmed' || newRecord.reviewStatus.toLowerCase() === 'flagged-incorrect') {
+        if (
+            newRecord.evidenceType !== 'pubmed'
+            || newRecord.reviewStatus.toLowerCase() === 'flagged-incorrect'
+            || newRecord.relevance === 'observed'
+        ) {
             counts.skip++;
             continue;
         }
@@ -637,9 +621,6 @@ const uploadFile = async ({filename, conn}) => {
     records = expandRecords(records);
     logger.info(`${records.length} records after list expansion`);
 
-    logger.info('create chromosomes');
-    await createChromosomes(conn);
-
     const pubmedIdList = new Set();
     for (const record of records) {
         for (const {sourceId} of record.support) {
@@ -647,7 +628,9 @@ const uploadFile = async ({filename, conn}) => {
         }
     }
     logger.info(`loading ${pubmedIdList.size} articles from pubmed`);
-    // await _pubmed.uploadArticlesByPmid(conn, Array.from(pubmedIdList));
+    await _pubmed.uploadArticlesByPmid(conn, Array.from(pubmedIdList));
+
+    const errorList = [];
 
     for (let i = 0; i < records.length; i++) {
         const record = records[i];
@@ -661,18 +644,20 @@ const uploadFile = async ({filename, conn}) => {
             counts.success++;
         } catch (err) {
             const msg = err.toString();
-            if (err.statusCode) {
-                throw err;
-            }
-            if (msg.includes('of undefined') || msg.includes('not a function')) {
-                console.error(err);
+            if (err.statusCode === 500 || msg.includes('of undefined') || msg.includes('not a function')) {
+                console.error(err.error);
+                console.error(err.options.body);
                 console.log(record);
             }
             const error = err.error || err;
+            errorList.push({row: record, index: i, error});
             logger.error(error);
             counts.error++;
         }
     }
+    const errorLogFile = `${errorLogPrefix}-iprkb.json`;
+    logger.info(`writing errors to ${errorLogFile}`);
+    fs.writeFileSync(errorLogFile, JSON.stringify({records: errorList}, null, 2));
     logger.info(JSON.stringify(counts));
     logger.info(JSON.stringify(users));
 };

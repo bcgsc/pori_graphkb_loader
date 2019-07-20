@@ -13,6 +13,20 @@ describe('convertDeprecatedSyntax', () => {
         const result = convertDeprecatedSyntax('SV_e.fusion(?,RET)(?,?)');
         expect(result).toEqual({type: 'fusion', reference1: 'ret'});
     });
+    test('KIT:e.9?', () => {
+        const result = convertDeprecatedSyntax('KIT:e.9?');
+        const parsed = {
+            break1Repr: 'e.9',
+            break1Start: {
+                '@class': 'ExonicPosition',
+                pos: 9
+            },
+            reference1: 'KIT',
+            type: 'mutation'
+        };
+        console.log(result);
+        expect(result).toEqual({positional: parsed});
+    });
     test('CNV_12:y.q13_q14copygain_na', () => {
         const result = convertDeprecatedSyntax('CNV_12:y.q13_q14copygain_na');
         const parsed = {
