@@ -19,7 +19,7 @@ IMPORT_MODULES.drugbank = require('./drugbank');
 IMPORT_MODULES.ensembl = require('./ensembl');
 IMPORT_MODULES.fda = require('./fda');
 IMPORT_MODULES.hgnc = require('./hgnc');
-IMPORT_MODULES.ipr = require('./ipr');
+IMPORT_MODULES.iprkb = require('./ipr');
 IMPORT_MODULES.ncit = require('./ncit');
 IMPORT_MODULES.oncokb = require('./oncokb');
 IMPORT_MODULES.oncotree = require('./oncotree');
@@ -145,7 +145,7 @@ const optionDefinitions = [
         type: fileExists
     },
     {
-        name: 'ipr',
+        name: 'iprkb',
         description: 'path to the IPR CSV export file',
         type: fileExists
     },
