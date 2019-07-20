@@ -108,6 +108,15 @@
         "biological": {
             "name": "biological"
         },
+        "conditional loss of function": {
+            "description": "loss-of-function is predicted or assumed (by the literature) under specific conditions only",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "loss of function"
+                }
+            ]
+        },
         "copy gain": {
             "links": [
                 {
