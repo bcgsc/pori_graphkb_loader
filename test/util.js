@@ -1,38 +1,61 @@
+const path = require('path');
 
+const {
+    convertNulls,
+    orderPreferredOntologyTerms,
+    loadDelimToJson,
+    loadXmlToJson
+} = require('./../src/util');
 
-const uuidV4 = require('uuid/v4');
-
-const {getUserByName} = require('../app/repo/commands');
-const {connectDB} = require('../app/repo');
-
-const VERBOSE = process.env.VERBOSE === '1';
-
-
-const setUpEmptyDB = async (conf) => {
-    if (VERBOSE) {
-        console.log(`connecting to the database server:${conf.server.host}${conf.server.port}`);
-    }
-    conf.db.name = `test_${uuidV4()}`;
-    conf.db.create = true;
-    conf.createUser = true;
-
-    const {server, db, schema} = await connectDB(conf);
-
-    const user = await getUserByName(db, process.env.USER || 'admin');
-
-    return {
-        server, db, schema, admin: user, conf, dbName: conf.db.name
-    };
-};
-
-
-const clearDB = async (db, admin) => {
-    // clear all V/E records
-    await db.query('delete edge e');
-    await db.query('delete vertex v');
-    await db.query(`delete from user where name != '${admin.name}'`);
-    await db.query('delete from usergroup where name != \'readonly\' and name != \'admin\' and name != \'regular\'');
-};
-
-
-module.exports = {setUpEmptyDB, clearDB};
+describe('util', () => {
+    describe('convertNulls', () => {
+        test('returns \'null\'', () => {
+            const result = convertNulls({thing: null, other: 1});
+            expect(result).toEqual({thing: 'null', other: 1});
+        });
+        test('convert nested values', () => {
+            const result = convertNulls({thing: {other: null}});
+            expect(result).toEqual({thing: {other: 'null'}});
+        });
+    });
+    describe('orderPreferredOntologyTerms', () => {
+        test('prefer non-deprecated', () => {
+            expect(orderPreferredOntologyTerms(
+                {deprecated: true}, {}
+            )).toBe(1);
+            expect(orderPreferredOntologyTerms(
+                {deprecated: false}, {deprecated: true}
+            )).toBe(-1);
+        });
+        test('prefer newer version of same record', () => {
+            expect(orderPreferredOntologyTerms(
+                {sourceIdVersion: '2019-10-08'}, {sourceIdVersion: '2019-09-08'}
+            )).toBe(1);
+            expect(orderPreferredOntologyTerms(
+                {sourceIdVersion: '2019-10-08'}, {sourceIdVersion: '2019-11-08'}
+            )).toBe(-1);
+        });
+        test('prefer records without dependencies', () => {
+            expect(orderPreferredOntologyTerms(
+                {dependency: true}, {}
+            )).toBe(1);
+            expect(orderPreferredOntologyTerms(
+                {dependency: null}, {dependency: true}
+            )).toBe(-1);
+        });
+    });
+    test.todo('preferredSources');
+    test.todo('convertOwlGraphToJson');
+    test('loadDelimToJson', async () => {
+        const filename = path.join(__dirname, 'data/UNII_Records_25Oct2018_sample.txt');
+        const result = await loadDelimToJson(filename, '\t');
+        expect(result.length).toBe(99);
+    });
+    test('loadXmlToJson', async () => {
+        const filename = path.join(__dirname, 'data/drugbank_sample.xml');
+        const result = await loadXmlToJson(filename);
+        expect(result).toHaveProperty('drugbank');
+        expect(result.drugbank).toHaveProperty('drug');
+        expect(result.drugbank.drug.length).toBe(1);
+    });
+});

@@ -1,46 +1,45 @@
-# Knowledgebase Database and API
+# GraphKB Importer
 
-![Build Status](https://www.bcgsc.ca/bamboo/plugins/servlet/wittified/build-status/KNOW-KNOW)
+This package is used to import content from a variety of sources into GraphKB using the API.
 
-The KB is implemented using [orientDB](https://github.com/orientechnologies/orientdb) and [orientjs](https://github.com/orientechnologies/orientjs).
-It is a graph database which is used to store variants, ontologies, and the relevance of this terms and variants. The KB uses strict controlled vocabulary to provide a parseable and machine-readable interface for other applications to build on. The API is a REST API built on node/express.
+Automatic Import modules are provided for a variety of input sources. To Start importing external data, first the GraphKB API
+must already be running. Then the command line interface can be used for upload. Get the help menu
+detailing the commands and required inputs as follows
+
+```bash
+npm start -- --help
+```
+
+If loaded in order, some modules will link to one another.
 
 ### Table Of Contents
 
-- [About](#about)
-  - [Database Schema](#database-schema)
-  - [OpenAPI Specification](#openapi-specification)
-  - [Authentication](#authentication)
 - [Guidelines for Developers](#guidelines-for-developers)
   - [Style](#style)
   - [Getting Started](#getting-started)
-  - [Test Envinronments](#test-envinronments)
-  - [Generate the User Manual](#generate-the-user-manual)
-- [Deploy with PM2](#deploy-with-pm2)
-- [Importing External Content](#importing-external-content)
+- [Ontology Import Modules](#ontology-import-modules)
+  - [General Ontology JSON file](#general-ontology-json-file)
+  - [clinicaltrials.gov](#clinicaltrialsgov)
+  - [Disease Ontology](#disease-ontology)
+  - [DrugBank](#drugbank)
+  - [Ensembl](#ensembl)
+  - [FDA](#fda)
+  - [GSC Therapeutic Ontology](#gsc-therapeutic-ontology)
+  - [HGNC](#hgnc)
+  - [NCIT](#ncit)
+  - [Oncotree](#oncotree)
+  - [Refseq](#refseq)
+  - [Sequence Ontology](#sequence-ontology)
+  - [Uberon](#uberon)
+  - [VariO](#vario)
+- [Knowledgebase Import Modules](#knowledgebase-import-modules)
+  - [CGI](#cgi)
+  - [CIViC](#civic)
+  - [COSMIC](#cosmic)
+  - [DoCM](#docm)
+  - [IPRKB](#iprkb)
+  - [OncoKB](#oncokb)
 
-## About
-
-### Database Schema
-
-The [schema](http://npm.bcgsc.ca:8080/#/detail/@bcgsc/knowledgebase-schema) is defined in a separate NPM package.
-In general it consists of four major types of data: ontology terms, variants, evidence, and statements.
-
-### OpenAPI Specification
-
-All KB API routes are documented with openapi specification. The specification is hosted with the api under `/api/spec`
-
-### Authentication
-
-Authentication in the KB uses tokens. KB API tokens can be generated using the token route defined in the API specification.
-The first layer of authentication happens when KB uses [CATS](https://www.bcgsc.ca/wiki/display/lims/CATS+Documentation) to authenticate users against the LDAP. A request is sent
-to CATS with the users credentials and a token is returned if the user exists and has access to KB.
-
-The next step happens when KB looks up the username in the KB database. Each user in KB belongs to one or more UserGroups. Each of these UserGroups contains table-level permission schemas.
-
-![KB Authentication Process](authentication.svg)
-
-In summary, KB Client will send user credentials and recieve a token which will be used in the header of all subsequent requests.
 
 ## Guidelines for Developers
 
@@ -57,8 +56,8 @@ In summary, KB Client will send user credentials and recieve a token which will 
 Clone the repository
 
 ```bash
-git clone https://svn.bcgsc.ca/bitbucket/scm/vdb/knowledgebase_api.git
-cd knowledgebase_api
+git clone https://svn.bcgsc.ca/bitbucket/scm/dat/knowledgebase_importer.git
+cd knowledgebase_importer
 git checkout develop
 ```
 
@@ -68,124 +67,427 @@ Install the dependencies
 npm install
 ```
 
-To actually use the API, the orientDB instance must already be running. To configure where the tests will point to the user can either modify `config/config.js` or set the [environment variables](env.md) which override this config (default values are shown below, this will change depending on how you db server is configured).
-
-```bash
-GKB_DBS_PASS=root
-GKB_DBS_USER=root
-GKB_DB_HOST='orientdb02.bcgsc.ca'
-GKB_DB_PORT=2480
-GKB_KEY_FILE='id_rsa'  # used in generating the tokens
-```
-
-After these options are configured, the full set of tests can be run
+run the tests
 
 ```bash
 npm run test
 ```
 
-The non-database tests can be run without the above configuration
+## Ontology Import Modules
 
-```bash
-npm run test:unit
+### General Ontology JSON file
+
+Any ontology can be uploaded (without cross reference links) as long as the JSON file is in the expected format.
+
+The file should have a source definition. This must contain at least a name, but
+may optionally include any of the attributes expected for a source definition (ex. description, url, usage).
+
+```json
+{
+    "source": {
+        "name": "pubmed"
+    }
+}
 ```
 
-Import/Migration tests can be run with
+The class of records this ontology belongs to must also be defined.
 
-```bash
-npm run test:import
+```json
+{
+    "source": {
+        "name": "pubmed"
+    },
+    "class": "Publication"
+}
 ```
 
-### Test Envinronments
+The last top level attribute is the records. This must be an object where the
+sourceId of each record is its key
 
-Default configurations for all non-sensitive content can be set using the various start commands
-
-The local test envinronment should be used for testing without authentication
-
-```bash
-npm run start:local
+```json
+{
+    "source": {
+        "name": "pubmed"
+    },
+    "class": "Publication",
+    "records": {
+        "<sourceId1>": {},
+        "<sourceId2>": {}
+    }
+}
 ```
 
-The test/dev test environment should be used for developing against the test keycloak server (can only be used within the GSC network)
+Each record will then define the properties of each ontology term.
 
-```bash
-npm run start:dev
+```json
+{
+    "source": {
+        "name": "pubmed"
+    },
+    "class": "Publication",
+    "records": {
+        "19584866": {
+            "name": "a small molecule blocking oncogenic protein ews-fli1 interaction with rna helicase a inhibits growth of ewing's sarcoma.",
+            "year": "2009",
+            "journalName": "nature medicine"
+        }
+    }
+}
 ```
 
-### Generate the User Manual
+Links within the ontology can also be defined. These are given via a property on
+the ontology term
 
-```bash
-npm run build:docs
-npm run start:docs
+```json
+{
+    "name": "a small molecule blocking oncogenic protein ews-fli1 interaction with rna helicase a inhibits growth of ewing's sarcoma.",
+    "links": [
+        {"class": "<Relationship type>", "target": "<sourceId of another term>"}
+    ]
+}
 ```
 
-## Deploy with PM2
-
-This example deploys a tag named v1.1.0
-
-Ssh to the host server and clone the repository
+Once this file has been built it can be loaded as follows. The script will create records if they do not already exist. Any conflicts will be reported in the logging
 
 ```bash
-ssh kbapi01
-cd /var/www/kb/knowledgebase-api
-git clone https://svn.bcgsc.ca/bitbucket/scm/vdb/knowledgebase_api.git v1.1.0
-cd v1.1.0
-git checkout v1.1.0
+npm start -- --ontology /path/to/json/file
 ```
 
-Install the dependencies
+
+
+### clinicaltrials.gov
+
+|                 |                                                                |
+| --------------- | -------------------------------------------------------------- |
+| About           | https://clinicaltrials.gov                                     |
+| Usage           | https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use |
+| Example         |                                                                |
+| Format          | XML                                                            |
+| CrossReferences | Loaded Drug/Disease Ontologies                                 |
+
+Loads an XML file. The XML file is expected to be exported from the clinicaltrials.gov website. To retrieve
+the expected file, follow the steps below
+
+ * Perform a search on their site, for example https://clinicaltrials.gov/ct2/results?recrs=ab&cond=Cancer&term=&cntry=CA&state=&city=&dist=
+ * Click their Download link/Button
+ * Adjust the settings in the Pop up dialog (Include all studies, all columns, and export as XML)
+ * Download and save the file
+ * Upload the file to GraphKB using this module
 
 ```bash
-npm install
+npm start -- --clinicaltrialsgov download.xml
 ```
 
-Create the keyfile
+### Disease Ontology
+
+|                 |                                                                                                                               |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| About           | http://disease-ontology.org/about/                                                                                            |
+| Usage           |                                                                                                                               |
+| Example         | https://raw.githubusercontent.com/DiseaseOntology/HumanDiseaseOntology/v2018-07/05/src/ontology/releases/2018-07-05/doid.json |
+| Format          | JSON                                                                                                                          |
+| CrossReferences | [NCIT](#ncit)                                                                                                                 |
+
+The disease ontology releases their data dumps as both XML and JSON from thei github page. We expect the JSON format
+
+Once downloaded the JSON file can be loaded as follows
 
 ```bash
-yes | ssh-keygen -t rsa -b 4096 -f id_rsa -N ''
+npm start -- --diseaseOntology doid.json
 ```
 
-Create the logging directories
+### DrugBank
+
+|                 |                                                                    |
+| --------------- | ------------------------------------------------------------------ |
+| About           | https://www.drugbank.ca/about                                      |
+| Usage           | https://www.drugbank.ca/legal/terms_of_use                         |
+| Example         | https://www.drugbank.ca/releases/5-1-1/downloads/all-full-database |
+| Format          | XML                                                                |
+| CrossReferences | [FDA](#fda); `CHEMBL (API)`; [HGNC (API)](#hgnc)                   |
 
 ```bash
-mkdir logs
+npm start -- --drugbank data.xml
 ```
 
-Create an env.sh file to hold the [configurable environment variables](doc/env.md) as well as the PM2 ones
+### Ensembl
+
+|                 |                                                             |
+| --------------- | ----------------------------------------------------------- |
+| About           | https://uswest.ensembl.org                                  |
+| Usage           | https://uswest.ensembl.org/info/about/legal/disclaimer.html |
+| Example         |                                                             |
+| Format          | Tab delimited                                               |
+| CrossReferences | [RefSeq](#refseq), [HGNC (API)](#hgnc)                      |
+
+This requires a BioMart Export with the minimum following columns included
+
+- Gene stable ID
+- Version (gene)
+- Transcript stable ID
+- Version (transcript)
+- Chromosome/scaffold name
+- HGNC ID
+- HGNC symbol
+- RefSeq mRNA ID
+- LRG display in Ensembl gene ID
+- Protein stable ID
+- Protein stable ID version
+- Gene name
+- Source of gene name
 
 ```bash
-export PM2_HOME=/var/www/kb/knowledgebase-api/pm2_logs
-export GKB_LOG_DIR=logs
-export GKB_DB_CREATE=1
+npm start -- --ensembl ensembl_mart_export.tab
 ```
 
-Set the Database password (It is better not to store this)
+### FDA
+
+|                 |                                                                                                                      |
+| --------------- | -------------------------------------------------------------------------------------------------------------------- |
+| About           | https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/default.htm |
+| Usage           |                                                                                                                      |
+| Example         | https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip                                                            |
+| Format          | Tab delimited                                                                                                        |
+| CrossReferences | [NCIT](#ncit)                                                                                                        |
 
 ```bash
-export GKB_DBS_PASS=<some password>
+npm start -- --fda UNII_Records_25Oct2018.txt
 ```
 
-Now source the file and start your pm2 process
+### GSC Therapeutic Ontology
+
+|                 |                                                                                                |
+| --------------- | ---------------------------------------------------------------------------------------------- |
+| About           | https://www.bcgsc.ca/jira/browse/KBDEV-496                                                     |
+| Usage           |                                                                                                |
+| Example         | https://www.bcgsc.ca/jira/secure/attachment/168215/Drug_ontology_drugbank_IDs_draft_190507.txt |
+| Format          | Tab delimited                                                                                  |
+| CrossReferences | [Drugbank](#drugbank)                                                                          |
 
 ```bash
-source env.sh
-pm2 start npm --name kbapi-v1.1.0  -- start
+npm start -- --drugOntology drug_ontology.txt
 ```
 
-You should now be able to view the running process with
+
+### HGNC
+
+|                 |                                                                                                 |
+| --------------- | ----------------------------------------------------------------------------------------------- |
+| About           | https://www.genenames.org/about/overview                                                        |
+| Usage           | https://www.ebi.ac.uk/about/terms-of-use                                                        |
+| Example         | ftp://ftp.ebi.ac.uk/pub/databases/genenames/new/json/locus_types/gene_with_protein_product.json |
+| Format          | JSON                                                                                            |
+| CrossReferences | [Ensembl](#ensembl);  `Entrez Gene (API)`                                                       |
 
 ```bash
-pm2 ls
+npm start -- --hgnc hgnc_complete_set.json
 ```
 
-## Importing External Content
+### NCIT
 
-Automatic Import modules are provided for a variety of input sources. To Start importing external data, first the GraphKB API
-must already be running. Then the command line interface can be used for upload. Get the help menu
-detailing the commands and required inputs as follows
+|                 |                                                                      |
+| --------------- | -------------------------------------------------------------------- |
+| About           | https://cbiit.cancer.gov/about/about-cbiit                           |
+| Usage           | https://creativecommons.org/licenses/by/4.0                          |
+| Example         | https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus_19.05d.FLAT.zip |
+| Format          | tab-delimited                                                        |
+| CrossReferences |                                                                      |
 
 ```bash
-npm run import -- --help
+npm start -- --ncit Thesaurus_18.06d.txt
 ```
 
-If loaded in order, some modules will link to one another.
+### Oncotree
+
+|                 |                                  |
+| --------------- | -------------------------------- |
+| About           | http://oncotree.mskcc.org/#/home |
+| Usage           |                                  |
+| Example         | http://oncotree.mskcc.org/api    |
+| Format          | REST (JSON)                      |
+| CrossReferences | [NCIT](#ncit)                    |
+
+This importer pulls all versions of Oncotree directly from the Oncotree API and links them together
+
+```bash
+npm start -- --oncotree
+```
+
+
+
+### Refseq
+
+|                 |                                                                   |
+| --------------- | ----------------------------------------------------------------- |
+| About           | https://www.ncbi.nlm.nih.gov/refseq                               |
+| Usage           | https://www.ncbi.nlm.nih.gov/home/about/policies                  |
+| Example         | ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene |
+| Format          | Tab delimited                                                     |
+| CrossReferences | [HGNC (API)](#hgnc)                                               |
+
+
+```bash
+npm start -- --refseq LRG_RefSeqGene.tab
+```
+
+
+### Sequence Ontology
+
+|                 |                                                                                            |
+| --------------- | ------------------------------------------------------------------------------------------ |
+| About           | http://www.sequenceontology.org                                                            |
+| Usage           | http://www.sequenceontology.org/?page_id=269                                               |
+| Example         | https://raw.githubusercontent.com/The-Sequence-Ontology/SO-Ontologies/master/so-simple.owl |
+| Format          | OWL                                                                                        |
+| CrossReferences |                                                                                            |
+
+```bash
+npm start -- --sequenceOntology so-simple.owl
+```
+
+
+### Uberon
+
+|                 |                                                                      |
+| --------------- | -------------------------------------------------------------------- |
+| About           | http://uberon.github.io/about.html                                   |
+| Usage           | http://obofoundry.github.io/principles/fp-001-open.html              |
+| Example         | http://purl.obolibrary.org/obo/uberon/releases/2018-02-28/uberon.owl |
+| Format          | OWL                                                                  |
+| CrossReferences | [NCIT](#ncit)                                                        |
+
+```bash
+npm start -- --uberon uberon.owl
+```
+
+### VariO
+
+|                 |                                                           |
+| --------------- | --------------------------------------------------------- |
+| About           | http://variationontology.org                              |
+| Usage           | http://variationontology.org/citing.shtml                 |
+| Example         | http://www.variationontology.org/vario_download/vario.owl |
+| Format          | OWL                                                       |
+| CrossReferences |                                                           |
+
+```bash
+npm start -- --vario vario.owl
+```
+
+
+
+## Knowledgebase Import Modules
+
+Knowledgebase imports rely on the Ontology and vocabulary terms having already been loaded. They will use these to build statements as they import
+
+### CGI
+
+This module loads the flatfile dump of Cancer Genome Interpreter (CGI) into GraphKB
+
+|         |                                                                        |
+| ------- | ---------------------------------------------------------------------- |
+| About   | https://www.cancergenomeinterpreter.org                                |
+| Usage   | https://creativecommons.org/publicdomain/zero/1.0                      |
+| Example | https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_latest.zip |
+| Format  | Tab Delimited                                                          |
+
+
+```bash
+npm start -- --cgi cgi_biomarkers_per_variant.tsv
+```
+
+### CIViC
+
+Import the Clinical Evidence summaries from the public Civic database
+
+|         |                                                   |
+| ------- | ------------------------------------------------- |
+| About   | https://civicdb.org/about                         |
+| Usage   | https://creativecommons.org/publicdomain/zero/1.0 |
+| Example |                                                   |
+| Format  | REST (JSON)                                       |
+
+```bash
+npm start -- --civic
+```
+
+### COSMIC
+
+
+|         |                                                                                |
+| ------- | ------------------------------------------------------------------------------ |
+| About   | https://cancer.sanger.ac.uk/cosmic/about                                       |
+| Usage   | https://creativecommons.org/publicdomain/zero/1.0                              |
+| Example | https://cancer.sanger.ac.uk/cosmic/download (CosmicResistanceMutations.tsv.gz) |
+| Format  | Tab Delimited                                                                  |
+
+Expects column names like
+- Gene Name
+- Transcript
+- Census Gene
+- Drug Name
+- ID Mutation
+- AA Mutation
+- CDS Mutation
+- Primary Tissue
+- Tissue Subtype 1
+- Tissue Subtype 2
+- Histology
+- Histology Subtype 1
+- Histology Subtype 2
+- Pubmed Id
+- CGP Study
+- Somatic Status
+- Sample Type
+- Zygosity
+- Genome Coordinates (GRCh38)
+- Tier
+
+
+```bash
+npm start -- --cosmic CosmicResistanceMutations.tsv
+```
+
+### DoCM
+
+|         |                            |
+| ------- | -------------------------- |
+| About   | http://www.docm.info/about |
+| Usage   | http://www.docm.info/terms |
+| Example |                            |
+| Format  | REST (JSON)                |
+
+```bash
+npm start -- --docm
+```
+
+### IPRKB
+
+The flatfile dump of the IPR KB (Predecessor to GraphKB)
+
+|         |                                               |
+| ------- | --------------------------------------------- |
+| About   | https://ipr.bcgsc.ca/knowledgebase/references |
+| Example |                                               |
+| Format  | Tab Delimited                                 |
+
+```bash
+npm start -- --iprkb /projects/vardb/downloads/ipr/select_kb_references_ident_as_kb_reference_uuid_kb_references_cr_201905281636.tsv
+```
+
+
+### OncoKB
+
+This module pulls directly from the OncoKB API to import statements from OncoKB into GraphKB
+
+|         |                           |
+| ------- | ------------------------- |
+| About   | http://oncokb.org/#/about |
+| Usage   | http://oncokb.org/#/terms |
+| Example |                           |
+| Format  | REST (JSON)               |
+
+
+```bash
+npm start -- --oncokb
+```
