@@ -153,9 +153,6 @@ npm start -- --ontology /path/to/json/file
 ```
 
 
----
-
-
 
 ### clinicaltrials.gov
 
@@ -180,9 +177,6 @@ the expected file, follow the steps below
 npm start -- --clinicaltrialsgov download.xml
 ```
 
-
----
-
 ### Disease Ontology
 
 |                 |                                                                                                                               |
@@ -201,9 +195,6 @@ Once downloaded the JSON file can be loaded as follows
 npm start -- --diseaseOntology doid.json
 ```
 
-
----
-
 ### DrugBank
 
 |                 |                                                                    |
@@ -217,9 +208,6 @@ npm start -- --diseaseOntology doid.json
 ```bash
 npm start -- --drugbank data.xml
 ```
-
-
----
 
 ### Ensembl
 
@@ -251,9 +239,6 @@ This requires a BioMart Export with the minimum following columns included
 npm start -- --ensembl ensembl_mart_export.tab
 ```
 
-
----
-
 ### FDA
 
 |                 |                                                                                                                      |
@@ -267,9 +252,6 @@ npm start -- --ensembl ensembl_mart_export.tab
 ```bash
 npm start -- --fda UNII_Records_25Oct2018.txt
 ```
-
-
----
 
 ### GSC Therapeutic Ontology
 
@@ -286,9 +268,6 @@ npm start -- --drugOntology drug_ontology.txt
 ```
 
 
----
-
-
 ### HGNC
 
 |                 |                                                                                                 |
@@ -303,9 +282,6 @@ npm start -- --drugOntology drug_ontology.txt
 npm start -- --hgnc hgnc_complete_set.json
 ```
 
-
----
-
 ### NCIT
 
 |                 |                                                                      |
@@ -319,9 +295,6 @@ npm start -- --hgnc hgnc_complete_set.json
 ```bash
 npm start -- --ncit Thesaurus_18.06d.txt
 ```
-
-
----
 
 ### Oncotree
 
@@ -340,7 +313,6 @@ npm start -- --oncotree
 ```
 
 
----
 
 ### Refseq
 
@@ -358,8 +330,6 @@ npm start -- --refseq LRG_RefSeqGene.tab
 ```
 
 
----
-
 ### Sequence Ontology
 
 |                 |                                                                                            |
@@ -375,9 +345,6 @@ npm start -- --sequenceOntology so-simple.owl
 ```
 
 
----
-
-
 ### Uberon
 
 |                 |                                                                      |
@@ -391,9 +358,6 @@ npm start -- --sequenceOntology so-simple.owl
 ```bash
 npm start -- --uberon uberon.owl
 ```
-
-
----
 
 ### VariO
 
@@ -446,9 +410,6 @@ Import the Clinical Evidence summaries from the public Civic database
 npm start -- --civic
 ```
 
-
----
-
 ### COSMIC
 
 
@@ -486,9 +447,6 @@ Expects column names like
 npm start -- --cosmic CosmicResistanceMutations.tsv
 ```
 
-
----
-
 ### DoCM
 
 |         |                            |
@@ -501,9 +459,6 @@ npm start -- --cosmic CosmicResistanceMutations.tsv
 ```bash
 npm start -- --docm
 ```
-
-
----
 
 ### OncoKB
 
