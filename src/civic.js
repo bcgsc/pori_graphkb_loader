@@ -289,6 +289,9 @@ const getVariantName = ({name, variant_types: variantTypes = []}) => {
     } if (match = /^\s*c\.\d+\s*[a-z]\s*>[a-z]\s*$/i.exec(result)) {
         return result.replace(/\s+/g, '');
     } if (result !== 'mutation' && result.endsWith('mutation')) {
+        if (result === 'promoter mutation' || result === 'deletrious mutation' || result.includes('domain')) {
+            return result;
+        }
         return result.replace(/\s*mutation$/i, '');
     } if (result === 'mutation' && variantTypes.length === 1) {
         return variantTypes[0].name.replace(/_/g, ' ');
@@ -625,5 +628,9 @@ const upload = async (opt) => {
 };
 
 module.exports = {
-    upload, getVariantName, SOURCE_DEFN, type: 'kb'
+    upload,
+    getVariantName,
+    SOURCE_DEFN,
+    type: 'kb',
+    specs: {validateEvidenceSpec, validateVariantSpec}
 };
