@@ -91,7 +91,9 @@ const parseDocmVariant = (variant) => {
     return variant;
 };
 
-
+/**
+ * Create the string representation of the genomic variant
+ */
 const buildGenomicVariant = ({
     reference, variant, chromosome, start, stop, variant_type: variantType
 }) => {
