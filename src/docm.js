@@ -254,7 +254,7 @@ const processRecord = async (opt) => {
  * @param {string} [opt.url] the base url for the DOCM api
  */
 const upload = async (opt) => {
-    const {conn} = opt;
+    const {conn, errorLogPrefix} = opt;
     // load directly from their api:
     logger.info(`loading: ${opt.url || BASE_URL}.json`);
     const recordsList = await request({
@@ -276,6 +276,7 @@ const upload = async (opt) => {
     };
     const filtered = [];
     const pmidList = new Set();
+    const errorList = [];
 
     for (const summaryRecord of recordsList) {
         try {
@@ -283,22 +284,22 @@ const upload = async (opt) => {
         } catch (err) {
             logger.error(err);
             counts.error++;
+            errorList.push({summaryRecord, error: err, isSummary: true});
             continue;
         }
-        if (record.drug_interactions) {
-            logger.warn(`Found a record with drug interactions! ${JSON.stringify(record)}`);
+        if (summaryRecord.drug_interactions) {
+            logger.warn(`Found a record with drug interactions! ${JSON.stringify(summaryRecord)}`);
             counts.highlight++;
         }
-        logger.info(`loading: ${BASE_URL}/${record.hgvs}.json`);
-        const details = await request({
+        logger.info(`loading: ${BASE_URL}/${summaryRecord.hgvs}.json`);
+        const record = await request({
             method: 'GET',
             json: true,
-            uri: `${BASE_URL}/${record.hgvs}.json`
+            uri: `${BASE_URL}/${summaryRecord.hgvs}.json`
         });
-        record.details = details;
 
         filtered.push(record);
-        for (const diseaseRec of details.diseases) {
+        for (const diseaseRec of record.diseases) {
             if (diseaseRec.source_pubmed_id) {
                 pmidList.add(`${diseaseRec.source_pubmed_id}`);
             }
