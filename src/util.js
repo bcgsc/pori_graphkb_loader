@@ -15,6 +15,8 @@ const jsonpath = require('jsonpath');
 
 const {logger} = require('./logging');
 
+const INTERNAL_SOURCE_NAME = 'bcgsc';
+
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
 
 const rid = (record, nullOk) => {
@@ -258,6 +260,14 @@ class ApiConnection {
         return newRecord;
     }
 
+    getVocabularyTerm({term}) {
+        return this.getUniqueRecordBy({
+            endpoint: 'vocabulary',
+            where: {sourceId: term, source: {name: INTERNAL_SOURCE_NAME}},
+            sortFunc: orderPreferredOntologyTerms
+        });
+    }
+
     /**
      * @param {object} opt
      * @param {string} opt.endpoint
@@ -310,6 +320,11 @@ class ApiConnection {
         }
     }
 
+    /**
+     * @param {object} opt
+     * @param {object} opt.content
+     * @param {string} opt.endpoint
+     */
     async addVariant(opt) {
         const {
             content,
@@ -539,7 +554,7 @@ const convertRowFields = (header, row) => {
 
 
 module.exports = {
-    INTERNAL_SOURCE_NAME: 'bcgsc',
+    INTERNAL_SOURCE_NAME,
     rid,
     checkSpec,
     convertOwlGraphToJson,
