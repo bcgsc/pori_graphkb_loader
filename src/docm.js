@@ -5,12 +5,12 @@
  */
 const request = require('request-promise');
 const Ajv = require('ajv');
-const jsonpath = require('jsonpath');
+const fs = require('fs');
 
 const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
 
 const {
-    orderPreferredOntologyTerms, rid, INTERNAL_SOURCE_NAME
+    orderPreferredOntologyTerms, rid, checkSpec
 } = require('./util');
 const _pubmed = require('./pubmed');
 const {logger} = require('./logging');
@@ -29,12 +29,29 @@ const SOURCE_DEFN = {
 const BASE_URL = 'http://www.docm.info/api/v1/variants';
 
 
-const validateVariantSummarySpec = ajv.compile({
+const variantSummarySpec = ajv.compile({
     type: 'object',
+    required: ['hgvs'],
+    properties: {
+        hgvs: {type: 'string'}
+    }
+});
+
+
+const recordSpec = ajv.compile({
+    type: 'object',
+    required: ['reference_version', 'hgvs', 'gene', 'reference', 'variant', 'start', 'stop', 'variant_type'],
     properties: {
         hgvs: {type: 'string'},
         gene: {type: 'string'},
-        amino_acid: {type: 'string', pattern: '^p\\..*'}
+        amino_acid: {type: 'string', pattern: '^p\\..*'},
+        reference_version: {type: 'string'},
+        reference: {type: 'string', pattern: '^([ATGC]*|-)$'},
+        variant: {type: 'string', pattern: '^([ATGC]*|-)$'},
+        start: {type: 'number', min: 1},
+        stop: {type: 'number', min: 1},
+        chromosome: {type: 'string'},
+        variant_type: {type: 'string', enum: ['SNV', 'DEL', 'INS', 'DNV']}
     }
 });
 
@@ -74,58 +91,125 @@ const parseDocmVariant = (variant) => {
     return variant;
 };
 
+/**
+ * Create the string representation of the genomic variant
+ */
+const buildGenomicVariant = ({
+    reference, variant, chromosome, start, stop, variant_type: variantType
+}) => {
+    if (variantType === 'SNV') {
+        return `${chromosome}:g.${start}${reference}>${variant}`;
+    } if (variantType === 'DEL') {
+        if (start === stop) {
+            return `${chromosome}:g.${start}del${reference}`;
+        }
+        return `${chromosome}:g.${start}_${stop}del${reference}`;
+    } if (variantType === 'INS') {
+        return `${chromosome}:g.${start}_${stop}ins${variant}`;
+    }
+    if (start === stop) {
+        return `${chromosome}:g.${start}del${reference}ins${variant}`;
+    }
+    return `${chromosome}:g.${start}_${stop}del${reference}ins${variant}`;
+};
+
+/**
+ * Create the protein and genomic variants
+ */
+const processVariants = async ({conn, source, record: docmRecord}) => {
+    const {
+        amino_acid: aminoAcid,
+        gene,
+        chromosome,
+        reference_version: assembly,
+        start,
+        stop
+    } = docmRecord;
+    // get the feature by name
+    let protein,
+        genomic;
+
+    try {
+        // create the protein variant
+        const reference1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: gene});
+        let {
+            noFeatures, prefix, multiFeature, ...variant
+        } = variantParser(parseDocmVariant(aminoAcid), false);
+        const type = await conn.getVocabularyTerm({term: variant.type});
+        protein = variant = await conn.addVariant({
+            endpoint: 'positionalvariants',
+            content: {...variant, type, reference1: rid(reference1)},
+            existsOk: true
+        });
+    } catch (err) {
+        logger.error(`Failed to process protein notation (${gene}:${aminoAcid})`);
+        throw err;
+    }
+
+    try {
+        // create the genomic variant
+        let {
+            noFeatures, prefix, multiFeature, ...variant
+        } = variantParser(buildGenomicVariant(docmRecord), false);
+        const type = await conn.getVocabularyTerm({term: variant.type});
+        const reference1 = await conn.getUniqueRecordBy({
+            endpoint: 'features',
+            where: {
+                sourceId: chromosome,
+                name: chromosome,
+                or: 'name,sourceId',
+                biotype: 'chromosome'
+            },
+            sortFunc: orderPreferredOntologyTerms
+        });
+        genomic = variant = await conn.addVariant({
+            endpoint: 'positionalvariants',
+            content: {
+                ...variant, type, reference1: rid(reference1), assembly: assembly.toLowerCase().trim()
+            },
+            existsOk: true
+        });
+    } catch (err) {
+        logger.error(`Failed to process genomic notation (${chromosome}.${assembly}:g.${start}_${stop})`);
+        logger.error(err);
+    }
+    // TODO: create the cds variant? currently unclear if cdna or cds notation
+    // link the variants together
+    if (genomic) {
+        await conn.addRecord({
+            endpoint: 'infers',
+            content: {out: rid(genomic), in: rid(protein), source: rid(source)},
+            existsOk: true,
+            fetchExisting: false
+        });
+    }
+    // return the protein variant
+    return protein;
+};
+
 
 const processRecord = async (opt) => {
     const {
-        conn, source
+        conn, source, record
     } = opt;
-    const {details, ...record} = opt.record;
-    // get the feature by name
-    const gene = await _hgnc.fetchAndLoadBySymbol({conn, symbol: record.gene});
     // get the record details
     const counts = {error: 0, success: 0, skip: 0};
 
     // get the variant
-    let {
-        noFeatures, prefix, multiFeature, ...variant
-    } = variantParser(parseDocmVariant(record.amino_acid), false);
+    const variant = await processVariants({conn, source, record});
 
-    const variantType = await conn.getUniqueRecordBy({
-        endpoint: 'vocabulary',
-        where: {name: variant.type, source: {name: INTERNAL_SOURCE_NAME}}
-    });
-    const defaults = {
-        untemplatedSeq: null,
-        break1Start: null,
-        break1End: null,
-        break2Start: null,
-        break2End: null,
-        refSeq: null,
-        truncation: null,
-        zygosity: null,
-        germline: null
-    };
-    variant.reference1 = rid(gene);
-    variant.type = rid(variantType);
-    // create the variant
-    variant = await conn.addRecord({
-        endpoint: 'positionalvariants',
-        content: variant,
-        existsOk: true,
-        getConditions: Object.assign(defaults, variant)
-    });
+    if (!variant) {
+        throw new Error('Failed to parse either variant');
+    }
 
-    for (const diseaseRec of details.diseases) {
+    for (const diseaseRec of record.diseases) {
         if (!diseaseRec.tags || diseaseRec.tags.length !== 1) {
             counts.skip++;
             continue;
         }
         try {
             // get the vocabulary term
-            const relevance = await conn.getUniqueRecordBy({
-                endpoint: 'vocabulary',
-                where: {name: diseaseRec.tags[0], source: {name: INTERNAL_SOURCE_NAME}}
-            });
+            const relevance = await conn.getVocabularyTerm({term: diseaseRec.tags[0], conn});
             // get the disease by name
             const disease = await conn.getUniqueRecordBy({
                 endpoint: 'diseases',
@@ -172,7 +256,7 @@ const processRecord = async (opt) => {
  * @param {string} [opt.url] the base url for the DOCM api
  */
 const upload = async (opt) => {
-    const {conn} = opt;
+    const {conn, errorLogPrefix} = opt;
     // load directly from their api:
     logger.info(`loading: ${opt.url || BASE_URL}.json`);
     const recordsList = await request({
@@ -194,35 +278,30 @@ const upload = async (opt) => {
     };
     const filtered = [];
     const pmidList = new Set();
+    const errorList = [];
 
-    for (const record of recordsList) {
-        if (!validateVariantSummarySpec(record)) {
-            logger.error(
-                `Spec Validation failed for actionable record #${
-                    validateVariantSummarySpec.errors[0].dataPath
-                } ${
-                    validateVariantSummarySpec.errors[0].message
-                } found ${
-                    jsonpath.query(record, `$${validateVariantSummarySpec.errors[0].dataPath}`)
-                }`
-            );
+    for (const summaryRecord of recordsList) {
+        try {
+            checkSpec(variantSummarySpec, summaryRecord);
+        } catch (err) {
+            logger.error(err);
             counts.error++;
+            errorList.push({summaryRecord, error: err, isSummary: true});
             continue;
         }
-        if (record.drug_interactions) {
-            logger.warn(`Found a record with drug interactions! ${JSON.stringify(record)}`);
+        if (summaryRecord.drug_interactions) {
+            logger.warn(`Found a record with drug interactions! ${JSON.stringify(summaryRecord)}`);
             counts.highlight++;
         }
-        logger.info(`loading: ${BASE_URL}/${record.hgvs}.json`);
-        const details = await request({
+        logger.info(`loading: ${BASE_URL}/${summaryRecord.hgvs}.json`);
+        const record = await request({
             method: 'GET',
             json: true,
-            uri: `${BASE_URL}/${record.hgvs}.json`
+            uri: `${BASE_URL}/${summaryRecord.hgvs}.json`
         });
-        record.details = details;
 
         filtered.push(record);
-        for (const diseaseRec of details.diseases) {
+        for (const diseaseRec of record.diseases) {
             if (diseaseRec.source_pubmed_id) {
                 pmidList.add(`${diseaseRec.source_pubmed_id}`);
             }
@@ -231,9 +310,14 @@ const upload = async (opt) => {
     logger.info(`loading ${pmidList.size} pubmed articles`);
     await _pubmed.uploadArticlesByPmid(conn, pmidList);
     logger.info(`processing ${filtered.length} remaining docm records`);
-    for (const record of filtered) {
-        logger.info(record.hgvs);
+    for (let index = 0; index < filtered.length; index++) {
+        const record = filtered[index];
+        logger.info(`(${index} / ${filtered.length}) ${record.hgvs}`);
         try {
+            checkSpec(recordSpec, record);
+            // replace - as empty
+            record.reference = record.reference.replace('-', '');
+            record.variant = record.variant.replace('-', '');
             const updates = await processRecord({
                 conn, source, record
             });
@@ -241,12 +325,18 @@ const upload = async (opt) => {
             counts.error += updates.error;
             counts.skip += updates.skip;
         } catch (err) {
+            errorList.push({record, error: err});
             counts.error++;
-            console.error(err);
+            console.error((err.error || err));
             logger.error((err.error || err).message);
         }
     }
     logger.info(JSON.stringify(counts));
+    const errorsJSON = `${errorLogPrefix}-docm.json`;
+    logger.info(`writing: ${errorsJSON}`);
+    fs.writeFileSync(errorsJSON, JSON.stringify({records: errorList}, null, 2));
 };
 
-module.exports = {upload, SOURCE_DEFN, type: 'kb'};
+module.exports = {
+    upload, SOURCE_DEFN, type: 'kb', specs: {variantSummarySpec, recordSpec}
+};
