@@ -162,7 +162,7 @@ const optionDefinitions = [
     {
         name: 'errorLogPrefix',
         description: 'prefix to use for any module specific log files that are written',
-        default: `${process.cwd()}/errorLog-${process.pid}`
+        default: `${process.cwd()}/errorLog-${new Date().valueOf()}`
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
