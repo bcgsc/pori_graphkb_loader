@@ -646,7 +646,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
             const msg = err.toString();
             if (err.statusCode === 500 || msg.includes('of undefined') || msg.includes('not a function')) {
                 console.error(err.error);
-                console.error(err.options.body);
+                console.error((err.options || {}).body);
                 console.log(record);
             }
             const error = err.error || err;
