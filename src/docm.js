@@ -92,57 +92,122 @@ const parseDocmVariant = (variant) => {
 };
 
 
+const buildGenomicVariant = ({
+    reference, variant, chromosome, start, stop, variant_type: variantType
+}) => {
+    if (variantType === 'SNV') {
+        return `${chromosome}:g.${start}${reference}>${variant}`;
+    } if (variantType === 'DEL') {
+        if (start === stop) {
+            return `${chromosome}:g.${start}del${reference}`;
+        }
+        return `${chromosome}:g.${start}_${stop}del${reference}`;
+    } if (variantType === 'INS') {
+        return `${chromosome}:g.${start}_${stop}ins${variant}`;
+    }
+    if (start === stop) {
+        return `${chromosome}:g.${start}del${reference}ins${variant}`;
+    }
+    return `${chromosome}:g.${start}_${stop}del${reference}ins${variant}`;
+};
+
+/**
+ * Create the protein and genomic variants
+ */
+const processVariants = async ({conn, source, record: docmRecord}) => {
+    const {
+        amino_acid: aminoAcid,
+        gene,
+        chromosome,
+        reference_version: assembly,
+        start,
+        stop
+    } = docmRecord;
+    // get the feature by name
+    let protein,
+        genomic;
+
+    try {
+        // create the protein variant
+        const reference1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: gene});
+        let {
+            noFeatures, prefix, multiFeature, ...variant
+        } = variantParser(parseDocmVariant(aminoAcid), false);
+        const type = await conn.getVocabularyTerm({term: variant.type});
+        protein = variant = await conn.addVariant({
+            endpoint: 'positionalvariants',
+            content: {...variant, type, reference1: rid(reference1)},
+            existsOk: true
+        });
+    } catch (err) {
+        logger.error(`Failed to process protein notation (${gene}:${aminoAcid})`);
+        throw err;
+    }
+
+    try {
+        // create the genomic variant
+        let {
+            noFeatures, prefix, multiFeature, ...variant
+        } = variantParser(buildGenomicVariant(docmRecord), false);
+        const type = await conn.getVocabularyTerm({term: variant.type});
+        const reference1 = await conn.getUniqueRecordBy({
+            endpoint: 'features',
+            where: {
+                sourceId: chromosome,
+                name: chromosome,
+                or: 'name,sourceId',
+                biotype: 'chromosome'
+            },
+            sortFunc: orderPreferredOntologyTerms
+        });
+        genomic = variant = await conn.addVariant({
+            endpoint: 'positionalvariants',
+            content: {
+                ...variant, type, reference1: rid(reference1), assembly: assembly.toLowerCase().trim()
+            },
+            existsOk: true
+        });
+    } catch (err) {
+        logger.error(`Failed to process genomic notation (${chromosome}.${assembly}:g.${start}_${stop})`);
+        logger.error(err);
+    }
+    // TODO: create the cds variant? currently unclear if cdna or cds notation
+    // link the variants together
+    if (genomic) {
+        await conn.addRecord({
+            endpoint: 'infers',
+            content: {out: rid(genomic), in: rid(protein), source: rid(source)},
+            existsOk: true,
+            fetchExisting: false
+        });
+    }
+    // return the protein variant
+    return protein;
+};
+
+
 const processRecord = async (opt) => {
     const {
-        conn, source
+        conn, source, record
     } = opt;
-    const {details, ...record} = opt.record;
-    // get the feature by name
-    const gene = await _hgnc.fetchAndLoadBySymbol({conn, symbol: record.gene});
     // get the record details
     const counts = {error: 0, success: 0, skip: 0};
 
     // get the variant
-    let {
-        noFeatures, prefix, multiFeature, ...variant
-    } = variantParser(parseDocmVariant(record.amino_acid), false);
+    const variant = await processVariants({conn, source, record});
 
-    const variantType = await conn.getUniqueRecordBy({
-        endpoint: 'vocabulary',
-        where: {name: variant.type, source: {name: INTERNAL_SOURCE_NAME}}
-    });
-    const defaults = {
-        untemplatedSeq: null,
-        break1Start: null,
-        break1End: null,
-        break2Start: null,
-        break2End: null,
-        refSeq: null,
-        truncation: null,
-        zygosity: null,
-        germline: null
-    };
-    variant.reference1 = rid(gene);
-    variant.type = rid(variantType);
-    // create the variant
-    variant = await conn.addRecord({
-        endpoint: 'positionalvariants',
-        content: variant,
-        existsOk: true,
-        getConditions: Object.assign(defaults, variant)
-    });
+    if (!variant) {
+        throw new Error('Failed to parse either variant');
+    }
 
-    for (const diseaseRec of details.diseases) {
+    for (const diseaseRec of record.diseases) {
         if (!diseaseRec.tags || diseaseRec.tags.length !== 1) {
             counts.skip++;
             continue;
         }
         try {
             // get the vocabulary term
-            const relevance = await conn.getUniqueRecordBy({
-                endpoint: 'vocabulary',
-                where: {name: diseaseRec.tags[0], source: {name: INTERNAL_SOURCE_NAME}}
-            });
+            const relevance = await conn.getVocabularyTerm({term: diseaseRec.tags[0], conn});
             // get the disease by name
             const disease = await conn.getUniqueRecordBy({
                 endpoint: 'diseases',
