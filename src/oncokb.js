@@ -8,7 +8,10 @@ const fs = require('fs');
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const {
-    preferredDiseases, preferredDrugs, rid, INTERNAL_SOURCE_NAME, checkSpec
+    preferredDiseases,
+    preferredDrugs,
+    rid,
+    checkSpec
 } = require('./util');
 const _pubmed = require('./pubmed');
 const _hgnc = require('./hgnc');
@@ -26,7 +29,7 @@ const SOURCE_DEFN = {
 const ajv = new Ajv();
 
 
-const validateActionableRecordSpec = ajv.compile({
+const actionableRecordSpec = ajv.compile({
     type: 'object',
     properties: {
         cancerType: {type: 'string'},
@@ -38,7 +41,7 @@ const validateActionableRecordSpec = ajv.compile({
         variant: {type: 'string'}
     }
 });
-const validateAnnotatedRecordSpec = ajv.compile({
+const annotatedRecordSpec = ajv.compile({
     type: 'object',
     properties: {
         gene: {type: 'string'},
@@ -62,6 +65,15 @@ const drugRecordSpec = ajv.compile({
         }
     }
 });
+const curatedGeneSpec = ajv.compile({
+    type: 'object',
+    requried: ['entrezGeneId', 'oncogene', 'tsg'],
+    properties: {
+        entrezGeneId: {type: 'number'},
+        oncogene: {type: 'boolean'},
+        tsg: {type: 'boolean'}
+    }
+});
 
 const VOCABULARY_MAPPING = {
     'oncogenic mutations': 'oncogenic mutation',
@@ -83,10 +95,7 @@ const getVocabulary = async (conn, term) => {
     if (VOCABULARY_CACHE[stdTerm]) {
         return VOCABULARY_CACHE[stdTerm];
     }
-    const rec = await conn.getUniqueRecordBy({
-        endpoint: 'vocabulary',
-        where: {name: stdTerm, source: {name: INTERNAL_SOURCE_NAME}}
-    });
+    const rec = await conn.getVocabularyTerm({term: stdTerm});
     VOCABULARY_CACHE[rec.sourceId] = rec;
     return rec;
 };
@@ -312,18 +321,6 @@ const processDisease = async (opt) => {
  * @param opt.rawRecord {object} the record directly from OncoKB
  * @param opt.source {object} the oncokb source object
  * @param opt.pubmedSource {object} the source object for pubmed entries
- *
- * Expected types:
- * - Oncogenic Mutations
- * - Amplification
- * - Fusions
- * - X1008_splice
- * - BCR-ABL1 Fusion
- * - 981_1028splice
- * - T574insTQLPYD
- * - Wildtype
- * - 560_561insER
- * - Exon 9 mutations
  */
 const processActionableRecord = async (opt) => {
     // first try to retrieve the gene rawRecord
@@ -533,7 +530,7 @@ const processActionableRecords = async ({
     for (let i = 0; i < recordsList.length; i++) {
         const rawRecord = recordsList[i];
         try {
-            checkSpec(validateActionableRecordSpec, rawRecord, () => i);
+            checkSpec(actionableRecordSpec, rawRecord, () => i);
         } catch (err) {
             logger.error(err);
             errorList.push({row: rawRecord, error: err});
@@ -605,7 +602,7 @@ const processAnnotatedRecords = async ({
     for (let i = 0; i < recordsList.length; i++) {
         const rawRecord = recordsList[i];
         try {
-            checkSpec(validateAnnotatedRecordSpec, rawRecord);
+            checkSpec(annotatedRecordSpec, rawRecord);
         } catch (err) {
             logger.error(err);
             errorList.push({row: rawRecord, error: err});
@@ -662,6 +659,62 @@ const processAnnotatedRecords = async ({
 };
 
 /**
+ * Upload the gene curation as tumour supressive or oncogenic statements
+ */
+const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
+    const genes = await request(`${baseUrl}/utils/allCuratedGenes`, {
+        method: 'GET',
+        json: true
+    });
+
+    const tsg = rid(await conn.getVocabularyTerm({term: 'tumour suppressive'}));
+    const oncogene = rid(await conn.getVocabularyTerm({term: 'oncogenic'}));
+
+    for (const gene of genes) {
+        logger.info(`processing gene: ${gene.entrezGeneId}`);
+        let record;
+        try {
+            checkSpec(curatedGeneSpec, gene, g => g.entrezGeneId);
+            record = rid(await _hgnc.fetchAndLoadBySymbol({
+                conn,
+                symbol: gene.entrezGeneId,
+                paramType: 'entrez_id'
+            }));
+        } catch (err) {
+            logger.error(err);
+            continue;
+        }
+        // now add the TSG or oncogene statement
+        const relevance = [];
+        if (gene.oncogene) {
+            relevance.push(oncogene);
+        }
+        if (gene.tsg) {
+            relevance.push(tsg);
+        }
+        await Promise.all(relevance.map(async (rel) => {
+            try {
+                await conn.addRecord({
+                    endpoint: 'statements',
+                    content: {
+                        impliedBy: [record],
+                        supportedBy: [rid(source)],
+                        source: rid(source),
+                        description: gene.summary,
+                        appliesTo: record,
+                        relevance: rel
+                    },
+                    existsOk: true,
+                    fetchExisting: false
+                });
+            } catch (err) {
+                logger.error(err);
+            }
+        }));
+    }
+};
+
+/**
  * Load the drug ontology from OncoKB
  */
 const uploadAllTherapies = async ({conn, URL, source}) => {
@@ -675,12 +728,19 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
 
     for (const drug of drugs) {
         logger.info(`processing drug: ${drug.uuid}`);
-        checkSpec(drugRecordSpec, drug, d => d.uuid);
-        const record = await conn.addRecord({
-            endpoint: 'therapies',
-            content: {source, sourceId: drug.uuid, name: drug.drugName},
-            existsOk: true
-        });
+        let record;
+        try {
+            checkSpec(drugRecordSpec, drug, d => d.uuid);
+            record = await conn.addRecord({
+                endpoint: 'therapies',
+                content: {source, sourceId: drug.uuid, name: drug.drugName},
+                existsOk: true
+            });
+        } catch (err) {
+            logger.error(err);
+            continue;
+        }
+
         // link to NCIT
         if (drug.ncitCode) {
             try {
@@ -765,9 +825,13 @@ const upload = async (opt) => {
     });
 
     const counts = {errors: 0, success: 0, skip: 0};
-    logger.info('load drug ontology');
+
     const errorList = [];
+    logger.info('load oncogene/tumour suppressor list');
+    await uploadAllCuratedGenes({conn, baseUrl: URL, source: oncokb});
+    logger.info('load drug ontology');
     await uploadAllTherapies({conn, URL, source: rid(oncokb)});
+
     await addEvidenceLevels(conn, oncokb);
     errorList.push(...await processActionableRecords({
         conn, oncokb, URL, counts
@@ -787,8 +851,9 @@ module.exports = {
     SOURCE_DEFN,
     type: 'kb',
     specs: {
-        validateActionableRecordSpec,
-        validateAnnotatedRecordSpec,
-        drugRecordSpec
+        actionableRecordSpec,
+        annotatedRecordSpec,
+        drugRecordSpec,
+        curatedGeneSpec
     }
 };
