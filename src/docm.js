@@ -5,12 +5,12 @@
  */
 const request = require('request-promise');
 const Ajv = require('ajv');
-const jsonpath = require('jsonpath');
+const fs = require('fs');
 
 const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
 
 const {
-    orderPreferredOntologyTerms, rid, INTERNAL_SOURCE_NAME
+    orderPreferredOntologyTerms, rid, checkSpec
 } = require('./util');
 const _pubmed = require('./pubmed');
 const {logger} = require('./logging');
@@ -29,12 +29,29 @@ const SOURCE_DEFN = {
 const BASE_URL = 'http://www.docm.info/api/v1/variants';
 
 
-const validateVariantSummarySpec = ajv.compile({
+const variantSummarySpec = ajv.compile({
     type: 'object',
+    required: ['hgvs'],
+    properties: {
+        hgvs: {type: 'string'}
+    }
+});
+
+
+const recordSpec = ajv.compile({
+    type: 'object',
+    required: ['reference_version', 'hgvs', 'gene', 'reference', 'variant', 'start', 'stop', 'variant_type'],
     properties: {
         hgvs: {type: 'string'},
         gene: {type: 'string'},
-        amino_acid: {type: 'string', pattern: '^p\\..*'}
+        amino_acid: {type: 'string', pattern: '^p\\..*'},
+        reference_version: {type: 'string'},
+        reference: {type: 'string', pattern: '^([ATGC]*|-)$'},
+        variant: {type: 'string', pattern: '^([ATGC]*|-)$'},
+        start: {type: 'number', min: 1},
+        stop: {type: 'number', min: 1},
+        chromosome: {type: 'string'},
+        variant_type: {type: 'string', enum: ['SNV', 'DEL', 'INS', 'DNV']}
     }
 });
 
@@ -195,17 +212,11 @@ const upload = async (opt) => {
     const filtered = [];
     const pmidList = new Set();
 
-    for (const record of recordsList) {
-        if (!validateVariantSummarySpec(record)) {
-            logger.error(
-                `Spec Validation failed for actionable record #${
-                    validateVariantSummarySpec.errors[0].dataPath
-                } ${
-                    validateVariantSummarySpec.errors[0].message
-                } found ${
-                    jsonpath.query(record, `$${validateVariantSummarySpec.errors[0].dataPath}`)
-                }`
-            );
+    for (const summaryRecord of recordsList) {
+        try {
+            checkSpec(variantSummarySpec, summaryRecord);
+        } catch (err) {
+            logger.error(err);
             counts.error++;
             continue;
         }
@@ -231,9 +242,14 @@ const upload = async (opt) => {
     logger.info(`loading ${pmidList.size} pubmed articles`);
     await _pubmed.uploadArticlesByPmid(conn, pmidList);
     logger.info(`processing ${filtered.length} remaining docm records`);
-    for (const record of filtered) {
-        logger.info(record.hgvs);
+    for (let index = 0; index < filtered.length; index++) {
+        const record = filtered[index];
+        logger.info(`(${index} / ${filtered.length}) ${record.hgvs}`);
         try {
+            checkSpec(recordSpec, record);
+            // replace - as empty
+            record.reference = record.reference.replace('-', '');
+            record.variant = record.variant.replace('-', '');
             const updates = await processRecord({
                 conn, source, record
             });
@@ -241,12 +257,18 @@ const upload = async (opt) => {
             counts.error += updates.error;
             counts.skip += updates.skip;
         } catch (err) {
+            errorList.push({record, error: err});
             counts.error++;
-            console.error(err);
+            console.error((err.error || err));
             logger.error((err.error || err).message);
         }
     }
     logger.info(JSON.stringify(counts));
+    const errorsJSON = `${errorLogPrefix}-docm.json`;
+    logger.info(`writing: ${errorsJSON}`);
+    fs.writeFileSync(errorsJSON, JSON.stringify({records: errorList}, null, 2));
 };
 
-module.exports = {upload, SOURCE_DEFN, type: 'kb'};
+module.exports = {
+    upload, SOURCE_DEFN, type: 'kb', specs: {variantSummarySpec, recordSpec}
+};
