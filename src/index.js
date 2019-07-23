@@ -31,6 +31,7 @@ IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
 IMPORT_MODULES.ontology = require('./ontology');
 IMPORT_MODULES.drugOntology = require('./drug_ontology');
 IMPORT_MODULES.cgi = require('./cancergenomeinterpreter');
+IMPORT_MODULES.tcgaFusions = require('./tcga_fusions');
 
 
 const optionDefinitions = [
@@ -163,6 +164,11 @@ const optionDefinitions = [
         name: 'errorLogPrefix',
         description: 'prefix to use for any module specific log files that are written',
         default: `${process.cwd()}/errorLog-${new Date().valueOf()}`
+    },
+    {
+        name: 'tcgaFusions',
+        description: 'Load fusions from the supplementary excel file',
+        type: fileExists
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
