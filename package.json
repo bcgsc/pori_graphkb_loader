@@ -24,6 +24,7 @@
     "lodash": "^4.17.15",
     "moment": "^2.24.0",
     "rdflib": "^0.20.1",
+    "read-excel-file": "^4.0.1",
     "request-promise": "^4.2.4",
     "sleep-promise": "^8.0.1",
     "winston": "^3.2.1",
