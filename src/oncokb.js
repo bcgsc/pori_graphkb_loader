@@ -95,7 +95,7 @@ const getVocabulary = async (conn, term) => {
     if (VOCABULARY_CACHE[stdTerm]) {
         return VOCABULARY_CACHE[stdTerm];
     }
-    const rec = await conn.getVocabularyTerm({term: stdTerm});
+    const rec = await conn.getVocabularyTerm(stdTerm);
     VOCABULARY_CACHE[rec.sourceId] = rec;
     return rec;
 };
@@ -667,8 +667,8 @@ const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
         json: true
     });
 
-    const tsg = rid(await conn.getVocabularyTerm({term: 'tumour suppressive'}));
-    const oncogene = rid(await conn.getVocabularyTerm({term: 'oncogenic'}));
+    const tsg = rid(await conn.getVocabularyTerm('tumour suppressive'));
+    const oncogene = rid(await conn.getVocabularyTerm('oncogenic'));
 
     for (const gene of genes) {
         logger.info(`processing gene: ${gene.entrezGeneId}`);

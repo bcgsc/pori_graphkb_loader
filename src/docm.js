@@ -135,7 +135,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
         let {
             noFeatures, prefix, multiFeature, ...variant
         } = variantParser(parseDocmVariant(aminoAcid), false);
-        const type = await conn.getVocabularyTerm({term: variant.type});
+        const type = await conn.getVocabularyTerm(variant.type);
         protein = variant = await conn.addVariant({
             endpoint: 'positionalvariants',
             content: {...variant, type, reference1: rid(reference1)},
@@ -151,7 +151,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
         let {
             noFeatures, prefix, multiFeature, ...variant
         } = variantParser(buildGenomicVariant(docmRecord), false);
-        const type = await conn.getVocabularyTerm({term: variant.type});
+        const type = await conn.getVocabularyTerm(variant.type);
         const reference1 = await conn.getUniqueRecordBy({
             endpoint: 'features',
             where: {
@@ -209,7 +209,7 @@ const processRecord = async (opt) => {
         }
         try {
             // get the vocabulary term
-            const relevance = await conn.getVocabularyTerm({term: diseaseRec.tags[0], conn});
+            const relevance = await conn.getVocabularyTerm(diseaseRec.tags[0], conn);
             // get the disease by name
             const disease = await conn.getUniqueRecordBy({
                 endpoint: 'diseases',

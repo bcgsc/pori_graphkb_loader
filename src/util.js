@@ -321,7 +321,7 @@ class ApiConnection {
         throw error;
     }
 
-    async getVocabularyTerm({term}) {
+    async getVocabularyTerm(term) {
         return this.getUniqueRecordBy({
             endpoint: 'vocabulary',
             where: {sourceId: term, source: {name: INTERNAL_SOURCE_NAME}},
