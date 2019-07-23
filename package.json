@@ -12,7 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "@bcgsc/knowledgebase-parser": "^0.5.4",
-    "@bcgsc/knowledgebase-schema": "^1.8.2",
+    "@bcgsc/knowledgebase-schema": "^2.0.0",
     "ajv": "^6.10.0",
     "command-line-args": "^5.1.1",
     "command-line-usage": "^5.0.5",
