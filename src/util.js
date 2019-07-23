@@ -71,6 +71,21 @@ const orderPreferredOntologyTerms = (term1, term2) => {
                 return 1;
             }
         }
+        if (term1.description && !term2.description) {
+            return -1;
+        } if (!term1.description && term2.description) {
+            return 1;
+        }
+    } if (term1.source && term2.source) {
+        if (term1.source.version < term2.source.version) {
+            return -1;
+        } if (term1.source.version > term2.source.version) {
+            return 1;
+        } if (term1.description && !term2.description) {
+            return -1;
+        } if (!term1.description && term2.description) {
+            return 1;
+        }
     }
     return 0;
 };
@@ -223,7 +238,7 @@ class ApiConnection {
      * @param {object} opt
      * @param {object} opt.where the conditions/query parameters for the selection
      * @param {string} opt.endpoint the endpoint to query
-     * @param {function} opt.sortFunc the function to use in sorting if multiple results are found
+     * @param {function} opt.sort the function to use in sorting if multiple results are found
      */
     async getUniqueRecordBy(opt) {
         const {
@@ -260,7 +275,53 @@ class ApiConnection {
         return newRecord;
     }
 
-    getVocabularyTerm({term}) {
+    /**
+     * Fetch therapy by name, ignore plurals for some cases
+     */
+    async getTherapy(term, opt = {}) {
+        let error;
+        try {
+            return await this.getUniqueRecordBy({
+                endpoint: 'therapies',
+                sort: preferredDrugs,
+                ...opt,
+                where: {
+                    ...(opt.where || {}),
+                    sourceId: term,
+                    name: term,
+                    or: 'sourceId,name'
+                }
+            });
+        } catch (err) {
+            error = err;
+        }
+        let alternateTerm;
+        if (/\binhibitor\b/.exec(term)) {
+            alternateTerm = term.replace(/\binhibitor\b/, 'inhibitors');
+        } else if (/\binhibitors\b/.exec(term)) {
+            alternateTerm = term.replace(/\binhibitors\b/, 'inhibitor');
+        }
+        if (alternateTerm) {
+            try {
+                return await this.getUniqueRecordBy({
+                    endpoint: 'therapies',
+                    sort: preferredDrugs,
+                    ...opt,
+                    where: {
+                        ...(opt.where || {}),
+                        sourceId: alternateTerm,
+                        name: alternateTerm,
+                        or: 'sourceId,name'
+                    }
+                });
+            } catch (err) {
+                error = err;
+            }
+        }
+        throw error;
+    }
+
+    async getVocabularyTerm({term}) {
         return this.getUniqueRecordBy({
             endpoint: 'vocabulary',
             where: {sourceId: term, source: {name: INTERNAL_SOURCE_NAME}},
