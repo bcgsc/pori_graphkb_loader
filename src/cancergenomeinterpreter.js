@@ -13,7 +13,7 @@ const {
 const {logger} = require('./logging');
 const _hgnc = require('./hgnc');
 const _trials = require('./clinicaltrialsgov');
-const _pubmed = require('./pubmed');
+const _pubmed = require('./entrez/pubmed');
 const {uploadFromJSON} = require('./ontology');
 
 const SOURCE_DEFN = {

@@ -3,12 +3,13 @@
  */
 const request = require('request-promise');
 const Ajv = require('ajv');
+const _ = require('lodash');
 
 const {
     rid, orderPreferredOntologyTerms, checkSpec
 } = require('./util');
 const {logger} = require('./logging');
-const _entrez = require('./entrez');
+const _entrez = require('./entrez/gene');
 
 const ensemblSourceName = 'ensembl';
 

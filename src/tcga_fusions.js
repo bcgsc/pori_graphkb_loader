@@ -4,7 +4,7 @@ const fs = require('fs');
 const {logger} = require('./logging');
 const {convertRowFields, rid, preferredDiseases} = require('./util');
 const _hgnc = require('./hgnc');
-const _pubmed = require('./pubmed');
+const _pubmed = require('./entrez/pubmed');
 
 // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/ Table 1
 // https://gdc.cancer.gov/resources-tcga-users/tcga-code-tables/tcga-study-abbreviations

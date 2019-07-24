@@ -12,7 +12,7 @@ const {
     convertRowFields,
     orderPreferredOntologyTerms
 } = require('./util');
-const _pubmed = require('./pubmed');
+const _pubmed = require('./entrez/pubmed');
 const _hgnc = require('./hgnc');
 const {logger} = require('./logging');
 

@@ -12,7 +12,7 @@ const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser')
 const {
     orderPreferredOntologyTerms, rid, checkSpec
 } = require('./util');
-const _pubmed = require('./pubmed');
+const _pubmed = require('./entrez/pubmed');
 const {logger} = require('./logging');
 const _hgnc = require('./hgnc');
 

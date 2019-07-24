@@ -15,7 +15,7 @@ const {
     checkSpec
 } = require('./util');
 const {logger} = require('./logging');
-const _pubmed = require('./pubmed');
+const _pubmed = require('./entrez/pubmed');
 const _hgnc = require('./hgnc');
 
 const ajv = new Ajv();

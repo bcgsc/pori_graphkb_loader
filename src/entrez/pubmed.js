@@ -38,7 +38,7 @@ const recordSpec = ajv.compile({
  */
 const parseRecord = (record) => {
     checkSpec(recordSpec, record);
-    const record = {
+    const parsed = {
         sourceId: record.uid,
         name: record.title,
         journalName: record.fulljournalname
@@ -46,9 +46,9 @@ const parseRecord = (record) => {
     // sortpubdate: '1992/06/01 00:00'
     const match = /^(\d\d\d\d)\//.exec(record.sortpubdate);
     if (match) {
-        record.year = parseInt(match[1], 10);
+        parsed.year = parseInt(match[1], 10);
     }
-    return record;
+    return parsed;
 };
 
 
@@ -66,7 +66,9 @@ const createDisplayName = sourceId => `pmid:${sourceId}`;
 const fetchAndLoadByIds = async (api, idListIn) => {
     const records = await fetchByIdList(
         idListIn,
-        {url, db: DB_NAME, parser: parseRecord, cache: CACHE}
+        {
+            db: DB_NAME, parser: parseRecord, cache: CACHE
+        }
     );
     return Promise.all(records.map(
         async record => uploadRecord(api, record, {
@@ -82,5 +84,5 @@ const fetchAndLoadByIds = async (api, idListIn) => {
 module.exports = {
     parseRecord,
     fetchAndLoadByIds,
-    SOURCE_DEFN,
+    SOURCE_DEFN
 };

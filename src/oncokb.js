@@ -13,7 +13,7 @@ const {
     rid,
     checkSpec
 } = require('./util');
-const _pubmed = require('./pubmed');
+const _pubmed = require('./entrez/pubmed');
 const _hgnc = require('./hgnc');
 const _ncit = require('./ncit');
 const {logger} = require('./logging');

@@ -53,7 +53,9 @@ const parseRecord = (record) => {
 const fetchAndLoadByIds = async (api, idListIn) => {
     const records = await fetchByIdList(
         idListIn,
-        {url, db: DB_NAME, parser: parseRecord, cache: CACHE}
+        {
+            db: DB_NAME, parser: parseRecord, cache: CACHE
+        }
     );
     return Promise.all(records.map(
         async record => uploadRecord(api, record, {

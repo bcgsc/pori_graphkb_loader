@@ -4,6 +4,7 @@
 const Ajv = require('ajv');
 
 const {fetchByIdList, uploadRecord} = require('./util');
+const {checkSpec} = require('../util');
 
 const ajv = new Ajv();
 
@@ -40,21 +41,21 @@ const parseRecord = (record) => {
     const [sourceId, sourceIdVersion] = record.accessionversion.split('.');
 
     let biotype = 'chromosome';
-    if (row.biomol === 'rna') {
+    if (record.biomol === 'rna') {
         biotype = 'transcript';
-    } else if (row.biomol === 'peptide') {
+    } else if (record.biomol === 'peptide') {
         biotype = 'protein';
     }
-    const record = {
+    const parsed = {
         sourceId,
         sourceIdVersion,
         biotype,
-        longName: record.title,
+        longName: record.title
     };
     if (biotype === 'chromosome') {
-        record.name = record.subname;
+        parsed.name = record.subname;
     }
-    return record;
+    return parsed;
 };
 
 
@@ -69,7 +70,9 @@ const parseRecord = (record) => {
 const fetchAndLoadByIds = async (api, idListIn) => {
     const records = await fetchByIdList(
         idListIn,
-        {url, db: DB_NAME, parser: parseRecord, cache: CACHE}
+        {
+            db: DB_NAME, parser: parseRecord, cache: CACHE
+        }
     );
     return Promise.all(records.map(
         async record => uploadRecord(api, record, {

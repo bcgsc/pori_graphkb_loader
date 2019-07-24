@@ -45,8 +45,10 @@ const pullFromCacheById = (rawIdList, cache) => {
  * @param {object} opt.cache the cache associated with calls to this db
  */
 const fetchByIdList = async (rawIdList, opt) => {
-    const {url = BASE_URL, db = 'pubmed', parser, cache = {}} = opt;
-    const {cached: allRecords, remaining: idList} = pullFromCacheByID(rawIdList, cache);
+    const {
+        url = BASE_URL, db = 'pubmed', parser, cache = {}
+    } = opt;
+    const {cached: allRecords, remaining: idList} = pullFromCacheById(rawIdList, cache);
 
     for (let startIndex = 0; startIndex < idList.length; startIndex += MAX_CONSEC_IDS) {
         const idListString = idList
@@ -75,7 +77,9 @@ const fetchByIdList = async (rawIdList, opt) => {
 /**
  * Given some pubmed ID, get the corresponding record from GraphKB
  */
-const fetchRecord = async (api, {sourceId, db = 'pubmed', endpoint = 'publications', cache = {}}) => {
+const fetchRecord = async (api, {
+    sourceId, db = 'pubmed', endpoint = 'publications', cache = {}
+}) => {
     if (cache[sourceId]) {
         return cache[sourceId];
     }
@@ -119,7 +123,7 @@ const uploadRecord = async (api, content, opt = {}) => {
                 where: {sourceId}
             });
             if (cache) {
-                PUBMED_CACHE[sourceId] = record;
+                cache[sourceId] = record;
             }
             return record;
         } catch (err) {}
@@ -162,5 +166,5 @@ const uploadRecord = async (api, content, opt = {}) => {
 
 
 module.exports = {
-    uploadRecord, fetchRecord, fetchByIdList, pullFromCacheByID
+    uploadRecord, fetchRecord, fetchByIdList, pullFromCacheById
 };
