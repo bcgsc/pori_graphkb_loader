@@ -38,7 +38,8 @@ const parseRecord = (record) => {
         sourceId: record.uid,
         name: record.name,
         biotype: 'gene',
-        description: record.description
+        description: record.description,
+        displayName: record.name
     };
 };
 
