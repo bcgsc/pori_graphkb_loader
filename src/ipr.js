@@ -580,6 +580,10 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         where: {name: extractRelevance(record), source: {name: INTERNAL_SOURCE_NAME}},
         sort: orderPreferredOntologyTerms
     });
+    const reviews = [];
+    if (record.createdBy) {
+        reviews.push({createdBy: record.createdBy, createdAt: record.createdAt, reviewStatus: 'initial'});
+    }
     // now create the statement
     return conn.addRecord({
         endpoint: 'statements',
@@ -589,7 +593,8 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
             supportedBy,
             impliedBy,
             source: rid(source),
-            sourceId: record.ident
+            sourceId: record.ident,
+            reviewStatus: 'pending'
         },
         existsOk: true,
         fetchExisting: false
@@ -644,9 +649,32 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     logger.info(`${records.length} records after list expansion`);
 
     const pubmedIdList = new Set();
+    const users = {};
     for (const record of records) {
         for (const {sourceId} of record.support) {
-            pubmedIdList.add(sourceId);
+            if (!sourceId.startsWith('NCT')) {
+                pubmedIdList.add(sourceId);
+            }
+        }
+        if (record.createdBy && users[record.createdBy] === undefined) {
+            users[record.createdBy] = rid(await conn.addRecord({
+                endpoint: 'users',
+                content: {name: record.createdBy},
+                existsOk: true
+            }));
+        }
+        if (record.reviewedBy && users[record.reviewedBy] === undefined) {
+            users[record.reviewedBy] = rid(await conn.addRecord({
+                endpoint: 'users',
+                content: {name: record.reviewedBy},
+                existsOk: true
+            }));
+        }
+        if (record.createdBy) {
+            record.createdBy = users[record.createdBy];
+        }
+        if (record.reviewedBy) {
+            record.reviewedBy = users[record.reviewedBy];
         }
     }
     logger.info(`loading ${pubmedIdList.size} articles from pubmed`);
@@ -657,7 +685,6 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     for (let i = 0; i < records.length; i++) {
         const record = records[i];
         logger.info(`processing ${record.ident} (${i} / ${records.length})`);
-        users[record.createdBy] = (users[record.createdBy] || 0) + 1;
         if (record.history) {
             counts.history++;
         }
