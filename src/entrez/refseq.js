@@ -1,12 +1,9 @@
 /**
  * @module importer/entrez/refseq
- *
- * ex. https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?
- *      db=nucleotide
- *      &id=NC_000003.12
- *      &rettype=docsum&retmode=json
  */
 const Ajv = require('ajv');
+
+const {fetchByIdList, uploadRecord} = require('./util');
 
 const ajv = new Ajv();
 
@@ -61,44 +58,6 @@ const parseRecord = (record) => {
 };
 
 
-const fetchRecordsByIds = async (idListIn, url) => {
-    return fetchByIdList(
-        idListIn,
-        {url, db: DB_NAME, parser: parseRecord, cache: CACHE}
-    );
-};
-
-
-/**
- * Given some pubmed ID, get the corresponding record from GraphKB
- */
-const fetchRecord = async (api, sourceId) => {
-    return fetchRecord(api, {
-        sourceId,
-        endpoint: 'features',
-        cache: CACHE,
-        db: DB_NAME
-    });
-};
-
-
-/**
- * Given the parsed content of some record, upload to the api
- * @param {ApiConnection} api the record contents to be uploaded
- * @param {object} record the record contents to be uploaded
- * @param {object} opt
- * @param {boolean} opt.cache add the GraphKB Publication record to the cache
- * @param {boolean} opt.fetchFirst attempt to get the record by source Id before uploading it
- */
-const uploadRecord = async (api, record, opt = {}) => {
-    return uploadRecord(api, record, {
-        cache: CACHE,
-        endpoint: 'features',
-        sourceDefn: SOURCE_DEFN,
-        ...opt
-    });
-};
-
 /**
  * Given some list of pubmed IDs, return if cached,
  * If they do not exist, grab from the pubmed api
@@ -108,16 +67,22 @@ const uploadRecord = async (api, record, opt = {}) => {
  * @param {Array.<string>} idList list of pubmed IDs
  */
 const fetchAndLoadByIds = async (api, idListIn) => {
-    const records = await fetchRecordsByIds(idListIn);
-    return Promise.all(records.map(async rec => uploadRecord(api, rec)));
+    const records = await fetchByIdList(
+        idListIn,
+        {url, db: DB_NAME, parser: parseRecord, cache: CACHE}
+    );
+    return Promise.all(records.map(
+        async record => uploadRecord(api, record, {
+            cache: CACHE,
+            endpoint: 'features',
+            sourceDefn: SOURCE_DEFN
+        })
+    ));
 };
 
 
 module.exports = {
-    fetchRecord,
-    fetchRecordsByIds,
     parseRecord,
-    uploadRecord,
     fetchAndLoadByIds,
-    SOURCE_DEFN,
+    SOURCE_DEFN
 };

@@ -79,7 +79,7 @@ const fetchRecord = async (api, {sourceId, db = 'pubmed', endpoint = 'publicatio
     if (cache[sourceId]) {
         return cache[sourceId];
     }
-    const record = api.getUniqueRecordBy({
+    const record = await api.getUniqueRecordBy({
         endpoint,
         where: {sourceId, source: {name: db}},
         sort: orderPreferredOntologyTerms
