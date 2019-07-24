@@ -522,7 +522,7 @@ const processVariant = async (conn, variant) => {
 
 
 const processRecord = async ({conn, record: inputRecord, source}) => {
-    const record = Object.assign({}, inputRecord, {variants: []});
+    const record = {...inputRecord, variants: []};
     const impliedBy = [];
     const supportedBy = [];
 
@@ -600,9 +600,8 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
 const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     logger.info('loading content from IPR');
     const counts = {
-        error: 0, skip: 0, history: 0, success: 0, fusionErrors: 0
+        error: 0, skip: 0, history: 0, success: 0
     };
-    const users = {};
     logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
     logger.info('parsing into json');
@@ -673,7 +672,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
                 console.log(record);
             }
             const error = err.error || err;
-            errorList.push({row: record, index: i, error});
+            errorList.push({row: record, index: i, error: msg});
             logger.error(error);
             counts.error++;
         }
