@@ -38,8 +38,8 @@ const CACHE = {};
 const ajv = new Ajv();
 
 
-const singleItemArray = (spec = {}) => ({
-    type: 'array', maxItems: 1, minItems: 1, items: {type: 'string', ...spec}
+const singleItemArray = (spec = {type: 'string'}) => ({
+    type: 'array', maxItems: 1, minItems: 1, items: {...spec}
 });
 
 const validateDownloadedTrialRecord = ajv.compile({
@@ -107,13 +107,33 @@ const validateAPITrialRecord = ajv.compile({
                 'condition',
                 'intervention',
                 'last_update_posted',
-                'required_header'
+                'required_header',
+                'location'
             ],
             properties: {
                 required_header: singleItemArray({
                     type: 'object',
                     required: ['url'],
                     properties: {url: singleItemArray()}
+                }),
+                start_date: singleItemArray({
+                    oneOf: [
+                        {
+                            type: 'object',
+                            required: ['_'],
+                            properties: {
+                                _: {type: 'string'}
+                            }
+                        },
+                        {type: 'string'}
+                    ]
+                }),
+                completion_date: singleItemArray({
+                    type: 'object',
+                    required: ['_'],
+                    properties: {
+                        _: {type: 'string'}
+                    }
                 }),
                 id_info: singleItemArray({
                     type: 'object',
@@ -144,11 +164,47 @@ const validateAPITrialRecord = ajv.compile({
                     type: 'object',
                     required: ['_'],
                     properties: {_: {type: 'string'}}
-                })
+                }),
+                location: {
+                    type: 'array',
+                    minItems: 1,
+                    items: {
+                        type: 'object',
+                        required: ['facility'],
+                        properties: {
+                            facility: singleItemArray({
+                                type: 'object',
+                                required: ['address'],
+                                properties: {
+                                    address: singleItemArray({
+                                        type: 'object',
+                                        required: ['city', 'country'],
+                                        properties: {
+                                            city: singleItemArray(),
+                                            country: singleItemArray()
+                                        }
+                                    })
+                                }
+                            })
+                        }
+                    }
+                }
             }
         }
     }
 });
+
+
+const standardizeDate = (dateString) => {
+    const dateObj = new Date(Date.parse(dateString));
+    const month = dateObj.getMonth() + 1 < 10
+        ? `0${dateObj.getMonth() + 1}`
+        : dateObj.getMonth() + 1;
+    const date = dateObj.getDate() < 10
+        ? `0${dateObj.getDate()}`
+        : dateObj.getDate();
+    return `${dateObj.getFullYear()}-${month}-${date}`;
+};
 
 
 /**
@@ -156,20 +212,41 @@ const validateAPITrialRecord = ajv.compile({
  */
 const convertAPIRecord = (record) => {
     checkSpec(validateAPITrialRecord, record, rec => rec.clinical_study.id_info[0].nct_id);
+
+    let startDate,
+        completionDate;
+    try {
+        startDate = standardizeDate(record.start_date[0]._ || record.start_date[0]);
+    } catch (err) {}
+    try {
+        completionDate = standardizeDate(record.completion_date[0]._);
+    } catch (err) {}
+
     const content = {
         sourceId: record.clinical_study.id_info[0].nct_id[0],
         name: record.clinical_study.official_title[0],
         url: record.clinical_study.required_header[0].url[0],
-        sourceIdVersion: record.clinical_study.last_update_posted[0]._,
+        sourceIdVersion: standardizeDate(record.clinical_study.last_update_posted[0]._),
         phases: record.clinical_study.phase,
         diseases: record.clinical_study.condition,
-        drugs: []
+        drugs: [],
+        startDate,
+        completionDate,
+        locations: []
     };
     for (const {intervention_name: name, intervention_type: type} of record.clinical_study.intervention || []) {
         if (type === 'Drug') {
             content.drugs.push(name);
         }
     }
+
+    for (const location of record.location || []) {
+        const [{address}] = location[0].facility;
+        const [{country, city}] = address;
+        content.locations.push({country: country[0].toLowerCase(), city: city[0].toLowerCase()});
+    }
+
+
     return content;
 };
 
@@ -186,7 +263,7 @@ const convertDownloadedRecord = (record) => {
         sourceId: record.nct_id[0],
         url: record.url[0],
         name: record.title[0],
-        sourceIdVersion: record.last_update_posted[0]
+        sourceIdVersion: standardizeDate(record.last_update_posted[0])
     };
     for (const raw of record.interventions[0].intervention) {
         const {_: name, type} = raw;
@@ -205,13 +282,14 @@ const convertDownloadedRecord = (record) => {
 const processPhases = (phaseList) => {
     const phases = [];
     for (const raw of phaseList || []) {
-        const phase = raw.trim().toLowerCase();
-        if (phase !== 'not applicable') {
-            const match = /^(early )?phase (\d+)$/.exec(phase);
-            if (!match) {
-                throw new Error(`unrecognized phase description (${phase})`);
+        for (const phase of raw.trim().toLowerCase().split(/[,/]/)) {
+            if (phase !== 'not applicable') {
+                const match = /^(early )?phase (\d+)$/.exec(phase);
+                if (!match) {
+                    throw new Error(`unrecognized phase description (${phase})`);
+                }
+                phases.push(match[2]);
             }
-            phases.push(match[2]);
         }
     }
     return phases.sort().join('/');
@@ -241,6 +319,34 @@ const processRecord = async ({
     if (phase) {
         content.phase = phase;
     }
+    // check if single location or at least single country
+    let consensusCountry,
+        consensusCity;
+    for (const {city, country} of record.locations) {
+        if (consensusCountry) {
+            if (consensusCountry !== country.toLowerCase()) {
+                consensusCountry = null;
+                consensusCity = null;
+                break;
+            }
+        } else {
+            consensusCountry = country.toLowerCase();
+        }
+        if (consensusCity !== undefined) {
+            if (consensusCity !== city.toLowerCase()) {
+                consensusCity = null;
+            }
+        } else {
+            consensusCity = city.toLowerCase();
+        }
+    }
+    if (consensusCountry) {
+        content.country = consensusCountry;
+        if (consensusCity) {
+            content.city = consensusCity;
+        }
+    }
+
     const links = [];
     for (const drug of record.drugs) {
         try {
