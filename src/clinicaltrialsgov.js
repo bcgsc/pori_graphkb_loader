@@ -210,8 +210,9 @@ const standardizeDate = (dateString) => {
 /**
  * Given some records from the API, convert its form to a standard represention
  */
-const convertAPIRecord = (record) => {
-    checkSpec(validateAPITrialRecord, record, rec => rec.clinical_study.id_info[0].nct_id);
+const convertAPIRecord = (rawRecord) => {
+    checkSpec(validateAPITrialRecord, rawRecord, rec => rec.clinical_study.id_info[0].nct_id);
+    const {clinical_study: record} = rawRecord;
 
     let startDate,
         completionDate;
@@ -223,30 +224,27 @@ const convertAPIRecord = (record) => {
     } catch (err) {}
 
     const content = {
-        sourceId: record.clinical_study.id_info[0].nct_id[0],
-        name: record.clinical_study.official_title[0],
-        url: record.clinical_study.required_header[0].url[0],
-        sourceIdVersion: standardizeDate(record.clinical_study.last_update_posted[0]._),
-        phases: record.clinical_study.phase,
-        diseases: record.clinical_study.condition,
+        sourceId: record.id_info[0].nct_id[0],
+        name: record.official_title[0],
+        url: record.required_header[0].url[0],
+        sourceIdVersion: standardizeDate(record.last_update_posted[0]._),
+        phases: record.phase,
+        diseases: record.condition,
         drugs: [],
         startDate,
         completionDate,
         locations: []
     };
-    for (const {intervention_name: name, intervention_type: type} of record.clinical_study.intervention || []) {
-        if (type === 'Drug') {
+    for (const {intervention_name: [name], intervention_type: [type]} of record.intervention || []) {
+        if (type.toLowerCase() === 'drug' || type.toLowerCase() === 'biological') {
             content.drugs.push(name);
         }
     }
 
     for (const location of record.location || []) {
-        const [{address}] = location[0].facility;
-        const [{country, city}] = address;
-        content.locations.push({country: country[0].toLowerCase(), city: city[0].toLowerCase()});
+        const {facility: [{address: [{country: [country], city: [city]}]}]} = location;
+        content.locations.push({country: country.toLowerCase(), city: city.toLowerCase()});
     }
-
-
     return content;
 };
 
@@ -265,9 +263,9 @@ const convertDownloadedRecord = (record) => {
         name: record.title[0],
         sourceIdVersion: standardizeDate(record.last_update_posted[0])
     };
-    for (const raw of record.interventions[0].intervention) {
-        const {_: name, type} = raw;
-        if (type[0].trim().toLowerCase() === 'drug') {
+    for (const {_: name, type: [rawType]} of record.interventions[0].intervention) {
+        const type = rawType.trim().toLowerCase();
+        if (type === 'drug' || type === 'biological') {
             content.drugs.push(name);
         }
     }
@@ -318,6 +316,12 @@ const processRecord = async ({
     const phase = processPhases(record.phases);
     if (phase) {
         content.phase = phase;
+    }
+    if (record.startDate) {
+        content.startDate = record.startDate;
+    }
+    if (record.completionDate) {
+        content.completionDate = record.completionDate;
     }
     // check if single location or at least single country
     let consensusCountry,
@@ -482,5 +486,5 @@ const uploadFile = async ({conn, filename}) => {
 };
 
 module.exports = {
-    uploadFile, SOURCE_DEFN, type: 'kb', fetchAndLoadById
+    uploadFile, SOURCE_DEFN, type: 'kb', fetchAndLoadById, convertAPIRecord
 };
