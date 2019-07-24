@@ -87,7 +87,7 @@ const uploadRecord = async ({
             // try adding the cross reference relationship
             await conn.addRecord({
                 endpoint: 'crossreferenceof',
-                content: {src: rid(currentRecord), tgt: rid(ensg), source: rid(hgnc)},
+                content: {out: rid(currentRecord), in: rid(ensg), source: rid(hgnc)},
                 existsOk: true,
                 fetchExisting: false
             });
@@ -153,7 +153,7 @@ const uploadRecord = async ({
             const entrezGene = await _entrez.fetchAndLoadById(conn, gene.entrez_id);
             await conn.addRecord({
                 endpoint: 'crossreferenceof',
-                content: {src: rid(currentRecord), tgt: rid(entrezGene), source: rid(hgnc)},
+                content: {out: rid(currentRecord), in: rid(entrezGene), source: rid(hgnc)},
                 existsOk: true,
                 fetchExisting: false
             });
