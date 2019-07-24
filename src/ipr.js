@@ -7,6 +7,7 @@ const {variant: {parse: variantParser}, position: {Position}} = require('@bcgsc/
 const {logger} = require('./logging');
 const _pubmed = require('./entrez/pubmed');
 const _hgnc = require('./hgnc');
+const _ctg = require('./clinicaltrialsgov');
 const {
     preferredDiseases,
     rid,
@@ -100,7 +101,9 @@ const extractAppliesTo = async (conn, record, source) => {
         statementType,
         appliesTo: appliesToInput,
         variants,
-        disease
+        features,
+        disease,
+        supportedBy
     } = record;
 
     const appliesTo = appliesToInput && appliesToInput.replace(/-/g, ' ');
@@ -135,6 +138,10 @@ const extractAppliesTo = async (conn, record, source) => {
                 where: {name: disease},
                 sort: preferredDiseases
             });
+        } if (relevance === 'eligibility') {
+            if (supportedBy.length === 1) {
+                return supportedBy[0];
+            }
         }
     } if (statementType === 'biological' || statementType === 'occurrence') {
         if (/.*\bfunction(al)?.*/.exec(relevance) || relevance.includes('dominant negative')) {
@@ -548,11 +555,22 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
 
     // check that the expected pubmedIds exist in the db
     for (const {sourceId} of record.support) {
-        const article = await _pubmed.fetchArticle(conn, sourceId);
-        supportedBy.push(rid(article));
+        let evidence;
+        if (sourceId.startsWith('NCT')) {
+            evidence = await _ctg.fetchAndLoadById(conn, sourceId);
+        } else {
+            evidence = await _pubmed.fetchArticle(conn, sourceId);
+        }
+        supportedBy.push(rid(evidence));
     }
     // determine the appliesTo
-    const appliesTo = await extractAppliesTo(conn, record, source);
+    const appliesTo = await extractAppliesTo(
+        conn,
+        {
+            ...record, variants, features, supportedBy
+        },
+        source
+    );
 
     // determine the record relevance
     const relevance = await conn.getUniqueRecordBy({
@@ -601,7 +619,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
         const newRecord = convertRowFields(HEADER, record);
 
         if (
-            newRecord.evidenceType !== 'pubmed'
+            (newRecord.evidenceType !== 'pubmed' && !newRecord.evidenceType.startsWith('ClinicalT'))
             || newRecord.reviewStatus.toLowerCase() === 'flagged-incorrect'
             || newRecord.relevance === 'observed'
         ) {
