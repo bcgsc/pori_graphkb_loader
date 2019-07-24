@@ -91,35 +91,37 @@ const uploadRecord = async ({
                 existsOk: true,
                 fetchExisting: false
             });
-        } catch (err) {
-        }
+        } catch (err) {}
     }
     for (const symbol of gene.prev_symbol || []) {
         const {sourceId, biotype} = currentRecord;
-        const deprecatedRecord = await conn.addRecord({
-            endpoint: CLASS_NAME,
-            content: {
-                source: rid(hgnc),
-                sourceId,
-                dependency: rid(currentRecord),
-                deprecated: true,
-                biotype,
-                name: symbol,
-                displayName: createDisplayName(symbol)
-            },
-            existsOk: true,
-            fetchConditions: {
-                source: rid(hgnc), sourceId, name: symbol, deprecated: true
-            },
-            fetchExisting: true
-        });
+
         // link to the current record
-        await conn.addRecord({
-            endpoint: 'deprecatedby',
-            content: {out: rid(deprecatedRecord), in: rid(currentRecord), source: rid(hgnc)},
-            existsOk: true,
-            fetchExisting: false
-        });
+        try {
+            const deprecatedRecord = await conn.addRecord({
+                endpoint: CLASS_NAME,
+                content: {
+                    source: rid(hgnc),
+                    sourceId,
+                    dependency: rid(currentRecord),
+                    deprecated: true,
+                    biotype,
+                    name: symbol,
+                    displayName: createDisplayName(symbol)
+                },
+                existsOk: true,
+                fetchConditions: {
+                    source: rid(hgnc), sourceId, name: symbol, deprecated: true
+                },
+                fetchExisting: true
+            });
+            await conn.addRecord({
+                endpoint: 'deprecatedby',
+                content: {out: rid(deprecatedRecord), in: rid(currentRecord), source: rid(hgnc)},
+                existsOk: true,
+                fetchExisting: false
+            });
+        } catch (err) {}
     }
     for (const symbol of gene.alias_symbol || []) {
         const {sourceId, biotype} = currentRecord;
