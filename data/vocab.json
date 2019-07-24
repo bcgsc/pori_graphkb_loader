@@ -1158,6 +1158,14 @@
                 }
             ]
         },
+        "promoter methylation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "promoter variant"
+                }
+            ]
+        },
         "promoter mutation": {
             "links": [
                 {
