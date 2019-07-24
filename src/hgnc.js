@@ -69,10 +69,13 @@ const uploadRecord = async ({
         displayName: createDisplayName(gene.symbol)
     };
 
+    // don't update version if nothing else has changed
     const currentRecord = await conn.addRecord({
         endpoint: CLASS_NAME,
         content: body,
-        existsOk: true
+        existsOk: true,
+        fetchConditions: _.omit(body, ['sourceIdVersion']),
+        fetchFirst: true
     });
 
     if (gene.ensembl_gene_id && ensembl) {

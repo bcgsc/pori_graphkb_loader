@@ -10,6 +10,8 @@
  * @module importer/clinicaltrialsgov
  */
 const Ajv = require('ajv');
+const _ = require('lodash');
+
 const {
     loadXmlToJson,
     orderPreferredOntologyTerms,
@@ -270,7 +272,9 @@ const processRecord = async ({
     const trialRecord = await conn.addRecord({
         endpoint: 'clinicaltrials',
         content,
-        existsOk: true
+        existsOk: true,
+        fetchFirst: true,
+        fetchConditions: _.omit(content, ['sourceIdVersion']) // if sourceIdVersion is the only thing different then don't update
     });
 
     // link to the drugs and diseases
