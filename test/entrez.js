@@ -32,6 +32,7 @@ describe('entrez gene', () => {
         expect(result).toHaveProperty('biotype', 'gene');
         expect(result).toHaveProperty('name', 'KRAS');
         expect(result).toHaveProperty('sourceId', '3845');
+        expect(result).not.toHaveProperty('sourceIdVersion');
         expect(result).toHaveProperty('description');
         expect(result).toHaveProperty('source');
     });
