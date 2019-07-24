@@ -152,14 +152,16 @@ const uploadRecord = async ({
     // cross reference the entrez gene
     if (gene.entrez_id) {
         try {
-            const entrezGene = await _entrez.fetchAndLoadById(conn, gene.entrez_id);
+            const [entrezGene] = await _entrez.fetchAndLoadByIds(conn, [gene.entrez_id]);
             await conn.addRecord({
                 endpoint: 'crossreferenceof',
                 content: {out: rid(currentRecord), in: rid(entrezGene), source: rid(hgnc)},
                 existsOk: true,
                 fetchExisting: false
             });
-        } catch (err) {}
+        } catch (err) {
+            logger.warn(err);
+        }
     }
     return currentRecord;
 };
