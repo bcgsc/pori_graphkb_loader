@@ -8,7 +8,7 @@ const Ajv = require('ajv');
 const fs = require('fs');
 const jsonpath = require('jsonpath');
 
-const {schema: {schema: kbSchema}} = require('@bcgsc/knowledgebase-schema');
+const {schema, schema: {schema: kbSchema}} = require('@bcgsc/knowledgebase-schema');
 
 
 const {logger} = require('./logging');
@@ -16,15 +16,6 @@ const {rid} = require('./util');
 
 const ajv = new Ajv();
 
-
-const EDGE_CLASSES = [
-    'AliasOf',
-    'SubClassOf',
-    'ElementOf',
-    'GeneralizationOf',
-    'OppositeOf',
-    'DeprecatedBy'
-];
 const INPUT_ERROR_CODE = 2;
 
 
@@ -64,7 +55,7 @@ const validateSpec = ajv.compile({
                             type: 'object',
                             required: ['class', 'target'],
                             properties: {
-                                class: {type: 'string', enum: EDGE_CLASSES},
+                                class: {type: 'string', enum: schema.getEdgeModels().map(e => e.name)},
                                 target: {type: 'string', minLength: 1},
                                 additionalProperties: false
                             }
