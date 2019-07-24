@@ -16,6 +16,7 @@ const SOURCE_DEFN = {
     description: 'Gene integrates information from a wide range of species. A record may include nomenclature, Reference Sequences (RefSeqs), maps, pathways, variations, phenotypes, and links to genome-, phenotype-, and locus-specific resources worldwide.'
 };
 const CACHE = {};
+const DB_NAME = 'gene';
 
 const recordSpec = ajv.compile({
     type: 'object',
@@ -70,5 +71,5 @@ const fetchAndLoadByIds = async (api, idListIn) => {
 module.exports = {
     fetchAndLoadByIds,
     parseRecord,
-    SOURCE_DEFN,
+    SOURCE_DEFN
 };
