@@ -24,7 +24,7 @@ const pullFromCacheById = (rawIdList, cache) => {
     const idList = Array.from(new Set(rawIdList.map(id => id.toLowerCase().trim())));
     const cached = [];
     const remaining = [];
-    for (const id in idList) {
+    for (const id of idList) {
         if (cache[id]) {
             cached.push(cache[id]);
         } else {
@@ -60,7 +60,7 @@ const fetchByIdList = async (rawIdList, opt) => {
         const {result} = await requestWithRetry({
             method: 'GET',
             uri: url,
-            qs: {...DEFAULT_QS, id: idListString},
+            qs: {...DEFAULT_QS, db, id: idListString},
             headers: {Accept: 'application/json'},
             json: true
         });
@@ -78,17 +78,21 @@ const fetchByIdList = async (rawIdList, opt) => {
  * Given some pubmed ID, get the corresponding record from GraphKB
  */
 const fetchRecord = async (api, {
-    sourceId, db = 'pubmed', endpoint = 'publications', cache = {}
+    sourceId, sourceIdVersion = null, db = 'pubmed', endpoint = 'publications', cache = {}
 }) => {
-    if (cache[sourceId]) {
-        return cache[sourceId];
+    const cacheKey = sourceIdVersion
+        ? `${sourceId}.${sourceIdVersion}`.toLowerCase()
+        : sourceId.toLowerCase();
+
+    if (cache[cacheKey]) {
+        return cache[cacheKey];
     }
     const record = await api.getUniqueRecordBy({
         endpoint,
-        where: {sourceId, source: {name: db}},
+        where: {sourceId, sourceIdVersion, source: {name: db}},
         sort: orderPreferredOntologyTerms
     });
-    cache[sourceId] = record;
+    cache[cacheKey] = record;
     return record;
 };
 
@@ -109,13 +113,17 @@ const uploadRecord = async (api, content, opt = {}) => {
         fetchFirst = true,
         endpoint = 'publications',
         sourceDefn,
-        createDisplayName = () => {}
+        createDisplayName
     } = opt;
 
-    const {sourceId} = content;
+    const {sourceId, sourceIdVersion} = content;
 
-    if (cache && cache[sourceId]) {
-        return cache[sourceId];
+    const cacheKey = sourceIdVersion
+        ? `${sourceId}.${sourceIdVersion}`.toLowerCase()
+        : sourceId.toLowerCase();
+
+    if (cache && cache[cacheKey]) {
+        return cache[cacheKey];
     } if (fetchFirst) {
         try {
             const record = await api.getUniqueRecordBy({
@@ -123,7 +131,7 @@ const uploadRecord = async (api, content, opt = {}) => {
                 where: {sourceId}
             });
             if (cache) {
-                cache[sourceId] = record;
+                cache[cacheKey] = record;
             }
             return record;
         } catch (err) {}
@@ -159,7 +167,7 @@ const uploadRecord = async (api, content, opt = {}) => {
         }
     });
     if (cache) {
-        cache[sourceId] = result;
+        cache[cacheKey] = result;
     }
     return result;
 };

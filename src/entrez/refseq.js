@@ -2,6 +2,7 @@
  * @module importer/entrez/refseq
  */
 const Ajv = require('ajv');
+const _ = require('lodash');
 
 const {fetchByIdList, uploadRecord} = require('./util');
 const {checkSpec} = require('../util');
@@ -25,24 +26,25 @@ const recordSpec = ajv.compile({
     type: 'object',
     required: ['title', 'biomol', 'accessionversion'],
     properties: {
-        accessionversion: {type: 'string', pattern: '^N[A-Z]_\d+\.\d+$'},
-        biomol: {type: 'string', enum: ['genomic', 'rna', 'peptide']},
+        accessionversion: {type: 'string', pattern: '^N[A-Z]_\\d+\\.\\d+$'},
+        biomol: {type: 'string', enum: ['genomic', 'rna', 'peptide', 'mRNA']},
         subname: {type: 'string'},
-        title: {type: 'string'}
+        title: {type: 'string'},
+        status: {type: 'string'},
+        replacedby: {type: 'string'}
     }
 });
 
 /**
- * Given an record record retrieved from pubmed, parse it into its equivalent
+ * Given an record record retrieved from refseq, parse it into its equivalent
  * GraphKB representation
  */
 const parseRecord = (record) => {
     checkSpec(recordSpec, record);
     const [sourceId, sourceIdVersion] = record.accessionversion.split('.');
-
-    let biotype = 'chromosome';
-    if (record.biomol === 'rna') {
-        biotype = 'transcript';
+    let biotype = 'transcript';
+    if (record.biomol === 'genomic') {
+        biotype = 'chromosome';
     } else if (record.biomol === 'peptide') {
         biotype = 'protein';
     }
@@ -50,7 +52,8 @@ const parseRecord = (record) => {
         sourceId,
         sourceIdVersion,
         biotype,
-        longName: record.title
+        longName: record.title,
+        displayName: record.accessionversion.toUpperCase()
     };
     if (biotype === 'chromosome') {
         parsed.name = record.subname;
@@ -60,27 +63,56 @@ const parseRecord = (record) => {
 
 
 /**
- * Given some list of pubmed IDs, return if cached,
- * If they do not exist, grab from the pubmed api
+ * Given some list of refseq IDs, return if cached,
+ * If they do not exist, grab from the refseq api
  * and then upload to GraphKB
  *
  * @param {ApiConnection} api connection to GraphKB
- * @param {Array.<string>} idList list of pubmed IDs
+ * @param {Array.<string>} idList list of IDs
  */
 const fetchAndLoadByIds = async (api, idListIn) => {
-    const records = await fetchByIdList(
-        idListIn,
-        {
-            db: DB_NAME, parser: parseRecord, cache: CACHE
+    const versionedIds = []; idListIn.filter(id => /\.\d+$/.exec(id));
+    const unversionedIds = [];
+    idListIn.forEach((id) => {
+        if (/\.\d+$/.exec(id)) {
+            versionedIds.push(id);
+        } else {
+            unversionedIds.push(id);
         }
-    );
-    return Promise.all(records.map(
+    });
+    const records = [];
+
+    if (versionedIds.length > 0) {
+        records.push(...await fetchByIdList(
+            versionedIds,
+            {
+                db: DB_NAME, parser: parseRecord, cache: CACHE
+            }
+        ));
+    }
+
+    if (unversionedIds.length > 0) {
+        const fullRecords = await fetchByIdList(
+            unversionedIds,
+            {
+                db: DB_NAME, parser: parseRecord, cache: CACHE
+            }
+        );
+        fullRecords.forEach((rec) => {
+            const simplified = _.omit(rec, ['sourceIdVersion', 'longName', 'description']);
+            simplified.displayName = simplified.sourceId.toUpperCase();
+            records.push(simplified);
+        });
+    }
+
+    const result = await Promise.all(records.map(
         async record => uploadRecord(api, record, {
             cache: CACHE,
             endpoint: 'features',
             sourceDefn: SOURCE_DEFN
         })
     ));
+    return result;
 };
 
 
