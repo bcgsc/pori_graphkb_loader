@@ -145,21 +145,19 @@ const extractAppliesTo = async (conn, record, source) => {
         }
     } if (statementType === 'biological' || statementType === 'occurrence') {
         if (/.*\bfunction(al)?.*/.exec(relevance) || relevance.includes('dominant negative')) {
-            if (variants.length === 1) {
+            if (features.length + variants.length === 1) {
+                if (features.length) {
+                    return features[0];
+                }
                 const [{
-                    name, positional, isFeature, reference1
+                    reference1,
+                    reference2
                 }] = variants;
-                if (isFeature) {
-                    return getFeature(conn, name);
-                } if (!positional && reference1) {
-                    return getFeature(conn, reference1);
+                if (reference1 && !reference2) {
+                    return reference1;
                 }
-                if (positional && !positional.reference2) {
-                    return getFeature(conn, positional.reference1);
-                }
-            } else {
-                throw new Error(`Unable to determine feature target (variants=Array[${variants.length}])`);
             }
+            throw new Error(`Unable to determine feature target (variants=Array[${variants.length}], features=Array[${features.length}])`);
         } else if (['recurrent', 'observed', 'pathogenic', 'mutation hotspot'].includes(relevance)) {
             if (!disease) {
                 throw new Error(`required disease not defined (relevance=${relevance}, statementType=${statementType})`);
@@ -179,15 +177,16 @@ const extractAppliesTo = async (conn, record, source) => {
                 'haploinsufficient'
             ].includes(relevance)
         ) {
-            if (variants.length === 1) {
-                const [{isFeature, name}] = variants;
-                if (isFeature) {
-                    return getFeature(conn, name);
-                }
+            if (features.length === 1) {
+                return features[0];
             }
             throw new Error(`unable to determine the gene being referenced (relevance=${relevance})`);
-        } else if (relevance === 'oncogenic') {
-            // applies to the variant
+        } else if (relevance === 'oncogenic' || relevance === 'oncogenic fusion') {
+            // applies to the variant?
+            if (variants.length === 1) {
+                return null;
+            }
+            throw new Error(`unable to determine the variant being referenced (relevance=${relevance})`);
         }
     } else if (statementType === 'diagnostic') {
         return conn.getUniqueRecordBy({
@@ -534,6 +533,9 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         record.variants
             .filter(v => !v.isFeature)
             .map(async variant => processVariant(conn, variant))
+    );
+    const features = await Promise.all(
+        record.variants.filter(v => v.isFeature).map(async v => getFeature(v.name))
     );
     for (const variant of variants) {
         impliedBy.push(rid(variant));
