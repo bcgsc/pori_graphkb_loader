@@ -74,7 +74,7 @@ const uploadRecord = async ({
         endpoint: CLASS_NAME,
         content: body,
         existsOk: true,
-        fetchConditions: _.omit(body, ['sourceIdVersion']),
+        fetchConditions: _.omit(body, ['sourceIdVersion', 'displayName', 'longName']),
         fetchFirst: true
     });
 
