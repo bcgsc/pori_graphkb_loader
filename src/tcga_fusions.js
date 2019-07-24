@@ -13,13 +13,13 @@ const DISEASE_CODES = {
     BRCA: 'Breast cancer',
     GBM: 'Glioblastoma multiforme',
     HNSC: 'Head and Neck squamous cell carcinoma',
-    KIRC: 'Kidney renal clear cell carcinoma',
+    KIRC: 'renal clear cell carcinoma',
     LAML: 'Acute Myeloid Leukemia',
-    LGG: 'Brain Lower Grade Glioma',
+    LGG: 'low-grade glioma, nos',
     LUAD: 'Lung adenocarcinoma',
     LUSC: 'Lung squamous cell carcinoma',
     OV: 'Ovarian serous cystadenocarcinoma',
-    SKCM: 'Skin Cutaneous Melanoma',
+    SKCM: 'cutaneous melanoma',
     THCA: 'Thyroid carcinoma',
     PRAD: 'Prostate adenocarcinoma'
 };
