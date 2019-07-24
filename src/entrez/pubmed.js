@@ -1,9 +1,12 @@
 /**
- * @module importer/pubmed
+ * @module importer/entrez/pubmed
  */
+const Ajv = require('ajv');
 
-const {rid, requestWithRetry} = require('./util');
-const {logger} = require('./logging');
+const {checkSpec} = require('../util');
+const {fetchByIdList, uploadRecord, fetchRecord} = require('./util');
+
+const ajv = new Ajv();
 
 const SOURCE_DEFN = {
     displayName: 'PubMed',
@@ -16,23 +19,25 @@ const SOURCE_DEFN = {
         from pubmed central and publisher web sites`.replace(/\s+/, ' ')
 };
 
-const PUBMED_DEFAULT_QS = {
-    retmode: 'json',
-    db: 'pubmed',
-    rettype: 'docsum'
-};
+const CACHE = {};
 
-const PUBMED_CACHE = {};
-
-const PUBMED_API = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi';
-const MAX_CONSEC_IDS = 150;
-
+const recordSpec = ajv.compile({
+    type: 'object',
+    required: ['uid', 'title', 'fulljournalname', 'sortpubdate'],
+    properties: {
+        uid: {type: 'string', pattern: '^\\d+$'},
+        title: {type: 'string'},
+        fulljournalname: {type: 'string'},
+        sortpubdate: {type: 'string'}
+    }
+});
 
 /**
  * Given an article record retrieved from pubmed, parse it into its equivalent
  * GraphKB representation
  */
 const parseArticleRecord = (record) => {
+    checkSpec(recordSpec, record);
     const article = {
         sourceId: record.uid,
         name: record.title,
@@ -46,53 +51,25 @@ const parseArticleRecord = (record) => {
     return article;
 };
 
-/**
- * Given some list of pumbed Ids, fetch the minimal parsed aricle summaries
- * @param {Array.<string>} pmidListIn list of pubmed ids
- * @param {string} url the base url for the pubmed api
- */
-const fetchArticlesByPmids = async (pmidListIn, url = PUBMED_API) => {
-    const allArticles = [];
-    const pmidList = Array.from((new Set(Array.from(pmidListIn))).values()) // remove dups
-        .map(pmid => pmid.toString().trim())
-        .filter(pmid => pmid);
 
-    for (let startIndex = 0; startIndex < pmidList.length; startIndex += MAX_CONSEC_IDS) {
-        const pmidString = pmidList
-            .slice(startIndex, startIndex + MAX_CONSEC_IDS)
-            .map(id => id.toString())
-            .join(',');
-
-        logger.info(`loading: ${url}?db=pubmed`);
-        const {result} = await requestWithRetry({
-            method: 'GET',
-            uri: url,
-            qs: Object.assign({id: pmidString}, PUBMED_DEFAULT_QS),
-            headers: {Accept: 'application/json'},
-            json: true
-        });
-
-        const articles = Object.values(result)
-            .filter(content => !Array.isArray(content))
-            .map(parseArticleRecord);
-        allArticles.push(...articles);
-    }
-
-    return allArticles;
+const fetchArticlesByPmids = async (pmidListIn, url) => {
+    return fetchByIdList(
+        pmidListIn,
+        {url, db: 'pubmed', parser: parseArticleRecord, cache: CACHE}
+    );
 };
+
 
 /**
  * Given some pubmed ID, get the corresponding record from GraphKB
  */
 const fetchArticle = async (api, sourceId) => {
-    if (PUBMED_CACHE[sourceId]) {
-        return PUBMED_CACHE[sourceId];
-    }
-    const record = api.getUniqueRecordBy({
+    return fetchRecord(api, {
+        sourceId,
         endpoint: 'publications',
-        where: {sourceId, source: {name: 'pubmed'}}
+        cache: CACHE,
+        db: 'pubmed'
     });
-    return record;
 };
 
 
@@ -107,54 +84,13 @@ const createDisplayName = sourceId => `pmid:${sourceId}`;
  * @param {boolean} opt.fetchFirst attempt to get the record by source Id before uploading it
  */
 const uploadArticle = async (api, article, opt = {}) => {
-    const {
-        cache = true,
-        fetchFirst = true
-    } = opt;
-
-    const {sourceId} = article;
-
-    if (cache && PUBMED_CACHE[article.sourceId]) {
-        return PUBMED_CACHE[article.sourceId];
-    } if (fetchFirst) {
-        try {
-            const record = await api.getUniqueRecordBy({
-                endpoint: 'publications',
-                where: {sourceId}
-            });
-            if (cache) {
-                PUBMED_CACHE[sourceId] = record;
-            }
-            return record;
-        } catch (err) {}
-    }
-    let pubmedSource = cache
-        ? PUBMED_CACHE.source
-        : null;
-    if (!pubmedSource) {
-        pubmedSource = await api.addRecord({
-            endpoint: 'sources',
-            content: SOURCE_DEFN,
-            fetchConditions: {name: SOURCE_DEFN.name},
-            existsOk: true
-        });
-        if (cache) {
-            PUBMED_CACHE.source = pubmedSource;
-        }
-    }
-    const result = await api.addRecord({
+    return uploadRecord(api, article, {
+        cache: CACHE,
+        createDisplayName,
         endpoint: 'publications',
-        content: {...article, source: rid(pubmedSource), displayName: createDisplayName(article.sourceId)},
-        existsOk: true,
-        fetchConditions: {
-            sourceId,
-            source: rid(pubmedSource)
-        }
+        sourceDefn: SOURCE_DEFN,
+        ...opt
     });
-    if (cache) {
-        PUBMED_CACHE[sourceId] = result;
-    }
-    return result;
 };
 
 /**
@@ -178,5 +114,4 @@ module.exports = {
     uploadArticle,
     uploadArticlesByPmid,
     SOURCE_DEFN,
-    PUBMED_DEFAULT_QS
 };
