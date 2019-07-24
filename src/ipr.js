@@ -5,10 +5,15 @@ const moment = require('moment');
 const {variant: {parse: variantParser}, position: {Position}} = require('@bcgsc/knowledgebase-parser');
 
 const {logger} = require('./logging');
-const _pubmed = require('./pubmed');
+const _pubmed = require('./entrez/pubmed');
 const _hgnc = require('./hgnc');
 const {
-    preferredDiseases, rid, preferredFeatures, INTERNAL_SOURCE_NAME, orderPreferredOntologyTerms
+    preferredDiseases,
+    rid,
+    preferredFeatures,
+    INTERNAL_SOURCE_NAME,
+    orderPreferredOntologyTerms,
+    convertRowFields
 } = require('./util');
 
 
@@ -22,21 +27,21 @@ const SOURCE_DEFN = {
 const DEFAULT_ASSEMBLY = 'GRCh37';
 
 
-const REMAPPED_COLUMNS = {
-    kb_reference_uuid: 'ident',
-    kb_reference_created_date: 'createdAt',
-    kb_reference_review_status: 'reviewStatus',
-    kb_reference_created_by_user: 'createdBy',
-    kb_reference_reviewed_by_user: 'reviewedBy',
-    kb_reference_events_expression: 'variants',
-    kb_reference_type: 'statementType',
-    kb_reference_relevance: 'relevance',
-    kb_reference_context: 'appliesTo',
-    kb_reference_disease_list: 'diseaseList',
-    kb_reference_evidence: 'evidenceLevel',
-    kb_reference_id_type: 'evidenceType',
-    kb_reference_ref_id: 'evidenceId',
-    kb_reference_id_title: 'evidenceTitle'
+const HEADER = {
+    ident: 'kb_reference_uuid',
+    createdAt: 'kb_reference_created_date',
+    reviewStatus: 'kb_reference_review_status',
+    createdBy: 'kb_reference_created_by_user',
+    reviewedBy: 'kb_reference_reviewed_by_user',
+    variants: 'kb_reference_events_expression',
+    statementType: 'kb_reference_type',
+    relevance: 'kb_reference_relevance',
+    appliesTo: 'kb_reference_context',
+    diseaseList: 'kb_reference_disease_list',
+    evidenceLevel: 'kb_reference_evidence',
+    evidenceType: 'kb_reference_id_type',
+    evidenceId: 'kb_reference_ref_id',
+    evidenceTitle: 'kb_reference_id_title'
 };
 
 
@@ -593,10 +598,8 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     let records = [];
 
     for (const record of jsonList) {
-        const newRecord = {};
-        for (const [oldName, newName] of Object.entries(REMAPPED_COLUMNS)) {
-            newRecord[newName] = record[oldName] || null;
-        }
+        const newRecord = convertRowFields(HEADER, record);
+
         if (
             newRecord.evidenceType !== 'pubmed'
             || newRecord.reviewStatus.toLowerCase() === 'flagged-incorrect'
