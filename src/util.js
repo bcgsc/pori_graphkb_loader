@@ -351,7 +351,7 @@ class ApiConnection {
 
         if (fetchFirst) {
             try {
-                return this.getUniqueRecordBy({
+                return await this.getUniqueRecordBy({
                     where: fetchConditions || content,
                     endpoint,
                     sortFunc
