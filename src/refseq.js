@@ -39,7 +39,10 @@ const uploadFile = async (opt) => {
     logger.log('info', `Loading ${json.length} gene records`);
     const hgncMissingRecords = new Set();
 
-    for (const record of json) {
+    for (let i=0; i < json.length; i++) {
+        const record = json[i];
+        logger.info(`processing (${i} / ${json.length}) ${record.RNA}`);
+
         // Load the RNA
         const [rnaName, rnaVersion] = record.RNA.split('.');
         const general = await conn.addRecord({
@@ -74,6 +77,7 @@ const uploadFile = async (opt) => {
             });
         } catch (err) {
             logger.log('error', `failed cross-linking from ${general.sourceId} to ${record.Symbol}`);
+            logger.error(err);
             hgncMissingRecords.add(record.symbol);
         }
 
