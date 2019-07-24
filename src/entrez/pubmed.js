@@ -18,7 +18,7 @@ const SOURCE_DEFN = {
         life science journals, and online books. citations may include links to full-text content
         from pubmed central and publisher web sites`.replace(/\s+/, ' ')
 };
-
+const DB_NAME = 'pubmed';
 const CACHE = {};
 
 const recordSpec = ajv.compile({
@@ -33,12 +33,12 @@ const recordSpec = ajv.compile({
 });
 
 /**
- * Given an article record retrieved from pubmed, parse it into its equivalent
+ * Given an record record retrieved from pubmed, parse it into its equivalent
  * GraphKB representation
  */
-const parseArticleRecord = (record) => {
+const parseRecordRecord = (record) => {
     checkSpec(recordSpec, record);
-    const article = {
+    const record = {
         sourceId: record.uid,
         name: record.title,
         journalName: record.fulljournalname
@@ -46,16 +46,16 @@ const parseArticleRecord = (record) => {
     // sortpubdate: '1992/06/01 00:00'
     const match = /^(\d\d\d\d)\//.exec(record.sortpubdate);
     if (match) {
-        article.year = parseInt(match[1], 10);
+        record.year = parseInt(match[1], 10);
     }
-    return article;
+    return record;
 };
 
 
-const fetchArticlesByPmids = async (pmidListIn, url) => {
+const fetchRecordsByIds = async (idListIn, url) => {
     return fetchByIdList(
-        pmidListIn,
-        {url, db: 'pubmed', parser: parseArticleRecord, cache: CACHE}
+        idListIn,
+        {url, db: DB_NAME, parser: parseRecordRecord, cache: CACHE}
     );
 };
 
@@ -63,28 +63,28 @@ const fetchArticlesByPmids = async (pmidListIn, url) => {
 /**
  * Given some pubmed ID, get the corresponding record from GraphKB
  */
-const fetchArticle = async (api, sourceId) => {
+const fetchRecord = async (api, sourceId) => {
     return fetchRecord(api, {
         sourceId,
         endpoint: 'publications',
         cache: CACHE,
-        db: 'pubmed'
+        db: DB_NAME
     });
 };
 
 
-const createDisplayName = sourceId => `pmid:${sourceId}`;
+const createDisplayName = sourceId => `id:${sourceId}`;
 
 
 /**
- * Given the parsed content of some article, upload to the api
- * @param {object} article the article contents to be uploaded
+ * Given the parsed content of some record, upload to the api
+ * @param {object} record the record contents to be uploaded
  * @param {object} opt
  * @param {boolean} opt.cache add the GraphKB Publication record to the cache
  * @param {boolean} opt.fetchFirst attempt to get the record by source Id before uploading it
  */
-const uploadArticle = async (api, article, opt = {}) => {
-    return uploadRecord(api, article, {
+const uploadRecord = async (api, record, opt = {}) => {
+    return uploadRecord(api, record, {
         cache: CACHE,
         createDisplayName,
         endpoint: 'publications',
@@ -99,19 +99,19 @@ const uploadArticle = async (api, article, opt = {}) => {
  * and then upload to GraphKB
  *
  * @param {ApiConnection} api connection to GraphKB
- * @param {Array.<string>} pmidList list of pubmed IDs
+ * @param {Array.<string>} idList list of pubmed IDs
  */
-const uploadArticlesByPmid = async (api, pmidListIn) => {
-    const articles = await fetchArticlesByPmids(pmidListIn);
-    return Promise.all(articles.map(async article => uploadArticle(api, article)));
+const fetchAndLoadByIds = async (api, idListIn) => {
+    const records = await fetchRecordsByIds(idListIn);
+    return Promise.all(records.map(async record => uploadRecord(api, record)));
 };
 
 
 module.exports = {
-    fetchArticle,
-    fetchArticlesByPmids,
-    parseArticleRecord,
-    uploadArticle,
-    uploadArticlesByPmid,
+    fetchRecord,
+    fetchRecordsByIds,
+    parseRecord,
+    uploadRecord,
+    fetchAndLoadByIds,
     SOURCE_DEFN,
 };

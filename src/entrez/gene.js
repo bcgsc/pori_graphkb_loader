@@ -32,7 +32,7 @@ const recordSpec = ajv.compile({
  * Given an gene record retrieved from entrez, parse it into its equivalent
  * GraphKB representation
  */
-const parseGeneRecord = (record) => {
+const parseRecordRecord = (record) => {
     checkSpec(recordSpec, record);
     return {
         sourceId: record.uid,
@@ -47,10 +47,10 @@ const parseGeneRecord = (record) => {
  * @param {Array.<string>} geneIdListIn list of entrez ids
  * @param {string} url the base url for the entrez api
  */
-const fetchGenesByIds = async (geneIdListIn, url = API) => {
+const fetchRecordsByIds = async (geneIdListIn, url = API) => {
     return fetchByIdList(geneIdList, {
         db: 'gene',
-        parser: parseGeneRecord,
+        parser: parseRecordRecord,
         cache: CACHE
     });
 };
@@ -63,7 +63,7 @@ const fetchGenesByIds = async (geneIdListIn, url = API) => {
  * @param {boolean} opt.cache add the GraphKB Publication record to the cache
  * @param {boolean} opt.fetchFirst attempt to get the record by source Id before uploading it
  */
-const uploadGene = async (api, gene, opt = {}) => {
+const uploadRecord = async (api, gene, opt = {}) => {
     return uploadRecord(api, gene, {
         cache: CACHE,
         endpoint: 'features',
@@ -80,13 +80,13 @@ const uploadGene = async (api, gene, opt = {}) => {
  * @param {ApiConnection} api connection to GraphKB
  * @param {Array.<string>} geneIdList list of entrez IDs
  */
-const uploadGenesByGeneId = async (api, geneIdListIn) => {
-    const genes = await fetchGenesByIds(geneIdListIn);
-    return Promise.all(genes.map(async gene => uploadGene(api, gene)));
+const uploadRecordsById = async (api, geneIdListIn) => {
+    const genes = await fetchRecordsByIds(geneIdListIn);
+    return Promise.all(genes.map(async gene => uploadRecord(api, gene)));
 };
 
 
-const fetchAndLoadById = async (conn, geneId) => {
+const fetchAndLoadByIds = async (conn, geneId) => {
     return fetchRecord(conn, {
         sourceId: geneId,
         db: 'gene',
@@ -97,10 +97,10 @@ const fetchAndLoadById = async (conn, geneId) => {
 
 
 module.exports = {
-    fetchGenesByIds,
-    parseGeneRecord,
-    uploadGene,
-    uploadGenesByGeneId,
-    fetchAndLoadById,
-    SOURCE_DEFN
+    fetchRecord,
+    fetchAndLoadByIds,
+    parseRecord,
+    uploadRecord,
+    uploadRecordsById,
+    SOURCE_DEFN,
 };
