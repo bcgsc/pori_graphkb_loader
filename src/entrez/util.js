@@ -174,5 +174,5 @@ const uploadRecord = async (api, content, opt = {}) => {
 
 
 module.exports = {
-    uploadRecord, fetchRecord, fetchByIdList, pullFromCacheById
+    uploadRecord, fetchRecord, fetchByIdList, pullFromCacheById, DEFAULT_QS
 };

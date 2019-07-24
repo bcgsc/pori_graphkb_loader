@@ -7,7 +7,7 @@
 const {fileExists, createOptionsMenu} = require('./cli');
 
 const {ApiConnection} = require('./util');
-const {PUBMED_DEFAULT_QS} = require('./pubmed');
+const {DEFAULT_QS} = require('./entrez/util');
 const {logger} = require('./logging');
 
 const IMPORT_MODULES = {};
@@ -181,7 +181,7 @@ const options = createOptionsMenu(optionDefinitions,
 const apiConnection = new ApiConnection(options.graphkb);
 
 if (options.pubmed) {
-    PUBMED_DEFAULT_QS.api_key = options.pubmed;
+    DEFAULT_QS.api_key = options.pubmed;
 }
 
 const compareLoadModules = (name1, name2) => {
