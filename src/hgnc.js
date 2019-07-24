@@ -57,7 +57,7 @@ const createDisplayName = symbol => symbol.toUpperCase().replace('ORF', 'orf');
  * @param {object} opt.gene the gene record from HGNC
  */
 const uploadRecord = async ({
-    conn, sources: {hgnc, ensembl}, gene, ensemblMissingRecords = new Set()
+    conn, sources: {hgnc, ensembl}, gene
 }) => {
     const body = {
         source: rid(hgnc),
@@ -92,7 +92,6 @@ const uploadRecord = async ({
                 fetchExisting: false
             });
         } catch (err) {
-            ensemblMissingRecords.add(gene.ensembl_gene_id);
         }
     }
     for (const symbol of gene.prev_symbol || []) {
@@ -252,7 +251,6 @@ const uploadFile = async (opt) => {
         fetchConditions: {name: SOURCE_DEFN.name}
     });
     let ensembl;
-    const ensemblMissingRecords = new Set();
     try {
         ensembl = await conn.getUniqueRecordBy({
             endpoint: 'sources',
@@ -274,9 +272,6 @@ const uploadFile = async (opt) => {
             continue;
         }
         await uploadRecord({conn, sources: {hgnc, ensembl}, gene});
-    }
-    if (ensemblMissingRecords.size) {
-        logger.warn(`Unable to retrieve ${ensemblMissingRecords.size} ensembl records for linking`);
     }
 };
 
