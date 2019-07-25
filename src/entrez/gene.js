@@ -5,7 +5,7 @@
 const Ajv = require('ajv');
 
 const {checkSpec} = require('../util');
-const {fetchByIdList, uploadRecord} = require('./util');
+const {fetchByIdList, uploadRecord, preLoadCache: preLoadAnyCache} = require('./util');
 
 const ajv = new Ajv();
 
@@ -17,6 +17,7 @@ const SOURCE_DEFN = {
 };
 const CACHE = {};
 const DB_NAME = 'gene';
+const MAX_CONSEC = 100;
 
 const recordSpec = ajv.compile({
     type: 'object',
@@ -59,18 +60,32 @@ const fetchAndLoadByIds = async (api, idListIn) => {
             db: DB_NAME, parser: parseRecord, cache: CACHE
         }
     );
-    return Promise.all(records.map(
-        async record => uploadRecord(api, record, {
-            cache: CACHE,
-            endpoint: 'features',
-            sourceDefn: SOURCE_DEFN
-        })
-    ));
+    const result = [];
+    let queue = records;
+    while (queue.length > 0) {
+        const current = queue.slice(0, MAX_CONSEC);
+        queue = queue.slice(MAX_CONSEC);
+        const newRecords = await Promise.all(current.map(
+            async record => uploadRecord(api, record, {
+                cache: CACHE,
+                endpoint: 'features',
+                sourceDefn: SOURCE_DEFN
+            })
+        ));
+        result.push(...newRecords);
+    }
+    return result;
+};
+
+
+const preLoadCache = async (api, idList = null) => {
+    return preLoadAnyCache(api, {sourceDefn: SOURCE_DEFN, cache: CACHE, idList});
 };
 
 
 module.exports = {
     fetchAndLoadByIds,
     parseRecord,
-    SOURCE_DEFN
+    SOURCE_DEFN,
+    preLoadCache
 };
