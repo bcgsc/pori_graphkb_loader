@@ -225,6 +225,21 @@ class ApiConnection {
         return request(req);
     }
 
+    async getRecords(opt) {
+        const {
+            where,
+            endpoint,
+            sort: sortFunc = () => 0
+        } = opt;
+
+        const queryParams = convertNulls(where);
+        const {result: records} = await this.request({
+                uri: endpoint,
+                qs: {neighbors: 1, ...queryParams},
+            });
+        return records;
+    }
+
     async getUniqueRecord(opt) {
         const {result} = await this.request(opt);
         if (result.length !== 1) {
