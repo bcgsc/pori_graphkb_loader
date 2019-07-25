@@ -2,14 +2,13 @@
  * Load therapy recrods from CHEMBL
  */
 const Ajv = require('ajv');
-const request = require('request-promise');
 
-const {checkSpec, rid} = require('./util');
+const {checkSpec, rid, requestWithRetry} = require('./util');
 const {logger} = require('./logging');
 
 const ajv = new Ajv();
 
-const validateDrugRecord = ajv.compile({
+const drugRecord = ajv.compile({
     type: 'object',
     required: ['molecule_chembl_id'],
     properties: {
@@ -42,11 +41,11 @@ const fetchAndLoadById = async (conn, drugId) => {
         return CACHE[drugId.toLowerCase()];
     }
     logger.info(`loading: ${API}/${drugId}`);
-    const chemblRecord = await request({
+    const chemblRecord = await requestWithRetry({
         uri: `${API}/${drugId}`,
         json: true
     });
-    checkSpec(validateDrugRecord, chemblRecord);
+    checkSpec(drugRecord, chemblRecord);
     if (!CACHE.SOURCE) {
         CACHE.SOURCE = await conn.addRecord({
             endpoint: 'sources',
