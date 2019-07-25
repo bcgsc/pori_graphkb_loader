@@ -14,6 +14,13 @@ const DEFAULT_QS = {
 const BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi';
 const MAX_CONSEC_IDS = 150;
 
+const generateCacheKey = (record) => {
+    if (record.sourceIdVersion !== undefined) {
+        return `${record.sourceId}-${record.sourceIdVersion}`.toLowerCase();
+    }
+    return `${record.sourceId}`.toLowerCase();;
+};
+
 
 /**
  * pull records from a cache where stored, return leftoever id's otherwise
@@ -80,9 +87,7 @@ const fetchByIdList = async (rawIdList, opt) => {
 const fetchRecord = async (api, {
     sourceId, sourceIdVersion = null, db = 'pubmed', endpoint = 'publications', cache = {}
 }) => {
-    const cacheKey = sourceIdVersion
-        ? `${sourceId}.${sourceIdVersion}`.toLowerCase()
-        : sourceId.toLowerCase();
+    const cacheKey = generateCacheKey({sourceId, sourceIdVersion});
 
     if (cache[cacheKey]) {
         return cache[cacheKey];
@@ -118,9 +123,7 @@ const uploadRecord = async (api, content, opt = {}) => {
 
     const {sourceId, sourceIdVersion} = content;
 
-    const cacheKey = sourceIdVersion
-        ? `${sourceId}.${sourceIdVersion}`.toLowerCase()
-        : sourceId.toLowerCase();
+    const cacheKey = generateCacheKey({sourceId, sourceIdVersion});
 
     if (cache && cache[cacheKey]) {
         return cache[cacheKey];
@@ -173,6 +176,45 @@ const uploadRecord = async (api, content, opt = {}) => {
 };
 
 
+const preLoadCache = async (api, {sourceDefn, cache}) => {
+    const limit = 1000;
+    let lastFetch = limit;
+    let skip = 0;
+    const records = [];
+
+    while (lastFetch === limit) { // paginate
+        const fetch = await api.getRecords({
+            endpoint: 'features',
+            where: {source: {name: sourceDefn.name}, dependency: null, deprecated: false, limit, skip},
+        });
+        lastFetch = fetch.length;
+        skip += limit;
+        records.push(...fetch);
+    }
+
+    const dups = new Set();
+
+    for (const record of records) {
+        const cacheKey = generateCacheKey(record);
+        if (cache[cacheKey]) {
+            // duplicate
+            dups.add(cacheKey);
+        }
+        cache[cacheKey] = record;
+    }
+    Array(dups).map(key => {
+        delete cache[key];
+    });
+    logger.info(`cache contains ${Object.keys(cache).length} keys`);
+};
+
+
 module.exports = {
-    uploadRecord, fetchRecord, fetchByIdList, pullFromCacheById, DEFAULT_QS
+    uploadRecord,
+    fetchRecord,
+    fetchByIdList,
+    pullFromCacheById,
+    DEFAULT_QS,
+    generateCacheKey,
+    preLoadCache
 };
