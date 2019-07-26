@@ -236,6 +236,7 @@ const upload = async (opt) => {
                     });
                 } catch (err) {
                     ncitMissingRecords.add(xref.sourceId);
+                    logger.warn(`failed to link ${record.sourceId} to ${xref.sourceId}`);
                 }
             }
         }
