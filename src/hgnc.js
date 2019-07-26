@@ -21,6 +21,7 @@ const CLASS_NAME = 'features';
 const SOURCE_DEFN = {
     name: 'hgnc',
     url: 'https://www.genenames.org/about',
+    longName: 'HUGO Gene Nomenclature Committee',
     displayName: 'HGNC',
     usage: 'https://www.ebi.ac.uk/about/terms-of-use',
     description: `

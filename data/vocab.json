@@ -1643,6 +1643,10 @@
         }
     },
     "source": {
-        "name": "bcgsc"
+        "name": "bcgsc",
+        "displayName": "GSC",
+        "longName": "Canada's Michael Smith Genome Sciences Centre",
+        "url": "http://bcgsc.ca",
+        "description": "We are a leading international centre for genomics and bioinformatics research. Our mandate is to advance knowledge about cancer and other diseases, to improve human health through disease prevention, diagnosis and therapeutic approaches, and to realize the social and economic benefits of genomics research."
     }
 }

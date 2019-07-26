@@ -12,6 +12,23 @@ const {
 const {logger} = require('./logging');
 const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 
+const SOURCE_DEFN = {
+    displayName: 'Disease Ontology',
+    name: 'disease ontology',
+    longName: 'Human Disease Ontology',
+    url: 'http://disease-ontology.org',
+    license: 'https://creativecommons.org/publicdomain/zero/1.0',
+    description: `
+        The Disease Ontology has been developed as a standardized ontology for human disease
+        with the purpose of providing the biomedical community with consistent, reusable and
+        sustainable descriptions of human disease terms, phenotype characteristics and related
+        medical vocabulary disease concepts through collaborative efforts of researchers at
+        Northwestern University, Center for Genetic Medicine and the University of Maryland
+        School of Medicine, Institute for Genome Sciences. The Disease Ontology semantically
+        integrates disease and medical vocabularies through extensive cross mapping of DO
+        terms to MeSH, ICD, NCI’s thesaurus, SNOMED and OMIM.`.replace(/\s+/, ' ')
+};
+
 const ajv = new Ajv();
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
@@ -81,20 +98,6 @@ const edgeSpec = ajv.compile({
     }
 });
 
-const SOURCE_DEFN = {
-    displayName: 'Disease Ontology',
-    name: 'disease ontology',
-    url: 'http://disease-ontology.org',
-    description: `
-        The Disease Ontology has been developed as a standardized ontology for human disease
-        with the purpose of providing the biomedical community with consistent, reusable and
-        sustainable descriptions of human disease terms, phenotype characteristics and related
-        medical vocabulary disease concepts through collaborative efforts of researchers at
-        Northwestern University, Center for Genetic Medicine and the University of Maryland
-        School of Medicine, Institute for Genome Sciences. The Disease Ontology semantically
-        integrates disease and medical vocabularies through extensive cross mapping of DO
-        terms to MeSH, ICD, NCI’s thesaurus, SNOMED and OMIM.`.replace(/\s+/, ' ')
-};
 
 const parseDoid = (ident) => {
     const match = /.*(DOID_\d+)$/.exec(ident);
