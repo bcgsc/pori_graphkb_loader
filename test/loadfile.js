@@ -1,7 +1,4 @@
-const fs = require('fs');
 const path = require('path');
-
-const {parseXmlToJson} = require('../src/util');
 
 const diseaseOntology = require('../src/disease_ontology');
 
@@ -16,10 +13,6 @@ jest.mock('../src/util', () => {
     return {...original, requestWithRetry: jest.fn()};
 });
 
-const util = require('../src/util');
-
-const dataFileLoad = filename => fs.readFileSync(path.join(__dirname, filename));
-const dataFileToJson = filename => JSON.parse(dataFileLoad(filename));
 
 afterEach(() => {
     jest.clearAllMocks();
@@ -33,5 +26,3 @@ describe('diseaseOntology', () => {
         expect(api.addRecord).toHaveBeenCalled();
     });
 });
-
-
