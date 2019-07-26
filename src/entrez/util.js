@@ -2,7 +2,9 @@
  * @module importer/entrez/util
  */
 
-const {rid, requestWithRetry, orderPreferredOntologyTerms} = require('../util');
+const {
+    rid, requestWithRetry, orderPreferredOntologyTerms, generateCacheKey
+} = require('../util');
 const {logger} = require('../logging');
 
 
@@ -13,13 +15,6 @@ const DEFAULT_QS = {
 
 const BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi';
 const MAX_CONSEC_IDS = 150;
-
-const generateCacheKey = (record) => {
-    if (record.sourceIdVersion !== undefined) {
-        return `${record.sourceId}-${record.sourceIdVersion}`.toLowerCase();
-    }
-    return `${record.sourceId}`.toLowerCase();;
-};
 
 
 /**
@@ -177,20 +172,10 @@ const uploadRecord = async (api, content, opt = {}) => {
 
 
 const preLoadCache = async (api, {sourceDefn, cache}) => {
-    const limit = 1000;
-    let lastFetch = limit;
-    let skip = 0;
-    const records = [];
-
-    while (lastFetch === limit) { // paginate
-        const fetch = await api.getRecords({
-            endpoint: 'features',
-            where: {source: {name: sourceDefn.name}, dependency: null, deprecated: false, limit, skip},
-        });
-        lastFetch = fetch.length;
-        skip += limit;
-        records.push(...fetch);
-    }
+    const records = await api.getRecords({
+        endpoint: 'features',
+        where: {source: {name: sourceDefn.name}, dependency: null, deprecated: false}
+    });
 
     const dups = new Set();
 
@@ -202,7 +187,7 @@ const preLoadCache = async (api, {sourceDefn, cache}) => {
         }
         cache[cacheKey] = record;
     }
-    Array(dups).map(key => {
+    Array(dups).forEach((key) => {
         delete cache[key];
     });
     logger.info(`cache contains ${Object.keys(cache).length} keys`);
@@ -215,6 +200,5 @@ module.exports = {
     fetchByIdList,
     pullFromCacheById,
     DEFAULT_QS,
-    generateCacheKey,
     preLoadCache
 };
