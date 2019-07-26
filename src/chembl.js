@@ -13,8 +13,16 @@ const drugRecord = ajv.compile({
     required: ['molecule_chembl_id'],
     properties: {
         molecule_chembl_id: {type: 'string', pattern: '^CHEMBL\\d+$'},
-        pref_name: {type: 'string'},
-        usan_stem_definition: {type: ['string', 'null']}
+        pref_name: {type: ['string', 'null']},
+        usan_stem_definition: {type: ['string', 'null']},
+        molecule_properties: {
+            oneOf: [{
+                type: 'object',
+                properties: {
+                    full_molformula: {type: 'string'}
+                }
+            }, {type: 'null'}]
+        }
     }
 });
 
@@ -54,13 +62,21 @@ const fetchAndLoadById = async (conn, drugId) => {
         });
     }
     const source = rid(CACHE.SOURCE);
+
+    const content = {
+        source,
+        sourceId: chemblRecord.molecule_chembl_id,
+        name: chemblRecord.pref_name,
+        molecularFormula: drugRecord
+    };
+
+    if (drugRecord.molecule_properties && drugRecord.molecule_properties.full_molformula) {
+        content.molecularFormula = drugRecord.molecule_properties.full_molformula;
+    }
+
     const record = await conn.addRecord({
         endpoint: 'therapies',
-        content: {
-            source,
-            sourceId: chemblRecord.molecule_chembl_id,
-            name: chemblRecord.pref_name
-        },
+        content,
         existsOk: true
     });
     CACHE[record.sourceId] = record;
