@@ -20,7 +20,7 @@ const INTERNAL_SOURCE_NAME = 'bcgsc';
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
 
 const generateCacheKey = (record) => {
-    if (record.sourceIdVersion !== undefined) {
+    if (record.sourceIdVersion !== undefined && record.sourceIdVersion !== null) {
         return `${record.sourceId}-${record.sourceIdVersion}`.toLowerCase();
     }
     return `${record.sourceId}`.toLowerCase();
@@ -142,18 +142,20 @@ const preferredVocabulary = (term1, term2) => {
 const preferredDiseases = (term1, term2) => {
     const sourceRank = generateRanks([
         'oncotree',
-        'disease ontology'
+        'disease ontology',
+        'ncit'
     ]);
     return preferredSources(sourceRank, term1, term2);
 };
 
 const preferredDrugs = (term1, term2) => {
     const sourceRank = generateRanks([
-        'gsc therapeutic ontology',
         'drugbank',
         'chembl',
+        'ncit',
         'fda',
-        'ncit'
+        'oncokb',
+        'gsc therapeutic ontology'
     ]);
     return preferredSources(sourceRank, term1, term2);
 };
