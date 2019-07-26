@@ -242,4 +242,4 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
     fs.writeFileSync(errorJson, JSON.stringify({records: errorList}, null, 2));
 };
 
-module.exports = {SOURCE_DEFN: {}, uploadFile, type: 'kb'};
+module.exports = {SOURCE_DEFN: {}, uploadFile, kb: true};

@@ -631,6 +631,6 @@ module.exports = {
     upload,
     getVariantName,
     SOURCE_DEFN,
-    type: 'kb',
+    kb: true,
     specs: {validateEvidenceSpec, validateVariantSpec}
 };

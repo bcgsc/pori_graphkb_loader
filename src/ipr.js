@@ -712,5 +712,5 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
 };
 
 module.exports = {
-    uploadFile, convertDeprecatedSyntax, SOURCE_DEFN, type: 'kb'
+    uploadFile, convertDeprecatedSyntax, SOURCE_DEFN, kb: true
 };

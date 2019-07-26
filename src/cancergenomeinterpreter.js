@@ -379,4 +379,4 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
 };
 
 
-module.exports = {uploadFile, SOURCE_DEFN};
+module.exports = {uploadFile, SOURCE_DEFN, kb: true};

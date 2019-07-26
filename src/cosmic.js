@@ -212,4 +212,4 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {uploadFile, SOURCE_DEFN, type: 'kb'};
+module.exports = {uploadFile, SOURCE_DEFN, kb: true};

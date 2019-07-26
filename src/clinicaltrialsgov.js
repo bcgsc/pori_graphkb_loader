@@ -486,5 +486,5 @@ const uploadFile = async ({conn, filename}) => {
 };
 
 module.exports = {
-    uploadFile, SOURCE_DEFN, type: 'kb', fetchAndLoadById, convertAPIRecord
+    uploadFile, SOURCE_DEFN, kb: true, fetchAndLoadById, convertAPIRecord
 };

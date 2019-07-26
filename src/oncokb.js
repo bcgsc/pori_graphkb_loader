@@ -849,7 +849,7 @@ module.exports = {
     upload,
     parseVariantName,
     SOURCE_DEFN,
-    type: 'kb',
+    kb: true,
     specs: {
         actionableRecordSpec,
         annotatedRecordSpec,

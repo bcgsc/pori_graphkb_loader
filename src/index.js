@@ -189,10 +189,10 @@ const compareLoadModules = (name1, name2) => {
     const module2 = IMPORT_MODULES[name2];
 
     // knowledgebases should always be loaded last
-    if (module1.type !== module2.type) {
-        if (module1.type === 'kb') {
+    if (module1.kb !== module2.kb) {
+        if (module1.kb) {
             return 1;
-        } if (module2.type === 'kb') {
+        } if (module2.kb) {
             return -1;
         }
     }
