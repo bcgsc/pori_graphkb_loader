@@ -9,6 +9,7 @@ const {
 } = require('./util');
 const {logger} = require('./logging');
 const _hgnc = require('./hgnc');
+const _entrez = require('./entrez/gene');
 const {SOURCE_DEFN: {name: refseqName}} = require('./refseq');
 
 const HEADER = {
@@ -91,6 +92,8 @@ const uploadFile = async (opt) => {
     const hgncMissingRecords = new Set();
     const refseqMissingRecords = new Set();
 
+    logger.info('pre-load the entrez cache to avoid unecessary requests')
+    await _entrez.preLoadCache(conn);
     // skip any genes that have already been loaded before we start
     logger.info('retriving the list of previously loaded genes');
     const preLoaded = await getCurrentGenesList(conn);
@@ -106,7 +109,6 @@ const uploadFile = async (opt) => {
         record.hgncName = record[HEADER.geneNameSource] === 'HGNC Symbol'
             ? record[HEADER.geneName]
             : null;
-        // gene
 
         const geneId = record[HEADER.geneId];
         const geneIdVersion = record[HEADER.geneIdVersion];
