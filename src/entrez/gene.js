@@ -78,9 +78,7 @@ const fetchAndLoadByIds = async (api, idListIn) => {
 };
 
 
-const preLoadCache = async (api, idList = null) => {
-    return preLoadAnyCache(api, {sourceDefn: SOURCE_DEFN, cache: CACHE, idList});
-};
+const preLoadCache = async (api, idList = null) => preLoadAnyCache(api, {sourceDefn: SOURCE_DEFN, cache: CACHE, idList});
 
 
 module.exports = {

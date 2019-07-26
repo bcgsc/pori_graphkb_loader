@@ -23,7 +23,7 @@ const generateCacheKey = (record) => {
     if (record.sourceIdVersion !== undefined) {
         return `${record.sourceId}-${record.sourceIdVersion}`.toLowerCase();
     }
-    return `${record.sourceId}`.toLowerCase();;
+    return `${record.sourceId}`.toLowerCase();
 };
 
 const rid = (record, nullOk) => {
@@ -236,18 +236,20 @@ class ApiConnection {
         const {
             where,
             endpoint,
-            limit = 1000,
+            limit = 1000
         } = opt;
 
         const result = [];
-        let lastFetch = limit;
-        let skip = 0;
+        let lastFetch = limit,
+            skip = 0;
         const queryParams = convertNulls(where);
 
         while (lastFetch === limit) {
             const {result: records} = await this.request({
                 uri: endpoint,
-                qs: {neighbors: 1, ...queryParams, limit, skip},
+                qs: {
+                    neighbors: 1, ...queryParams, limit, skip
+                }
             });
             result.push(...records);
             lastFetch = records.length;
