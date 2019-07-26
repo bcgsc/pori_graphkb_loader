@@ -5,7 +5,7 @@
  */
 
 const {
-    loadDelimToJson, rid, orderPreferredOntologyTerms
+    loadDelimToJson, rid, orderPreferredOntologyTerms, generateCacheKey
 } = require('./util');
 const {logger} = require('./logging');
 const _hgnc = require('./hgnc');
@@ -34,30 +34,6 @@ const SOURCE_DEFN = {
     usage: 'https://uswest.ensembl.org/info/about/legal/disclaimer.html',
     url: 'https://uswest.ensembl.org',
     description: 'Ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. Ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. Ensembl tools include BLAST, BLAT, BioMart and the Variant Effect Predictor (VEP) for all supported species.'
-};
-
-
-const getCurrentGenesList = async (conn) => {
-    const preLoaded = new Set();
-    const limit = 1000;
-    let lastReturn = limit;
-    while (lastReturn >= limit) {
-        const {result: genes} = await conn.request({
-            uri: 'features',
-            qs: {
-                source: {name: SOURCE_DEFN.name},
-                biotype: 'gene',
-                returnProperties: 'sourceId,sourceIdVersion',
-                limit,
-                skip: preLoaded.size
-            }
-        });
-        lastReturn = genes.length;
-        for (const {sourceId, sourceIdVersion} of genes) {
-            preLoaded.add(`${sourceId}.${sourceIdVersion}`.toLowerCase());
-        }
-    }
-    return preLoaded;
 };
 
 
@@ -92,13 +68,21 @@ const uploadFile = async (opt) => {
     const hgncMissingRecords = new Set();
     const refseqMissingRecords = new Set();
 
-    logger.info('pre-load the entrez cache to avoid unecessary requests')
+    logger.info('pre-load the entrez cache to avoid unecessary requests');
     await _entrez.preLoadCache(conn);
     // skip any genes that have already been loaded before we start
-    logger.info('retriving the list of previously loaded genes');
-    const preLoaded = await getCurrentGenesList(conn);
+    logger.info('retreiving the list of previously loaded genes');
+    const preLoaded = new Set();
+    const genesList = await conn.getRecords({
+        endpoint: 'features',
+        where: {
+            source: rid(source), biotype: 'gene', dependency: null, neighbors: 0
+        }
+    });
 
-    for (const gene of preLoaded) {
+    for (const record of genesList) {
+        const gene = generateCacheKey(record);
+        preLoaded.add(gene);
         logger.info(`${gene} has already been loaded`);
     }
 
@@ -112,7 +96,7 @@ const uploadFile = async (opt) => {
 
         const geneId = record[HEADER.geneId];
         const geneIdVersion = record[HEADER.geneIdVersion];
-        const key = `${geneId}.${geneIdVersion}`.toLowerCase();
+        const key = generateCacheKey({sourceId: geneId, sourceIdVersion: geneIdVersion});
 
         if (preLoaded.has(key)) {
             continue;
