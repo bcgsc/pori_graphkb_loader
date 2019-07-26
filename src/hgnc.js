@@ -92,7 +92,7 @@ const uploadRecord = async ({
                 existsOk: true,
                 fetchExisting: false
             });
-        } catch (err) {}
+        } catch (err) { }
     }
     for (const symbol of gene.prev_symbol || []) {
         const {sourceId, biotype} = currentRecord;
@@ -122,7 +122,7 @@ const uploadRecord = async ({
                 existsOk: true,
                 fetchExisting: false
             });
-        } catch (err) {}
+        } catch (err) { }
     }
     for (const symbol of gene.alias_symbol || []) {
         const {sourceId, biotype} = currentRecord;
@@ -148,7 +148,7 @@ const uploadRecord = async ({
                 existsOk: true,
                 fetchExisting: false
             });
-        } catch (err) {}
+        } catch (err) { }
     }
     // cross reference the entrez gene
     if (gene.entrez_id) {
@@ -194,7 +194,7 @@ const fetchAndLoadBySymbol = async ({
             CACHE[paramType][symbol] = record;
         }
         return record;
-    } catch (err) {}
+    } catch (err) { }
     // fetch from the HGNC API and upload
     const uri = `${HGNC_API}/${paramType}/${
         paramType === 'hgnc_id'
@@ -231,7 +231,7 @@ const fetchAndLoadBySymbol = async ({
             endpoint: 'sources',
             where: {name: ensemblSourceName}
         });
-    } catch (err) {}
+    } catch (err) { }
     const result = await uploadRecord({conn, gene, sources: {hgnc, ensembl}});
     CACHE[paramType][symbol] = result;
     return result;

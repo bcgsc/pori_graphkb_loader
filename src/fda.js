@@ -24,7 +24,7 @@ const HEADER = {
     ncit: 'NCIT',
     pubchem: 'PUBCHEM',
     name: 'PT'
-}
+};
 
 /**
  * Given the TAB delimited UNII records file. Load therapy records and NCIT links
@@ -57,7 +57,9 @@ const uploadFile = async (opt) => {
     logger.info(`loading ${jsonList.length} records`);
 
     for (let i = 0; i < jsonList.length; i++) {
-        const {pubchem, id, ncit, name} = convertRowFields(HEADER, jsonList[i]);
+        const {
+            pubchem, id, ncit, name
+        } = convertRowFields(HEADER, jsonList[i]);
 
         if (!name || !id || (!ncit && !pubchem)) {
             // only load records with at min these 3 values filled out
