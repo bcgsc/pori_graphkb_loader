@@ -8,7 +8,7 @@ const {logger} = require('./logging');
 
 const ajv = new Ajv();
 
-const drugRecord = ajv.compile({
+const recordSpec = ajv.compile({
     type: 'object',
     required: ['molecule_chembl_id'],
     properties: {
@@ -53,7 +53,7 @@ const fetchAndLoadById = async (conn, drugId) => {
         uri: `${API}/${drugId}`,
         json: true
     });
-    checkSpec(drugRecord, chemblRecord);
+    checkSpec(recordSpec, chemblRecord);
     if (!CACHE.SOURCE) {
         CACHE.SOURCE = await conn.addRecord({
             endpoint: 'sources',
@@ -66,19 +66,20 @@ const fetchAndLoadById = async (conn, drugId) => {
     const content = {
         source,
         sourceId: chemblRecord.molecule_chembl_id,
-        name: chemblRecord.pref_name,
-        molecularFormula: drugRecord
+        name: chemblRecord.pref_name
     };
 
-    if (drugRecord.molecule_properties && drugRecord.molecule_properties.full_molformula) {
-        content.molecularFormula = drugRecord.molecule_properties.full_molformula;
+    if (chemblRecord.molecule_properties && chemblRecord.molecule_properties.full_molformula) {
+        content.molecularFormula = chemblRecord.molecule_properties.full_molformula;
     }
 
     const record = await conn.addRecord({
         endpoint: 'therapies',
         content,
+        fetchConditions: {source, sourceId: content.sourceId, name: content.name},
         existsOk: true
     });
+
     CACHE[record.sourceId] = record;
     if (chemblRecord.usan_stem_definition) {
         try {

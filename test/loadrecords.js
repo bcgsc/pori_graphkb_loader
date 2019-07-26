@@ -152,6 +152,7 @@ describe('chembl', () => {
         const result = await chembl.fetchAndLoadById(api, 'CHEMBL553');
         expect(result).toHaveProperty('sourceId', 'CHEMBL553');
         expect(result).toHaveProperty('name', 'ERLOTINIB');
+        expect(result).toHaveProperty('molecularFormula', 'C22H23N3O4');
 
         expect(api.addRecord).toHaveBeenCalledTimes(4);
     });
