@@ -82,8 +82,7 @@ const uploadFile = async ({filename, conn}) => {
 
     const subclassEdges = [];
     const source = await conn.addRecord({
-        endpoint:
-        'sources',
+        endpoint: 'sources',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -185,8 +184,8 @@ const uploadFile = async ({filename, conn}) => {
                     fetchExisting: false
                 });
             } catch (err) {
-            // ignore missing vocabulary
-                ncitMissingRecords.add(tgt);
+                // ignore missing vocabulary
+                logger.warn(`failed to link to ${tgt}`);
             }
         }
         if (ncitMissingRecords.size) {
