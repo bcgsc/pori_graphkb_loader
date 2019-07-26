@@ -80,6 +80,8 @@ const uploadFile = async (opt) => {
         }
     });
 
+    const counts = {success: 0, error: 0, skip: 0};
+
     for (const record of genesList) {
         const gene = generateCacheKey(record);
         preLoaded.add(gene);
@@ -99,6 +101,7 @@ const uploadFile = async (opt) => {
         const key = generateCacheKey({sourceId: geneId, sourceIdVersion: geneIdVersion});
 
         if (preLoaded.has(key)) {
+            counts.skip++;
             continue;
         }
         logger.info(`processing ${geneId}.${geneIdVersion || ''} (${index} / ${contentList.length})`);
@@ -234,6 +237,7 @@ const uploadFile = async (opt) => {
                 logger.log('error', `failed cross-linking from ${gene.sourceid} to ${record[HEADER.hgncId]}`);
             }
         }
+        counts.success++;
     }
     if (hgncMissingRecords.size) {
         logger.warn(`Unable to retrieve ${hgncMissingRecords.size} hgnc records for linking`);
@@ -241,6 +245,7 @@ const uploadFile = async (opt) => {
     if (refseqMissingRecords.size) {
         logger.warn(`Unable to retrieve ${refseqMissingRecords.size} refseq records for linking`);
     }
+    logger.info(JSON.stringify(counts));
 };
 
 module.exports = {uploadFile, dependencies: [refseqName], SOURCE_DEFN};
