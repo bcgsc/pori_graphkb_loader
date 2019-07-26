@@ -19,6 +19,13 @@ const INTERNAL_SOURCE_NAME = 'bcgsc';
 
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
 
+const generateCacheKey = (record) => {
+    if (record.sourceIdVersion !== undefined) {
+        return `${record.sourceId}-${record.sourceIdVersion}`.toLowerCase();
+    }
+    return `${record.sourceId}`.toLowerCase();;
+};
+
 const rid = (record, nullOk) => {
     if (nullOk && !record) {
         return null;
@@ -229,15 +236,24 @@ class ApiConnection {
         const {
             where,
             endpoint,
-            sort: sortFunc = () => 0
+            limit = 1000,
         } = opt;
 
+        const result = [];
+        let lastFetch = limit;
+        let skip = 0;
         const queryParams = convertNulls(where);
-        const {result: records} = await this.request({
+
+        while (lastFetch === limit) {
+            const {result: records} = await this.request({
                 uri: endpoint,
-                qs: {neighbors: 1, ...queryParams},
+                qs: {neighbors: 1, ...queryParams, limit, skip},
             });
-        return records;
+            result.push(...records);
+            lastFetch = records.length;
+            skip += limit;
+        }
+        return result;
     }
 
     async getUniqueRecord(opt) {
@@ -634,6 +650,7 @@ module.exports = {
     rid,
     checkSpec,
     convertOwlGraphToJson,
+    generateCacheKey,
     orderPreferredOntologyTerms,
     preferredDiseases,
     preferredDrugs,
