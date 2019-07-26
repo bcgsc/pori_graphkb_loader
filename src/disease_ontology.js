@@ -379,6 +379,7 @@ const uploadFile = async ({filename, conn}) => {
     await loadEdges({
         DOID, conn, records: recordsBySourceId, source
     });
+    logger.info(JSON.stringify(counts));
 };
 
 
