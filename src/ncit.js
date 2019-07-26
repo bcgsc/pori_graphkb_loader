@@ -19,26 +19,28 @@ const SOURCE_DEFN = {
 };
 
 const diseaseConcepts = [
-    'Disease or Syndrome',
     'Anatomical Abnormality',
+    'Congenital Abnormality',
+    'Disease or Syndrome',
     'Mental or Behavioral Dysfunction',
-    'Congenital Abnormality'
+    'Neoplastic Process'
 ];
 
-const anatomyConcepts = ['Anatomical Structure',
+const anatomyConcepts = [
+    'Anatomical Structure',
+    'Body Location or Region',
     'Body Part, Organ, or Organ Component',
     'Tissue',
-    'Body Location or Region'
 ];
 
 const therapeuticConcepts = [
+    'Antibiotic',
+    'Biologically Active Substance',
+    'Immunologic Factor',
+    'Inorganic Chemical',
+    'Organic Chemical',
     'Pharmacologic Substance',
     'Therapeutic or Preventive Procedure',
-    'Immunologic Factor',
-    'Antibiotic',
-    'Organic Chemical',
-    'Inorganic Chemical',
-    'Biologically Active Substance'
 ];
 
 const DEPRECATED = [
