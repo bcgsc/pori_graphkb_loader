@@ -23,7 +23,7 @@ const MAX_CONSEC_IDS = 150;
  * @param {object} cache the cache to pull from
  */
 const pullFromCacheById = (rawIdList, cache) => {
-    const idList = Array.from(new Set(rawIdList.map(id => id.toLowerCase().trim())));
+    const idList = Array.from(new Set(rawIdList.map(id => `${id}`.toLowerCase().trim())));
     const cached = [];
     const remaining = [];
     for (const id of idList) {
@@ -67,9 +67,17 @@ const fetchByIdList = async (rawIdList, opt) => {
             json: true
         });
 
-        const records = Object.values(result)
-            .filter(content => !Array.isArray(content))
-            .map(parser);
+        const records = [];
+        Object.values(result).forEach((rec) => {
+            if (!Array.isArray(rec)) {
+                try {
+                    records.push(parser(rec));
+                } catch (err) {
+                    console.log(rec);
+                    logger.error(err);
+                }
+            }
+        });
         allRecords.push(...records);
     }
 
