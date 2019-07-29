@@ -119,7 +119,8 @@ const uploadFromJSON = async ({data, conn}) => {
         sourceRID = rid(await conn.addRecord({
             endpoint: 'sources',
             content: source,
-            existsOk: true
+            existsOk: true,
+            fetchConditions: {name: source.name}
         }));
     } catch (err) {
         console.error(err);
