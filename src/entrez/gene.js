@@ -5,7 +5,9 @@
 const Ajv = require('ajv');
 
 const {checkSpec} = require('../util');
-const {fetchByIdList, uploadRecord, preLoadCache: preLoadAnyCache} = require('./util');
+const {
+    preLoadCache: preLoadAnyCache, fetchAndLoadByIds, fetchAndLoadBySearchTerm
+} = require('./util');
 
 const ajv = new Ajv();
 
@@ -16,6 +18,7 @@ const SOURCE_DEFN = {
     description: 'Gene integrates information from a wide range of species. A record may include nomenclature, Reference Sequences (RefSeqs), maps, pathways, variations, phenotypes, and links to genome-, phenotype-, and locus-specific resources worldwide.'
 };
 const CACHE = {};
+const SEARCH_CACHE = {};
 const DB_NAME = 'gene';
 const MAX_CONSEC = 100;
 
@@ -46,43 +49,73 @@ const parseRecord = (record) => {
 
 
 /**
- * Given some list of pubmed IDs, return if cached,
- * If they do not exist, grab from the pubmed api
- * and then upload to GraphKB
  *
  * @param {ApiConnection} api connection to GraphKB
  * @param {Array.<string>} idList list of pubmed IDs
  */
-const fetchAndLoadByIds = async (api, idListIn) => {
-    const records = await fetchByIdList(
-        idListIn,
+const fetchAndLoadGeneByIds = async (api, idListIn) => fetchAndLoadByIds(
+    api,
+    idListIn,
+    {
+        dbName: DB_NAME,
+        parser: parseRecord,
+        cache: CACHE,
+        endpoint: 'features',
+        sourceDefn: SOURCE_DEFN,
+        MAX_CONSEC
+    }
+);
+
+/**
+ * Given a gene symbol, search the genes and upload the resulting records to graphkb
+ * @param {ApiConnection} api connection to GraphKB
+ * @param {string} symbol the gene symbol
+ */
+const fetchAndLoadBySymbol = async (api, symbol) => {
+    if (SEARCH_CACHE[symbol]) {
+        return SEARCH_CACHE[symbol];
+    }
+    let result = await fetchAndLoadBySearchTerm(
+        api,
+        `${symbol}[Preferred Symbol] AND human[ORGN] AND alive[prop]`,
         {
-            db: DB_NAME, parser: parseRecord, cache: CACHE
+            dbName: DB_NAME,
+            parser: parseRecord,
+            cache: CACHE,
+            endpoint: 'features',
+            sourceDefn: SOURCE_DEFN,
+            MAX_CONSEC
         }
     );
-    const result = [];
-    let queue = records;
-    while (queue.length > 0) {
-        const current = queue.slice(0, MAX_CONSEC);
-        queue = queue.slice(MAX_CONSEC);
-        const newRecords = await Promise.all(current.map(
-            async record => uploadRecord(api, record, {
+    // fallback to gene name
+    if (result.length === 0) {
+        result = await fetchAndLoadBySearchTerm(
+            api,
+            `${symbol}[Gene Name] AND human[ORGN] AND alive[prop]`,
+            {
+                dbName: DB_NAME,
+                parser: parseRecord,
                 cache: CACHE,
                 endpoint: 'features',
-                sourceDefn: SOURCE_DEFN
-            })
-        ));
-        result.push(...newRecords);
+                sourceDefn: SOURCE_DEFN,
+                MAX_CONSEC
+            }
+        );
     }
-    return result;
+    SEARCH_CACHE[symbol] = result;
+    return SEARCH_CACHE[symbol];
 };
 
 
-const preLoadCache = async (api, idList = null) => preLoadAnyCache(api, {sourceDefn: SOURCE_DEFN, cache: CACHE, idList});
+const preLoadCache = async (api, idList = null) => preLoadAnyCache(
+    api,
+    {sourceDefn: SOURCE_DEFN, cache: CACHE, idList}
+);
 
 
 module.exports = {
-    fetchAndLoadByIds,
+    fetchAndLoadByIds: fetchAndLoadGeneByIds,
+    fetchAndLoadBySymbol,
     parseRecord,
     SOURCE_DEFN,
     preLoadCache

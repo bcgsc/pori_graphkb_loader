@@ -14,6 +14,7 @@ const DEFAULT_QS = {
 };
 
 const BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi';
+const BASE_SEARCH_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi';
 const MAX_CONSEC_IDS = 150;
 
 
@@ -201,6 +202,74 @@ const preLoadCache = async (api, {sourceDefn, cache}) => {
     logger.info(`cache contains ${Object.keys(cache).length} keys`);
 };
 
+/**
+ * Given some list of pubmed IDs, return if cached,
+ * If they do not exist, grab from the pubmed api
+ * and then upload to GraphKB
+ *
+ * @param {ApiConnection} api connection to GraphKB
+ * @param {Array.<string>} idListIn list of pubmed IDs
+ * @param {Object} opt
+ * @param {string} opt.dbName name of the entrez db to pull from ex. gene
+ * @param {function} opt.parser function to convert records from the api to the graphkb format
+ * @param {object} opt.cache
+ * @param {number} opt.MAX_CONSEC maximum consecutive records to upload at once
+ * @param {string} opt.endpoint the graphkb api endpoint to upload to
+ * @param {object} opt.sourceDefn the object with the source information
+ */
+const fetchAndLoadByIds = async (api, idListIn, {
+    dbName, parser, cache, MAX_CONSEC = 100, endpoint, sourceDefn
+}) => {
+    const records = await fetchByIdList(
+        idListIn,
+        {
+            db: dbName, parser, cache
+        }
+    );
+    const result = [];
+    let queue = records;
+    while (queue.length > 0) {
+        const current = queue.slice(0, MAX_CONSEC);
+        queue = queue.slice(MAX_CONSEC);
+        const newRecords = await Promise.all(current.map(
+            async record => uploadRecord(api, record, {
+                cache,
+                endpoint,
+                sourceDefn
+            })
+        ));
+        result.push(...newRecords);
+    }
+    return result;
+};
+
+/**
+ * ex. https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?retmode=json&db=gene&rettype=docsum&term=kras[sym]
+ *
+ * @param {ApiConnection} api graphkb api connection
+ * @param {string} term the search term ex. kras[sym]
+ * @param {Object} opt
+ * @param {string} opt.dbName name of the entrez db to pull from ex. gene
+ * @param {function} opt.parser function to convert records from the api to the graphkb format
+ * @param {object} opt.cache
+ * @param {number} opt.MAX_CONSEC maximum consecutive records to upload at once
+ * @param {string} opt.endpoint the graphkb api endpoint to upload to
+ * @param {object} opt.sourceDefn the object with the source information
+ */
+const fetchAndLoadBySearchTerm = async (api, term, opt) => {
+    const {dbName} = opt;
+    // get the list of ids
+    logger.info(`searching ${BASE_SEARCH_URL}?db=${dbName}&term=${term}`);
+    const {esearchresult: {idlist}} = await requestWithRetry({
+        method: 'GET',
+        uri: BASE_SEARCH_URL,
+        qs: {...DEFAULT_QS, db: dbName, term},
+        headers: {Accept: 'application/json'},
+        json: true
+    });
+    return fetchAndLoadByIds(api, idlist, opt);
+};
+
 
 module.exports = {
     uploadRecord,
@@ -208,5 +277,7 @@ module.exports = {
     fetchByIdList,
     pullFromCacheById,
     DEFAULT_QS,
-    preLoadCache
+    preLoadCache,
+    fetchAndLoadByIds,
+    fetchAndLoadBySearchTerm
 };
