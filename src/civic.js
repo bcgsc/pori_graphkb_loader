@@ -4,11 +4,11 @@
 const request = require('request-promise');
 const _ = require('lodash');
 const Ajv = require('ajv');
+const fs = require('fs');
 
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const {
-    preferredDrugs,
     preferredDiseases,
     rid,
     INTERNAL_SOURCE_NAME,
@@ -160,6 +160,7 @@ const getRelevance = async ({rawRecord, conn}) => {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
                     case 'Sensitivity':
                     case 'Adverse Response':
+                    case 'Reduced Sensitivity':
                     case 'Resistance': {
                         return clinicalSignificance.toLowerCase();
                     }
@@ -223,9 +224,7 @@ const getRelevance = async ({rawRecord, conn}) => {
 const getDrug = async (conn, name) => {
     let originalError;
     try {
-        const drug = await conn.getUniqueRecordBy({
-            endpoint: 'therapies', where: {name}, sort: preferredDrugs
-        });
+        const drug = await conn.getTherapy(name);
         return drug;
     } catch (err) {
         originalError = err;
@@ -233,11 +232,7 @@ const getDrug = async (conn, name) => {
     try {
         const match = /^\s*(\S+)\s*\([^)]+\)$/.exec(name);
         if (match) {
-            return conn.getUniqueRecordBy({
-                endpoint: 'therapies',
-                where: {name: match[1]},
-                sort: preferredDrugs
-            });
+            return await conn.getTherapy(match[1]);
         }
     } catch (err) {}
     logger.error(originalError);
@@ -252,8 +247,8 @@ const getVariantName = ({name, variant_types: variantTypes = []}) => {
         'overexpression',
         'expression',
         'amplification',
-        'mutation'].includes(result)
-    ) {
+        'mutation'
+    ].includes(result)) {
         return result.replace(/-/g, ' ');
     }
     const SUBS = {
@@ -288,13 +283,12 @@ const getVariantName = ({name, variant_types: variantTypes = []}) => {
         return 'fusion';
     } if (match = /^\s*c\.\d+\s*[a-z]\s*>[a-z]\s*$/i.exec(result)) {
         return result.replace(/\s+/g, '');
-    } if (result !== 'mutation' && result.endsWith('mutation')) {
-        if (result === 'promoter mutation' || result === 'deletrious mutation' || result.includes('domain')) {
-            return result;
-        }
-        return result.replace(/\s*mutation$/i, '');
+    } if (match = /^((delete?rious)|promoter)\s+mutation$/.exec(result) || result.includes('domain')) {
+        return result;
     } if (result === 'mutation' && variantTypes.length === 1) {
         return variantTypes[0].name.replace(/_/g, ' ');
+    } if (match = /^(.*) mutations?$/.exec(result)) {
+        return 'mutation';
     } if (match = /^([A-Z]\d+\S+)\s+\((c\..*)\)$/i.exec(result)) {
         if (match[1].includes('?')) {
             return match[2];
@@ -302,6 +296,11 @@ const getVariantName = ({name, variant_types: variantTypes = []}) => {
         return `p.${match[1]}`;
     } if (match = /^Splicing alteration \((c\..*)\)$/i.exec(result)) {
         return match[1];
+    } if (match = /^exon (\d+)–(\d+) deletion$/.exec(result)) {
+        const [, start, end] = match;
+        return `e.${start}_${end}del`;
+    } if (match = /^([a-z]\d+) phosphorylation$/.exec(result)) {
+        return `p.${match[1]}phos`;
     }
     return result;
 };
@@ -386,7 +385,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
                     : 'p.'}${variantName}`, false
             ).toJSON();
         } catch (parsingError) {
-            throw err;
+            throw new Error(`could not match ${variantName} (${err}) or parse (${parsingError}) variant`);
         }
         const variantClass = await conn.getUniqueRecordBy({
             endpoint: 'vocabulary',
