@@ -24,7 +24,7 @@ const MAX_CONSEC_IDS = 150;
  * @param {object} cache the cache to pull from
  */
 const pullFromCacheById = (rawIdList, cache) => {
-    const idList = Array.from(new Set(rawIdList.map(id => `${id}`.toLowerCase().trim())));
+    const idList = Array.from(new Set(Array.from(rawIdList, id => `${id}`.toLowerCase().trim())));
     const cached = [];
     const remaining = [];
     for (const id of idList) {
