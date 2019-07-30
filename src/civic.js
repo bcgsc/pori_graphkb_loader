@@ -542,7 +542,7 @@ const downloadVariantRecords = async () => {
  * @param {string} [opt.url] url to use as the base for accessing the civic api
  */
 const upload = async (opt) => {
-    const {conn} = opt;
+    const {conn, errorLogPrefix} = opt;
     const urlTemplate = `${opt.url || BASE_URL}/evidence_items?count=500&status=accepted`;
     // load directly from their api
     const counts = {error: 0, success: 0, skip: 0};
@@ -557,6 +557,7 @@ const upload = async (opt) => {
         fetchConditions: {name: SOURCE_DEFN.name}
     });
     const varById = await downloadVariantRecords();
+    const errorList = [];
 
     while (currentPage <= expectedPages) {
         const url = `${urlTemplate}&page=${currentPage}`;
@@ -575,6 +576,7 @@ const upload = async (opt) => {
             try {
                 checkSpec(validateEvidenceSpec, record);
             } catch (err) {
+                errorList.push({record, error: err, errorMessage: err.toString()});
                 logger.error(err);
                 counts.error++;
                 continue;
@@ -587,7 +589,7 @@ const upload = async (opt) => {
                 counts.skip++;
                 logger.info(`skipping uninformative record (${record.id})`);
             } else if (record.source.source_type.toLowerCase() !== 'pubmed') {
-                logger.error(`Currently only loading pubmed sources. Found ${record.source.source_type} (${record.id})`);
+                logger.info(`Currently only loading pubmed sources. Found ${record.source.source_type} (${record.id})`);
                 counts.skip++;
             } else {
                 records.push(record);
@@ -615,6 +617,10 @@ const upload = async (opt) => {
                     });
                     counts.success++;
                 } catch (err) {
+                    if (err.toString().includes('is not a function')) {
+                        console.error(err);
+                    }
+                    errorList.push({record, error: err, errorMessage: err.toString()});
                     logger.error(err);
                     counts.error++;
                 }
@@ -624,6 +630,9 @@ const upload = async (opt) => {
         currentPage++;
     }
     logger.info(JSON.stringify(counts));
+    const errorJson = `${errorLogPrefix}-civic.json`;
+    logger.info(`writing ${errorJson}`);
+    fs.writeFileSync(errorJson, JSON.stringify(errorList, null, 2));
 };
 
 module.exports = {
