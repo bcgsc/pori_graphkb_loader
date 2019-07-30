@@ -107,9 +107,11 @@ const fetchAndLoadBySymbol = async (api, symbol) => {
 };
 
 
-const preLoadCache = async (api, idList = null) => preLoadAnyCache(
+const preLoadCache = async api => preLoadAnyCache(
     api,
-    {sourceDefn: SOURCE_DEFN, cache: CACHE, idList}
+    {
+        sourceDefn: SOURCE_DEFN, cache: CACHE, endpoint: 'features'
+    }
 );
 
 

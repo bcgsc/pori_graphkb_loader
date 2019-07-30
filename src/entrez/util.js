@@ -180,9 +180,9 @@ const uploadRecord = async (api, content, opt = {}) => {
 };
 
 
-const preLoadCache = async (api, {sourceDefn, cache}) => {
+const preLoadCache = async (api, {sourceDefn, cache, endpoint}) => {
     const records = await api.getRecords({
-        endpoint: 'features',
+        endpoint,
         where: {source: {name: sourceDefn.name}, dependency: null, deprecated: false}
     });
 

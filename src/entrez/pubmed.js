@@ -4,7 +4,7 @@
 const Ajv = require('ajv');
 
 const {checkSpec} = require('../util');
-const {fetchByIdList, uploadRecord} = require('./util');
+const {fetchByIdList, uploadRecord, preLoadCache: preLoadAnyCache} = require('./util');
 
 const ajv = new Ajv();
 
@@ -80,8 +80,16 @@ const fetchAndLoadByIds = async (api, idListIn) => {
     ));
 };
 
+const preLoadCache = async api => preLoadAnyCache(
+    api,
+    {
+        sourceDefn: SOURCE_DEFN, cache: CACHE, endpoint: 'publications'
+    }
+);
+
 
 module.exports = {
+    preLoadCache,
     parseRecord,
     fetchAndLoadByIds,
     SOURCE_DEFN
