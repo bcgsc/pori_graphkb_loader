@@ -232,7 +232,7 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
 
 const uploadFile = async ({conn, filename, errorLogPrefix}) => {
     logger.info('retrieve the publication');
-    const publication = rid((await _pubmed.uploadArticlesByPmid(conn, ['25500544']))[0]);
+    const publication = rid((await _pubmed.fetchAndLoadByIds(conn, ['25500544']))[0]);
     const errorList = [];
     errorList.push(...await parseKinaseFusions({conn, filename, publication}));
     errorList.push(...await parseRecurrentFusions({conn, filename, publication}));

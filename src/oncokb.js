@@ -362,11 +362,9 @@ const processActionableRecord = async (opt) => {
     relevance = await getVocabulary(conn, relevance);
 
     // find/add the publications
-    const publications = await Promise.all(
-        rawRecord.pmids
-            .split(',')
-            .filter(pmid => pmid && pmid.trim())
-            .map(async pmid => _pubmed.fetchArticle(conn, pmid.trim()))
+    const publications = await _pubmed.fetchAndLoadByIds(
+        conn,
+        rawRecord.pmids.split(',').filter(pmid => pmid && pmid.trim())
     );
 
     // make the actual statement
@@ -420,11 +418,11 @@ const processAnnotatedRecord = async (opt) => {
         impliedBy.push(rid(disease));
     }
     // find/add the publications
-    const publications = await Promise.all(
+    const publications = await _pubmed.fetchAndLoadByIds(
+        conn,
         rawRecord.mutationEffectPmids
             .split(',')
             .filter(pmid => pmid && pmid.trim())
-            .map(async pmid => _pubmed.fetchArticle(conn, pmid.trim()))
     );
 
     let count = 0;
@@ -543,7 +541,7 @@ const processActionableRecords = async ({
         }
     }
     logger.info(`loading ${pmidList.size} pubmed articles`);
-    await _pubmed.uploadArticlesByPmid(conn, Array.from(pmidList));
+    await _pubmed.fetchAndLoadByIds(conn, Array.from(pmidList));
 
     logger.info(`processing ${records.length} remaining oncokb records`);
 
@@ -605,7 +603,7 @@ const processAnnotatedRecords = async ({
             checkSpec(annotatedRecordSpec, rawRecord);
         } catch (err) {
             logger.error(err);
-            errorList.push({row: rawRecord, error: err});
+            errorList.push({row: rawRecord, error: err, errorMsg: err.toString()});
             counts.error++;
             continue;
         }
@@ -620,7 +618,7 @@ const processAnnotatedRecords = async ({
     }
 
     logger.info(`loading ${pmidList.size} pubmed articles`);
-    await _pubmed.uploadArticlesByPmid(conn, Array.from(pmidList));
+    await _pubmed.fetchAndLoadByIds(conn, Array.from(pmidList));
 
     logger.info(`processing ${records.length} remaining oncokb records`);
     for (const rawRecord of records) {

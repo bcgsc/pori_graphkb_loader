@@ -456,7 +456,7 @@ const processEvidenceRecord = async (opt) => {
     // get the publication by pubmed ID
     let publication;
     try {
-        publication = await _pubmed.fetchArticle(conn, rawRecord.source.citation_id);
+        [publication] = await _pubmed.fetchAndLoadByIds(conn, [rawRecord.source.citation_id]);
     } catch (err) {
         throw err;
     }
@@ -593,12 +593,7 @@ const upload = async (opt) => {
         // fetch and cache the current pubmed records first
         const pmidList = Array.from((new Set(records.map(rec => rec.source.citation_id).filter(pmid => pmid))).values());
         logger.info(`Fetching article metadata for ${pmidList.length} articles from ${records.length} records`);
-        const pubmedList = await _pubmed.fetchArticlesByPmids(pmidList);
-        logger.info(`Uploading ${pubmedList.length} publications`);
-        // throttle
-        for (const article of pubmedList) {
-            await _pubmed.uploadArticle(conn, article, {cache: true, fetchFirst: true});
-        }
+        await _pubmed.fetchAndLoadByIds(conn, pmidList);
 
         logger.info(`Processing ${records.length} records`);
         for (const record of records) {

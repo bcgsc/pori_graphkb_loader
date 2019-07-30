@@ -561,7 +561,7 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         if (sourceId.startsWith('NCT')) {
             evidence = await _ctg.fetchAndLoadById(conn, sourceId);
         } else {
-            evidence = await _pubmed.fetchArticle(conn, sourceId);
+            [evidence] = await _pubmed.fetchAndLoadByIds(conn, [sourceId]);
         }
         supportedBy.push(rid(evidence));
     }
@@ -678,7 +678,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
         }
     }
     logger.info(`loading ${pubmedIdList.size} articles from pubmed`);
-    await _pubmed.uploadArticlesByPmid(conn, Array.from(pubmedIdList));
+    await _pubmed.fetchAndLoadByIds(conn, Array.from(pubmedIdList));
 
     const errorList = [];
 

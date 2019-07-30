@@ -187,7 +187,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     const errorList = [];
     logger.info(`Processing ${jsonList.length} records`);
     // Upload the list of pubmed IDs
-    await _pubmed.uploadArticlesByPmid(conn, jsonList.map(rec => rec[HEADER.pubmed]));
+    await _pubmed.fetchAndLoadByIds(conn, jsonList.map(rec => rec[HEADER.pubmed]));
 
     for (let index = 0; index < jsonList.length; index++) {
         const record = convertRowFields(HEADER, jsonList[index]);
@@ -196,7 +196,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
             counts.skip++;
             continue;
         }
-        record.publication = rid(await _pubmed.fetchArticle(conn, record.pubmed));
+        record.publication = rid((await _pubmed.fetchAndLoadByIds(conn, [record.pubmed]))[0]);
         try {
             await processCosmicRecord(conn, record, source);
             counts.success++;

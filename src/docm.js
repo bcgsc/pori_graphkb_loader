@@ -221,7 +221,7 @@ const processRecord = async (opt) => {
                 sort: orderPreferredOntologyTerms
             });
             // get the pubmed article
-            const publication = await _pubmed.fetchArticle(conn, diseaseRec.source_pubmed_id);
+            const [publication] = await _pubmed.fetchAndLoadByIds(conn, [diseaseRec.source_pubmed_id]);
             // now create the statement
             await conn.addRecord({
                 endpoint: 'statements',
@@ -308,7 +308,7 @@ const upload = async (opt) => {
         }
     }
     logger.info(`loading ${pmidList.size} pubmed articles`);
-    await _pubmed.uploadArticlesByPmid(conn, pmidList);
+    await _pubmed.fetchAndLoadByIds(conn, pmidList);
     logger.info(`processing ${filtered.length} remaining docm records`);
     for (let index = 0; index < filtered.length; index++) {
         const record = filtered[index];

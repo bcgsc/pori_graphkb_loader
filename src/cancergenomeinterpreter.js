@@ -276,7 +276,7 @@ const processRow = async ({row, source, conn}) => {
         where: {name: row.evidenceLevel, source: {name: SOURCE_DEFN.name}}
     }));
 
-    const articles = await _pubmed.uploadArticlesByPmid(
+    const articles = await _pubmed.fetchAndLoadByIds(
         conn,
         row.evidence.filter(ev => !ev.startsWith('NCT'))
     );
