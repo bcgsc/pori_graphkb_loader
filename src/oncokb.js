@@ -14,7 +14,7 @@ const {
     checkSpec
 } = require('./util');
 const _pubmed = require('./entrez/pubmed');
-const _hgnc = require('./hgnc');
+const _entrezGene = require('./entrez/gene');
 const _ncit = require('./ncit');
 const {logger} = require('./logging');
 
@@ -188,7 +188,7 @@ const processVariant = async (opt) => {
     } else {
         // gene-base variant
         try {
-            gene1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.entrezGeneId, paramType: 'entrez_id'});
+            [gene1] = await _entrezGene.fetchAndLoadByIds(conn, [rawRecord.entrezGeneId]);
         } catch (err) {
             logger.error(err);
             throw err;
@@ -205,10 +205,14 @@ const processVariant = async (opt) => {
         }
         try {
             if (reference2) {
-                gene2 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: reference2});
+                const candidates = await _entrezGene.fetchAndLoadBySymbol(conn, reference2);
+                if (candidates.length !== 1) {
+                    throw new Error(`Unable to find single (${candidates.length}) unique records by symbol (${reference2})`);
+                }
+                gene2 = candidates[0];
             }
         } catch (err) {
-            logger.warn(`Failed to retrieve hugo gene ${reference2}`);
+            logger.warn(err);
             throw err;
         }
     }
@@ -673,11 +677,8 @@ const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
         let record;
         try {
             checkSpec(curatedGeneSpec, gene, g => g.entrezGeneId);
-            record = rid(await _hgnc.fetchAndLoadBySymbol({
-                conn,
-                symbol: gene.entrezGeneId,
-                paramType: 'entrez_id'
-            }));
+            [record] = await _entrezGene.fetchAndLoadByIds(conn, [gene.entrezGeneId]);
+            record = rid(record);
         } catch (err) {
             logger.error(err);
             continue;
@@ -825,6 +826,8 @@ const upload = async (opt) => {
     const counts = {errors: 0, success: 0, skip: 0};
 
     const errorList = [];
+    logger.info('pre-loading entrez genes');
+    await _entrezGene.preLoadCache(conn);
     logger.info('load oncogene/tumour suppressor list');
     await uploadAllCuratedGenes({conn, baseUrl: URL, source: oncokb});
     logger.info('load drug ontology');

@@ -16,7 +16,7 @@ const {
 } = require('./util');
 const {logger} = require('./logging');
 const _pubmed = require('./entrez/pubmed');
-const _hgnc = require('./hgnc');
+const _entrezGene = require('./entrez/gene');
 
 const ajv = new Ajv();
 
@@ -351,7 +351,11 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
             [reference1, reference2] = [reference2, reference1];
         }
         reference1 = feature;
-        reference2 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: reference2});
+        const search = await _entrezGene.fetchAndLoadBySymbol(conn, reference2);
+        if (search.length !== 1) {
+            throw new Error(`unable to find specific (${search.length}) gene for symbol (${reference2})`);
+        }
+        [reference2] = search;
     } else {
         reference1 = feature;
     }
@@ -419,10 +423,10 @@ const processEvidenceRecord = async (opt) => {
         conn, rawRecord, sources
     } = opt;
 
-    const [level, relevance, feature] = await Promise.all([
+    const [level, relevance, [feature]] = await Promise.all([
         getEvidenceLevel(opt),
         getRelevance(opt),
-        _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.variant.entrez_id, paramType: 'entrez_id'})
+        _entrezGene.fetchAndLoadByIds(conn, [rawRecord.variant.entrez_id])
     ]);
     let variant;
     try {
