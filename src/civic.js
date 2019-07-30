@@ -244,6 +244,7 @@ const getVariantName = ({name, variant_types: variantTypes = []}) => {
     const result = name.toLowerCase().trim();
     if ([
         'loss-of-function',
+        'gain-of-function',
         'overexpression',
         'expression',
         'amplification',
