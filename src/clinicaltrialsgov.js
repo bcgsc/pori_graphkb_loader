@@ -228,13 +228,15 @@ const convertAPIRecord = (rawRecord) => {
         name: record.official_title[0],
         url: record.required_header[0].url[0],
         sourceIdVersion: standardizeDate(record.last_update_posted[0]._),
-        phases: record.phase,
         diseases: record.condition,
         drugs: [],
         startDate,
         completionDate,
         locations: []
     };
+    if (record.phase) {
+        content.phases = record.phase;
+    }
     for (const {intervention_name: [name], intervention_type: [type]} of record.intervention || []) {
         if (type.toLowerCase() === 'drug' || type.toLowerCase() === 'biological') {
             content.drugs.push(name);
@@ -280,8 +282,9 @@ const convertDownloadedRecord = (record) => {
 const processPhases = (phaseList) => {
     const phases = [];
     for (const raw of phaseList || []) {
-        for (const phase of raw.trim().toLowerCase().split(/[,/]/)) {
-            if (phase !== 'not applicable') {
+        const cleanedPhaseList = raw.trim().toLowerCase().replace(/\bn\/a\b/, '').split(/[,/]/);
+        for (const phase of cleanedPhaseList) {
+            if (phase !== '' && phase !== 'not applicable') {
                 const match = /^(early )?phase (\d+)$/.exec(phase);
                 if (!match) {
                     throw new Error(`unrecognized phase description (${phase})`);
