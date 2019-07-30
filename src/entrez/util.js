@@ -45,11 +45,12 @@ const pullFromCacheById = (rawIdList, cache) => {
  * @param {string} [opt.url=BASE_URL] the base url for the pubmed api
  * @param {string} [opt.db='pubmed'] the entrez database name
  * @param {function} opt.parser the parser function to transform the entrez record to a graphkb record
- * @param {object} opt.cache the cache associated with calls to this db
+ * @param {object} [opt.cache={}] the cache associated with calls to this db
+ * @param {string} [opt.dbfrom=null] if querying by a linked ID must include the db you wish to retrieve from
  */
 const fetchByIdList = async (rawIdList, opt) => {
     const {
-        url = BASE_URL, db = 'pubmed', parser, cache = {}
+        url = BASE_URL, db = 'pubmed', parser, cache = {}, dbfrom = null
     } = opt;
     const {cached: allRecords, remaining: idList} = pullFromCacheById(rawIdList, cache);
 
@@ -59,11 +60,17 @@ const fetchByIdList = async (rawIdList, opt) => {
             .map(id => id.toString())
             .join(',');
 
+        const queryParams = {...DEFAULT_QS, db, id: idListString};
+
+        if (dbfrom) {
+            queryParams.dbfrom = dbfrom;
+        }
+
         logger.info(`loading: ${url}?db=${db}`);
         const {result} = await requestWithRetry({
             method: 'GET',
             uri: url,
-            qs: {...DEFAULT_QS, db, id: idListString},
+            qs: queryParams,
             headers: {Accept: 'application/json'},
             json: true
         });

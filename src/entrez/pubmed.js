@@ -23,12 +23,13 @@ const CACHE = {};
 
 const recordSpec = ajv.compile({
     type: 'object',
-    required: ['uid', 'title', 'fulljournalname', 'sortpubdate'],
+    required: ['uid', 'title', 'fulljournalname'],
     properties: {
         uid: {type: 'string', pattern: '^\\d+$'},
         title: {type: 'string'},
         fulljournalname: {type: 'string'},
-        sortpubdate: {type: 'string'}
+        sortpubdate: {type: 'string'},
+        sortdate: {type: 'string'}
     }
 });
 
@@ -44,9 +45,16 @@ const parseRecord = (record) => {
         journalName: record.fulljournalname
     };
     // sortpubdate: '1992/06/01 00:00'
-    const match = /^(\d\d\d\d)\//.exec(record.sortpubdate);
-    if (match) {
-        parsed.year = parseInt(match[1], 10);
+    if (record.sortpubdate) {
+        const match = /^(\d\d\d\d)\//.exec(record.sortpubdate);
+        if (match) {
+            parsed.year = parseInt(match[1], 10);
+        }
+    } else if (record.sortdate) {
+        const match = /^(\d\d\d\d)\//.exec(record.sortdate);
+        if (match) {
+            parsed.year = parseInt(match[1], 10);
+        }
     }
     return parsed;
 };
@@ -64,12 +72,19 @@ const createDisplayName = sourceId => `pmid:${sourceId}`;
  * @param {Array.<string>} idList list of pubmed IDs
  */
 const fetchAndLoadByIds = async (api, idListIn) => {
+    const pmcIds = idListIn.filter(id => /^pmc\d+$/i.exec(id)).map(id => id.replace(/^pmc/i, ''));
     const records = await fetchByIdList(
-        idListIn,
+        idListIn.filter(id => !/^pmc\d+$/i.exec(id)),
         {
             db: DB_NAME, parser: parseRecord, cache: CACHE
         }
     );
+    records.push(...await fetchByIdList(
+        pmcIds,
+        {
+            dbfrom: DB_NAME, parser: parseRecord, cache: CACHE, db: 'pmc'
+        }
+    ));
     return Promise.all(records.map(
         async record => uploadRecord(api, record, {
             cache: CACHE,
