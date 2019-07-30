@@ -8,7 +8,7 @@ const {fileExists, createOptionsMenu} = require('./cli');
 
 const {ApiConnection} = require('./util');
 const {DEFAULT_QS} = require('./entrez/util');
-const {logger} = require('./logging');
+const {logger, getFilename} = require('./logging');
 
 const IMPORT_MODULES = {};
 IMPORT_MODULES.civic = require('./civic');
@@ -258,6 +258,9 @@ const upload = async () => {
                 });
             }
         }
+    }
+    if (getFilename()) {
+        logger.info(`logs written to ${getFilename()}`);
     }
     logger.info('upload complete');
 };
