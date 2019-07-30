@@ -457,19 +457,9 @@ class ApiConnection {
         try {
             let result;
             if (matchSource) {
-                result = await this.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {
-                        name: therapyName, sourceId: therapyName, or: 'sourceId,name', source: rid(source)
-                    },
-                    sort: preferredDrugs
-                });
+                result = await this.getTherapy(therapyName, {where: {source: rid(source)}});
             } else {
-                result = await this.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {name: therapyName, sourceId: therapyName, or: 'sourceId,name'},
-                    sort: preferredDrugs
-                });
+                result = await this.getTherapy(therapyName);
             }
             return result;
         } catch (err) {
@@ -481,19 +471,9 @@ class ApiConnection {
         try {
             const elements = await Promise.all(therapyName.split(/\s*\+\s*/gi).map((name) => {
                 if (matchSource) {
-                    return this.getUniqueRecordBy({
-                        endpoint: 'therapies',
-                        where: {
-                            name, sourceId: name, or: 'sourceId,name', source: rid(source)
-                        },
-                        sort: preferredDrugs
-                    });
+                    return this.getTherapy(name, {where: {source: rid(source)}});
                 }
-                return this.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {name, sourceId: name, or: 'sourceId,name'},
-                    sort: preferredDrugs
-                });
+                return this.getTherapy(name);
             }));
             const sourceId = elements.map(e => e.sourceId).sort().join(' + ');
             const name = elements.map(e => e.name).sort().join(' + ');
