@@ -3,7 +3,7 @@ const fs = require('fs');
 
 const {logger} = require('./logging');
 const {convertRowFields, rid, preferredDiseases} = require('./util');
-const _hgnc = require('./hgnc');
+const _entrezGene = require('./entrez/gene');
 const _pubmed = require('./entrez/pubmed');
 
 // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/ Table 1
@@ -100,12 +100,8 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
         }
 
         try {
-            const reference1 = rid(await _hgnc.fetchAndLoadBySymbol({
-                conn, symbol: geneA
-            }));
-            const reference2 = rid(await _hgnc.fetchAndLoadBySymbol({
-                conn, symbol: geneB
-            }));
+            const reference1 = rid(await _entrezGene.fetchAndLoadBySymbol(conn, geneA));
+            const reference2 = rid(await _entrezGene.fetchAndLoadBySymbol(conn, geneB));
 
             const variant = rid(await conn.addVariant({
                 endpoint: 'categoryvariants',
@@ -174,12 +170,8 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
             continue;
         }
         try {
-            const geneA = await _hgnc.fetchAndLoadBySymbol({
-                conn, symbol: row.geneA, paramType: 'entrez_id'
-            });
-            const geneB = await _hgnc.fetchAndLoadBySymbol({
-                conn, symbol: row.geneB, paramType: 'entrez_id'
-            });
+            const [geneA] = await _entrezGene.fetchAndLoadByIds(conn, [row.geneA]);
+            const [geneB] = await _entrezGene.fetchAndLoadByIds(conn, [row.geneB]);
 
             const disease = rid(await conn.getUniqueRecordBy({
                 endpoint: 'diseases',
