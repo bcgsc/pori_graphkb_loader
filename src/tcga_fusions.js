@@ -100,14 +100,14 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
         }
 
         try {
-            const reference1 = rid(await _entrezGene.fetchAndLoadBySymbol(conn, geneA));
-            const reference2 = rid(await _entrezGene.fetchAndLoadBySymbol(conn, geneB));
+            const [reference1] = await _entrezGene.fetchAndLoadBySymbol(conn, geneA);
+            const [reference2] = await _entrezGene.fetchAndLoadBySymbol(conn, geneB);
 
             const variant = rid(await conn.addVariant({
                 endpoint: 'categoryvariants',
                 content: {
-                    reference1,
-                    reference2,
+                    reference1: rid(reference1),
+                    reference2: rid(reference2),
                     type: fusion
                 },
                 existsOk: true
