@@ -51,7 +51,41 @@ const recordSpec = ajv.compile({
         start: {type: 'number', min: 1},
         stop: {type: 'number', min: 1},
         chromosome: {type: 'string'},
-        variant_type: {type: 'string', enum: ['SNV', 'DEL', 'INS', 'DNV']}
+        variant_type: {type: 'string', enum: ['SNV', 'DEL', 'INS', 'DNV']},
+        // TODO: process drug interactions (large amount of free text currently)
+        meta: {
+            type: 'array',
+            items: {
+                type: 'object',
+                required: ['Drug Interaction Data'],
+                properties: {
+                    'Drug Interaction Data': {
+                        type: 'object',
+                        required: ['fields', 'rows'],
+                        properties: {
+                            fields: {
+                                type: 'array',
+                                items: [
+                                    {type: 'string', enum: ['Therapeutic Context']},
+                                    {type: 'string', enum: ['Pathway']},
+                                    {type: 'string', enum: ['Effect']},
+                                    {type: 'string', enum: ['Association']},
+                                    {type: 'string', enum: ['Status']},
+                                    {type: 'string', enum: ['Evidence']},
+                                    {type: 'string', enum: ['Source']}
+                                ]
+                            },
+                            rows: {
+                                type: 'array',
+                                items: {
+                                    type: 'array', items: {type: ['string', 'null']}, minItems: 7, maxItems: 7
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 });
 
@@ -289,10 +323,6 @@ const upload = async (opt) => {
             errorList.push({summaryRecord, error: err, isSummary: true});
             continue;
         }
-        if (summaryRecord.drug_interactions) {
-            logger.warn(`Found a record with drug interactions! ${JSON.stringify(summaryRecord)}`);
-            counts.highlight++;
-        }
         logger.info(`loading: ${BASE_URL}/${summaryRecord.hgvs}.json`);
         const record = await request({
             method: 'GET',
@@ -327,7 +357,6 @@ const upload = async (opt) => {
         } catch (err) {
             errorList.push({record, error: err});
             counts.error++;
-            console.error((err.error || err));
             logger.error((err.error || err).message);
         }
     }
