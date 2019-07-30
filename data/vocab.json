@@ -1142,11 +1142,27 @@
         "prognostic indicator": {
             "name": "prognostic indicator"
         },
+        "promoter demethylation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "promoter variant"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "methylation variant"
+                }
+            ]
+        },
         "promoter hypermethylation": {
             "links": [
                 {
                     "class": "SubClassOf",
                     "target": "promoter variant"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "methylation variant"
                 }
             ]
         },
@@ -1155,6 +1171,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "promoter variant"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "methylation variant"
                 }
             ]
         },
@@ -1163,6 +1183,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "promoter variant"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "methylation variant"
                 }
             ]
         },
@@ -1643,10 +1667,10 @@
         }
     },
     "source": {
-        "name": "bcgsc",
+        "description": "We are a leading international centre for genomics and bioinformatics research. Our mandate is to advance knowledge about cancer and other diseases, to improve human health through disease prevention, diagnosis and therapeutic approaches, and to realize the social and economic benefits of genomics research.",
         "displayName": "GSC",
         "longName": "Canada's Michael Smith Genome Sciences Centre",
-        "url": "http://bcgsc.ca",
-        "description": "We are a leading international centre for genomics and bioinformatics research. Our mandate is to advance knowledge about cancer and other diseases, to improve human health through disease prevention, diagnosis and therapeutic approaches, and to realize the social and economic benefits of genomics research."
+        "name": "bcgsc",
+        "url": "http://bcgsc.ca"
     }
 }
