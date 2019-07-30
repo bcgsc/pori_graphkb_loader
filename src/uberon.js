@@ -164,7 +164,7 @@ const uploadFile = async ({filename, conn}) => {
     if (ncitSource) {
         logger.info(`Adding the ${ncitLinks.length} uberon/ncit aliasof relationships`);
         for (const {src, tgt} of ncitLinks) {
-            if (records[src] === undefined) {
+            if (records[src] === undefined || ncitMissingRecords.has(tgt)) {
                 continue;
             }
             try {
@@ -185,7 +185,8 @@ const uploadFile = async ({filename, conn}) => {
                 });
             } catch (err) {
                 // ignore missing vocabulary
-                logger.warn(`failed to link to ${tgt}`);
+                logger.warn(`failed to link to ${tgt} (NCIt)`);
+                ncitMissingRecords.add(tgt);
             }
         }
         if (ncitMissingRecords.size) {

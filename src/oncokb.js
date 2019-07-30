@@ -535,7 +535,7 @@ const processActionableRecords = async ({
             checkSpec(actionableRecordSpec, rawRecord, () => i);
         } catch (err) {
             logger.error(err);
-            errorList.push({row: rawRecord, error: err});
+            errorList.push({row: rawRecord, error: err, errorMsg: err.toString()});
             counts.error++;
             continue;
         }
@@ -567,7 +567,7 @@ const processActionableRecords = async ({
                 });
                 counts.success++;
             } catch (err) {
-                errorList.push({row: rawRecord, error: (err.error || err)});
+                errorList.push({row: rawRecord, error: (err.error || err), errorMsg: err.toString()});
                 counts.errors++;
                 logger.error((err.error || err).message);
             }
@@ -653,7 +653,7 @@ const processAnnotatedRecords = async ({
             counts.skip += 2 - expect;
         } catch (err) {
             logger.error((err.error || err).message);
-            errorList.push({row: rawRecord, error: (err.error || err)});
+            errorList.push({row: rawRecord, error: (err.error || err), errorMsg: err.toString()});
             counts.errors++;
         }
     }
