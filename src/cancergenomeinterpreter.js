@@ -262,7 +262,7 @@ const processRow = async ({row, source, conn}) => {
         sort: preferredDiseases
     }));
     const therapyName = row.therapy.includes(';')
-        ? row.therapy.split(';').map(n => n.toLowerCase().timr()).sort().join(' + ')
+        ? row.therapy.split(';').map(n => n.toLowerCase().trim()).sort().join(' + ')
         : row.therapy;
     // look up the drug by name
     const drug = rid(await conn.addTherapyCombination(source, therapyName));
