@@ -3,7 +3,9 @@
  */
 const Ajv = require('ajv');
 
-const {checkSpec, rid, requestWithRetry} = require('./util');
+const {
+    checkSpec, rid, requestWithRetry, generateCacheKey
+} = require('./util');
 const {logger} = require('./logging');
 
 const ajv = new Ajv();
@@ -45,8 +47,9 @@ const CACHE = {};
  * @param {string} drugId
  */
 const fetchAndLoadById = async (conn, drugId) => {
-    if (CACHE[drugId.toLowerCase()]) {
-        return CACHE[drugId.toLowerCase()];
+    const cacheKey = generateCacheKey({sourceId: drugId});
+    if (CACHE[cacheKey]) {
+        return CACHE[cacheKey];
     }
     logger.info(`loading: ${API}/${drugId}`);
     const chemblRecord = await requestWithRetry({
@@ -80,7 +83,7 @@ const fetchAndLoadById = async (conn, drugId) => {
         existsOk: true
     });
 
-    CACHE[record.sourceId] = record;
+    CACHE[cacheKey] = record;
     if (chemblRecord.usan_stem_definition) {
         try {
             const parent = await conn.addRecord({
@@ -109,7 +112,31 @@ const fetchAndLoadById = async (conn, drugId) => {
 };
 
 
+const preLoadCache = async (api) => {
+    const records = await api.getRecords({
+        endpoint: 'therapies',
+        where: {source: {name: SOURCE_DEFN.name}, dependency: null, deprecated: false}
+    });
+
+    const dups = new Set();
+
+    for (const record of records) {
+        const cacheKey = generateCacheKey(record);
+        if (CACHE[cacheKey]) {
+            // duplicate
+            dups.add(cacheKey);
+        }
+        CACHE[cacheKey] = record;
+    }
+    Array(dups).forEach((key) => {
+        delete CACHE[key];
+    });
+    logger.info(`cache contains ${Object.keys(CACHE).length} keys`);
+};
+
+
 module.exports = {
     fetchAndLoadById,
-    SOURCE_DEFN
+    SOURCE_DEFN,
+    preLoadCache
 };

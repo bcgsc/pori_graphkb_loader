@@ -11,11 +11,16 @@ const {DEFAULT_QS} = require('./entrez/util');
 const {logger, getFilename} = require('./logging');
 
 const IMPORT_MODULES = {};
+IMPORT_MODULES.cancerhotspots = require('./cancerhotspots');
+IMPORT_MODULES.cgi = require('./cancergenomeinterpreter');
 IMPORT_MODULES.civic = require('./civic');
 IMPORT_MODULES.cosmic = require('./cosmic');
+IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
+IMPORT_MODULES.dgidb = require('./dgidb');
 IMPORT_MODULES.diseaseOntology = require('./disease_ontology');
 IMPORT_MODULES.docm = require('./docm');
 IMPORT_MODULES.drugbank = require('./drugbank');
+IMPORT_MODULES.drugOntology = require('./drug_ontology');
 IMPORT_MODULES.ensembl = require('./ensembl');
 IMPORT_MODULES.fda = require('./fda');
 IMPORT_MODULES.hgnc = require('./hgnc');
@@ -23,16 +28,12 @@ IMPORT_MODULES.iprkb = require('./ipr');
 IMPORT_MODULES.ncit = require('./ncit');
 IMPORT_MODULES.oncokb = require('./oncokb');
 IMPORT_MODULES.oncotree = require('./oncotree');
+IMPORT_MODULES.ontology = require('./ontology');
 IMPORT_MODULES.refseq = require('./refseq');
 IMPORT_MODULES.sequenceOntology = require('./sequence_ontology');
+IMPORT_MODULES.tcgaFusions = require('./tcga_fusions');
 IMPORT_MODULES.uberon = require('./uberon');
 IMPORT_MODULES.vario = require('./vario');
-IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
-IMPORT_MODULES.ontology = require('./ontology');
-IMPORT_MODULES.drugOntology = require('./drug_ontology');
-IMPORT_MODULES.cgi = require('./cancergenomeinterpreter');
-IMPORT_MODULES.tcgaFusions = require('./tcga_fusions');
-IMPORT_MODULES.cancerhotspots = require('./cancerhotspots');
 
 
 const optionDefinitions = [
@@ -155,6 +156,10 @@ const optionDefinitions = [
         name: 'ontology',
         description: 'path to the custom ontology JSON file',
         type: fileExists
+    },
+    {
+        name: 'dgidb',
+        description: 'Load drug/gene interactions from DGIdb'
     },
     {
         name: 'drugOntology',
