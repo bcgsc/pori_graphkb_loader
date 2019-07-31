@@ -11,6 +11,7 @@ const jwt = require('jsonwebtoken');
 const sleep = require('sleep-promise');
 const HTTP_STATUS_CODES = require('http-status-codes');
 const jsonpath = require('jsonpath');
+const crypto = require('crypto');
 
 
 const {logger} = require('./logging');
@@ -534,7 +535,8 @@ const convertOwlGraphToJson = (graph, idParser = x => x) => {
 };
 
 
-const loadDelimToJson = async (filename, delim = '\t', header = null) => {
+const loadDelimToJson = async (filename, opt = {}) => {
+    const {delim = '\t', header = true, ...rest} = opt;
     logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
     logger.info('parsing into json');
@@ -543,8 +545,9 @@ const loadDelimToJson = async (filename, delim = '\t', header = null) => {
         escape: null,
         quote: null,
         comment: '##',
-        columns: header || true,
-        auto_parse: true
+        columns: header,
+        auto_parse: true,
+        ...rest
     });
     return jsonList;
 };
@@ -597,6 +600,9 @@ const requestWithRetry = async (requestOpt, {waitSeconds = 2, retries = 1} = {})
 };
 
 
+const hashStringtoId = input => crypto.createHash('md5').update(input).digest('hex');
+
+
 const shallowObjectKey = obj => JSON.stringify(obj, (k, v) => (k
     ? `${v}`
     : v));
@@ -646,5 +652,6 @@ module.exports = {
     ApiConnection,
     requestWithRetry,
     convertNulls,
-    convertRowFields
+    convertRowFields,
+    hashStringtoId
 };

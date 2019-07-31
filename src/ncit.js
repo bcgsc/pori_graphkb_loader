@@ -134,16 +134,19 @@ const cleanRawRow = (rawRow) => {
 const uploadFile = async ({filename, conn}) => {
     logger.info('Loading external NCIT data');
     logger.info(`loading: ${filename}`);
-    const rows = await loadDelimToJson(filename, '\t', [
-        'id',
-        'xmlTag',
-        'parents',
-        'synonyms',
-        'definition',
-        'name',
-        'conceptStatus',
-        'semanticType'
-    ]);
+    const rows = await loadDelimToJson(filename, {
+        delim: '\t',
+        header: [
+            'id',
+            'xmlTag',
+            'parents',
+            'synonyms',
+            'definition',
+            'name',
+            'conceptStatus',
+            'semanticType'
+        ]
+    });
 
     const source = rid(await conn.addRecord({
         endpoint: 'sources',
