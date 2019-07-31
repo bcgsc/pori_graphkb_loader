@@ -32,6 +32,7 @@ IMPORT_MODULES.ontology = require('./ontology');
 IMPORT_MODULES.drugOntology = require('./drug_ontology');
 IMPORT_MODULES.cgi = require('./cancergenomeinterpreter');
 IMPORT_MODULES.tcgaFusions = require('./tcga_fusions');
+IMPORT_MODULES.cancerhotspots = require('./cancerhotspots');
 
 
 const optionDefinitions = [
@@ -168,6 +169,11 @@ const optionDefinitions = [
     {
         name: 'tcgaFusions',
         description: 'Load fusions from the supplementary excel file',
+        type: fileExists
+    },
+    {
+        name: 'cancerhotspots',
+        description: 'path to the cancer hotspots maf file',
         type: fileExists
     }
 ];
