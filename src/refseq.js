@@ -42,7 +42,7 @@ const uploadFile = async (opt) => {
     await _entrez.preLoadCache(conn);
     await _entrez.fetchAndLoadByIds(conn, json.map(rec => rec.GeneID));
 
-    for (let i=0; i < json.length; i++) {
+    for (let i = 0; i < json.length; i++) {
         const {RNA, GeneID, Protein} = json[i];
         logger.info(`processing (${i} / ${json.length}) ${RNA}`);
 
