@@ -37,6 +37,9 @@ const HEADER = {
 };
 
 
+const diseasesCache = {};
+const featureCache = {};
+
 /**
  * Create and link the variant defuinitions for a single row/record
  */
@@ -50,7 +53,13 @@ const processVariants = async ({conn, record, source}) => {
 
     try {
         // get the gene
-        const [reference1] = await _entrezGene.fetchAndLoadByIds(conn, [geneId]);
+        let reference1;
+        if (featureCache[reference1] !== undefined) {
+            reference1 = featureCache[reference1];
+        } else {
+            [reference1] = await _entrezGene.fetchAndLoadByIds(conn, [geneId]);
+            featureCache[geneId] = reference1;
+        }
         const {
             noFeatures, multiFeature, prefix, ...variant
         } = variantParser(
@@ -71,11 +80,17 @@ const processVariants = async ({conn, record, source}) => {
     // create the cds variant
     try {
         // get the ensembl transcript
-        const reference1 = rid(await conn.getUniqueRecordBy({
-            endpoint: 'features',
-            where: {sourceId: transcriptId, biotype: 'transcript', source: {name: ensemblName}},
-            sort: orderPreferredOntologyTerms
-        }));
+        let reference1;
+        if (featureCache[transcriptId] !== undefined) {
+            reference1 = featureCache[transcriptId];
+        } else {
+            reference1 = rid(await conn.getUniqueRecordBy({
+                endpoint: 'features',
+                where: {sourceId: transcriptId, biotype: 'transcript', source: {name: ensemblName}},
+                sort: orderPreferredOntologyTerms
+            }));
+            featureCache[transcriptId] = reference1;
+        }
         // parse the cds variant
         const {
             noFeatures, multiFeature, prefix, ...variant
@@ -105,12 +120,18 @@ const processRecord = async (conn, record, source, relevance) => {
     const {diseaseId, sourceId} = record;
     // get the protein variant
     const variantId = await processVariants({conn, record, source});
-    // get the disease by id from oncotree
-    const disease = rid(await conn.getUniqueRecordBy({
-        endpoint: 'diseases',
-        where: {sourceId: diseaseId, source: {name: oncotreeName}},
-        sort: preferredDiseases
-    }));
+    // get the disease by id from oncotree (try cache first)
+    let disease;
+    if (diseasesCache[diseaseId]) {
+        disease = diseasesCache[diseaseId];
+    } else {
+        disease = rid(await conn.getUniqueRecordBy({
+            endpoint: 'diseases',
+            where: {sourceId: diseaseId, source: {name: oncotreeName}},
+            sort: preferredDiseases
+        }));
+        diseasesCache[diseaseId] = disease;
+    }
 
     await conn.addRecord({
         endpoint: 'statements',
@@ -179,6 +200,14 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
                 index++;
                 if (previousLoad.has(sourceId)) {
                     logger.info(`Already loaded ${sourceId}`);
+                    callback(null, record);
+                } else if (record.protein.endsWith('=')) {
+                    counts.skip++;
+                    logger.info('skipping synonymous protein variant');
+                    callback(null, record);
+                } else if (record.protein.endsWith('_splice')) {
+                    counts.skip++;
+                    logger.info('skipping non-standard splice notation');
                     callback(null, record);
                 } else {
                     logger.info(`processing row #${index} ${sourceId}`);
