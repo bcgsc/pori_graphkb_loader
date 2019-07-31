@@ -17,28 +17,23 @@ If loaded in order, some modules will link to one another.
 - [Guidelines for Developers](#guidelines-for-developers)
   - [Style](#style)
   - [Getting Started](#getting-started)
-- [Ontology Import Modules](#ontology-import-modules)
-  - [General Ontology JSON file](#general-ontology-json-file)
-  - [clinicaltrials.gov](#clinicaltrialsgov)
-  - [Disease Ontology](#disease-ontology)
-  - [DrugBank](#drugbank)
-  - [Ensembl](#ensembl)
-  - [FDA](#fda)
-  - [GSC Therapeutic Ontology](#gsc-therapeutic-ontology)
-  - [HGNC](#hgnc)
-  - [NCIT](#ncit)
-  - [Oncotree](#oncotree)
-  - [Refseq](#refseq)
-  - [Sequence Ontology](#sequence-ontology)
-  - [Uberon](#uberon)
-  - [VariO](#vario)
-- [Knowledgebase Import Modules](#knowledgebase-import-modules)
-  - [CGI](#cgi)
-  - [CIViC](#civic)
-  - [COSMIC](#cosmic)
-  - [DoCM](#docm)
-  - [IPRKB](#iprkb)
-  - [OncoKB](#oncokb)
+- [Expected File Formats](#expected-file-formats)
+  - [General Ontology file (JSON)](#general-ontology-file-json)
+  - [clinicaltrials.gov (XML)](#clinicaltrialsgov-xml)
+  - [Disease Ontology (JSON)](#disease-ontology-json)
+  - [DrugBank (XML)](#drugbank-xml)
+  - [Ensembl (TAB)](#ensembl-tab)
+  - [FDA (TAB)](#fda-tab)
+  - [GSC Therapeutic Ontology (TAB)](#gsc-therapeutic-ontology-tab)
+  - [HGNC (JSON)](#hgnc-json)
+  - [NCIT (TAB)](#ncit-tab)
+  - [Refseq (TAB)](#refseq-tab)
+  - [Sequence Ontology (OWL)](#sequence-ontology-owl)
+  - [Uberon (OWL)](#uberon-owl)
+  - [VariO (OWL)](#vario-owl)
+  - [CGI (TAB)](#cgi-tab)
+  - [COSMIC (TAB)](#cosmic-tab)
+  - [IPRKb (TAB)](#iprkb-tab)
 
 
 ## Guidelines for Developers
@@ -73,9 +68,9 @@ run the tests
 npm run test
 ```
 
-## Ontology Import Modules
+## Expected File Formats
 
-### General Ontology JSON file
+### General Ontology file (JSON)
 
 Any ontology can be uploaded (without cross reference links) as long as the JSON file is in the expected format.
 
@@ -155,15 +150,7 @@ npm start -- --ontology /path/to/json/file
 
 
 
-### clinicaltrials.gov
-
-|                 |                                                                |
-| --------------- | -------------------------------------------------------------- |
-| About           | https://clinicaltrials.gov                                     |
-| Usage           | https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use |
-| Example         |                                                                |
-| Format          | XML                                                            |
-| CrossReferences | Loaded Drug/Disease Ontologies                                 |
+### clinicaltrials.gov (XML)
 
 Loads an XML file. The XML file is expected to be exported from the clinicaltrials.gov website. To retrieve
 the expected file, follow the steps below
@@ -178,15 +165,13 @@ the expected file, follow the steps below
 npm start -- --clinicaltrialsgov download.xml
 ```
 
-### Disease Ontology
+Note: This may also load trials directly from the API (ot through the CLI)
 
-|                 |                                                                                                                               |
-| --------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| About           | http://disease-ontology.org/about/                                                                                            |
-| Usage           |                                                                                                                               |
-| Example         | https://raw.githubusercontent.com/DiseaseOntology/HumanDiseaseOntology/v2018-07/05/src/ontology/releases/2018-07-05/doid.json |
-| Format          | JSON                                                                                                                          |
-| CrossReferences | [NCIT](#ncit)                                                                                                                 |
+### Disease Ontology (JSON)
+
+Examples
+- https://raw.githubusercontent.com/DiseaseOntology/HumanDiseaseOntology/v2018-07/05/src/ontology/releases/2018-07-05/doid.json
+- /projects/vardb/downloads/disease_ontology/doid_v2019-05-13.json
 
 The disease ontology releases their data dumps as both XML and JSON from thei github page. We expect the JSON format
 
@@ -196,29 +181,20 @@ Once downloaded the JSON file can be loaded as follows
 npm start -- --diseaseOntology doid.json
 ```
 
-### DrugBank
+### DrugBank (XML)
 
-|                 |                                                                    |
-| --------------- | ------------------------------------------------------------------ |
-| About           | https://www.drugbank.ca/about                                      |
-| Usage           | https://www.drugbank.ca/legal/terms_of_use                         |
-| Example         | https://www.drugbank.ca/releases/5-1-1/downloads/all-full-database |
-| Format          | XML                                                                |
-| CrossReferences | [FDA](#fda); `CHEMBL (API)`; [HGNC (API)](#hgnc)                   |
+Examples
+- https://www.drugbank.ca/releases/5-1-1/downloads/all-full-database
+- /projects/vardb/downloads/drugbank/drugbank_all_full_database_v5.1.4.xml
 
 ```bash
-npm start -- --drugbank data.xml
+npm start -- --drugbank drugbank_all_full_database_v5.1.4.xml
 ```
 
-### Ensembl
+### Ensembl (TAB)
 
-|                 |                                                             |
-| --------------- | ----------------------------------------------------------- |
-| About           | https://uswest.ensembl.org                                  |
-| Usage           | https://uswest.ensembl.org/info/about/legal/disclaimer.html |
-| Example         |                                                             |
-| Format          | Tab delimited                                               |
-| CrossReferences | [RefSeq](#refseq), [HGNC (API)](#hgnc)                      |
+Example
+- /projects/vardb/downloads/ensembl/ensembl_20181102_mart_export.tab
 
 This requires a BioMart Export with the minimum following columns included
 
@@ -240,90 +216,55 @@ This requires a BioMart Export with the minimum following columns included
 npm start -- --ensembl ensembl_mart_export.tab
 ```
 
-### FDA
+### FDA (TAB)
 
-|                 |                                                                                                                      |
-| --------------- | -------------------------------------------------------------------------------------------------------------------- |
-| About           | https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/default.htm |
-| Usage           |                                                                                                                      |
-| Example         | https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip                                                            |
-| Format          | Tab delimited                                                                                                        |
-| CrossReferences | [NCIT](#ncit)                                                                                                        |
+Example
+- https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip
+- /projects/vardb/downloads/fda/UNII_Records_7Mar2019.txt
+
 
 ```bash
 npm start -- --fda UNII_Records_25Oct2018.txt
 ```
 
-### GSC Therapeutic Ontology
+### GSC Therapeutic Ontology (TAB)
 
-|                 |                                                                                                |
-| --------------- | ---------------------------------------------------------------------------------------------- |
-| About           | https://www.bcgsc.ca/jira/browse/KBDEV-496                                                     |
-| Usage           |                                                                                                |
-| Example         | https://www.bcgsc.ca/jira/secure/attachment/168215/Drug_ontology_drugbank_IDs_draft_190507.txt |
-| Format          | Tab delimited                                                                                  |
-| CrossReferences | [Drugbank](#drugbank)                                                                          |
+Example
+- https://www.bcgsc.ca/jira/secure/attachment/168215/Drug_ontology_drugbank_IDs_draft_190507.txt
+- /projects/vardb/downloads/gsc_therapeutic_ontology/gsc_therapeutic_ontology_2019-07-16.tab
 
 ```bash
-npm start -- --drugOntology drug_ontology.txt
+npm start -- --drugOntology gsc_therapeutic_ontology_2019-07-16.tab
 ```
 
 
-### HGNC
+### HGNC (JSON)
 
-|                 |                                                                                                 |
-| --------------- | ----------------------------------------------------------------------------------------------- |
-| About           | https://www.genenames.org/about/overview                                                        |
-| Usage           | https://www.ebi.ac.uk/about/terms-of-use                                                        |
-| Example         | ftp://ftp.ebi.ac.uk/pub/databases/genenames/new/json/locus_types/gene_with_protein_product.json |
-| Format          | JSON                                                                                            |
-| CrossReferences | [Ensembl](#ensembl);  `Entrez Gene (API)`                                                       |
+Example
+- ftp://ftp.ebi.ac.uk/pub/databases/genenames/new/json/locus_types/gene_with_protein_product.json
+- /projects/vardb/downloads/hgnc/hgnc_complete_set_d1541207688.json
 
 ```bash
 npm start -- --hgnc hgnc_complete_set.json
 ```
 
-### NCIT
+### NCIT (TAB)
 
-|                 |                                                                      |
-| --------------- | -------------------------------------------------------------------- |
-| About           | https://cbiit.cancer.gov/about/about-cbiit                           |
-| Usage           | https://creativecommons.org/licenses/by/4.0                          |
-| Example         | https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus_19.05d.FLAT.zip |
-| Format          | tab-delimited                                                        |
-| CrossReferences |                                                                      |
+Example
+- https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus_19.05d.FLAT.zip
+- /projects/vardb/downloads/ncit/Thesaurus_v19.05d.flat.txt
 
 ```bash
-npm start -- --ncit Thesaurus_18.06d.txt
-```
-
-### Oncotree
-
-|                 |                                  |
-| --------------- | -------------------------------- |
-| About           | http://oncotree.mskcc.org/#/home |
-| Usage           |                                  |
-| Example         | http://oncotree.mskcc.org/api    |
-| Format          | REST (JSON)                      |
-| CrossReferences | [NCIT](#ncit)                    |
-
-This importer pulls all versions of Oncotree directly from the Oncotree API and links them together
-
-```bash
-npm start -- --oncotree
+npm start -- --ncit Thesaurus_18.06d.flat.txt
 ```
 
 
 
-### Refseq
+### Refseq (TAB)
 
-|                 |                                                                   |
-| --------------- | ----------------------------------------------------------------- |
-| About           | https://www.ncbi.nlm.nih.gov/refseq                               |
-| Usage           | https://www.ncbi.nlm.nih.gov/home/about/policies                  |
-| Example         | ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene |
-| Format          | Tab delimited                                                     |
-| CrossReferences | [HGNC (API)](#hgnc)                                               |
+Example
+- ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene
+- /projects/vardb/downloads/refseq/LRG_RefSeqGene_d1564008211.tab
 
 
 ```bash
@@ -331,95 +272,61 @@ npm start -- --refseq LRG_RefSeqGene.tab
 ```
 
 
-### Sequence Ontology
+### Sequence Ontology (OWL)
 
-|                 |                                                                                            |
-| --------------- | ------------------------------------------------------------------------------------------ |
-| About           | http://www.sequenceontology.org                                                            |
-| Usage           | http://www.sequenceontology.org/?page_id=269                                               |
-| Example         | https://raw.githubusercontent.com/The-Sequence-Ontology/SO-Ontologies/master/so-simple.owl |
-| Format          | OWL                                                                                        |
-| CrossReferences |                                                                                            |
+Example
+- https://raw.githubusercontent.com/The-Sequence-Ontology/SO-Ontologies/master/so-simple.owl
+
+|                 |                                              |
+| --------------- | -------------------------------------------- |
+| About           | http://www.sequenceontology.org              |
+| Usage           | http://www.sequenceontology.org/?page_id=269 |
+| Example         |                                              |
+| Format          | OWL                                          |
+| CrossReferences |                                              |
 
 ```bash
 npm start -- --sequenceOntology so-simple.owl
 ```
 
 
-### Uberon
+### Uberon (OWL)
 
-|                 |                                                                      |
-| --------------- | -------------------------------------------------------------------- |
-| About           | http://uberon.github.io/about.html                                   |
-| Usage           | http://obofoundry.github.io/principles/fp-001-open.html              |
-| Example         | http://purl.obolibrary.org/obo/uberon/releases/2018-02-28/uberon.owl |
-| Format          | OWL                                                                  |
-| CrossReferences | [NCIT](#ncit)                                                        |
+Example
+- http://purl.obolibrary.org/obo/uberon/releases/2018-02-28/uberon.owl
+- /projects/vardb/downloads/uberon/uberon_v2018-10-14.owl
 
 ```bash
 npm start -- --uberon uberon.owl
 ```
 
-### VariO
+### VariO (OWL)
 
-|                 |                                                           |
-| --------------- | --------------------------------------------------------- |
-| About           | http://variationontology.org                              |
-| Usage           | http://variationontology.org/citing.shtml                 |
-| Example         | http://www.variationontology.org/vario_download/vario.owl |
-| Format          | OWL                                                       |
-| CrossReferences |                                                           |
+Example
+- http://www.variationontology.org/vario_download/vario.owl
+- /projects/vardb/downloads/variationontology/vario_v2018-04-27.owl
 
 ```bash
 npm start -- --vario vario.owl
 ```
 
 
+### CGI (TAB)
 
-## Knowledgebase Import Modules
-
-Knowledgebase imports rely on the Ontology and vocabulary terms having already been loaded. They will use these to build statements as they import
-
-### CGI
-
-This module loads the flatfile dump of Cancer Genome Interpreter (CGI) into GraphKB
-
-|         |                                                                        |
-| ------- | ---------------------------------------------------------------------- |
-| About   | https://www.cancergenomeinterpreter.org                                |
-| Usage   | https://creativecommons.org/publicdomain/zero/1.0                      |
-| Example | https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_latest.zip |
-| Format  | Tab Delimited                                                          |
+Example
+- https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_latest.zip (cgi_biomarkers_per_variant.tsv)
+- /projects/vardb/downloads/cancergenomeinterpreter/v1558729096/cgi_biomarkers_per_variant.tsv
 
 
 ```bash
 npm start -- --cgi cgi_biomarkers_per_variant.tsv
 ```
 
-### CIViC
+### COSMIC (TAB)
 
-Import the Clinical Evidence summaries from the public Civic database
-
-|         |                                                   |
-| ------- | ------------------------------------------------- |
-| About   | https://civicdb.org/about                         |
-| Usage   | https://creativecommons.org/publicdomain/zero/1.0 |
-| Example |                                                   |
-| Format  | REST (JSON)                                       |
-
-```bash
-npm start -- --civic
-```
-
-### COSMIC
-
-
-|         |                                                                                |
-| ------- | ------------------------------------------------------------------------------ |
-| About   | https://cancer.sanger.ac.uk/cosmic/about                                       |
-| Usage   | https://creativecommons.org/publicdomain/zero/1.0                              |
-| Example | https://cancer.sanger.ac.uk/cosmic/download (CosmicResistanceMutations.tsv.gz) |
-| Format  | Tab Delimited                                                                  |
+Example
+- https://cancer.sanger.ac.uk/cosmic/download (CosmicResistanceMutations.tsv.gz)
+- /projects/vardb/downloads/cosmic/CosmicResistanceMutations_d20180821.tsv
 
 Expects column names like
 - Gene Name
@@ -448,46 +355,14 @@ Expects column names like
 npm start -- --cosmic CosmicResistanceMutations.tsv
 ```
 
-### DoCM
-
-|         |                            |
-| ------- | -------------------------- |
-| About   | http://www.docm.info/about |
-| Usage   | http://www.docm.info/terms |
-| Example |                            |
-| Format  | REST (JSON)                |
-
-```bash
-npm start -- --docm
-```
-
-### IPRKB
+### IPRKb (TAB)
 
 The flatfile dump of the IPR KB (Predecessor to GraphKB)
 
-|         |                                               |
-| ------- | --------------------------------------------- |
-| About   | https://ipr.bcgsc.ca/knowledgebase/references |
-| Example |                                               |
-| Format  | Tab Delimited                                 |
-
-```bash
-npm start -- --iprkb /projects/vardb/downloads/ipr/select_kb_references_ident_as_kb_reference_uuid_kb_references_cr_201905281636.tsv
-```
-
-
-### OncoKB
-
-This module pulls directly from the OncoKB API to import statements from OncoKB into GraphKB
-
-|         |                           |
-| ------- | ------------------------- |
-| About   | http://oncokb.org/#/about |
-| Usage   | http://oncokb.org/#/terms |
-| Example |                           |
-| Format  | REST (JSON)               |
+Example
+- /projects/vardb/downloads/ipr/select_kb_references_ident_as_kb_reference_uuid_kb_references_cr_201905281636.tsv
 
 
 ```bash
-npm start -- --oncokb
+npm start -- --iprkb select_kb_references_ident_as_kb_reference_uuid_kb_references_cr_201905281636.tsv
 ```
