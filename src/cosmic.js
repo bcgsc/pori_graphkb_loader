@@ -12,7 +12,7 @@ const {
     convertRowFields,
     orderPreferredOntologyTerms
 } = require('./util');
-const _pubmed = require('./pubmed');
+const _pubmed = require('./entrez/pubmed');
 const _hgnc = require('./hgnc');
 const {logger} = require('./logging');
 
@@ -61,7 +61,7 @@ const processVariants = async ({conn, record, source}) => {
             noFeatures, multiFeature, prefix, ...variant
         } = variantParser(variantString, false);
         variant.reference1 = reference1;
-        variant.type = rid(await conn.getVocabularyTerm({term: variant.type}));
+        variant.type = rid(await conn.getVocabularyTerm(variant.type));
         protein = rid(await conn.addVariant({
             endpoint: 'positionalvariants',
             content: {...variant},
@@ -93,7 +93,7 @@ const processVariants = async ({conn, record, source}) => {
                 noFeatures, multiFeature, prefix, ...variant
             } = variantParser(cdsNotation, false);
             variant.reference1 = reference1;
-            variant.type = rid(await conn.getVocabularyTerm({term: variant.type}));
+            variant.type = rid(await conn.getVocabularyTerm(variant.type));
             cds = rid(await conn.addVariant({
                 endpoint: 'positionalvariants',
                 content: {...variant},
@@ -150,7 +150,7 @@ const processCosmicRecord = async (conn, record, source) => {
         sort: preferredDiseases
     });
     // create the resistance statement
-    const relevance = await conn.getVocabularyTerm({term: 'resistance'});
+    const relevance = await conn.getVocabularyTerm('resistance');
     await conn.addRecord({
         endpoint: 'statements',
         content: {
@@ -187,7 +187,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     const errorList = [];
     logger.info(`Processing ${jsonList.length} records`);
     // Upload the list of pubmed IDs
-    await _pubmed.uploadArticlesByPmid(conn, jsonList.map(rec => rec[HEADER.pubmed]));
+    await _pubmed.fetchAndLoadByIds(conn, jsonList.map(rec => rec[HEADER.pubmed]));
 
     for (let index = 0; index < jsonList.length; index++) {
         const record = convertRowFields(HEADER, jsonList[index]);
@@ -196,7 +196,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
             counts.skip++;
             continue;
         }
-        record.publication = rid(await _pubmed.fetchArticle(conn, record.pubmed));
+        record.publication = rid((await _pubmed.fetchAndLoadByIds(conn, [record.pubmed]))[0]);
         try {
             await processCosmicRecord(conn, record, source);
             counts.success++;
@@ -212,4 +212,4 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {uploadFile, SOURCE_DEFN, type: 'kb'};
+module.exports = {uploadFile, SOURCE_DEFN, kb: true};

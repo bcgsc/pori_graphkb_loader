@@ -4,19 +4,20 @@
  *
  * @module importer/disease_ontology
  */
-const _ = require('lodash');
+const Ajv = require('ajv');
+
 const {
-    orderPreferredOntologyTerms, rid
+    rid, generateCacheKey, checkSpec
 } = require('./util');
 const {logger} = require('./logging');
 const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 
-const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
-
 const SOURCE_DEFN = {
     displayName: 'Disease Ontology',
     name: 'disease ontology',
+    longName: 'Human Disease Ontology',
     url: 'http://disease-ontology.org',
+    license: 'https://creativecommons.org/publicdomain/zero/1.0',
     description: `
         The Disease Ontology has been developed as a standardized ontology for human disease
         with the purpose of providing the biomedical community with consistent, reusable and
@@ -27,6 +28,76 @@ const SOURCE_DEFN = {
         integrates disease and medical vocabularies through extensive cross mapping of DO
         terms to MeSH, ICD, NCI’s thesaurus, SNOMED and OMIM.`.replace(/\s+/, ' ')
 };
+
+const ajv = new Ajv();
+
+const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
+const DOID_PATTERN = `^${PREFIX_TO_STRIP}DOID_\\d+$`;
+
+const nodeSpec = ajv.compile({
+    type: 'object',
+    required: ['id', 'lbl'],
+    properties: {
+        id: {type: 'string', pattern: DOID_PATTERN},
+        lbl: {type: 'string'},
+        meta: {
+            type: 'object',
+            properties: {
+                deprecated: {type: 'boolean'},
+                definition: {
+                    type: 'object',
+                    required: ['val'],
+                    properties: {val: {type: 'string'}}
+                },
+                subsets: {
+                    type: 'array',
+                    items: {
+                        type: 'string'
+                    }
+                },
+                synonyms: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        required: ['val'],
+                        properties: {val: {type: 'string'}}
+                    }
+                },
+                basicPropertyValues: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        required: ['val', 'pred'],
+                        properties: {
+                            val: {type: 'string'},
+                            pred: {type: 'string'}
+                        }
+                    }
+                },
+                xrefs: {
+                    type: 'array',
+                    items: {
+                        type: 'object',
+                        required: ['val'],
+                        properties: {val: {type: 'string'}}
+                    }
+                }
+            }
+        }
+    }
+});
+
+
+const edgeSpec = ajv.compile({
+    type: 'object',
+    required: ['sub', 'pred', 'obj'],
+    properties: {
+        sub: {type: 'string', pattern: DOID_PATTERN},
+        pred: {type: 'string'},
+        obj: {type: 'string', pattern: DOID_PATTERN}
+    }
+});
+
 
 const parseDoid = (ident) => {
     const match = /.*(DOID_\d+)$/.exec(ident);
@@ -40,6 +111,101 @@ const parseDoVersion = (version) => {
     // ex. 'http://purl.obolibrary.org/obo/doid/releases/2018-03-02/doid.owl'
     const m = /releases\/(\d\d\d\d-\d\d-\d\d)\//.exec(version);
     return m[1];
+};
+
+
+const parseNodeRecord = (record) => {
+    checkSpec(nodeSpec, record);
+    const {
+        id,
+        lbl,
+        meta: {
+            deprecated = false,
+            definition: {val: description} = {},
+            subsets = [],
+            synonyms = [],
+            basicPropertyValues = [],
+            xrefs = []
+        } = {}
+    } = record;
+
+    const hasDeprecated = [];
+    const name = lbl.toLowerCase().trim();
+
+    for (const {val, pred} of basicPropertyValues) {
+        if (pred.toLowerCase().endsWith('#hasalternativeid')) {
+            hasDeprecated.push(val);
+        }
+    }
+
+    const ncitLinks = [];
+
+    for (const {val: other} of xrefs) {
+        let match;
+        if (match = /^NCI:(C\d+)$/.exec(other)) {
+            ncitLinks.push(`${match[1].toLowerCase()}`);
+        }
+    }
+
+    const aliases = [];
+
+    for (const {val: alias} of synonyms || []) {
+        if (alias.toLowerCase().trim() !== name) {
+            aliases.push(alias.toLowerCase().trim());
+        }
+    }
+
+    return {
+        ncitLinks,
+        hasDeprecated,
+        deprecated,
+        aliases,
+        sourceId: parseDoid(id),
+        name,
+        description,
+        subsets: subsets.map(subset => subset.replace(PREFIX_TO_STRIP, ''))
+    };
+};
+
+
+/* now add the edges to the kb
+{
+  "sub" : "http://purl.obolibrary.org/obo/DOID_5039",
+  "pred" : "is_a",
+  "obj" : "http://purl.obolibrary.org/obo/DOID_461"
+}
+*/
+const loadEdges = async ({
+    DOID, records, conn, source
+}) => {
+    logger.info('adding the subclass relationships');
+    for (const edge of DOID.graphs[0].edges) {
+        const {sub, pred, obj} = edge;
+        if (pred === 'is_a') { // currently only loading this class type
+            let src,
+                tgt;
+            try {
+                checkSpec(edgeSpec, edge);
+                src = parseDoid(sub).toLowerCase();
+                tgt = parseDoid(obj).toLowerCase();
+            } catch (err) {
+                logger.warn(err);
+                continue;
+            }
+            if (records[src] && records[tgt]) {
+                await conn.addRecord({
+                    endpoint: 'subclassof',
+                    content: {
+                        out: records[src]['@rid'],
+                        in: records[tgt]['@rid'],
+                        source
+                    },
+                    existsOk: true,
+                    fetchExisting: false
+                });
+            }
+        }
+    }
 };
 
 /**
@@ -72,53 +238,70 @@ const uploadFile = async ({filename, conn}) => {
     logger.info(`processing ${DOID.graphs[0].nodes.length} nodes`);
     const recordsBySourceId = {};
 
-    const ncitMissingRecords = new Set();
-
-    let ncitSource;
+    const ncitCache = {};
     try {
-        ncitSource = await conn.getUniqueRecordBy({
+        const ncitSource = await conn.getUniqueRecordBy({
             endpoint: 'sources',
             where: {name: ncitName}
         });
-        ncitSource = rid(ncitSource);
-    } catch (err) {}
+        logger.info(`fetched ncit source record ${rid(ncitSource)}`);
+        logger.info('getting existing ncit records');
+        const ncitRecords = await conn.getRecords({
+            endpoint: 'diseases',
+            where: {source: rid(ncitSource), dependency: null, neighbors: 0}
+        });
+        logger.info(`cached ${ncitRecords.length} ncit records`);
+        for (const record of ncitRecords) {
+            ncitCache[generateCacheKey(record)] = rid(record);
+        }
+    } catch (err) {
+        logger.error(err);
+    }
+
+    const counts = {error: 0, success: 0, skip: 0};
 
     for (let i = 0; i < DOID.graphs[0].nodes.length; i++) {
         const node = DOID.graphs[0].nodes[i];
-        if (node.id === undefined || node.lbl === undefined) {
-            continue;
-        }
-        try {
-            node.id = parseDoid(node.id);
-        } catch (err) {
-            continue;
-        }
         logger.info(`processing ${node.id} (${i} / ${DOID.graphs[0].nodes.length})`);
-        node.lbl = node.lbl.toLowerCase();
-        if (nodesByName[node.lbl] !== undefined) {
-            throw new Error(`name is not unique ${node.lbl}`);
+        let row;
+        try {
+            row = parseNodeRecord(node);
+        } catch (err) {
+            logger.error(err);
+            counts.error++;
+            continue;
         }
-        const body = {
-            source,
-            sourceId: node.id,
-            name: node.lbl,
-            deprecated: !!(node.meta && node.meta.deprecated)
-        };
-        synonymsByName[node.lbl] = [];
-        if (node.meta !== undefined) {
-            if (node.meta.definition && node.meta.definition.val) {
-                body.description = node.meta.definition.val;
-            }
-            if (node.meta.subsets) {
-                body.subsets = Array.from(node.meta.subsets, subset => subset.replace(PREFIX_TO_STRIP, ''));
-            }
+
+        const {
+            name,
+            sourceId,
+            description,
+            deprecated,
+            subsets,
+            aliases,
+            hasDeprecated,
+            ncitLinks
+        } = row;
+
+        if (nodesByName[name] !== undefined) {
+            throw new Error(`name is not unique ${name}`);
         }
+        synonymsByName[name] = [];
         // create the database entry
         const record = await conn.addRecord({
             endpoint: 'diseases',
-            content: body,
+            content: {
+                source,
+                sourceId,
+                name,
+                deprecated,
+                description,
+                subsets
+            },
             existsOk: true,
-            fetchConditions: _.omit(body, ['description', 'subsets'])
+            fetchConditions: {
+                sourceId, deprecated, name, source
+            }
         });
 
         if (recordsBySourceId[record.sourceId] !== undefined) {
@@ -126,21 +309,13 @@ const uploadFile = async ({filename, conn}) => {
         }
         recordsBySourceId[record.sourceId] = record;
 
-        if (node.meta === undefined) {
-            continue;
-        }
-
         // create synonyms and links
-        if (node.meta.synonyms) {
-            for (let {val: alias} of node.meta.synonyms) {
-                alias = alias.toLowerCase();
-                if (alias === record.name) {
-                    continue;
-                }
+        for (const alias of aliases) {
+            try {
                 const synonym = await conn.addRecord({
                     endpoint: 'diseases',
                     content: {
-                        sourceId: body.sourceId,
+                        sourceId: record.sourceId,
                         name: alias,
                         dependency: rid(record),
                         source
@@ -157,56 +332,49 @@ const uploadFile = async ({filename, conn}) => {
                     existsOk: true,
                     fetchExisting: false
                 });
+            } catch (err) {
+                logger.error(`Failed to create alias (${record.sourceId}, ${record.name}) ${alias}`);
+                console.error(err);
+                logger.error(err);
             }
         }
         // create deprecatedBy links for the old sourceIDs
-        if (!node.meta.deprecated) {
-            for (const {val, pred} of node.meta.basicPropertyValues || []) {
-                if (pred.toLowerCase().endsWith('#hasalternativeid')) {
-                    const alternate = await conn.addRecord({
-                        endpoint: 'diseases',
-                        content: {
-                            sourceId: val,
-                            name: record.name,
-                            deprecated: true,
-                            dependency: rid(record),
-                            source
-                        },
-                        existsOk: true
-                    });
-                    await conn.addRecord({
-                        endpoint: 'deprecatedby',
-                        content: {out: rid(alternate), in: rid(record), source},
-                        existsOk: true,
-                        fetchExisting: false
-                    });
-                }
+        for (const alternateId of hasDeprecated) {
+            try {
+                const alternate = await conn.addRecord({
+                    endpoint: 'diseases',
+                    content: {
+                        sourceId: alternateId,
+                        name: record.name,
+                        deprecated: true,
+                        dependency: rid(record),
+                        source
+                    },
+                    existsOk: true
+                });
+                await conn.addRecord({
+                    endpoint: 'deprecatedby',
+                    content: {out: rid(alternate), in: rid(record), source},
+                    existsOk: true,
+                    fetchExisting: false
+                });
+            } catch (err) {
+                logger.error(`Failed to create deprecated form (${record.sourceId}) ${alternateId}`);
+                logger.error(err);
             }
         }
-        if (ncitSource !== undefined) {
-            for (const {val: other} of (node.meta.xrefs || [])) {
-                let match;
-                if (match = /^NCI:(C\d+)$/.exec(other)) {
-                    let ncitNode;
-                    try {
-                        const ncitId = `${match[1].toLowerCase()}`;
-                        ncitNode = await conn.getUniqueRecordBy({
-                            endpoint: 'diseases',
-                            where: {source: ncitSource, sourceId: ncitId},
-                            sort: orderPreferredOntologyTerms
-                        });
-                    } catch (err) {
-                        ncitMissingRecords.add(match[1].toLowerCase());
-                    }
-                    if (ncitNode) {
-                        await conn.addRecord({
-                            endpoint: 'crossreferenceof',
-                            content: {out: rid(record), in: rid(ncitNode), source},
-                            existsOk: true,
-                            fetchExisting: false
-                        });
-                    }
-                }
+        // link to existing ncit records
+        for (const ncit of ncitLinks) {
+            const key = generateCacheKey({sourceId: ncit});
+            if (!ncitCache[key]) {
+                logger.warn(`failed to link ${record.sourceId} to ${key}. Missing record`);
+            } else {
+                await conn.addRecord({
+                    endpoint: 'crossreferenceof',
+                    content: {out: rid(record), in: rid(ncitCache[key]), source},
+                    existsOk: true,
+                    fetchExisting: false
+                });
             }
         }
     }
@@ -214,50 +382,10 @@ const uploadFile = async ({filename, conn}) => {
     await loadEdges({
         DOID, conn, records: recordsBySourceId, source
     });
-    if (ncitMissingRecords.size) {
-        logger.warn(`unable to retireve ${ncitMissingRecords.size} ncit records`);
-    }
+    logger.info(JSON.stringify(counts));
 };
 
-/* now add the edges to the kb
-{
-  "sub" : "http://purl.obolibrary.org/obo/DOID_5039",
-  "pred" : "is_a",
-  "obj" : "http://purl.obolibrary.org/obo/DOID_461"
-}
-*/
-const loadEdges = async ({
-    DOID, records, conn, source
-}) => {
-    const relationshipTypes = {};
-    logger.info('adding the subclass relationships');
-    for (const edge of DOID.graphs[0].edges) {
-        const {sub, pred, obj} = edge;
-        if (pred === 'is_a') { // currently only loading this class type
-            let src,
-                tgt;
-            try {
-                src = parseDoid(sub).toLowerCase();
-                tgt = parseDoid(obj).toLowerCase();
-            } catch (err) {
-                continue;
-            }
-            if (records[src] && records[tgt]) {
-                await conn.addRecord({
-                    endpoint: 'subclassof',
-                    content: {
-                        out: records[src]['@rid'],
-                        in: records[tgt]['@rid'],
-                        source
-                    },
-                    existsOk: true,
-                    fetchExisting: false
-                });
-            }
-        } else {
-            relationshipTypes[pred] = null;
-        }
-    }
-};
 
-module.exports = {uploadFile, dependencies: [ncitName], SOURCE_DEFN};
+module.exports = {
+    uploadFile, dependencies: [ncitName], SOURCE_DEFN, parseNodeRecord
+};

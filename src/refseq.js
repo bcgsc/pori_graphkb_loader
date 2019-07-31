@@ -7,7 +7,7 @@ const {
 } = require('./util');
 const {logger} = require('./logging');
 
-const _hgnc = require('./hgnc');
+const _entrez = require('./entrez/gene');
 
 const SOURCE_DEFN = {
     name: 'refseq',
@@ -37,11 +37,17 @@ const uploadFile = async (opt) => {
         fetchConditions: {name: SOURCE_DEFN.name}
     });
     logger.log('info', `Loading ${json.length} gene records`);
-    const hgncMissingRecords = new Set();
 
-    for (const record of json) {
+    // batch load entrez genes
+    await _entrez.preLoadCache(conn);
+    await _entrez.fetchAndLoadByIds(conn, json.map(rec => rec.GeneID));
+
+    for (let i=0; i < json.length; i++) {
+        const {RNA, GeneID, Protein} = json[i];
+        logger.info(`processing (${i} / ${json.length}) ${RNA}`);
+
         // Load the RNA
-        const [rnaName, rnaVersion] = record.RNA.split('.');
+        const [rnaName, rnaVersion] = RNA.split('.');
         const general = await conn.addRecord({
             endpoint: 'features',
             content: {
@@ -65,7 +71,7 @@ const uploadFile = async (opt) => {
         });
 
         try {
-            const hgnc = await _hgnc.fetchAndLoadBySymbol({conn, symbol: record.Symbol});
+            const [hgnc] = await _entrez.fetchAndLoadByIds(conn, [GeneID]);
             await conn.addRecord({
                 endpoint: 'elementof',
                 content: {out: rid(general), in: rid(hgnc), source: rid(source)},
@@ -73,13 +79,13 @@ const uploadFile = async (opt) => {
                 fetchExisting: false
             });
         } catch (err) {
-            logger.log('error', `failed cross-linking from ${general.sourceId} to ${record.Symbol}`);
-            hgncMissingRecords.add(record.symbol);
+            logger.log('error', `failed cross-linking from ${general.sourceId} to ${GeneID}`);
+            logger.error(err);
         }
 
         // load the protein
-        if (record.Protein) {
-            const [proteinName, proteinVersion] = record.Protein.split('.');
+        if (Protein) {
+            const [proteinName, proteinVersion] = Protein.split('.');
             const generalProtein = await conn.addRecord({
                 endpoint: 'features',
                 content: {
@@ -128,9 +134,6 @@ const uploadFile = async (opt) => {
                 fetchExisting: false
             });
         }
-    }
-    if (hgncMissingRecords.size) {
-        logger.warn(`Unable to retrieve ${hgncMissingRecords.size} hgnc records for linking`);
     }
 };
 

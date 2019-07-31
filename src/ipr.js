@@ -5,10 +5,16 @@ const moment = require('moment');
 const {variant: {parse: variantParser}, position: {Position}} = require('@bcgsc/knowledgebase-parser');
 
 const {logger} = require('./logging');
-const _pubmed = require('./pubmed');
+const _pubmed = require('./entrez/pubmed');
 const _hgnc = require('./hgnc');
+const _ctg = require('./clinicaltrialsgov');
 const {
-    preferredDiseases, rid, preferredFeatures, INTERNAL_SOURCE_NAME, orderPreferredOntologyTerms
+    preferredDiseases,
+    rid,
+    preferredFeatures,
+    INTERNAL_SOURCE_NAME,
+    orderPreferredOntologyTerms,
+    convertRowFields
 } = require('./util');
 
 
@@ -22,21 +28,21 @@ const SOURCE_DEFN = {
 const DEFAULT_ASSEMBLY = 'GRCh37';
 
 
-const REMAPPED_COLUMNS = {
-    kb_reference_uuid: 'ident',
-    kb_reference_created_date: 'createdAt',
-    kb_reference_review_status: 'reviewStatus',
-    kb_reference_created_by_user: 'createdBy',
-    kb_reference_reviewed_by_user: 'reviewedBy',
-    kb_reference_events_expression: 'variants',
-    kb_reference_type: 'statementType',
-    kb_reference_relevance: 'relevance',
-    kb_reference_context: 'appliesTo',
-    kb_reference_disease_list: 'diseaseList',
-    kb_reference_evidence: 'evidenceLevel',
-    kb_reference_id_type: 'evidenceType',
-    kb_reference_ref_id: 'evidenceId',
-    kb_reference_id_title: 'evidenceTitle'
+const HEADER = {
+    ident: 'kb_reference_uuid',
+    createdAt: 'kb_reference_created_date',
+    reviewStatus: 'kb_reference_review_status',
+    createdBy: 'kb_reference_created_by_user',
+    reviewedBy: 'kb_reference_reviewed_by_user',
+    variants: 'kb_reference_events_expression',
+    statementType: 'kb_reference_type',
+    relevance: 'kb_reference_relevance',
+    appliesTo: 'kb_reference_context',
+    diseaseList: 'kb_reference_disease_list',
+    evidenceLevel: 'kb_reference_evidence',
+    evidenceType: 'kb_reference_id_type',
+    evidenceId: 'kb_reference_ref_id',
+    evidenceTitle: 'kb_reference_id_title'
 };
 
 
@@ -95,7 +101,9 @@ const extractAppliesTo = async (conn, record, source) => {
         statementType,
         appliesTo: appliesToInput,
         variants,
-        disease
+        features,
+        disease,
+        supportedBy
     } = record;
 
     const appliesTo = appliesToInput && appliesToInput.replace(/-/g, ' ');
@@ -130,24 +138,26 @@ const extractAppliesTo = async (conn, record, source) => {
                 where: {name: disease},
                 sort: preferredDiseases
             });
+        } if (relevance === 'eligibility') {
+            if (supportedBy.length === 1) {
+                return supportedBy[0];
+            }
         }
     } if (statementType === 'biological' || statementType === 'occurrence') {
         if (/.*\bfunction(al)?.*/.exec(relevance) || relevance.includes('dominant negative')) {
-            if (variants.length === 1) {
+            if (features.length + variants.length === 1) {
+                if (features.length) {
+                    return features[0];
+                }
                 const [{
-                    name, positional, isFeature, reference1
+                    reference1,
+                    reference2
                 }] = variants;
-                if (isFeature) {
-                    return getFeature(conn, name);
-                } if (!positional && reference1) {
-                    return getFeature(conn, reference1);
+                if (reference1 && !reference2) {
+                    return reference1;
                 }
-                if (positional && !positional.reference2) {
-                    return getFeature(conn, positional.reference1);
-                }
-            } else {
-                throw new Error(`Unable to determine feature target (variants=Array[${variants.length}])`);
             }
+            throw new Error(`Unable to determine feature target (variants=Array[${variants.length}], features=Array[${features.length}])`);
         } else if (['recurrent', 'observed', 'pathogenic', 'mutation hotspot'].includes(relevance)) {
             if (!disease) {
                 throw new Error(`required disease not defined (relevance=${relevance}, statementType=${statementType})`);
@@ -167,15 +177,16 @@ const extractAppliesTo = async (conn, record, source) => {
                 'haploinsufficient'
             ].includes(relevance)
         ) {
-            if (variants.length === 1) {
-                const [{isFeature, name}] = variants;
-                if (isFeature) {
-                    return getFeature(conn, name);
-                }
+            if (features.length === 1) {
+                return features[0];
             }
             throw new Error(`unable to determine the gene being referenced (relevance=${relevance})`);
-        } else if (relevance === 'oncogenic') {
-            // applies to the variant
+        } else if (relevance === 'oncogenic' || relevance === 'oncogenic fusion') {
+            // applies to the variant?
+            if (variants.length === 1) {
+                return null;
+            }
+            throw new Error(`unable to determine the variant being referenced (relevance=${relevance})`);
         }
     } else if (statementType === 'diagnostic') {
         return conn.getUniqueRecordBy({
@@ -511,7 +522,7 @@ const processVariant = async (conn, variant) => {
 
 
 const processRecord = async ({conn, record: inputRecord, source}) => {
-    const record = Object.assign({}, inputRecord, {variants: []});
+    const record = {...inputRecord, variants: []};
     const impliedBy = [];
     const supportedBy = [];
 
@@ -522,6 +533,9 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         record.variants
             .filter(v => !v.isFeature)
             .map(async variant => processVariant(conn, variant))
+    );
+    const features = await Promise.all(
+        record.variants.filter(v => v.isFeature).map(async v => getFeature(v.name))
     );
     for (const variant of variants) {
         impliedBy.push(rid(variant));
@@ -543,11 +557,22 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
 
     // check that the expected pubmedIds exist in the db
     for (const {sourceId} of record.support) {
-        const article = await _pubmed.fetchArticle(conn, sourceId);
-        supportedBy.push(rid(article));
+        let evidence;
+        if (sourceId.startsWith('NCT')) {
+            evidence = await _ctg.fetchAndLoadById(conn, sourceId);
+        } else {
+            [evidence] = await _pubmed.fetchAndLoadByIds(conn, [sourceId]);
+        }
+        supportedBy.push(rid(evidence));
     }
     // determine the appliesTo
-    const appliesTo = await extractAppliesTo(conn, record, source);
+    const appliesTo = await extractAppliesTo(
+        conn,
+        {
+            ...record, variants, features, supportedBy
+        },
+        source
+    );
 
     // determine the record relevance
     const relevance = await conn.getUniqueRecordBy({
@@ -555,6 +580,10 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         where: {name: extractRelevance(record), source: {name: INTERNAL_SOURCE_NAME}},
         sort: orderPreferredOntologyTerms
     });
+    const reviews = [];
+    if (record.createdBy) {
+        reviews.push({createdBy: record.createdBy, createdAt: record.createdAt, reviewStatus: 'initial'});
+    }
     // now create the statement
     return conn.addRecord({
         endpoint: 'statements',
@@ -564,7 +593,8 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
             supportedBy,
             impliedBy,
             source: rid(source),
-            sourceId: record.ident
+            sourceId: record.ident,
+            reviewStatus: 'pending'
         },
         existsOk: true,
         fetchExisting: false
@@ -575,9 +605,8 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
 const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     logger.info('loading content from IPR');
     const counts = {
-        error: 0, skip: 0, history: 0, success: 0, fusionErrors: 0
+        error: 0, skip: 0, history: 0, success: 0
     };
-    const users = {};
     logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
     logger.info('parsing into json');
@@ -593,12 +622,10 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     let records = [];
 
     for (const record of jsonList) {
-        const newRecord = {};
-        for (const [oldName, newName] of Object.entries(REMAPPED_COLUMNS)) {
-            newRecord[newName] = record[oldName] || null;
-        }
+        const newRecord = convertRowFields(HEADER, record);
+
         if (
-            newRecord.evidenceType !== 'pubmed'
+            (newRecord.evidenceType !== 'pubmed' && !newRecord.evidenceType.startsWith('ClinicalT'))
             || newRecord.reviewStatus.toLowerCase() === 'flagged-incorrect'
             || newRecord.relevance === 'observed'
         ) {
@@ -622,20 +649,42 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     logger.info(`${records.length} records after list expansion`);
 
     const pubmedIdList = new Set();
+    const users = {};
     for (const record of records) {
         for (const {sourceId} of record.support) {
-            pubmedIdList.add(sourceId);
+            if (!sourceId.startsWith('NCT')) {
+                pubmedIdList.add(sourceId);
+            }
+        }
+        if (record.createdBy && users[record.createdBy] === undefined) {
+            users[record.createdBy] = rid(await conn.addRecord({
+                endpoint: 'users',
+                content: {name: record.createdBy},
+                existsOk: true
+            }));
+        }
+        if (record.reviewedBy && users[record.reviewedBy] === undefined) {
+            users[record.reviewedBy] = rid(await conn.addRecord({
+                endpoint: 'users',
+                content: {name: record.reviewedBy},
+                existsOk: true
+            }));
+        }
+        if (record.createdBy) {
+            record.createdBy = users[record.createdBy];
+        }
+        if (record.reviewedBy) {
+            record.reviewedBy = users[record.reviewedBy];
         }
     }
     logger.info(`loading ${pubmedIdList.size} articles from pubmed`);
-    await _pubmed.uploadArticlesByPmid(conn, Array.from(pubmedIdList));
+    await _pubmed.fetchAndLoadByIds(conn, Array.from(pubmedIdList));
 
     const errorList = [];
 
     for (let i = 0; i < records.length; i++) {
         const record = records[i];
         logger.info(`processing ${record.ident} (${i} / ${records.length})`);
-        users[record.createdBy] = (users[record.createdBy] || 0) + 1;
         if (record.history) {
             counts.history++;
         }
@@ -650,7 +699,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
                 console.log(record);
             }
             const error = err.error || err;
-            errorList.push({row: record, index: i, error});
+            errorList.push({row: record, index: i, error: msg});
             logger.error(error);
             counts.error++;
         }
@@ -663,5 +712,5 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
 };
 
 module.exports = {
-    uploadFile, convertDeprecatedSyntax, SOURCE_DEFN, type: 'kb'
+    uploadFile, convertDeprecatedSyntax, SOURCE_DEFN, kb: true
 };

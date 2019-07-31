@@ -13,8 +13,8 @@ const {
     rid,
     checkSpec
 } = require('./util');
-const _pubmed = require('./pubmed');
-const _hgnc = require('./hgnc');
+const _pubmed = require('./entrez/pubmed');
+const _entrezGene = require('./entrez/gene');
 const _ncit = require('./ncit');
 const {logger} = require('./logging');
 
@@ -95,7 +95,7 @@ const getVocabulary = async (conn, term) => {
     if (VOCABULARY_CACHE[stdTerm]) {
         return VOCABULARY_CACHE[stdTerm];
     }
-    const rec = await conn.getVocabularyTerm({term: stdTerm});
+    const rec = await conn.getVocabularyTerm(stdTerm);
     VOCABULARY_CACHE[rec.sourceId] = rec;
     return rec;
 };
@@ -188,7 +188,7 @@ const processVariant = async (opt) => {
     } else {
         // gene-base variant
         try {
-            gene1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: rawRecord.entrezGeneId, paramType: 'entrez_id'});
+            [gene1] = await _entrezGene.fetchAndLoadByIds(conn, [rawRecord.entrezGeneId]);
         } catch (err) {
             logger.error(err);
             throw err;
@@ -205,10 +205,14 @@ const processVariant = async (opt) => {
         }
         try {
             if (reference2) {
-                gene2 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: reference2});
+                const candidates = await _entrezGene.fetchAndLoadBySymbol(conn, reference2);
+                if (candidates.length !== 1) {
+                    throw new Error(`Unable to find single (${candidates.length}) unique records by symbol (${reference2})`);
+                }
+                gene2 = candidates[0];
             }
         } catch (err) {
-            logger.warn(`Failed to retrieve hugo gene ${reference2}`);
+            logger.warn(err);
             throw err;
         }
     }
@@ -362,11 +366,9 @@ const processActionableRecord = async (opt) => {
     relevance = await getVocabulary(conn, relevance);
 
     // find/add the publications
-    const publications = await Promise.all(
-        rawRecord.pmids
-            .split(',')
-            .filter(pmid => pmid && pmid.trim())
-            .map(async pmid => _pubmed.fetchArticle(conn, pmid.trim()))
+    const publications = await _pubmed.fetchAndLoadByIds(
+        conn,
+        rawRecord.pmids.split(',').filter(pmid => pmid && pmid.trim())
     );
 
     // make the actual statement
@@ -420,11 +422,11 @@ const processAnnotatedRecord = async (opt) => {
         impliedBy.push(rid(disease));
     }
     // find/add the publications
-    const publications = await Promise.all(
+    const publications = await _pubmed.fetchAndLoadByIds(
+        conn,
         rawRecord.mutationEffectPmids
             .split(',')
             .filter(pmid => pmid && pmid.trim())
-            .map(async pmid => _pubmed.fetchArticle(conn, pmid.trim()))
     );
 
     let count = 0;
@@ -533,7 +535,7 @@ const processActionableRecords = async ({
             checkSpec(actionableRecordSpec, rawRecord, () => i);
         } catch (err) {
             logger.error(err);
-            errorList.push({row: rawRecord, error: err});
+            errorList.push({row: rawRecord, error: err, errorMsg: err.toString()});
             counts.error++;
             continue;
         }
@@ -543,7 +545,7 @@ const processActionableRecords = async ({
         }
     }
     logger.info(`loading ${pmidList.size} pubmed articles`);
-    await _pubmed.uploadArticlesByPmid(conn, Array.from(pmidList));
+    await _pubmed.fetchAndLoadByIds(conn, Array.from(pmidList));
 
     logger.info(`processing ${records.length} remaining oncokb records`);
 
@@ -565,7 +567,7 @@ const processActionableRecords = async ({
                 });
                 counts.success++;
             } catch (err) {
-                errorList.push({row: rawRecord, error: (err.error || err)});
+                errorList.push({row: rawRecord, error: (err.error || err), errorMsg: err.toString()});
                 counts.errors++;
                 logger.error((err.error || err).message);
             }
@@ -605,7 +607,7 @@ const processAnnotatedRecords = async ({
             checkSpec(annotatedRecordSpec, rawRecord);
         } catch (err) {
             logger.error(err);
-            errorList.push({row: rawRecord, error: err});
+            errorList.push({row: rawRecord, error: err, errorMsg: err.toString()});
             counts.error++;
             continue;
         }
@@ -620,7 +622,7 @@ const processAnnotatedRecords = async ({
     }
 
     logger.info(`loading ${pmidList.size} pubmed articles`);
-    await _pubmed.uploadArticlesByPmid(conn, Array.from(pmidList));
+    await _pubmed.fetchAndLoadByIds(conn, Array.from(pmidList));
 
     logger.info(`processing ${records.length} remaining oncokb records`);
     for (const rawRecord of records) {
@@ -651,7 +653,7 @@ const processAnnotatedRecords = async ({
             counts.skip += 2 - expect;
         } catch (err) {
             logger.error((err.error || err).message);
-            errorList.push({row: rawRecord, error: (err.error || err)});
+            errorList.push({row: rawRecord, error: (err.error || err), errorMsg: err.toString()});
             counts.errors++;
         }
     }
@@ -667,19 +669,16 @@ const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
         json: true
     });
 
-    const tsg = rid(await conn.getVocabularyTerm({term: 'tumour suppressive'}));
-    const oncogene = rid(await conn.getVocabularyTerm({term: 'oncogenic'}));
+    const tsg = rid(await conn.getVocabularyTerm('tumour suppressive'));
+    const oncogene = rid(await conn.getVocabularyTerm('oncogenic'));
 
     for (const gene of genes) {
         logger.info(`processing gene: ${gene.entrezGeneId}`);
         let record;
         try {
             checkSpec(curatedGeneSpec, gene, g => g.entrezGeneId);
-            record = rid(await _hgnc.fetchAndLoadBySymbol({
-                conn,
-                symbol: gene.entrezGeneId,
-                paramType: 'entrez_id'
-            }));
+            [record] = await _entrezGene.fetchAndLoadByIds(conn, [gene.entrezGeneId]);
+            record = rid(record);
         } catch (err) {
             logger.error(err);
             continue;
@@ -827,6 +826,8 @@ const upload = async (opt) => {
     const counts = {errors: 0, success: 0, skip: 0};
 
     const errorList = [];
+    logger.info('pre-loading entrez genes');
+    await _entrezGene.preLoadCache(conn);
     logger.info('load oncogene/tumour suppressor list');
     await uploadAllCuratedGenes({conn, baseUrl: URL, source: oncokb});
     logger.info('load drug ontology');
@@ -849,7 +850,7 @@ module.exports = {
     upload,
     parseVariantName,
     SOURCE_DEFN,
-    type: 'kb',
+    kb: true,
     specs: {
         actionableRecordSpec,
         annotatedRecordSpec,

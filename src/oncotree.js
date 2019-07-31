@@ -5,7 +5,7 @@
 
 const request = require('request-promise');
 
-const {rid} = require('./util');
+const {rid, orderPreferredOntologyTerms} = require('./util');
 const {logger} = require('./logging');
 const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 
@@ -223,10 +223,12 @@ const upload = async (opt) => {
 
         for (const xref of record.crossReferenceOf) {
             if (xref.source === 'NCI' && ncitSource && !ncitMissingRecords.has(xref.sourceId)) {
+                logger.info(`linking ${rec.sourceId} to ${xref.sourceIf}`);
                 try {
                     const ncitXref = await conn.getUniqueRecordBy({
                         endpoint: 'diseases',
-                        where: {source: rid(ncitSource), sourceId: xref.sourceId}
+                        where: {source: rid(ncitSource), sourceId: xref.sourceId},
+                        sort: orderPreferredOntologyTerms
                     });
                     await conn.addRecord({
                         endpoint: 'crossReferenceOf',
@@ -236,6 +238,7 @@ const upload = async (opt) => {
                     });
                 } catch (err) {
                     ncitMissingRecords.add(xref.sourceId);
+                    logger.warn(err);
                 }
             }
         }

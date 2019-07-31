@@ -13,12 +13,13 @@ const {
 const {logger} = require('./logging');
 const _hgnc = require('./hgnc');
 const _trials = require('./clinicaltrialsgov');
-const _pubmed = require('./pubmed');
+const _pubmed = require('./entrez/pubmed');
 const {uploadFromJSON} = require('./ontology');
 
 const SOURCE_DEFN = {
     displayName: 'CGI',
-    name: 'cancer genome interpreter - Cancer Biomarkers database',
+    longName: 'cancer genome interpreter - Cancer Biomarkers database',
+    name: 'cancer genome interpreter',
     url: 'https://www.cancergenomeinterpreter.org/biomarkers',
     description: 'The Cancer Biomarkers database is curated and maintained by several clinical and scientific experts in the field of precision oncology supported by the European Union’s Horizon 2020 funded project. This database is currently being integrated with knowledge databases of other institutions in a collaborative effort of the Global Alliance for Genomics and Health. The contribution of the community is encouraged and proposals of edition or comments about the information contained in this database can be given by contacting us here or by using the feedback icon located at the left of each entry of the table. The database follows the data model originally described by Dienstmann et al. This table provides a summary of the content of the database that can be interactively browsed. Additional information, including the genomic coordinates of the variants, can be accessed via the download feature. This database is licensed under a Creative Commons Public Domain Dedication (CC0 1.0 Universal). When referring to this database, please cite: Cancer Genome Interpreter Annotates The Biological And Clinical Relevance Of Tumor Alterations; doi: https://doi.org/10.1101/140475.',
     license: 'https://creativecommons.org/publicdomain/zero/1.0',
@@ -261,7 +262,7 @@ const processRow = async ({row, source, conn}) => {
         sort: preferredDiseases
     }));
     const therapyName = row.therapy.includes(';')
-        ? row.therapy.split(';').map(n => n.toLowerCase().timr()).sort().join(' + ')
+        ? row.therapy.split(';').map(n => n.toLowerCase().trim()).sort().join(' + ')
         : row.therapy;
     // look up the drug by name
     const drug = rid(await conn.addTherapyCombination(source, therapyName));
@@ -275,7 +276,7 @@ const processRow = async ({row, source, conn}) => {
         where: {name: row.evidenceLevel, source: {name: SOURCE_DEFN.name}}
     }));
 
-    const articles = await _pubmed.uploadArticlesByPmid(
+    const articles = await _pubmed.fetchAndLoadByIds(
         conn,
         row.evidence.filter(ev => !ev.startsWith('NCT'))
     );
@@ -378,4 +379,4 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
 };
 
 
-module.exports = {uploadFile, SOURCE_DEFN};
+module.exports = {uploadFile, SOURCE_DEFN, kb: true};

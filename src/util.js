@@ -19,6 +19,13 @@ const INTERNAL_SOURCE_NAME = 'bcgsc';
 
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
 
+const generateCacheKey = (record) => {
+    if (record.sourceIdVersion !== undefined && record.sourceIdVersion !== null) {
+        return `${record.sourceId}-${record.sourceIdVersion}`.toLowerCase();
+    }
+    return `${record.sourceId}`.toLowerCase();
+};
+
 const rid = (record, nullOk) => {
     if (nullOk && !record) {
         return null;
@@ -135,18 +142,20 @@ const preferredVocabulary = (term1, term2) => {
 const preferredDiseases = (term1, term2) => {
     const sourceRank = generateRanks([
         'oncotree',
-        'disease ontology'
+        'disease ontology',
+        'ncit'
     ]);
     return preferredSources(sourceRank, term1, term2);
 };
 
 const preferredDrugs = (term1, term2) => {
     const sourceRank = generateRanks([
-        'gsc therapeutic ontology',
         'drugbank',
         'chembl',
+        'ncit',
         'fda',
-        'ncit'
+        'oncokb',
+        'gsc therapeutic ontology'
     ]);
     return preferredSources(sourceRank, term1, term2);
 };
@@ -223,6 +232,32 @@ class ApiConnection {
             req.qs = opt.qs;
         }
         return request(req);
+    }
+
+    async getRecords(opt) {
+        const {
+            where,
+            endpoint,
+            limit = 1000
+        } = opt;
+
+        const result = [];
+        let lastFetch = limit,
+            skip = 0;
+        const queryParams = convertNulls(where);
+
+        while (lastFetch === limit) {
+            const {result: records} = await this.request({
+                uri: endpoint,
+                qs: {
+                    neighbors: 1, ...queryParams, limit, skip
+                }
+            });
+            result.push(...records);
+            lastFetch = records.length;
+            skip += limit;
+        }
+        return result;
     }
 
     async getUniqueRecord(opt) {
@@ -321,7 +356,7 @@ class ApiConnection {
         throw error;
     }
 
-    async getVocabularyTerm({term}) {
+    async getVocabularyTerm(term) {
         return this.getUniqueRecordBy({
             endpoint: 'vocabulary',
             where: {sourceId: term, source: {name: INTERNAL_SOURCE_NAME}},
@@ -351,7 +386,7 @@ class ApiConnection {
 
         if (fetchFirst) {
             try {
-                return this.getUniqueRecordBy({
+                return await this.getUniqueRecordBy({
                     where: fetchConditions || content,
                     endpoint,
                     sortFunc
@@ -422,19 +457,9 @@ class ApiConnection {
         try {
             let result;
             if (matchSource) {
-                result = await this.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {
-                        name: therapyName, sourceId: therapyName, or: 'sourceId,name', source: rid(source)
-                    },
-                    sort: preferredDrugs
-                });
+                result = await this.getTherapy(therapyName, {where: {source: rid(source)}});
             } else {
-                result = await this.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {name: therapyName, sourceId: therapyName, or: 'sourceId,name'},
-                    sort: preferredDrugs
-                });
+                result = await this.getTherapy(therapyName);
             }
             return result;
         } catch (err) {
@@ -446,19 +471,9 @@ class ApiConnection {
         try {
             const elements = await Promise.all(therapyName.split(/\s*\+\s*/gi).map((name) => {
                 if (matchSource) {
-                    return this.getUniqueRecordBy({
-                        endpoint: 'therapies',
-                        where: {
-                            name, sourceId: name, or: 'sourceId,name', source: rid(source)
-                        },
-                        sort: preferredDrugs
-                    });
+                    return this.getTherapy(name, {where: {source: rid(source)}});
                 }
-                return this.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {name, sourceId: name, or: 'sourceId,name'},
-                    sort: preferredDrugs
-                });
+                return this.getTherapy(name);
             }));
             const sourceId = elements.map(e => e.sourceId).sort().join(' + ');
             const name = elements.map(e => e.name).sort().join(' + ');
@@ -619,6 +634,7 @@ module.exports = {
     rid,
     checkSpec,
     convertOwlGraphToJson,
+    generateCacheKey,
     orderPreferredOntologyTerms,
     preferredDiseases,
     preferredDrugs,

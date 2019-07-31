@@ -28,6 +28,7 @@
             "error",
             "always"
         ],
+        "no-loop-func": "warn",
         "no-console": 0,
         "object-curly-spacing": [
             "error",
@@ -107,7 +108,6 @@
                 "allowEmptyCatch": true
             }
         ],
-        "react/destructuring-assignment": "off",
         "no-await-in-loop": "off",
         "no-unused-expressions": "off"
     }

@@ -12,7 +12,7 @@ const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser')
 const {
     orderPreferredOntologyTerms, rid, checkSpec
 } = require('./util');
-const _pubmed = require('./pubmed');
+const _pubmed = require('./entrez/pubmed');
 const {logger} = require('./logging');
 const _hgnc = require('./hgnc');
 
@@ -51,7 +51,41 @@ const recordSpec = ajv.compile({
         start: {type: 'number', min: 1},
         stop: {type: 'number', min: 1},
         chromosome: {type: 'string'},
-        variant_type: {type: 'string', enum: ['SNV', 'DEL', 'INS', 'DNV']}
+        variant_type: {type: 'string', enum: ['SNV', 'DEL', 'INS', 'DNV']},
+        // TODO: process drug interactions (large amount of free text currently)
+        meta: {
+            type: 'array',
+            items: {
+                type: 'object',
+                required: ['Drug Interaction Data'],
+                properties: {
+                    'Drug Interaction Data': {
+                        type: 'object',
+                        required: ['fields', 'rows'],
+                        properties: {
+                            fields: {
+                                type: 'array',
+                                items: [
+                                    {type: 'string', enum: ['Therapeutic Context']},
+                                    {type: 'string', enum: ['Pathway']},
+                                    {type: 'string', enum: ['Effect']},
+                                    {type: 'string', enum: ['Association']},
+                                    {type: 'string', enum: ['Status']},
+                                    {type: 'string', enum: ['Evidence']},
+                                    {type: 'string', enum: ['Source']}
+                                ]
+                            },
+                            rows: {
+                                type: 'array',
+                                items: {
+                                    type: 'array', items: {type: ['string', 'null']}, minItems: 7, maxItems: 7
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 });
 
@@ -135,7 +169,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
         let {
             noFeatures, prefix, multiFeature, ...variant
         } = variantParser(parseDocmVariant(aminoAcid), false);
-        const type = await conn.getVocabularyTerm({term: variant.type});
+        const type = await conn.getVocabularyTerm(variant.type);
         protein = variant = await conn.addVariant({
             endpoint: 'positionalvariants',
             content: {...variant, type, reference1: rid(reference1)},
@@ -151,7 +185,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
         let {
             noFeatures, prefix, multiFeature, ...variant
         } = variantParser(buildGenomicVariant(docmRecord), false);
-        const type = await conn.getVocabularyTerm({term: variant.type});
+        const type = await conn.getVocabularyTerm(variant.type);
         const reference1 = await conn.getUniqueRecordBy({
             endpoint: 'features',
             where: {
@@ -209,7 +243,7 @@ const processRecord = async (opt) => {
         }
         try {
             // get the vocabulary term
-            const relevance = await conn.getVocabularyTerm({term: diseaseRec.tags[0], conn});
+            const relevance = await conn.getVocabularyTerm(diseaseRec.tags[0], conn);
             // get the disease by name
             const disease = await conn.getUniqueRecordBy({
                 endpoint: 'diseases',
@@ -221,7 +255,7 @@ const processRecord = async (opt) => {
                 sort: orderPreferredOntologyTerms
             });
             // get the pubmed article
-            const publication = await _pubmed.fetchArticle(conn, diseaseRec.source_pubmed_id);
+            const [publication] = await _pubmed.fetchAndLoadByIds(conn, [diseaseRec.source_pubmed_id]);
             // now create the statement
             await conn.addRecord({
                 endpoint: 'statements',
@@ -289,10 +323,6 @@ const upload = async (opt) => {
             errorList.push({summaryRecord, error: err, isSummary: true});
             continue;
         }
-        if (summaryRecord.drug_interactions) {
-            logger.warn(`Found a record with drug interactions! ${JSON.stringify(summaryRecord)}`);
-            counts.highlight++;
-        }
         logger.info(`loading: ${BASE_URL}/${summaryRecord.hgvs}.json`);
         const record = await request({
             method: 'GET',
@@ -308,7 +338,7 @@ const upload = async (opt) => {
         }
     }
     logger.info(`loading ${pmidList.size} pubmed articles`);
-    await _pubmed.uploadArticlesByPmid(conn, pmidList);
+    await _pubmed.fetchAndLoadByIds(conn, pmidList);
     logger.info(`processing ${filtered.length} remaining docm records`);
     for (let index = 0; index < filtered.length; index++) {
         const record = filtered[index];
@@ -327,7 +357,6 @@ const upload = async (opt) => {
         } catch (err) {
             errorList.push({record, error: err});
             counts.error++;
-            console.error((err.error || err));
             logger.error((err.error || err).message);
         }
     }
@@ -338,5 +367,5 @@ const upload = async (opt) => {
 };
 
 module.exports = {
-    upload, SOURCE_DEFN, type: 'kb', specs: {variantSummarySpec, recordSpec}
+    upload, SOURCE_DEFN, kb: true, specs: {variantSummarySpec, recordSpec}
 };

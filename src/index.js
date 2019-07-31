@@ -7,8 +7,8 @@
 const {fileExists, createOptionsMenu} = require('./cli');
 
 const {ApiConnection} = require('./util');
-const {PUBMED_DEFAULT_QS} = require('./pubmed');
-const {logger} = require('./logging');
+const {DEFAULT_QS} = require('./entrez/util');
+const {logger, getFilename} = require('./logging');
 
 const IMPORT_MODULES = {};
 IMPORT_MODULES.civic = require('./civic');
@@ -31,6 +31,7 @@ IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
 IMPORT_MODULES.ontology = require('./ontology');
 IMPORT_MODULES.drugOntology = require('./drug_ontology');
 IMPORT_MODULES.cgi = require('./cancergenomeinterpreter');
+IMPORT_MODULES.tcgaFusions = require('./tcga_fusions');
 
 
 const optionDefinitions = [
@@ -163,6 +164,11 @@ const optionDefinitions = [
         name: 'errorLogPrefix',
         description: 'prefix to use for any module specific log files that are written',
         default: `${process.cwd()}/errorLog-${new Date().valueOf()}`
+    },
+    {
+        name: 'tcgaFusions',
+        description: 'Load fusions from the supplementary excel file',
+        type: fileExists
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
@@ -175,7 +181,7 @@ const options = createOptionsMenu(optionDefinitions,
 const apiConnection = new ApiConnection(options.graphkb);
 
 if (options.pubmed) {
-    PUBMED_DEFAULT_QS.api_key = options.pubmed;
+    DEFAULT_QS.api_key = options.pubmed;
 }
 
 const compareLoadModules = (name1, name2) => {
@@ -183,10 +189,10 @@ const compareLoadModules = (name1, name2) => {
     const module2 = IMPORT_MODULES[name2];
 
     // knowledgebases should always be loaded last
-    if (module1.type !== module2.type) {
-        if (module1.type === 'kb') {
+    if (module1.kb !== module2.kb) {
+        if (module1.kb) {
             return 1;
-        } if (module2.type === 'kb') {
+        } if (module2.kb) {
             return -1;
         }
     }
@@ -252,6 +258,9 @@ const upload = async () => {
                 });
             }
         }
+    }
+    if (getFilename()) {
+        logger.info(`logs written to ${getFilename()}`);
     }
     logger.info('upload complete');
 };

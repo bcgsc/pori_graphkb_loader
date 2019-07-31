@@ -5,10 +5,11 @@
  */
 
 const {
-    loadDelimToJson, rid, orderPreferredOntologyTerms
+    loadDelimToJson, rid, orderPreferredOntologyTerms, generateCacheKey
 } = require('./util');
 const {logger} = require('./logging');
 const _hgnc = require('./hgnc');
+const _entrez = require('./entrez/gene');
 const {SOURCE_DEFN: {name: refseqName}} = require('./refseq');
 
 const HEADER = {
@@ -33,30 +34,6 @@ const SOURCE_DEFN = {
     usage: 'https://uswest.ensembl.org/info/about/legal/disclaimer.html',
     url: 'https://uswest.ensembl.org',
     description: 'Ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. Ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. Ensembl tools include BLAST, BLAT, BioMart and the Variant Effect Predictor (VEP) for all supported species.'
-};
-
-
-const getCurrentGenesList = async (conn) => {
-    const preLoaded = new Set();
-    const limit = 1000;
-    let lastReturn = limit;
-    while (lastReturn >= limit) {
-        const {result: genes} = await conn.request({
-            uri: 'features',
-            qs: {
-                source: {name: SOURCE_DEFN.name},
-                biotype: 'gene',
-                returnProperties: 'sourceId,sourceIdVersion',
-                limit,
-                skip: preLoaded.size
-            }
-        });
-        lastReturn = genes.length;
-        for (const {sourceId, sourceIdVersion} of genes) {
-            preLoaded.add(`${sourceId}.${sourceIdVersion}`.toLowerCase());
-        }
-    }
-    return preLoaded;
 };
 
 
@@ -91,11 +68,23 @@ const uploadFile = async (opt) => {
     const hgncMissingRecords = new Set();
     const refseqMissingRecords = new Set();
 
+    logger.info('pre-load the entrez cache to avoid unecessary requests');
+    await _entrez.preLoadCache(conn);
     // skip any genes that have already been loaded before we start
-    logger.info('retriving the list of previously loaded genes');
-    const preLoaded = await getCurrentGenesList(conn);
+    logger.info('retreiving the list of previously loaded genes');
+    const preLoaded = new Set();
+    const genesList = await conn.getRecords({
+        endpoint: 'features',
+        where: {
+            source: rid(source), biotype: 'gene', dependency: null, neighbors: 0
+        }
+    });
 
-    for (const gene of preLoaded) {
+    const counts = {success: 0, error: 0, skip: 0};
+
+    for (const record of genesList) {
+        const gene = generateCacheKey(record);
+        preLoaded.add(gene);
         logger.info(`${gene} has already been loaded`);
     }
 
@@ -106,13 +95,13 @@ const uploadFile = async (opt) => {
         record.hgncName = record[HEADER.geneNameSource] === 'HGNC Symbol'
             ? record[HEADER.geneName]
             : null;
-        // gene
 
         const geneId = record[HEADER.geneId];
         const geneIdVersion = record[HEADER.geneIdVersion];
-        const key = `${geneId}.${geneIdVersion}`.toLowerCase();
+        const key = generateCacheKey({sourceId: geneId, sourceIdVersion: geneIdVersion});
 
         if (preLoaded.has(key)) {
+            counts.skip++;
             continue;
         }
         logger.info(`processing ${geneId}.${geneIdVersion || ''} (${index} / ${contentList.length})`);
@@ -248,6 +237,7 @@ const uploadFile = async (opt) => {
                 logger.log('error', `failed cross-linking from ${gene.sourceid} to ${record[HEADER.hgncId]}`);
             }
         }
+        counts.success++;
     }
     if (hgncMissingRecords.size) {
         logger.warn(`Unable to retrieve ${hgncMissingRecords.size} hgnc records for linking`);
@@ -255,6 +245,7 @@ const uploadFile = async (opt) => {
     if (refseqMissingRecords.size) {
         logger.warn(`Unable to retrieve ${refseqMissingRecords.size} refseq records for linking`);
     }
+    logger.info(JSON.stringify(counts));
 };
 
 module.exports = {uploadFile, dependencies: [refseqName], SOURCE_DEFN};
