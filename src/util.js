@@ -16,7 +16,7 @@ const crypto = require('crypto');
 
 const {logger} = require('./logging');
 
-const INTERNAL_SOURCE_NAME = 'bcgsc';
+const INTERNAL_SOURCE_NAME = 'graphkb';
 
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
 
