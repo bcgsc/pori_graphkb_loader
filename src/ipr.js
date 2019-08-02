@@ -184,7 +184,7 @@ const extractAppliesTo = async (conn, record, source) => {
         } else if (relevance === 'oncogenic' || relevance === 'oncogenic fusion') {
             // applies to the variant?
             if (variants.length === 1) {
-                return null;
+                return variants[0];
             }
             throw new Error(`unable to determine the variant being referenced (relevance=${relevance})`);
         }
@@ -534,8 +534,9 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
             .filter(v => !v.isFeature)
             .map(async variant => processVariant(conn, variant))
     );
+
     const features = await Promise.all(
-        record.variants.filter(v => v.isFeature).map(async v => getFeature(v.name))
+        record.variants.filter(v => v.isFeature).map(async v => getFeature(conn, v.name))
     );
     for (const variant of variants) {
         impliedBy.push(rid(variant));
@@ -563,6 +564,9 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         } else {
             [evidence] = await _pubmed.fetchAndLoadByIds(conn, [sourceId]);
         }
+        if (!evidence) {
+            throw new Error(`unable to retrieve evidence record for sourceId (${sourceId})`);
+        }
         supportedBy.push(rid(evidence));
     }
     // determine the appliesTo
@@ -581,11 +585,17 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         sort: orderPreferredOntologyTerms
     });
     const reviews = [];
+    let reviewStatus = 'pending';
     if (record.createdBy) {
-        reviews.push({createdBy: record.createdBy, createdAt: record.createdAt, reviewStatus: 'initial'});
+        reviews.push({createdBy: record.createdBy, createdAt: record.createdAt, status: 'initial'});
     }
+    if (record.reviewedBy && record.reviewedBy !== record.createdBy) {
+        reviewStatus = 'passed';
+        reviews.push({createdBy: record.reviewedBy, createdAt: record.reviewedAt, status: 'passed'});
+    }
+    // console.log(record);
     // now create the statement
-    return conn.addRecord({
+    await conn.addRecord({
         endpoint: 'statements',
         content: {
             appliesTo: rid(appliesTo),
@@ -594,7 +604,8 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
             impliedBy,
             source: rid(source),
             sourceId: record.ident,
-            reviewStatus: 'pending'
+            reviewStatus,
+            reviews
         },
         existsOk: true,
         fetchExisting: false
@@ -625,7 +636,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
         const newRecord = convertRowFields(HEADER, record);
 
         if (
-            (newRecord.evidenceType !== 'pubmed' && !newRecord.evidenceType.startsWith('ClinicalT'))
+            (!['pubmed', 'pmcid'].includes(newRecord.evidenceType) && !newRecord.evidenceType.startsWith('ClinicalT'))
             || newRecord.reviewStatus.toLowerCase() === 'flagged-incorrect'
             || newRecord.relevance === 'observed'
         ) {
@@ -678,6 +689,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
         }
     }
     logger.info(`loading ${pubmedIdList.size} articles from pubmed`);
+    await _pubmed.preLoadCache(conn);
     await _pubmed.fetchAndLoadByIds(conn, Array.from(pubmedIdList));
 
     const errorList = [];
@@ -693,8 +705,13 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
             counts.success++;
         } catch (err) {
             const msg = err.toString();
-            if (err.statusCode === 500 || msg.includes('of undefined') || msg.includes('not a function')) {
-                console.error(err.error);
+            if (
+                err.statusCode === 500
+                || msg.includes('of undefined')
+                || msg.includes('not a function')
+                || msg.includes('Cannot read property')
+            ) {
+                console.error(err.error || err);
                 console.error((err.options || {}).body);
                 console.log(record);
             }
