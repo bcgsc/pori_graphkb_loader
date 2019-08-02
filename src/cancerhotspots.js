@@ -12,7 +12,8 @@ const {
     rid,
     convertRowFields,
     orderPreferredOntologyTerms,
-    hashStringtoId
+    hashStringtoId,
+    preferredFeatures
 } = require('./util');
 const _entrezGene = require('./entrez/gene');
 const {SOURCE_DEFN: {name: ensemblName}} = require('./ensembl');
@@ -33,23 +34,85 @@ const HEADER = {
     protein: 'HGVSp_Short',
     transcriptId: 'Transcript_ID',
     dbsnp: 'dbSNP_RS',
-    diseaseId: 'oncotree_detailed'
+    diseaseId: 'oncotree_detailed',
+    impact: 'IMPACT',
+    assembly: 'NCBI_Build',
+    chromosome: 'Chromosome',
+    start: 'Start_Position',
+    stop: 'End_Position',
+    clinSig: 'CLIN_SIG',
+    refSeq: 'Reference_Allele',
+    untemplatedSeq: 'Allele'
 };
 
 
 const diseasesCache = {};
 const featureCache = {};
+const chromosomeCache = {};
 
 /**
  * Create and link the variant defuinitions for a single row/record
  */
 const processVariants = async ({conn, record, source}) => {
     const {
-        protein, cds, transcriptId, geneId
+        protein, cds, transcriptId, geneId, chromosome, start, stop
     } = record;
 
     let proteinVariant,
-        cdsVariant;
+        cdsVariant,
+        genomicVariant;
+
+    try {
+        // get the chromosome
+        let reference1;
+        if (chromosomeCache[chromosome] !== undefined) {
+            reference1 = chromosomeCache[chromosome];
+        } else {
+            reference1 = await conn.getUniqueRecordBy({
+                endpoint: 'features',
+                where: {sourceId: chromosome, name: chromosome, or: 'sourceId,name', biotype: 'chromosome'},
+                sort: preferredFeatures
+            });
+            chromosomeCache[chromosome] = reference1;
+        }
+        // try to create the genomic variant
+        const refSeq = record.refSeq === '-'
+            ? ''
+            : record.refSeq;
+        const untemplatedSeq = record.untemplatedSeq === '-'
+            ? ''
+            : record.untemplatedSeq;
+        let notation = `${chromosome}:g.`;
+        if (refSeq.length && untemplatedSeq.length) {
+            if (refSeq.length === 1 && untemplatedSeq.length === 1) {
+                // substitution
+                notation = `${notation}${start}${refSeq}>${untemplatedSeq}`;
+            } else {
+                // indel
+                notation = `${notation}${start}_${stop}del${refSeq}ins${untemplatedSeq}`;
+            }
+        } else if (refSeq.length === 0) {
+            // insertion
+            notation = `${notation}${start}_${stop}ins${untemplatedSeq}`;
+        } else {
+            // deletion
+            notation = `${notation}${start}_${stop}del${refSeq}`;
+        }
+        const {
+            noFeatures, multiFeature, prefix, ...variant
+        } = variantParser(notation);
+
+        variant.reference1 = rid(reference1);
+        variant.type = rid(await conn.getVocabularyTerm(variant.type));
+        genomicVariant = rid(await conn.addVariant({
+            endpoint: 'positionalvariants',
+            content: {...variant},
+            existsOk: true
+        }));
+    } catch (err) {
+        logger.warn(`failed to create the genomic variant (${chromosome}:${start}-${stop})`)
+        logger.warn(err);
+    }
 
     try {
         // get the gene
@@ -113,6 +176,23 @@ const processVariants = async ({conn, record, source}) => {
     } catch (err) {
         logger.error(`Failed the cds variant (${transcriptId}:${cds}) ${err}`);
     }
+
+    // link the genomic variant
+    if (genomicVariant && cdsVariant) {
+        await conn.addRecord({
+            endpoint: 'infers',
+            content: {out: rid(genomicVariant), in: rid(cdsVariant), source: rid(source)},
+            existsOk: true,
+            fetchExisting: false
+        });
+    } else if (genomicVariant) {
+        await conn.addRecord({
+            endpoint: 'infers',
+            content: {out: rid(genomicVariant), in: rid(proteinVariant), source: rid(source)},
+            existsOk: true,
+            fetchExisting: false
+        });
+    }
     return proteinVariant;
 };
 
@@ -120,6 +200,7 @@ const processRecord = async (conn, record, source, relevance) => {
     const {diseaseId, sourceId} = record;
     // get the protein variant
     const variantId = await processVariants({conn, record, source});
+
     // get the disease by id from oncotree (try cache first)
     let disease;
     if (diseasesCache[diseaseId]) {
@@ -189,42 +270,46 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     logger.info(`${previousLoad.size} loaded statements`);
 
     const parserPromise = new Promise((resolve, reject) => {
-        csv
+        const parser = csv
             .parseFile(filename, {
                 headers: true, comment: '#', trim: true, delimiter: '\t'
             })
-            .transform((data, callback) => {
+            .on('data', (data) => {
                 const record = convertRowFields(HEADER, data);
                 const sourceId = createRowId(record);
                 record.sourceId = sourceId;
                 index++;
-                if (previousLoad.has(sourceId)) {
+                if (
+                    record.impact.toLowerCase() !== 'high'
+                    || record.clinSig === ''
+                    || record.clinSig.includes('benign')
+                ) {
+                    counts.skip++;
+                } else if (previousLoad.has(sourceId)) {
                     logger.info(`Already loaded ${sourceId}`);
-                    callback(null, record);
                 } else if (record.protein.endsWith('=')) {
                     counts.skip++;
                     logger.info('skipping synonymous protein variant');
-                    callback(null, record);
                 } else if (record.protein.endsWith('_splice')) {
                     counts.skip++;
                     logger.info('skipping non-standard splice notation');
-                    callback(null, record);
                 } else {
+                    parser.pause();
+
                     logger.info(`processing row #${index} ${sourceId}`);
                     processRecord(conn, record, source, relevance)
                         .then(() => {
                             logger.info('created record');
                             counts.success++;
-                            callback(null, record);
+                            parser.resume();
                         }).catch((err) => {
                             logger.error(err);
                             errorList.push({record, error: err, errorMessage: err.toString()});
                             counts.error++;
-                            callback(null, record);
+                            parser.resume();
                         });
                 }
             })
-            .on('data', () => {}) // will not run w/o this
             .on('error', (err) => {
                 console.error(err);
                 logger.error(err);
