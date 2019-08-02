@@ -48,6 +48,7 @@ const convertNulls = (where) => {
     return queryParams;
 };
 
+const nullOrUndefined = value => value === undefined || value === null;
 
 /**
  * Given two ontology terms, return the newer, non-deprecated, independant, term first.
@@ -58,20 +59,33 @@ const convertNulls = (where) => {
  * @returns {Number} the sorting number (-1, 0, +1)
  */
 const orderPreferredOntologyTerms = (term1, term2) => {
+    // prefer non-deprecated terms
     if (term1.deprecated && !term2.deprecated) {
         return 1;
     } if (term2.deprecated && !term1.deprecated) {
         return -1;
-    } if (term1.dependency == null & term2.dependency != null) {
+    }
+    // prefer terms with independent sourceId
+    if (term1.dependency == null & term2.dependency != null) {
         return -1;
     } if (term2.dependency == null & term1.dependency != null) {
         return 1;
-    } if (term1.sourceId === term2.sourceId && rid(term1.source, true) === rid(term2.source, true)) {
+    }
+    // when terms have the same sourceId and source
+    if (term1.sourceId === term2.sourceId && rid(term1.source, true) === rid(term2.source, true)) {
+        // prefer generic to versioned terms (will not be together unless version not specified)
+        if (nullOrUndefined(term1.sourceIdVersion) && !(term2.sourceIdVersion)) {
+            return -1;
+        } if (nullOrUndefined(term2.sourceIdVersion) && !(term1.sourceIdVersion)) {
+            return 1;
+        }
+        // prefer newer/later versions
         if (term1.sourceIdVersion < term2.sourceIdVersion) {
             return -1;
         } if (term1.sourceIdVersion > term2.sourceIdVersion) {
             return 1;
         }
+        // prefer newer/later source version
         if (term1.source && term2.source) {
             if (term1.source.version < term2.source.version) {
                 return -1;
@@ -79,6 +93,7 @@ const orderPreferredOntologyTerms = (term1, term2) => {
                 return 1;
             }
         }
+        // prefer terms with descriptions
         if (term1.description && !term2.description) {
             return -1;
         } if (!term1.description && term2.description) {
@@ -439,7 +454,8 @@ class ApiConnection {
                 refSeq: null,
                 break1Repr: null,
                 break2Repr: null,
-                truncation: null
+                truncation: null,
+                assembly: null
             });
         }
         const {
