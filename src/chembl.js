@@ -72,6 +72,12 @@ const fetchAndLoadById = async (conn, drugId) => {
         name: chemblRecord.pref_name
     };
 
+    if (content.name) {
+        content.displayName = `${content.name} [${content.sourceId.toUpperCase()}]`;
+    } else {
+        content.displayName = content.sourceId.toUpperCase();
+    }
+
     if (chemblRecord.molecule_properties && chemblRecord.molecule_properties.full_molformula) {
         content.molecularFormula = chemblRecord.molecule_properties.full_molformula;
     }
