@@ -311,7 +311,7 @@ const upload = async (opt) => {
         error: 0, success: 0, skip: 0, highlight: 0
     };
     const filtered = [];
-    const pmidList = new Set();
+    const pmidList = [];
     const errorList = [];
 
     for (const summaryRecord of recordsList) {
@@ -333,11 +333,11 @@ const upload = async (opt) => {
         filtered.push(record);
         for (const diseaseRec of record.diseases) {
             if (diseaseRec.source_pubmed_id) {
-                pmidList.add(`${diseaseRec.source_pubmed_id}`);
+                pmidList.push(`${diseaseRec.source_pubmed_id}`);
             }
         }
     }
-    logger.info(`loading ${pmidList.size} pubmed articles`);
+    logger.info(`loading ${pmidList.length} pubmed articles`);
     await _pubmed.fetchAndLoadByIds(conn, pmidList);
     logger.info(`processing ${filtered.length} remaining docm records`);
     for (let index = 0; index < filtered.length; index++) {
