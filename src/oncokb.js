@@ -785,10 +785,10 @@ const upload = async (opt) => {
     logger.info('pre-loading entrez genes');
     await _entrezGene.preLoadCache(conn);
     logger.info('load oncogene/tumour suppressor list');
-    // await uploadAllCuratedGenes({conn, baseUrl: URL, source});
+    await uploadAllCuratedGenes({conn, baseUrl: URL, source});
     logger.info('load drug ontology');
-    // await uploadAllTherapies({conn, URL, source});
-    // await addEvidenceLevels(conn, source);
+    await uploadAllTherapies({conn, URL, source});
+    await addEvidenceLevels(conn, source);
 
     const records = [];
     const counts = {errors: 0, success: 0, skip: 0};
