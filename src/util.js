@@ -147,7 +147,7 @@ const generateRanks = (arr) => {
 
 const preferredVocabulary = (term1, term2) => {
     const sourceRank = generateRanks([
-        'bcgsc',
+        INTERNAL_SOURCE_NAME,
         'sequence ontology',
         'variation ontology'
     ]);
