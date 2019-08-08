@@ -1,4 +1,6 @@
 const fs = require('fs');
+const stableStringify = require('json-stable-stringify');
+
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const {
@@ -8,7 +10,8 @@ const {
     INTERNAL_SOURCE_NAME,
     orderPreferredOntologyTerms,
     preferredDiseases,
-    preferredFeatures
+    preferredFeatures,
+    hashStringtoId
 } = require('./util');
 const {logger} = require('./logging');
 const _hgnc = require('./hgnc');
@@ -65,6 +68,10 @@ const relevanceMapping = {
     resistant: 'resistance',
     responsive: 'response',
     'no responsive': 'no response'
+};
+
+const diseaseMapping = {
+    'Any cancer type': 'cancer'
 };
 
 
@@ -256,9 +263,11 @@ const processVariants = async ({conn, row, source}) => {
 const processRow = async ({row, source, conn}) => {
     // process the protein notation
     // look up the disease by name
+    const diseaseName = diseaseMapping[row.disease] || `${row.disease}|${row.disease} cancer`;
+
     const disease = rid(await conn.getUniqueRecordBy({
         endpoint: 'diseases',
-        where: {name: row.disease},
+        where: {name: diseaseName},
         sort: preferredDiseases
     }));
     const therapyName = row.therapy.includes(';')
@@ -325,15 +334,17 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
 
     logger.info(`loading ${rows.length} rows`);
     for (let index = 0; index < rows.length; index++) {
-        const row = convertRowFields(HEADER, rows[index]);
+        const rawRow = rows[index];
+        const sourceId = hashStringtoId(stableStringify(rawRow));
+        logger.info(`processing: ${sourceId}`);
+        const row = {
+            _raw: rawRow,
+            sourceId,
+            ...convertRowFields(HEADER, rows[index])
+        };
         row.therapy = parseTherapy(row);
-
         if (row.evidenceLevel.includes(',')) {
             logger.info(`skipping row #${index} due to multiple evidence levels (${row.evidenceLevel})`);
-            counts.skip++;
-            continue;
-        } if (row.disease.includes(';')) {
-            logger.info(`skipping row #${index} due to multiple diseases (${row.disease})`);
             counts.skip++;
             continue;
         } if (row.gene.includes(';')) {
@@ -356,19 +367,16 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
             logger.error(err);
             continue;
         }
-
-        for (const combo of variants) {
-            try {
-                logger.info(`processing row #${index}`);
-                await processRow({row: {...row, variants: combo}, conn, source});
-                counts.success++;
-            } catch (err) {
-                if (err.statusCode >= 300) {
-                    throw err;
+        for (const disease of row.disease.split(';')) {
+            for (const combo of variants) {
+                try {
+                    await processRow({row: {...row, variants: combo, disease}, conn, source});
+                    counts.success++;
+                } catch (err) {
+                    errorList.push({row, error: err, index});
+                    logger.error(err);
+                    counts.error++;
                 }
-                errorList.push({row, error: err, index});
-                logger.error(err);
-                counts.error++;
             }
         }
     }
