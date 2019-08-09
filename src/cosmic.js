@@ -2,6 +2,7 @@
  * @module importer/cosmic
  */
 const fs = require('fs');
+const stableStringify = require('json-stable-stringify');
 
 const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
 
@@ -10,7 +11,8 @@ const {
     loadDelimToJson,
     rid,
     convertRowFields,
-    orderPreferredOntologyTerms
+    orderPreferredOntologyTerms,
+    hashStringtoId
 } = require('./util');
 const _pubmed = require('./entrez/pubmed');
 const _hgnc = require('./hgnc');
@@ -38,8 +40,6 @@ const HEADER = {
     cds: 'CDS Mutation'
 };
 
-
-const getRecordId = record => `${record.sampleName}:${record.sampleId}:${record.mutationId}`;
 
 /**
  * Create and link the variant defuinitions for a single row/record
@@ -160,7 +160,7 @@ const processCosmicRecord = async (conn, record, source) => {
             supportedBy: [rid(record.publication)],
             source: rid(source),
             reviewStatus: 'not required',
-            sourceId: getRecordId(record)
+            sourceId: record.sourceId
         },
         existsOk: true,
         fetchExisting: false
@@ -190,8 +190,9 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     await _pubmed.fetchAndLoadByIds(conn, jsonList.map(rec => rec[HEADER.pubmed]));
 
     for (let index = 0; index < jsonList.length; index++) {
-        const record = convertRowFields(HEADER, jsonList[index]);
-        logger.info(`processing (${index} / ${jsonList.length}) ${getRecordId(record)}`);
+        const sourceId = hashStringtoId(stableStringify(jsonList[index]));
+        const record = {sourceId, ...convertRowFields(HEADER, jsonList[index])};
+        logger.info(`processing (${index} / ${jsonList.length}) ${sourceId}`);
         if (record.protein.startsWith('p.?')) {
             counts.skip++;
             continue;
