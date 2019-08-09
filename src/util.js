@@ -180,8 +180,8 @@ const preferredDrugs = (term1, term2) => {
 const preferredFeatures = (term1, term2) => {
     const sourceRank = generateRanks([
         'grch',
-        'hgnc',
         'entrez',
+        'hgnc',
         'ensembl',
         'refseq'
     ]);
