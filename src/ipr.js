@@ -195,10 +195,7 @@ const extractAppliesTo = async (conn, record, source) => {
             sort: preferredDiseases
         });
     } else if (statementType === 'prognostic') {
-        return conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: 'patient', source: {name: 'bcgsc'}}
-        });
+        return conn.getVocabularyTerm('patient');
     }
     throw new Error(`not implemented (relevance=${relevance}, statementType=${statementType}, disease=${disease || ''})`);
 };
