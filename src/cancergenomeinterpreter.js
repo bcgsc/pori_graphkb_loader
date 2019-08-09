@@ -1,5 +1,4 @@
 const fs = require('fs');
-const stableStringify = require('json-stable-stringify');
 
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
@@ -11,7 +10,7 @@ const {
     orderPreferredOntologyTerms,
     preferredDiseases,
     preferredFeatures,
-    hashStringtoId
+    hashRecordToId
 } = require('./util');
 const {logger} = require('./logging');
 const _hgnc = require('./hgnc');
@@ -335,7 +334,7 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
     logger.info(`loading ${rows.length} rows`);
     for (let index = 0; index < rows.length; index++) {
         const rawRow = rows[index];
-        const sourceId = hashStringtoId(stableStringify(rawRow));
+        const sourceId = hashRecordToId(rawRow);
         logger.info(`processing: ${sourceId}`);
         const row = {
             _raw: rawRow,

@@ -12,6 +12,7 @@ const sleep = require('sleep-promise');
 const HTTP_STATUS_CODES = require('http-status-codes');
 const jsonpath = require('jsonpath');
 const crypto = require('crypto');
+const stableStringify = require('json-stable-stringify');
 
 
 const {logger} = require('./logging');
@@ -616,7 +617,8 @@ const requestWithRetry = async (requestOpt, {waitSeconds = 2, retries = 1} = {})
 };
 
 
-const hashStringtoId = input => crypto.createHash('md5').update(input).digest('hex');
+const hashStringToId = input => crypto.createHash('md5').update(input).digest('hex');
+const hashRecordToId = input => hashStringToId(stableStringify(input));
 
 
 const shallowObjectKey = obj => JSON.stringify(obj, (k, v) => (k
@@ -669,5 +671,6 @@ module.exports = {
     requestWithRetry,
     convertNulls,
     convertRowFields,
-    hashStringtoId
+    hashStringToId,
+    hashRecordToId
 };

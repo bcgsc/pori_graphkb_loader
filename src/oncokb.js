@@ -4,7 +4,6 @@
 const request = require('request-promise');
 const Ajv = require('ajv');
 const fs = require('fs');
-const stableStringify = require('json-stable-stringify');
 
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
@@ -13,7 +12,7 @@ const {
     preferredDrugs,
     rid,
     checkSpec,
-    hashStringtoId
+    hashRecordToId
 } = require('./util');
 const _pubmed = require('./entrez/pubmed');
 const _entrezGene = require('./entrez/gene');
@@ -807,7 +806,7 @@ const upload = async (opt) => {
 
         logger.info(`loaded ${result.length} records`);
         for (const record of result) {
-            record.id = hashStringtoId(stableStringify(record));
+            record.id = hashRecordToId(record);
             try {
                 records.push(...parser(record));
             } catch (err) {
