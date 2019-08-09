@@ -204,7 +204,8 @@ const extractAppliesTo = async (conn, record, source) => {
 const extractRelevance = (record) => {
     const {
         statementType,
-        relevance: rawRelevance
+        relevance: rawRelevance,
+        context
     } = record;
 
     const relevance = rawRelevance
@@ -223,6 +224,8 @@ const extractRelevance = (record) => {
             return 'unfavourable prognosis';
         }
         return 'prognostic indicator';
+    } if (context === 'oncogenic fusion' && relevance === 'gain of function') {
+        return 'oncogenic fusion';
     }
     return relevance;
 };
