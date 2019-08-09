@@ -48,6 +48,7 @@ const therapeuticConcepts = [
     'Vitamin'
 ];
 
+
 const DEPRECATED = [
     'C61063', // obsolete concept
     'C85834' // retired concept
@@ -82,45 +83,75 @@ const pickEndpoint = (conceptName) => {
  */
 const cleanRawRow = (rawRow) => {
     const {
-        id, synonyms, parents, xmlTag, name, definition, semanticType
+        id,
+        synonyms: rawSynonyms,
+        parents: rawParents,
+        xmlTag,
+        name: rawName,
+        definition,
+        semanticType,
+        conceptStatus
     } = rawRow;
+
     const row = {
-        synonyms: [],
-        parents: [],
-        description: definition
+        parents: (
+            rawParents.split('|')
+                .map(parent => parent.trim())
+                .filter(parent => parent && !DEPRECATED.includes(parent))
+                .map(parent => parent.toLowerCase())
+        ),
+        description: definition,
+        deprecated: (
+            rawParents.split('|').some(p => DEPRECATED.includes(p))
+                || conceptStatus === 'Obsolete_Concept'
+                || conceptStatus === 'Retired_Concept'
+        )
     };
     const sourceId = id.toLowerCase().trim();
     const endpoint = pickEndpoint(semanticType);
 
     // use the synonym name if no name given
-    row.synonyms = synonyms.split('|')
+    const synonyms = rawSynonyms.split('|')
         .map(s => s.toLowerCase().trim())
         .filter(s => s);
+    let name = rawName.toLowerCase().trim();
 
-    if (!row.name && row.synonyms.length > 0) {
-        row.synonyms.sort();
-        row.name = row.synonyms[0];
-    } else {
-        // if there is multiple names, demote the extra to synonyms
+    // split up the name if it is a list
+    if (name && name.includes('|')) {
         const names = name.split('|')
             .map(s => s.toLowerCase().trim())
             .filter(s => s);
         names.sort();
-        row.name = names[0];
-        row.synonyms.push(...names.slice(1));
+        [name] = names;
+        synonyms.push(...names.slice(1));
+    }
+
+    // non-human concepts should use fuller name
+    if (!/\b(murine|mouse|rat)\b/.exec(name)) {
+        for (const synonym of synonyms) {
+            if (/\b(murine|mouse|rat)\b/.exec(synonym)) {
+                name = synonym;
+                break;
+            }
+        }
+    }
+
+    // use the synonym name if no name given
+    if (!name && synonyms.length > 0) {
+        synonyms.sort();
+        name = synonyms[0];
     }
 
     const url = xmlTag.replace(/^</, '').replace(/>$/, '');
-    const deprecated = parents.split('|').some(p => DEPRECATED.includes(p));
 
     // add the parents
-    row.parents = parents.split('|')
-        .map(parent => parent.trim())
-        .filter(parent => parent && !DEPRECATED.includes(parent))
-        .map(parent => parent.toLowerCase());
-    row.synonyms = Array.from(new Set(row.synonyms)).filter(s => s !== row.name.toLowerCase().trim());
     return {
-        ...row, url, deprecated, endpoint, sourceId
+        ...row,
+        url,
+        endpoint,
+        sourceId,
+        name,
+        synonyms: Array.from(new Set(synonyms)).filter(s => s !== name)
     };
 };
 
@@ -134,7 +165,7 @@ const cleanRawRow = (rawRow) => {
 const uploadFile = async ({filename, conn}) => {
     logger.info('Loading external NCIT data');
     logger.info(`loading: ${filename}`);
-    const rows = await loadDelimToJson(filename, {
+    const rawRows = await loadDelimToJson(filename, {
         delim: '\t',
         header: [
             'id',
@@ -147,6 +178,31 @@ const uploadFile = async ({filename, conn}) => {
             'semanticType'
         ]
     });
+    // determine unresolvable records
+    const rows = [];
+    const nameDuplicates = {};
+    const counts = {skip: 0, success: 0, error: 0};
+    for (const raw of rawRows) {
+        try {
+            const row = cleanRawRow(raw);
+            if (!nameDuplicates[row.name]) {
+                nameDuplicates[row.name] = [];
+            }
+            nameDuplicates[row.name].push(row);
+            rows.push(row);
+        } catch (err) {
+            counts.skip++;
+        }
+    }
+    const rejected = new Set();
+    // if possible, assign the row another name from its list of synonyms (instead of the display name)
+    for (const [name, dups] of Object.entries(nameDuplicates)) {
+        if (name && dups && dups.length > 1) {
+            logger.info(`ncit terms (${dups.map(r => r.sourceId).join(', ')}) have non-unique name (${name})`);
+            dups.forEach(d => rejected.add(d.sourceId));
+        }
+    }
+    logger.info(`rejected ${rejected.size} rows for unresolveable primary/display name conflicts`);
 
     const source = rid(await conn.addRecord({
         endpoint: 'sources',
@@ -169,20 +225,15 @@ const uploadFile = async ({filename, conn}) => {
     }
     logger.info(`loaded and cached ${Object.keys(cached).length} records`);
 
-    const counts = {skip: 0, success: 0, error: 0};
 
     for (let i = 0; i < rows.length; i++) {
-        logger.info(`processing ${rows[i].id}`);
-        try {
-            pickEndpoint(rows[i].semanticType);
-        } catch (err) {
-            logger.warn(err);
-            counts.skip++;
+        const row = rows[i];
+        logger.info(`processing (${i} / ${rows.length}) ${row.sourceId}`);
+        if (rejected.has(row.sourceId)) {
+            counts.error++;
             continue;
         }
         try {
-            const row = cleanRawRow(rows[i]);
-
             const cacheKey = generateCacheKey(row);
 
             if (recordsById[cacheKey]) {
@@ -219,23 +270,28 @@ const uploadFile = async ({filename, conn}) => {
 
                 // add the synonyms
                 await Promise.all(row.synonyms.map(async (synonym) => {
-                    const alias = await conn.addRecord({
-                        endpoint: row.endpoint,
-                        content: {
-                            source,
-                            sourceId: record.sourceId,
-                            name: synonym,
-                            dependency: rid(record),
-                            deprecated: record.deprecated
-                        },
-                        existsOk: true
-                    });
-                    await conn.addRecord({
-                        endpoint: 'aliasof',
-                        content: {out: rid(alias), in: rid(record), source},
-                        existsOk: true,
-                        fetchExisting: false
-                    });
+                    try {
+                        const alias = await conn.addRecord({
+                            endpoint,
+                            content: {
+                                source,
+                                sourceId: record.sourceId,
+                                name: synonym,
+                                dependency: rid(record),
+                                deprecated: record.deprecated
+                            },
+                            existsOk: true
+                        });
+                        await conn.addRecord({
+                            endpoint: 'aliasof',
+                            content: {out: rid(alias), in: rid(record), source},
+                            existsOk: true,
+                            fetchExisting: false
+                        });
+                    } catch (err) {
+                        logger.error(`failed to link (${record.sourceId}) to alias (${synonym})`);
+                        logger.error(err);
+                    }
                 }));
             }
 
