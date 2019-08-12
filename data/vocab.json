@@ -231,7 +231,7 @@
                 }
             ]
         },
-        "deletrious": {
+        "deleterious": {
             "deprecated": true,
             "links": [
                 {
@@ -240,7 +240,7 @@
                 }
             ]
         },
-        "deletrious mutation": {
+        "deleterious mutation": {
             "deprecated": true,
             "links": [
                 {
@@ -782,6 +782,21 @@
                     "target": "tumour suppressive"
                 }
             ]
+        },
+        "loss of heterozygosity": {
+            "links": [
+                {
+                    "class": "AliasOf",
+                    "target": "loh"
+                },
+                {
+                    "class": "AliasOf",
+                    "target": "mutation"
+                }
+            ]
+        },
+        "loh": {
+            "displayName": "LOH"
         },
         "loss of function": {
             "description": "some normal functionality has been lost",
