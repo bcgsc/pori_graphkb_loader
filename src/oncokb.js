@@ -77,40 +77,6 @@ const curatedGeneSpec = ajv.compile({
         tsg: {type: 'boolean'}
     }
 });
-/*
-{
-    "gene": {
-      "entrezGeneId": 2064,
-      "hugoSymbol": "ERBB2",
-      "name": "erb-b2 receptor tyrosine kinase 2",
-      "oncogene": true,
-      "curatedIsoform": "ENST00000269571",
-      "curatedRefSeq": "NM_004448.2",
-      "geneAliases": [
-        "CD340",
-        "MLN 19",
-        "TKR1",
-        "NGL",
-        "HER-2/neu",
-        "HER2",
-        "HER-2",
-        "NEU"
-      ],
-      "tsg": false
-    },
-    "consequence": {
-      "term": "inframe_insertion",
-      "isGenerallyTruncating": false,
-      "description": "An inframe non synonymous variant that inserts bases into in the coding sequence"
-    },
-    "alteration": "E770_K831ins",
-    "name": "Exon 20 insertions",
-    "refResidues": null,
-    "proteinStart": 770,
-    "proteinEnd": 831,
-    "variantResidues": null
-  },
-  */
 
 const variantSpec = ajv.compile({
     type: 'object',
@@ -835,7 +801,7 @@ const upload = async (opt) => {
             errorList.push({...record, error: err.error || err, errorMessage: err.toString()});
         }
     }
-    const errorOutput = `${errorLogPrefix}-oncokbErrors.json`;
+    const errorOutput = `${errorLogPrefix}-oncokb.json`;
     logger.info(`writing errors to ${errorOutput}`);
     fs.writeFileSync(errorOutput, JSON.stringify({records: errorList}, null, 2));
     logger.info(JSON.stringify(counts));
