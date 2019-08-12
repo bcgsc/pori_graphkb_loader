@@ -372,7 +372,12 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
                     await processRow({row: {...row, variants: combo, disease}, conn, source});
                     counts.success++;
                 } catch (err) {
-                    errorList.push({row, error: err, index});
+                    errorList.push({
+                        row,
+                        error: err,
+                        index,
+                        errorMessage: err.toString()
+                    });
                     logger.error(err);
                     counts.error++;
                 }
