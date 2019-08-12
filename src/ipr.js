@@ -103,27 +103,14 @@ const extractAppliesTo = async (conn, record, source) => {
         variants,
         features,
         disease,
-        supportedBy
+        supportedBy,
+        relevance
     } = record;
 
     const appliesTo = appliesToInput && appliesToInput.replace(/-/g, ' ');
-    const relevance = record.relevance.replace(/-/g, ' ');
 
     if (statementType === 'therapeutic') {
-        if ([
-            'inferred resistance',
-            'acquired resistance',
-            'inferred resistance',
-            'inferred sensitivity',
-            'minimal resistance',
-            'no resistance',
-            'no response',
-            'no sensitivity',
-            'reduced sensitivity',
-            'resistance',
-            'response',
-            'sensitivity'
-        ].includes(relevance)) {
+        if (relevance.includes('resistance') || relevance.includes('sensitivity') || relevance.includes('response')) {
             let drugName = stripDrugPlurals(appliesTo);
             if (THERAPY_MAPPING[drugName]) {
                 drugName = THERAPY_MAPPING[drugName];
@@ -167,27 +154,21 @@ const extractAppliesTo = async (conn, record, source) => {
                 where: {name: disease},
                 sort: preferredDiseases
             });
-        } else if (relevance.includes('tumour suppressor')
-            || [
-                'test target',
-                'cancer associated gene',
-                'oncogene',
-                'putative oncogene',
-                'commonly amplified oncogene',
-                'haploinsufficient'
+        } else if (
+            [
+                'tumour suppressive',
+                'likely tumour suppressive',
+                'oncogenic',
+                'likely oncogenic',
+                'haploinsufficient',
+                'oncogenic fusion'
             ].includes(relevance)
         ) {
-            if (features.length === 1) {
-                return features[0];
+            if (features.length + variants.length === 1) {
+                return features[0] || variants[0];
             }
-            throw new Error(`unable to determine the gene being referenced (relevance=${relevance})`);
-        } else if (relevance === 'oncogenic' || relevance === 'oncogenic fusion') {
-            // applies to the variant?
-            if (variants.length === 1) {
-                return variants[0];
-            }
-            throw new Error(`unable to determine the variant being referenced (relevance=${relevance})`);
         }
+        throw new Error(`unable to determine the target gene (${features.length}) or variant (${variants.length}) being referenced (relevance=${relevance})`);
     } else if (statementType === 'diagnostic') {
         return conn.getUniqueRecordBy({
             endpoint: 'diseases',
@@ -205,7 +186,7 @@ const extractRelevance = (record) => {
     const {
         statementType,
         relevance: rawRelevance,
-        context
+        appliesTo
     } = record;
 
     const relevance = rawRelevance
@@ -224,7 +205,7 @@ const extractRelevance = (record) => {
             return 'unfavourable prognosis';
         }
         return 'prognostic indicator';
-    } if (context === 'oncogenic fusion' && relevance === 'gain of function') {
+    } if (appliesTo === 'oncogenic fusion' && relevance === 'gain of function') {
         return 'oncogenic fusion';
     }
     return relevance;
@@ -570,14 +551,6 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         }
         supportedBy.push(rid(evidence));
     }
-    // determine the appliesTo
-    const appliesTo = await extractAppliesTo(
-        conn,
-        {
-            ...record, variants, features, supportedBy
-        },
-        source
-    );
 
     // determine the record relevance
     const relevance = await conn.getUniqueRecordBy({
@@ -585,6 +558,16 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         where: {name: extractRelevance(record), source: {name: INTERNAL_SOURCE_NAME}},
         sort: orderPreferredOntologyTerms
     });
+
+    // determine the appliesTo
+    const appliesTo = await extractAppliesTo(
+        conn,
+        {
+            ...record, variants, features, supportedBy, relevance: relevance.name
+        },
+        source
+    );
+
     const reviews = [];
     let reviewStatus = 'pending';
     if (record.createdBy) {
