@@ -219,18 +219,6 @@
                 }
             ]
         },
-        "deletion": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "indel"
-                },
-                {
-                    "class": "SubClassOf",
-                    "target": "copy loss"
-                }
-            ]
-        },
         "deleterious": {
             "deprecated": true,
             "links": [
@@ -246,6 +234,18 @@
                 {
                     "class": "DeprecatedBy",
                     "target": "loss of function mutation"
+                }
+            ]
+        },
+        "deletion": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "indel"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "copy loss"
                 }
             ]
         },
@@ -469,6 +469,14 @@
                 {
                     "class": "DeprecatedBy",
                     "target": "strong signature"
+                }
+            ]
+        },
+        "highly recurrent": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "recurrent"
                 }
             ]
         },
@@ -783,18 +791,6 @@
                 }
             ]
         },
-        "loss of heterozygosity": {
-            "links": [
-                {
-                    "class": "AliasOf",
-                    "target": "loh"
-                },
-                {
-                    "class": "AliasOf",
-                    "target": "mutation"
-                }
-            ]
-        },
         "loh": {
             "displayName": "LOH"
         },
@@ -816,6 +812,18 @@
                 },
                 {
                     "class": "SubClassOf",
+                    "target": "mutation"
+                }
+            ]
+        },
+        "loss of heterozygosity": {
+            "links": [
+                {
+                    "class": "AliasOf",
+                    "target": "loh"
+                },
+                {
+                    "class": "AliasOf",
                     "target": "mutation"
                 }
             ]
@@ -883,7 +891,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "recurrent"
+                    "target": "highly recurrent"
                 }
             ]
         },
