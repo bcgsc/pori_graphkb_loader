@@ -14,7 +14,7 @@ const {
     hashRecordToId
 } = require('./util');
 const _pubmed = require('./entrez/pubmed');
-const _hgnc = require('./hgnc');
+const _gene = require('./entrez/gene');
 const {logger} = require('./logging');
 
 const SOURCE_DEFN = {
@@ -50,7 +50,7 @@ const processVariants = async ({conn, record, source}) => {
     try {
         // get the hugo gene
         const [gene] = record.gene.split('_'); // convert MAP2K2_ENST00000262948 to MAP2K2
-        const reference1 = rid(await _hgnc.fetchAndLoadBySymbol({conn, symbol: gene}));
+        const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         // add the protein variant
         let variantString = record.protein;
         if (variantString.startsWith('p.') && variantString.includes('>')) {
@@ -59,7 +59,7 @@ const processVariants = async ({conn, record, source}) => {
         const {
             noFeatures, multiFeature, prefix, ...variant
         } = variantParser(variantString, false);
-        variant.reference1 = reference1;
+        variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         protein = rid(await conn.addVariant({
             endpoint: 'positionalvariants',

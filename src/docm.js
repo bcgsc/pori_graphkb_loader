@@ -14,7 +14,7 @@ const {
 } = require('./util');
 const _pubmed = require('./entrez/pubmed');
 const {logger} = require('./logging');
-const _hgnc = require('./hgnc');
+const _gene = require('./entrez/gene');
 
 const ajv = new Ajv();
 
@@ -165,7 +165,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
 
     try {
         // create the protein variant
-        const reference1 = await _hgnc.fetchAndLoadBySymbol({conn, symbol: gene});
+        const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         let {
             noFeatures, prefix, multiFeature, ...variant
         } = variantParser(parseDocmVariant(aminoAcid), false);
