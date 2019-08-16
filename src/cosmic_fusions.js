@@ -2,6 +2,7 @@
  * @module importer/cosmic
  */
 const fs = require('fs');
+const _ = require('lodash');
 
 const {
     preferredDiseases,
@@ -205,10 +206,19 @@ const processVariants = async ({
 
 
 const processCosmicRecord = async ({
-    conn, record, source, relevance, variantType, geneOnly
+    conn, record, source, relevance, variantType, geneOnly, diseaseSpecific
 }) => {
     // get the disease name
-    const disease = rid(await processDisease({conn, record}));
+    let disease;
+    if (diseaseSpecific) {
+        disease = rid(await processDisease({conn, record}));
+    } else {
+        disease = rid(await conn.getUniqueRecordBy({
+            endpoint: 'diseases',
+            where: {name: 'cancer'},
+            sort: preferredDiseases
+        }));
+    }
     const publications = await _pubmed.fetchAndLoadByIds(conn, record.publications);
 
     const variant = rid(await processVariants({
@@ -272,8 +282,9 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     const errorList = [];
     logger.info(`Processing ${jsonList.length} records`);
 
-    const recurrenceCounts = {};
-    const geneRecurrence = {};
+    const recurrenceCounts = {}; // position specific fusions
+    const diseaseGeneRecurrence = {}; // gene only but disease specific
+    const geneRecurrence = {}; // gene only and not disease specific
     const records = jsonList.map(row => convertRowFields(HEADER, row));
     const relevance = rid(await conn.getVocabularyTerm('recurrent'));
     const variantType = rid(await conn.getVocabularyTerm('fusion'));
@@ -299,10 +310,17 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
 
         // simple recc
         const geneRecId = createGeneReccurrenceId(record);
-        if (geneRecurrence[geneRecId] === undefined) {
-            geneRecurrence[geneRecId] = [];
+        if (diseaseGeneRecurrence[geneRecId] === undefined) {
+            diseaseGeneRecurrence[geneRecId] = [];
         }
-        geneRecurrence[geneRecId].push(record);
+        diseaseGeneRecurrence[geneRecId].push(record);
+
+        // non-disease specific recurrence
+        const nonSpecificRecId = createGeneReccurrenceId(_.omit(record, ['disease1', 'disease2', 'disease3', 'disease4']));
+        if (geneRecurrence[nonSpecificRecId] === undefined) {
+            geneRecurrence[nonSpecificRecId] = [];
+        }
+        geneRecurrence[nonSpecificRecId].push(record);
     }
 
     const recIdList = Object.keys(recurrenceCounts);
@@ -310,23 +328,38 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     const processed = new Set();
 
     for (let i = 0; i < recIdList.length; i++) {
-        const sourceId = recIdList[i];
+        let sourceId = recIdList[i];
         const group = recurrenceCounts[sourceId];
         const sampleCount = (new Set(group.map(row => row.sampleId))).size;
         const [reprRecord] = group; // records are the same for fields being used
-        let geneOnly = false;
+        let geneOnly = false,
+            diseaseSpecific = true;
 
         if (sampleCount < RECURRENCE_THRESHOLD) {
             // these are processed as gene-only statements
             const geneRecId = createGeneReccurrenceId(reprRecord);
-            const geneSampleCount = (new Set(geneRecurrence[geneRecId].map(row => row.sampleId))).size;
+            const geneSampleCount = (new Set(diseaseGeneRecurrence[geneRecId].map(row => row.sampleId))).size;
             if (processed.has(geneRecId)) {
                 continue;
             }
+            sourceId = geneRecId;
             processed.add(geneRecId);
             if (geneSampleCount < RECURRENCE_THRESHOLD) {
-                counts.skip++;
-                continue;
+                // now try with non-specific diseases
+                const nonSpecificRecId = createGeneReccurrenceId(_.omit(reprRecord, ['disease1', 'disease2', 'disease3', 'disease4']));
+
+                if (processed.has(nonSpecificRecId)) {
+                    continue;
+                }
+                processed.add(nonSpecificRecId);
+                const nsCount = (new Set(geneRecurrence[nonSpecificRecId].map(row => row.sampleId))).size;
+
+                if (nsCount < RECURRENCE_THRESHOLD) {
+                    counts.skip++;
+                    continue;
+                }
+                sourceId = nonSpecificRecId;
+                diseaseSpecific = false;
             }
             geneOnly = true; // IMPORTANT
         }
@@ -343,7 +376,8 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
                 source,
                 variantType,
                 relevance,
-                geneOnly
+                geneOnly,
+                diseaseSpecific
             });
             counts.success++;
         } catch (err) {
@@ -351,7 +385,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
             counts.error++;
             errorList.push({
                 record: {
-                    sourceId, reprRecord, sampleCount, publications
+                    sourceId, reprRecord, sampleCount, publications, diseaseSpecific, geneOnly
                 },
                 error: err,
                 errorMessage: err.toString()
