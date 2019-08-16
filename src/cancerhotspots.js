@@ -12,7 +12,7 @@ const {
     rid,
     convertRowFields,
     orderPreferredOntologyTerms,
-    hashStringtoId,
+    hashRecordToId,
     preferredFeatures
 } = require('./util');
 const _entrezGene = require('./entrez/gene');
@@ -70,7 +70,9 @@ const processVariants = async ({conn, record, source}) => {
         } else {
             reference1 = await conn.getUniqueRecordBy({
                 endpoint: 'features',
-                where: {sourceId: chromosome, name: chromosome, or: 'sourceId,name', biotype: 'chromosome'},
+                where: {
+                    sourceId: chromosome, name: chromosome, or: 'sourceId,name', biotype: 'chromosome'
+                },
                 sort: preferredFeatures
             });
             chromosomeCache[chromosome] = reference1;
@@ -110,7 +112,7 @@ const processVariants = async ({conn, record, source}) => {
             existsOk: true
         }));
     } catch (err) {
-        logger.warn(`failed to create the genomic variant (${chromosome}:${start}-${stop})`)
+        logger.warn(`failed to create the genomic variant (${chromosome}:${start}-${stop})`);
         logger.warn(err);
     }
 
@@ -230,7 +232,7 @@ const processRecord = async (conn, record, source, relevance) => {
     });
 };
 
-const createRowId = row => hashStringtoId(Object.keys(HEADER).sort().map(col => row[col].toLowerCase()).join('_'));
+const createRowId = row => hashRecordToId(row);
 
 
 /**

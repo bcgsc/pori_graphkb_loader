@@ -5,9 +5,7 @@
 const Ajv = require('ajv');
 
 const {checkSpec} = require('../util');
-const {
-    preLoadCache: preLoadAnyCache, fetchAndLoadByIds, fetchAndLoadBySearchTerm
-} = require('./util');
+const util = require('./util');
 
 const ajv = new Ajv();
 
@@ -53,7 +51,7 @@ const parseRecord = (record) => {
  * @param {ApiConnection} api connection to GraphKB
  * @param {Array.<string>} idList list of pubmed IDs
  */
-const fetchAndLoadGeneByIds = async (api, idListIn) => fetchAndLoadByIds(
+const fetchAndLoadGeneByIds = async (api, idListIn) => util.fetchAndLoadByIds(
     api,
     idListIn,
     {
@@ -71,13 +69,14 @@ const fetchAndLoadGeneByIds = async (api, idListIn) => fetchAndLoadByIds(
  * @param {ApiConnection} api connection to GraphKB
  * @param {string} symbol the gene symbol
  */
-const fetchAndLoadBySymbol = async (api, symbol) => {
-    if (SEARCH_CACHE[symbol]) {
-        return SEARCH_CACHE[symbol];
+const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol', fallbackTermType = null) => {
+    const cacheKey = `${termType}:${term}`;
+    if (SEARCH_CACHE[cacheKey]) {
+        return SEARCH_CACHE[cacheKey];
     }
-    let result = await fetchAndLoadBySearchTerm(
+    let result = await util.fetchAndLoadBySearchTerm(
         api,
-        `${symbol}[Preferred Symbol] AND human[ORGN] AND alive[prop]`,
+        `${term}[${termType}] AND human[ORGN] AND alive[prop]`,
         {
             dbName: DB_NAME,
             parser: parseRecord,
@@ -88,10 +87,10 @@ const fetchAndLoadBySymbol = async (api, symbol) => {
         }
     );
     // fallback to gene name
-    if (result.length === 0) {
-        result = await fetchAndLoadBySearchTerm(
+    if (result.length === 0 && fallbackTermType) {
+        result = await util.fetchAndLoadBySearchTerm(
             api,
-            `${symbol}[Gene Name] AND human[ORGN] AND alive[prop]`,
+            `${term}[${fallbackTermType}] AND human[ORGN] AND alive[prop]`,
             {
                 dbName: DB_NAME,
                 parser: parseRecord,
@@ -102,21 +101,24 @@ const fetchAndLoadBySymbol = async (api, symbol) => {
             }
         );
     }
-    SEARCH_CACHE[symbol] = result;
-    return SEARCH_CACHE[symbol];
+    SEARCH_CACHE[cacheKey] = result;
+    return SEARCH_CACHE[cacheKey];
 };
 
 
-const preLoadCache = async api => preLoadAnyCache(
+const preLoadCache = async api => util.preLoadCache(
     api,
     {
         sourceDefn: SOURCE_DEFN, cache: CACHE, endpoint: 'features'
     }
 );
 
+const fetchAndLoadBySymbol = async (api, term) => fetchAndLoadBySearchTerm(api, term, 'Preferred Symbol', 'Gene Name');
+
 
 module.exports = {
     fetchAndLoadByIds: fetchAndLoadGeneByIds,
+    fetchAndLoadBySearchTerm,
     fetchAndLoadBySymbol,
     parseRecord,
     SOURCE_DEFN,

@@ -1,4 +1,5 @@
 const fs = require('fs');
+
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const {
@@ -8,12 +9,13 @@ const {
     INTERNAL_SOURCE_NAME,
     orderPreferredOntologyTerms,
     preferredDiseases,
-    preferredFeatures
+    preferredFeatures,
+    hashRecordToId
 } = require('./util');
 const {logger} = require('./logging');
-const _hgnc = require('./hgnc');
 const _trials = require('./clinicaltrialsgov');
 const _pubmed = require('./entrez/pubmed');
+const _gene = require('./entrez/gene');
 const {uploadFromJSON} = require('./ontology');
 
 const SOURCE_DEFN = {
@@ -27,6 +29,7 @@ const SOURCE_DEFN = {
 };
 
 const HEADER = {
+    alteration: 'Alteration',
     protein: 'individual_mutation',
     transcript: 'transcript',
     cds: 'cDNA',
@@ -67,10 +70,17 @@ const relevanceMapping = {
     'no responsive': 'no response'
 };
 
+const diseaseMapping = {
+    'Any cancer type': 'cancer'
+};
+
 
 const parseCategoryVariant = (row) => {
-    const type = row.biomarker.slice(row.gene.length).trim();
-    const result = {reference1: row.gene, type};
+    const type = row.biomarker
+        .slice(row.gene.length)
+        .trim()
+        .replace('undexpression', 'underexpression'); // fix typo
+    const result = {gene: row.gene, type};
 
     if (row.variantClass === 'CNA') {
         if (type === 'deletion') {
@@ -84,11 +94,13 @@ const parseCategoryVariant = (row) => {
 
 const parseEvidence = (row) => {
     const evidence = [];
-    for (const item of row.evidence.split(';')) {
+    for (const item of row.evidence.split(';').map(i => i.trim())) {
         if (item.startsWith('PMID:')) {
             evidence.push(item.slice('PMID:'.length));
         } else if (/^NCT\d+$/.exec(item)) {
             evidence.push(item);
+        } else if (item.startsWith('FDA') || item.startsWith('NCCN')) {
+            evidence.push('other');
         } else {
             throw new Error(`cannot process non-pubmed/nct evidence ${item}`);
         }
@@ -111,35 +123,59 @@ const parseTherapy = (row) => {
  * format each variant like the original row to re-use the processor
  */
 const preprocessVariants = (row) => {
-    if (!row.biomarker.includes('+')) {
-        return [[row]]; // single variant in multiple forms
-    }
-
-    if (row.biomarker.split('+').length > 2) {
+    const {biomarker, variantClass, protein} = row;
+    if (biomarker.split('+').length > 2) {
         throw new Error('Missing logic to process variant combinations of 3 or more');
+    }
+    if (protein.trim()) {
+        return [[{
+            ...row,
+            protein: protein.replace(':', ':p.')
+        }]];
     }
 
     const combinations = [];
 
-    for (const variant of row.biomarker.split(/\s*\+\s*/)) {
+    for (const variant of biomarker.split(/\s*\+\s*/)) {
         let match;
         const variants = [];
-        if (match = /^(\w+) \(([A-Z0-9*]+)\)$/.exec(variant)) {
-            for (const protein of match[2].splice(',')) {
-                variants.push({gene: match[1], protein: `${match[1]}:${protein}`});
+        if (match = /^(\w+) \(([A-Z0-9*,;]+)\)$/.exec(variant)) {
+            const [, gene, tail] = match;
+            for (const singleProtein of tail.split(/[,;]/)) {
+                let hgvsp = `p.${singleProtein}`;
+                if (match = /^([A-Z])?(\d+)$/.exec(singleProtein)) {
+                    const [, refAA, pos] = match;
+                    hgvsp = `p.${refAA || '?'}${pos}${variantClass.toLowerCase()}`;
+                } else if (match = /^(\d+)-(\d+)$/.exec(tail)) {
+                    const [, start, end] = match;
+                    hgvsp = `p.(?${start}_?${end})${variantClass.toLowerCase()}`;
+                }
+                variants.push({gene, protein: `${gene}:${hgvsp}`});
             }
-        } else if (match = /^(\w+)\s.*$/.exec(variant)) {
-            variants.push(parseCategoryVariant({biomarker: row.biomarker, gene: match[1]}));
+        } else if (match = /^(\w+)\s+(.*)$/.exec(variant)) {
+            const [, gene, tail] = match;
+            if (match = /^exon (\d+) (insertion|deletion)s?$/.exec(tail)) {
+                const [, pos, type] = match;
+                variants.push({gene, exonic: `e.${pos}${type.slice(0, 3)}`});
+            } else {
+                variants.push(parseCategoryVariant({biomarker, gene}));
+            }
+        } else {
+            throw new Error(`unable to process variant (${variant})`);
         }
         combinations.push(variants);
     }
 
     const result = [];
+    if (combinations.length > 1) {
     // all combinations with 1 from each level
-    for (let i = 0; i < combinations[0].length; i++) {
-        for (let j = 0; j < combinations[1].length; j++) {
-            result.push([combinations[0][i], combinations[1][j]]);
+        for (let i = 0; i < combinations[0].length; i++) {
+            for (let j = 0; j < combinations[1].length; j++) {
+                result.push([combinations[0][i], combinations[1][j]]);
+            }
         }
+    } else {
+        result.push(...combinations[0].map(v => [v]));
     }
     return result;
 };
@@ -149,13 +185,17 @@ const preprocessVariants = (row) => {
  * returns the variant to be linked to the statement (protein > cds > category)
  */
 const processVariants = async ({conn, row, source}) => {
+    const {
+        genomic, protein, transcript, cds, type: variantType, gene, exonic
+    } = row;
     let proteinVariant,
         cdsVariant,
         categoryVariant,
-        genomicVariant;
+        genomicVariant,
+        exonicVariant;
 
-    if (row.genomic) {
-        const parsed = kbParser.variant.parse(row.genomic).toJSON();
+    if (genomic) {
+        const parsed = kbParser.variant.parse(genomic).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
             endpoint: 'features',
             where: {
@@ -178,9 +218,9 @@ const processVariants = async ({conn, row, source}) => {
         });
     }
 
-    if (row.protein) {
-        const parsed = kbParser.variant.parse(`${row.gene}:p.${row.protein.split(':')[1]}`).toJSON();
-        const reference1 = rid(await _hgnc.fetchAndLoadBySymbol({conn, symbol: row.gene}));
+    if (protein) {
+        const parsed = kbParser.variant.parse(`${gene}:${protein.split(':')[1]}`).toJSON();
+        const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         const type = rid(await conn.getUniqueRecordBy({
             endpoint: 'vocabulary',
             where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}},
@@ -188,15 +228,15 @@ const processVariants = async ({conn, row, source}) => {
         }));
         proteinVariant = await conn.addVariant({
             endpoint: 'positionalvariants',
-            content: {...parsed, reference1, type},
+            content: {...parsed, reference1: rid(reference1), type},
             existsOk: true
         });
     }
-    if (row.transcript && row.cds) {
-        const parsed = kbParser.variant.parse(`${row.transcript}:${row.cds}`).toJSON();
+    if (transcript && cds) {
+        const parsed = kbParser.variant.parse(`${transcript}:${cds}`).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
             endpoint: 'features',
-            where: {biotype: 'transcript', sourceId: row.transcript, sourceIdVersion: null},
+            where: {biotype: 'transcript', sourceId: transcript, sourceIdVersion: null},
             sort: orderPreferredOntologyTerms
         });
         const type = rid(await conn.getUniqueRecordBy({
@@ -210,17 +250,30 @@ const processVariants = async ({conn, row, source}) => {
             existsOk: true
         });
     }
-    try {
-        const parsed = parseCategoryVariant(row);
-        const reference1 = rid(await _hgnc.fetchAndLoadBySymbol({conn, symbol: parsed.reference1}));
+    if (exonic) {
+        const parsed = kbParser.variant.parse(`${gene}:${exonic}`).toJSON();
+        const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         const type = rid(await conn.getUniqueRecordBy({
             endpoint: 'vocabulary',
             where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}},
             sort: orderPreferredOntologyTerms
         }));
+        exonicVariant = await conn.addVariant({
+            endpoint: 'positionalvariants',
+            content: {...parsed, reference1: rid(reference1), type},
+            existsOk: true
+        });
+    }
+    try {
+        const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
+        const type = rid(await conn.getUniqueRecordBy({
+            endpoint: 'vocabulary',
+            where: {name: variantType, source: {name: INTERNAL_SOURCE_NAME}},
+            sort: orderPreferredOntologyTerms
+        }));
         categoryVariant = await conn.addVariant({
             endpoint: 'categoryvariants',
-            content: {...parsed, type, reference1},
+            content: {type, reference1: rid(reference1)},
             existsOk: true
         });
     } catch (err) {
@@ -232,9 +285,10 @@ const processVariants = async ({conn, row, source}) => {
     // link the defined variants by infers
     const combinations = [
         // highest level positional infers the vategorical variant
-        [proteinVariant || cdsVariant || genomicVariant, categoryVariant],
+        [exonicVariant || proteinVariant || cdsVariant || genomicVariant, categoryVariant],
+        [proteinVariant || cdsVariant || genomicVariant, exonicVariant],
         [cdsVariant || genomicVariant, proteinVariant],
-        [genomicVariant, cdsVariant || proteinVariant]
+        [genomicVariant, cdsVariant || proteinVariant || exonicVariant]
     ];
     for (const [src, tgt] of combinations) {
         if (src && tgt) {
@@ -250,15 +304,17 @@ const processVariants = async ({conn, row, source}) => {
             });
         }
     }
-    return proteinVariant || cdsVariant || genomicVariant || categoryVariant;
+    return proteinVariant || cdsVariant || genomicVariant || exonicVariant || categoryVariant;
 };
 
 const processRow = async ({row, source, conn}) => {
     // process the protein notation
     // look up the disease by name
+    const diseaseName = diseaseMapping[row.disease] || `${row.disease}|${row.disease} cancer`;
+
     const disease = rid(await conn.getUniqueRecordBy({
         endpoint: 'diseases',
-        where: {name: row.disease},
+        where: {name: diseaseName},
         sort: preferredDiseases
     }));
     const therapyName = row.therapy.includes(';')
@@ -266,7 +322,6 @@ const processRow = async ({row, source, conn}) => {
         : row.therapy;
     // look up the drug by name
     const drug = rid(await conn.addTherapyCombination(source, therapyName));
-
     const variants = await Promise.all(row.variants.map(
         async variant => processVariants({conn, row: variant, source})
     ));
@@ -287,10 +342,15 @@ const processRow = async ({row, source, conn}) => {
     );
 
     // determine the relevance of the statement
-    const relevance = rid(await conn.getUniqueRecordBy({
-        endpoint: 'vocabulary',
-        where: {name: relevanceMapping[row.relevance.toLowerCase()] || row.relevance}
-    }));
+    const relevance = rid(await conn.getVocabularyTerm(
+        relevanceMapping[row.relevance.toLowerCase()] || row.relevance
+    ));
+
+    const supportedBy = [...articles.map(rid), ...trials.map(rid)];
+
+    if (supportedBy.length === 0) {
+        supportedBy.push(rid(source));
+    }
 
     // create the statement
     await conn.addRecord({
@@ -300,8 +360,9 @@ const processRow = async ({row, source, conn}) => {
             relevance,
             appliesTo: drug,
             impliedBy: [...variants.map(rid), disease],
-            supportedBy: [...articles.map(rid), ...trials.map(rid)],
-            source: rid(source)
+            supportedBy,
+            source: rid(source),
+            sourceId: row.sourceId
         },
         existsOk: true,
         fetchExisting: false
@@ -321,19 +382,23 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
 
     logger.info('creating the evidence levels');
     await uploadFromJSON({conn, data: evidenceLevels});
+    logger.info('preloading the pubmed cache');
+    await _pubmed.preLoadCache(conn);
     const errorList = [];
 
     logger.info(`loading ${rows.length} rows`);
     for (let index = 0; index < rows.length; index++) {
-        const row = convertRowFields(HEADER, rows[index]);
+        const rawRow = rows[index];
+        const sourceId = hashRecordToId(rawRow);
+        logger.info(`processing: ${sourceId} (${index} / ${rows.length})`);
+        const row = {
+            _raw: rawRow,
+            sourceId,
+            ...convertRowFields(HEADER, rows[index])
+        };
         row.therapy = parseTherapy(row);
-
         if (row.evidenceLevel.includes(',')) {
             logger.info(`skipping row #${index} due to multiple evidence levels (${row.evidenceLevel})`);
-            counts.skip++;
-            continue;
-        } if (row.disease.includes(';')) {
-            logger.info(`skipping row #${index} due to multiple diseases (${row.disease})`);
             counts.skip++;
             continue;
         } if (row.gene.includes(';')) {
@@ -344,8 +409,14 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
         try {
             row.evidence = parseEvidence(row);
         } catch (err) {
-            logger.info(`skipping row #${index} for evidence parsing error (${err})`);
-            counts.skip++;
+            logger.error(err);
+            errorList.push({
+                row,
+                error: err,
+                index,
+                errorMessage: err.toString()
+            });
+            counts.error++;
             continue;
         }
         let variants;
@@ -356,19 +427,24 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
             logger.error(err);
             continue;
         }
-
-        for (const combo of variants) {
-            try {
-                logger.info(`processing row #${index}`);
-                await processRow({row: {...row, variants: combo}, conn, source});
-                counts.success++;
-            } catch (err) {
-                if (err.statusCode >= 300) {
-                    throw err;
+        for (const disease of row.disease.split(';')) {
+            for (const combo of variants) {
+                try {
+                    await processRow({row: {...row, variants: combo, disease}, conn, source});
+                    counts.success++;
+                } catch (err) {
+                    errorList.push({
+                        row,
+                        error: err,
+                        index,
+                        errorMessage: err.toString()
+                    });
+                    logger.error(err);
+                    counts.error++;
+                    if (err.toString().includes('of undefined')) {
+                        throw err;
+                    }
                 }
-                errorList.push({row, error: err, index});
-                logger.error(err);
-                counts.error++;
             }
         }
     }

@@ -10,10 +10,11 @@ const {
     loadDelimToJson,
     rid,
     convertRowFields,
-    orderPreferredOntologyTerms
+    orderPreferredOntologyTerms,
+    hashRecordToId
 } = require('./util');
 const _pubmed = require('./entrez/pubmed');
-const _hgnc = require('./hgnc');
+const _gene = require('./entrez/gene');
 const {logger} = require('./logging');
 
 const SOURCE_DEFN = {
@@ -39,8 +40,6 @@ const HEADER = {
 };
 
 
-const getRecordId = record => `${record.sampleName}:${record.sampleId}:${record.mutationId}`;
-
 /**
  * Create and link the variant defuinitions for a single row/record
  */
@@ -51,7 +50,7 @@ const processVariants = async ({conn, record, source}) => {
     try {
         // get the hugo gene
         const [gene] = record.gene.split('_'); // convert MAP2K2_ENST00000262948 to MAP2K2
-        const reference1 = rid(await _hgnc.fetchAndLoadBySymbol({conn, symbol: gene}));
+        const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         // add the protein variant
         let variantString = record.protein;
         if (variantString.startsWith('p.') && variantString.includes('>')) {
@@ -60,7 +59,7 @@ const processVariants = async ({conn, record, source}) => {
         const {
             noFeatures, multiFeature, prefix, ...variant
         } = variantParser(variantString, false);
-        variant.reference1 = reference1;
+        variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         protein = rid(await conn.addVariant({
             endpoint: 'positionalvariants',
@@ -160,7 +159,7 @@ const processCosmicRecord = async (conn, record, source) => {
             supportedBy: [rid(record.publication)],
             source: rid(source),
             reviewStatus: 'not required',
-            sourceId: getRecordId(record)
+            sourceId: record.sourceId
         },
         existsOk: true,
         fetchExisting: false
@@ -190,8 +189,9 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     await _pubmed.fetchAndLoadByIds(conn, jsonList.map(rec => rec[HEADER.pubmed]));
 
     for (let index = 0; index < jsonList.length; index++) {
-        const record = convertRowFields(HEADER, jsonList[index]);
-        logger.info(`processing (${index} / ${jsonList.length}) ${getRecordId(record)}`);
+        const sourceId = hashRecordToId(jsonList[index]);
+        const record = {sourceId, ...convertRowFields(HEADER, jsonList[index])};
+        logger.info(`processing (${index} / ${jsonList.length}) ${sourceId}`);
         if (record.protein.startsWith('p.?')) {
             counts.skip++;
             continue;

@@ -12,6 +12,7 @@ const sleep = require('sleep-promise');
 const HTTP_STATUS_CODES = require('http-status-codes');
 const jsonpath = require('jsonpath');
 const crypto = require('crypto');
+const stableStringify = require('json-stable-stringify');
 
 
 const {logger} = require('./logging');
@@ -147,7 +148,7 @@ const generateRanks = (arr) => {
 
 const preferredVocabulary = (term1, term2) => {
     const sourceRank = generateRanks([
-        'bcgsc',
+        INTERNAL_SOURCE_NAME,
         'sequence ontology',
         'variation ontology'
     ]);
@@ -180,8 +181,8 @@ const preferredDrugs = (term1, term2) => {
 const preferredFeatures = (term1, term2) => {
     const sourceRank = generateRanks([
         'grch',
-        'hgnc',
         'entrez',
+        'hgnc',
         'ensembl',
         'refseq'
     ]);
@@ -616,7 +617,8 @@ const requestWithRetry = async (requestOpt, {waitSeconds = 2, retries = 1} = {})
 };
 
 
-const hashStringtoId = input => crypto.createHash('md5').update(input).digest('hex');
+const hashStringToId = input => crypto.createHash('md5').update(input).digest('hex');
+const hashRecordToId = input => hashStringToId(stableStringify(input));
 
 
 const shallowObjectKey = obj => JSON.stringify(obj, (k, v) => (k
@@ -669,5 +671,6 @@ module.exports = {
     requestWithRetry,
     convertNulls,
     convertRowFields,
-    hashStringtoId
+    hashStringToId,
+    hashRecordToId
 };

@@ -13,7 +13,7 @@ const {
 const _hgnc = require('./hgnc');
 const {logger} = require('./logging');
 const _chembl = require('./chembl');
-const {SOURCE_DEFN: {name: fdaName}} = require('./fda');
+const {SOURCE_DEFN: {name: fdaName}} = require('./fda_srs');
 
 
 const ajv = new Ajv();

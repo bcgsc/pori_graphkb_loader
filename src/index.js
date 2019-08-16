@@ -15,6 +15,7 @@ IMPORT_MODULES.cancerhotspots = require('./cancerhotspots');
 IMPORT_MODULES.cgi = require('./cancergenomeinterpreter');
 IMPORT_MODULES.civic = require('./civic');
 IMPORT_MODULES.cosmic = require('./cosmic');
+IMPORT_MODULES.cosf = require('./cosmic_fusions');
 IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
 IMPORT_MODULES.dgidb = require('./dgidb');
 IMPORT_MODULES.diseaseOntology = require('./disease_ontology');
@@ -22,7 +23,7 @@ IMPORT_MODULES.docm = require('./docm');
 IMPORT_MODULES.drugbank = require('./drugbank');
 IMPORT_MODULES.drugOntology = require('./drug_ontology');
 IMPORT_MODULES.ensembl = require('./ensembl');
-IMPORT_MODULES.fda = require('./fda');
+IMPORT_MODULES.fdaSrs = require('./fda_srs');
 IMPORT_MODULES.hgnc = require('./hgnc');
 IMPORT_MODULES.iprkb = require('./ipr');
 IMPORT_MODULES.ncit = require('./ncit');
@@ -110,7 +111,7 @@ const optionDefinitions = [
         type: fileExists
     },
     {
-        name: 'fda',
+        name: 'fdaSrs',
         description: 'path to the FDA UNII list with NCIT linking metadata',
         type: fileExists
     },
@@ -122,6 +123,10 @@ const optionDefinitions = [
     {
         name: 'civic',
         description: 'upload civic using their api'
+    },
+    {
+        name: 'cosf',
+        description: 'upload cosmic fusions export file'
     },
     {
         name: 'cosmic',
