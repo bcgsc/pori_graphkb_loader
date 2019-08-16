@@ -1468,6 +1468,30 @@
                 }
             ]
         },
+        "splice acceptor mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "splice-site"
+                },
+                {
+                    "class": "AliasOf",
+                    "target": "splice acceptor variant"
+                }
+            ]
+        },
+        "splice donor mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "splice-site"
+                },
+                {
+                    "class": "AliasOf",
+                    "target": "splice donor variant"
+                }
+            ]
+        },
         "splice-site": {
             "links": [
                 {
