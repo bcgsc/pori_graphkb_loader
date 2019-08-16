@@ -266,6 +266,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "duplication"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "domain mutation"
                 }
             ]
         },
@@ -684,11 +688,39 @@
                 }
             ]
         },
+        "domain mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "mutation"
+                }
+            ]
+        },
+        "kinase domain mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "domain mutation"
+                }
+            ]
+        },
         "kinase domain duplication": {
             "links": [
                 {
                     "class": "SubClassOf",
                     "target": "domain duplication"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "kinase domain mutation"
+                }
+            ]
+        },
+        "biallelic inactivation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "loss of function"
                 }
             ]
         },
