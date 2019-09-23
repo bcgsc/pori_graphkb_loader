@@ -223,7 +223,7 @@ const upload = async (opt) => {
 
         for (const xref of record.crossReferenceOf) {
             if (xref.source === 'NCI' && ncitSource && !ncitMissingRecords.has(xref.sourceId)) {
-                logger.info(`linking ${rec.sourceId} to ${xref.sourceIf}`);
+                logger.info(`linking ${rec.sourceId} to NCIt record (${xref.sourceId})`);
                 try {
                     const ncitXref = await conn.getUniqueRecordBy({
                         endpoint: 'diseases',
