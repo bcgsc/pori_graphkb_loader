@@ -50,8 +50,29 @@ const THERAPY_MAPPING = {
     'gamma secretase inhibitor': 'enzyme inhibitors: gamma secretase inhibitors',
     'rapamycin (mtor inhibitor)': 'rapamycin',
     asp3026: 'asp-3026',
-    ap26113: 'ap-26113'
+    ap26113: 'ap-26113',
+    selumitinib: 'selumetinib',
+    lapitinib: 'lapatinib',
+    tratuzumab: 'trastuzumab',
+    'dacomitinib (pf 00299804)': 'dacomitinib',
+    oliparib: 'olaparib'
 };
+
+
+const RELEVANCE_SKIP = [
+    // not considered infomative enough to load to GraphKB
+    'not determined',
+    'test target',
+    'not specified',
+    'equally-as-effective-as',
+    'more-effective-than',
+    // new GraphKB will only use oncokb list for these
+    'cancer associated gene',
+    'oncogene',
+    'putative tumour suppressor',
+    'tumour suppressor',
+    'putative oncogene'
+];
 
 
 const stripRefSeqVersion = (name) => {
@@ -63,7 +84,11 @@ const stripRefSeqVersion = (name) => {
 
 
 const getFeature = async (conn, rawName) => {
-    const name = rawName.replace(/\.\d+$/, '');
+    let name = rawName;
+    if (/^hla\.[a-z0-9]+$/i.exec(name)) {
+        name.replace('.', '-');
+    }
+    name = name.replace(/\.\d+$/, '');
     try {
         return await conn.getUniqueRecordBy({
             endpoint: 'features',
@@ -147,6 +172,13 @@ const extractAppliesTo = async (conn, record, source) => {
             throw new Error(`Unable to determine feature target (variants=Array[${variants.length}], features=Array[${features.length}])`);
         } else if (['recurrent', 'observed', 'pathogenic', 'mutation hotspot'].includes(relevance)) {
             if (!disease) {
+                if (appliesTo && (appliesTo.includes('somatic') || appliesTo === 'cancer')) {
+                    return conn.getUniqueRecordBy({
+                        endpoint: 'diseases',
+                        where: {name: 'cancer'},
+                        sort: preferredDiseases
+                    });
+                }
                 throw new Error(`required disease not defined (relevance=${relevance}, statementType=${statementType})`);
             }
             return conn.getUniqueRecordBy({
@@ -161,7 +193,8 @@ const extractAppliesTo = async (conn, record, source) => {
                 'oncogenic',
                 'likely oncogenic',
                 'haploinsufficient',
-                'oncogenic fusion'
+                'oncogenic fusion',
+                'disruptive fusion'
             ].includes(relevance)
         ) {
             if (features.length + variants.length === 1) {
@@ -205,8 +238,13 @@ const extractRelevance = (record) => {
             return 'unfavourable prognosis';
         }
         return 'prognostic indicator';
-    } if (appliesTo === 'oncogenic fusion' && relevance === 'gain of function') {
+    } if (appliesTo === 'oncogenic fusion' && relevance.includes('gain of function')) {
         return 'oncogenic fusion';
+    } if (relevance === 'associated with') {
+        if (appliesTo.toLowerCase() === 'pathogenic germline mutation') {
+            return 'pathogenic';
+        }
+        return appliesTo;
     }
     return relevance;
 };
@@ -680,6 +718,12 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
         if (record.reviewedBy) {
             record.reviewedBy = users[record.reviewedBy];
         }
+        if (record.support.length === 1 && record.evidenceId === '25801821') {
+            // MSK-IMPACT panel
+            if (!record.appliesTo && record.relevance === 'mutation hotspot') {
+                record.appliesTo = 'cancer';
+            }
+        }
     }
     logger.info(`loading ${pubmedIdList.size} articles from pubmed`);
     await _pubmed.preLoadCache(conn);
@@ -692,6 +736,10 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
         logger.info(`processing ${record.ident} (${i} / ${records.length})`);
         if (record.history) {
             counts.history++;
+        }
+        if (RELEVANCE_SKIP.includes(record.relevance)) {
+            counts.skip++;
+            continue;
         }
         try {
             await processRecord({conn, record, source});
