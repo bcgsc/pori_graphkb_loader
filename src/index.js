@@ -61,7 +61,7 @@ const optionDefinitions = [
     },
     {
         name: 'username',
-        default: process.env.USER,
+        default: 'graphkb_importer',
         required: true,
         description: 'ldap username required for access to the kb (USER|GKB_USER)',
         env: 'GKB_USER'
