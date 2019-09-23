@@ -40,7 +40,8 @@ const actionableRecordSpec = ajv.compile({
         level: {type: 'string'},
         pmids: {type: 'string'},
         proteinChange: {type: 'string'}, // TODO: Link variant to protein change with 'infers' where different
-        variant: {type: 'string'}
+        variant: {type: 'string'},
+        abstracts: {type: 'string'}
     }
 });
 const annotatedRecordSpec = ajv.compile({
@@ -52,7 +53,8 @@ const annotatedRecordSpec = ajv.compile({
         mutationEffectPmids: {type: 'string'},
         oncogenicity: {type: 'string'},
         proteinChange: {type: 'string'}, // TODO: Link variant to protein change with 'infers' where different
-        variant: {type: 'string'}
+        variant: {type: 'string'},
+        mutationEffectAbstracts: {type: 'string'}
     }
 });
 const drugRecordSpec = ajv.compile({
@@ -354,6 +356,22 @@ const processDisease = async (conn, diseaseName) => {
 
 
 /**
+ * Convert abstract citation to a sourceId findable in GraphKB
+ *
+ * @example
+ * parseAbstractCitation('Camidge et al. Abstract# 8001, ASCO 2014 http://meetinglibrary.asco.org/content/132030-144')
+ * {source: {name: 'ASCO'}, year: 2014, abstractNumber: 80001}
+ */
+const parseAbstractCitation = (citation) => {
+    let match;
+    if (match = /.*Abstract\s*#\s*([A-Z0-9a-z][A-Za-z0-9-]+)[.,]? (AACR|ASCO),? (2\d{3})[., ]*/.exec(citation)) {
+        const [, abstractNumber, sourceName, year] = match;
+        return {abstractNumber, year, source: {name: sourceName}};
+    }
+    throw new Error(`unable to parse abstract citation (${citation})`);
+};
+
+/**
  * Parses an actionable record from OncoKB and querys the GraphKB for existing terms
  * Converts this record into a GraphKB statement (where possible) and uploads the statement to the GraphKB
  * http://oncokb.org/api/v1/utils/allActionableVariants.json
@@ -371,7 +389,6 @@ const processRecord = async ({
         gene,
         variantName,
         diseaseName,
-        sourceId,
         entrezGeneId,
         support,
         drug = null,
@@ -419,14 +436,37 @@ const processRecord = async ({
     const relevance = await getVocabulary(conn, relevanceName);
 
     // find/add the publications
-    const publications = await _pubmed.fetchAndLoadByIds(conn, support);
+    const pmids = support.filter(pmid => /^\d+$/.exec(pmid.trim()));
+    const abstracts = [];
+
+    for (const abstract of support.filter(pmid => !/^\d+$/.exec(pmid.trim()))) {
+        let parsed;
+        try {
+            parsed = parseAbstractCitation(abstract);
+        } catch (err) {
+            // only report parsing error when statement will otherwise fail
+            if (pmids.length < 1) {
+                logger.warn(err);
+            }
+            continue;
+        }
+        try {
+            const absRecord = await conn.getUniqueRecordBy({
+                endpoint: 'abstracts',
+                where: parsed
+            });
+            abstracts.push(absRecord);
+        } catch (err) {
+            logger.warn(err);
+        }
+    }
+    const publications = await _pubmed.fetchAndLoadByIds(conn, pmids);
 
     const content = {
         impliedBy: [rid(variant)],
-        supportedBy: publications.map(rid),
+        supportedBy: [...publications.map(rid), ...abstracts.map(rid)],
         relevance: rid(relevance),
         source,
-        sourceId,
         reviewStatus: 'not required'
     };
     if (disease) {
@@ -462,13 +502,13 @@ const parseActionableRecord = (rawRecord) => {
     disease = DISEASE_MAPPING[disease] || disease;
     const variant = VOCABULARY_MAPPING[rawRecord.variant] || rawRecord.variant;
     const support = rawRecord.pmids.split(',').filter(pmid => pmid && pmid.trim());
+    support.push(...(rawRecord.abstracts || '').split(';').filter(c => c.trim()));
     const relevance = rawRecord.level.startsWith('r')
         ? 'resistance'
         : 'sensitivity';
 
     for (const drug of Array.from(rawRecord.drugs.split(','), x => x.trim().toLowerCase()).filter(x => x.length > 0)) {
         statements.push({
-            sourceId: rawRecord.id,
             variantName: variant,
             _raw: rawRecord,
             gene: rawRecord.gene.toLowerCase().trim(),
@@ -494,8 +534,8 @@ const parseAnnotatedRecord = (rawRecord) => {
     const gene = rawRecord.gene.toLowerCase().trim();
     const variant = VOCABULARY_MAPPING[rawRecord.variant] || rawRecord.variant;
 
+    support.push(...(rawRecord.mutationEffectAbstracts || '').split(';').filter(c => c.trim()));
     return [{
-        sourceId: rawRecord.id,
         _raw: rawRecord,
         relevanceName: rawRecord.mutationEffect.replace(/-/g, ' ').toLowerCase().trim(),
         gene,
@@ -504,7 +544,6 @@ const parseAnnotatedRecord = (rawRecord) => {
         entrezGeneId: rawRecord.entrezGeneId,
         appliesToTarget: 'gene'
     }, {
-        sourceId: rawRecord.id,
         _raw: rawRecord,
         variantName: variant,
         relevanceName: rawRecord.oncogenicity.toLowerCase().trim(),
@@ -749,6 +788,8 @@ const upload = async (opt) => {
 
     logger.info('pre-loading entrez genes');
     await _entrezGene.preLoadCache(conn);
+    logger.info('pre-loading pubmed articles');
+    await _pubmed.preLoadCache(conn);
     logger.info('load oncogene/tumour suppressor list');
     await uploadAllCuratedGenes({conn, baseUrl: URL, source});
     logger.info('load drug ontology');
@@ -772,7 +813,6 @@ const upload = async (opt) => {
 
         logger.info(`loaded ${result.length} records`);
         for (const record of result) {
-            record.id = hashRecordToId(record);
             try {
                 records.push(...parser(record));
             } catch (err) {
@@ -784,7 +824,7 @@ const upload = async (opt) => {
     // upload variant statements
     for (let i = 0; i < records.length; i++) {
         const record = records[i];
-        logger.info(`processing (${i} / ${records.length}) ${record.sourceId}`);
+        logger.info(`processing (${i} / ${records.length})`);
         if (record.relevanceName === 'inconclusive') {
             counts.skip++;
             logger.info('skipping inconclusive statement');
@@ -798,6 +838,10 @@ const upload = async (opt) => {
         } catch (err) {
             counts.errors++;
             logger.error(err);
+            if (err.toString().includes('Cannot convert undefined or null to object')) {
+                console.log(record);
+                throw err;
+            }
             errorList.push({...record, error: err.error || err, errorMessage: err.toString()});
         }
     }
