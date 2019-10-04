@@ -22,5 +22,16 @@ describe('civic', () => {
             // E70K (c.208G>A)
             // r167p (c.500g>c)
         });
+        test('deleterious mutation', () => {
+            const parsedName = getVariantName({name: 'DELETERIOUS MUTATION'});
+            expect(parsedName).toBe('deleterious mutation');
+        });
+        test('phos variant', () => {
+            const parsedName = getVariantName({name: 'Y1234 phosphorylation'});
+            expect(parsedName).toBe('p.y1234phos');
+        });
+    });
+    describe('processVariant', () => {
+
     });
 });
