@@ -511,9 +511,14 @@ const parseActionableRecord = (rawRecord) => {
     const variant = VOCABULARY_MAPPING[rawRecord.variant] || rawRecord.variant;
     const support = rawRecord.pmids.split(',').filter(pmid => pmid && pmid.trim());
     support.push(...(rawRecord.abstracts || '').split(';').filter(c => c.trim()));
-    const relevance = rawRecord.level.startsWith('r')
-        ? 'resistance'
-        : 'sensitivity';
+    let relevance;
+    if (/^[r]\d+$/i.exec(rawRecord.level)) {
+        relevance = 'resistance';
+    } else if (/^\d+$/.exec(rawRecord.level)) {
+        relevance = 'sensitivity';
+    } else {
+        throw new Error(`did not recognize evidence level (${rawRecord.level})`);
+    }
 
     for (const drug of Array.from(rawRecord.drugs.split(','), x => x.trim().toLowerCase()).filter(x => x.length > 0)) {
         statements.push({
