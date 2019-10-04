@@ -514,7 +514,7 @@ const parseActionableRecord = (rawRecord) => {
     let relevance;
     if (/^[r]\d+$/i.exec(rawRecord.level)) {
         relevance = 'resistance';
-    } else if (/^\d+$/.exec(rawRecord.level)) {
+    } else if (/^\d+[a-z]?$/i.exec(rawRecord.level)) {
         relevance = 'sensitivity';
     } else {
         throw new Error(`did not recognize evidence level (${rawRecord.level})`);
