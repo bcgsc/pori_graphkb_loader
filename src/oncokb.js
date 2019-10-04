@@ -394,7 +394,8 @@ const processRecord = async ({
         drug = null,
         levelName,
         relevanceName,
-        appliesToTarget
+        appliesToTarget,
+        sourceId
     } = record;
     const key = `${entrezGeneId}:${variantName}`;
     const variant = await processVariant(conn, {
@@ -467,6 +468,7 @@ const processRecord = async ({
         supportedBy: [...publications.map(rid), ...abstracts.map(rid)],
         relevance: rid(relevance),
         source,
+        sourceId,
         reviewStatus: 'not required'
     };
     if (disease) {
@@ -491,6 +493,12 @@ const processRecord = async ({
         existsOk: true,
         fetchExisting: false
     });
+};
+
+
+const generateSourceId = (rec) => {
+    const {_rec, ...rest} = rec;
+    return hashRecordToId(rest);
 };
 
 
@@ -522,7 +530,7 @@ const parseActionableRecord = (rawRecord) => {
         });
     }
 
-    return statements;
+    return statements.map(rec => ({...rec, sourceId: generateSourceId(rec)}));
 };
 
 
@@ -551,7 +559,7 @@ const parseAnnotatedRecord = (rawRecord) => {
         support,
         entrezGeneId: rawRecord.entrezGeneId,
         appliesToTarget: 'variant'
-    }];
+    }].map(rec => ({...rec, sourceId: generateSourceId(rec)}));
 };
 
 
@@ -785,6 +793,10 @@ const upload = async (opt) => {
     }));
 
     const variantMap = await getVariantDescriptions(URL);
+    const previousLoad = await conn.getRecords({
+        endpoint: 'statements',
+        where: {source: {name: SOURCE_DEFN.name}, returnProperties: 'sourceId'}
+    });
 
     logger.info('pre-loading entrez genes');
     await _entrezGene.preLoadCache(conn);
@@ -798,6 +810,14 @@ const upload = async (opt) => {
 
     const records = [];
     const counts = {errors: 0, success: 0, skip: 0};
+
+    const loadedIds = new Set();
+    for (const prev of previousLoad) {
+        loadedIds.add(prev.sourceId);
+    }
+
+    logger.info(`${loadedIds.size} previously loaded oncokb statements`);
+
     const errorList = [];
     // download and parse all variants
     for (const file of ['allActionableVariants', 'allAnnotatedVariants']) {
@@ -824,6 +844,9 @@ const upload = async (opt) => {
     // upload variant statements
     for (let i = 0; i < records.length; i++) {
         const record = records[i];
+        if (loadedIds.has(record.sourceId)) {
+            continue;
+        }
         logger.info(`processing (${i} / ${records.length})`);
         if (record.relevanceName === 'inconclusive') {
             counts.skip++;
