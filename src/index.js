@@ -7,30 +7,34 @@
 const {fileExists, createOptionsMenu} = require('./cli');
 
 const {ApiConnection} = require('./util');
-const {PUBMED_DEFAULT_QS} = require('./pubmed');
-const {logger} = require('./logging');
+const {DEFAULT_QS} = require('./entrez/util');
+const {logger, getFilename} = require('./logging');
 
 const IMPORT_MODULES = {};
+IMPORT_MODULES.cancerhotspots = require('./cancerhotspots');
+IMPORT_MODULES.cgi = require('./cancergenomeinterpreter');
 IMPORT_MODULES.civic = require('./civic');
 IMPORT_MODULES.cosmic = require('./cosmic');
+IMPORT_MODULES.cosf = require('./cosmic_fusions');
+IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
+IMPORT_MODULES.dgidb = require('./dgidb');
 IMPORT_MODULES.diseaseOntology = require('./disease_ontology');
 IMPORT_MODULES.docm = require('./docm');
 IMPORT_MODULES.drugbank = require('./drugbank');
+IMPORT_MODULES.drugOntology = require('./drug_ontology');
 IMPORT_MODULES.ensembl = require('./ensembl');
-IMPORT_MODULES.fda = require('./fda');
+IMPORT_MODULES.fdaSrs = require('./fda_srs');
 IMPORT_MODULES.hgnc = require('./hgnc');
 IMPORT_MODULES.iprkb = require('./ipr');
 IMPORT_MODULES.ncit = require('./ncit');
 IMPORT_MODULES.oncokb = require('./oncokb');
 IMPORT_MODULES.oncotree = require('./oncotree');
+IMPORT_MODULES.ontology = require('./ontology');
 IMPORT_MODULES.refseq = require('./refseq');
 IMPORT_MODULES.sequenceOntology = require('./sequence_ontology');
+IMPORT_MODULES.tcgaFusions = require('./tcga_fusions');
 IMPORT_MODULES.uberon = require('./uberon');
 IMPORT_MODULES.vario = require('./vario');
-IMPORT_MODULES.ctg = require('./clinicaltrialsgov');
-IMPORT_MODULES.ontology = require('./ontology');
-IMPORT_MODULES.drugOntology = require('./drug_ontology');
-IMPORT_MODULES.cgi = require('./cancergenomeinterpreter');
 
 
 const optionDefinitions = [
@@ -57,7 +61,7 @@ const optionDefinitions = [
     },
     {
         name: 'username',
-        default: process.env.USER,
+        default: 'graphkb_importer',
         required: true,
         description: 'ldap username required for access to the kb (USER|GKB_USER)',
         env: 'GKB_USER'
@@ -107,7 +111,7 @@ const optionDefinitions = [
         type: fileExists
     },
     {
-        name: 'fda',
+        name: 'fdaSrs',
         description: 'path to the FDA UNII list with NCIT linking metadata',
         type: fileExists
     },
@@ -119,6 +123,10 @@ const optionDefinitions = [
     {
         name: 'civic',
         description: 'upload civic using their api'
+    },
+    {
+        name: 'cosf',
+        description: 'upload cosmic fusions export file'
     },
     {
         name: 'cosmic',
@@ -155,6 +163,10 @@ const optionDefinitions = [
         type: fileExists
     },
     {
+        name: 'dgidb',
+        description: 'Load drug/gene interactions from DGIdb'
+    },
+    {
         name: 'drugOntology',
         description: 'path to the gsc drug ontology tab delimited file',
         type: fileExists
@@ -162,7 +174,17 @@ const optionDefinitions = [
     {
         name: 'errorLogPrefix',
         description: 'prefix to use for any module specific log files that are written',
-        default: `${process.cwd()}/errorLog-${process.pid}`
+        default: `${process.cwd()}/errorLog-${new Date().valueOf()}`
+    },
+    {
+        name: 'tcgaFusions',
+        description: 'Load fusions from the supplementary excel file',
+        type: fileExists
+    },
+    {
+        name: 'cancerhotspots',
+        description: 'path to the cancer hotspots maf file',
+        type: fileExists
     }
 ];
 const options = createOptionsMenu(optionDefinitions,
@@ -175,7 +197,7 @@ const options = createOptionsMenu(optionDefinitions,
 const apiConnection = new ApiConnection(options.graphkb);
 
 if (options.pubmed) {
-    PUBMED_DEFAULT_QS.api_key = options.pubmed;
+    DEFAULT_QS.api_key = options.pubmed;
 }
 
 const compareLoadModules = (name1, name2) => {
@@ -183,10 +205,10 @@ const compareLoadModules = (name1, name2) => {
     const module2 = IMPORT_MODULES[name2];
 
     // knowledgebases should always be loaded last
-    if (module1.type !== module2.type) {
-        if (module1.type === 'kb') {
+    if (module1.kb !== module2.kb) {
+        if (module1.kb) {
             return 1;
-        } if (module2.type === 'kb') {
+        } if (module2.kb) {
             return -1;
         }
     }
@@ -252,6 +274,9 @@ const upload = async () => {
                 });
             }
         }
+    }
+    if (getFilename()) {
+        logger.info(`logs written to ${getFilename()}`);
     }
     logger.info('upload complete');
 };

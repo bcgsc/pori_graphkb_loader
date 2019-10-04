@@ -8,7 +8,7 @@ const Ajv = require('ajv');
 const fs = require('fs');
 const jsonpath = require('jsonpath');
 
-const kbSchema = require('@bcgsc/knowledgebase-schema');
+const {schema, schema: {schema: kbSchema}} = require('@bcgsc/knowledgebase-schema');
 
 
 const {logger} = require('./logging');
@@ -16,15 +16,6 @@ const {rid} = require('./util');
 
 const ajv = new Ajv();
 
-
-const EDGE_CLASSES = [
-    'AliasOf',
-    'SubClassOf',
-    'ElementOf',
-    'GeneralizationOf',
-    'OppositeOf',
-    'DeprecatedBy'
-];
 const INPUT_ERROR_CODE = 2;
 
 
@@ -45,7 +36,7 @@ const validateSpec = ajv.compile({
         },
         class: {
             type: 'string',
-            enum: kbSchema.schema.Ontology.descendantTree(true).map(model => model.name)
+            enum: kbSchema.Ontology.descendantTree(true).map(model => model.name)
         },
         records: {
             type: 'object',
@@ -64,7 +55,7 @@ const validateSpec = ajv.compile({
                             type: 'object',
                             required: ['class', 'target'],
                             properties: {
-                                class: {type: 'string', enum: EDGE_CLASSES},
+                                class: {type: 'string', enum: schema.getEdgeModels().map(e => e.name)},
                                 target: {type: 'string', minLength: 1},
                                 additionalProperties: false
                             }
@@ -128,7 +119,8 @@ const uploadFromJSON = async ({data, conn}) => {
         sourceRID = rid(await conn.addRecord({
             endpoint: 'sources',
             content: source,
-            existsOk: true
+            existsOk: true,
+            fetchConditions: {name: source.name}
         }));
     } catch (err) {
         console.error(err);
@@ -137,7 +129,7 @@ const uploadFromJSON = async ({data, conn}) => {
     }
 
     const dbRecords = {}; // store the created/fetched records from the db
-    const {routeName} = kbSchema.schema[recordClass];
+    const {routeName} = kbSchema[recordClass];
     // try to create all the records
     logger.log('info', 'creating the records');
     for (const {links, ...record} of Object.values(records)) {
@@ -158,7 +150,7 @@ const uploadFromJSON = async ({data, conn}) => {
     logger.log('info', 'creating the record links');
     for (const {links = [], sourceId} of Object.values(records)) {
         for (const {class: edgeType, target} of links) {
-            const {routeName: edgeRoute} = kbSchema.schema[edgeType];
+            const {routeName: edgeRoute} = kbSchema[edgeType];
             if (dbRecords[target] === undefined || dbRecords[sourceId] === undefined) {
                 counts.skipped++;
                 continue;

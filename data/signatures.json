@@ -90,6 +90,9 @@
         }
     },
     "source": {
-        "name": "bcgsc"
+        "displayName": "GraphKB",
+        "longName": "Graph Knowledgebase",
+        "name": "graphkb",
+        "url": "https://graphkb.bcgsc.ca"
     }
 }

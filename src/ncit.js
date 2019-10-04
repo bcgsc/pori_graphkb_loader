@@ -6,12 +6,13 @@
  * @module importer/ncit
  */
 const {
-    loadDelimToJson, rid
+    loadDelimToJson, rid, generateCacheKey
 } = require('./util');
 const {logger} = require('./logging');
 
 const SOURCE_DEFN = {
     displayName: 'NCIt',
+    longName: 'NCI Thesaurus',
     url: 'https://ncit.nci.nih.gov/ncitbrowser',
     usage: 'https://creativecommons.org/licenses/by/4.0',
     name: 'ncit',
@@ -19,27 +20,34 @@ const SOURCE_DEFN = {
 };
 
 const diseaseConcepts = [
-    'Disease or Syndrome',
     'Anatomical Abnormality',
+    'Congenital Abnormality',
+    'Disease or Syndrome',
     'Mental or Behavioral Dysfunction',
-    'Congenital Abnormality'
+    'Neoplastic Process'
 ];
 
-const anatomyConcepts = ['Anatomical Structure',
+const anatomyConcepts = [
+    'Anatomical Structure',
+    'Body Location or Region',
     'Body Part, Organ, or Organ Component',
-    'Tissue',
-    'Body Location or Region'
+    'Tissue'
 ];
 
 const therapeuticConcepts = [
+    'Antibiotic',
+    'Biologically Active Substance',
+    'Chemical Viewed Functionally',
+    'Chemical Viewed Structurally',
+    'Chemical',
+    'Immunologic Factor',
+    'Inorganic Chemical',
+    'Organic Chemical',
     'Pharmacologic Substance',
     'Therapeutic or Preventive Procedure',
-    'Immunologic Factor',
-    'Antibiotic',
-    'Organic Chemical',
-    'Inorganic Chemical',
-    'Biologically Active Substance'
+    'Vitamin'
 ];
+
 
 const DEPRECATED = [
     'C61063', // obsolete concept
@@ -64,7 +72,87 @@ const pickEndpoint = (conceptName) => {
         }
         endpoint = 'therapies';
     }
-    return endpoint;
+    if (endpoint) {
+        return endpoint;
+    }
+    throw new Error(`Concept not implemented (${conceptName})`);
+};
+
+/**
+ * Convert the raw row record to a standard form
+ */
+const cleanRawRow = (rawRow) => {
+    const {
+        id,
+        synonyms: rawSynonyms,
+        parents: rawParents,
+        xmlTag,
+        name: rawName,
+        definition,
+        semanticType,
+        conceptStatus
+    } = rawRow;
+
+    const row = {
+        parents: (
+            rawParents.split('|')
+                .map(parent => parent.trim())
+                .filter(parent => parent && !DEPRECATED.includes(parent))
+                .map(parent => parent.toLowerCase())
+        ),
+        description: definition,
+        deprecated: (
+            rawParents.split('|').some(p => DEPRECATED.includes(p))
+                || conceptStatus === 'Obsolete_Concept'
+                || conceptStatus === 'Retired_Concept'
+        )
+    };
+    const sourceId = id.toLowerCase().trim();
+    const endpoint = pickEndpoint(semanticType);
+
+    // use the synonym name if no name given
+    const synonyms = rawSynonyms.split('|')
+        .map(s => s.toLowerCase().trim())
+        .filter(s => s);
+    let name = rawName.toLowerCase().trim();
+
+    // split up the name if it is a list
+    if (name && name.includes('|')) {
+        const names = name.split('|')
+            .map(s => s.toLowerCase().trim())
+            .filter(s => s);
+        names.sort();
+        [name] = names;
+        synonyms.push(...names.slice(1));
+    }
+
+    // non-human concepts should use fuller name
+    if (!/\b(murine|mouse|rat)\b/.exec(name)) {
+        for (const synonym of synonyms) {
+            if (/\b(murine|mouse|rat)\b/.exec(synonym)) {
+                name = synonym;
+                break;
+            }
+        }
+    }
+
+    // use the synonym name if no name given
+    if (!name && synonyms.length > 0) {
+        synonyms.sort();
+        name = synonyms[0];
+    }
+
+    const url = xmlTag.replace(/^</, '').replace(/>$/, '');
+
+    // add the parents
+    return {
+        ...row,
+        url,
+        endpoint,
+        sourceId,
+        name,
+        synonyms: Array.from(new Set(synonyms)).filter(s => s !== name)
+    };
 };
 
 /**
@@ -77,16 +165,44 @@ const pickEndpoint = (conceptName) => {
 const uploadFile = async ({filename, conn}) => {
     logger.info('Loading external NCIT data');
     logger.info(`loading: ${filename}`);
-    const rows = await loadDelimToJson(filename, '\t', [
-        'id',
-        'xmlTag',
-        'parents',
-        'synonyms',
-        'definition',
-        'name',
-        'conceptStatus',
-        'semanticType'
-    ]);
+    const rawRows = await loadDelimToJson(filename, {
+        delim: '\t',
+        header: [
+            'id',
+            'xmlTag',
+            'parents',
+            'synonyms',
+            'definition',
+            'name',
+            'conceptStatus',
+            'semanticType'
+        ]
+    });
+    // determine unresolvable records
+    const rows = [];
+    const nameDuplicates = {};
+    const counts = {skip: 0, success: 0, error: 0};
+    for (const raw of rawRows) {
+        try {
+            const row = cleanRawRow(raw);
+            if (!nameDuplicates[row.name]) {
+                nameDuplicates[row.name] = [];
+            }
+            nameDuplicates[row.name].push(row);
+            rows.push(row);
+        } catch (err) {
+            counts.skip++;
+        }
+    }
+    const rejected = new Set();
+    // if possible, assign the row another name from its list of synonyms (instead of the display name)
+    for (const [name, dups] of Object.entries(nameDuplicates)) {
+        if (name && dups && dups.length > 1) {
+            logger.info(`ncit terms (${dups.map(r => r.sourceId).join(', ')}) have non-unique name (${name})`);
+            dups.forEach(d => rejected.add(d.sourceId));
+        }
+    }
+    logger.info(`rejected ${rejected.size} rows for unresolveable primary/display name conflicts`);
 
     const source = rid(await conn.addRecord({
         endpoint: 'sources',
@@ -95,102 +211,92 @@ const uploadFile = async ({filename, conn}) => {
         existsOk: true
     }));
     const recordsById = {};
-    const subclass = [];
-    const rawRecords = {};
+    const subclassEdges = [];
 
-    const counts = {skip: 0, success: 0, error: 0};
-    const skippedWhy = {};
+    // list the ncit records already loaded
+    const cached = {};
+    logger.info('getting previously loaded records');
+    const cachedRecords = await conn.getRecords({
+        endpoint: 'ontologies',
+        where: {source, dependency: null, neighbors: 0}
+    });
+    for (const record of cachedRecords) {
+        cached[generateCacheKey(record)] = record;
+    }
+    logger.info(`loaded and cached ${Object.keys(cached).length} records`);
+
 
     for (let i = 0; i < rows.length; i++) {
+        const row = rows[i];
+        logger.info(`processing (${i} / ${rows.length}) ${row.sourceId}`);
+        if (rejected.has(row.sourceId)) {
+            counts.error++;
+            continue;
+        }
         try {
-            const row = rows[i];
-            const sourceId = row.id.toLowerCase().trim();
-            if (recordsById[sourceId]) {
-                throw new Error(`code is not unique (${sourceId})`);
-            }
-            rawRecords[sourceId] = row;
-            const endpoint = pickEndpoint(row.semanticType);
-            if (!endpoint) {
-                skippedWhy[sourceId] = `semantic type (${row.semanticType})`;
-                counts.skip++;
-                continue;
-            }
-            // use the synonym name if no name given
-            const synonyms = row.synonyms.split('|')
-                .map(s => s.toLowerCase().trim())
-                .filter(s => s);
+            const cacheKey = generateCacheKey(row);
 
-            if (!row.name) {
-                if (synonyms.length < 1) {
-                    counts.skip++;
-                    skippedWhy[sourceId] = 'no name';
-                    continue;
-                }
-                synonyms.sort();
-                row.name = synonyms[0];
+            if (recordsById[cacheKey]) {
+                throw new Error(`code is not unique (${cacheKey})`);
+            }
+
+            let record;
+            if (cached[cacheKey]) {
+                record = cached[cacheKey];
             } else {
-                // if there is multiple names, demote the extra to synonyms
-                const names = row.name.split('|')
-                    .map(s => s.toLowerCase().trim())
-                    .filter(s => s);
-                names.sort();
-                row.name = names[0];
-                synonyms.push(...names.slice(1));
-            }
-            logger.info(`processing ${row.id} (${i} of ${rows.length})`);
-
-            const url = row.xmlTag.replace(/^</, '').replace(/>$/, '');
-            const deprecated = row.parents.split('|').some(p => DEPRECATED.includes(p));
-            const record = await conn.addRecord({
-                endpoint,
-                content: {
-                    source,
-                    sourceId,
-                    name: row.name,
-                    description: row.definition,
-                    url,
-                    deprecated
-                },
-                fetchConditions: { // description can contain url malformed characters
-                    source,
-                    sourceId,
-                    name: row.name,
-                    dependency: null
-                },
-                existsOk: true
-            });
-
-            recordsById[sourceId] = rid(record);
-
-            // add the parents
-            subclass.push(
-                ...row.parents.split('|')
-                    .map(parent => parent.trim())
-                    .filter(parent => parent && !DEPRECATED.includes(parent))
-                    .map(parent => [sourceId, parent.toLowerCase()])
-            );
-
-            // add the synonyms
-            const uniqueSynonyms = Array.from(new Set(synonyms)).filter(s => s !== row.name.toLowerCase().trim());
-            await Promise.all(uniqueSynonyms.map(async (synonym) => {
-                const alias = await conn.addRecord({
+                // create the new record
+                const {
+                    endpoint, sourceId, description, url, name, deprecated
+                } = row;
+                record = await conn.addRecord({
                     endpoint,
                     content: {
                         source,
-                        sourceId: row.id,
-                        name: synonym,
-                        dependency: rid(record),
+                        sourceId,
+                        name,
+                        description,
+                        url,
                         deprecated
+                    },
+                    fetchConditions: { // description can contain url malformed characters
+                        source,
+                        sourceId,
+                        name: row.name,
+                        dependency: null
                     },
                     existsOk: true
                 });
-                await conn.addRecord({
-                    endpoint: 'aliasof',
-                    content: {out: rid(alias), in: rid(record), source},
-                    existsOk: true,
-                    fetchExisting: false
-                });
-            }));
+                cached[generateCacheKey(record)] = record;
+
+                // add the synonyms
+                await Promise.all(row.synonyms.map(async (synonym) => {
+                    try {
+                        const alias = await conn.addRecord({
+                            endpoint,
+                            content: {
+                                source,
+                                sourceId: record.sourceId,
+                                name: synonym,
+                                dependency: rid(record),
+                                deprecated: record.deprecated
+                            },
+                            existsOk: true
+                        });
+                        await conn.addRecord({
+                            endpoint: 'aliasof',
+                            content: {out: rid(alias), in: rid(record), source},
+                            existsOk: true,
+                            fetchExisting: false
+                        });
+                    } catch (err) {
+                        logger.error(`failed to link (${record.sourceId}) to alias (${synonym})`);
+                        logger.error(err);
+                    }
+                }));
+            }
+
+            // add the parents
+            subclassEdges.push(row.parents.map(parent => [cacheKey, generateCacheKey({sourceId: parent})]));
             counts.success++;
         } catch (err) {
             logger.error(err);
@@ -199,22 +305,18 @@ const uploadFile = async ({filename, conn}) => {
     }
 
     // now create all the subclass relationships
-    for (const [record, parent] of subclass) {
-        if (recordsById[record] && recordsById[parent]) {
+    for (const [recordKey, parentKey] of subclassEdges) {
+        if (cached[recordKey] && cached[parentKey]) {
             await conn.addRecord({
                 endpoint: 'subclassof',
                 content: {
-                    out: recordsById[record],
-                    in: recordsById[parent],
+                    out: rid(cached[recordKey]),
+                    in: rid(cached[parentKey]),
                     source
                 },
                 existsOk: true,
                 fetchExisting: false
             });
-        } else if (skippedWhy[parent]) {
-            logger.info(`failed to link ${record} to ${parent}: ${skippedWhy[parent]}`);
-        } else {
-            logger.info(`failed to link ${record} to ${parent}`);
         }
     }
     logger.info(JSON.stringify(counts));

@@ -3,12 +3,13 @@
  */
 const request = require('request-promise');
 const Ajv = require('ajv');
+const _ = require('lodash');
 
 const {
     rid, orderPreferredOntologyTerms, checkSpec
 } = require('./util');
 const {logger} = require('./logging');
-const _entrez = require('./entrez');
+const _entrez = require('./entrez/gene');
 
 const ensemblSourceName = 'ensembl';
 
@@ -20,6 +21,7 @@ const CLASS_NAME = 'features';
 const SOURCE_DEFN = {
     name: 'hgnc',
     url: 'https://www.genenames.org/about',
+    longName: 'HUGO Gene Nomenclature Committee',
     displayName: 'HGNC',
     usage: 'https://www.ebi.ac.uk/about/terms-of-use',
     description: `
@@ -56,7 +58,7 @@ const createDisplayName = symbol => symbol.toUpperCase().replace('ORF', 'orf');
  * @param {object} opt.gene the gene record from HGNC
  */
 const uploadRecord = async ({
-    conn, sources: {hgnc, ensembl}, gene, ensemblMissingRecords = new Set()
+    conn, sources: {hgnc, ensembl}, gene
 }) => {
     const body = {
         source: rid(hgnc),
@@ -68,10 +70,13 @@ const uploadRecord = async ({
         displayName: createDisplayName(gene.symbol)
     };
 
+    // don't update version if nothing else has changed
     const currentRecord = await conn.addRecord({
         endpoint: CLASS_NAME,
         content: body,
-        existsOk: true
+        existsOk: true,
+        fetchConditions: _.omit(body, ['sourceIdVersion', 'displayName', 'longName']),
+        fetchFirst: true
     });
 
     if (gene.ensembl_gene_id && ensembl) {
@@ -83,40 +88,41 @@ const uploadRecord = async ({
             // try adding the cross reference relationship
             await conn.addRecord({
                 endpoint: 'crossreferenceof',
-                content: {src: rid(currentRecord), tgt: rid(ensg), source: rid(hgnc)},
+                content: {out: rid(currentRecord), in: rid(ensg), source: rid(hgnc)},
                 existsOk: true,
                 fetchExisting: false
             });
-        } catch (err) {
-            ensemblMissingRecords.add(gene.ensembl_gene_id);
-        }
+        } catch (err) { }
     }
     for (const symbol of gene.prev_symbol || []) {
         const {sourceId, biotype} = currentRecord;
-        const deprecatedRecord = await conn.addRecord({
-            endpoint: CLASS_NAME,
-            content: {
-                source: rid(hgnc),
-                sourceId,
-                dependency: rid(currentRecord),
-                deprecated: true,
-                biotype,
-                name: symbol,
-                displayName: createDisplayName(symbol)
-            },
-            existsOk: true,
-            fetchConditions: {
-                source: rid(hgnc), sourceId, name: symbol, deprecated: true
-            },
-            fetchExisting: true
-        });
+
         // link to the current record
-        await conn.addRecord({
-            endpoint: 'deprecatedby',
-            content: {out: rid(deprecatedRecord), in: rid(currentRecord), source: rid(hgnc)},
-            existsOk: true,
-            fetchExisting: false
-        });
+        try {
+            const deprecatedRecord = await conn.addRecord({
+                endpoint: CLASS_NAME,
+                content: {
+                    source: rid(hgnc),
+                    sourceId,
+                    dependency: rid(currentRecord),
+                    deprecated: true,
+                    biotype,
+                    name: symbol,
+                    displayName: createDisplayName(symbol)
+                },
+                existsOk: true,
+                fetchConditions: {
+                    source: rid(hgnc), sourceId, name: symbol, deprecated: true
+                },
+                fetchExisting: true
+            });
+            await conn.addRecord({
+                endpoint: 'deprecatedby',
+                content: {out: rid(deprecatedRecord), in: rid(currentRecord), source: rid(hgnc)},
+                existsOk: true,
+                fetchExisting: false
+            });
+        } catch (err) { }
     }
     for (const symbol of gene.alias_symbol || []) {
         const {sourceId, biotype} = currentRecord;
@@ -142,19 +148,21 @@ const uploadRecord = async ({
                 existsOk: true,
                 fetchExisting: false
             });
-        } catch (err) {}
+        } catch (err) { }
     }
     // cross reference the entrez gene
     if (gene.entrez_id) {
         try {
-            const entrezGene = await _entrez.fetchAndLoadById(conn, gene.entrez_id);
+            const [entrezGene] = await _entrez.fetchAndLoadByIds(conn, [gene.entrez_id]);
             await conn.addRecord({
                 endpoint: 'crossreferenceof',
-                content: {src: rid(currentRecord), tgt: rid(entrezGene), source: rid(hgnc)},
+                content: {out: rid(currentRecord), in: rid(entrezGene), source: rid(hgnc)},
                 existsOk: true,
                 fetchExisting: false
             });
-        } catch (err) {}
+        } catch (err) {
+            logger.warn(err);
+        }
     }
     return currentRecord;
 };
@@ -186,7 +194,7 @@ const fetchAndLoadBySymbol = async ({
             CACHE[paramType][symbol] = record;
         }
         return record;
-    } catch (err) {}
+    } catch (err) { }
     // fetch from the HGNC API and upload
     const uri = `${HGNC_API}/${paramType}/${
         paramType === 'hgnc_id'
@@ -223,7 +231,7 @@ const fetchAndLoadBySymbol = async ({
             endpoint: 'sources',
             where: {name: ensemblSourceName}
         });
-    } catch (err) {}
+    } catch (err) { }
     const result = await uploadRecord({conn, gene, sources: {hgnc, ensembl}});
     CACHE[paramType][symbol] = result;
     return result;
@@ -248,7 +256,6 @@ const uploadFile = async (opt) => {
         fetchConditions: {name: SOURCE_DEFN.name}
     });
     let ensembl;
-    const ensemblMissingRecords = new Set();
     try {
         ensembl = await conn.getUniqueRecordBy({
             endpoint: 'sources',
@@ -270,9 +277,6 @@ const uploadFile = async (opt) => {
             continue;
         }
         await uploadRecord({conn, sources: {hgnc, ensembl}, gene});
-    }
-    if (ensemblMissingRecords.size) {
-        logger.warn(`Unable to retrieve ${ensemblMissingRecords.size} ensembl records for linking`);
     }
 };
 

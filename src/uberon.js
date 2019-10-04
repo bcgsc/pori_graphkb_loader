@@ -82,8 +82,7 @@ const uploadFile = async ({filename, conn}) => {
 
     const subclassEdges = [];
     const source = await conn.addRecord({
-        endpoint:
-        'sources',
+        endpoint: 'sources',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -165,7 +164,7 @@ const uploadFile = async ({filename, conn}) => {
     if (ncitSource) {
         logger.info(`Adding the ${ncitLinks.length} uberon/ncit aliasof relationships`);
         for (const {src, tgt} of ncitLinks) {
-            if (records[src] === undefined) {
+            if (records[src] === undefined || ncitMissingRecords.has(tgt)) {
                 continue;
             }
             try {
@@ -185,7 +184,8 @@ const uploadFile = async ({filename, conn}) => {
                     fetchExisting: false
                 });
             } catch (err) {
-            // ignore missing vocabulary
+                // ignore missing vocabulary
+                logger.warn(`failed to link to ${tgt} (NCIt)`);
                 ncitMissingRecords.add(tgt);
             }
         }

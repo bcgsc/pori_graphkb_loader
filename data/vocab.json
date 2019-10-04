@@ -219,6 +219,24 @@
                 }
             ]
         },
+        "deleterious": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "loss of function"
+                }
+            ]
+        },
+        "deleterious mutation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "loss of function mutation"
+                }
+            ]
+        },
         "deletion": {
             "links": [
                 {
@@ -228,24 +246,6 @@
                 {
                     "class": "SubClassOf",
                     "target": "copy loss"
-                }
-            ]
-        },
-        "deletrious": {
-            "deprecated": true,
-            "links": [
-                {
-                    "class": "DeprecatedBy",
-                    "target": "loss of function"
-                }
-            ]
-        },
-        "deletrious mutation": {
-            "deprecated": true,
-            "links": [
-                {
-                    "class": "DeprecatedBy",
-                    "target": "loss of function mutation"
                 }
             ]
         },
@@ -266,6 +266,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "duplication"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "domain mutation"
                 }
             ]
         },
@@ -469,6 +473,14 @@
                 {
                     "class": "DeprecatedBy",
                     "target": "strong signature"
+                }
+            ]
+        },
+        "highly recurrent": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "recurrent"
                 }
             ]
         },
@@ -676,11 +688,39 @@
                 }
             ]
         },
+        "domain mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "mutation"
+                }
+            ]
+        },
+        "kinase domain mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "domain mutation"
+                }
+            ]
+        },
         "kinase domain duplication": {
             "links": [
                 {
                     "class": "SubClassOf",
                     "target": "domain duplication"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "kinase domain mutation"
+                }
+            ]
+        },
+        "biallelic inactivation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "loss of function"
                 }
             ]
         },
@@ -783,6 +823,9 @@
                 }
             ]
         },
+        "loh": {
+            "displayName": "LOH"
+        },
         "loss of function": {
             "description": "some normal functionality has been lost",
             "links": [
@@ -801,6 +844,18 @@
                 },
                 {
                     "class": "SubClassOf",
+                    "target": "mutation"
+                }
+            ]
+        },
+        "loss of heterozygosity": {
+            "links": [
+                {
+                    "class": "AliasOf",
+                    "target": "loh"
+                },
+                {
+                    "class": "AliasOf",
                     "target": "mutation"
                 }
             ]
@@ -868,7 +923,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "recurrent"
+                    "target": "highly recurrent"
                 }
             ]
         },
@@ -1142,11 +1197,27 @@
         "prognostic indicator": {
             "name": "prognostic indicator"
         },
+        "promoter demethylation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "promoter variant"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "methylation variant"
+                }
+            ]
+        },
         "promoter hypermethylation": {
             "links": [
                 {
                     "class": "SubClassOf",
                     "target": "promoter variant"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "methylation variant"
                 }
             ]
         },
@@ -1155,6 +1226,22 @@
                 {
                     "class": "SubClassOf",
                     "target": "promoter variant"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "methylation variant"
+                }
+            ]
+        },
+        "promoter methylation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "promoter variant"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "methylation variant"
                 }
             ]
         },
@@ -1413,6 +1500,32 @@
                 }
             ]
         },
+        "splice acceptor mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "splice-site"
+                },
+                {
+                    "class": "AliasOf",
+                    "target": "splice acceptor variant"
+                }
+            ]
+        },
+        "splice acceptor variant": {},
+        "splice donor mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "splice-site"
+                },
+                {
+                    "class": "AliasOf",
+                    "target": "splice donor variant"
+                }
+            ]
+        },
+        "splice donor variant": {},
         "splice-site": {
             "links": [
                 {
@@ -1635,6 +1748,9 @@
         }
     },
     "source": {
-        "name": "bcgsc"
+        "displayName": "GraphKB",
+        "longName": "Graph Knowledgebase",
+        "name": "graphkb",
+        "url": "https://graphkb.bcgsc.ca"
     }
 }

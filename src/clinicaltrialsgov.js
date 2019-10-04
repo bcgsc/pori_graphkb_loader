@@ -10,6 +10,8 @@
  * @module importer/clinicaltrialsgov
  */
 const Ajv = require('ajv');
+const _ = require('lodash');
+
 const {
     loadXmlToJson,
     orderPreferredOntologyTerms,
@@ -36,8 +38,8 @@ const CACHE = {};
 const ajv = new Ajv();
 
 
-const singleItemArray = (spec = {}) => ({
-    type: 'array', maxItems: 1, minItems: 1, items: {type: 'string', ...spec}
+const singleItemArray = (spec = {type: 'string'}) => ({
+    type: 'array', maxItems: 1, minItems: 1, items: {...spec}
 });
 
 const validateDownloadedTrialRecord = ajv.compile({
@@ -105,13 +107,33 @@ const validateAPITrialRecord = ajv.compile({
                 'condition',
                 'intervention',
                 'last_update_posted',
-                'required_header'
+                'required_header',
+                'location'
             ],
             properties: {
                 required_header: singleItemArray({
                     type: 'object',
                     required: ['url'],
                     properties: {url: singleItemArray()}
+                }),
+                start_date: singleItemArray({
+                    oneOf: [
+                        {
+                            type: 'object',
+                            required: ['_'],
+                            properties: {
+                                _: {type: 'string'}
+                            }
+                        },
+                        {type: 'string'}
+                    ]
+                }),
+                completion_date: singleItemArray({
+                    type: 'object',
+                    required: ['_'],
+                    properties: {
+                        _: {type: 'string'}
+                    }
                 }),
                 id_info: singleItemArray({
                     type: 'object',
@@ -142,31 +164,88 @@ const validateAPITrialRecord = ajv.compile({
                     type: 'object',
                     required: ['_'],
                     properties: {_: {type: 'string'}}
-                })
+                }),
+                location: {
+                    type: 'array',
+                    minItems: 1,
+                    items: {
+                        type: 'object',
+                        required: ['facility'],
+                        properties: {
+                            facility: singleItemArray({
+                                type: 'object',
+                                required: ['address'],
+                                properties: {
+                                    address: singleItemArray({
+                                        type: 'object',
+                                        required: ['city', 'country'],
+                                        properties: {
+                                            city: singleItemArray(),
+                                            country: singleItemArray()
+                                        }
+                                    })
+                                }
+                            })
+                        }
+                    }
+                }
             }
         }
     }
 });
 
 
+const standardizeDate = (dateString) => {
+    const dateObj = new Date(Date.parse(dateString));
+    const month = dateObj.getMonth() + 1 < 10
+        ? `0${dateObj.getMonth() + 1}`
+        : dateObj.getMonth() + 1;
+    const date = dateObj.getDate() < 10
+        ? `0${dateObj.getDate()}`
+        : dateObj.getDate();
+    return `${dateObj.getFullYear()}-${month}-${date}`;
+};
+
+
 /**
  * Given some records from the API, convert its form to a standard represention
  */
-const convertAPIRecord = (record) => {
-    checkSpec(validateAPITrialRecord, record, rec => rec.clinical_study.id_info[0].nct_id);
+const convertAPIRecord = (rawRecord) => {
+    checkSpec(validateAPITrialRecord, rawRecord, rec => rec.clinical_study.id_info[0].nct_id);
+    const {clinical_study: record} = rawRecord;
+
+    let startDate,
+        completionDate;
+    try {
+        startDate = standardizeDate(record.start_date[0]._ || record.start_date[0]);
+    } catch (err) {}
+    try {
+        completionDate = standardizeDate(record.completion_date[0]._);
+    } catch (err) {}
+
     const content = {
-        sourceId: record.clinical_study.id_info[0].nct_id[0],
-        name: record.clinical_study.official_title[0],
-        url: record.clinical_study.required_header[0].url[0],
-        sourceIdVersion: record.clinical_study.last_update_posted[0]._,
-        phases: record.clinical_study.phase,
-        diseases: record.clinical_study.condition,
-        drugs: []
+        sourceId: record.id_info[0].nct_id[0],
+        name: record.official_title[0],
+        url: record.required_header[0].url[0],
+        sourceIdVersion: standardizeDate(record.last_update_posted[0]._),
+        diseases: record.condition,
+        drugs: [],
+        startDate,
+        completionDate,
+        locations: []
     };
-    for (const {intervention_name: name, intervention_type: type} of record.clinical_study.intervention || []) {
-        if (type === 'Drug') {
+    if (record.phase) {
+        content.phases = record.phase;
+    }
+    for (const {intervention_name: [name], intervention_type: [type]} of record.intervention || []) {
+        if (type.toLowerCase() === 'drug' || type.toLowerCase() === 'biological') {
             content.drugs.push(name);
         }
+    }
+
+    for (const location of record.location || []) {
+        const {facility: [{address: [{country: [country], city: [city]}]}]} = location;
+        content.locations.push({country: country.toLowerCase(), city: city.toLowerCase()});
     }
     return content;
 };
@@ -184,11 +263,11 @@ const convertDownloadedRecord = (record) => {
         sourceId: record.nct_id[0],
         url: record.url[0],
         name: record.title[0],
-        sourceIdVersion: record.last_update_posted[0]
+        sourceIdVersion: standardizeDate(record.last_update_posted[0])
     };
-    for (const raw of record.interventions[0].intervention) {
-        const {_: name, type} = raw;
-        if (type[0].trim().toLowerCase() === 'drug') {
+    for (const {_: name, type: [rawType]} of record.interventions[0].intervention) {
+        const type = rawType.trim().toLowerCase();
+        if (type === 'drug' || type === 'biological') {
             content.drugs.push(name);
         }
     }
@@ -203,13 +282,15 @@ const convertDownloadedRecord = (record) => {
 const processPhases = (phaseList) => {
     const phases = [];
     for (const raw of phaseList || []) {
-        const phase = raw.trim().toLowerCase();
-        if (phase !== 'not applicable') {
-            const match = /^(early )?phase (\d+)$/.exec(phase);
-            if (!match) {
-                throw new Error(`unrecognized phase description (${phase})`);
+        const cleanedPhaseList = raw.trim().toLowerCase().replace(/\bn\/a\b/, '').split(/[,/]/);
+        for (const phase of cleanedPhaseList) {
+            if (phase !== '' && phase !== 'not applicable') {
+                const match = /^(early )?phase (\d+)$/.exec(phase);
+                if (!match) {
+                    throw new Error(`unrecognized phase description (${phase})`);
+                }
+                phases.push(match[2]);
             }
-            phases.push(match[2]);
         }
     }
     return phases.sort().join('/');
@@ -239,6 +320,40 @@ const processRecord = async ({
     if (phase) {
         content.phase = phase;
     }
+    if (record.startDate) {
+        content.startDate = record.startDate;
+    }
+    if (record.completionDate) {
+        content.completionDate = record.completionDate;
+    }
+    // check if single location or at least single country
+    let consensusCountry,
+        consensusCity;
+    for (const {city, country} of record.locations) {
+        if (consensusCountry) {
+            if (consensusCountry !== country.toLowerCase()) {
+                consensusCountry = null;
+                consensusCity = null;
+                break;
+            }
+        } else {
+            consensusCountry = country.toLowerCase();
+        }
+        if (consensusCity !== undefined) {
+            if (consensusCity !== city.toLowerCase()) {
+                consensusCity = null;
+            }
+        } else {
+            consensusCity = city.toLowerCase();
+        }
+    }
+    if (consensusCountry) {
+        content.country = consensusCountry;
+        if (consensusCity) {
+            content.city = consensusCity;
+        }
+    }
+
     const links = [];
     for (const drug of record.drugs) {
         try {
@@ -270,7 +385,9 @@ const processRecord = async ({
     const trialRecord = await conn.addRecord({
         endpoint: 'clinicaltrials',
         content,
-        existsOk: true
+        existsOk: true,
+        fetchFirst: true,
+        fetchConditions: _.omit(content, ['sourceIdVersion']) // if sourceIdVersion is the only thing different then don't update
     });
 
     // link to the drugs and diseases
@@ -372,5 +489,5 @@ const uploadFile = async ({conn, filename}) => {
 };
 
 module.exports = {
-    uploadFile, SOURCE_DEFN, type: 'kb', fetchAndLoadById
+    uploadFile, SOURCE_DEFN, kb: true, fetchAndLoadById, convertAPIRecord
 };

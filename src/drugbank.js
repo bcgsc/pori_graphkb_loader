@@ -3,7 +3,6 @@
  * @module importer/drugbank
  */
 
-const _ = require('lodash');
 const Ajv = require('ajv');
 const XmlStream = require('xml-stream');
 const fs = require('fs');
@@ -14,7 +13,7 @@ const {
 const _hgnc = require('./hgnc');
 const {logger} = require('./logging');
 const _chembl = require('./chembl');
-const {SOURCE_DEFN: {name: fdaName}} = require('./fda');
+const {SOURCE_DEFN: {name: fdaName}} = require('./fda_srs');
 
 
 const ajv = new Ajv();
@@ -74,6 +73,17 @@ const validateDrugbankSpec = ajv.compile({
                 items: {type: 'object', required: ['category'], properties: {category: {type: 'string'}}}
             }
         ),
+        'calculated-properties': singleReqProp('property', {
+            type: 'array',
+            items: {
+                type: 'object',
+                required: ['kind', 'value'],
+                properties: {
+                    type: {type: 'string'},
+                    kind: {type: 'string'}
+                }
+            }
+        }),
         'atc-codes': singleReqProp(
             'atc-code', singleReqProp(
                 'level', {
@@ -177,11 +187,26 @@ const processRecord = async ({
             body.subsets.push(cat.category[0]);
         }
     }
+    if (drug['calculated-properties']) {
+        for (const {kind, value} of drug['calculated-properties'].property) {
+            if (kind === 'IUPAC Name') {
+                body.iupacName = value;
+            } else if (kind === 'Molecular Formula') {
+                body.molecularFormula = value;
+            }
+        }
+    }
+
     const record = await conn.addRecord({
         endpoint: 'therapies',
         content: body,
         existsOk: true,
-        fetchConditions: _.omit(body, ['subsets', 'mechanismOfAction', 'description'])
+        fetchConditions: {
+            source: rid(current),
+            sourceId: body.sourceId,
+            name: body.name,
+            sourceIdVersion: body.sourceIdVersion
+        }
     });
     // create the categories
     for (const atcLevel of atcLevels) {
@@ -357,7 +382,7 @@ const uploadFile = async ({filename, conn}) => {
     }
     const counts = {success: 0, error: 0, skipped: 0};
 
-    const parseXML = new Promise((resolve) => {
+    const parseXML = new Promise((resolve, reject) => {
         logger.log('info', `loading XML data from ${filename}`);
         const stream = fs.createReadStream(filename);
         const xml = new XmlStream(stream);
@@ -369,6 +394,7 @@ const uploadFile = async ({filename, conn}) => {
         xml.collect('drug target polypeptide');
         xml.collect('drug target actions action');
         xml.collect('drug products product');
+        xml.collect('drug calculated-properties property');
         xml.on('endElement: drug', (item) => {
             if (Object.keys(item).length < 3) {
                 return;
@@ -383,7 +409,7 @@ const uploadFile = async ({filename, conn}) => {
                 let label;
                 try {
                     label = getDrugBankId(item);
-                } catch (err) {}  // eslint-disable-line
+                } catch (err2) {}  // eslint-disable-line
                 counts.error++;
                 logger.error(err);
                 logger.error(`Unable to process record ${label}`);
@@ -394,6 +420,12 @@ const uploadFile = async ({filename, conn}) => {
             logger.info('Parsing stream complete');
             stream.close();
             resolve();
+        });
+        xml.on('error', (err) => {
+            logger.error('Parsing stream error');
+            logger.error(err);
+            stream.close();
+            reject(err);
         });
     });
 

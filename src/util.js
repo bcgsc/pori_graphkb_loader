@@ -11,11 +11,22 @@ const jwt = require('jsonwebtoken');
 const sleep = require('sleep-promise');
 const HTTP_STATUS_CODES = require('http-status-codes');
 const jsonpath = require('jsonpath');
+const crypto = require('crypto');
+const stableStringify = require('json-stable-stringify');
 
 
 const {logger} = require('./logging');
 
+const INTERNAL_SOURCE_NAME = 'graphkb';
+
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
+
+const generateCacheKey = (record) => {
+    if (record.sourceIdVersion !== undefined && record.sourceIdVersion !== null) {
+        return `${record.sourceId}-${record.sourceIdVersion}`.toLowerCase();
+    }
+    return `${record.sourceId}`.toLowerCase();
+};
 
 const rid = (record, nullOk) => {
     if (nullOk && !record) {
@@ -38,6 +49,7 @@ const convertNulls = (where) => {
     return queryParams;
 };
 
+const nullOrUndefined = value => value === undefined || value === null;
 
 /**
  * Given two ontology terms, return the newer, non-deprecated, independant, term first.
@@ -48,26 +60,55 @@ const convertNulls = (where) => {
  * @returns {Number} the sorting number (-1, 0, +1)
  */
 const orderPreferredOntologyTerms = (term1, term2) => {
+    // prefer non-deprecated terms
     if (term1.deprecated && !term2.deprecated) {
         return 1;
     } if (term2.deprecated && !term1.deprecated) {
         return -1;
-    } if (term1.dependency == null & term2.dependency != null) {
+    }
+    // prefer terms with independent sourceId
+    if (term1.dependency == null & term2.dependency != null) {
         return -1;
     } if (term2.dependency == null & term1.dependency != null) {
         return 1;
-    } if (term1.sourceId === term2.sourceId && rid(term1.source, true) === rid(term2.source, true)) {
+    }
+    // when terms have the same sourceId and source
+    if (term1.sourceId === term2.sourceId && rid(term1.source, true) === rid(term2.source, true)) {
+        // prefer generic to versioned terms (will not be together unless version not specified)
+        if (nullOrUndefined(term1.sourceIdVersion) && !(term2.sourceIdVersion)) {
+            return -1;
+        } if (nullOrUndefined(term2.sourceIdVersion) && !(term1.sourceIdVersion)) {
+            return 1;
+        }
+        // prefer newer/later versions
         if (term1.sourceIdVersion < term2.sourceIdVersion) {
             return -1;
         } if (term1.sourceIdVersion > term2.sourceIdVersion) {
             return 1;
         }
+        // prefer newer/later source version
         if (term1.source && term2.source) {
             if (term1.source.version < term2.source.version) {
                 return -1;
             } if (term1.source.version > term2.source.version) {
                 return 1;
             }
+        }
+        // prefer terms with descriptions
+        if (term1.description && !term2.description) {
+            return -1;
+        } if (!term1.description && term2.description) {
+            return 1;
+        }
+    } if (term1.source && term2.source) {
+        if (term1.source.version < term2.source.version) {
+            return -1;
+        } if (term1.source.version > term2.source.version) {
+            return 1;
+        } if (term1.description && !term2.description) {
+            return -1;
+        } if (!term1.description && term2.description) {
+            return 1;
         }
     }
     return 0;
@@ -107,7 +148,7 @@ const generateRanks = (arr) => {
 
 const preferredVocabulary = (term1, term2) => {
     const sourceRank = generateRanks([
-        'bcgsc',
+        INTERNAL_SOURCE_NAME,
         'sequence ontology',
         'variation ontology'
     ]);
@@ -118,18 +159,20 @@ const preferredVocabulary = (term1, term2) => {
 const preferredDiseases = (term1, term2) => {
     const sourceRank = generateRanks([
         'oncotree',
-        'disease ontology'
+        'disease ontology',
+        'ncit'
     ]);
     return preferredSources(sourceRank, term1, term2);
 };
 
 const preferredDrugs = (term1, term2) => {
     const sourceRank = generateRanks([
-        'gsc therapeutic ontology',
         'drugbank',
         'chembl',
+        'ncit',
         'fda',
-        'ncit'
+        'oncokb',
+        'gsc therapeutic ontology'
     ]);
     return preferredSources(sourceRank, term1, term2);
 };
@@ -138,8 +181,8 @@ const preferredDrugs = (term1, term2) => {
 const preferredFeatures = (term1, term2) => {
     const sourceRank = generateRanks([
         'grch',
-        'hgnc',
         'entrez',
+        'hgnc',
         'ensembl',
         'refseq'
     ]);
@@ -208,6 +251,32 @@ class ApiConnection {
         return request(req);
     }
 
+    async getRecords(opt) {
+        const {
+            where,
+            endpoint,
+            limit = 1000
+        } = opt;
+
+        const result = [];
+        let lastFetch = limit,
+            skip = 0;
+        const queryParams = convertNulls(where);
+
+        while (lastFetch === limit) {
+            const {result: records} = await this.request({
+                uri: endpoint,
+                qs: {
+                    neighbors: 1, ...queryParams, limit, skip
+                }
+            });
+            result.push(...records);
+            lastFetch = records.length;
+            skip += limit;
+        }
+        return result;
+    }
+
     async getUniqueRecord(opt) {
         const {result} = await this.request(opt);
         if (result.length !== 1) {
@@ -221,7 +290,7 @@ class ApiConnection {
      * @param {object} opt
      * @param {object} opt.where the conditions/query parameters for the selection
      * @param {string} opt.endpoint the endpoint to query
-     * @param {function} opt.sortFunc the function to use in sorting if multiple results are found
+     * @param {function} opt.sort the function to use in sorting if multiple results are found
      */
     async getUniqueRecordBy(opt) {
         const {
@@ -259,6 +328,60 @@ class ApiConnection {
     }
 
     /**
+     * Fetch therapy by name, ignore plurals for some cases
+     */
+    async getTherapy(term, opt = {}) {
+        let error;
+        try {
+            return await this.getUniqueRecordBy({
+                endpoint: 'therapies',
+                sort: preferredDrugs,
+                ...opt,
+                where: {
+                    ...(opt.where || {}),
+                    sourceId: term,
+                    name: term,
+                    or: 'sourceId,name'
+                }
+            });
+        } catch (err) {
+            error = err;
+        }
+        let alternateTerm;
+        if (/\binhibitor\b/.exec(term)) {
+            alternateTerm = term.replace(/\binhibitor\b/, 'inhibitors');
+        } else if (/\binhibitors\b/.exec(term)) {
+            alternateTerm = term.replace(/\binhibitors\b/, 'inhibitor');
+        }
+        if (alternateTerm) {
+            try {
+                return await this.getUniqueRecordBy({
+                    endpoint: 'therapies',
+                    sort: preferredDrugs,
+                    ...opt,
+                    where: {
+                        ...(opt.where || {}),
+                        sourceId: alternateTerm,
+                        name: alternateTerm,
+                        or: 'sourceId,name'
+                    }
+                });
+            } catch (err) {
+                error = err;
+            }
+        }
+        throw error;
+    }
+
+    async getVocabularyTerm(term) {
+        return this.getUniqueRecordBy({
+            endpoint: 'vocabulary',
+            where: {sourceId: term, source: {name: INTERNAL_SOURCE_NAME}},
+            sortFunc: orderPreferredOntologyTerms
+        });
+    }
+
+    /**
      * @param {object} opt
      * @param {string} opt.endpoint
      * @param {boolean} [opt.existsOk=false] do not error if a record cannot be created because it already exists
@@ -280,7 +403,7 @@ class ApiConnection {
 
         if (fetchFirst) {
             try {
-                return this.getUniqueRecordBy({
+                return await this.getUniqueRecordBy({
                     where: fetchConditions || content,
                     endpoint,
                     sortFunc
@@ -310,6 +433,11 @@ class ApiConnection {
         }
     }
 
+    /**
+     * @param {object} opt
+     * @param {object} opt.content
+     * @param {string} opt.endpoint
+     */
     async addVariant(opt) {
         const {
             content,
@@ -327,7 +455,8 @@ class ApiConnection {
                 refSeq: null,
                 break1Repr: null,
                 break2Repr: null,
-                truncation: null
+                truncation: null,
+                assembly: null
             });
         }
         const {
@@ -346,19 +475,9 @@ class ApiConnection {
         try {
             let result;
             if (matchSource) {
-                result = await this.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {
-                        name: therapyName, sourceId: therapyName, or: 'sourceId,name', source: rid(source)
-                    },
-                    sort: preferredDrugs
-                });
+                result = await this.getTherapy(therapyName, {where: {source: rid(source)}});
             } else {
-                result = await this.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {name: therapyName, sourceId: therapyName, or: 'sourceId,name'},
-                    sort: preferredDrugs
-                });
+                result = await this.getTherapy(therapyName);
             }
             return result;
         } catch (err) {
@@ -370,19 +489,9 @@ class ApiConnection {
         try {
             const elements = await Promise.all(therapyName.split(/\s*\+\s*/gi).map((name) => {
                 if (matchSource) {
-                    return this.getUniqueRecordBy({
-                        endpoint: 'therapies',
-                        where: {
-                            name, sourceId: name, or: 'sourceId,name', source: rid(source)
-                        },
-                        sort: preferredDrugs
-                    });
+                    return this.getTherapy(name, {where: {source: rid(source)}});
                 }
-                return this.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {name, sourceId: name, or: 'sourceId,name'},
-                    sort: preferredDrugs
-                });
+                return this.getTherapy(name);
             }));
             const sourceId = elements.map(e => e.sourceId).sort().join(' + ');
             const name = elements.map(e => e.name).sort().join(' + ');
@@ -443,7 +552,8 @@ const convertOwlGraphToJson = (graph, idParser = x => x) => {
 };
 
 
-const loadDelimToJson = async (filename, delim = '\t', header = null) => {
+const loadDelimToJson = async (filename, opt = {}) => {
+    const {delim = '\t', header = true, ...rest} = opt;
     logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
     logger.info('parsing into json');
@@ -452,8 +562,9 @@ const loadDelimToJson = async (filename, delim = '\t', header = null) => {
         escape: null,
         quote: null,
         comment: '##',
-        columns: header || true,
-        auto_parse: true
+        columns: header,
+        auto_parse: true,
+        ...rest
     });
     return jsonList;
 };
@@ -506,6 +617,10 @@ const requestWithRetry = async (requestOpt, {waitSeconds = 2, retries = 1} = {})
 };
 
 
+const hashStringToId = input => crypto.createHash('md5').update(input).digest('hex');
+const hashRecordToId = input => hashStringToId(stableStringify(input));
+
+
 const shallowObjectKey = obj => JSON.stringify(obj, (k, v) => (k
     ? `${v}`
     : v));
@@ -539,10 +654,11 @@ const convertRowFields = (header, row) => {
 
 
 module.exports = {
-    INTERNAL_SOURCE_NAME: 'bcgsc',
+    INTERNAL_SOURCE_NAME,
     rid,
     checkSpec,
     convertOwlGraphToJson,
+    generateCacheKey,
     orderPreferredOntologyTerms,
     preferredDiseases,
     preferredDrugs,
@@ -554,5 +670,7 @@ module.exports = {
     ApiConnection,
     requestWithRetry,
     convertNulls,
-    convertRowFields
+    convertRowFields,
+    hashStringToId,
+    hashRecordToId
 };

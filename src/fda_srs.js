@@ -5,17 +5,25 @@
  */
 
 const {
-    orderPreferredOntologyTerms, loadDelimToJson, rid
+    orderPreferredOntologyTerms, loadDelimToJson, rid, convertRowFields
 } = require('./util');
 const {SOURCE_DEFN: {name: ncitSourceName}} = require('./ncit');
 const {logger} = require('./logging');
 
 const SOURCE_DEFN = {
-    displayName: 'FDA',
-    name: 'fda',
+    displayName: 'FDA-SRS',
+    name: 'fda srs',
+    longName: 'FDA Substance Registration System',
     url: 'https://fdasis.nlm.nih.gov/srs',
     comment: 'https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/default.htm',
     description: 'The overall purpose of the joint FDA/USP Substance Registration System (SRS) is to support health information technology initiatives by generating unique ingredient identifiers (UNIIs) for substances in drugs, biologics, foods, and devices. The UNII is a non- proprietary, free, unique, unambiguous, non semantic, alphanumeric identifier based on a substance’s molecular structure and/or descriptive information.'
+};
+
+const HEADER = {
+    id: 'UNII',
+    ncit: 'NCIT',
+    pubchem: 'PUBCHEM',
+    name: 'PT'
 };
 
 /**
@@ -49,42 +57,45 @@ const uploadFile = async (opt) => {
     logger.info(`loading ${jsonList.length} records`);
 
     for (let i = 0; i < jsonList.length; i++) {
-        const record = jsonList[i];
-        if (!record.PT.length
-            || !record.UNII.length
-            || !record.PT.trim().toLowerCase()
-            || !record.NCIT
-        ) {
+        const {
+            pubchem, id, ncit, name
+        } = convertRowFields(HEADER, jsonList[i]);
+
+        if (!name || !id || (!ncit && !pubchem)) {
+            // only load records with at min these 3 values filled out
             counts.skip++;
             continue;
         }
-        const name = record.PT.trim().toLowerCase();
         let ncitRec;
-        logger.info(`processing ${record.UNII} (${i} / ${jsonList.length})`);
-        try {
-            ncitRec = await api.getUniqueRecordBy({
-                endpoint: 'therapies',
-                where: {source: {name: ncitSourceName}, sourceId: record.NCIT},
-                sort: orderPreferredOntologyTerms
-            });
-        } catch (err) {
-            counts.skip++;
-            continue;
+        logger.info(`processing ${id} (${i} / ${jsonList.length})`);
+        if (ncit) {
+            try {
+                ncitRec = await api.getUniqueRecordBy({
+                    endpoint: 'therapies',
+                    where: {source: {name: ncitSourceName}, sourceId: ncit},
+                    sort: orderPreferredOntologyTerms
+                });
+            } catch (err) {
+                counts.skip++;
+                continue;
+            }
         }
-        // only load records with at min these 3 values filled out
+
         let drug;
         try {
             drug = await api.addRecord({
                 endpoint: 'therapies',
-                content: {name, sourceId: record.UNII, source: rid(source)},
+                content: {name, sourceId: id, source: rid(source)},
                 existsOk: true
             });
-            await api.addRecord({
-                endpoint: 'crossreferenceof',
-                content: {source: rid(source), out: rid(drug), in: rid(ncitRec)},
-                existsOk: true,
-                fetchExisting: false
-            });
+            if (ncitRec) {
+                await api.addRecord({
+                    endpoint: 'crossreferenceof',
+                    content: {source: rid(source), out: rid(drug), in: rid(ncitRec)},
+                    existsOk: true,
+                    fetchExisting: false
+                });
+            }
             counts.success++;
         } catch (err) {
             counts.error++;
