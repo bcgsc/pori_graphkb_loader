@@ -326,14 +326,14 @@ class ApiConnection {
         let error;
         try {
             return await this.getUniqueRecordBy({
-                endpoint: 'therapies',
+                target: 'Therapy',
                 sort: preferredDrugs,
                 ...opt,
-                where: {
-                    ...(opt.where || {}),
-                    sourceId: term,
-                    name: term,
-                    or: 'sourceId,name'
+                filters: {
+                    OR: [
+                        {sourceId: term},
+                        {name: term}
+                    ]
                 }
             });
         } catch (err) {
@@ -348,14 +348,14 @@ class ApiConnection {
         if (alternateTerm) {
             try {
                 return await this.getUniqueRecordBy({
-                    endpoint: 'therapies',
+                    target: 'Therapy',
                     sort: preferredDrugs,
                     ...opt,
-                    where: {
-                        ...(opt.where || {}),
-                        sourceId: alternateTerm,
-                        name: alternateTerm,
-                        or: 'sourceId,name'
+                    filters: {
+                        OR: [
+                            {sourceId: alternateTerm},
+                            {name: alternateTerm}
+                        ]
                     }
                 });
             } catch (err) {
