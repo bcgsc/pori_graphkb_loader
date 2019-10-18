@@ -5,6 +5,7 @@
 const request = require('request-promise');
 const jc = require('json-cycle');
 const jwt = require('jsonwebtoken');
+const {schema} = require('@bcgsc/knowledgebase-schema');
 
 
 const {logger} = require('./logging');
@@ -42,6 +43,15 @@ const convertNulls = (where) => {
 };
 
 const nullOrUndefined = value => value === undefined || value === null;
+
+
+const convertRecordToQueryFilters = (record) => {
+    const filters = [];
+    for (const [prop, value] of Object.entries(record)) {
+        filters.push({[prop]: value});
+    }
+    return {AND: filters};
+};
 
 /**
  * Given two ontology terms, return the newer, non-deprecated, independant, term first.
@@ -231,7 +241,7 @@ class ApiConnection {
         const req = {
             method: opt.method || 'GET',
             headers: this.headers,
-            uri: `${this.baseUrl}/${opt.uri}`,
+            uri: `${this.baseUrl}/${opt.uri.replace(/^\//, '')}`,
             json: true
         };
         if (opt.body) {
@@ -245,21 +255,24 @@ class ApiConnection {
 
     async getRecords(opt) {
         const {
-            where,
-            endpoint,
+            filters,
+            target,
             limit = 1000
         } = opt;
 
         const result = [];
         let lastFetch = limit,
             skip = 0;
-        const queryParams = convertNulls(where);
 
         while (lastFetch === limit) {
             const {result: records} = await this.request({
-                uri: endpoint,
-                qs: {
-                    neighbors: 1, ...queryParams, limit, skip
+                uri: '/query',
+                body: {
+                    target,
+                    filters,
+                    neighbors: 1,
+                    limit,
+                    skip
                 }
             });
             result.push(...records);
@@ -280,43 +293,32 @@ class ApiConnection {
     /**
      *
      * @param {object} opt
-     * @param {object} opt.where the conditions/query parameters for the selection
-     * @param {string} opt.endpoint the endpoint to query
+     * @param {object} opt.filters the conditions/query parameters for the selection
+     * @param {string} opt.target the endpoint to query
      * @param {function} opt.sort the function to use in sorting if multiple results are found
      */
     async getUniqueRecordBy(opt) {
         const {
-            where,
-            endpoint,
+            target,
+            filters,
             sort: sortFunc = () => 0
         } = opt;
 
-        const queryParams = convertNulls(where);
-        for (const key of Object.keys(queryParams)) {
-            if (queryParams[key] && queryParams[key]['@rid']) {
-                queryParams[key] = rid(queryParams[key]);
+        const records = await this.request({
+            method: 'POST',
+            uri: '/query',
+            body: {target, filters}
+        });
+        records.sort(sortFunc);
+        if (records.length > 1) {
+            if (sortFunc(records[0], records[1]) === 0) {
+                throw new Error(`expected a single ${target} record but found multiple: [${rid(records[0])}, ${rid(records[1])}]`);
             }
+        } else if (records.length === 0) {
+            throw new Error(`missing ${target} record where ${JSON.stringify(filters)}`);
         }
-        let newRecord;
-        try {
-            newRecord = await this.request({
-                uri: endpoint,
-                qs: Object.assign({neighbors: 1}, queryParams)
-            });
-            newRecord = jc.retrocycle(newRecord).result;
-        } catch (err) {
-            throw err;
-        }
-        newRecord.sort(sortFunc);
-        if (newRecord.length > 1) {
-            if (sortFunc(newRecord[0], newRecord[1]) === 0) {
-                throw new Error(`expected a single ${endpoint} record but found multiple: [${rid(newRecord[0])}, ${rid(newRecord[1])}]`);
-            }
-        } else if (newRecord.length === 0) {
-            throw new Error(`missing ${endpoint} record where ${JSON.stringify(where)}`);
-        }
-        [newRecord] = newRecord;
-        return newRecord;
+        const [result] = records;
+        return result;
     }
 
     /**
@@ -380,9 +382,9 @@ class ApiConnection {
 
     /**
      * @param {object} opt
-     * @param {string} opt.endpoint
+     * @param {string} opt.target
      * @param {boolean} [opt.existsOk=false] do not error if a record cannot be created because it already exists
-     * @param {object} [opt.fetchConditions=null] the where clause to be used in attempting to fetch this record
+     * @param {object} [opt.fetchConditions=null] the filters clause to be used in attempting to fetch this record
      * @param {boolean} [opt.fetchExisting=true] return the record if it already exists
      * @param {boolean} [opt.fetchFirst=false] attempt to fetch the record before trying to create it
      * @param {function} opt.sortFunc function to be used in order records if multiple are returned to limit the result to 1
@@ -390,7 +392,7 @@ class ApiConnection {
     async addRecord(opt) {
         const {
             content,
-            endpoint,
+            target,
             existsOk = false,
             fetchConditions = null,
             fetchExisting = true,
@@ -400,27 +402,31 @@ class ApiConnection {
 
         if (fetchFirst) {
             try {
+                const filters = fetchConditions || convertRecordToQueryFilters(content);
                 return await this.getUniqueRecordBy({
-                    where: fetchConditions || content,
-                    endpoint,
+                    filters,
+                    target,
                     sortFunc
                 });
             } catch (err) {}
         }
 
+        const model = schema.get(target);
+
         try {
             const {result} = jc.retrocycle(await this.request({
                 method: 'POST',
-                uri: endpoint,
+                uri: model.routeName,
                 body: content
             }));
             return result;
         } catch (err) {
             if (err.statusCode === 409 && existsOk) {
                 if (fetchExisting) {
+                    const filters = fetchConditions || convertRecordToQueryFilters(content);
                     return this.getUniqueRecordBy({
-                        where: fetchConditions || content,
-                        endpoint,
+                        filters,
+                        target,
                         sortFunc
                     });
                 }
