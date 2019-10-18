@@ -279,8 +279,13 @@ const processRecord = async ({
         let fdaRec;
         try {
             fdaRec = await conn.getUniqueRecordBy({
-                endpoint: 'therapies',
-                where: {source: rid(fda), sourceId: drug[HEADER.unii].trim()}
+                target: 'Therapy',
+                filters: {
+                    AND: [
+                        {source: rid(fda)},
+                        {sourceId: drug[HEADER.unii].trim()}
+                    ]
+                }
             });
         } catch (err) {
             logger.log('error', `failed cross-linking from ${record.sourceId} to ${drug[HEADER.unii]} (fda)`);
@@ -373,8 +378,8 @@ const uploadFile = async ({filename, conn}) => {
     let fdaSource;
     try {
         fdaSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: fdaName}
+            target: 'Source',
+            filters: {name: fdaName}
         });
     } catch (err) {
         logger.warn('Unable to find fda source record. Will not attempt cross-reference links');

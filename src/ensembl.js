@@ -58,8 +58,8 @@ const uploadFile = async (opt) => {
     let refseqSource;
     try {
         refseqSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: refseqName}
+            target: 'Source',
+            filters: {name: refseqName}
         });
     } catch (err) {
         logger.warn('Unable to find refseq source. Will not attempt to create cross-reference links');
@@ -201,11 +201,13 @@ const uploadFile = async (opt) => {
         if (refseqSource && record[HEADER.refseqId]) {
             try {
                 const refseq = await conn.getUniqueRecordBy({
-                    endpoint: 'features',
-                    where: {
-                        source: rid(refseqSource),
-                        sourceId: record[HEADER.refseqId],
-                        sourceIdVersion: null
+                    target: 'Feature',
+                    filters: {
+                        AND: [
+                            {source: rid(refseqSource)},
+                            {sourceId: record[HEADER.refseqId]},
+                            {sourceIdVersion: null}
+                        ]
                     },
                     sort: orderPreferredOntologyTerms
                 });

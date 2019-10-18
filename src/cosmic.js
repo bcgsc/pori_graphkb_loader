@@ -85,8 +85,8 @@ const processVariants = async ({conn, record, source}) => {
         try {
         // get the hugo gene
             const reference1 = rid(await conn.getUniqueRecordBy({
-                endpoint: 'features',
-                where: {sourceId: record.transcript, biotype: 'transcript'},
+                target: 'Feature',
+                filters: {AND: [{sourceId: record.transcript}, {biotype: 'transcript'}]},
                 sort: orderPreferredOntologyTerms
             }));
             // add the cds variant
@@ -146,8 +146,8 @@ const processCosmicRecord = async (conn, record, source) => {
     diseaseName = diseaseName.replace('leukaemia', 'leukemia');
     diseaseName = diseaseName.replace('tumour', 'tumor');
     const disease = await conn.getUniqueRecordBy({
-        endpoint: 'diseases',
-        where: {name: diseaseName},
+        target: 'Disease',
+        filters: {name: diseaseName},
         sort: preferredDiseases
     });
     // create the resistance statement

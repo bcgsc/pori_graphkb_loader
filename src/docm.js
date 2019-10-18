@@ -188,12 +188,17 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
         } = variantParser(buildGenomicVariant(docmRecord), false);
         const type = await conn.getVocabularyTerm(variant.type);
         const reference1 = await conn.getUniqueRecordBy({
-            endpoint: 'features',
-            where: {
-                sourceId: chromosome,
-                name: chromosome,
-                or: 'name,sourceId',
-                biotype: 'chromosome'
+            target: 'Feature',
+            filters: {
+                AND: [
+                    {
+                        OR: [
+                            {sourceId: chromosome},
+                            {name: chromosome}
+                        ]
+                    },
+                    {biotype: 'chromosome'}
+                ]
             },
             sortFunc: orderPreferredOntologyTerms
         });
@@ -247,11 +252,13 @@ const processRecord = async (opt) => {
             const relevance = await conn.getVocabularyTerm(diseaseRec.tags[0], conn);
             // get the disease by name
             const disease = await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {
-                    sourceId: `doid:${diseaseRec.doid}`,
-                    name: diseaseRec.disease,
-                    source: {name: 'disease ontology'}
+                target: 'Disease',
+                filters: {
+                    AND: [
+                        {sourceId: `doid:${diseaseRec.doid}`},
+                        {name: diseaseRec.disease},
+                        {source: {target: 'Source', filters: {name: 'disease ontology'}}}
+                    ]
                 },
                 sort: orderPreferredOntologyTerms
             });

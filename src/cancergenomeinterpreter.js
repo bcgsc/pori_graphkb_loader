@@ -195,7 +195,7 @@ const processVariants = async ({conn, row, source}) => {
     if (genomic) {
         const parsed = kbParser.variant.parse(genomic).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
-            target: 'features',
+            target: 'Feature',
             filters: {
                 AND: [
                     {biotype: 'chromosome'},
@@ -230,8 +230,8 @@ const processVariants = async ({conn, row, source}) => {
     if (transcript && cds) {
         const parsed = kbParser.variant.parse(`${transcript}:${cds}`).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
-            endpoint: 'features',
-            where: {biotype: 'transcript', sourceId: transcript, sourceIdVersion: null},
+            target: 'Feature',
+            filters: {AND: [{biotype: 'transcript'}, {sourceId: transcript}, {sourceIdVersion: null}]},
             sort: orderPreferredOntologyTerms
         });
         const type = await conn.getVocabularyTerm(parsed.type);
@@ -296,8 +296,8 @@ const processRow = async ({row, source, conn}) => {
     const diseaseName = diseaseMapping[row.disease] || `${row.disease}|${row.disease} cancer`;
 
     const disease = rid(await conn.getUniqueRecordBy({
-        endpoint: 'diseases',
-        where: {name: diseaseName},
+        target: 'Disease',
+        filters: {name: diseaseName},
         sort: preferredDiseases
     }));
     const therapyName = row.therapy.includes(';')
@@ -310,8 +310,8 @@ const processRow = async ({row, source, conn}) => {
     ));
 
     const level = rid(await conn.getUniqueRecordBy({
-        endpoint: 'evidencelevels',
-        where: {name: row.evidenceLevel, source: {name: SOURCE_DEFN.name}}
+        target: 'evidencelevels',
+        filters: {AND: [{name: row.evidenceLevel}, {source: rid(source)}]}
     }));
 
     const articles = await _pubmed.fetchAndLoadByIds(

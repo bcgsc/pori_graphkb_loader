@@ -71,9 +71,9 @@ const processVariants = async ({conn, record, source}) => {
             reference1 = chromosomeCache[chromosome];
         } else {
             reference1 = await conn.getUniqueRecordBy({
-                endpoint: 'features',
-                where: {
-                    sourceId: chromosome, name: chromosome, or: 'sourceId,name', biotype: 'chromosome'
+                target: 'Feature',
+                filters: {
+                    AND: [{OR: [{sourceId: chromosome}, {name: chromosome}]}, {biotype: 'chromosome'}]
                 },
                 sort: preferredFeatures
             });
@@ -152,8 +152,14 @@ const processVariants = async ({conn, record, source}) => {
             reference1 = featureCache[transcriptId];
         } else {
             reference1 = rid(await conn.getUniqueRecordBy({
-                endpoint: 'features',
-                where: {sourceId: transcriptId, biotype: 'transcript', source: {name: ensemblName}},
+                target: 'Feature',
+                filters: {
+                    AND: [
+                        {sourceId: transcriptId},
+                        {biotype: 'transcript'},
+                        {source: {target: 'Source', filters: {name: ensemblName}}}
+                    ]
+                },
                 sort: orderPreferredOntologyTerms
             }));
             featureCache[transcriptId] = reference1;
@@ -211,8 +217,13 @@ const processRecord = async (conn, record, source, relevance) => {
         disease = diseasesCache[diseaseId];
     } else {
         disease = rid(await conn.getUniqueRecordBy({
-            endpoint: 'diseases',
-            where: {sourceId: diseaseId, source: {name: oncotreeName}},
+            target: 'Disease',
+            filters: {
+                AND: [
+                    {sourceId: diseaseId},
+                    {source: {target: 'Source', filters: {name: oncotreeName}}}
+                ]
+            },
             sort: preferredDiseases
         }));
         diseasesCache[diseaseId] = disease;

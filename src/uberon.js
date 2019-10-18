@@ -91,8 +91,8 @@ const uploadFile = async ({filename, conn}) => {
     let ncitSource = null;
     try {
         ncitSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: ncitName}
+            target: 'Source',
+            filters: {name: ncitName}
         });
     } catch (err) {
         logger.error(`Cannot link records to NCIT. Could not find ncit source record: ${err}`);
@@ -170,8 +170,13 @@ const uploadFile = async ({filename, conn}) => {
             }
             try {
                 const ncitRecord = await conn.getUniqueRecordBy({
-                    endpoint: 'anatomicalentities',
-                    where: {source: {name: ncitName}, sourceId: tgt},
+                    target: 'AnatomicalEntities',
+                    filters: {
+                        AND: [
+                            {source: {target: 'Source', filters: {name: ncitName}}},
+                            {sourceId: tgt}
+                        ]
+                    },
                     sort: orderPreferredOntologyTerms
                 });
                 await conn.addRecord({

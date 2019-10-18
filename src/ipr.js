@@ -93,11 +93,12 @@ const getFeature = async (conn, rawName) => {
     name = name.replace(/\.\d+$/, '');
     try {
         return await conn.getUniqueRecordBy({
-            endpoint: 'features',
-            where: {
-                name: stripRefSeqVersion(name),
-                sourceId: stripRefSeqVersion(name),
-                or: 'sourceId,name'
+            target: 'Feature',
+            filters: {
+                OR: [
+                    {name: stripRefSeqVersion(name)},
+                    {sourceId: stripRefSeqVersion(name)}
+                ]
             },
             sort: preferredFeatures
         });
@@ -148,8 +149,8 @@ const extractAppliesTo = async (conn, record, source) => {
                 throw new Error(`required disease not defined (relevance=${relevance}, statementType=${statementType})`);
             }
             return conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {name: disease},
+                target: 'Disease',
+                filters: {name: disease},
                 sort: preferredDiseases
             });
         } if (relevance === 'eligibility') {
@@ -176,16 +177,16 @@ const extractAppliesTo = async (conn, record, source) => {
             if (!disease) {
                 if (subject && (subject.includes('somatic') || subject === 'cancer')) {
                     return conn.getUniqueRecordBy({
-                        endpoint: 'diseases',
-                        where: {name: 'cancer'},
+                        target: 'Disease',
+                        filters: {name: 'cancer'},
                         sort: preferredDiseases
                     });
                 }
                 throw new Error(`required disease not defined (relevance=${relevance}, statementType=${statementType})`);
             }
             return conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {name: disease},
+                target: 'Disease',
+                filters: {name: disease},
                 sort: preferredDiseases
             });
         } else if (
@@ -206,8 +207,8 @@ const extractAppliesTo = async (conn, record, source) => {
         throw new Error(`unable to determine the target gene (${features.length}) or variant (${variants.length}) being referenced (relevance=${relevance})`);
     } else if (statementType === 'diagnostic') {
         return conn.getUniqueRecordBy({
-            endpoint: 'diseases',
-            where: {name: disease},
+            target: 'Disease',
+            filters: {name: disease},
             sort: preferredDiseases
         });
     } else if (statementType === 'prognostic') {
@@ -564,8 +565,8 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
     if (record.disease) {
         try {
             disease = await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {name: record.disease},
+                target: 'Disease',
+                filters: {name: record.disease},
                 sort: preferredDiseases
             });
         } catch (err) {

@@ -46,11 +46,12 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
     const fusion = rid(await conn.getVocabularyTerm('in-frame fusion'));
     const relevance = rid(await conn.getVocabularyTerm('recurrent'));
     const cancer = rid(await conn.getUniqueRecordBy({
-        endpoint: 'diseases',
-        where: {
-            sourceId: 'cancer',
-            name: 'cancer',
-            or: 'sourceId,name'
+        target: 'Disease',
+        filters: {
+            OR: [
+                {sourceId: 'cancer'},
+                {name: 'cancer'}
+            ]
         },
         sort: preferredDiseases
     }));
@@ -59,11 +60,12 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
         logger.info(`retrieving disease for code (${code})`);
         try {
             const disease = rid(await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {
-                    sourceId: DISEASE_CODES[code],
-                    name: DISEASE_CODES[code],
-                    or: 'sourceId,name'
+                target: 'Disease',
+                filters: {
+                    OR: [
+                        {sourceId: DISEASE_CODES[code]},
+                        {name: DISEASE_CODES[code]}
+                    ]
                 },
                 sort: preferredDiseases
             }));
@@ -175,11 +177,12 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
             const [geneB] = await _entrezGene.fetchAndLoadByIds(conn, [row.geneB]);
 
             const disease = rid(await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {
-                    sourceId: DISEASE_CODES[row.disease],
-                    name: DISEASE_CODES[row.disease],
-                    or: 'sourceId,name'
+                target: 'Disease',
+                filters: {
+                    OR: [
+                        {sourceId: DISEASE_CODES[row.disease]},
+                        {name: DISEASE_CODES[row.disease]}
+                    ]
                 },
                 sort: preferredDiseases
             }));

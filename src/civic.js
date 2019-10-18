@@ -11,8 +11,7 @@ const kbParser = require('@bcgsc/knowledgebase-parser');
 const {checkSpec} = require('./util');
 const {
     preferredDiseases,
-    rid,
-    INTERNAL_SOURCE_NAME
+    rid
 } = require('./graphkb');
 const {logger} = require('./logging');
 const _pubmed = require('./entrez/pubmed');
@@ -427,17 +426,22 @@ const processEvidenceRecord = async (opt) => {
         throw err;
     }
     // get the disease by doid
-    let disease = {};
+    let diseaseQueryFilters = {};
     if (rawRecord.disease.doid) {
-        disease.sourceId = `doid:${rawRecord.disease.doid}`;
-        disease.source = {name: 'disease ontology'};
+        diseaseQueryFilters = {
+            AND: [
+                {sourceId: `doid:${rawRecord.disease.doid}`},
+                {source: {target: 'Source', filters: {name: 'disease ontology'}}}
+            ]
+        };
     } else {
-        disease.name = rawRecord.disease.name;
+        diseaseQueryFilters = {name: rawRecord.disease.name};
     }
+    let disease;
     try {
         disease = await conn.getUniqueRecordBy({
-            endpoint: 'diseases',
-            where: disease,
+            target: 'Disease',
+            filters: diseaseQueryFilters,
             sort: preferredDiseases
         });
     } catch (err) {

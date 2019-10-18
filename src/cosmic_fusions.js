@@ -67,8 +67,8 @@ const processDisease = async ({conn, record}) => {
 
         try {
             disease = await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {name: diseaseName},
+                target: 'Disease',
+                filters: {name: diseaseName},
                 sort: preferredDiseases
             });
         } catch (err) {
@@ -88,12 +88,14 @@ const fetchTranscript = async (conn, name) => {
         const [, sourceId,, sourceIdVersion] = match;
         try {
             const transcript = await conn.getUniqueRecordBy({
-                endpoint: 'features',
-                where: {
-                    biotype: 'transcript',
-                    source: {name: _refseq.SOURCE_DEFN.name},
-                    sourceId,
-                    sourceIdVersion
+                target: 'Feature',
+                filters: {
+                    AND: [
+                        {biotype: 'transcript'},
+                        {source: {target: 'Source', filters: {name: _refseq.SOURCE_DEFN.name}}},
+                        {sourceId},
+                        {sourceIdVersion}
+                    ]
                 },
                 sort: orderPreferredOntologyTerms
             });
@@ -105,12 +107,14 @@ const fetchTranscript = async (conn, name) => {
         }
     }
     return conn.getUniqueRecordBy({
-        endpoint: 'features',
-        where: {
-            biotype: 'transcript',
-            source: {name: _ensembl.SOURCE_DEFN.name},
-            sourceId: name,
-            sourceIdVersion: null
+        target: 'Feature',
+        filters: {
+            AND: [
+                {biotype: 'transcript'},
+                {source: {target: 'Source', filters: {name: _ensembl.SOURCE_DEFN.name}}},
+                {sourceId: name},
+                {sourceIdVersion: null}
+            ]
         },
         sort: orderPreferredOntologyTerms
     });
@@ -216,8 +220,8 @@ const processCosmicRecord = async ({
         disease = rid(await processDisease({conn, record}));
     } else {
         disease = rid(await conn.getUniqueRecordBy({
-            endpoint: 'diseases',
-            where: {name: 'cancer'},
+            target: 'Disease',
+            filters: {name: 'cancer'},
             sort: preferredDiseases
         }));
     }

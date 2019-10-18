@@ -17,7 +17,6 @@ const ensemblSourceName = 'ensembl';
 const ajv = new Ajv();
 
 const HGNC_API = 'http://rest.genenames.org/fetch';
-const CLASS_NAME = 'features';
 
 const SOURCE_DEFN = {
     name: 'hgnc',
@@ -73,7 +72,7 @@ const uploadRecord = async ({
 
     // don't update version if nothing else has changed
     const currentRecord = await conn.addRecord({
-        endpoint: CLASS_NAME,
+        endpoint: 'features',
         content: body,
         existsOk: true,
         fetchConditions: _.omit(body, ['sourceIdVersion', 'displayName', 'longName']),
@@ -83,7 +82,7 @@ const uploadRecord = async ({
     if (gene.ensembl_gene_id && ensembl) {
         try {
             const ensg = await conn.getUniqueRecordBy({
-                endpoint: CLASS_NAME,
+                target: 'Feature',
                 where: {source: rid(ensembl), biotype: 'gene', sourceId: gene.ensembl_gene_id}
             });
             // try adding the cross reference relationship
@@ -101,7 +100,7 @@ const uploadRecord = async ({
         // link to the current record
         try {
             const deprecatedRecord = await conn.addRecord({
-                endpoint: CLASS_NAME,
+                endpoint: 'features',
                 content: {
                     source: rid(hgnc),
                     sourceId,
@@ -129,7 +128,7 @@ const uploadRecord = async ({
         const {sourceId, biotype} = currentRecord;
         try {
             const aliasRecord = await this.addRecord({
-                endpoint: CLASS_NAME,
+                endpoint: 'features',
                 content: {
                     source: rid(hgnc),
                     name: symbol,
@@ -180,16 +179,20 @@ const fetchAndLoadBySymbol = async ({
         return CACHE[paramType][symbol];
     }
     try {
-        const where = {source: {name: SOURCE_DEFN.name}};
+        const filters = {
+            AND: [
+                {source: {target: 'Source', filters: {name: SOURCE_DEFN.name}}}
+            ]
+        };
         if (paramType === 'symbol') {
-            where.name = symbol;
+            filters.AND.push({name: symbol});
         } else {
-            where.sourceId = symbol;
+            filters.AND.push({sourceId: symbol});
         }
         const record = await conn.getUniqueRecordBy({
-            endpoint: CLASS_NAME,
+            target: 'Feature',
             sort: orderPreferredOntologyTerms,
-            where
+            filters
         });
         if (!ignoreCache) {
             CACHE[paramType][symbol] = record;
@@ -229,8 +232,8 @@ const fetchAndLoadBySymbol = async ({
     let ensembl;
     try {
         ensembl = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: ensemblSourceName}
+            target: 'Source',
+            filters: {name: ensemblSourceName}
         });
     } catch (err) { }
     const result = await uploadRecord({conn, gene, sources: {hgnc, ensembl}});
@@ -259,8 +262,8 @@ const uploadFile = async (opt) => {
     let ensembl;
     try {
         ensembl = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: ensemblSourceName}
+            target: 'Source',
+            filters: {name: ensemblSourceName}
         });
     } catch (err) {
         logger.info('Unable to fetch ensembl source for linking records');

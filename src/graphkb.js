@@ -367,8 +367,13 @@ class ApiConnection {
 
     async getVocabularyTerm(term) {
         return this.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {sourceId: term, source: {name: INTERNAL_SOURCE_NAME}},
+            target: 'Vocabulary',
+            filters: {
+                AND: [
+                    {sourceId: term},
+                    {source: {target: 'Source', filters: {name: INTERNAL_SOURCE_NAME}}}
+                ]
+            },
             sortFunc: orderPreferredOntologyTerms
         });
     }

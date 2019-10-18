@@ -197,8 +197,8 @@ const upload = async (opt) => {
     let ncitSource;
     try {
         ncitSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: ncitName}
+            target: 'sources',
+            filters: {name: ncitName}
         });
     } catch (err) {
         logger.log('warn', 'cannot find ncit source. Will not be able to generate cross-reference links');
@@ -226,8 +226,13 @@ const upload = async (opt) => {
                 logger.info(`linking ${rec.sourceId} to NCIt record (${xref.sourceId})`);
                 try {
                     const ncitXref = await conn.getUniqueRecordBy({
-                        endpoint: 'diseases',
-                        where: {source: rid(ncitSource), sourceId: xref.sourceId},
+                        target: 'Disease',
+                        filters: {
+                            AND: [
+                                {source: rid(ncitSource)},
+                                {sourceId: xref.sourceId}
+                            ]
+                        },
                         sort: orderPreferredOntologyTerms
                     });
                     await conn.addRecord({

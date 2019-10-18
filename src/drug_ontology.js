@@ -46,8 +46,13 @@ const getDrugOrAdd = async (conn, source, name, rawRecord = {}) => {
     let record;
     try {
         record = await conn.getUniqueRecordBy({
-            endpoint: 'therapies',
-            where: {source: {name: drugbankName}, name},
+            target: 'Therapy',
+            filters: {
+                AND: [
+                    {source: {target: 'Source', filters: {name: drugbankName}}},
+                    {name}
+                ]
+            },
             sort: orderPreferredOntologyTerms
         });
         return record;
@@ -55,8 +60,8 @@ const getDrugOrAdd = async (conn, source, name, rawRecord = {}) => {
 
     try {
         record = await conn.getUniqueRecordBy({
-            endpoint: 'therapies',
-            where: {source: {name: chemblName}, name},
+            target: 'Therapy',
+            filters: {AND: [{source: {target: 'Source', filters: {name: chemblName}}}, {name}]},
             sort: orderPreferredOntologyTerms
         });
         return record;
@@ -107,8 +112,13 @@ const addDrugClass = async (conn, source, name, rawRecord) => {
     // link to drugs with exact name matches
     try {
         const drugbankDrug = await conn.getUniqueRecordBy({
-            endpoint: 'therapies',
-            where: {source: {name: drugbankName}, name},
+            target: 'Therapy',
+            filters: {
+                AND: [
+                    {source: {target: 'Source', filters: {name: drugbankName}}},
+                    {name}
+                ]
+            },
             sort: orderPreferredOntologyTerms
         });
         await conn.addRecord({
@@ -197,8 +207,13 @@ const uploadFile = async (opt) => {
             // get the mapped drugbank drug
             if (/^DB\d+$/i.exec(record[HEADER.drugbank])) {
                 const dbDrug = rid(await conn.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {source: {name: drugbankName}, sourceId: record[HEADER.drugbank]},
+                    target: 'Therapy',
+                    where: {
+                        AND: [
+                            {source: {target: 'Source', filters: {name: drugbankName}}},
+                            {sourceId: record[HEADER.drugbank]}
+                        ]
+                    },
                     sort: orderPreferredOntologyTerms
                 }));
                 // now link the records together

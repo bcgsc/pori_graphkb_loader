@@ -360,8 +360,8 @@ const processRecord = async ({
     for (const drug of record.drugs) {
         try {
             const intervention = await conn.getUniqueRecordBy({
-                endpoint: 'therapies',
-                where: {name: drug},
+                target: 'Therapy',
+                filters: {name: drug},
                 sort: preferredDrugs
             });
             links.push(intervention);
@@ -373,8 +373,8 @@ const processRecord = async ({
     for (const diseaseName of record.diseases) {
         try {
             const disease = await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {name: diseaseName},
+                target: 'Disease',
+                filters: {name: diseaseName},
                 sort: preferredDiseases
             });
             links.push(disease);
@@ -419,8 +419,13 @@ const fetchAndLoadById = async (conn, nctID) => {
     // try to get the record from the gkb db first
     try {
         const trial = await conn.getUniqueRecordBy({
-            endpoint: 'clinicaltrials',
-            where: {source: {name: SOURCE_DEFN.name}, sourceId: nctID},
+            target: 'ClinicalTrial',
+            filters: {
+                AND: [
+                    {source: {target: 'Source', filters: {name: SOURCE_DEFN.name}}},
+                    {sourceId: nctID}
+                ]
+            },
             sort: orderPreferredOntologyTerms
         });
         CACHE[trial.sourceId] = trial;

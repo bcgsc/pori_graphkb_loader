@@ -240,8 +240,8 @@ const uploadFile = async ({filename, conn}) => {
     const ncitCache = {};
     try {
         const ncitSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: ncitName}
+            target: 'Source',
+            filters: {name: ncitName}
         });
         logger.info(`fetched ncit source record ${rid(ncitSource)}`);
         logger.info('getting existing ncit records');

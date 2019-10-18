@@ -97,7 +97,7 @@ const fetchByIdList = async (rawIdList, opt) => {
  * Given some pubmed ID, get the corresponding record from GraphKB
  */
 const fetchRecord = async (api, {
-    sourceId, sourceIdVersion = null, db = 'pubmed', endpoint = 'publications', cache = {}
+    sourceId, sourceIdVersion = null, db = 'pubmed', endpoint = 'Publication', cache = {}
 }) => {
     const cacheKey = generateCacheKey({sourceId, sourceIdVersion});
 
@@ -105,8 +105,14 @@ const fetchRecord = async (api, {
         return cache[cacheKey];
     }
     const record = await api.getUniqueRecordBy({
-        endpoint,
-        where: {sourceId, sourceIdVersion, source: {name: db}},
+        target: endpoint,
+        filters: {
+            AND: [
+                {sourceId},
+                {sourceIdVersion},
+                {source: {target: 'Source', filters: {name: db}}}
+            ]
+        },
         sort: orderPreferredOntologyTerms
     });
     cache[cacheKey] = record;
@@ -128,7 +134,7 @@ const uploadRecord = async (api, content, opt = {}) => {
     const {
         cache = true,
         fetchFirst = true,
-        endpoint = 'publications',
+        endpoint = 'Publication',
         sourceDefn,
         createDisplayName
     } = opt;
@@ -142,8 +148,8 @@ const uploadRecord = async (api, content, opt = {}) => {
     } if (fetchFirst) {
         try {
             const record = await api.getUniqueRecordBy({
-                endpoint,
-                where: {sourceId}
+                target: endpoint,
+                filters: {sourceId}
             });
             if (cache) {
                 cache[cacheKey] = record;

@@ -45,8 +45,8 @@ const uploadFile = async (opt) => {
     // only load FDA records if we have already loaded NCIT
     try {
         await api.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: ncitSourceName}
+            target: 'Source',
+            filters: {name: ncitSourceName}
         });
     } catch (err) {
         logger.error('Cannot link to NCIT, Unable to find source record');
@@ -71,8 +71,13 @@ const uploadFile = async (opt) => {
         if (ncit) {
             try {
                 ncitRec = await api.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {source: {name: ncitSourceName}, sourceId: ncit},
+                    target: 'Therapy',
+                    filters: {
+                        AND: [
+                            {source: {target: 'Source', filters: {name: ncitSourceName}}},
+                            {sourceId: ncit}
+                        ]
+                    },
                     sort: orderPreferredOntologyTerms
                 });
             } catch (err) {

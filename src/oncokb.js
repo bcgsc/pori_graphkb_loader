@@ -202,8 +202,8 @@ const processVariant = async (conn, {
             }
             type = 'strong signature';
             gene1 = await conn.getUniqueRecordBy({
-                endpoint: 'signatures',
-                where: {name: 'microsatellite instability'}
+                target: 'Signature',
+                filters: {name: 'microsatellite instability'}
             });
         } catch (err) {
             logger.warn(`failed to retrieve the associated vocabulary for (variant=${variantName})`);
@@ -338,15 +338,15 @@ const processDisease = async (conn, diseaseName) => {
     let disease;
     try {
         disease = await conn.getUniqueRecordBy({
-            endpoint: 'diseases',
-            where: {name: diseaseName},
+            target: 'Disease',
+            filters: {name: diseaseName},
             sort: preferredDiseases
         });
     } catch (err) {
         if (diseaseName.includes('/')) {
             disease = await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {name: diseaseName.split('/')[0].trim()},
+                target: 'Disease',
+                filters: {name: diseaseName.split('/')[0].trim()},
                 sort: preferredDiseases
             });
         } else {
@@ -362,13 +362,13 @@ const processDisease = async (conn, diseaseName) => {
  *
  * @example
  * parseAbstractCitation('Camidge et al. Abstract# 8001, ASCO 2014 http://meetinglibrary.asco.org/content/132030-144')
- * {source: {name: 'ASCO'}, year: 2014, abstractNumber: 80001}
+ * {source: 'ASCO', year: 2014, abstractNumber: 80001}
  */
 const parseAbstractCitation = (citation) => {
     let match;
     if (match = /.*Abstract\s*#\s*([A-Z0-9a-z][A-Za-z0-9-]+)[.,]? (AACR|ASCO),? (2\d{3})[., ]*/.exec(citation)) {
         const [, abstractNumber, sourceName, year] = match;
-        return {abstractNumber, year, source: {name: sourceName}};
+        return {abstractNumber, year, source: sourceName};
     }
     throw new Error(`unable to parse abstract citation (${citation})`);
 };
@@ -414,8 +414,8 @@ const processRecord = async ({
     if (drug) {
         try {
             therapy = await conn.getUniqueRecordBy({
-                endpoint: 'therapies',
-                where: {name: drug, source},
+                target: 'Therapy',
+                filters: {AND: [{name: drug}, {source}]},
                 sort: preferredDrugs
             });
         } catch (err) {
@@ -432,8 +432,8 @@ const processRecord = async ({
     let level;
     if (levelName) {
         level = await conn.getUniqueRecordBy({
-            endpoint: 'evidencelevels',
-            where: {sourceId: levelName, source}
+            target: 'EvidenceLevel',
+            filters: {AND: [{sourceId: levelName}, {source}]}
         });
     }
     const relevance = await getVocabulary(conn, relevanceName);
@@ -455,8 +455,14 @@ const processRecord = async ({
         }
         try {
             const absRecord = await conn.getUniqueRecordBy({
-                endpoint: 'abstracts',
-                where: parsed
+                target: 'Abstract',
+                filters: {
+                    AND: [
+                        {source: {target: 'Source', filters: {name: parsed.source}}},
+                        {year: parsed.year},
+                        {abstractNumber: parsed.abstractNumber}
+                    ]
+                }
             });
             abstracts.push(absRecord);
         } catch (err) {
@@ -694,8 +700,13 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
         if (drug.ncitCode) {
             try {
                 const ncit = await conn.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {sourceId: drug.ncitCode, source: {name: _ncit.SOURCE_DEFN.name}},
+                    target: 'Therapy',
+                    filters: {
+                        AND: [
+                            {sourceId: drug.ncitCode},
+                            {source: {target: 'Source', filters: {name: _ncit.SOURCE_DEFN.name}}}
+                        ]
+                    },
                     sort: preferredDrugs
                 });
                 await conn.addRecord({
