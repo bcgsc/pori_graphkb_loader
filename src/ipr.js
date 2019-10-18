@@ -8,15 +8,11 @@ const {logger} = require('./logging');
 const _pubmed = require('./entrez/pubmed');
 const _hgnc = require('./hgnc');
 const _ctg = require('./clinicaltrialsgov');
-const {
-    orderPreferredOntologyTerms,
-    convertRowFields
-} = require('./util');
+const {convertRowFields} = require('./util');
 const {
     preferredDiseases,
     rid,
-    preferredFeatures,
-    INTERNAL_SOURCE_NAME
+    preferredFeatures
 } = require('./graphkb');
 
 
