@@ -506,11 +506,7 @@ const processVariant = async (conn, variant) => {
     if (variant.reference2 || (variant.positional && variant.positional.reference2)) {
         reference2 = rid(await getFeature(conn, variant.reference2 || variant.positional.reference2));
     }
-    const type = rid(await conn.getUniqueRecordBy({
-        endpoint: 'vocabulary',
-        where: {name: variant.type || variant.positional.type, source: {name: INTERNAL_SOURCE_NAME}},
-        sort: orderPreferredOntologyTerms
-    }));
+    const type = rid(await conn.getVocabularyTerm(variant.type || variant.positional.type));
 
     if (variant.positional) {
         const {
@@ -593,11 +589,7 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
     }
 
     // determine the record relevance
-    const relevance = await conn.getUniqueRecordBy({
-        endpoint: 'vocabulary',
-        where: {name: extractRelevance(record), source: {name: INTERNAL_SOURCE_NAME}},
-        sort: orderPreferredOntologyTerms
-    });
+    const relevance = await conn.getVocabularyTerm(extractRelevance(record));
 
     // determine the subject
     const subject = await extractAppliesTo(

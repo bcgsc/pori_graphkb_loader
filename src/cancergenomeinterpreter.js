@@ -8,7 +8,7 @@ const {
     hashRecordToId
 } = require('./util');
 const {
-    preferredDiseases, preferredFeatures, orderPreferredOntologyTerms, INTERNAL_SOURCE_NAME, rid
+    preferredDiseases, preferredFeatures, orderPreferredOntologyTerms, rid
 } = require('./graphkb');
 const {logger} = require('./logging');
 const _trials = require('./clinicaltrialsgov');
@@ -195,20 +195,21 @@ const processVariants = async ({conn, row, source}) => {
     if (genomic) {
         const parsed = kbParser.variant.parse(genomic).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
-            endpoint: 'features',
-            where: {
-                biotype: 'chromosome',
-                sourceId: parsed.reference1,
-                name: parsed.reference1,
-                or: 'sourceId,name'
+            target: 'features',
+            filters: {
+                AND: [
+                    {biotype: 'chromosome'},
+                    {
+                        OR: [
+                            {sourceId: parsed.reference1},
+                            {name: parsed.reference1}
+                        ]
+                    }
+                ]
             },
             sort: preferredFeatures
         });
-        const type = await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}},
-            sort: orderPreferredOntologyTerms
-        });
+        const type = await conn.getVocabularyTerm(parsed.type);
         genomicVariant = await conn.addVariant({
             endpoint: 'positionalvariants',
             content: {...parsed, reference1, type},
@@ -219,11 +220,7 @@ const processVariants = async ({conn, row, source}) => {
     if (protein) {
         const parsed = kbParser.variant.parse(`${gene}:${protein.split(':')[1]}`).toJSON();
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
-        const type = rid(await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}},
-            sort: orderPreferredOntologyTerms
-        }));
+        const type = await conn.getVocabularyTerm(parsed.type);
         proteinVariant = await conn.addVariant({
             endpoint: 'positionalvariants',
             content: {...parsed, reference1: rid(reference1), type},
@@ -237,11 +234,7 @@ const processVariants = async ({conn, row, source}) => {
             where: {biotype: 'transcript', sourceId: transcript, sourceIdVersion: null},
             sort: orderPreferredOntologyTerms
         });
-        const type = rid(await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}},
-            sort: orderPreferredOntologyTerms
-        }));
+        const type = await conn.getVocabularyTerm(parsed.type);
         cdsVariant = await conn.addVariant({
             endpoint: 'positionalvariants',
             content: {...parsed, reference1, type},
@@ -251,11 +244,7 @@ const processVariants = async ({conn, row, source}) => {
     if (exonic) {
         const parsed = kbParser.variant.parse(`${gene}:${exonic}`).toJSON();
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
-        const type = rid(await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}},
-            sort: orderPreferredOntologyTerms
-        }));
+        const type = await conn.getVocabularyTerm(parsed.type);
         exonicVariant = await conn.addVariant({
             endpoint: 'positionalvariants',
             content: {...parsed, reference1: rid(reference1), type},
@@ -264,11 +253,7 @@ const processVariants = async ({conn, row, source}) => {
     }
     try {
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
-        const type = rid(await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: variantType, source: {name: INTERNAL_SOURCE_NAME}},
-            sort: orderPreferredOntologyTerms
-        }));
+        const type = rid(await conn.getVocabularyTerm(variantType));
         categoryVariant = await conn.addVariant({
             endpoint: 'categoryvariants',
             content: {type, reference1: rid(reference1)},

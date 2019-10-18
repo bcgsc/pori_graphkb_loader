@@ -207,10 +207,7 @@ const getRelevance = async ({rawRecord, conn}) => {
     // translate the type to a GraphKB vocabulary term
     let relevance = translateRelevance(rawRecord.evidence_type, rawRecord.clinical_significance).toLowerCase();
     if (RELEVANCE_CACHE[relevance] === undefined) {
-        relevance = await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: relevance, source: {name: INTERNAL_SOURCE_NAME}}
-        });
+        relevance = await conn.getVocabularyTerm(relevance);
         RELEVANCE_CACHE[relevance.name] = relevance;
     } else {
         relevance = RELEVANCE_CACHE[relevance];
@@ -360,10 +357,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
         reference1 = feature;
     }
     try {
-        const variantClass = await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: variantName, source: {name: INTERNAL_SOURCE_NAME}}
-        });
+        const variantClass = await conn.getVocabularyTerm(variantName);
         const body = {
             type: rid(variantClass),
             reference1: rid(reference1)
@@ -388,10 +382,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
         } catch (parsingError) {
             throw new Error(`could not match ${variantName} (${err}) or parse (${parsingError}) variant`);
         }
-        const variantClass = await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}}
-        });
+        const variantClass = await conn.getVocabularyTerm(parsed.type);
         Object.assign(parsed, {
             reference1: rid(feature),
             type: rid(variantClass)
