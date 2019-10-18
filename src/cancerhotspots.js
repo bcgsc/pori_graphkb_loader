@@ -109,7 +109,7 @@ const processVariants = async ({conn, record, source}) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         genomicVariant = rid(await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'positionalvariants',
             content: {...variant},
             existsOk: true
         }));
@@ -136,7 +136,7 @@ const processVariants = async ({conn, record, source}) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         proteinVariant = rid(await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'positionalvariants',
             content: {...variant},
             existsOk: true
         }));
@@ -173,12 +173,12 @@ const processVariants = async ({conn, record, source}) => {
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
 
         cdsVariant = rid(await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'positionalvariants',
             content: {...variant},
             existsOk: true
         }));
         await conn.addRecord({
-            endpoint: 'infers',
+            target: 'Infers',
             content: {out: cdsVariant, in: proteinVariant, source: rid(source)},
             existsOk: true,
             fetchExisting: false
@@ -190,14 +190,14 @@ const processVariants = async ({conn, record, source}) => {
     // link the genomic variant
     if (genomicVariant && cdsVariant) {
         await conn.addRecord({
-            endpoint: 'infers',
+            target: 'Infers',
             content: {out: rid(genomicVariant), in: rid(cdsVariant), source: rid(source)},
             existsOk: true,
             fetchExisting: false
         });
     } else if (genomicVariant) {
         await conn.addRecord({
-            endpoint: 'infers',
+            target: 'Infers',
             content: {out: rid(genomicVariant), in: rid(proteinVariant), source: rid(source)},
             existsOk: true,
             fetchExisting: false
@@ -230,7 +230,7 @@ const processRecord = async (conn, record, source, relevance) => {
     }
 
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content: {
             relevance,
             subject: disease,
@@ -260,7 +260,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
 
     // get the dbID for the source
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -277,7 +277,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     const previousLoad = new Set();
     logger.info('load previous statements');
     const statements = await conn.getRecords({
-        where: {source: rid(source), neighbors: 0, returnProperties: 'sourceId'}, endpoint: 'statements'
+        where: {source: rid(source), neighbors: 0, returnProperties: 'sourceId'}, target: 'statements'
     });
     for (const {sourceId} of statements) {
         previousLoad.add(sourceId);

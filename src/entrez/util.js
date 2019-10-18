@@ -160,7 +160,7 @@ const uploadRecord = async (api, content, opt = {}) => {
     let source = cache.__source;
     if (!source) {
         source = await api.addRecord({
-            endpoint: 'sources',
+            target: 'Source',
             content: sourceDefn,
             fetchConditions: {name: sourceDefn.name},
             existsOk: true
@@ -179,12 +179,14 @@ const uploadRecord = async (api, content, opt = {}) => {
     }
 
     const result = await api.addRecord({
-        endpoint,
+        target: endpoint,
         content: formattedContent,
         existsOk: true,
         fetchConditions: {
-            sourceId,
-            source: rid(source)
+            AND: [
+                {sourceId},
+                {source: rid(source)}
+            ]
         }
     });
     if (cache) {
@@ -196,7 +198,7 @@ const uploadRecord = async (api, content, opt = {}) => {
 
 const preLoadCache = async (api, {sourceDefn, cache, endpoint}) => {
     const records = await api.getRecords({
-        endpoint,
+        target: endpoint,
         where: {
             source: {name: sourceDefn.name}, dependency: null, deprecated: false, neighbors: 0
         }

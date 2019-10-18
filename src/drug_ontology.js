@@ -68,7 +68,7 @@ const getDrugOrAdd = async (conn, source, name, rawRecord = {}) => {
     } catch (err) {}
 
     return conn.addRecord({
-        endpoint: 'therapies',
+        target: 'Therapy',
         content: {
             name, sourceId: name, source: rid(source), subsets: tags
         },
@@ -94,7 +94,7 @@ const addDrugClass = async (conn, source, name, rawRecord) => {
     }
 
     const record = await conn.addRecord({
-        endpoint: 'therapies',
+        target: 'Therapy',
         content: {
             name,
             sourceId: name,
@@ -122,7 +122,7 @@ const addDrugClass = async (conn, source, name, rawRecord) => {
             sort: orderPreferredOntologyTerms
         });
         await conn.addRecord({
-            endpoint: 'crossreferenceof',
+            target: 'CrossReferenceOf',
             content: {out: rid(record), in: rid(drugbankDrug), source: rid(source)},
             existsOk: true,
             fetchExistsing: false
@@ -145,7 +145,7 @@ const uploadFile = async (opt) => {
     const content = await loadDelimToJson(filename);
 
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true
     }));
@@ -174,14 +174,14 @@ const uploadFile = async (opt) => {
             );
             // link the drug to its alias terms
             await Promise.all(aliases.map(async alias => conn.addRecord({
-                endpoint: 'aliasof',
+                target: 'aliasof',
                 content: {out: rid(alias), in: rid(drug), source: rid(source)},
                 existsOk: true
             })));
             if (parent) {
                 if (rid(drug) !== rid(parent)) {
                     await conn.addRecord({
-                        endpoint: 'subclassof',
+                        target: 'subclassof',
                         content: {out: rid(drug), in: rid(parent), source},
                         existsOk: true,
                         fetchExistsing: false
@@ -189,7 +189,7 @@ const uploadFile = async (opt) => {
                 }
                 if (grandparent1 && rid(parent) !== rid(grandparent1)) {
                     await conn.addRecord({
-                        endpoint: 'subclassof',
+                        target: 'subclassof',
                         content: {out: rid(parent), in: rid(grandparent1), source},
                         existsOk: true,
                         fetchExistsing: false
@@ -197,7 +197,7 @@ const uploadFile = async (opt) => {
                 }
                 if (grandparent2 && rid(parent) !== rid(grandparent2)) {
                     await conn.addRecord({
-                        endpoint: 'subclassof',
+                        target: 'subclassof',
                         content: {out: rid(parent), in: rid(grandparent2), source},
                         existsOk: true,
                         fetchExistsing: false
@@ -219,7 +219,7 @@ const uploadFile = async (opt) => {
                 // now link the records together
                 if (dbDrug !== rid(drug)) {
                     await conn.addRecord({
-                        endpoint: 'crossreferenceof',
+                        target: 'crossreferenceof',
                         content: {out: rid(drug), in: dbDrug, source},
                         existsOk: true,
                         fetchExistsing: false

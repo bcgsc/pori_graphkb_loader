@@ -6,7 +6,7 @@ const rdf = require('rdflib');
 const fs = require('fs');
 const {convertOwlGraphToJson} = require('./util');
 const {
-    orderPreferredOntologyTerms, rid
+    orderPreferredOntologyTerms, rid, convertRecordToQueryFilters
 } = require('./graphkb');
 const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 const {logger} = require('./logging');
@@ -83,7 +83,7 @@ const uploadFile = async ({filename, conn}) => {
 
     const subclassEdges = [];
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -131,14 +131,14 @@ const uploadFile = async ({filename, conn}) => {
             body.deprecated = true;
         }
         const dbEntry = await conn.addRecord({
-            endpoint: 'anatomicalentities',
+            target: 'AnatomicalEntity',
             content: body,
             existsOk: true,
-            fetchConditions: {
+            fetchConditions: convertRecordToQueryFilters({
                 source: rid(source),
                 name: node[PREDICATES.LABEL][0],
                 sourceId: node.code
-            }
+            })
         });
         records[dbEntry.sourceId] = dbEntry;
     }
@@ -147,7 +147,7 @@ const uploadFile = async ({filename, conn}) => {
         if (records[src] && records[tgt]) {
             try {
                 await conn.addRecord({
-                    endpoint: 'subclassof',
+                    target: 'subclassof',
                     content: {
                         out: records[src]['@rid'],
                         in: records[tgt]['@rid'],
@@ -180,7 +180,7 @@ const uploadFile = async ({filename, conn}) => {
                     sort: orderPreferredOntologyTerms
                 });
                 await conn.addRecord({
-                    endpoint: 'crossreferenceof',
+                    target: 'crossreferenceof',
                     content: {
                         out: records[src]['@rid'],
                         in: rid(ncitRecord),

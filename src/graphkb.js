@@ -499,7 +499,7 @@ class ApiConnection {
             const sourceId = elements.map(e => e.sourceId).sort().join(' + ');
             const name = elements.map(e => e.name).sort().join(' + ');
             const combinedTherapy = await this.addRecord({
-                endpoint: 'therapies',
+                target: 'therapies',
                 content: {sourceId, name, source: rid(source)},
                 existsOk: true
             });
@@ -514,6 +514,7 @@ class ApiConnection {
 
 
 module.exports = {
+    convertRecordToQueryFilters,
     INTERNAL_SOURCE_NAME,
     rid,
     generateCacheKey,

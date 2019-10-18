@@ -276,7 +276,7 @@ const processVariants = async ({conn, row, source}) => {
     for (const [src, tgt] of combinations) {
         if (src && tgt) {
             await conn.addRecord({
-                endpoint: 'infers',
+                target: 'Infers',
                 content: {
                     out: rid(src),
                     in: rid(tgt),
@@ -337,7 +337,7 @@ const processRow = async ({row, source, conn}) => {
 
     // create the statement
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content: {
             evidenceLevel: level,
             relevance,
@@ -357,7 +357,7 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
     const rows = await loadDelimToJson(filename);
     logger.info('creating the source record');
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         existsOk: true,
         content: SOURCE_DEFN
     }));

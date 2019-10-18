@@ -64,7 +64,7 @@ const processVariants = async ({conn, record, source}) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         protein = rid(await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'positionalvariants',
             content: {...variant},
             existsOk: true
         }));
@@ -96,12 +96,12 @@ const processVariants = async ({conn, record, source}) => {
             variant.reference1 = reference1;
             variant.type = rid(await conn.getVocabularyTerm(variant.type));
             cds = rid(await conn.addVariant({
-                endpoint: 'positionalvariants',
+                target: 'PositionalVariant',
                 content: {...variant},
                 existsOk: true
             }));
             await conn.addRecord({
-                endpoint: 'infers',
+                target: 'Infers',
                 content: {out: cds, in: protein, source: rid(source)},
                 existsOk: true,
                 fetchExisting: false
@@ -114,12 +114,12 @@ const processVariants = async ({conn, record, source}) => {
     if (record.mutationId) {
         try {
             const catalog = await conn.addRecord({
-                endpoint: 'cataloguevariants',
+                target: 'CatalogueVariant',
                 content: {source: rid(source), sourceId: record.mutationId},
                 existsOk: true
             });
             await conn.addRecord({
-                endpoint: 'infers',
+                target: 'Infers',
                 content: {out: catalog, in: cds || protein, source: rid(source)},
                 existsOk: true,
                 fetchExisting: false
@@ -153,7 +153,7 @@ const processCosmicRecord = async (conn, record, source) => {
     // create the resistance statement
     const relevance = await conn.getVocabularyTerm('resistance');
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content: {
             relevance,
             subject: drug,
@@ -179,7 +179,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     const jsonList = await loadDelimToJson(filename);
     // get the dbID for the source
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}

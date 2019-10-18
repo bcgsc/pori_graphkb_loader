@@ -62,7 +62,7 @@ const fetchAndLoadById = async (conn, drugId) => {
     checkSpec(recordSpec, chemblRecord);
     if (!CACHE.SOURCE) {
         CACHE.SOURCE = await conn.addRecord({
-            endpoint: 'sources',
+            target: 'Source',
             content: SOURCE_DEFN,
             existsOk: true
         });
@@ -86,7 +86,7 @@ const fetchAndLoadById = async (conn, drugId) => {
     }
 
     const record = await conn.addRecord({
-        endpoint: 'therapies',
+        target: 'Therapy',
         content,
         fetchConditions: {source, sourceId: content.sourceId, name: content.name},
         existsOk: true
@@ -96,7 +96,7 @@ const fetchAndLoadById = async (conn, drugId) => {
     if (chemblRecord.usan_stem_definition) {
         try {
             const parent = await conn.addRecord({
-                endpoint: 'therapies',
+                target: 'Therapy',
                 content: {
                     source,
                     sourceId: chemblRecord.usan_stem_definition,
@@ -107,7 +107,7 @@ const fetchAndLoadById = async (conn, drugId) => {
             });
 
             await conn.addRecord({
-                endpoint: 'subclassof',
+                target: 'SubclassOf',
                 content: {
                     source,
                     out: rid(record),
@@ -123,7 +123,7 @@ const fetchAndLoadById = async (conn, drugId) => {
 
 const preLoadCache = async (api) => {
     const records = await api.getRecords({
-        endpoint: 'therapies',
+        target: 'therapies',
         where: {source: {name: SOURCE_DEFN.name}, dependency: null, deprecated: false}
     });
 

@@ -7,7 +7,7 @@
  */
 const {loadDelimToJson} = require('./util');
 const {
-    rid, generateCacheKey
+    rid, generateCacheKey, convertRecordToQueryFilters
 } = require('./graphkb');
 const {logger} = require('./logging');
 
@@ -59,19 +59,19 @@ const DEPRECATED = [
 const pickEndpoint = (conceptName) => {
     let endpoint = null;
     if (anatomyConcepts.some(term => conceptName.includes(term))) {
-        endpoint = 'anatomicalentities';
+        endpoint = 'AnatomicalEntity';
     }
     if (diseaseConcepts.some(term => conceptName.includes(term))) {
         if (endpoint) {
             throw Error(`Concept must be in a discrete category (${conceptName})`);
         }
-        endpoint = 'diseases';
+        endpoint = 'Disease';
     }
     if (therapeuticConcepts.some(term => conceptName.includes(term))) {
         if (endpoint) {
             throw Error(`Concept must be in a discrete category (${conceptName})`);
         }
-        endpoint = 'therapies';
+        endpoint = 'Therapy';
     }
     if (endpoint) {
         return endpoint;
@@ -206,7 +206,7 @@ const uploadFile = async ({filename, conn}) => {
     logger.info(`rejected ${rejected.size} rows for unresolveable primary/display name conflicts`);
 
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         fetchConditions: {name: SOURCE_DEFN.name},
         existsOk: true
@@ -218,7 +218,7 @@ const uploadFile = async ({filename, conn}) => {
     const cached = {};
     logger.info('getting previously loaded records');
     const cachedRecords = await conn.getRecords({
-        endpoint: 'ontologies',
+        target: 'ontologies',
         where: {source, dependency: null, neighbors: 0}
     });
     for (const record of cachedRecords) {
@@ -250,7 +250,7 @@ const uploadFile = async ({filename, conn}) => {
                     endpoint, sourceId, description, url, name, deprecated
                 } = row;
                 record = await conn.addRecord({
-                    endpoint,
+                    target: endpoint,
                     content: {
                         source,
                         sourceId,
@@ -259,12 +259,12 @@ const uploadFile = async ({filename, conn}) => {
                         url,
                         deprecated
                     },
-                    fetchConditions: { // description can contain url malformed characters
+                    fetchConditions: convertRecordToQueryFilters({ // description can contain url malformed characters
                         source,
                         sourceId,
                         name: row.name,
                         dependency: null
-                    },
+                    }),
                     existsOk: true
                 });
                 cached[generateCacheKey(record)] = record;
@@ -273,7 +273,7 @@ const uploadFile = async ({filename, conn}) => {
                 await Promise.all(row.synonyms.map(async (synonym) => {
                     try {
                         const alias = await conn.addRecord({
-                            endpoint,
+                            target: endpoint,
                             content: {
                                 source,
                                 sourceId: record.sourceId,
@@ -284,7 +284,7 @@ const uploadFile = async ({filename, conn}) => {
                             existsOk: true
                         });
                         await conn.addRecord({
-                            endpoint: 'aliasof',
+                            target: 'aliasof',
                             content: {out: rid(alias), in: rid(record), source},
                             existsOk: true,
                             fetchExisting: false
@@ -309,7 +309,7 @@ const uploadFile = async ({filename, conn}) => {
     for (const [recordKey, parentKey] of subclassEdges) {
         if (cached[recordKey] && cached[parentKey]) {
             await conn.addRecord({
-                endpoint: 'subclassof',
+                target: 'subclassof',
                 content: {
                     out: rid(cached[recordKey]),
                     in: rid(cached[parentKey]),

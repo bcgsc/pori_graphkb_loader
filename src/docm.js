@@ -172,7 +172,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
         } = variantParser(parseDocmVariant(aminoAcid), false);
         const type = await conn.getVocabularyTerm(variant.type);
         protein = variant = await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'positionalvariants',
             content: {...variant, type, reference1: rid(reference1)},
             existsOk: true
         });
@@ -203,7 +203,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
             sortFunc: orderPreferredOntologyTerms
         });
         genomic = variant = await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'positionalvariants',
             content: {
                 ...variant, type, reference1: rid(reference1), assembly: assembly.toLowerCase().trim()
             },
@@ -217,7 +217,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
     // link the variants together
     if (genomic) {
         await conn.addRecord({
-            endpoint: 'infers',
+            target: 'Infers',
             content: {out: rid(genomic), in: rid(protein), source: rid(source)},
             existsOk: true,
             fetchExisting: false
@@ -266,7 +266,7 @@ const processRecord = async (opt) => {
             const [publication] = await _pubmed.fetchAndLoadByIds(conn, [diseaseRec.source_pubmed_id]);
             // now create the statement
             await conn.addRecord({
-                endpoint: 'statements',
+                target: 'Statement',
                 content: {
                     conditions: [rid(disease), rid(variant)],
                     evidence: [rid(publication)],
@@ -309,7 +309,7 @@ const upload = async (opt) => {
     logger.info(`loaded ${recordsList.length} records`);
     // add the source node
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}

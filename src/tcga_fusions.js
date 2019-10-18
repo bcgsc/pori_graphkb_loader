@@ -107,7 +107,7 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
             const [reference2] = await _entrezGene.fetchAndLoadBySymbol(conn, geneB);
 
             const variant = rid(await conn.addVariant({
-                endpoint: 'categoryvariants',
+                target: 'CategoryVariant',
                 content: {
                     reference1: rid(reference1),
                     reference2: rid(reference2),
@@ -116,7 +116,7 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
                 existsOk: true
             }));
             await conn.addRecord({
-                endpoint: 'statements',
+                target: 'Statement',
                 content: {
                     conditions: [variant, disease],
                     evidence: [publication],
@@ -188,7 +188,7 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
             }));
 
             const variant = rid(await conn.addVariant({
-                endpoint: 'positionalvariants',
+                target: 'PostionalVariant',
                 content: {
                     reference1: rid(geneA),
                     reference2: rid(geneB),
@@ -202,7 +202,7 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
                 existsOk: true
             }));
             await conn.addRecord({
-                endpoint: 'statements',
+                target: 'Statement',
                 content: {
                     conditions: [variant, disease],
                     evidence: [publication],

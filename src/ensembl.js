@@ -50,7 +50,7 @@ const uploadFile = async (opt) => {
     const contentList = await loadDelimToJson(filename);
 
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -75,7 +75,7 @@ const uploadFile = async (opt) => {
     logger.info('retreiving the list of previously loaded genes');
     const preLoaded = new Set();
     const genesList = await conn.getRecords({
-        endpoint: 'features',
+        target: 'Feature',
         where: {
             source: rid(source), biotype: 'gene', dependency: null, neighbors: 0
         }
@@ -110,7 +110,7 @@ const uploadFile = async (opt) => {
 
         if (visited[key] === undefined) {
             visited[key] = await conn.addRecord({
-                endpoint: 'features',
+                target: 'Feature',
                 content: {
                     source: rid(source),
                     sourceId: geneId,
@@ -124,7 +124,7 @@ const uploadFile = async (opt) => {
         if (visited[geneId] === undefined) {
             newGene = true;
             visited[geneId] = await conn.addRecord({
-                endpoint: 'features',
+                target: 'Feature',
                 content: {
                     source: rid(source),
                     sourceId: geneId,
@@ -138,7 +138,7 @@ const uploadFile = async (opt) => {
         const versionedGene = visited[key];
 
         await conn.addRecord({
-            endpoint: 'generalizationof',
+            target: 'generalizationof',
             content: {
                 out: rid(gene), in: rid(versionedGene), source: rid(source)
             },
@@ -148,7 +148,7 @@ const uploadFile = async (opt) => {
 
         // transcript
         const versionedTranscript = await conn.addRecord({
-            endpoint: 'features',
+            target: 'Feature',
             content: {
                 source: rid(source),
                 sourceId: record[HEADER.transcriptId],
@@ -158,7 +158,7 @@ const uploadFile = async (opt) => {
             existsOk: true
         });
         const transcript = await conn.addRecord({
-            endpoint: 'features',
+            target: 'Feature',
             content: {
                 source: rid(source),
                 sourceId: record[HEADER.transcriptId],
@@ -168,7 +168,7 @@ const uploadFile = async (opt) => {
             existsOk: true
         });
         await conn.addRecord({
-            endpoint: 'generalizationof',
+            target: 'generalizationof',
             content: {
                 out: rid(transcript), in: rid(versionedTranscript), source: rid(source)
             },
@@ -178,7 +178,7 @@ const uploadFile = async (opt) => {
 
         // transcript -> elementof -> gene
         await conn.addRecord({
-            endpoint: 'elementof',
+            target: 'elementof',
             content: {
                 out: rid(transcript), in: rid(gene), source: rid(source)
             },
@@ -186,7 +186,7 @@ const uploadFile = async (opt) => {
             fetchExisting: false
         });
         await conn.addRecord({
-            endpoint: 'elementof',
+            target: 'elementof',
             content: {
                 out: rid(versionedTranscript), in: rid(versionedGene), source: rid(source)
             },
@@ -212,7 +212,7 @@ const uploadFile = async (opt) => {
                     sort: orderPreferredOntologyTerms
                 });
                 await conn.addRecord({
-                    endpoint: 'crossreferenceof',
+                    target: 'crossreferenceof',
                     content: {
                         out: rid(transcript), in: rid(refseq), source: rid(source)
                     },
@@ -228,7 +228,7 @@ const uploadFile = async (opt) => {
             try {
                 const hgnc = await _hgnc.fetchAndLoadBySymbol({conn, paramType: 'hgnc_id', symbol: record[HEADER.hgncId]});
                 await conn.addRecord({
-                    endpoint: 'crossreferenceof',
+                    target: 'crossreferenceof',
                     content: {
                         out: rid(gene), in: rid(hgnc), source: rid(source)
                     },

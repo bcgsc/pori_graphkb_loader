@@ -160,13 +160,13 @@ const processVariants = async ({
 
     await Promise.all([
         conn.addRecord({
-            endpoint: 'elementof',
+            target: 'ElementOf',
             content: {out: rid(transcript1), in: rid(gene1), source},
             existsOk: true,
             fetchExisting: false
         }),
         conn.addRecord({
-            endpoint: 'elementof',
+            target: 'ElementOf',
             content: {out: rid(transcript2), in: rid(gene2), source},
             existsOk: true,
             fetchExisting: false
@@ -175,7 +175,7 @@ const processVariants = async ({
 
     // create the variants
     const general = await conn.addRecord({
-        endpoint: 'categoryvariants',
+        target: 'CategoryVariant',
         content: {
             reference1: rid(gene1),
             reference2: rid(gene2),
@@ -186,7 +186,7 @@ const processVariants = async ({
     let specific;
     if ((parsed.break1 || parsed.break2) && !geneOnly) {
         specific = await conn.addRecord({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {
                 reference1: transcript1,
                 reference2: transcript2,
@@ -198,7 +198,7 @@ const processVariants = async ({
             existsOk: true
         });
         await conn.addRecord({
-            endpoint: 'infers',
+            target: 'Inters',
             content: {
                 out: rid(specific),
                 in: rid(general)
@@ -234,7 +234,7 @@ const processCosmicRecord = async ({
 
     // create the recurrence statement
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'statements',
         content: {
             relevance,
             subject: disease,
@@ -279,7 +279,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     const jsonList = await loadDelimToJson(filename);
     // get the dbID for the source
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}

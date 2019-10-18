@@ -35,7 +35,7 @@ describe('drugBank', () => {
         await drugbank.uploadFile({conn: api, filename});
         expect(api.addRecord).toHaveBeenCalled();
         expect(api.addRecord).toHaveBeenNthCalledWith(2, {
-            endpoint: 'therapies',
+            target: 'therapies',
             content: {
                 source: rid(drugbank.SOURCE_DEFN),
                 sourceId: 'DB00530',

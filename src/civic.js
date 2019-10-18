@@ -310,7 +310,7 @@ const getEvidenceLevel = async ({
     let level = `${rawRecord.evidence_level}${rawRecord.rating}`.toLowerCase();
     if (EVIDENCE_LEVEL_CACHE[level] === undefined) {
         level = await conn.addRecord({
-            endpoint: 'evidencelevels',
+            target: 'EvidenceLevel',
             content: {
                 name: level,
                 sourceId: level,
@@ -319,7 +319,7 @@ const getEvidenceLevel = async ({
                 url: VOCAB.url
             },
             existsOk: true,
-            fetchConditions: {sourceId: level, name: level, source: rid(sources.civic)}
+            fetchConditions: {AND: [{sourceId: level}, {name: level}, {source: rid(sources.civic)}]}
 
         });
         EVIDENCE_LEVEL_CACHE[level.sourceId] = level;
@@ -365,7 +365,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
             body.reference2 = rid(reference2);
         }
         const variant = await conn.addVariant({
-            endpoint: 'categoryvariants',
+            target: 'categoryvariants',
             content: body,
             existsOk: true
         });
@@ -390,7 +390,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
             parsed.reference2 = rid(reference2);
         }
         const variant = await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'positionalvariants',
             content: parsed,
             existsOk: true
         });
@@ -491,7 +491,7 @@ const processEvidenceRecord = async (opt) => {
         content.conditions.push(content.subject);
     }
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content,
         existsOk: true,
         fetchExisting: false
@@ -550,7 +550,7 @@ const upload = async (opt) => {
 
     // add the source node
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}

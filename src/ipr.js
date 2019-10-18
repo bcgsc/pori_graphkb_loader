@@ -522,13 +522,13 @@ const processVariant = async (conn, variant) => {
         }
 
         return conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'positionalvariants',
             content,
             existsOk: true
         });
     }
     return conn.addVariant({
-        endpoint: 'categoryvariants',
+        target: 'categoryvariants',
         content: {
             ...variant,
             reference1,
@@ -624,7 +624,7 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
     // console.log(record);
     // now create the statement
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content: {
             subject: rid(subject),
             relevance: rid(relevance),
@@ -676,7 +676,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     }
     logger.info(`${records.length} non-skipped records`);
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -698,14 +698,14 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
         }
         if (record.createdBy && users[record.createdBy] === undefined) {
             users[record.createdBy] = rid(await conn.addRecord({
-                endpoint: 'users',
+                target: 'users',
                 content: {name: record.createdBy},
                 existsOk: true
             }));
         }
         if (record.reviewedBy && users[record.reviewedBy] === undefined) {
             users[record.reviewedBy] = rid(await conn.addRecord({
-                endpoint: 'users',
+                target: 'users',
                 content: {name: record.reviewedBy},
                 existsOk: true
             }));

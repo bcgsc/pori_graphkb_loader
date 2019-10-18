@@ -14,7 +14,8 @@ const {
 const {
     preferredDiseases,
     preferredDrugs,
-    rid
+    rid,
+    convertRecordToQueryFilters
 } = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const _entrezGene = require('./entrez/gene');
@@ -291,7 +292,7 @@ const processVariant = async (conn, {
     }
 
     variant = await conn.addVariant({
-        endpoint: variantUrl,
+        target: variantUrl,
         content: variant,
         existsOk: true
     });
@@ -310,12 +311,12 @@ const processVariant = async (conn, {
             parsed.reference1 = rid(reference1);
             parsed.type = rid(await getVocabulary(conn, parsed.type));
             const altVariant = rid(await conn.addVariant({
-                endpoint: 'positionalvariants',
+                target: 'positionalvariants',
                 content: parsed,
                 existsOk: true
             }));
             await conn.addRecord({
-                endpoint: 'infers',
+                target: 'infers',
                 content: {
                     out: altVariant,
                     in: rid(variant)
@@ -498,7 +499,7 @@ const processRecord = async ({
     }
     // make the actual statement
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content,
         existsOk: true,
         fetchExisting: false
@@ -599,7 +600,7 @@ const addEvidenceLevels = async (conn, source) => {
         }
         level = level.slice('LEVEL_'.length);
         const record = await conn.addRecord({
-            endpoint: 'evidencelevels',
+            target: 'EvidenceLevel',
             content: {
                 source: rid(source),
                 sourceId: level,
@@ -607,7 +608,7 @@ const addEvidenceLevels = async (conn, source) => {
                 description: desc,
                 url: URL
             },
-            fetchConditions: {sourceId: level, name: level, source: rid(source)},
+            fetchConditions: convertRecordToQueryFilters({sourceId: level, name: level, source: rid(source)}),
             existsOk: true
         });
         result[level] = record;
@@ -650,7 +651,7 @@ const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
         await Promise.all(relevance.map(async (rel) => {
             try {
                 await conn.addRecord({
-                    endpoint: 'statements',
+                    target: 'Statement',
                     content: {
                         conditions: [record],
                         evidence: [rid(source)],
@@ -687,7 +688,7 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
         try {
             checkSpec(drugRecordSpec, drug, d => d.uuid);
             record = await conn.addRecord({
-                endpoint: 'therapies',
+                target: 'Therapy',
                 content: {source, sourceId: drug.uuid, name: drug.drugName},
                 existsOk: true
             });
@@ -710,7 +711,7 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
                     sort: preferredDrugs
                 });
                 await conn.addRecord({
-                    endpoint: 'crossreferenceof',
+                    target: 'crossreferenceof',
                     content: {out: rid(record), in: rid(ncit), source},
                     existsOk: true,
                     fetchExisting: false
@@ -733,7 +734,7 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
 
         try {
             const alias = await conn.addRecord({
-                endpoint: 'therapies',
+                target: 'Therapy',
                 content: {
                     source,
                     name: aliasName,
@@ -743,7 +744,7 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
                 existsOk: true
             });
             await conn.addRecord({
-                endpoint: 'AliasOf',
+                target: 'AliasOf',
                 content: {out: rid(record), in: rid(alias), source},
                 existsOk: true,
                 fetchExisting: false
@@ -806,7 +807,7 @@ const upload = async (opt) => {
 
     // add the source node
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -814,7 +815,7 @@ const upload = async (opt) => {
 
     const variantMap = await getVariantDescriptions(URL);
     const previousLoad = await conn.getRecords({
-        endpoint: 'statements',
+        target: 'statements',
         where: {source: {name: SOURCE_DEFN.name}, returnProperties: 'sourceId'}
     });
 

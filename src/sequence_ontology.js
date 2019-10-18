@@ -10,7 +10,7 @@ const rdf = require('rdflib');
 const fs = require('fs');
 
 const {convertOwlGraphToJson} = require('./util');
-const {rid} = require('./graphkb');
+const {rid, convertRecordToQueryFilters} = require('./graphkb');
 const {logger} = require('./logging');
 
 
@@ -91,7 +91,7 @@ const uploadFile = async ({filename, conn}) => {
     rdf.parse(fileContent, graph, OWL_NAMESPACE, 'application/rdf+xml');
 
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -106,10 +106,10 @@ const uploadFile = async ({filename, conn}) => {
         try {
             const {content, subclassof} = parseRecord(code, rawRecord);
             const record = await conn.addRecord({
-                endpoint: 'vocabulary',
+                target: 'vocabulary',
                 existsOk: true,
                 content: {...content, source: rid(source)},
-                fetchConditions: {sourceId: content.sourceId, name: content.name, source: rid(source)}
+                fetchConditions: convertRecordToQueryFilters({sourceId: content.sourceId, name: content.name, source: rid(source)})
             });
             records[record.sourceId] = record;
             for (const parent of subclassof) {
@@ -123,7 +123,7 @@ const uploadFile = async ({filename, conn}) => {
     for (const edge of subclassEdges) {
         if (records[edge.out] && records[edge.in]) {
             await conn.addRecord({
-                endpoint: 'subclassof',
+                target: 'subclassof',
                 content: {
                     source: rid(source),
                     out: rid(records[edge.out]),

@@ -47,7 +47,7 @@ const processRecord = async ({conn, record, source}) => {
     const interactionType = interactionTypes.map(i => i.toLowerCase().trim()).sort().join(';');
 
     await conn.addRecord({
-        endpoint: 'targetof',
+        target: 'TargetOf',
         content: {
             out: rid(gene),
             in: rid(drug),
@@ -64,7 +64,7 @@ const processRecord = async ({conn, record, source}) => {
 const upload = async ({conn, url = BASE_URL}) => {
     logger.info('creating the source record');
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}

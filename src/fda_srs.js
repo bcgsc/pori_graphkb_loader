@@ -37,7 +37,7 @@ const uploadFile = async (opt) => {
     const {filename, conn: api} = opt;
     const jsonList = await loadDelimToJson(filename);
     const source = await api.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -89,13 +89,13 @@ const uploadFile = async (opt) => {
         let drug;
         try {
             drug = await api.addRecord({
-                endpoint: 'therapies',
+                target: 'Therapy',
                 content: {name, sourceId: id, source: rid(source)},
                 existsOk: true
             });
             if (ncitRec) {
                 await api.addRecord({
-                    endpoint: 'crossreferenceof',
+                    target: 'crossreferenceof',
                     content: {source: rid(source), out: rid(drug), in: rid(ncitRec)},
                     existsOk: true,
                     fetchExisting: false

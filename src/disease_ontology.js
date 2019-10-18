@@ -193,7 +193,7 @@ const loadEdges = async ({
             }
             if (records[src] && records[tgt]) {
                 await conn.addRecord({
-                    endpoint: 'subclassof',
+                    target: 'SubclassOf',
                     content: {
                         out: records[src]['@rid'],
                         in: records[tgt]['@rid'],
@@ -225,13 +225,13 @@ const uploadFile = async ({filename, conn}) => {
 
     const doVersion = parseDoVersion(DOID.graphs[0].meta.version);
     let source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'sources',
         content: {
             ...SOURCE_DEFN,
             version: doVersion
         },
         existsOk: true,
-        fetchConditions: {name: SOURCE_DEFN.name, version: doVersion}
+        fetchConditions: {AND: [{name: SOURCE_DEFN.name}, {version: doVersion}]}
     });
     source = rid(source);
     logger.info(`processing ${DOID.graphs[0].nodes.length} nodes`);
@@ -246,7 +246,7 @@ const uploadFile = async ({filename, conn}) => {
         logger.info(`fetched ncit source record ${rid(ncitSource)}`);
         logger.info('getting existing ncit records');
         const ncitRecords = await conn.getRecords({
-            endpoint: 'diseases',
+            target: 'diseases',
             where: {source: rid(ncitSource), dependency: null, neighbors: 0}
         });
         logger.info(`cached ${ncitRecords.length} ncit records`);
@@ -288,7 +288,7 @@ const uploadFile = async ({filename, conn}) => {
         synonymsByName[name] = [];
         // create the database entry
         const record = await conn.addRecord({
-            endpoint: 'diseases',
+            target: 'Disease',
             content: {
                 source,
                 sourceId,
@@ -299,7 +299,9 @@ const uploadFile = async ({filename, conn}) => {
             },
             existsOk: true,
             fetchConditions: {
-                sourceId, deprecated, name, source
+                AND: [
+                    {sourceId}, {deprecated}, {name}, {source}
+                ]
             }
         });
 
@@ -312,7 +314,7 @@ const uploadFile = async ({filename, conn}) => {
         for (const alias of aliases) {
             try {
                 const synonym = await conn.addRecord({
-                    endpoint: 'diseases',
+                    target: 'Disease',
                     content: {
                         sourceId: record.sourceId,
                         name: alias,
@@ -322,7 +324,7 @@ const uploadFile = async ({filename, conn}) => {
                     existsOk: true
                 });
                 await conn.addRecord({
-                    endpoint: 'aliasof',
+                    target: 'AliasOf',
                     content: {
                         out: rid(synonym),
                         in: rid(record),
@@ -341,7 +343,7 @@ const uploadFile = async ({filename, conn}) => {
         for (const alternateId of hasDeprecated) {
             try {
                 const alternate = await conn.addRecord({
-                    endpoint: 'diseases',
+                    target: 'Disease',
                     content: {
                         sourceId: alternateId,
                         name: record.name,
@@ -352,7 +354,7 @@ const uploadFile = async ({filename, conn}) => {
                     existsOk: true
                 });
                 await conn.addRecord({
-                    endpoint: 'deprecatedby',
+                    target: 'DeprecatedBy',
                     content: {out: rid(alternate), in: rid(record), source},
                     existsOk: true,
                     fetchExisting: false
@@ -369,7 +371,7 @@ const uploadFile = async ({filename, conn}) => {
                 logger.warn(`failed to link ${record.sourceId} to ${key}. Missing record`);
             } else {
                 await conn.addRecord({
-                    endpoint: 'crossreferenceof',
+                    target: 'CrossreferenceOf',
                     content: {out: rid(record), in: rid(ncitCache[key]), source},
                     existsOk: true,
                     fetchExisting: false
