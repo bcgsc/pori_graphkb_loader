@@ -9,13 +9,15 @@ const _pubmed = require('./entrez/pubmed');
 const _hgnc = require('./hgnc');
 const _ctg = require('./clinicaltrialsgov');
 const {
-    preferredDiseases,
-    rid,
-    preferredFeatures,
-    INTERNAL_SOURCE_NAME,
     orderPreferredOntologyTerms,
     convertRowFields
 } = require('./util');
+const {
+    preferredDiseases,
+    rid,
+    preferredFeatures,
+    INTERNAL_SOURCE_NAME
+} = require('./graphkb');
 
 
 const SOURCE_DEFN = {

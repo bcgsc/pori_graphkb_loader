@@ -7,9 +7,8 @@ const Ajv = require('ajv');
 const XmlStream = require('xml-stream');
 const fs = require('fs');
 
-const {
-    rid, checkSpec
-} = require('./util');
+const {checkSpec} = require('./util');
+const {rid} = require('./graphkb');
 const _hgnc = require('./hgnc');
 const {logger} = require('./logging');
 const _chembl = require('./chembl');

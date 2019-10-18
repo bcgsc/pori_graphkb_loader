@@ -9,9 +9,10 @@ const fs = require('fs');
 
 const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
 
+const {checkSpec} = require('./util');
 const {
-    orderPreferredOntologyTerms, rid, checkSpec
-} = require('./util');
+    orderPreferredOntologyTerms, rid
+} = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const {logger} = require('./logging');
 const _gene = require('./entrez/gene');

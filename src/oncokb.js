@@ -8,12 +8,14 @@ const fs = require('fs');
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const {
-    preferredDiseases,
-    preferredDrugs,
-    rid,
     checkSpec,
     hashRecordToId
 } = require('./util');
+const {
+    preferredDiseases,
+    preferredDrugs,
+    rid
+} = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const _entrezGene = require('./entrez/gene');
 const _ncit = require('./ncit');

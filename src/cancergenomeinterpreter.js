@@ -4,14 +4,12 @@ const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const {
     loadDelimToJson,
-    rid,
     convertRowFields,
-    INTERNAL_SOURCE_NAME,
-    orderPreferredOntologyTerms,
-    preferredDiseases,
-    preferredFeatures,
     hashRecordToId
 } = require('./util');
+const {
+    preferredDiseases, preferredFeatures, orderPreferredOntologyTerms, INTERNAL_SOURCE_NAME, rid
+} = require('./graphkb');
 const {logger} = require('./logging');
 const _trials = require('./clinicaltrialsgov');
 const _pubmed = require('./entrez/pubmed');

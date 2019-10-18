@@ -8,12 +8,12 @@ const fs = require('fs');
 
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
+const {checkSpec} = require('./util');
 const {
     preferredDiseases,
     rid,
-    INTERNAL_SOURCE_NAME,
-    checkSpec
-} = require('./util');
+    INTERNAL_SOURCE_NAME
+} = require('./graphkb');
 const {logger} = require('./logging');
 const _pubmed = require('./entrez/pubmed');
 const _entrezGene = require('./entrez/gene');

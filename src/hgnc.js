@@ -5,9 +5,10 @@ const request = require('request-promise');
 const Ajv = require('ajv');
 const _ = require('lodash');
 
+const {checkSpec} = require('./util');
 const {
-    rid, orderPreferredOntologyTerms, checkSpec
-} = require('./util');
+    rid, orderPreferredOntologyTerms
+} = require('./graphkb');
 const {logger} = require('./logging');
 const _entrez = require('./entrez/gene');
 

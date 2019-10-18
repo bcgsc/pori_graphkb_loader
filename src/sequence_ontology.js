@@ -9,9 +9,8 @@
 const rdf = require('rdflib');
 const fs = require('fs');
 
-const {
-    convertOwlGraphToJson, rid
-} = require('./util');
+const {convertOwlGraphToJson} = require('./util');
+const {rid} = require('./graphkb');
 const {logger} = require('./logging');
 
 

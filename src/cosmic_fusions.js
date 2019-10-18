@@ -5,13 +5,15 @@ const fs = require('fs');
 const _ = require('lodash');
 
 const {
-    preferredDiseases,
     loadDelimToJson,
-    rid,
     convertRowFields,
-    orderPreferredOntologyTerms,
     hashRecordToId
 } = require('./util');
+const {
+    preferredDiseases,
+    rid,
+    orderPreferredOntologyTerms
+} = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const _gene = require('./entrez/gene');
 const _refseq = require('./entrez/refseq');

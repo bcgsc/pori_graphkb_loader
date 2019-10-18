@@ -4,8 +4,11 @@
 const Ajv = require('ajv');
 
 const {
-    checkSpec, rid, requestWithRetry, generateCacheKey
+    checkSpec, requestWithRetry
 } = require('./util');
+const {
+    rid, generateCacheKey
+} = require('./graphkb');
 const {logger} = require('./logging');
 
 const ajv = new Ajv();

@@ -2,7 +2,8 @@ const readXlsxFile = require('read-excel-file/node');
 const fs = require('fs');
 
 const {logger} = require('./logging');
-const {convertRowFields, rid, preferredDiseases} = require('./util');
+const {convertRowFields} = require('./util');
+const {rid, preferredDiseases} = require('./graphkb');
 const _entrezGene = require('./entrez/gene');
 const _pubmed = require('./entrez/pubmed');
 

@@ -5,9 +5,10 @@
  * Additionally node v10 is required since the string size is too small in previous versions
  * @module importer/ncit
  */
+const {loadDelimToJson} = require('./util');
 const {
-    loadDelimToJson, rid, generateCacheKey
-} = require('./util');
+    rid, generateCacheKey
+} = require('./graphkb');
 const {logger} = require('./logging');
 
 const SOURCE_DEFN = {

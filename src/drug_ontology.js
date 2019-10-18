@@ -3,7 +3,8 @@
  * @module importer/drug_ontology
  */
 
-const {loadDelimToJson, rid, orderPreferredOntologyTerms} = require('./util');
+const {loadDelimToJson} = require('./util');
+const {rid, orderPreferredOntologyTerms} = require('./graphkb');
 const {logger} = require('./logging');
 const {SOURCE_DEFN: {name: drugbankName}} = require('./drugbank');
 const {SOURCE_DEFN: {name: chemblName}} = require('./chembl');

@@ -3,8 +3,9 @@
  */
 
 const {
-    rid, requestWithRetry, orderPreferredOntologyTerms, generateCacheKey
+    requestWithRetry, orderPreferredOntologyTerms
 } = require('../util');
+const {rid, generateCacheKey} = require('../graphkb');
 const {logger} = require('../logging');
 
 
@@ -190,7 +191,9 @@ const uploadRecord = async (api, content, opt = {}) => {
 const preLoadCache = async (api, {sourceDefn, cache, endpoint}) => {
     const records = await api.getRecords({
         endpoint,
-        where: {source: {name: sourceDefn.name}, dependency: null, deprecated: false, neighbors: 0}
+        where: {
+            source: {name: sourceDefn.name}, dependency: null, deprecated: false, neighbors: 0
+        }
     });
 
     const dups = new Set();

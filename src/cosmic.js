@@ -6,13 +6,15 @@ const fs = require('fs');
 const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
 
 const {
-    preferredDiseases,
     loadDelimToJson,
-    rid,
     convertRowFields,
-    orderPreferredOntologyTerms,
     hashRecordToId
 } = require('./util');
+const {
+    preferredDiseases,
+    rid,
+    orderPreferredOntologyTerms
+} = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const _gene = require('./entrez/gene');
 const {logger} = require('./logging');

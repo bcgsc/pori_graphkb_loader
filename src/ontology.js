@@ -12,7 +12,7 @@ const {schema, schema: {schema: kbSchema}} = require('@bcgsc/knowledgebase-schem
 
 
 const {logger} = require('./logging');
-const {rid} = require('./util');
+const {rid} = require('./graphkb');
 
 const ajv = new Ajv();
 

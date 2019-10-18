@@ -14,14 +14,16 @@ const _ = require('lodash');
 
 const {
     loadXmlToJson,
-    orderPreferredOntologyTerms,
     parseXmlToJson,
-    preferredDrugs,
-    preferredDiseases,
-    rid,
     checkSpec,
     requestWithRetry
 } = require('./util');
+const {
+    orderPreferredOntologyTerms,
+    preferredDrugs,
+    preferredDiseases,
+    rid
+} = require('./graphkb');
 const {logger} = require('./logging');
 
 const SOURCE_DEFN = {

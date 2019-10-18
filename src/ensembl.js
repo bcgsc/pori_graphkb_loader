@@ -4,9 +4,10 @@
  * @module importer/ensembl
  */
 
+const {loadDelimToJson} = require('./util');
 const {
-    loadDelimToJson, rid, orderPreferredOntologyTerms, generateCacheKey
-} = require('./util');
+    rid, orderPreferredOntologyTerms, generateCacheKey
+} = require('./graphkb');
 const {logger} = require('./logging');
 const _hgnc = require('./hgnc');
 const _entrez = require('./entrez/gene');

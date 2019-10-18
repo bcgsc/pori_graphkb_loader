@@ -5,7 +5,7 @@
 
 const request = require('request-promise');
 
-const {rid, orderPreferredOntologyTerms} = require('./util');
+const {rid, orderPreferredOntologyTerms} = require('./graphkb');
 const {logger} = require('./logging');
 const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 

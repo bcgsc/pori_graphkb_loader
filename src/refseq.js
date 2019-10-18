@@ -2,9 +2,8 @@
  * Import the RefSeq transcripts, ignoring version numbers for now
  * @module importer/refseq
  */
-const {
-    loadDelimToJson, rid
-} = require('./util');
+const {loadDelimToJson} = require('./util');
+const {rid} = require('./graphkb');
 const {logger} = require('./logging');
 
 const _entrez = require('./entrez/gene');

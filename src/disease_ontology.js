@@ -6,9 +6,8 @@
  */
 const Ajv = require('ajv');
 
-const {
-    rid, generateCacheKey, checkSpec
-} = require('./util');
+const {checkSpec} = require('./util');
+const {rid, generateCacheKey} = require('./graphkb');
 const {logger} = require('./logging');
 const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 

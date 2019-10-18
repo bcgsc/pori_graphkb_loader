@@ -4,9 +4,10 @@
  */
 const rdf = require('rdflib');
 const fs = require('fs');
+const {convertOwlGraphToJson} = require('./util');
 const {
-    convertOwlGraphToJson, orderPreferredOntologyTerms, rid
-} = require('./util');
+    orderPreferredOntologyTerms, rid
+} = require('./graphkb');
 const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 const {logger} = require('./logging');
 

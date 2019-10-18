@@ -8,13 +8,15 @@ const csv = require('fast-csv');
 const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
 
 const {
+    convertRowFields,
+    hashRecordToId
+} = require('./util');
+const {
     preferredDiseases,
     rid,
-    convertRowFields,
     orderPreferredOntologyTerms,
-    hashRecordToId,
     preferredFeatures
-} = require('./util');
+} = require('./graphkb');
 const _entrezGene = require('./entrez/gene');
 const {SOURCE_DEFN: {name: ensemblName}} = require('./ensembl');
 const {logger} = require('./logging');
