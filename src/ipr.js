@@ -37,7 +37,7 @@ const HEADER = {
     variants: 'kb_reference_events_expression',
     statementType: 'kb_reference_type',
     relevance: 'kb_reference_relevance',
-    appliesTo: 'kb_reference_context',
+    subject: 'kb_reference_context',
     diseaseList: 'kb_reference_disease_list',
     evidenceLevel: 'kb_reference_evidence',
     evidenceType: 'kb_reference_id_type',
@@ -124,19 +124,19 @@ const stripDrugPlurals = name => name.toLowerCase().trim().replace(/\bmimetics\b
 const extractAppliesTo = async (conn, record, source) => {
     const {
         statementType,
-        appliesTo: appliesToInput,
+        subject: appliesToInput,
         variants,
         features,
         disease,
-        supportedBy,
+        evidence,
         relevance
     } = record;
 
-    const appliesTo = appliesToInput && appliesToInput.replace(/-/g, ' ');
+    const subject = appliesToInput && appliesToInput.replace(/-/g, ' ');
 
     if (statementType === 'therapeutic') {
         if (relevance.includes('resistance') || relevance.includes('sensitivity') || relevance.includes('response')) {
-            let drugName = stripDrugPlurals(appliesTo);
+            let drugName = stripDrugPlurals(subject);
             if (THERAPY_MAPPING[drugName]) {
                 drugName = THERAPY_MAPPING[drugName];
             }
@@ -151,8 +151,8 @@ const extractAppliesTo = async (conn, record, source) => {
                 sort: preferredDiseases
             });
         } if (relevance === 'eligibility') {
-            if (supportedBy.length === 1) {
-                return supportedBy[0];
+            if (evidence.length === 1) {
+                return evidence[0];
             }
         }
     } if (statementType === 'biological' || statementType === 'occurrence') {
@@ -172,7 +172,7 @@ const extractAppliesTo = async (conn, record, source) => {
             throw new Error(`Unable to determine feature target (variants=Array[${variants.length}], features=Array[${features.length}])`);
         } else if (['recurrent', 'observed', 'pathogenic', 'mutation hotspot'].includes(relevance)) {
             if (!disease) {
-                if (appliesTo && (appliesTo.includes('somatic') || appliesTo === 'cancer')) {
+                if (subject && (subject.includes('somatic') || subject === 'cancer')) {
                     return conn.getUniqueRecordBy({
                         endpoint: 'diseases',
                         where: {name: 'cancer'},
@@ -219,7 +219,7 @@ const extractRelevance = (record) => {
     const {
         statementType,
         relevance: rawRelevance,
-        appliesTo
+        subject
     } = record;
 
     const relevance = rawRelevance
@@ -238,13 +238,13 @@ const extractRelevance = (record) => {
             return 'unfavourable prognosis';
         }
         return 'prognostic indicator';
-    } if (appliesTo === 'oncogenic fusion' && relevance.includes('gain of function')) {
+    } if (subject === 'oncogenic fusion' && relevance.includes('gain of function')) {
         return 'oncogenic fusion';
     } if (relevance === 'associated with') {
-        if (appliesTo.toLowerCase() === 'pathogenic germline mutation') {
+        if (subject.toLowerCase() === 'pathogenic germline mutation') {
             return 'pathogenic';
         }
-        return appliesTo;
+        return subject;
     }
     return relevance;
 };
@@ -462,7 +462,7 @@ const expandRecords = (jsonList) => {
     for (const record of jsonList) {
         const {
             variants: variantsList,
-            appliesTo: appliesToList,
+            subject: appliesToList,
             diseaseList,
             ...rest
         } = record;
@@ -471,9 +471,9 @@ const expandRecords = (jsonList) => {
         if (parsedAppliesTo.length === 0) {
             parsedAppliesTo.push(null);
         }
-        for (const appliesTo of parsedAppliesTo) {
+        for (const subject of parsedAppliesTo) {
             for (const coReqVariants of cleanStringList(variantsList, '|')) {
-                const newRecord = {appliesTo, ...rest};
+                const newRecord = {subject, ...rest};
                 newRecord.variants = cleanStringList(coReqVariants, '&');
 
                 for (const pmid of cleanStringList(record.evidenceId)) {
@@ -543,8 +543,8 @@ const processVariant = async (conn, variant) => {
 
 const processRecord = async ({conn, record: inputRecord, source}) => {
     const record = {...inputRecord, variants: []};
-    const impliedBy = [];
-    const supportedBy = [];
+    const conditions = [];
+    const evidence = [];
 
     for (const variant of inputRecord.variants) {
         record.variants.push(convertDeprecatedSyntax(variant));
@@ -559,7 +559,7 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         record.variants.filter(v => v.isFeature).map(async v => getFeature(conn, v.name))
     );
     for (const variant of variants) {
-        impliedBy.push(rid(variant));
+        conditions.push(rid(variant));
     }
     // try to find the disease name in GraphKB
     let disease;
@@ -573,21 +573,21 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         } catch (err) {
             throw err;
         }
-        impliedBy.push(rid(disease));
+        conditions.push(rid(disease));
     }
 
     // check that the expected pubmedIds exist in the db
     for (const {sourceId} of record.support) {
-        let evidence;
+        let evidenceRec;
         if (sourceId.startsWith('NCT')) {
-            evidence = await _ctg.fetchAndLoadById(conn, sourceId);
+            evidenceRec = await _ctg.fetchAndLoadById(conn, sourceId);
         } else {
-            [evidence] = await _pubmed.fetchAndLoadByIds(conn, [sourceId]);
+            [evidenceRec] = await _pubmed.fetchAndLoadByIds(conn, [sourceId]);
         }
-        if (!evidence) {
+        if (!evidenceRec) {
             throw new Error(`unable to retrieve evidence record for sourceId (${sourceId})`);
         }
-        supportedBy.push(rid(evidence));
+        evidence.push(rid(evidenceRec));
     }
 
     // determine the record relevance
@@ -597,11 +597,11 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
         sort: orderPreferredOntologyTerms
     });
 
-    // determine the appliesTo
-    const appliesTo = await extractAppliesTo(
+    // determine the subject
+    const subject = await extractAppliesTo(
         conn,
         {
-            ...record, variants, features, supportedBy, relevance: relevance.name
+            ...record, variants, features, evidence, relevance: relevance.name
         },
         source
     );
@@ -628,10 +628,10 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
     await conn.addRecord({
         endpoint: 'statements',
         content: {
-            appliesTo: rid(appliesTo),
+            subject: rid(subject),
             relevance: rid(relevance),
-            supportedBy,
-            impliedBy,
+            evidence,
+            conditions,
             source: rid(source),
             sourceId: record.ident,
             reviewStatus,
@@ -720,8 +720,8 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
         }
         if (record.support.length === 1 && record.evidenceId === '25801821') {
             // MSK-IMPACT panel
-            if (!record.appliesTo && record.relevance === 'mutation hotspot') {
-                record.appliesTo = 'cancer';
+            if (!record.subject && record.relevance === 'mutation hotspot') {
+                record.subject = 'cancer';
             }
         }
     }

@@ -115,10 +115,10 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
             await conn.addRecord({
                 endpoint: 'statements',
                 content: {
-                    impliedBy: [variant, disease],
-                    supportedBy: [publication],
+                    conditions: [variant, disease],
+                    evidence: [publication],
                     relevance,
-                    appliesTo: disease
+                    subject: disease
                 },
                 existsOk: true,
                 fetchExisting: false
@@ -200,10 +200,10 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
             await conn.addRecord({
                 endpoint: 'statements',
                 content: {
-                    impliedBy: [variant, disease],
-                    supportedBy: [publication],
+                    conditions: [variant, disease],
+                    evidence: [publication],
                     relevance,
-                    appliesTo: row.kinaseA === 'yes'
+                    subject: row.kinaseA === 'yes'
                         ? rid(geneA)
                         : rid(geneB)
                 },

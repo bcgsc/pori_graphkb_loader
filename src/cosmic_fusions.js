@@ -231,9 +231,9 @@ const processCosmicRecord = async ({
         endpoint: 'statements',
         content: {
             relevance,
-            appliesTo: disease,
-            impliedBy: [variant, disease],
-            supportedBy: publications.map(rid),
+            subject: disease,
+            conditions: [variant, disease],
+            evidence: publications.map(rid),
             source: rid(source),
             reviewStatus: 'not required',
             sourceId: record.sourceId

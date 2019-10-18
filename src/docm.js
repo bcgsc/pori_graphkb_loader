@@ -260,10 +260,10 @@ const processRecord = async (opt) => {
             await conn.addRecord({
                 endpoint: 'statements',
                 content: {
-                    impliedBy: [rid(disease), rid(variant)],
-                    supportedBy: [rid(publication)],
+                    conditions: [rid(disease), rid(variant)],
+                    evidence: [rid(publication)],
                     relevance: rid(relevance),
-                    appliesTo: rid(disease),
+                    subject: rid(disease),
                     source: rid(source),
                     reviewStatus: 'not required',
                     sourceId: record.hgvs

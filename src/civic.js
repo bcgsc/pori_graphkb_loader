@@ -472,8 +472,8 @@ const processEvidenceRecord = async (opt) => {
         reviewStatus: 'not required',
         sourceId: rawRecord.id,
         evidenceLevel: rid(level),
-        supportedBy: [rid(publication)],
-        impliedBy: [rid(variant)],
+        evidence: [rid(publication)],
+        conditions: [rid(variant)],
         description: rawRecord.description
     };
     // create the statement and connecting edges
@@ -481,15 +481,16 @@ const processEvidenceRecord = async (opt) => {
         throw new Error(`Unable to make statement (evidence_type=${rawRecord.evidence_type})`);
     }
     if (rawRecord.evidence_type === 'Diagnostic' || rawRecord.evidence_type === 'Predisposing') {
-        content.appliesTo = rid(disease);
+        content.subject = rid(disease);
     } else {
-        content.impliedBy.push(rid(disease));
+        content.conditions.push(rid(disease));
     }
 
     if (rawRecord.evidence_type === 'Predictive' && drug) {
-        content.appliesTo = rid(drug);
+        content.subject = rid(drug);
     } if (rawRecord.evidence_type === 'Prognostic') {
-        content.appliesTo = null;
+        content.subject = null;
+    }
     }
     await conn.addRecord({
         endpoint: 'statements',

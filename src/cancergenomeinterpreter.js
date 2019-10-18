@@ -346,10 +346,10 @@ const processRow = async ({row, source, conn}) => {
         relevanceMapping[row.relevance.toLowerCase()] || row.relevance
     ));
 
-    const supportedBy = [...articles.map(rid), ...trials.map(rid)];
+    const evidence = [...articles.map(rid), ...trials.map(rid)];
 
-    if (supportedBy.length === 0) {
-        supportedBy.push(rid(source));
+    if (evidence.length === 0) {
+        evidence.push(rid(source));
     }
 
     // create the statement
@@ -358,9 +358,9 @@ const processRow = async ({row, source, conn}) => {
         content: {
             evidenceLevel: level,
             relevance,
-            appliesTo: drug,
-            impliedBy: [...variants.map(rid), disease],
-            supportedBy,
+            subject: drug,
+            conditions: [...variants.map(rid), disease, drug],
+            evidence,
             source: rid(source),
             sourceId: row.sourceId
         },

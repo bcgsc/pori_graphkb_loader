@@ -464,22 +464,24 @@ const processRecord = async ({
     const publications = await _pubmed.fetchAndLoadByIds(conn, pmids);
 
     const content = {
-        impliedBy: [rid(variant)],
-        supportedBy: [...publications.map(rid), ...abstracts.map(rid)],
+        conditions: [rid(variant)],
+        evidence: [...publications.map(rid), ...abstracts.map(rid)],
         relevance: rid(relevance),
         source,
         sourceId,
         reviewStatus: 'not required'
     };
     if (disease) {
-        content.impliedBy.push(rid(disease));
+        content.conditions.push(rid(disease));
     }
     if (appliesToTarget === 'drug') {
-        content.appliesTo = rid(therapy);
+        content.subject = rid(therapy);
+        content.conditions.push(content.subject);
     } else if (appliesToTarget === 'gene') {
-        content.appliesTo = rid(variant.reference1);
+        content.subject = rid(variant.reference1);
+        content.conditions.push(content.subject);
     } else if (appliesToTarget === 'variant') {
-        content.appliesTo = rid(variant);
+        content.subject = rid(variant);
     } else {
         throw new Error(`Unrecognized appliesToTarget (${appliesToTarget})`);
     }
@@ -642,11 +644,11 @@ const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
                 await conn.addRecord({
                     endpoint: 'statements',
                     content: {
-                        impliedBy: [record],
-                        supportedBy: [rid(source)],
+                        conditions: [record],
+                        evidence: [rid(source)],
                         source: rid(source),
                         description: gene.summary,
-                        appliesTo: record,
+                        subject: record,
                         relevance: rel
                     },
                     existsOk: true,

@@ -220,9 +220,9 @@ const processRecord = async (conn, record, source, relevance) => {
         endpoint: 'statements',
         content: {
             relevance,
-            appliesTo: disease,
-            impliedBy: [variantId, disease],
-            supportedBy: [source],
+            subject: disease,
+            conditions: [variantId, disease],
+            evidence: [source],
             source,
             sourceId,
             reviewStatus: 'not required'
