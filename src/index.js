@@ -6,7 +6,7 @@
 
 const {fileExists, createOptionsMenu} = require('./cli');
 
-const {ApiConnection} = require('./util');
+const {ApiConnection} = require('./graphkb');
 const {DEFAULT_QS} = require('./entrez/util');
 const {logger, getFilename} = require('./logging');
 
