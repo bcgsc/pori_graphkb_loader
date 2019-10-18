@@ -208,7 +208,7 @@ const uploadFile = async (opt) => {
             if (/^DB\d+$/i.exec(record[HEADER.drugbank])) {
                 const dbDrug = rid(await conn.getUniqueRecordBy({
                     target: 'Therapy',
-                    where: {
+                    filters: {
                         AND: [
                             {source: {target: 'Source', filters: {name: drugbankName}}},
                             {sourceId: record[HEADER.drugbank]}

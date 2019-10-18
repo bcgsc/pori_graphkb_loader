@@ -218,8 +218,9 @@ const uploadFile = async ({filename, conn}) => {
     const cached = {};
     logger.info('getting previously loaded records');
     const cachedRecords = await conn.getRecords({
-        target: 'ontologies',
-        where: {source, dependency: null, neighbors: 0}
+        target: 'Ontology',
+        filters: {AND: [{source}, {dependency: null}]},
+        neighbors: 0
     });
     for (const record of cachedRecords) {
         cached[generateCacheKey(record)] = record;

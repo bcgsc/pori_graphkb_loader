@@ -257,7 +257,9 @@ class ApiConnection {
         const {
             filters,
             target,
-            limit = 1000
+            limit = 1000,
+            neighbors = 1,
+            returnProperties = null
         } = opt;
 
         const result = [];
@@ -267,12 +269,14 @@ class ApiConnection {
         while (lastFetch === limit) {
             const {result: records} = await this.request({
                 uri: '/query',
+                method: 'POST',
                 body: {
                     target,
                     filters,
-                    neighbors: 1,
+                    neighbors,
                     limit,
-                    skip
+                    skip,
+                    returnProperties
                 }
             });
             result.push(...records);
@@ -304,7 +308,7 @@ class ApiConnection {
             sort: sortFunc = () => 0
         } = opt;
 
-        const records = await this.request({
+        const {result: records} = await this.request({
             method: 'POST',
             uri: '/query',
             body: {target, filters}
@@ -324,19 +328,22 @@ class ApiConnection {
     /**
      * Fetch therapy by name, ignore plurals for some cases
      */
-    async getTherapy(term, opt = {}) {
-        let error;
+    async getTherapy(term, source) {
+        let error,
+            filters = {
+                OR: [
+                    {sourceId: term},
+                    {name: term}
+                ]
+            };
+        if (source) {
+            filters = {AND: [{source}, filters]};
+        }
         try {
             return await this.getUniqueRecordBy({
                 target: 'Therapy',
                 sort: preferredDrugs,
-                ...opt,
-                filters: {
-                    OR: [
-                        {sourceId: term},
-                        {name: term}
-                    ]
-                }
+                filters
             });
         } catch (err) {
             error = err;
@@ -349,16 +356,19 @@ class ApiConnection {
         }
         if (alternateTerm) {
             try {
+                filters = {
+                    OR: [
+                        {sourceId: alternateTerm},
+                        {name: alternateTerm}
+                    ]
+                };
+                if (source) {
+                    filters = {AND: [{source}, filters]};
+                }
                 return await this.getUniqueRecordBy({
                     target: 'Therapy',
                     sort: preferredDrugs,
-                    ...opt,
-                    filters: {
-                        OR: [
-                            {sourceId: alternateTerm},
-                            {name: alternateTerm}
-                        ]
-                    }
+                    filters
                 });
             } catch (err) {
                 error = err;
@@ -478,7 +488,7 @@ class ApiConnection {
         try {
             let result;
             if (matchSource) {
-                result = await this.getTherapy(therapyName, {where: {source: rid(source)}});
+                result = await this.getTherapy(therapyName, rid(source));
             } else {
                 result = await this.getTherapy(therapyName);
             }
@@ -492,7 +502,7 @@ class ApiConnection {
         try {
             const elements = await Promise.all(therapyName.split(/\s*\+\s*/gi).map((name) => {
                 if (matchSource) {
-                    return this.getTherapy(name, {where: {source: rid(source)}});
+                    return this.getTherapy(name, rid(source));
                 }
                 return this.getTherapy(name);
             }));

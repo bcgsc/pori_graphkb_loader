@@ -123,8 +123,14 @@ const fetchAndLoadById = async (conn, drugId) => {
 
 const preLoadCache = async (api) => {
     const records = await api.getRecords({
-        target: 'therapies',
-        where: {source: {name: SOURCE_DEFN.name}, dependency: null, deprecated: false}
+        target: 'Therapy',
+        filters: {
+            AND: [
+                {source: {target: 'Source', filters: {name: SOURCE_DEFN.name}}},
+                {dependency: null},
+                {deprecated: false}
+            ]
+        }
     });
 
     const dups = new Set();

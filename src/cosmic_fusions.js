@@ -234,7 +234,7 @@ const processCosmicRecord = async ({
 
     // create the recurrence statement
     await conn.addRecord({
-        target: 'statements',
+        target: 'Statement',
         content: {
             relevance,
             subject: disease,

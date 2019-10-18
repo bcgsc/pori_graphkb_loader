@@ -98,7 +98,7 @@ const fetchAndLoadByIds = async (api, idListIn) => {
 const preLoadCache = async api => preLoadAnyCache(
     api,
     {
-        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'publications'
+        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'Publication'
     }
 );
 

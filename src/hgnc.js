@@ -83,7 +83,13 @@ const uploadRecord = async ({
         try {
             const ensg = await conn.getUniqueRecordBy({
                 target: 'Feature',
-                where: {source: rid(ensembl), biotype: 'gene', sourceId: gene.ensembl_gene_id}
+                filters: {
+                    AND: [
+                        {source: rid(ensembl)},
+                        {biotype: 'gene'},
+                        {sourceId: gene.ensembl_gene_id}
+                    ]
+                }
             });
             // try adding the cross reference relationship
             await conn.addRecord({

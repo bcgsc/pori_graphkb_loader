@@ -246,8 +246,9 @@ const uploadFile = async ({filename, conn}) => {
         logger.info(`fetched ncit source record ${rid(ncitSource)}`);
         logger.info('getting existing ncit records');
         const ncitRecords = await conn.getRecords({
-            target: 'diseases',
-            where: {source: rid(ncitSource), dependency: null, neighbors: 0}
+            target: 'Disease',
+            filters: {AND: [{source: rid(ncitSource)}, {dependency: null}]},
+            neighbors: 0
         });
         logger.info(`cached ${ncitRecords.length} ncit records`);
         for (const record of ncitRecords) {

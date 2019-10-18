@@ -196,11 +196,16 @@ const uploadRecord = async (api, content, opt = {}) => {
 };
 
 
-const preLoadCache = async (api, {sourceDefn, cache, endpoint}) => {
+const preLoadCache = async (api, {sourceDefn, cache, target}) => {
     const records = await api.getRecords({
-        target: endpoint,
-        where: {
-            source: {name: sourceDefn.name}, dependency: null, deprecated: false, neighbors: 0
+        target,
+        filters: {
+            AND: [
+                {source: {target: 'Source', filters: {name: sourceDefn.name}}},
+                {dependency: null},
+                {deprecated: false}
+            ],
+            neighbors: 0
         }
     });
 

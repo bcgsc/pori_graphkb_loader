@@ -76,9 +76,12 @@ const uploadFile = async (opt) => {
     const preLoaded = new Set();
     const genesList = await conn.getRecords({
         target: 'Feature',
-        where: {
-            source: rid(source), biotype: 'gene', dependency: null, neighbors: 0
-        }
+        filters: {
+            AND: [
+                {source: rid(source)}, {biotype: 'gene'}, {dependency: null}
+            ]
+        },
+        neighbors: 0
     });
 
     const counts = {success: 0, error: 0, skip: 0};

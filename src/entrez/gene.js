@@ -109,7 +109,7 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
 const preLoadCache = async api => util.preLoadCache(
     api,
     {
-        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'features'
+        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'Feature'
     }
 );
 

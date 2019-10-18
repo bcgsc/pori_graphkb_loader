@@ -15,7 +15,8 @@ const {
     preferredDiseases,
     rid,
     orderPreferredOntologyTerms,
-    preferredFeatures
+    preferredFeatures,
+    convertRecordToQueryFilters
 } = require('./graphkb');
 const _entrezGene = require('./entrez/gene');
 const {SOURCE_DEFN: {name: ensemblName}} = require('./ensembl');
@@ -277,7 +278,8 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     const previousLoad = new Set();
     logger.info('load previous statements');
     const statements = await conn.getRecords({
-        where: {source: rid(source), neighbors: 0, returnProperties: 'sourceId'}, target: 'statements'
+        filters: convertRecordToQueryFilters({source: rid(source), neighbors: 0, returnProperties: 'sourceId'}),
+        target: 'Statement'
     });
     for (const {sourceId} of statements) {
         previousLoad.add(sourceId);

@@ -815,8 +815,9 @@ const upload = async (opt) => {
 
     const variantMap = await getVariantDescriptions(URL);
     const previousLoad = await conn.getRecords({
-        target: 'statements',
-        where: {source: {name: SOURCE_DEFN.name}, returnProperties: 'sourceId'}
+        target: 'Statement',
+        filters: {source: {target: 'Source', filters: {name: SOURCE_DEFN.name}}},
+        returnProperties: 'sourceId'
     });
 
     logger.info('pre-loading entrez genes');
