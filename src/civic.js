@@ -491,6 +491,9 @@ const processEvidenceRecord = async (opt) => {
     } if (rawRecord.evidence_type === 'Prognostic') {
         content.subject = null;
     }
+
+    if (content.subject && !content.conditions.includes(content.subject)) {
+        content.conditions.push(content.subject);
     }
     await conn.addRecord({
         endpoint: 'statements',

@@ -623,6 +623,9 @@ const processRecord = async ({conn, record: inputRecord, source}) => {
             status: 'passed'
         });
     }
+    if (subject && !conditions.includes(rid(subject))) {
+        conditions.push(rid(subject));
+    }
     // console.log(record);
     // now create the statement
     await conn.addRecord({
