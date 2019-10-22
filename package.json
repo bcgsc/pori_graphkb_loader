@@ -48,7 +48,7 @@
     "jest-junit": "^6.4.0"
   },
   "scripts": {
-    "start": "node --stack-size=8192  --max-old-space-size=20000 src/index.js --graphkb https://graphkbapidev.bcgsc.ca/api",
+    "start": "node --stack-size=8192  --max-old-space-size=20000 src/index.js --graphkb https://graphkbdev-api.bcgsc.ca/api",
     "start:prod": "node --stack-size=8192  --max-old-space-size=20000 src/index.js",
     "test": "NODE_ENV=test jest --config config/jest.config.js",
     "lint": "eslint -c .eslintrc.jon src test",

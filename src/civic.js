@@ -8,12 +8,11 @@ const fs = require('fs');
 
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
+const {checkSpec} = require('./util');
 const {
     preferredDiseases,
-    rid,
-    INTERNAL_SOURCE_NAME,
-    checkSpec
-} = require('./util');
+    rid
+} = require('./graphkb');
 const {logger} = require('./logging');
 const _pubmed = require('./entrez/pubmed');
 const _entrezGene = require('./entrez/gene');
@@ -207,10 +206,7 @@ const getRelevance = async ({rawRecord, conn}) => {
     // translate the type to a GraphKB vocabulary term
     let relevance = translateRelevance(rawRecord.evidence_type, rawRecord.clinical_significance).toLowerCase();
     if (RELEVANCE_CACHE[relevance] === undefined) {
-        relevance = await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: relevance, source: {name: INTERNAL_SOURCE_NAME}}
-        });
+        relevance = await conn.getVocabularyTerm(relevance);
         RELEVANCE_CACHE[relevance.name] = relevance;
     } else {
         relevance = RELEVANCE_CACHE[relevance];
@@ -314,7 +310,7 @@ const getEvidenceLevel = async ({
     let level = `${rawRecord.evidence_level}${rawRecord.rating}`.toLowerCase();
     if (EVIDENCE_LEVEL_CACHE[level] === undefined) {
         level = await conn.addRecord({
-            endpoint: 'evidencelevels',
+            target: 'EvidenceLevel',
             content: {
                 name: level,
                 sourceId: level,
@@ -323,7 +319,7 @@ const getEvidenceLevel = async ({
                 url: VOCAB.url
             },
             existsOk: true,
-            fetchConditions: {sourceId: level, name: level, source: rid(sources.civic)}
+            fetchConditions: {AND: [{sourceId: level}, {name: level}, {source: rid(sources.civic)}]}
 
         });
         EVIDENCE_LEVEL_CACHE[level.sourceId] = level;
@@ -360,10 +356,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
         reference1 = feature;
     }
     try {
-        const variantClass = await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: variantName, source: {name: INTERNAL_SOURCE_NAME}}
-        });
+        const variantClass = await conn.getVocabularyTerm(variantName);
         const body = {
             type: rid(variantClass),
             reference1: rid(reference1)
@@ -372,7 +365,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
             body.reference2 = rid(reference2);
         }
         const variant = await conn.addVariant({
-            endpoint: 'categoryvariants',
+            target: 'CategoryVariant',
             content: body,
             existsOk: true
         });
@@ -388,10 +381,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
         } catch (parsingError) {
             throw new Error(`could not match ${variantName} (${err}) or parse (${parsingError}) variant`);
         }
-        const variantClass = await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}}
-        });
+        const variantClass = await conn.getVocabularyTerm(parsed.type);
         Object.assign(parsed, {
             reference1: rid(feature),
             type: rid(variantClass)
@@ -400,7 +390,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
             parsed.reference2 = rid(reference2);
         }
         const variant = await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: parsed,
             existsOk: true
         });
@@ -436,17 +426,22 @@ const processEvidenceRecord = async (opt) => {
         throw err;
     }
     // get the disease by doid
-    let disease = {};
+    let diseaseQueryFilters = {};
     if (rawRecord.disease.doid) {
-        disease.sourceId = `doid:${rawRecord.disease.doid}`;
-        disease.source = {name: 'disease ontology'};
+        diseaseQueryFilters = {
+            AND: [
+                {sourceId: `doid:${rawRecord.disease.doid}`},
+                {source: {target: 'Source', filters: {name: 'disease ontology'}}}
+            ]
+        };
     } else {
-        disease.name = rawRecord.disease.name;
+        diseaseQueryFilters = {name: rawRecord.disease.name};
     }
+    let disease;
     try {
         disease = await conn.getUniqueRecordBy({
-            endpoint: 'diseases',
-            where: disease,
+            target: 'Disease',
+            filters: diseaseQueryFilters,
             sort: preferredDiseases
         });
     } catch (err) {
@@ -472,8 +467,8 @@ const processEvidenceRecord = async (opt) => {
         reviewStatus: 'not required',
         sourceId: rawRecord.id,
         evidenceLevel: rid(level),
-        supportedBy: [rid(publication)],
-        impliedBy: [rid(variant)],
+        evidence: [rid(publication)],
+        conditions: [rid(variant)],
         description: rawRecord.description
     };
     // create the statement and connecting edges
@@ -481,18 +476,22 @@ const processEvidenceRecord = async (opt) => {
         throw new Error(`Unable to make statement (evidence_type=${rawRecord.evidence_type})`);
     }
     if (rawRecord.evidence_type === 'Diagnostic' || rawRecord.evidence_type === 'Predisposing') {
-        content.appliesTo = rid(disease);
+        content.subject = rid(disease);
     } else {
-        content.impliedBy.push(rid(disease));
+        content.conditions.push(rid(disease));
     }
 
     if (rawRecord.evidence_type === 'Predictive' && drug) {
-        content.appliesTo = rid(drug);
+        content.subject = rid(drug);
     } if (rawRecord.evidence_type === 'Prognostic') {
-        content.appliesTo = null;
+        content.subject = null;
+    }
+
+    if (content.subject && !content.conditions.includes(content.subject)) {
+        content.conditions.push(content.subject);
     }
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content,
         existsOk: true,
         fetchExisting: false
@@ -551,7 +550,7 @@ const upload = async (opt) => {
 
     // add the source node
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}

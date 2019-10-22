@@ -8,13 +8,16 @@ const csv = require('fast-csv');
 const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
 
 const {
+    convertRowFields,
+    hashRecordToId
+} = require('./util');
+const {
     preferredDiseases,
     rid,
-    convertRowFields,
     orderPreferredOntologyTerms,
-    hashRecordToId,
-    preferredFeatures
-} = require('./util');
+    preferredFeatures,
+    convertRecordToQueryFilters
+} = require('./graphkb');
 const _entrezGene = require('./entrez/gene');
 const {SOURCE_DEFN: {name: ensemblName}} = require('./ensembl');
 const {logger} = require('./logging');
@@ -69,9 +72,9 @@ const processVariants = async ({conn, record, source}) => {
             reference1 = chromosomeCache[chromosome];
         } else {
             reference1 = await conn.getUniqueRecordBy({
-                endpoint: 'features',
-                where: {
-                    sourceId: chromosome, name: chromosome, or: 'sourceId,name', biotype: 'chromosome'
+                target: 'Feature',
+                filters: {
+                    AND: [{OR: [{sourceId: chromosome}, {name: chromosome}]}, {biotype: 'chromosome'}]
                 },
                 sort: preferredFeatures
             });
@@ -107,7 +110,7 @@ const processVariants = async ({conn, record, source}) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         genomicVariant = rid(await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...variant},
             existsOk: true
         }));
@@ -134,7 +137,7 @@ const processVariants = async ({conn, record, source}) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         proteinVariant = rid(await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...variant},
             existsOk: true
         }));
@@ -150,8 +153,14 @@ const processVariants = async ({conn, record, source}) => {
             reference1 = featureCache[transcriptId];
         } else {
             reference1 = rid(await conn.getUniqueRecordBy({
-                endpoint: 'features',
-                where: {sourceId: transcriptId, biotype: 'transcript', source: {name: ensemblName}},
+                target: 'Feature',
+                filters: {
+                    AND: [
+                        {sourceId: transcriptId},
+                        {biotype: 'transcript'},
+                        {source: {target: 'Source', filters: {name: ensemblName}}}
+                    ]
+                },
                 sort: orderPreferredOntologyTerms
             }));
             featureCache[transcriptId] = reference1;
@@ -165,12 +174,12 @@ const processVariants = async ({conn, record, source}) => {
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
 
         cdsVariant = rid(await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...variant},
             existsOk: true
         }));
         await conn.addRecord({
-            endpoint: 'infers',
+            target: 'Infers',
             content: {out: cdsVariant, in: proteinVariant, source: rid(source)},
             existsOk: true,
             fetchExisting: false
@@ -182,14 +191,14 @@ const processVariants = async ({conn, record, source}) => {
     // link the genomic variant
     if (genomicVariant && cdsVariant) {
         await conn.addRecord({
-            endpoint: 'infers',
+            target: 'Infers',
             content: {out: rid(genomicVariant), in: rid(cdsVariant), source: rid(source)},
             existsOk: true,
             fetchExisting: false
         });
     } else if (genomicVariant) {
         await conn.addRecord({
-            endpoint: 'infers',
+            target: 'Infers',
             content: {out: rid(genomicVariant), in: rid(proteinVariant), source: rid(source)},
             existsOk: true,
             fetchExisting: false
@@ -209,20 +218,25 @@ const processRecord = async (conn, record, source, relevance) => {
         disease = diseasesCache[diseaseId];
     } else {
         disease = rid(await conn.getUniqueRecordBy({
-            endpoint: 'diseases',
-            where: {sourceId: diseaseId, source: {name: oncotreeName}},
+            target: 'Disease',
+            filters: {
+                AND: [
+                    {sourceId: diseaseId},
+                    {source: {target: 'Source', filters: {name: oncotreeName}}}
+                ]
+            },
             sort: preferredDiseases
         }));
         diseasesCache[diseaseId] = disease;
     }
 
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content: {
             relevance,
-            appliesTo: disease,
-            impliedBy: [variantId, disease],
-            supportedBy: [source],
+            subject: disease,
+            conditions: [variantId, disease],
+            evidence: [source],
             source,
             sourceId,
             reviewStatus: 'not required'
@@ -247,7 +261,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
 
     // get the dbID for the source
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -264,7 +278,8 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     const previousLoad = new Set();
     logger.info('load previous statements');
     const statements = await conn.getRecords({
-        where: {source: rid(source), neighbors: 0, returnProperties: 'sourceId'}, endpoint: 'statements'
+        filters: convertRecordToQueryFilters({source: rid(source), neighbors: 0, returnProperties: 'sourceId'}),
+        target: 'Statement'
     });
     for (const {sourceId} of statements) {
         previousLoad.add(sourceId);

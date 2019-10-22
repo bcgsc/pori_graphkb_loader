@@ -5,13 +5,15 @@ const fs = require('fs');
 const _ = require('lodash');
 
 const {
-    preferredDiseases,
     loadDelimToJson,
-    rid,
     convertRowFields,
-    orderPreferredOntologyTerms,
     hashRecordToId
 } = require('./util');
+const {
+    preferredDiseases,
+    rid,
+    orderPreferredOntologyTerms
+} = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const _gene = require('./entrez/gene');
 const _refseq = require('./entrez/refseq');
@@ -65,8 +67,8 @@ const processDisease = async ({conn, record}) => {
 
         try {
             disease = await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {name: diseaseName},
+                target: 'Disease',
+                filters: {name: diseaseName},
                 sort: preferredDiseases
             });
         } catch (err) {
@@ -86,12 +88,14 @@ const fetchTranscript = async (conn, name) => {
         const [, sourceId,, sourceIdVersion] = match;
         try {
             const transcript = await conn.getUniqueRecordBy({
-                endpoint: 'features',
-                where: {
-                    biotype: 'transcript',
-                    source: {name: _refseq.SOURCE_DEFN.name},
-                    sourceId,
-                    sourceIdVersion
+                target: 'Feature',
+                filters: {
+                    AND: [
+                        {biotype: 'transcript'},
+                        {source: {target: 'Source', filters: {name: _refseq.SOURCE_DEFN.name}}},
+                        {sourceId},
+                        {sourceIdVersion}
+                    ]
                 },
                 sort: orderPreferredOntologyTerms
             });
@@ -103,12 +107,14 @@ const fetchTranscript = async (conn, name) => {
         }
     }
     return conn.getUniqueRecordBy({
-        endpoint: 'features',
-        where: {
-            biotype: 'transcript',
-            source: {name: _ensembl.SOURCE_DEFN.name},
-            sourceId: name,
-            sourceIdVersion: null
+        target: 'Feature',
+        filters: {
+            AND: [
+                {biotype: 'transcript'},
+                {source: {target: 'Source', filters: {name: _ensembl.SOURCE_DEFN.name}}},
+                {sourceId: name},
+                {sourceIdVersion: null}
+            ]
         },
         sort: orderPreferredOntologyTerms
     });
@@ -154,13 +160,13 @@ const processVariants = async ({
 
     await Promise.all([
         conn.addRecord({
-            endpoint: 'elementof',
+            target: 'ElementOf',
             content: {out: rid(transcript1), in: rid(gene1), source},
             existsOk: true,
             fetchExisting: false
         }),
         conn.addRecord({
-            endpoint: 'elementof',
+            target: 'ElementOf',
             content: {out: rid(transcript2), in: rid(gene2), source},
             existsOk: true,
             fetchExisting: false
@@ -169,7 +175,7 @@ const processVariants = async ({
 
     // create the variants
     const general = await conn.addRecord({
-        endpoint: 'categoryvariants',
+        target: 'CategoryVariant',
         content: {
             reference1: rid(gene1),
             reference2: rid(gene2),
@@ -180,7 +186,7 @@ const processVariants = async ({
     let specific;
     if ((parsed.break1 || parsed.break2) && !geneOnly) {
         specific = await conn.addRecord({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {
                 reference1: transcript1,
                 reference2: transcript2,
@@ -192,7 +198,7 @@ const processVariants = async ({
             existsOk: true
         });
         await conn.addRecord({
-            endpoint: 'infers',
+            target: 'Inters',
             content: {
                 out: rid(specific),
                 in: rid(general)
@@ -214,8 +220,8 @@ const processCosmicRecord = async ({
         disease = rid(await processDisease({conn, record}));
     } else {
         disease = rid(await conn.getUniqueRecordBy({
-            endpoint: 'diseases',
-            where: {name: 'cancer'},
+            target: 'Disease',
+            filters: {name: 'cancer'},
             sort: preferredDiseases
         }));
     }
@@ -228,12 +234,12 @@ const processCosmicRecord = async ({
 
     // create the recurrence statement
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content: {
             relevance,
-            appliesTo: disease,
-            impliedBy: [variant, disease],
-            supportedBy: publications.map(rid),
+            subject: disease,
+            conditions: [variant, disease],
+            evidence: publications.map(rid),
             source: rid(source),
             reviewStatus: 'not required',
             sourceId: record.sourceId
@@ -273,7 +279,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     const jsonList = await loadDelimToJson(filename);
     // get the dbID for the source
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}

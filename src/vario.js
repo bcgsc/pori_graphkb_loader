@@ -6,9 +6,8 @@ const rdf = require('rdflib');
 const fs = require('fs');
 
 
-const {
-    convertOwlGraphToJson, rid
-} = require('./util');
+const {convertOwlGraphToJson} = require('./util');
+const {rid} = require('./graphkb');
 const {logger} = require('./logging');
 
 
@@ -66,7 +65,7 @@ const uploadFile = async ({filename, conn}) => {
     const nodesByCode = convertOwlGraphToJson(graph, parseId);
 
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -88,14 +87,14 @@ const uploadFile = async ({filename, conn}) => {
         for (const tgt of original[PREDICATES.subclassOf] || []) {
             subclassEdges.push([code, tgt]);
         }
-        recordsByCode[code] = await conn.addRecord({endpoint: 'vocabulary', content: node, existsOk: true});
+        recordsByCode[code] = await conn.addRecord({target: 'vocabulary', content: node, existsOk: true});
     }
     for (const [srcCode, tgtCode] of subclassEdges) {
         const src = recordsByCode[srcCode];
         const tgt = recordsByCode[tgtCode];
         if (src && tgt) {
             await conn.addRecord({
-                endpoint: 'subclassof',
+                target: 'subclassof',
                 content: {
                     out: rid(src), in: rid(tgt), source: rid(source)
                 },

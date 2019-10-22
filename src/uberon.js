@@ -4,9 +4,10 @@
  */
 const rdf = require('rdflib');
 const fs = require('fs');
+const {convertOwlGraphToJson} = require('./util');
 const {
-    convertOwlGraphToJson, orderPreferredOntologyTerms, rid
-} = require('./util');
+    orderPreferredOntologyTerms, rid, convertRecordToQueryFilters
+} = require('./graphkb');
 const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 const {logger} = require('./logging');
 
@@ -82,7 +83,7 @@ const uploadFile = async ({filename, conn}) => {
 
     const subclassEdges = [];
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -90,8 +91,8 @@ const uploadFile = async ({filename, conn}) => {
     let ncitSource = null;
     try {
         ncitSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: ncitName}
+            target: 'Source',
+            filters: {name: ncitName}
         });
     } catch (err) {
         logger.error(`Cannot link records to NCIT. Could not find ncit source record: ${err}`);
@@ -130,14 +131,14 @@ const uploadFile = async ({filename, conn}) => {
             body.deprecated = true;
         }
         const dbEntry = await conn.addRecord({
-            endpoint: 'anatomicalentities',
+            target: 'AnatomicalEntity',
             content: body,
             existsOk: true,
-            fetchConditions: {
+            fetchConditions: convertRecordToQueryFilters({
                 source: rid(source),
                 name: node[PREDICATES.LABEL][0],
                 sourceId: node.code
-            }
+            })
         });
         records[dbEntry.sourceId] = dbEntry;
     }
@@ -146,7 +147,7 @@ const uploadFile = async ({filename, conn}) => {
         if (records[src] && records[tgt]) {
             try {
                 await conn.addRecord({
-                    endpoint: 'subclassof',
+                    target: 'subclassof',
                     content: {
                         out: records[src]['@rid'],
                         in: records[tgt]['@rid'],
@@ -169,12 +170,17 @@ const uploadFile = async ({filename, conn}) => {
             }
             try {
                 const ncitRecord = await conn.getUniqueRecordBy({
-                    endpoint: 'anatomicalentities',
-                    where: {source: {name: ncitName}, sourceId: tgt},
+                    target: 'AnatomicalEntity',
+                    filters: {
+                        AND: [
+                            {source: {target: 'Source', filters: {name: ncitName}}},
+                            {sourceId: tgt}
+                        ]
+                    },
                     sort: orderPreferredOntologyTerms
                 });
                 await conn.addRecord({
-                    endpoint: 'crossreferenceof',
+                    target: 'crossreferenceof',
                     content: {
                         out: records[src]['@rid'],
                         in: rid(ncitRecord),

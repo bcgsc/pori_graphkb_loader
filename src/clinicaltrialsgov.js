@@ -14,14 +14,17 @@ const _ = require('lodash');
 
 const {
     loadXmlToJson,
-    orderPreferredOntologyTerms,
     parseXmlToJson,
-    preferredDrugs,
-    preferredDiseases,
-    rid,
     checkSpec,
     requestWithRetry
 } = require('./util');
+const {
+    orderPreferredOntologyTerms,
+    preferredDrugs,
+    preferredDiseases,
+    rid,
+    convertRecordToQueryFilters
+} = require('./graphkb');
 const {logger} = require('./logging');
 
 const SOURCE_DEFN = {
@@ -358,8 +361,8 @@ const processRecord = async ({
     for (const drug of record.drugs) {
         try {
             const intervention = await conn.getUniqueRecordBy({
-                endpoint: 'therapies',
-                where: {name: drug},
+                target: 'Therapy',
+                filters: {name: drug},
                 sort: preferredDrugs
             });
             links.push(intervention);
@@ -371,8 +374,8 @@ const processRecord = async ({
     for (const diseaseName of record.diseases) {
         try {
             const disease = await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {name: diseaseName},
+                target: 'Disease',
+                filters: {name: diseaseName},
                 sort: preferredDiseases
             });
             links.push(disease);
@@ -383,17 +386,17 @@ const processRecord = async ({
     }
     // create the clinical trial record
     const trialRecord = await conn.addRecord({
-        endpoint: 'clinicaltrials',
+        target: 'ClinicalTrial',
         content,
         existsOk: true,
         fetchFirst: true,
-        fetchConditions: _.omit(content, ['sourceIdVersion']) // if sourceIdVersion is the only thing different then don't update
+        fetchConditions: convertRecordToQueryFilters(_.omit(content, ['sourceIdVersion'])) // if sourceIdVersion is the only thing different then don't update
     });
 
     // link to the drugs and diseases
     for (const link of links) {
         await conn.addRecord({
-            endpoint: 'elementof',
+            target: 'ElementOf',
             content: {out: rid(link), in: rid(trialRecord), source: rid(source)},
             existsOk: true,
             fetchExisting: false
@@ -417,8 +420,13 @@ const fetchAndLoadById = async (conn, nctID) => {
     // try to get the record from the gkb db first
     try {
         const trial = await conn.getUniqueRecordBy({
-            endpoint: 'clinicaltrials',
-            where: {source: {name: SOURCE_DEFN.name}, sourceId: nctID},
+            target: 'ClinicalTrial',
+            filters: {
+                AND: [
+                    {source: {target: 'Source', filters: {name: SOURCE_DEFN.name}}},
+                    {sourceId: nctID}
+                ]
+            },
             sort: orderPreferredOntologyTerms
         });
         CACHE[trial.sourceId] = trial;
@@ -437,7 +445,7 @@ const fetchAndLoadById = async (conn, nctID) => {
     // get or add the source
     if (!CACHE.source) {
         CACHE.source = rid(await conn.addRecord({
-            endpoint: 'sources',
+            target: 'Source',
             content: SOURCE_DEFN,
             existsOk: true
         }));
@@ -462,7 +470,7 @@ const uploadFile = async ({conn, filename}) => {
     logger.info(`loading: ${filename}`);
     const data = await loadXmlToJson(filename);
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         fetchConditions: {name: SOURCE_DEFN.name},
         existsOk: true

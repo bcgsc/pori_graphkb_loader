@@ -3,8 +3,9 @@
  */
 
 const {
-    rid, requestWithRetry, orderPreferredOntologyTerms, generateCacheKey
+    requestWithRetry, orderPreferredOntologyTerms
 } = require('../util');
+const {rid, generateCacheKey} = require('../graphkb');
 const {logger} = require('../logging');
 
 
@@ -96,7 +97,7 @@ const fetchByIdList = async (rawIdList, opt) => {
  * Given some pubmed ID, get the corresponding record from GraphKB
  */
 const fetchRecord = async (api, {
-    sourceId, sourceIdVersion = null, db = 'pubmed', endpoint = 'publications', cache = {}
+    sourceId, sourceIdVersion = null, db = 'pubmed', target = 'Publication', cache = {}
 }) => {
     const cacheKey = generateCacheKey({sourceId, sourceIdVersion});
 
@@ -104,8 +105,14 @@ const fetchRecord = async (api, {
         return cache[cacheKey];
     }
     const record = await api.getUniqueRecordBy({
-        endpoint,
-        where: {sourceId, sourceIdVersion, source: {name: db}},
+        target,
+        filters: {
+            AND: [
+                {sourceId},
+                {sourceIdVersion},
+                {source: {target: 'Source', filters: {name: db}}}
+            ]
+        },
         sort: orderPreferredOntologyTerms
     });
     cache[cacheKey] = record;
@@ -119,7 +126,7 @@ const fetchRecord = async (api, {
  * @param {object} opt
  * @param {boolean} opt.cache add the GraphKB record to the cache
  * @param {boolean} opt.fetchFirst attempt to get the record by source Id before uploading it
- * @param {string} opt.endpoint
+ * @param {string} opt.target
  * @param {object} opt.sourceDefn
  * @param {function} opt.createDisplayName
  */
@@ -127,7 +134,7 @@ const uploadRecord = async (api, content, opt = {}) => {
     const {
         cache = true,
         fetchFirst = true,
-        endpoint = 'publications',
+        target = 'Publication',
         sourceDefn,
         createDisplayName
     } = opt;
@@ -141,8 +148,8 @@ const uploadRecord = async (api, content, opt = {}) => {
     } if (fetchFirst) {
         try {
             const record = await api.getUniqueRecordBy({
-                endpoint,
-                where: {sourceId}
+                target,
+                filters: {sourceId}
             });
             if (cache) {
                 cache[cacheKey] = record;
@@ -153,7 +160,7 @@ const uploadRecord = async (api, content, opt = {}) => {
     let source = cache.__source;
     if (!source) {
         source = await api.addRecord({
-            endpoint: 'sources',
+            target: 'Source',
             content: sourceDefn,
             fetchConditions: {name: sourceDefn.name},
             existsOk: true
@@ -172,12 +179,14 @@ const uploadRecord = async (api, content, opt = {}) => {
     }
 
     const result = await api.addRecord({
-        endpoint,
+        target,
         content: formattedContent,
         existsOk: true,
         fetchConditions: {
-            sourceId,
-            source: rid(source)
+            AND: [
+                {sourceId},
+                {source: rid(source)}
+            ]
         }
     });
     if (cache) {
@@ -187,10 +196,17 @@ const uploadRecord = async (api, content, opt = {}) => {
 };
 
 
-const preLoadCache = async (api, {sourceDefn, cache, endpoint}) => {
+const preLoadCache = async (api, {sourceDefn, cache, target}) => {
     const records = await api.getRecords({
-        endpoint,
-        where: {source: {name: sourceDefn.name}, dependency: null, deprecated: false, neighbors: 0}
+        target,
+        filters: {
+            AND: [
+                {source: {target: 'Source', filters: {name: sourceDefn.name}}},
+                {dependency: null},
+                {deprecated: false}
+            ]
+        },
+        neighbors: 0
     });
 
     const dups = new Set();
@@ -221,11 +237,11 @@ const preLoadCache = async (api, {sourceDefn, cache, endpoint}) => {
  * @param {function} opt.parser function to convert records from the api to the graphkb format
  * @param {object} opt.cache
  * @param {number} opt.MAX_CONSEC maximum consecutive records to upload at once
- * @param {string} opt.endpoint the graphkb api endpoint to upload to
+ * @param {string} opt.target the graphkb api target to upload to
  * @param {object} opt.sourceDefn the object with the source information
  */
 const fetchAndLoadByIds = async (api, idListIn, {
-    dbName, parser, cache, MAX_CONSEC = 100, endpoint, sourceDefn
+    dbName, parser, cache, MAX_CONSEC = 100, target, sourceDefn
 }) => {
     const records = await fetchByIdList(
         idListIn,
@@ -241,7 +257,7 @@ const fetchAndLoadByIds = async (api, idListIn, {
         const newRecords = await Promise.all(current.map(
             async record => uploadRecord(api, record, {
                 cache,
-                endpoint,
+                target,
                 sourceDefn
             })
         ));
@@ -260,7 +276,7 @@ const fetchAndLoadByIds = async (api, idListIn, {
  * @param {function} opt.parser function to convert records from the api to the graphkb format
  * @param {object} opt.cache
  * @param {number} opt.MAX_CONSEC maximum consecutive records to upload at once
- * @param {string} opt.endpoint the graphkb api endpoint to upload to
+ * @param {string} opt.target the graphkb api target to upload to
  * @param {object} opt.sourceDefn the object with the source information
  */
 const fetchAndLoadBySearchTerm = async (api, term, opt) => {

@@ -37,7 +37,7 @@ const uploadFile = async (opt) => {
     const {filename, conn: api} = opt;
     const jsonList = await loadDelimToJson(filename);
     const source = await api.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -45,8 +45,8 @@ const uploadFile = async (opt) => {
     // only load FDA records if we have already loaded NCIT
     try {
         await api.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: ncitSourceName}
+            target: 'Source',
+            filters: {name: ncitSourceName}
         });
     } catch (err) {
         logger.error('Cannot link to NCIT, Unable to find source record');
@@ -71,8 +71,13 @@ const uploadFile = async (opt) => {
         if (ncit) {
             try {
                 ncitRec = await api.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {source: {name: ncitSourceName}, sourceId: ncit},
+                    target: 'Therapy',
+                    filters: {
+                        AND: [
+                            {source: {target: 'Source', filters: {name: ncitSourceName}}},
+                            {sourceId: ncit}
+                        ]
+                    },
                     sort: orderPreferredOntologyTerms
                 });
             } catch (err) {
@@ -84,13 +89,13 @@ const uploadFile = async (opt) => {
         let drug;
         try {
             drug = await api.addRecord({
-                endpoint: 'therapies',
+                target: 'Therapy',
                 content: {name, sourceId: id, source: rid(source)},
                 existsOk: true
             });
             if (ncitRec) {
                 await api.addRecord({
-                    endpoint: 'crossreferenceof',
+                    target: 'crossreferenceof',
                     content: {source: rid(source), out: rid(drug), in: rid(ncitRec)},
                     existsOk: true,
                     fetchExisting: false

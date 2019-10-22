@@ -5,7 +5,7 @@
 
 const request = require('request-promise');
 
-const {rid, orderPreferredOntologyTerms} = require('./util');
+const {rid, orderPreferredOntologyTerms} = require('./graphkb');
 const {logger} = require('./logging');
 const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
 
@@ -188,17 +188,17 @@ const upload = async (opt) => {
     const records = await oncotreeApi.getAllRecords(versions);
 
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
-        fetchConditions: SOURCE_DEFN
+        fetchConditions: {name: SOURCE_DEFN.name}
     });
 
     let ncitSource;
     try {
         ncitSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: ncitName}
+            target: 'Source',
+            filters: {name: ncitName}
         });
     } catch (err) {
         logger.log('warn', 'cannot find ncit source. Will not be able to generate cross-reference links');
@@ -215,7 +215,7 @@ const upload = async (opt) => {
             sourceIdVersion: record.sourceIdVersion
         };
         const rec = await conn.addRecord({
-            endpoint: 'diseases',
+            target: 'Disease',
             content: body,
             existsOk: true
         });
@@ -226,12 +226,17 @@ const upload = async (opt) => {
                 logger.info(`linking ${rec.sourceId} to NCIt record (${xref.sourceId})`);
                 try {
                     const ncitXref = await conn.getUniqueRecordBy({
-                        endpoint: 'diseases',
-                        where: {source: rid(ncitSource), sourceId: xref.sourceId},
+                        target: 'Disease',
+                        filters: {
+                            AND: [
+                                {source: rid(ncitSource)},
+                                {sourceId: xref.sourceId}
+                            ]
+                        },
                         sort: orderPreferredOntologyTerms
                     });
                     await conn.addRecord({
-                        endpoint: 'crossReferenceOf',
+                        target: 'crossReferenceOf',
                         content: {out: rid(rec), in: rid(ncitXref), source: rid(source)},
                         existsOk: true,
                         fetchExisting: false
@@ -247,7 +252,7 @@ const upload = async (opt) => {
     for (const record of records) {
         for (const parentRecord of record.subclassOf || []) {
             await conn.addRecord({
-                endpoint: 'subclassOf',
+                target: 'subclassOf',
                 content: {
                     out: rid(dbRecordsByCode[record.sourceId]),
                     in: rid(dbRecordsByCode[parentRecord.sourceId]),
@@ -259,7 +264,7 @@ const upload = async (opt) => {
         }
         for (const deprecated of record.deprecates || []) {
             await conn.addRecord({
-                endpoint: 'deprecatedBy',
+                target: 'deprecatedBy',
                 content: {
                     out: rid(dbRecordsByCode[deprecated.sourceId]),
                     in: rid(dbRecordsByCode[record.sourceId]),

@@ -58,7 +58,7 @@ const fetchAndLoadGeneByIds = async (api, idListIn) => util.fetchAndLoadByIds(
         dbName: DB_NAME,
         parser: parseRecord,
         cache: CACHE,
-        endpoint: 'features',
+        target: 'Feature',
         sourceDefn: SOURCE_DEFN,
         MAX_CONSEC
     }
@@ -81,7 +81,7 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
             dbName: DB_NAME,
             parser: parseRecord,
             cache: CACHE,
-            endpoint: 'features',
+            target: 'Feature',
             sourceDefn: SOURCE_DEFN,
             MAX_CONSEC
         }
@@ -95,7 +95,7 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
                 dbName: DB_NAME,
                 parser: parseRecord,
                 cache: CACHE,
-                endpoint: 'features',
+                target: 'Feature',
                 sourceDefn: SOURCE_DEFN,
                 MAX_CONSEC
             }
@@ -109,7 +109,7 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
 const preLoadCache = async api => util.preLoadCache(
     api,
     {
-        sourceDefn: SOURCE_DEFN, cache: CACHE, endpoint: 'features'
+        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'Feature'
     }
 );
 

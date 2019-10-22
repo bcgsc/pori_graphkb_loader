@@ -12,7 +12,7 @@ const {schema, schema: {schema: kbSchema}} = require('@bcgsc/knowledgebase-schem
 
 
 const {logger} = require('./logging');
-const {rid} = require('./util');
+const {rid} = require('./graphkb');
 
 const ajv = new Ajv();
 
@@ -117,7 +117,7 @@ const uploadFromJSON = async ({data, conn}) => {
     let sourceRID;
     try {
         sourceRID = rid(await conn.addRecord({
-            endpoint: 'sources',
+            target: 'Source',
             content: source,
             existsOk: true,
             fetchConditions: {name: source.name}
@@ -129,13 +129,12 @@ const uploadFromJSON = async ({data, conn}) => {
     }
 
     const dbRecords = {}; // store the created/fetched records from the db
-    const {routeName} = kbSchema[recordClass];
     // try to create all the records
     logger.log('info', 'creating the records');
     for (const {links, ...record} of Object.values(records)) {
         try {
             const dbRecord = await conn.addRecord({
-                endpoint: routeName.slice(1),
+                target: recordClass,
                 content: {...record, source: sourceRID},
                 existsOk: true
             });
@@ -150,14 +149,13 @@ const uploadFromJSON = async ({data, conn}) => {
     logger.log('info', 'creating the record links');
     for (const {links = [], sourceId} of Object.values(records)) {
         for (const {class: edgeType, target} of links) {
-            const {routeName: edgeRoute} = kbSchema[edgeType];
             if (dbRecords[target] === undefined || dbRecords[sourceId] === undefined) {
                 counts.skipped++;
                 continue;
             }
             try {
                 await conn.addRecord({
-                    endpoint: edgeRoute.slice(1),
+                    target: edgeType,
                     content: {out: dbRecords[sourceId], in: dbRecords[target], source: sourceRID},
                     existsOk: true,
                     fetchExisting: false

@@ -2,7 +2,8 @@ const readXlsxFile = require('read-excel-file/node');
 const fs = require('fs');
 
 const {logger} = require('./logging');
-const {convertRowFields, rid, preferredDiseases} = require('./util');
+const {convertRowFields} = require('./util');
+const {rid, preferredDiseases} = require('./graphkb');
 const _entrezGene = require('./entrez/gene');
 const _pubmed = require('./entrez/pubmed');
 
@@ -45,11 +46,12 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
     const fusion = rid(await conn.getVocabularyTerm('in-frame fusion'));
     const relevance = rid(await conn.getVocabularyTerm('recurrent'));
     const cancer = rid(await conn.getUniqueRecordBy({
-        endpoint: 'diseases',
-        where: {
-            sourceId: 'cancer',
-            name: 'cancer',
-            or: 'sourceId,name'
+        target: 'Disease',
+        filters: {
+            OR: [
+                {sourceId: 'cancer'},
+                {name: 'cancer'}
+            ]
         },
         sort: preferredDiseases
     }));
@@ -58,11 +60,12 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
         logger.info(`retrieving disease for code (${code})`);
         try {
             const disease = rid(await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {
-                    sourceId: DISEASE_CODES[code],
-                    name: DISEASE_CODES[code],
-                    or: 'sourceId,name'
+                target: 'Disease',
+                filters: {
+                    OR: [
+                        {sourceId: DISEASE_CODES[code]},
+                        {name: DISEASE_CODES[code]}
+                    ]
                 },
                 sort: preferredDiseases
             }));
@@ -104,7 +107,7 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
             const [reference2] = await _entrezGene.fetchAndLoadBySymbol(conn, geneB);
 
             const variant = rid(await conn.addVariant({
-                endpoint: 'categoryvariants',
+                target: 'CategoryVariant',
                 content: {
                     reference1: rid(reference1),
                     reference2: rid(reference2),
@@ -113,12 +116,12 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
                 existsOk: true
             }));
             await conn.addRecord({
-                endpoint: 'statements',
+                target: 'Statement',
                 content: {
-                    impliedBy: [variant, disease],
-                    supportedBy: [publication],
+                    conditions: [variant, disease],
+                    evidence: [publication],
                     relevance,
-                    appliesTo: disease
+                    subject: disease
                 },
                 existsOk: true,
                 fetchExisting: false
@@ -174,17 +177,18 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
             const [geneB] = await _entrezGene.fetchAndLoadByIds(conn, [row.geneB]);
 
             const disease = rid(await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {
-                    sourceId: DISEASE_CODES[row.disease],
-                    name: DISEASE_CODES[row.disease],
-                    or: 'sourceId,name'
+                target: 'Disease',
+                filters: {
+                    OR: [
+                        {sourceId: DISEASE_CODES[row.disease]},
+                        {name: DISEASE_CODES[row.disease]}
+                    ]
                 },
                 sort: preferredDiseases
             }));
 
             const variant = rid(await conn.addVariant({
-                endpoint: 'positionalvariants',
+                target: 'PostionalVariant',
                 content: {
                     reference1: rid(geneA),
                     reference2: rid(geneB),
@@ -198,12 +202,12 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
                 existsOk: true
             }));
             await conn.addRecord({
-                endpoint: 'statements',
+                target: 'Statement',
                 content: {
-                    impliedBy: [variant, disease],
-                    supportedBy: [publication],
+                    conditions: [variant, disease],
+                    evidence: [publication],
                     relevance,
-                    appliesTo: row.kinaseA === 'yes'
+                    subject: row.kinaseA === 'yes'
                         ? rid(geneA)
                         : rid(geneB)
                 },

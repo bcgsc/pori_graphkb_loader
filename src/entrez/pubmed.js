@@ -89,7 +89,7 @@ const fetchAndLoadByIds = async (api, idListIn) => {
         async record => uploadRecord(api, record, {
             cache: CACHE,
             createDisplayName,
-            endpoint: 'publications',
+            target: 'Publication',
             sourceDefn: SOURCE_DEFN
         })
     ));
@@ -98,7 +98,7 @@ const fetchAndLoadByIds = async (api, idListIn) => {
 const preLoadCache = async api => preLoadAnyCache(
     api,
     {
-        sourceDefn: SOURCE_DEFN, cache: CACHE, endpoint: 'publications'
+        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'Publication'
     }
 );
 

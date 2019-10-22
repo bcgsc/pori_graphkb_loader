@@ -8,12 +8,15 @@ const fs = require('fs');
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const {
-    preferredDiseases,
-    preferredDrugs,
-    rid,
     checkSpec,
     hashRecordToId
 } = require('./util');
+const {
+    preferredDiseases,
+    preferredDrugs,
+    rid,
+    convertRecordToQueryFilters
+} = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const _entrezGene = require('./entrez/gene');
 const _ncit = require('./ncit');
@@ -200,8 +203,8 @@ const processVariant = async (conn, {
             }
             type = 'strong signature';
             gene1 = await conn.getUniqueRecordBy({
-                endpoint: 'signatures',
-                where: {name: 'microsatellite instability'}
+                target: 'Signature',
+                filters: {name: 'microsatellite instability'}
             });
         } catch (err) {
             logger.warn(`failed to retrieve the associated vocabulary for (variant=${variantName})`);
@@ -253,7 +256,7 @@ const processVariant = async (conn, {
         variantType = type;
     try {
         variantType = await getVocabulary(conn, variantType);
-        variantUrl = 'categoryvariants';
+        variantUrl = 'CategoryVariant';
         variant = {};
     } catch (err) {}
 
@@ -269,7 +272,7 @@ const processVariant = async (conn, {
             throw err;
         }
 
-        variantUrl = 'positionalvariants';
+        variantUrl = 'PositionalVariant';
         try {
             variantType = await getVocabulary(conn, variant.type);
         } catch (err) {
@@ -289,7 +292,7 @@ const processVariant = async (conn, {
     }
 
     variant = await conn.addVariant({
-        endpoint: variantUrl,
+        target: variantUrl,
         content: variant,
         existsOk: true
     });
@@ -308,12 +311,12 @@ const processVariant = async (conn, {
             parsed.reference1 = rid(reference1);
             parsed.type = rid(await getVocabulary(conn, parsed.type));
             const altVariant = rid(await conn.addVariant({
-                endpoint: 'positionalvariants',
+                target: 'PositionalVariant',
                 content: parsed,
                 existsOk: true
             }));
             await conn.addRecord({
-                endpoint: 'infers',
+                target: 'infers',
                 content: {
                     out: altVariant,
                     in: rid(variant)
@@ -336,15 +339,15 @@ const processDisease = async (conn, diseaseName) => {
     let disease;
     try {
         disease = await conn.getUniqueRecordBy({
-            endpoint: 'diseases',
-            where: {name: diseaseName},
+            target: 'Disease',
+            filters: {name: diseaseName},
             sort: preferredDiseases
         });
     } catch (err) {
         if (diseaseName.includes('/')) {
             disease = await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {name: diseaseName.split('/')[0].trim()},
+                target: 'Disease',
+                filters: {name: diseaseName.split('/')[0].trim()},
                 sort: preferredDiseases
             });
         } else {
@@ -360,13 +363,13 @@ const processDisease = async (conn, diseaseName) => {
  *
  * @example
  * parseAbstractCitation('Camidge et al. Abstract# 8001, ASCO 2014 http://meetinglibrary.asco.org/content/132030-144')
- * {source: {name: 'ASCO'}, year: 2014, abstractNumber: 80001}
+ * {source: 'ASCO', year: 2014, abstractNumber: 80001}
  */
 const parseAbstractCitation = (citation) => {
     let match;
     if (match = /.*Abstract\s*#\s*([A-Z0-9a-z][A-Za-z0-9-]+)[.,]? (AACR|ASCO),? (2\d{3})[., ]*/.exec(citation)) {
         const [, abstractNumber, sourceName, year] = match;
-        return {abstractNumber, year, source: {name: sourceName}};
+        return {abstractNumber, year, source: sourceName};
     }
     throw new Error(`unable to parse abstract citation (${citation})`);
 };
@@ -412,8 +415,8 @@ const processRecord = async ({
     if (drug) {
         try {
             therapy = await conn.getUniqueRecordBy({
-                endpoint: 'therapies',
-                where: {name: drug, source},
+                target: 'Therapy',
+                filters: {AND: [{name: drug}, {source}]},
                 sort: preferredDrugs
             });
         } catch (err) {
@@ -430,8 +433,8 @@ const processRecord = async ({
     let level;
     if (levelName) {
         level = await conn.getUniqueRecordBy({
-            endpoint: 'evidencelevels',
-            where: {sourceId: levelName, source}
+            target: 'EvidenceLevel',
+            filters: {AND: [{sourceId: levelName}, {source}]}
         });
     }
     const relevance = await getVocabulary(conn, relevanceName);
@@ -453,8 +456,14 @@ const processRecord = async ({
         }
         try {
             const absRecord = await conn.getUniqueRecordBy({
-                endpoint: 'abstracts',
-                where: parsed
+                target: 'Abstract',
+                filters: {
+                    AND: [
+                        {source: {target: 'Source', filters: {name: parsed.source}}},
+                        {year: parsed.year},
+                        {abstractNumber: parsed.abstractNumber}
+                    ]
+                }
             });
             abstracts.push(absRecord);
         } catch (err) {
@@ -464,22 +473,24 @@ const processRecord = async ({
     const publications = await _pubmed.fetchAndLoadByIds(conn, pmids);
 
     const content = {
-        impliedBy: [rid(variant)],
-        supportedBy: [...publications.map(rid), ...abstracts.map(rid)],
+        conditions: [rid(variant)],
+        evidence: [...publications.map(rid), ...abstracts.map(rid)],
         relevance: rid(relevance),
         source,
         sourceId,
         reviewStatus: 'not required'
     };
     if (disease) {
-        content.impliedBy.push(rid(disease));
+        content.conditions.push(rid(disease));
     }
     if (appliesToTarget === 'drug') {
-        content.appliesTo = rid(therapy);
+        content.subject = rid(therapy);
+        content.conditions.push(content.subject);
     } else if (appliesToTarget === 'gene') {
-        content.appliesTo = rid(variant.reference1);
+        content.subject = rid(variant.reference1);
+        content.conditions.push(content.subject);
     } else if (appliesToTarget === 'variant') {
-        content.appliesTo = rid(variant);
+        content.subject = rid(variant);
     } else {
         throw new Error(`Unrecognized appliesToTarget (${appliesToTarget})`);
     }
@@ -488,7 +499,7 @@ const processRecord = async ({
     }
     // make the actual statement
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content,
         existsOk: true,
         fetchExisting: false
@@ -589,7 +600,7 @@ const addEvidenceLevels = async (conn, source) => {
         }
         level = level.slice('LEVEL_'.length);
         const record = await conn.addRecord({
-            endpoint: 'evidencelevels',
+            target: 'EvidenceLevel',
             content: {
                 source: rid(source),
                 sourceId: level,
@@ -597,7 +608,7 @@ const addEvidenceLevels = async (conn, source) => {
                 description: desc,
                 url: URL
             },
-            fetchConditions: {sourceId: level, name: level, source: rid(source)},
+            fetchConditions: convertRecordToQueryFilters({sourceId: level, name: level, source: rid(source)}),
             existsOk: true
         });
         result[level] = record;
@@ -640,13 +651,13 @@ const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
         await Promise.all(relevance.map(async (rel) => {
             try {
                 await conn.addRecord({
-                    endpoint: 'statements',
+                    target: 'Statement',
                     content: {
-                        impliedBy: [record],
-                        supportedBy: [rid(source)],
+                        conditions: [record],
+                        evidence: [rid(source)],
                         source: rid(source),
                         description: gene.summary,
-                        appliesTo: record,
+                        subject: record,
                         relevance: rel
                     },
                     existsOk: true,
@@ -677,7 +688,7 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
         try {
             checkSpec(drugRecordSpec, drug, d => d.uuid);
             record = await conn.addRecord({
-                endpoint: 'therapies',
+                target: 'Therapy',
                 content: {source, sourceId: drug.uuid, name: drug.drugName},
                 existsOk: true
             });
@@ -690,12 +701,17 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
         if (drug.ncitCode) {
             try {
                 const ncit = await conn.getUniqueRecordBy({
-                    endpoint: 'therapies',
-                    where: {sourceId: drug.ncitCode, source: {name: _ncit.SOURCE_DEFN.name}},
+                    target: 'Therapy',
+                    filters: {
+                        AND: [
+                            {sourceId: drug.ncitCode},
+                            {source: {target: 'Source', filters: {name: _ncit.SOURCE_DEFN.name}}}
+                        ]
+                    },
                     sort: preferredDrugs
                 });
                 await conn.addRecord({
-                    endpoint: 'crossreferenceof',
+                    target: 'crossreferenceof',
                     content: {out: rid(record), in: rid(ncit), source},
                     existsOk: true,
                     fetchExisting: false
@@ -718,7 +734,7 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
 
         try {
             const alias = await conn.addRecord({
-                endpoint: 'therapies',
+                target: 'Therapy',
                 content: {
                     source,
                     name: aliasName,
@@ -728,7 +744,7 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
                 existsOk: true
             });
             await conn.addRecord({
-                endpoint: 'AliasOf',
+                target: 'AliasOf',
                 content: {out: rid(record), in: rid(alias), source},
                 existsOk: true,
                 fetchExisting: false
@@ -791,7 +807,7 @@ const upload = async (opt) => {
 
     // add the source node
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -799,8 +815,9 @@ const upload = async (opt) => {
 
     const variantMap = await getVariantDescriptions(URL);
     const previousLoad = await conn.getRecords({
-        endpoint: 'statements',
-        where: {source: {name: SOURCE_DEFN.name}, returnProperties: 'sourceId'}
+        target: 'Statement',
+        filters: {source: {target: 'Source', filters: {name: SOURCE_DEFN.name}}},
+        returnProperties: 'sourceId'
     });
 
     logger.info('pre-loading entrez genes');
@@ -814,7 +831,9 @@ const upload = async (opt) => {
     await addEvidenceLevels(conn, source);
 
     const records = [];
-    const counts = {errors: 0, success: 0, skip: 0};
+    const counts = {
+        errors: 0, success: 0, skip: 0, existing: 0
+    };
 
     const loadedIds = new Set();
     for (const prev of previousLoad) {
@@ -850,12 +869,12 @@ const upload = async (opt) => {
     for (let i = 0; i < records.length; i++) {
         const record = records[i];
         if (loadedIds.has(record.sourceId)) {
+            counts.existing++;
             continue;
         }
         logger.info(`processing (${i} / ${records.length})`);
         if (record.relevanceName === 'inconclusive') {
             counts.skip++;
-            logger.info('skipping inconclusive statement');
             continue;
         }
         try {

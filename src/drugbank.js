@@ -7,9 +7,8 @@ const Ajv = require('ajv');
 const XmlStream = require('xml-stream');
 const fs = require('fs');
 
-const {
-    rid, checkSpec
-} = require('./util');
+const {checkSpec} = require('./util');
+const {rid} = require('./graphkb');
 const _hgnc = require('./hgnc');
 const {logger} = require('./logging');
 const _chembl = require('./chembl');
@@ -198,21 +197,23 @@ const processRecord = async ({
     }
 
     const record = await conn.addRecord({
-        endpoint: 'therapies',
+        target: 'Therapy',
         content: body,
         existsOk: true,
         fetchConditions: {
-            source: rid(current),
-            sourceId: body.sourceId,
-            name: body.name,
-            sourceIdVersion: body.sourceIdVersion
+            AND: [
+                {name: body.name},
+                {source: rid(current)},
+                {sourceId: body.sourceId},
+                {sourceIdVersion: body.sourceIdVersion}
+            ]
         }
     });
     // create the categories
     for (const atcLevel of atcLevels) {
         if (ATC[atcLevel.sourceId] === undefined) {
             const level = await conn.addRecord({
-                endpoint: 'therapies',
+                target: 'Therapy',
                 content: {
                     source: rid(current),
                     name: atcLevel.name,
@@ -226,7 +227,7 @@ const processRecord = async ({
     if (atcLevels.length > 0) {
         // link the current record to the lowest subclass
         await conn.addRecord({
-            endpoint: 'subclassof',
+            target: 'subclassof',
             content: {
                 source: rid(current),
                 out: rid(record),
@@ -238,7 +239,7 @@ const processRecord = async ({
         // link the subclassing
         for (let i = 0; i < atcLevels.length - 1; i++) {
             await conn.addRecord({
-                endpoint: 'subclassof',
+                target: 'subclassof',
                 content: {
                     source: rid(current),
                     out: rid(ATC[atcLevels[i].sourceId]),
@@ -258,7 +259,7 @@ const processRecord = async ({
     );
     await Promise.all(Array.from(aliases, async (aliasName) => {
         const alias = await conn.addRecord({
-            endpoint: 'therapies',
+            target: 'Therapy',
             content: {
                 source: rid(current),
                 sourceId: getDrugBankId(drug),
@@ -269,7 +270,7 @@ const processRecord = async ({
         });
         // link together
         await conn.addRecord({
-            endpoint: 'aliasof',
+            target: 'aliasof',
             content: {out: rid(alias), in: rid(record), source: rid(current)},
             existsOk: true,
             fetchExisting: false
@@ -280,15 +281,20 @@ const processRecord = async ({
         let fdaRec;
         try {
             fdaRec = await conn.getUniqueRecordBy({
-                endpoint: 'therapies',
-                where: {source: rid(fda), sourceId: drug[HEADER.unii].trim()}
+                target: 'Therapy',
+                filters: {
+                    AND: [
+                        {source: rid(fda)},
+                        {sourceId: drug[HEADER.unii].trim()}
+                    ]
+                }
             });
         } catch (err) {
             logger.log('error', `failed cross-linking from ${record.sourceId} to ${drug[HEADER.unii]} (fda)`);
         }
         if (fdaRec) {
             await conn.addRecord({
-                endpoint: 'crossreferenceof',
+                target: 'crossreferenceof',
                 content: {
                     source: rid(current), out: rid(record), in: rid(fdaRec)
                 },
@@ -307,7 +313,7 @@ const processRecord = async ({
             try {
                 const chemblDrug = await _chembl.fetchAndLoadById(conn, identifier);
                 await conn.addRecord({
-                    endpoint: 'crossreferenceof',
+                    target: 'crossreferenceof',
                     content: {out: rid(record), in: rid(chemblDrug), source: rid(current)},
                     existsOk: true,
                     fetchExisting: false
@@ -338,7 +344,7 @@ const processRecord = async ({
                 conn, symbol: identifier, paramType: 'hgnc_id'
             });
             await conn.addRecord({
-                endpoint: 'targetof',
+                target: 'targetof',
                 content: {
                     out: rid(gene),
                     source: rid(current),
@@ -364,7 +370,7 @@ const uploadFile = async ({filename, conn}) => {
     logger.info('Loading the external drugbank data');
 
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -374,8 +380,8 @@ const uploadFile = async ({filename, conn}) => {
     let fdaSource;
     try {
         fdaSource = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: fdaName}
+            target: 'Source',
+            filters: {name: fdaName}
         });
     } catch (err) {
         logger.warn('Unable to find fda source record. Will not attempt cross-reference links');

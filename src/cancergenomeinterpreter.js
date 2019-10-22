@@ -4,14 +4,12 @@ const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const {
     loadDelimToJson,
-    rid,
     convertRowFields,
-    INTERNAL_SOURCE_NAME,
-    orderPreferredOntologyTerms,
-    preferredDiseases,
-    preferredFeatures,
     hashRecordToId
 } = require('./util');
+const {
+    preferredDiseases, preferredFeatures, orderPreferredOntologyTerms, rid
+} = require('./graphkb');
 const {logger} = require('./logging');
 const _trials = require('./clinicaltrialsgov');
 const _pubmed = require('./entrez/pubmed');
@@ -197,22 +195,23 @@ const processVariants = async ({conn, row, source}) => {
     if (genomic) {
         const parsed = kbParser.variant.parse(genomic).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
-            endpoint: 'features',
-            where: {
-                biotype: 'chromosome',
-                sourceId: parsed.reference1,
-                name: parsed.reference1,
-                or: 'sourceId,name'
+            target: 'Feature',
+            filters: {
+                AND: [
+                    {biotype: 'chromosome'},
+                    {
+                        OR: [
+                            {sourceId: parsed.reference1},
+                            {name: parsed.reference1}
+                        ]
+                    }
+                ]
             },
             sort: preferredFeatures
         });
-        const type = await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}},
-            sort: orderPreferredOntologyTerms
-        });
+        const type = await conn.getVocabularyTerm(parsed.type);
         genomicVariant = await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...parsed, reference1, type},
             existsOk: true
         });
@@ -221,13 +220,9 @@ const processVariants = async ({conn, row, source}) => {
     if (protein) {
         const parsed = kbParser.variant.parse(`${gene}:${protein.split(':')[1]}`).toJSON();
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
-        const type = rid(await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}},
-            sort: orderPreferredOntologyTerms
-        }));
+        const type = await conn.getVocabularyTerm(parsed.type);
         proteinVariant = await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...parsed, reference1: rid(reference1), type},
             existsOk: true
         });
@@ -235,17 +230,13 @@ const processVariants = async ({conn, row, source}) => {
     if (transcript && cds) {
         const parsed = kbParser.variant.parse(`${transcript}:${cds}`).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
-            endpoint: 'features',
-            where: {biotype: 'transcript', sourceId: transcript, sourceIdVersion: null},
+            target: 'Feature',
+            filters: {AND: [{biotype: 'transcript'}, {sourceId: transcript}, {sourceIdVersion: null}]},
             sort: orderPreferredOntologyTerms
         });
-        const type = rid(await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}},
-            sort: orderPreferredOntologyTerms
-        }));
+        const type = await conn.getVocabularyTerm(parsed.type);
         cdsVariant = await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...parsed, reference1, type},
             existsOk: true
         });
@@ -253,26 +244,18 @@ const processVariants = async ({conn, row, source}) => {
     if (exonic) {
         const parsed = kbParser.variant.parse(`${gene}:${exonic}`).toJSON();
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
-        const type = rid(await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: parsed.type, source: {name: INTERNAL_SOURCE_NAME}},
-            sort: orderPreferredOntologyTerms
-        }));
+        const type = await conn.getVocabularyTerm(parsed.type);
         exonicVariant = await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...parsed, reference1: rid(reference1), type},
             existsOk: true
         });
     }
     try {
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
-        const type = rid(await conn.getUniqueRecordBy({
-            endpoint: 'vocabulary',
-            where: {name: variantType, source: {name: INTERNAL_SOURCE_NAME}},
-            sort: orderPreferredOntologyTerms
-        }));
+        const type = rid(await conn.getVocabularyTerm(variantType));
         categoryVariant = await conn.addVariant({
-            endpoint: 'categoryvariants',
+            target: 'CategoryVariant',
             content: {type, reference1: rid(reference1)},
             existsOk: true
         });
@@ -293,7 +276,7 @@ const processVariants = async ({conn, row, source}) => {
     for (const [src, tgt] of combinations) {
         if (src && tgt) {
             await conn.addRecord({
-                endpoint: 'infers',
+                target: 'Infers',
                 content: {
                     out: rid(src),
                     in: rid(tgt),
@@ -313,8 +296,8 @@ const processRow = async ({row, source, conn}) => {
     const diseaseName = diseaseMapping[row.disease] || `${row.disease}|${row.disease} cancer`;
 
     const disease = rid(await conn.getUniqueRecordBy({
-        endpoint: 'diseases',
-        where: {name: diseaseName},
+        target: 'Disease',
+        filters: {name: diseaseName},
         sort: preferredDiseases
     }));
     const therapyName = row.therapy.includes(';')
@@ -327,8 +310,8 @@ const processRow = async ({row, source, conn}) => {
     ));
 
     const level = rid(await conn.getUniqueRecordBy({
-        endpoint: 'evidencelevels',
-        where: {name: row.evidenceLevel, source: {name: SOURCE_DEFN.name}}
+        target: 'EvidenceLevel',
+        filters: {AND: [{name: row.evidenceLevel}, {source: rid(source)}]}
     }));
 
     const articles = await _pubmed.fetchAndLoadByIds(
@@ -346,21 +329,21 @@ const processRow = async ({row, source, conn}) => {
         relevanceMapping[row.relevance.toLowerCase()] || row.relevance
     ));
 
-    const supportedBy = [...articles.map(rid), ...trials.map(rid)];
+    const evidence = [...articles.map(rid), ...trials.map(rid)];
 
-    if (supportedBy.length === 0) {
-        supportedBy.push(rid(source));
+    if (evidence.length === 0) {
+        evidence.push(rid(source));
     }
 
     // create the statement
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content: {
             evidenceLevel: level,
             relevance,
-            appliesTo: drug,
-            impliedBy: [...variants.map(rid), disease],
-            supportedBy,
+            subject: drug,
+            conditions: [...variants.map(rid), disease, drug],
+            evidence,
             source: rid(source),
             sourceId: row.sourceId
         },
@@ -374,7 +357,7 @@ const uploadFile = async ({conn, filename, errorLogPrefix}) => {
     const rows = await loadDelimToJson(filename);
     logger.info('creating the source record');
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         existsOk: true,
         content: SOURCE_DEFN
     }));

@@ -9,9 +9,10 @@ const fs = require('fs');
 
 const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
 
+const {checkSpec} = require('./util');
 const {
-    orderPreferredOntologyTerms, rid, checkSpec
-} = require('./util');
+    orderPreferredOntologyTerms, rid
+} = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const {logger} = require('./logging');
 const _gene = require('./entrez/gene');
@@ -171,7 +172,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
         } = variantParser(parseDocmVariant(aminoAcid), false);
         const type = await conn.getVocabularyTerm(variant.type);
         protein = variant = await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...variant, type, reference1: rid(reference1)},
             existsOk: true
         });
@@ -187,17 +188,22 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
         } = variantParser(buildGenomicVariant(docmRecord), false);
         const type = await conn.getVocabularyTerm(variant.type);
         const reference1 = await conn.getUniqueRecordBy({
-            endpoint: 'features',
-            where: {
-                sourceId: chromosome,
-                name: chromosome,
-                or: 'name,sourceId',
-                biotype: 'chromosome'
+            target: 'Feature',
+            filters: {
+                AND: [
+                    {
+                        OR: [
+                            {sourceId: chromosome},
+                            {name: chromosome}
+                        ]
+                    },
+                    {biotype: 'chromosome'}
+                ]
             },
             sortFunc: orderPreferredOntologyTerms
         });
         genomic = variant = await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {
                 ...variant, type, reference1: rid(reference1), assembly: assembly.toLowerCase().trim()
             },
@@ -211,7 +217,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
     // link the variants together
     if (genomic) {
         await conn.addRecord({
-            endpoint: 'infers',
+            target: 'Infers',
             content: {out: rid(genomic), in: rid(protein), source: rid(source)},
             existsOk: true,
             fetchExisting: false
@@ -246,11 +252,13 @@ const processRecord = async (opt) => {
             const relevance = await conn.getVocabularyTerm(diseaseRec.tags[0], conn);
             // get the disease by name
             const disease = await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {
-                    sourceId: `doid:${diseaseRec.doid}`,
-                    name: diseaseRec.disease,
-                    source: {name: 'disease ontology'}
+                target: 'Disease',
+                filters: {
+                    AND: [
+                        {sourceId: `doid:${diseaseRec.doid}`},
+                        {name: diseaseRec.disease},
+                        {source: {target: 'Source', filters: {name: 'disease ontology'}}}
+                    ]
                 },
                 sort: orderPreferredOntologyTerms
             });
@@ -258,12 +266,12 @@ const processRecord = async (opt) => {
             const [publication] = await _pubmed.fetchAndLoadByIds(conn, [diseaseRec.source_pubmed_id]);
             // now create the statement
             await conn.addRecord({
-                endpoint: 'statements',
+                target: 'Statement',
                 content: {
-                    impliedBy: [rid(disease), rid(variant)],
-                    supportedBy: [rid(publication)],
+                    conditions: [rid(disease), rid(variant)],
+                    evidence: [rid(publication)],
                     relevance: rid(relevance),
-                    appliesTo: rid(disease),
+                    subject: rid(disease),
                     source: rid(source),
                     reviewStatus: 'not required',
                     sourceId: record.hgvs
@@ -301,7 +309,7 @@ const upload = async (opt) => {
     logger.info(`loaded ${recordsList.length} records`);
     // add the source node
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}

@@ -2,9 +2,8 @@
  * Import the RefSeq transcripts, ignoring version numbers for now
  * @module importer/refseq
  */
-const {
-    loadDelimToJson, rid
-} = require('./util');
+const {loadDelimToJson} = require('./util');
+const {rid} = require('./graphkb');
 const {logger} = require('./logging');
 
 const _entrez = require('./entrez/gene');
@@ -31,7 +30,7 @@ const uploadFile = async (opt) => {
     const json = await loadDelimToJson(filename);
 
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -49,14 +48,14 @@ const uploadFile = async (opt) => {
         // Load the RNA
         const [rnaName, rnaVersion] = RNA.split('.');
         const general = await conn.addRecord({
-            endpoint: 'features',
+            target: 'Feature',
             content: {
                 biotype: 'transcript', source: rid(source), sourceId: rnaName, sourceIdVersion: null
             },
             existsOk: true
         });
         const versioned = await conn.addRecord({
-            endpoint: 'features',
+            target: 'Feature',
             content: {
                 biotype: 'transcript', source: rid(source), sourceId: rnaName, sourceIdVersion: rnaVersion
             },
@@ -64,7 +63,7 @@ const uploadFile = async (opt) => {
         });
         // make the general an alias of the versioned
         await conn.addRecord({
-            endpoint: 'generalizationof',
+            target: 'generalizationof',
             content: {out: rid(general), in: rid(versioned), source: rid(source)},
             existsOk: true,
             fetchExisting: false
@@ -73,7 +72,7 @@ const uploadFile = async (opt) => {
         try {
             const [hgnc] = await _entrez.fetchAndLoadByIds(conn, [GeneID]);
             await conn.addRecord({
-                endpoint: 'elementof',
+                target: 'elementof',
                 content: {out: rid(general), in: rid(hgnc), source: rid(source)},
                 existsOk: true,
                 fetchExisting: false
@@ -87,14 +86,14 @@ const uploadFile = async (opt) => {
         if (Protein) {
             const [proteinName, proteinVersion] = Protein.split('.');
             const generalProtein = await conn.addRecord({
-                endpoint: 'features',
+                target: 'Feature',
                 content: {
                     biotype: 'protein', source: rid(source), sourceId: proteinName, sourceIdVersion: null
                 },
                 existsOk: true
             });
             const versionedProtein = await conn.addRecord({
-                endpoint: 'features',
+                target: 'Feature',
                 content: {
                     biotype: 'protein', source: rid(source), sourceId: proteinName, sourceIdVersion: proteinVersion
                 },
@@ -102,7 +101,7 @@ const uploadFile = async (opt) => {
             });
             // make the general an alias of the versioned
             await conn.addRecord({
-                endpoint: 'generalizationof',
+                target: 'generalizationof',
                 content: {
                     out: rid(generalProtein),
                     in: rid(versionedProtein),
@@ -113,7 +112,7 @@ const uploadFile = async (opt) => {
             });
 
             await conn.addRecord({
-                endpoint: 'elementof',
+                target: 'elementof',
                 content: {
                     out: rid(generalProtein),
                     in: rid(general),
@@ -124,7 +123,7 @@ const uploadFile = async (opt) => {
             });
 
             await conn.addRecord({
-                endpoint: 'elementof',
+                target: 'elementof',
                 content: {
                     out: rid(versionedProtein),
                     in: rid(versioned),

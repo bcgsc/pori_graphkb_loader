@@ -6,13 +6,15 @@ const fs = require('fs');
 const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
 
 const {
-    preferredDiseases,
     loadDelimToJson,
-    rid,
     convertRowFields,
-    orderPreferredOntologyTerms,
     hashRecordToId
 } = require('./util');
+const {
+    preferredDiseases,
+    rid,
+    orderPreferredOntologyTerms
+} = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const _gene = require('./entrez/gene');
 const {logger} = require('./logging');
@@ -62,7 +64,7 @@ const processVariants = async ({conn, record, source}) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         protein = rid(await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...variant},
             existsOk: true
         }));
@@ -83,8 +85,8 @@ const processVariants = async ({conn, record, source}) => {
         try {
         // get the hugo gene
             const reference1 = rid(await conn.getUniqueRecordBy({
-                endpoint: 'features',
-                where: {sourceId: record.transcript, biotype: 'transcript'},
+                target: 'Feature',
+                filters: {AND: [{sourceId: record.transcript}, {biotype: 'transcript'}]},
                 sort: orderPreferredOntologyTerms
             }));
             // add the cds variant
@@ -94,12 +96,12 @@ const processVariants = async ({conn, record, source}) => {
             variant.reference1 = reference1;
             variant.type = rid(await conn.getVocabularyTerm(variant.type));
             cds = rid(await conn.addVariant({
-                endpoint: 'positionalvariants',
+                target: 'PositionalVariant',
                 content: {...variant},
                 existsOk: true
             }));
             await conn.addRecord({
-                endpoint: 'infers',
+                target: 'Infers',
                 content: {out: cds, in: protein, source: rid(source)},
                 existsOk: true,
                 fetchExisting: false
@@ -112,12 +114,12 @@ const processVariants = async ({conn, record, source}) => {
     if (record.mutationId) {
         try {
             const catalog = await conn.addRecord({
-                endpoint: 'cataloguevariants',
+                target: 'CatalogueVariant',
                 content: {source: rid(source), sourceId: record.mutationId},
                 existsOk: true
             });
             await conn.addRecord({
-                endpoint: 'infers',
+                target: 'Infers',
                 content: {out: catalog, in: cds || protein, source: rid(source)},
                 existsOk: true,
                 fetchExisting: false
@@ -144,19 +146,19 @@ const processCosmicRecord = async (conn, record, source) => {
     diseaseName = diseaseName.replace('leukaemia', 'leukemia');
     diseaseName = diseaseName.replace('tumour', 'tumor');
     const disease = await conn.getUniqueRecordBy({
-        endpoint: 'diseases',
-        where: {name: diseaseName},
+        target: 'Disease',
+        filters: {name: diseaseName},
         sort: preferredDiseases
     });
     // create the resistance statement
     const relevance = await conn.getVocabularyTerm('resistance');
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content: {
             relevance,
-            appliesTo: drug,
-            impliedBy: [variantId, rid(disease)],
-            supportedBy: [rid(record.publication)],
+            subject: drug,
+            conditions: [variantId, rid(disease), drug],
+            evidence: [rid(record.publication)],
             source: rid(source),
             reviewStatus: 'not required',
             sourceId: record.sourceId
@@ -177,7 +179,7 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
     const jsonList = await loadDelimToJson(filename);
     // get the dbID for the source
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}

@@ -5,9 +5,10 @@ const request = require('request-promise');
 const Ajv = require('ajv');
 const _ = require('lodash');
 
+const {checkSpec} = require('./util');
 const {
-    rid, orderPreferredOntologyTerms, checkSpec
-} = require('./util');
+    rid, orderPreferredOntologyTerms, convertRecordToQueryFilters
+} = require('./graphkb');
 const {logger} = require('./logging');
 const _entrez = require('./entrez/gene');
 
@@ -16,7 +17,6 @@ const ensemblSourceName = 'ensembl';
 const ajv = new Ajv();
 
 const HGNC_API = 'http://rest.genenames.org/fetch';
-const CLASS_NAME = 'features';
 
 const SOURCE_DEFN = {
     name: 'hgnc',
@@ -72,22 +72,28 @@ const uploadRecord = async ({
 
     // don't update version if nothing else has changed
     const currentRecord = await conn.addRecord({
-        endpoint: CLASS_NAME,
+        target: 'Feature',
         content: body,
         existsOk: true,
-        fetchConditions: _.omit(body, ['sourceIdVersion', 'displayName', 'longName']),
+        fetchConditions: convertRecordToQueryFilters(_.omit(body, ['sourceIdVersion', 'displayName', 'longName'])),
         fetchFirst: true
     });
 
     if (gene.ensembl_gene_id && ensembl) {
         try {
             const ensg = await conn.getUniqueRecordBy({
-                endpoint: CLASS_NAME,
-                where: {source: rid(ensembl), biotype: 'gene', sourceId: gene.ensembl_gene_id}
+                target: 'Feature',
+                filters: {
+                    AND: [
+                        {source: rid(ensembl)},
+                        {biotype: 'gene'},
+                        {sourceId: gene.ensembl_gene_id}
+                    ]
+                }
             });
             // try adding the cross reference relationship
             await conn.addRecord({
-                endpoint: 'crossreferenceof',
+                target: 'crossreferenceof',
                 content: {out: rid(currentRecord), in: rid(ensg), source: rid(hgnc)},
                 existsOk: true,
                 fetchExisting: false
@@ -100,7 +106,7 @@ const uploadRecord = async ({
         // link to the current record
         try {
             const deprecatedRecord = await conn.addRecord({
-                endpoint: CLASS_NAME,
+                target: 'Feature',
                 content: {
                     source: rid(hgnc),
                     sourceId,
@@ -111,13 +117,13 @@ const uploadRecord = async ({
                     displayName: createDisplayName(symbol)
                 },
                 existsOk: true,
-                fetchConditions: {
+                fetchConditions: convertRecordToQueryFilters({
                     source: rid(hgnc), sourceId, name: symbol, deprecated: true
-                },
+                }),
                 fetchExisting: true
             });
             await conn.addRecord({
-                endpoint: 'deprecatedby',
+                target: 'deprecatedby',
                 content: {out: rid(deprecatedRecord), in: rid(currentRecord), source: rid(hgnc)},
                 existsOk: true,
                 fetchExisting: false
@@ -128,7 +134,7 @@ const uploadRecord = async ({
         const {sourceId, biotype} = currentRecord;
         try {
             const aliasRecord = await this.addRecord({
-                endpoint: CLASS_NAME,
+                target: 'Feature',
                 content: {
                     source: rid(hgnc),
                     name: symbol,
@@ -138,12 +144,12 @@ const uploadRecord = async ({
                     displayName: createDisplayName(symbol)
                 },
                 existsOk: true,
-                fetchConditions: {
+                fetchConditions: convertRecordToQueryFilters({
                     source: rid(hgnc), sourceId, name: symbol
-                }
+                })
             });
             await conn.addRecord({
-                endpoint: 'aliasof',
+                target: 'aliasof',
                 content: {out: rid(aliasRecord), in: rid(currentRecord), source: rid(hgnc)},
                 existsOk: true,
                 fetchExisting: false
@@ -155,7 +161,7 @@ const uploadRecord = async ({
         try {
             const [entrezGene] = await _entrez.fetchAndLoadByIds(conn, [gene.entrez_id]);
             await conn.addRecord({
-                endpoint: 'crossreferenceof',
+                target: 'crossreferenceof',
                 content: {out: rid(currentRecord), in: rid(entrezGene), source: rid(hgnc)},
                 existsOk: true,
                 fetchExisting: false
@@ -179,16 +185,20 @@ const fetchAndLoadBySymbol = async ({
         return CACHE[paramType][symbol];
     }
     try {
-        const where = {source: {name: SOURCE_DEFN.name}};
+        const filters = {
+            AND: [
+                {source: {target: 'Source', filters: {name: SOURCE_DEFN.name}}}
+            ]
+        };
         if (paramType === 'symbol') {
-            where.name = symbol;
+            filters.AND.push({name: symbol});
         } else {
-            where.sourceId = symbol;
+            filters.AND.push({sourceId: symbol});
         }
         const record = await conn.getUniqueRecordBy({
-            endpoint: CLASS_NAME,
+            target: 'Feature',
             sort: orderPreferredOntologyTerms,
-            where
+            filters
         });
         if (!ignoreCache) {
             CACHE[paramType][symbol] = record;
@@ -217,7 +227,7 @@ const fetchAndLoadBySymbol = async ({
         hgnc = CACHE.SOURCE;
     } else {
         hgnc = await conn.addRecord({
-            endpoint: 'sources',
+            target: 'Source',
             content: SOURCE_DEFN,
             fetchConditions: {name: SOURCE_DEFN.name},
             existsOk: true,
@@ -228,8 +238,8 @@ const fetchAndLoadBySymbol = async ({
     let ensembl;
     try {
         ensembl = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: ensemblSourceName}
+            target: 'Source',
+            filters: {name: ensemblSourceName}
         });
     } catch (err) { }
     const result = await uploadRecord({conn, gene, sources: {hgnc, ensembl}});
@@ -250,7 +260,7 @@ const uploadFile = async (opt) => {
     const hgncContent = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
     const genes = hgncContent.response.docs;
     const hgnc = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: {name: SOURCE_DEFN.name}
@@ -258,8 +268,8 @@ const uploadFile = async (opt) => {
     let ensembl;
     try {
         ensembl = await conn.getUniqueRecordBy({
-            endpoint: 'sources',
-            where: {name: ensemblSourceName}
+            target: 'Source',
+            filters: {name: ensemblSourceName}
         });
     } catch (err) {
         logger.info('Unable to fetch ensembl source for linking records');

@@ -11,7 +11,7 @@ const chembl = require('../src/chembl');
 
 const api = {
     addRecord: jest.fn().mockImplementation(async ({content}) => content),
-    getUniqueRecordBy: jest.fn().mockImplementation(async ({where}) => where)
+    getUniqueRecordBy: jest.fn().mockImplementation(async ({filters}) => filters)
 };
 
 
