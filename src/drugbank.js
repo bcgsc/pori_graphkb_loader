@@ -202,9 +202,9 @@ const processRecord = async ({
         existsOk: true,
         fetchConditions: {
             AND: [
+                {name: body.name},
                 {source: rid(current)},
                 {sourceId: body.sourceId},
-                {name: body.name},
                 {sourceIdVersion: body.sourceIdVersion}
             ]
         }

@@ -28,26 +28,12 @@ const rid = (record, nullOk) => {
     return (record['@rid'] || record).toString();
 };
 
-const convertNulls = (where) => {
-    const queryParams = {};
-    for (const param of Object.keys(where)) {
-        if (where[param] === null) {
-            queryParams[param] = 'null';
-        } else if (typeof where[param] === 'object') {
-            queryParams[param] = convertNulls(where[param]);
-        } else {
-            queryParams[param] = where[param];
-        }
-    }
-    return queryParams;
-};
-
 const nullOrUndefined = value => value === undefined || value === null;
 
 
 const convertRecordToQueryFilters = (record) => {
     const filters = [];
-    for (const [prop, value] of Object.entries(record)) {
+    for (const [prop, value] of Object.entries(record).sort()) {
         filters.push({[prop]: value});
     }
     return {AND: filters};
@@ -538,6 +524,5 @@ module.exports = {
     preferredDrugs,
     preferredVocabulary,
     preferredFeatures,
-    ApiConnection,
-    convertNulls
+    ApiConnection
 };
