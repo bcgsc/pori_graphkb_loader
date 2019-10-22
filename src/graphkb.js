@@ -483,7 +483,7 @@ class ApiConnection {
 
         return this.addRecord({
             ...opt,
-            fetchConditions: {...fetchConditions, ...rest}
+            fetchConditions: convertRecordToQueryFilters({...fetchConditions, ...rest})
         });
     }
 
