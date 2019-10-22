@@ -872,7 +872,6 @@ const upload = async (opt) => {
         logger.info(`processing (${i} / ${records.length})`);
         if (record.relevanceName === 'inconclusive') {
             counts.skip++;
-            logger.info('skipping inconclusive statement');
             continue;
         }
         try {
