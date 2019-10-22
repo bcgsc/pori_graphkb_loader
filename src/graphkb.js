@@ -424,6 +424,10 @@ class ApiConnection {
 
         const model = schema.get(target);
 
+        if (!model) {
+            throw new Error(`cannot find model from target (${target})`);
+        }
+
         try {
             const {result} = jc.retrocycle(await this.request({
                 method: 'POST',
