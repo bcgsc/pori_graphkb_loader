@@ -204,9 +204,9 @@ const preLoadCache = async (api, {sourceDefn, cache, target}) => {
                 {source: {target: 'Source', filters: {name: sourceDefn.name}}},
                 {dependency: null},
                 {deprecated: false}
-            ],
-            neighbors: 0
-        }
+            ]
+        },
+        neighbors: 0
     });
 
     const dups = new Set();

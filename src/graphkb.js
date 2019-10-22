@@ -305,13 +305,14 @@ class ApiConnection {
         const {
             target,
             filters,
-            sort: sortFunc = () => 0
+            sort: sortFunc = () => 0,
+            neighbors = 1
         } = opt;
 
         const {result: records} = await this.request({
             method: 'POST',
             uri: '/query',
-            body: {target, filters}
+            body: {target, filters, neighbors}
         });
         records.sort(sortFunc);
         if (records.length > 1) {
