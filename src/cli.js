@@ -3,6 +3,7 @@ const commandLineUsage = require('command-line-usage');
 const fs = require('fs');
 const path = require('path');
 
+/* eslint-disable no-console */
 
 const argumentError = (usage, msg) => {
     console.log(usage);

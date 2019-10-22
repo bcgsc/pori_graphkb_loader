@@ -925,7 +925,7 @@ const upload = async (opt) => {
             logger.error(err);
 
             if (err.toString().includes('Cannot convert undefined or null to object')) {
-                console.log(record);
+                console.error(record);
                 throw err;
             }
             errorList.push({ ...record, error: err.error || err, errorMessage: err.toString() });

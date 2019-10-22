@@ -107,7 +107,6 @@ const uploadFile = async ({ filename, conn }) => {
             });
         }
     }
-    console.log();
 };
 
 module.exports = { uploadFile, SOURCE_DEFN };
