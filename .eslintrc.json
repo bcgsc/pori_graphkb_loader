@@ -56,15 +56,11 @@
                 "allowEmptyCatch": true
             }
         ],
+        "no-fallthrough": "off",
         "no-mixed-spaces-and-tabs": "error",
         "no-multi-assign": "off",
         "no-param-reassign": "warn",
-        "no-plusplus": [
-            "error",
-            {
-                "allowForLoopAfterthoughts": true
-            }
-        ],
+        "no-plusplus": "off",
         "no-restricted-syntax": "off",
         "no-underscore-dangle": "off",
         "no-use-before-define": "warn",
