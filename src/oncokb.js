@@ -831,7 +831,9 @@ const upload = async (opt) => {
     await addEvidenceLevels(conn, source);
 
     const records = [];
-    const counts = {errors: 0, success: 0, skip: 0};
+    const counts = {
+        errors: 0, success: 0, skip: 0, existing: 0
+    };
 
     const loadedIds = new Set();
     for (const prev of previousLoad) {
@@ -867,6 +869,7 @@ const upload = async (opt) => {
     for (let i = 0; i < records.length; i++) {
         const record = records[i];
         if (loadedIds.has(record.sourceId)) {
+            counts.existing++;
             continue;
         }
         logger.info(`processing (${i} / ${records.length})`);

@@ -230,7 +230,7 @@ class ApiConnection {
      * Make a request to the currently connected API
      * @param {object} opt
      * @param {string} opt.method the request method
-     * @param {string} opt.uri the uri endpoint
+     * @param {string} opt.uri the uri target
      * @param {object} opt.body the request body
      * @param {object} opt.qs the query parameters
      */
@@ -298,7 +298,7 @@ class ApiConnection {
      *
      * @param {object} opt
      * @param {object} opt.filters the conditions/query parameters for the selection
-     * @param {string} opt.target the endpoint to query
+     * @param {string} opt.target the target to query
      * @param {function} opt.sort the function to use in sorting if multiple results are found
      */
     async getUniqueRecordBy(opt) {
@@ -454,7 +454,7 @@ class ApiConnection {
     /**
      * @param {object} opt
      * @param {object} opt.content
-     * @param {string} opt.endpoint
+     * @param {string} opt.target
      */
     async addVariant(opt) {
         const {
