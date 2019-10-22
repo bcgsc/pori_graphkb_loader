@@ -1,23 +1,13 @@
 const path = require('path');
 
 const {
-    convertNulls,
-    orderPreferredOntologyTerms,
     loadDelimToJson,
     loadXmlToJson
 } = require('./../src/util');
 
+const {orderPreferredOntologyTerms} = require('../src/graphkb');
+
 describe('util', () => {
-    describe('convertNulls', () => {
-        test('returns \'null\'', () => {
-            const result = convertNulls({thing: null, other: 1});
-            expect(result).toEqual({thing: 'null', other: 1});
-        });
-        test('convert nested values', () => {
-            const result = convertNulls({thing: {other: null}});
-            expect(result).toEqual({thing: {other: 'null'}});
-        });
-    });
     describe('orderPreferredOntologyTerms', () => {
         test('prefer non-deprecated', () => {
             expect(orderPreferredOntologyTerms(

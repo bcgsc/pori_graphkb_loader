@@ -2,7 +2,7 @@ const path = require('path');
 
 const diseaseOntology = require('../src/disease_ontology');
 const drugbank = require('../src/drugbank');
-const {rid} = require('../src/util');
+const {rid, convertRecordToQueryFilters} = require('../src/graphkb');
 
 const api = {
     addRecord: jest.fn().mockImplementation(async ({content}) => content),
@@ -35,7 +35,7 @@ describe('drugBank', () => {
         await drugbank.uploadFile({conn: api, filename});
         expect(api.addRecord).toHaveBeenCalled();
         expect(api.addRecord).toHaveBeenNthCalledWith(2, {
-            target: 'therapies',
+            target: 'Therapy',
             content: {
                 source: rid(drugbank.SOURCE_DEFN),
                 sourceId: 'DB00530',
@@ -47,12 +47,12 @@ describe('drugBank', () => {
                 description: 'Erlotinib is an inhibitor of the epidermal growth factor receptor (EGFR) tyrosine kinase that is used in the treatment of non-small cell lung cancer, pancreatic cancer and several other types of cancer. It is typically marketed under the trade name Tarceva. Erlotinib binds to the epidermal growth factor receptor (EGFR) tyrosine kinase in a reversible fashion at the adenosine triphosphate (ATP) binding site of the receptor. Recent studies demonstrate that erlotinib is also a potent inhibitor of JAK2V617F, which is a mutant form of tyrosine kinase JAK2 found in most patients with polycythemia vera (PV) and a substantial proportion of patients with idiopathic myelofibrosis or essential thrombocythemia. This finding introduces the potential use of erlotinib in the treatment of JAK2V617F-positive PV and other myeloproliferative disorders.'
             },
             existsOk: true,
-            fetchConditions: {
+            fetchConditions: convertRecordToQueryFilters({
                 sourceIdVersion: '2019-07-02',
                 source: rid(drugbank.SOURCE_DEFN),
                 sourceId: 'DB00530',
                 name: 'Erlotinib'
-            }
+            })
         });
     });
 });
