@@ -5,10 +5,10 @@
 const request = require('request-promise');
 const jc = require('json-cycle');
 const jwt = require('jsonwebtoken');
-const {schema} = require('@bcgsc/knowledgebase-schema');
+const { schema } = require('@bcgsc/knowledgebase-schema');
 
 
-const {logger} = require('./logging');
+const { logger } = require('./logging');
 
 const INTERNAL_SOURCE_NAME = 'graphkb';
 
@@ -33,10 +33,11 @@ const nullOrUndefined = value => value === undefined || value === null;
 
 const convertRecordToQueryFilters = (record) => {
     const filters = [];
+
     for (const [prop, value] of Object.entries(record).sort()) {
-        filters.push({[prop]: value});
+        filters.push({ [prop]: value });
     }
-    return {AND: filters};
+    return { AND: filters };
 };
 
 /**
@@ -112,6 +113,7 @@ const preferredSources = (sourceRank, term1, term2) => {
             const rank2 = sourceRank[term2.source.name] === undefined
                 ? 2
                 : sourceRank[term2.source.name];
+
             if (rank1 !== rank2) {
                 return rank1 < rank2
                     ? -1
@@ -128,6 +130,7 @@ const preferredSources = (sourceRank, term1, term2) => {
  */
 const generateRanks = (arr) => {
     const ranks = {};
+
     for (let i = 0; i < arr.length; i++) {
         ranks[arr[i]] = i;
     }
@@ -138,7 +141,7 @@ const preferredVocabulary = (term1, term2) => {
     const sourceRank = generateRanks([
         INTERNAL_SOURCE_NAME,
         'sequence ontology',
-        'variation ontology'
+        'variation ontology',
     ]);
     return preferredSources(sourceRank, term1, term2);
 };
@@ -148,7 +151,7 @@ const preferredDiseases = (term1, term2) => {
     const sourceRank = generateRanks([
         'oncotree',
         'disease ontology',
-        'ncit'
+        'ncit',
     ]);
     return preferredSources(sourceRank, term1, term2);
 };
@@ -160,7 +163,7 @@ const preferredDrugs = (term1, term2) => {
         'ncit',
         'fda',
         'oncokb',
-        'gsc therapeutic ontology'
+        'gsc therapeutic ontology',
     ]);
     return preferredSources(sourceRank, term1, term2);
 };
@@ -172,7 +175,7 @@ const preferredFeatures = (term1, term2) => {
         'entrez',
         'hgnc',
         'ensembl',
-        'refseq'
+        'refseq',
     ]);
     return preferredSources(sourceRank, term1, term2);
 };
@@ -193,7 +196,7 @@ class ApiConnection {
         this.exp = null;
     }
 
-    async setAuth({username, password}) {
+    async setAuth({ username, password }) {
         this.username = username;
         this.password = password;
         await this.login();
@@ -205,7 +208,7 @@ class ApiConnection {
             method: 'POST',
             uri: `${this.baseUrl}/token`,
             json: true,
-            body: {username: this.username, password: this.password}
+            body: { username: this.username, password: this.password },
         });
         this.headers.Authorization = token.kbToken;
         const tokenContent = jwt.decode(token.kbToken);
@@ -228,8 +231,9 @@ class ApiConnection {
             method: opt.method || 'GET',
             headers: this.headers,
             uri: `${this.baseUrl}/${opt.uri.replace(/^\//, '')}`,
-            json: true
+            json: true,
         };
+
         if (opt.body) {
             req.body = opt.body;
         }
@@ -245,7 +249,7 @@ class ApiConnection {
             target,
             limit = 1000,
             neighbors = 1,
-            returnProperties = null
+            returnProperties = null,
         } = opt;
 
         const result = [];
@@ -253,7 +257,7 @@ class ApiConnection {
             skip = 0;
 
         while (lastFetch === limit) {
-            const {result: records} = await this.request({
+            const { result: records } = await this.request({
                 uri: '/query',
                 method: 'POST',
                 body: {
@@ -262,8 +266,8 @@ class ApiConnection {
                     neighbors,
                     limit,
                     skip,
-                    returnProperties
-                }
+                    returnProperties,
+                },
             });
             result.push(...records);
             lastFetch = records.length;
@@ -273,7 +277,8 @@ class ApiConnection {
     }
 
     async getUniqueRecord(opt) {
-        const {result} = await this.request(opt);
+        const { result } = await this.request(opt);
+
         if (result.length !== 1) {
             throw new Error('Did not find unique record');
         }
@@ -292,15 +297,16 @@ class ApiConnection {
             target,
             filters,
             sort: sortFunc = () => 0,
-            neighbors = 1
+            neighbors = 1,
         } = opt;
 
-        const {result: records} = await this.request({
+        const { result: records } = await this.request({
             method: 'POST',
             uri: '/query',
-            body: {target, filters, neighbors}
+            body: { target, filters, neighbors },
         });
         records.sort(sortFunc);
+
         if (records.length > 1) {
             if (sortFunc(records[0], records[1]) === 0) {
                 throw new Error(`expected a single ${target} record but found multiple: [${rid(records[0])}, ${rid(records[1])}]`);
@@ -319,23 +325,26 @@ class ApiConnection {
         let error,
             filters = {
                 OR: [
-                    {sourceId: term},
-                    {name: term}
-                ]
+                    { sourceId: term },
+                    { name: term },
+                ],
             };
+
         if (source) {
-            filters = {AND: [{source}, filters]};
+            filters = { AND: [{ source }, filters] };
         }
+
         try {
             return await this.getUniqueRecordBy({
                 target: 'Therapy',
                 sort: preferredDrugs,
-                filters
+                filters,
             });
         } catch (err) {
             error = err;
         }
         let alternateTerm;
+
         if (/\binhibitor\b/.exec(term)) {
             alternateTerm = term.replace(/\binhibitor\b/, 'inhibitors');
         } else if (/\binhibitors\b/.exec(term)) {
@@ -345,17 +354,18 @@ class ApiConnection {
             try {
                 filters = {
                     OR: [
-                        {sourceId: alternateTerm},
-                        {name: alternateTerm}
-                    ]
+                        { sourceId: alternateTerm },
+                        { name: alternateTerm },
+                    ],
                 };
+
                 if (source) {
-                    filters = {AND: [{source}, filters]};
+                    filters = { AND: [{ source }, filters] };
                 }
                 return await this.getUniqueRecordBy({
                     target: 'Therapy',
                     sort: preferredDrugs,
-                    filters
+                    filters,
                 });
             } catch (err) {
                 error = err;
@@ -369,11 +379,11 @@ class ApiConnection {
             target: 'Vocabulary',
             filters: {
                 AND: [
-                    {sourceId: term},
-                    {source: {target: 'Source', filters: {name: INTERNAL_SOURCE_NAME}}}
-                ]
+                    { sourceId: term },
+                    { source: { target: 'Source', filters: { name: INTERNAL_SOURCE_NAME } } },
+                ],
             },
-            sortFunc: orderPreferredOntologyTerms
+            sortFunc: orderPreferredOntologyTerms,
         });
     }
 
@@ -394,7 +404,7 @@ class ApiConnection {
             fetchConditions = null,
             fetchExisting = true,
             fetchFirst = false,
-            sortFunc = () => 0
+            sortFunc = () => 0,
         } = opt;
 
         if (fetchFirst) {
@@ -403,7 +413,7 @@ class ApiConnection {
                 return await this.getUniqueRecordBy({
                     filters,
                     target,
-                    sortFunc
+                    sortFunc,
                 });
             } catch (err) {}
         }
@@ -415,10 +425,10 @@ class ApiConnection {
         }
 
         try {
-            const {result} = jc.retrocycle(await this.request({
+            const { result } = jc.retrocycle(await this.request({
                 method: 'POST',
                 uri: model.routeName,
-                body: content
+                body: content,
             }));
             return result;
         } catch (err) {
@@ -428,7 +438,7 @@ class ApiConnection {
                     return this.getUniqueRecordBy({
                         filters,
                         target,
-                        sortFunc
+                        sortFunc,
                     });
                 }
                 return null;
@@ -445,12 +455,12 @@ class ApiConnection {
     async addVariant(opt) {
         const {
             content,
-            target
+            target,
         } = opt;
         const fetchConditions = {
             zygosity: null,
             germline: null,
-            reference2: null
+            reference2: null,
         };
 
         if (target === 'PositionalVariant') {
@@ -460,7 +470,7 @@ class ApiConnection {
                 break1Repr: null,
                 break2Repr: null,
                 truncation: null,
-                assembly: null
+                assembly: null,
             });
         }
         const {
@@ -469,15 +479,17 @@ class ApiConnection {
 
         return this.addRecord({
             ...opt,
-            fetchConditions: convertRecordToQueryFilters({...fetchConditions, ...rest})
+            fetchConditions: convertRecordToQueryFilters({ ...fetchConditions, ...rest }),
         });
     }
 
     async addTherapyCombination(source, therapyName, opt = {}) {
-        const {matchSource = false} = opt;
+        const { matchSource = false } = opt;
+
         // try to get exact name match first
         try {
             let result;
+
             if (matchSource) {
                 result = await this.getTherapy(therapyName, rid(source));
             } else {
@@ -489,6 +501,7 @@ class ApiConnection {
                 throw err;
             }
         }
+
         // if contains + then try to split and find each element by name/sourceId
         try {
             const elements = await Promise.all(therapyName.split(/\s*\+\s*/gi).map((name) => {
@@ -501,8 +514,8 @@ class ApiConnection {
             const name = elements.map(e => e.name).sort().join(' + ');
             const combinedTherapy = await this.addRecord({
                 target: 'Therapy',
-                content: {sourceId, name, source: rid(source)},
-                existsOk: true
+                content: { sourceId, name, source: rid(source) },
+                existsOk: true,
             });
             return combinedTherapy;
         } catch (err) {
@@ -524,5 +537,5 @@ module.exports = {
     preferredDrugs,
     preferredVocabulary,
     preferredFeatures,
-    ApiConnection
+    ApiConnection,
 };

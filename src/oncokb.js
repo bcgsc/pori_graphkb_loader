@@ -9,25 +9,25 @@ const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const {
     checkSpec,
-    hashRecordToId
+    hashRecordToId,
 } = require('./util');
 const {
     preferredDiseases,
     preferredDrugs,
     rid,
-    convertRecordToQueryFilters
+    convertRecordToQueryFilters,
 } = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const _entrezGene = require('./entrez/gene');
 const _ncit = require('./ncit');
-const {logger} = require('./logging');
+const { logger } = require('./logging');
 
 const SOURCE_DEFN = {
     name: 'oncokb',
     description: 'OncoKB is a precision oncology knowledge base and contains information about the effects and treatment implications of specific cancer gene alterations. It is developed and maintained by the Knowledge Systems group in the Marie Josée and Henry R. Kravis Center for Molecular Oncology at Memorial Sloan Kettering Cancer Center (MSK), in partnership with Quest Diagnostics and Watson for Genomics, IBM.',
     usage: 'https://oncokb.org/terms',
     url: 'https://oncokb.org',
-    displayName: 'OncoKB'
+    displayName: 'OncoKB',
 };
 
 const ajv = new Ajv();
@@ -36,51 +36,51 @@ const ajv = new Ajv();
 const actionableRecordSpec = ajv.compile({
     type: 'object',
     properties: {
-        cancerType: {type: 'string'},
-        drugs: {type: 'string'},
-        entrezGeneId: {type: 'number'},
-        gene: {type: 'string'},
-        level: {type: 'string'},
-        pmids: {type: 'string'},
-        proteinChange: {type: 'string'}, // TODO: Link variant to protein change with 'infers' where different
-        variant: {type: 'string'},
-        abstracts: {type: 'string'}
-    }
+        cancerType: { type: 'string' },
+        drugs: { type: 'string' },
+        entrezGeneId: { type: 'number' },
+        gene: { type: 'string' },
+        level: { type: 'string' },
+        pmids: { type: 'string' },
+        proteinChange: { type: 'string' }, // TODO: Link variant to protein change with 'infers' where different
+        variant: { type: 'string' },
+        abstracts: { type: 'string' },
+    },
 });
 const annotatedRecordSpec = ajv.compile({
     type: 'object',
     properties: {
-        gene: {type: 'string'},
-        entrezGeneId: {type: 'number'},
-        mutationEffect: {type: 'string'},
-        mutationEffectPmids: {type: 'string'},
-        oncogenicity: {type: 'string'},
-        proteinChange: {type: 'string'}, // TODO: Link variant to protein change with 'infers' where different
-        variant: {type: 'string'},
-        mutationEffectAbstracts: {type: 'string'}
-    }
+        gene: { type: 'string' },
+        entrezGeneId: { type: 'number' },
+        mutationEffect: { type: 'string' },
+        mutationEffectPmids: { type: 'string' },
+        oncogenicity: { type: 'string' },
+        proteinChange: { type: 'string' }, // TODO: Link variant to protein change with 'infers' where different
+        variant: { type: 'string' },
+        mutationEffectAbstracts: { type: 'string' },
+    },
 });
 const drugRecordSpec = ajv.compile({
     type: 'object',
     required: ['drugName', 'uuid'],
     properties: {
-        uuid: {type: 'string', format: 'uuid'},
-        ncitCode: {type: 'string', pattern: '^C\\d+$'},
-        drugName: {type: 'string'},
+        uuid: { type: 'string', format: 'uuid' },
+        ncitCode: { type: 'string', pattern: '^C\\d+$' },
+        drugName: { type: 'string' },
         synonyms: {
             type: 'array',
-            items: {type: 'string'}
-        }
-    }
+            items: { type: 'string' },
+        },
+    },
 });
 const curatedGeneSpec = ajv.compile({
     type: 'object',
     requried: ['entrezGeneId', 'oncogene', 'tsg'],
     properties: {
-        entrezGeneId: {type: 'number'},
-        oncogene: {type: 'boolean'},
-        tsg: {type: 'boolean'}
-    }
+        entrezGeneId: { type: 'number' },
+        oncogene: { type: 'boolean' },
+        tsg: { type: 'boolean' },
+    },
 });
 
 const variantSpec = ajv.compile({
@@ -90,37 +90,38 @@ const variantSpec = ajv.compile({
         gene: {
             type: 'object',
             required: ['entrezGeneId'],
-            properties: {entrezGeneId: {type: 'number'}}
+            properties: { entrezGeneId: { type: 'number' } },
         },
         consequence: {
             type: 'object',
             required: ['term'],
-            properties: {term: {type: 'string'}}
+            properties: { term: { type: 'string' } },
         },
-        proteinStart: {type: 'number'},
-        proteinEnd: {type: 'number'},
-        name: {type: 'string'},
-        alteration: {type: 'string'}
-    }
+        proteinStart: { type: 'number' },
+        proteinEnd: { type: 'number' },
+        name: { type: 'string' },
+        alteration: { type: 'string' },
+    },
 });
 
 const VOCABULARY_MAPPING = {
     'oncogenic mutations': 'oncogenic mutation',
     fusions: 'fusion',
     'truncating mutations': 'truncating',
-    'promoter mutations': 'promoter mutation'
+    'promoter mutations': 'promoter mutation',
 };
 
 const DISEASE_MAPPING = {
     'all tumors': 'disease of cellular proliferation',
     'cns cancer': 'central nervous system cancer',
-    'non-langerhans cell histiocytosis/erdheim-chester disease': 'non-langerhans-cell histiocytosis'
+    'non-langerhans cell histiocytosis/erdheim-chester disease': 'non-langerhans-cell histiocytosis',
 };
 
 const VOCABULARY_CACHE = {};
 
 const getVocabulary = async (conn, term) => {
     const stdTerm = term.trim().toLowerCase();
+
     if (VOCABULARY_CACHE[stdTerm]) {
         return VOCABULARY_CACHE[stdTerm];
     }
@@ -132,13 +133,15 @@ const getVocabulary = async (conn, term) => {
 /**
  * Parse the variant string preresentation from oncokb to its graphkB equivalent
  */
-const parseVariantName = (variantIn, {reference1} = {}) => {
+const parseVariantName = (variantIn, { reference1 } = {}) => {
     const variant = variantIn.toLowerCase();
+
     try {
         kbParser.variant.parse(`p.${variant}`, false);
-        return {type: `p.${variant}`};
+        return { type: `p.${variant}` };
     } catch (err) {}
     let match = /^([a-z])?(\d+)_([a-z])?(\d+)splice$/.exec(variant);
+
     if (match) {
         return {
             type: `p.(${
@@ -147,21 +150,21 @@ const parseVariantName = (variantIn, {reference1} = {}) => {
                 match[2]}_${match[3] || '?'
             }${
                 match[4]
-            })spl`
+            })spl`,
         };
     } if (variant.endsWith('_splice')) {
-        return {type: `p.${variant.replace('_splice', 'spl')}`};
+        return { type: `p.${variant.replace('_splice', 'spl')}` };
     } if (match = /^([^-\s]+)-([^-\s]+) fusion$/i.exec(variant)) {
         if (!reference1 || match[1].toLowerCase() === reference1.toLowerCase()) {
             return {
                 type: 'fusion',
-                reference2: match[2].trim().toLowerCase()
+                reference2: match[2].trim().toLowerCase(),
             };
         } if (match[2].toLowerCase() === reference1.toLowerCase()) {
             return {
                 type: 'fusion',
                 reference2: reference1.toLowerCase(),
-                reference1: match[1].trim().toLowerCase()
+                reference1: match[1].trim().toLowerCase(),
             };
         }
         throw new Error(`the fusion in the variant ${
@@ -171,14 +174,15 @@ const parseVariantName = (variantIn, {reference1} = {}) => {
         }`);
     } if (match = /^exon (\d+) (mutation|insertion|deletion|deletion\/insertion|splice mutation|indel|missense mutation)s?$/i.exec(variant)) {
         const [, pos, type] = match;
+
         if (type === 'deletion/insertion' || type === 'indel') {
-            return {type: `e.${pos}delins`};
+            return { type: `e.${pos}delins` };
         }
-        return {type: `e.${pos}${type.slice(0, 3)}`};
+        return { type: `e.${pos}${type.slice(0, 3)}` };
     } if (VOCABULARY_MAPPING[variant.toLowerCase().trim()] !== undefined) {
-        return {type: VOCABULARY_MAPPING[variant.toLowerCase().trim()]};
+        return { type: VOCABULARY_MAPPING[variant.toLowerCase().trim()] };
     } if (match = /^Exon (\d+) and (\d+) deletion$/i.exec(variant)) {
-        return {type: `e.${match[1]}_${match[2]}del`};
+        return { type: `e.${match[1]}_${match[2]}del` };
     }
     throw new Error(`Unable to parse variant notation (variantIn=${variantIn}, reference1=${reference1})`);
 };
@@ -188,7 +192,7 @@ const parseVariantName = (variantIn, {reference1} = {}) => {
  * Parse the variant string and return the new variant record with all appropriate calculated linked records
  */
 const processVariant = async (conn, {
-    gene, variantName, entrezGeneId, alternate
+    gene, variantName, entrezGeneId, alternate,
 }) => {
     let gene1,
         type,
@@ -198,13 +202,14 @@ const processVariant = async (conn, {
     if (gene.toLowerCase() === 'other biomarkers') {
         try {
             const vocab = variantName.trim().toLowerCase();
+
             if (vocab !== 'microsatellite instability-high') {
                 throw new Error(`unsupported biomarker variant ${variantName}`);
             }
             type = 'strong signature';
             gene1 = await conn.getUniqueRecordBy({
                 target: 'Signature',
-                filters: {name: 'microsatellite instability'}
+                filters: { name: 'microsatellite instability' },
             });
         } catch (err) {
             logger.warn(`failed to retrieve the associated vocabulary for (variant=${variantName})`);
@@ -221,16 +226,18 @@ const processVariant = async (conn, {
 
         // determine the type of variant we are dealing with
         try {
-            ({type, reference2} = parseVariantName(
+            ({ type, reference2 } = parseVariantName(
                 variantName,
-                {reference1: gene1.name}
+                { reference1: gene1.name },
             ));
         } catch (err) {
             type = variantName;
         }
+
         try {
             if (reference2) {
                 const candidates = await _entrezGene.fetchAndLoadBySymbol(conn, reference2);
+
                 if (candidates.length !== 1) {
                     throw new Error(`Unable to find single (${candidates.length}) unique records by symbol (${reference2})`);
                 }
@@ -254,6 +261,7 @@ const processVariant = async (conn, {
     let variantUrl,
         variant,
         variantType = type;
+
     try {
         variantType = await getVocabulary(conn, variantType);
         variantUrl = 'CategoryVariant';
@@ -273,6 +281,7 @@ const processVariant = async (conn, {
         }
 
         variantUrl = 'PositionalVariant';
+
         try {
             variantType = await getVocabulary(conn, variant.type);
         } catch (err) {
@@ -280,10 +289,12 @@ const processVariant = async (conn, {
         }
     }
     variant.reference1 = rid(gene1);
+
     if (gene2) {
         variant.reference2 = rid(gene2);
     }
     variant.type = rid(variantType);
+
     // create the variant
     for (const [key, value] of Object.entries(variant)) {
         if (value instanceof kbParser.position.Position) {
@@ -294,17 +305,20 @@ const processVariant = async (conn, {
     variant = await conn.addVariant({
         target: variantUrl,
         content: variant,
-        existsOk: true
+        existsOk: true,
     });
+
     // if there is an alternate representation, link it to this one
     if (alternate) {
-        const {variant: altVariantName, entrezGeneId: altGeneId} = alternate;
+        const { variant: altVariantName, entrezGeneId: altGeneId } = alternate;
         let reference1;
+
         if (altGeneId === entrezGeneId) {
-            ({reference1} = variant);
+            ({ reference1 } = variant);
         } else {
             [reference1] = await _entrezGene.fetchAndLoadByIds(conn, [altGeneId]);
         }
+
         try {
             // try with adding a p prefix also
             const parsed = kbParser.variant.parse(altVariantName, false).toJSON();
@@ -313,16 +327,16 @@ const processVariant = async (conn, {
             const altVariant = rid(await conn.addVariant({
                 target: 'PositionalVariant',
                 content: parsed,
-                existsOk: true
+                existsOk: true,
             }));
             await conn.addRecord({
                 target: 'infers',
                 content: {
                     out: altVariant,
-                    in: rid(variant)
+                    in: rid(variant),
                 },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
         } catch (err) {
             logger.warn(`failed to parse the alternate variant form (${alternate.variant}) for record (gene=${gene}, variant=${variantName})`);
@@ -337,18 +351,19 @@ const processVariant = async (conn, {
 const processDisease = async (conn, diseaseName) => {
     // next attempt to find the cancer type (oncotree?)
     let disease;
+
     try {
         disease = await conn.getUniqueRecordBy({
             target: 'Disease',
-            filters: {name: diseaseName},
-            sort: preferredDiseases
+            filters: { name: diseaseName },
+            sort: preferredDiseases,
         });
     } catch (err) {
         if (diseaseName.includes('/')) {
             disease = await conn.getUniqueRecordBy({
                 target: 'Disease',
-                filters: {name: diseaseName.split('/')[0].trim()},
-                sort: preferredDiseases
+                filters: { name: diseaseName.split('/')[0].trim() },
+                sort: preferredDiseases,
             });
         } else {
             throw err;
@@ -367,9 +382,10 @@ const processDisease = async (conn, diseaseName) => {
  */
 const parseAbstractCitation = (citation) => {
     let match;
+
     if (match = /.*Abstract\s*#\s*([A-Z0-9a-z][A-Za-z0-9-]+)[.,]? (AACR|ASCO),? (2\d{3})[., ]*/.exec(citation)) {
         const [, abstractNumber, sourceName, year] = match;
-        return {abstractNumber, year, source: sourceName};
+        return { abstractNumber, year, source: sourceName };
     }
     throw new Error(`unable to parse abstract citation (${citation})`);
 };
@@ -385,7 +401,7 @@ const parseAbstractCitation = (citation) => {
  * @param opt.source {object} the oncokb source object
  */
 const processRecord = async ({
-    conn, record, source, variantMap = {}
+    conn, record, source, variantMap = {},
 }) => {
     // get the variant
     const {
@@ -398,31 +414,33 @@ const processRecord = async ({
         levelName,
         relevanceName,
         appliesToTarget,
-        sourceId
+        sourceId,
     } = record;
     const key = `${entrezGeneId}:${variantName}`;
     const variant = await processVariant(conn, {
-        gene, entrezGeneId, variantName, alternate: variantMap[key]
+        gene, entrezGeneId, variantName, alternate: variantMap[key],
     });
     // next attempt to find the cancer type (oncotree?)
     let disease;
+
     if (diseaseName) {
         disease = await processDisease(conn, diseaseName);
     }
 
     // find the drug
     let therapy;
+
     if (drug) {
         try {
             therapy = await conn.getUniqueRecordBy({
                 target: 'Therapy',
-                filters: {AND: [{name: drug}, {source}]},
-                sort: preferredDrugs
+                filters: { AND: [{ name: drug }, { source }] },
+                sort: preferredDrugs,
             });
         } catch (err) {
             if (drug.includes('+')) {
             // add the combination therapy as a new therapy defined by oncokb
-                therapy = await conn.addTherapyCombination(source, drug, {matchSource: true});
+                therapy = await conn.addTherapyCombination(source, drug, { matchSource: true });
             } else {
                 throw err;
             }
@@ -431,10 +449,11 @@ const processRecord = async ({
 
     // get the evidence level and determine the relevance
     let level;
+
     if (levelName) {
         level = await conn.getUniqueRecordBy({
             target: 'EvidenceLevel',
-            filters: {AND: [{sourceId: levelName}, {source}]}
+            filters: { AND: [{ sourceId: levelName }, { source }] },
         });
     }
     const relevance = await getVocabulary(conn, relevanceName);
@@ -445,6 +464,7 @@ const processRecord = async ({
 
     for (const abstract of support.filter(pmid => !/^\d+$/.exec(pmid.trim()))) {
         let parsed;
+
         try {
             parsed = parseAbstractCitation(abstract);
         } catch (err) {
@@ -454,16 +474,17 @@ const processRecord = async ({
             }
             continue;
         }
+
         try {
             const absRecord = await conn.getUniqueRecordBy({
                 target: 'Abstract',
                 filters: {
                     AND: [
-                        {source: {target: 'Source', filters: {name: parsed.source}}},
-                        {year: parsed.year},
-                        {abstractNumber: parsed.abstractNumber}
-                    ]
-                }
+                        { source: { target: 'Source', filters: { name: parsed.source } } },
+                        { year: parsed.year },
+                        { abstractNumber: parsed.abstractNumber },
+                    ],
+                },
             });
             abstracts.push(absRecord);
         } catch (err) {
@@ -478,8 +499,9 @@ const processRecord = async ({
         relevance: rid(relevance),
         source,
         sourceId,
-        reviewStatus: 'not required'
+        reviewStatus: 'not required',
     };
+
     if (disease) {
         content.conditions.push(rid(disease));
     }
@@ -502,13 +524,13 @@ const processRecord = async ({
         target: 'Statement',
         content,
         existsOk: true,
-        fetchExisting: false
+        fetchExisting: false,
     });
 };
 
 
 const generateSourceId = (rec) => {
-    const {_rec, ...rest} = rec;
+    const { _rec, ...rest } = rec;
     return hashRecordToId(rest);
 };
 
@@ -523,6 +545,7 @@ const parseActionableRecord = (rawRecord) => {
     const support = rawRecord.pmids.split(',').filter(pmid => pmid && pmid.trim());
     support.push(...(rawRecord.abstracts || '').split(';').filter(c => c.trim()));
     let relevance;
+
     if (/^[r]\d+$/i.exec(rawRecord.level)) {
         relevance = 'resistance';
     } else if (/^\d+[a-z]?$/i.exec(rawRecord.level)) {
@@ -542,11 +565,11 @@ const parseActionableRecord = (rawRecord) => {
             relevanceName: relevance,
             support,
             entrezGeneId: rawRecord.entrezGeneId,
-            appliesToTarget: 'drug'
+            appliesToTarget: 'drug',
         });
     }
 
-    return statements.map(rec => ({...rec, sourceId: generateSourceId(rec)}));
+    return statements.map(rec => ({ ...rec, sourceId: generateSourceId(rec) }));
 };
 
 
@@ -566,7 +589,7 @@ const parseAnnotatedRecord = (rawRecord) => {
         variantName: variant,
         support,
         entrezGeneId: rawRecord.entrezGeneId,
-        appliesToTarget: 'gene'
+        appliesToTarget: 'gene',
     }, {
         _raw: rawRecord,
         variantName: variant,
@@ -574,8 +597,8 @@ const parseAnnotatedRecord = (rawRecord) => {
         gene,
         support,
         entrezGeneId: rawRecord.entrezGeneId,
-        appliesToTarget: 'variant'
-    }].map(rec => ({...rec, sourceId: generateSourceId(rec)}));
+        appliesToTarget: 'variant',
+    }].map(rec => ({ ...rec, sourceId: generateSourceId(rec) }));
 };
 
 
@@ -587,15 +610,16 @@ const addEvidenceLevels = async (conn, source) => {
     const levels = await request({
         method: 'GET',
         uri: URL,
-        json: true
+        json: true,
     });
     const result = {};
+
     for (let [level, desc] of Object.entries(levels)) {
         if (!/^LEVEL_[A-Z0-9]+$/.exec(level)) {
             throw new kbParser.error.ParsingError({
                 message: `Error in parsing the level name: ${level}`,
                 expected: '/^LEVEL_[A-Z0-9]+$/',
-                observed: level
+                observed: level,
             });
         }
         level = level.slice('LEVEL_'.length);
@@ -606,10 +630,10 @@ const addEvidenceLevels = async (conn, source) => {
                 sourceId: level,
                 name: level,
                 description: desc,
-                url: URL
+                url: URL,
             },
-            fetchConditions: convertRecordToQueryFilters({sourceId: level, name: level, source: rid(source)}),
-            existsOk: true
+            fetchConditions: convertRecordToQueryFilters({ sourceId: level, name: level, source: rid(source) }),
+            existsOk: true,
         });
         result[level] = record;
     }
@@ -620,10 +644,10 @@ const addEvidenceLevels = async (conn, source) => {
 /**
  * Upload the gene curation as tumour supressive or oncogenic statements
  */
-const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
+const uploadAllCuratedGenes = async ({ conn, baseUrl = URL, source }) => {
     const genes = await request(`${baseUrl}/utils/allCuratedGenes`, {
         method: 'GET',
-        json: true
+        json: true,
     });
 
     const tsg = rid(await conn.getVocabularyTerm('tumour suppressive'));
@@ -632,6 +656,7 @@ const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
     for (const gene of genes) {
         logger.info(`processing gene: ${gene.entrezGeneId}`);
         let record;
+
         try {
             checkSpec(curatedGeneSpec, gene, g => g.entrezGeneId);
             [record] = await _entrezGene.fetchAndLoadByIds(conn, [gene.entrezGeneId]);
@@ -642,6 +667,7 @@ const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
         }
         // now add the TSG or oncogene statement
         const relevance = [];
+
         if (gene.oncogene) {
             relevance.push(oncogene);
         }
@@ -658,10 +684,10 @@ const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
                         source: rid(source),
                         description: gene.summary,
                         subject: record,
-                        relevance: rel
+                        relevance: rel,
                     },
                     existsOk: true,
-                    fetchExisting: false
+                    fetchExisting: false,
                 });
             } catch (err) {
                 logger.error(err);
@@ -673,10 +699,10 @@ const uploadAllCuratedGenes = async ({conn, baseUrl = URL, source}) => {
 /**
  * Load the drug ontology from OncoKB
  */
-const uploadAllTherapies = async ({conn, URL, source}) => {
+const uploadAllTherapies = async ({ conn, URL, source }) => {
     const drugs = await request(`${URL}/drugs`, {
         method: 'GET',
-        json: true
+        json: true,
     });
 
     const aliases = [];
@@ -685,12 +711,13 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
     for (const drug of drugs) {
         logger.info(`processing drug: ${drug.uuid}`);
         let record;
+
         try {
             checkSpec(drugRecordSpec, drug, d => d.uuid);
             record = await conn.addRecord({
                 target: 'Therapy',
-                content: {source, sourceId: drug.uuid, name: drug.drugName},
-                existsOk: true
+                content: { source, sourceId: drug.uuid, name: drug.drugName },
+                existsOk: true,
             });
         } catch (err) {
             logger.error(err);
@@ -704,17 +731,17 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
                     target: 'Therapy',
                     filters: {
                         AND: [
-                            {sourceId: drug.ncitCode},
-                            {source: {target: 'Source', filters: {name: _ncit.SOURCE_DEFN.name}}}
-                        ]
+                            { sourceId: drug.ncitCode },
+                            { source: { target: 'Source', filters: { name: _ncit.SOURCE_DEFN.name } } },
+                        ],
                     },
-                    sort: preferredDrugs
+                    sort: preferredDrugs,
                 });
                 await conn.addRecord({
                     target: 'crossreferenceof',
-                    content: {out: rid(record), in: rid(ncit), source},
+                    content: { out: rid(record), in: rid(ncit), source },
                     existsOk: true,
-                    fetchExisting: false
+                    fetchExisting: false,
                 });
             } catch (err) {
                 logger.warn(`Failed to link ${drug.uuid} to ${drug.ncitCode}`);
@@ -739,15 +766,15 @@ const uploadAllTherapies = async ({conn, URL, source}) => {
                     source,
                     name: aliasName,
                     sourceId: record.sourceId,
-                    dependency: rid(record)
+                    dependency: rid(record),
                 },
-                existsOk: true
+                existsOk: true,
             });
             await conn.addRecord({
                 target: 'AliasOf',
-                content: {out: rid(record), in: rid(alias), source},
+                content: { out: rid(record), in: rid(alias), source },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
         } catch (err) {
             logger.warn(`Failed to link alias ${record.sourceId} to ${aliasName} (${err})`);
@@ -763,8 +790,9 @@ const getVariantDescriptions = async (url) => {
     const variantMap = {};
     const variantRecords = await request(`${url}/variants`, {
         method: 'GET',
-        json: true
+        json: true,
     });
+
     for (const record of variantRecords) {
         try {
             checkSpec(variantSpec, record);
@@ -772,22 +800,25 @@ const getVariantDescriptions = async (url) => {
             logger.error(err);
             continue;
         }
-        const {alteration, name, gene: {entrezGeneId}} = record;
+        const { alteration, name, gene: { entrezGeneId } } = record;
+
         if (alteration === name) {
             continue;
         }
         const key = `${entrezGeneId}:${name}`;
         const match = /^([A-Z])?(\d+)_([A-Z])?(\d+)(\S+)$/.exec(alteration);
+
         if (!match) {
             logger.error(`unexpected variant alteration pattern (${alteration})`);
         } else {
             const [, startAA, start, endAA, end, rawType] = match;
             const type = rawType.replace('splice', 'spl').replace('mis', '?');
             let variant = `p.(${startAA || '?'}${start}_${endAA || '?'}${end})${type}`;
+
             if (type === 'ins') {
                 variant = `p.(${startAA || '?'}${start}_${endAA || '?'}${end})_(${startAA || '?'}${start}_${endAA || '?'}${end})${type}`;
             }
-            variantMap[key] = {entrezGeneId, variant};
+            variantMap[key] = { entrezGeneId, variant };
         }
     }
     return variantMap;
@@ -802,7 +833,7 @@ const getVariantDescriptions = async (url) => {
  * @param {ApiConnection} opt.conn the GraphKB api connection object
  */
 const upload = async (opt) => {
-    const {conn, errorLogPrefix} = opt;
+    const { conn, errorLogPrefix } = opt;
     const URL = opt.url || 'http://oncokb.org/api/v1';
 
     // add the source node
@@ -810,14 +841,14 @@ const upload = async (opt) => {
         target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
-        fetchConditions: {name: SOURCE_DEFN.name}
+        fetchConditions: { name: SOURCE_DEFN.name },
     }));
 
     const variantMap = await getVariantDescriptions(URL);
     const previousLoad = await conn.getRecords({
         target: 'Statement',
-        filters: {source: {target: 'Source', filters: {name: SOURCE_DEFN.name}}},
-        returnProperties: 'sourceId'
+        filters: { source: { target: 'Source', filters: { name: SOURCE_DEFN.name } } },
+        returnProperties: 'sourceId',
     });
 
     logger.info('pre-loading entrez genes');
@@ -825,17 +856,18 @@ const upload = async (opt) => {
     logger.info('pre-loading pubmed articles');
     await _pubmed.preLoadCache(conn);
     logger.info('load oncogene/tumour suppressor list');
-    await uploadAllCuratedGenes({conn, baseUrl: URL, source});
+    await uploadAllCuratedGenes({ conn, baseUrl: URL, source });
     logger.info('load drug ontology');
-    await uploadAllTherapies({conn, URL, source});
+    await uploadAllTherapies({ conn, URL, source });
     await addEvidenceLevels(conn, source);
 
     const records = [];
     const counts = {
-        errors: 0, success: 0, skip: 0, existing: 0
+        errors: 0, success: 0, skip: 0, existing: 0,
     };
 
     const loadedIds = new Set();
+
     for (const prev of previousLoad) {
         loadedIds.add(prev.sourceId);
     }
@@ -843,58 +875,65 @@ const upload = async (opt) => {
     logger.info(`${loadedIds.size} previously loaded oncokb statements`);
 
     const errorList = [];
+
     // download and parse all variants
     for (const file of ['allActionableVariants', 'allAnnotatedVariants']) {
         logger.info(`loading: ${URL}/utils/${file}.json`);
         const result = await request({
             method: 'GET',
             json: true,
-            uri: `${URL}/utils/${file}.json`
+            uri: `${URL}/utils/${file}.json`,
         });
         const parser = file === 'allActionableVariants'
             ? parseActionableRecord
             : parseAnnotatedRecord;
 
         logger.info(`loaded ${result.length} records`);
+
         for (const record of result) {
             try {
                 records.push(...parser(record));
             } catch (err) {
                 counts.errors++;
-                errorList.push({...record, error: err.error || err, errorMessage: err.toString()});
+                errorList.push({ ...record, error: err.error || err, errorMessage: err.toString() });
             }
         }
     }
+
     // upload variant statements
     for (let i = 0; i < records.length; i++) {
         const record = records[i];
+
         if (loadedIds.has(record.sourceId)) {
             counts.existing++;
             continue;
         }
         logger.info(`processing (${i} / ${records.length})`);
+
         if (record.relevanceName === 'inconclusive') {
             counts.skip++;
             continue;
         }
+
         try {
             await processRecord({
-                conn, source, record, variantMap
+                conn, source, record, variantMap,
             });
             counts.success++;
         } catch (err) {
             counts.errors++;
             logger.error(err);
+
             if (err.toString().includes('Cannot convert undefined or null to object')) {
                 console.log(record);
                 throw err;
             }
-            errorList.push({...record, error: err.error || err, errorMessage: err.toString()});
+            errorList.push({ ...record, error: err.error || err, errorMessage: err.toString() });
         }
     }
     const errorOutput = `${errorLogPrefix}-oncokb.json`;
     logger.info(`writing errors to ${errorOutput}`);
-    fs.writeFileSync(errorOutput, JSON.stringify({records: errorList}, null, 2));
+    fs.writeFileSync(errorOutput, JSON.stringify({ records: errorList }, null, 2));
     logger.info(JSON.stringify(counts));
 };
 
@@ -907,6 +946,6 @@ module.exports = {
         actionableRecordSpec,
         annotatedRecordSpec,
         drugRecordSpec,
-        curatedGeneSpec
-    }
+        curatedGeneSpec,
+    },
 };

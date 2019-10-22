@@ -13,20 +13,23 @@ const crypto = require('crypto');
 const stableStringify = require('json-stable-stringify');
 
 
-const {logger} = require('./logging');
+const { logger } = require('./logging');
 
 
 const convertOwlGraphToJson = (graph, idParser = x => x) => {
     const initialRecords = {};
+
     for (const statement of graph.statements) {
         let src;
+
         try {
             src = idParser(statement.subject.value);
         } catch (err) {
             continue;
         }
+
         if (initialRecords[src] === undefined) {
-            initialRecords[src] = {code: src};
+            initialRecords[src] = { code: src };
         }
         if (initialRecords[src][statement.predicate.value] === undefined) {
             initialRecords[src][statement.predicate.value] = [];
@@ -39,9 +42,11 @@ const convertOwlGraphToJson = (graph, idParser = x => x) => {
     // transform all NCIT codes to std format
     for (const record of Object.values(initialRecords)) {
         nodesByCode[record.code] = record;
+
         for (const predicate of Object.keys(record)) {
             if (typeof record[predicate] === 'object' && record[predicate] !== null) {
                 const formatted = [];
+
                 for (let item of record[predicate]) {
                     try {
                         item = idParser(item);
@@ -59,7 +64,7 @@ const convertOwlGraphToJson = (graph, idParser = x => x) => {
 
 
 const loadDelimToJson = async (filename, opt = {}) => {
-    const {delim = '\t', header = true, ...rest} = opt;
+    const { delim = '\t', header = true, ...rest } = opt;
     logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
     logger.info('parsing into json');
@@ -70,7 +75,7 @@ const loadDelimToJson = async (filename, opt = {}) => {
         comment: '##',
         columns: header,
         auto_parse: true,
-        ...rest
+        ...rest,
     });
     return jsonList;
 };
@@ -84,16 +89,17 @@ const parseXmlToJson = (xmlContent, opts = {}) => new Promise((resolve, reject) 
             emptyTag: null,
             mergeAttrs: true,
             normalize: true,
-            ...opts
+            ...opts,
         },
         (err, result) => {
             logger.error(err);
+
             if (err !== null) {
                 reject(err);
             } else {
                 resolve(result);
             }
-        }
+        },
     );
 });
 
@@ -109,14 +115,14 @@ const loadXmlToJson = (filename, opts = {}) => {
 /**
  *  Try again for too many requests errors. Helpful for APIs with a rate limit (ex. pubmed)
  */
-const requestWithRetry = async (requestOpt, {waitSeconds = 2, retries = 1} = {}) => {
+const requestWithRetry = async (requestOpt, { waitSeconds = 2, retries = 1 } = {}) => {
     try {
         const result = await request(requestOpt);
         return result;
     } catch (err) {
         if (err.statusCode === HTTP_STATUS_CODES.TOO_MANY_REQUESTS && retries > 0) {
             await sleep(waitSeconds);
-            return requestWithRetry(requestOpt, {waitSeconds, retries: retries - 1});
+            return requestWithRetry(requestOpt, { waitSeconds, retries: retries - 1 });
         }
         throw err;
     }
@@ -152,6 +158,7 @@ const checkSpec = (spec, record, idGetter = rec => rec.id) => {
  */
 const convertRowFields = (header, row) => {
     const result = {};
+
     for (const [name, col] of Object.entries(header)) {
         result[name] = row[col];
     }
@@ -168,5 +175,5 @@ module.exports = {
     requestWithRetry,
     convertRowFields,
     hashStringToId,
-    hashRecordToId
+    hashRecordToId,
 };

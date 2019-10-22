@@ -4,7 +4,7 @@
  */
 const Ajv = require('ajv');
 
-const {checkSpec} = require('../util');
+const { checkSpec } = require('../util');
 const util = require('./util');
 
 const ajv = new Ajv();
@@ -13,7 +13,7 @@ const SOURCE_DEFN = {
     name: 'entrez gene',
     url: 'https://www.ncbi.nlm.nih.gov/gene',
     usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
-    description: 'Gene integrates information from a wide range of species. A record may include nomenclature, Reference Sequences (RefSeqs), maps, pathways, variations, phenotypes, and links to genome-, phenotype-, and locus-specific resources worldwide.'
+    description: 'Gene integrates information from a wide range of species. A record may include nomenclature, Reference Sequences (RefSeqs), maps, pathways, variations, phenotypes, and links to genome-, phenotype-, and locus-specific resources worldwide.',
 };
 const CACHE = {};
 const SEARCH_CACHE = {};
@@ -24,10 +24,10 @@ const recordSpec = ajv.compile({
     type: 'object',
     required: ['uid', 'name'],
     properties: {
-        uid: {type: 'string', pattern: '^\\d+$'},
-        name: {type: 'string'},
-        description: {type: 'string'}
-    }
+        uid: { type: 'string', pattern: '^\\d+$' },
+        name: { type: 'string' },
+        description: { type: 'string' },
+    },
 });
 
 /**
@@ -41,7 +41,7 @@ const parseRecord = (record) => {
         name: record.name,
         biotype: 'gene',
         description: record.description,
-        displayName: record.name
+        displayName: record.name,
     };
 };
 
@@ -60,8 +60,8 @@ const fetchAndLoadGeneByIds = async (api, idListIn) => util.fetchAndLoadByIds(
         cache: CACHE,
         target: 'Feature',
         sourceDefn: SOURCE_DEFN,
-        MAX_CONSEC
-    }
+        MAX_CONSEC,
+    },
 );
 
 /**
@@ -71,6 +71,7 @@ const fetchAndLoadGeneByIds = async (api, idListIn) => util.fetchAndLoadByIds(
  */
 const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol', fallbackTermType = null) => {
     const cacheKey = `${termType}:${term}`;
+
     if (SEARCH_CACHE[cacheKey]) {
         return SEARCH_CACHE[cacheKey];
     }
@@ -83,9 +84,10 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
             cache: CACHE,
             target: 'Feature',
             sourceDefn: SOURCE_DEFN,
-            MAX_CONSEC
-        }
+            MAX_CONSEC,
+        },
     );
+
     // fallback to gene name
     if (result.length === 0 && fallbackTermType) {
         result = await util.fetchAndLoadBySearchTerm(
@@ -97,8 +99,8 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
                 cache: CACHE,
                 target: 'Feature',
                 sourceDefn: SOURCE_DEFN,
-                MAX_CONSEC
-            }
+                MAX_CONSEC,
+            },
         );
     }
     SEARCH_CACHE[cacheKey] = result;
@@ -109,8 +111,8 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
 const preLoadCache = async api => util.preLoadCache(
     api,
     {
-        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'Feature'
-    }
+        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'Feature',
+    },
 );
 
 const fetchAndLoadBySymbol = async (api, term) => fetchAndLoadBySearchTerm(api, term, 'Preferred Symbol', 'Gene Name');
@@ -122,5 +124,5 @@ module.exports = {
     fetchAndLoadBySymbol,
     parseRecord,
     SOURCE_DEFN,
-    preLoadCache
+    preLoadCache,
 };

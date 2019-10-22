@@ -5,10 +5,10 @@
  */
 
 const {
-    orderPreferredOntologyTerms, loadDelimToJson, rid, convertRowFields
+    orderPreferredOntologyTerms, loadDelimToJson, rid, convertRowFields,
 } = require('./util');
-const {SOURCE_DEFN: {name: ncitSourceName}} = require('./ncit');
-const {logger} = require('./logging');
+const { SOURCE_DEFN: { name: ncitSourceName } } = require('./ncit');
+const { logger } = require('./logging');
 
 const SOURCE_DEFN = {
     displayName: 'FDA-SRS',
@@ -16,14 +16,14 @@ const SOURCE_DEFN = {
     longName: 'FDA Substance Registration System',
     url: 'https://fdasis.nlm.nih.gov/srs',
     comment: 'https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/default.htm',
-    description: 'The overall purpose of the joint FDA/USP Substance Registration System (SRS) is to support health information technology initiatives by generating unique ingredient identifiers (UNIIs) for substances in drugs, biologics, foods, and devices. The UNII is a non- proprietary, free, unique, unambiguous, non semantic, alphanumeric identifier based on a substance’s molecular structure and/or descriptive information.'
+    description: 'The overall purpose of the joint FDA/USP Substance Registration System (SRS) is to support health information technology initiatives by generating unique ingredient identifiers (UNIIs) for substances in drugs, biologics, foods, and devices. The UNII is a non- proprietary, free, unique, unambiguous, non semantic, alphanumeric identifier based on a substance’s molecular structure and/or descriptive information.',
 };
 
 const HEADER = {
     id: 'UNII',
     ncit: 'NCIT',
     pubchem: 'PUBCHEM',
-    name: 'PT'
+    name: 'PT',
 };
 
 /**
@@ -34,31 +34,32 @@ const HEADER = {
  * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async (opt) => {
-    const {filename, conn: api} = opt;
+    const { filename, conn: api } = opt;
     const jsonList = await loadDelimToJson(filename);
     const source = await api.addRecord({
         target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
-        fetchConditions: {name: SOURCE_DEFN.name}
+        fetchConditions: { name: SOURCE_DEFN.name },
     });
+
     // only load FDA records if we have already loaded NCIT
     try {
         await api.getUniqueRecordBy({
             target: 'Source',
-            filters: {name: ncitSourceName}
+            filters: { name: ncitSourceName },
         });
     } catch (err) {
         logger.error('Cannot link to NCIT, Unable to find source record');
         throw err;
     }
-    const counts = {success: 0, error: 0, skip: 0};
+    const counts = { success: 0, error: 0, skip: 0 };
 
     logger.info(`loading ${jsonList.length} records`);
 
     for (let i = 0; i < jsonList.length; i++) {
         const {
-            pubchem, id, ncit, name
+            pubchem, id, ncit, name,
         } = convertRowFields(HEADER, jsonList[i]);
 
         if (!name || !id || (!ncit && !pubchem)) {
@@ -68,17 +69,18 @@ const uploadFile = async (opt) => {
         }
         let ncitRec;
         logger.info(`processing ${id} (${i} / ${jsonList.length})`);
+
         if (ncit) {
             try {
                 ncitRec = await api.getUniqueRecordBy({
                     target: 'Therapy',
                     filters: {
                         AND: [
-                            {source: {target: 'Source', filters: {name: ncitSourceName}}},
-                            {sourceId: ncit}
-                        ]
+                            { source: { target: 'Source', filters: { name: ncitSourceName } } },
+                            { sourceId: ncit },
+                        ],
                     },
-                    sort: orderPreferredOntologyTerms
+                    sort: orderPreferredOntologyTerms,
                 });
             } catch (err) {
                 counts.skip++;
@@ -87,18 +89,20 @@ const uploadFile = async (opt) => {
         }
 
         let drug;
+
         try {
             drug = await api.addRecord({
                 target: 'Therapy',
-                content: {name, sourceId: id, source: rid(source)},
-                existsOk: true
+                content: { name, sourceId: id, source: rid(source) },
+                existsOk: true,
             });
+
             if (ncitRec) {
                 await api.addRecord({
                     target: 'crossreferenceof',
-                    content: {source: rid(source), out: rid(drug), in: rid(ncitRec)},
+                    content: { source: rid(source), out: rid(drug), in: rid(ncitRec) },
                     existsOk: true,
-                    fetchExisting: false
+                    fetchExisting: false,
                 });
             }
             counts.success++;
@@ -111,4 +115,4 @@ const uploadFile = async (opt) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {uploadFile, SOURCE_DEFN, dependencies: [ncitSourceName]};
+module.exports = { uploadFile, SOURCE_DEFN, dependencies: [ncitSourceName] };

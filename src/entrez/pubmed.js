@@ -3,8 +3,8 @@
  */
 const Ajv = require('ajv');
 
-const {checkSpec} = require('../util');
-const {fetchByIdList, uploadRecord, preLoadCache: preLoadAnyCache} = require('./util');
+const { checkSpec } = require('../util');
+const { fetchByIdList, uploadRecord, preLoadCache: preLoadAnyCache } = require('./util');
 
 const ajv = new Ajv();
 
@@ -16,7 +16,7 @@ const SOURCE_DEFN = {
     description: `
         pubmed comprises more than 29 million citations for biomedical literature from medline,
         life science journals, and online books. citations may include links to full-text content
-        from pubmed central and publisher web sites`.replace(/\s+/, ' ')
+        from pubmed central and publisher web sites`.replace(/\s+/, ' '),
 };
 const DB_NAME = 'pubmed';
 const CACHE = {};
@@ -25,12 +25,12 @@ const recordSpec = ajv.compile({
     type: 'object',
     required: ['uid', 'title', 'fulljournalname'],
     properties: {
-        uid: {type: 'string', pattern: '^\\d+$'},
-        title: {type: 'string'},
-        fulljournalname: {type: 'string'},
-        sortpubdate: {type: 'string'},
-        sortdate: {type: 'string'}
-    }
+        uid: { type: 'string', pattern: '^\\d+$' },
+        title: { type: 'string' },
+        fulljournalname: { type: 'string' },
+        sortpubdate: { type: 'string' },
+        sortdate: { type: 'string' },
+    },
 });
 
 /**
@@ -42,16 +42,19 @@ const parseRecord = (record) => {
     const parsed = {
         sourceId: record.uid,
         name: record.title,
-        journalName: record.fulljournalname
+        journalName: record.fulljournalname,
     };
+
     // sortpubdate: '1992/06/01 00:00'
     if (record.sortpubdate) {
         const match = /^(\d\d\d\d)\//.exec(record.sortpubdate);
+
         if (match) {
             parsed.year = parseInt(match[1], 10);
         }
     } else if (record.sortdate) {
         const match = /^(\d\d\d\d)\//.exec(record.sortdate);
+
         if (match) {
             parsed.year = parseInt(match[1], 10);
         }
@@ -76,30 +79,30 @@ const fetchAndLoadByIds = async (api, idListIn) => {
     const records = await fetchByIdList(
         idListIn.filter(id => !/^pmc\d+$/i.exec(id)),
         {
-            db: DB_NAME, parser: parseRecord, cache: CACHE
-        }
+            db: DB_NAME, parser: parseRecord, cache: CACHE,
+        },
     );
     records.push(...await fetchByIdList(
         pmcIds,
         {
-            dbfrom: DB_NAME, parser: parseRecord, cache: CACHE, db: 'pmc'
-        }
+            dbfrom: DB_NAME, parser: parseRecord, cache: CACHE, db: 'pmc',
+        },
     ));
     return Promise.all(records.map(
         async record => uploadRecord(api, record, {
             cache: CACHE,
             createDisplayName,
             target: 'Publication',
-            sourceDefn: SOURCE_DEFN
-        })
+            sourceDefn: SOURCE_DEFN,
+        }),
     ));
 };
 
 const preLoadCache = async api => preLoadAnyCache(
     api,
     {
-        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'Publication'
-    }
+        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'Publication',
+    },
 );
 
 
@@ -107,5 +110,5 @@ module.exports = {
     preLoadCache,
     parseRecord,
     fetchAndLoadByIds,
-    SOURCE_DEFN
+    SOURCE_DEFN,
 };

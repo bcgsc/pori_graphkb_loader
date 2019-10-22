@@ -3,11 +3,11 @@
  * @module importer/drug_ontology
  */
 
-const {loadDelimToJson} = require('./util');
-const {rid, orderPreferredOntologyTerms} = require('./graphkb');
-const {logger} = require('./logging');
-const {SOURCE_DEFN: {name: drugbankName}} = require('./drugbank');
-const {SOURCE_DEFN: {name: chemblName}} = require('./chembl');
+const { loadDelimToJson } = require('./util');
+const { rid, orderPreferredOntologyTerms } = require('./graphkb');
+const { logger } = require('./logging');
+const { SOURCE_DEFN: { name: drugbankName } } = require('./drugbank');
+const { SOURCE_DEFN: { name: chemblName } } = require('./chembl');
 
 const HEADER = {
     name: 'source',
@@ -15,19 +15,19 @@ const HEADER = {
     grandparent1: 'Class_2',
     grandparent2: 'Class_3_pathway',
     drugbank: 'DrugBankID',
-    alias: 'alias'
+    alias: 'alias',
 };
 
 const TAGS = {
     [HEADER.parent]: 'specific drug class',
     [HEADER.grandparent1]: 'general drug class',
-    [HEADER.grandparent2]: 'pathway drug class'
+    [HEADER.grandparent2]: 'pathway drug class',
 };
 
 const SOURCE_DEFN = {
     name: 'gsc therapeutic ontology',
     displayName: 'GSC-TO',
-    description: 'Therapeutic ontology compiled and curated at the Genome Sciences Centre'
+    description: 'Therapeutic ontology compiled and curated at the Genome Sciences Centre',
 };
 
 /**
@@ -38,22 +38,24 @@ const getDrugOrAdd = async (conn, source, name, rawRecord = {}) => {
         return null;
     }
     const tags = [];
+
     for (const col of [HEADER.parent, HEADER.grandparent1, HEADER.grandparent2]) {
         if (name === rawRecord[col]) {
             tags.push(TAGS[col]);
         }
     }
     let record;
+
     try {
         record = await conn.getUniqueRecordBy({
             target: 'Therapy',
             filters: {
                 AND: [
-                    {source: {target: 'Source', filters: {name: drugbankName}}},
-                    {name}
-                ]
+                    { source: { target: 'Source', filters: { name: drugbankName } } },
+                    { name },
+                ],
             },
-            sort: orderPreferredOntologyTerms
+            sort: orderPreferredOntologyTerms,
         });
         return record;
     } catch (err) {}
@@ -61,8 +63,8 @@ const getDrugOrAdd = async (conn, source, name, rawRecord = {}) => {
     try {
         record = await conn.getUniqueRecordBy({
             target: 'Therapy',
-            filters: {AND: [{source: {target: 'Source', filters: {name: chemblName}}}, {name}]},
-            sort: orderPreferredOntologyTerms
+            filters: { AND: [{ source: { target: 'Source', filters: { name: chemblName } } }, { name }] },
+            sort: orderPreferredOntologyTerms,
         });
         return record;
     } catch (err) {}
@@ -70,10 +72,10 @@ const getDrugOrAdd = async (conn, source, name, rawRecord = {}) => {
     return conn.addRecord({
         target: 'Therapy',
         content: {
-            name, sourceId: name, source: rid(source), subsets: tags
+            name, sourceId: name, source: rid(source), subsets: tags,
         },
-        fetchConditions: {name, sourceId: name, source: rid(source)},
-        existsOk: true
+        fetchConditions: { name, sourceId: name, source: rid(source) },
+        existsOk: true,
     });
 };
 
@@ -87,6 +89,7 @@ const addDrugClass = async (conn, source, name, rawRecord) => {
     }
 
     const tags = [];
+
     for (const col of [HEADER.parent, HEADER.grandparent1, HEADER.grandparent2]) {
         if (name === rawRecord[col]) {
             tags.push(TAGS[col]);
@@ -99,14 +102,14 @@ const addDrugClass = async (conn, source, name, rawRecord) => {
             name,
             sourceId: name,
             source: rid(source),
-            subsets: tags
+            subsets: tags,
         },
         existsOk: true,
         fetchConditions: {
             name,
             sourceId: name,
-            source: rid(source)
-        }
+            source: rid(source),
+        },
     });
 
     // link to drugs with exact name matches
@@ -115,17 +118,17 @@ const addDrugClass = async (conn, source, name, rawRecord) => {
             target: 'Therapy',
             filters: {
                 AND: [
-                    {source: {target: 'Source', filters: {name: drugbankName}}},
-                    {name}
-                ]
+                    { source: { target: 'Source', filters: { name: drugbankName } } },
+                    { name },
+                ],
             },
-            sort: orderPreferredOntologyTerms
+            sort: orderPreferredOntologyTerms,
         });
         await conn.addRecord({
             target: 'CrossReferenceOf',
-            content: {out: rid(record), in: rid(drugbankDrug), source: rid(source)},
+            content: { out: rid(record), in: rid(drugbankDrug), source: rid(source) },
             existsOk: true,
-            fetchExistsing: false
+            fetchExistsing: false,
         });
     } catch (err) {}
     return record;
@@ -140,67 +143,70 @@ const addDrugClass = async (conn, source, name, rawRecord) => {
  * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async (opt) => {
-    const {filename, conn} = opt;
+    const { filename, conn } = opt;
 
     const content = await loadDelimToJson(filename);
 
     const source = rid(await conn.addRecord({
         target: 'Source',
         content: SOURCE_DEFN,
-        existsOk: true
+        existsOk: true,
     }));
 
-    const counts = {success: 0, error: 0};
+    const counts = { success: 0, error: 0 };
 
     for (let i = 0; i < content.length; i++) {
         const record = content[i];
         logger.info(`processing ${record[HEADER.name]} (${i} / ${content.length})`);
+
         // clean the names
         for (const col of [HEADER.name, HEADER.parent, HEADER.grandparent1, HEADER.grandparent2, HEADER.alias]) {
             record[col] = record[col].trim().toLowerCase().replace(/\binhibitors\b/, 'inhibitor');
         }
+
         try {
             const drug = await getDrugOrAdd(conn, source, record[HEADER.name], record);
 
             const [parent, grandparent1, grandparent2] = await Promise.all([
                 addDrugClass(conn, source, record[HEADER.parent], record),
                 addDrugClass(conn, source, record[HEADER.grandparent1], record),
-                addDrugClass(conn, source, record[HEADER.grandparent2], record)
+                addDrugClass(conn, source, record[HEADER.grandparent2], record),
             ]);
             const aliases = await Promise.all(
                 record[HEADER.alias].split(/\s*,\s*/)
                     .filter(term => term && term !== record[HEADER.name])
-                    .map(async term => getDrugOrAdd(conn, source, term))
+                    .map(async term => getDrugOrAdd(conn, source, term)),
             );
             // link the drug to its alias terms
             await Promise.all(aliases.map(async alias => conn.addRecord({
                 target: 'aliasof',
-                content: {out: rid(alias), in: rid(drug), source: rid(source)},
-                existsOk: true
+                content: { out: rid(alias), in: rid(drug), source: rid(source) },
+                existsOk: true,
             })));
+
             if (parent) {
                 if (rid(drug) !== rid(parent)) {
                     await conn.addRecord({
                         target: 'subclassof',
-                        content: {out: rid(drug), in: rid(parent), source},
+                        content: { out: rid(drug), in: rid(parent), source },
                         existsOk: true,
-                        fetchExistsing: false
+                        fetchExistsing: false,
                     });
                 }
                 if (grandparent1 && rid(parent) !== rid(grandparent1)) {
                     await conn.addRecord({
                         target: 'subclassof',
-                        content: {out: rid(parent), in: rid(grandparent1), source},
+                        content: { out: rid(parent), in: rid(grandparent1), source },
                         existsOk: true,
-                        fetchExistsing: false
+                        fetchExistsing: false,
                     });
                 }
                 if (grandparent2 && rid(parent) !== rid(grandparent2)) {
                     await conn.addRecord({
                         target: 'subclassof',
-                        content: {out: rid(parent), in: rid(grandparent2), source},
+                        content: { out: rid(parent), in: rid(grandparent2), source },
                         existsOk: true,
-                        fetchExistsing: false
+                        fetchExistsing: false,
                     });
                 }
             }
@@ -210,19 +216,20 @@ const uploadFile = async (opt) => {
                     target: 'Therapy',
                     filters: {
                         AND: [
-                            {source: {target: 'Source', filters: {name: drugbankName}}},
-                            {sourceId: record[HEADER.drugbank]}
-                        ]
+                            { source: { target: 'Source', filters: { name: drugbankName } } },
+                            { sourceId: record[HEADER.drugbank] },
+                        ],
                     },
-                    sort: orderPreferredOntologyTerms
+                    sort: orderPreferredOntologyTerms,
                 }));
+
                 // now link the records together
                 if (dbDrug !== rid(drug)) {
                     await conn.addRecord({
                         target: 'crossreferenceof',
-                        content: {out: rid(drug), in: dbDrug, source},
+                        content: { out: rid(drug), in: dbDrug, source },
                         existsOk: true,
-                        fetchExistsing: false
+                        fetchExistsing: false,
                     });
                 }
             }
@@ -236,4 +243,4 @@ const uploadFile = async (opt) => {
 };
 
 
-module.exports = {SOURCE_DEFN, uploadFile, dependencies: [drugbankName]};
+module.exports = { SOURCE_DEFN, uploadFile, dependencies: [drugbankName] };

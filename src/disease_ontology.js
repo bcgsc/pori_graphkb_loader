@@ -6,10 +6,10 @@
  */
 const Ajv = require('ajv');
 
-const {checkSpec} = require('./util');
-const {rid, generateCacheKey} = require('./graphkb');
-const {logger} = require('./logging');
-const {SOURCE_DEFN: {name: ncitName}} = require('./ncit');
+const { checkSpec } = require('./util');
+const { rid, generateCacheKey } = require('./graphkb');
+const { logger } = require('./logging');
+const { SOURCE_DEFN: { name: ncitName } } = require('./ncit');
 
 const SOURCE_DEFN = {
     displayName: 'Disease Ontology',
@@ -25,7 +25,7 @@ const SOURCE_DEFN = {
         Northwestern University, Center for Genetic Medicine and the University of Maryland
         School of Medicine, Institute for Genome Sciences. The Disease Ontology semantically
         integrates disease and medical vocabularies through extensive cross mapping of DO
-        terms to MeSH, ICD, NCI’s thesaurus, SNOMED and OMIM.`.replace(/\s+/, ' ')
+        terms to MeSH, ICD, NCI’s thesaurus, SNOMED and OMIM.`.replace(/\s+/, ' '),
 };
 
 const ajv = new Ajv();
@@ -37,30 +37,30 @@ const nodeSpec = ajv.compile({
     type: 'object',
     required: ['id', 'lbl'],
     properties: {
-        id: {type: 'string', pattern: DOID_PATTERN},
-        lbl: {type: 'string'},
+        id: { type: 'string', pattern: DOID_PATTERN },
+        lbl: { type: 'string' },
         meta: {
             type: 'object',
             properties: {
-                deprecated: {type: 'boolean'},
+                deprecated: { type: 'boolean' },
                 definition: {
                     type: 'object',
                     required: ['val'],
-                    properties: {val: {type: 'string'}}
+                    properties: { val: { type: 'string' } },
                 },
                 subsets: {
                     type: 'array',
                     items: {
-                        type: 'string'
-                    }
+                        type: 'string',
+                    },
                 },
                 synonyms: {
                     type: 'array',
                     items: {
                         type: 'object',
                         required: ['val'],
-                        properties: {val: {type: 'string'}}
-                    }
+                        properties: { val: { type: 'string' } },
+                    },
                 },
                 basicPropertyValues: {
                     type: 'array',
@@ -68,22 +68,22 @@ const nodeSpec = ajv.compile({
                         type: 'object',
                         required: ['val', 'pred'],
                         properties: {
-                            val: {type: 'string'},
-                            pred: {type: 'string'}
-                        }
-                    }
+                            val: { type: 'string' },
+                            pred: { type: 'string' },
+                        },
+                    },
                 },
                 xrefs: {
                     type: 'array',
                     items: {
                         type: 'object',
                         required: ['val'],
-                        properties: {val: {type: 'string'}}
-                    }
-                }
-            }
-        }
-    }
+                        properties: { val: { type: 'string' } },
+                    },
+                },
+            },
+        },
+    },
 });
 
 
@@ -91,15 +91,16 @@ const edgeSpec = ajv.compile({
     type: 'object',
     required: ['sub', 'pred', 'obj'],
     properties: {
-        sub: {type: 'string', pattern: DOID_PATTERN},
-        pred: {type: 'string'},
-        obj: {type: 'string', pattern: DOID_PATTERN}
-    }
+        sub: { type: 'string', pattern: DOID_PATTERN },
+        pred: { type: 'string' },
+        obj: { type: 'string', pattern: DOID_PATTERN },
+    },
 });
 
 
 const parseDoid = (ident) => {
     const match = /.*(DOID_\d+)$/.exec(ident);
+
     if (!match) {
         throw new Error(`invalid DOID: ${ident}`);
     }
@@ -120,18 +121,18 @@ const parseNodeRecord = (record) => {
         lbl,
         meta: {
             deprecated = false,
-            definition: {val: description} = {},
+            definition: { val: description } = {},
             subsets = [],
             synonyms = [],
             basicPropertyValues = [],
-            xrefs = []
-        } = {}
+            xrefs = [],
+        } = {},
     } = record;
 
     const hasDeprecated = [];
     const name = lbl.toLowerCase().trim();
 
-    for (const {val, pred} of basicPropertyValues) {
+    for (const { val, pred } of basicPropertyValues) {
         if (pred.toLowerCase().endsWith('#hasalternativeid')) {
             hasDeprecated.push(val);
         }
@@ -139,8 +140,9 @@ const parseNodeRecord = (record) => {
 
     const ncitLinks = [];
 
-    for (const {val: other} of xrefs) {
+    for (const { val: other } of xrefs) {
         let match;
+
         if (match = /^NCI:(C\d+)$/.exec(other)) {
             ncitLinks.push(`${match[1].toLowerCase()}`);
         }
@@ -148,7 +150,7 @@ const parseNodeRecord = (record) => {
 
     const aliases = [];
 
-    for (const {val: alias} of synonyms || []) {
+    for (const { val: alias } of synonyms || []) {
         if (alias.toLowerCase().trim() !== name) {
             aliases.push(alias.toLowerCase().trim());
         }
@@ -162,7 +164,7 @@ const parseNodeRecord = (record) => {
         sourceId: parseDoid(id),
         name,
         description,
-        subsets: subsets.map(subset => subset.replace(PREFIX_TO_STRIP, ''))
+        subsets: subsets.map(subset => subset.replace(PREFIX_TO_STRIP, '')),
     };
 };
 
@@ -175,14 +177,17 @@ const parseNodeRecord = (record) => {
 }
 */
 const loadEdges = async ({
-    DOID, records, conn, source
+    DOID, records, conn, source,
 }) => {
     logger.info('adding the subclass relationships');
+
     for (const edge of DOID.graphs[0].edges) {
-        const {sub, pred, obj} = edge;
+        const { sub, pred, obj } = edge;
+
         if (pred === 'is_a') { // currently only loading this class type
             let src,
                 tgt;
+
             try {
                 checkSpec(edgeSpec, edge);
                 src = parseDoid(sub).toLowerCase();
@@ -191,16 +196,17 @@ const loadEdges = async ({
                 logger.warn(err);
                 continue;
             }
+
             if (records[src] && records[tgt]) {
                 await conn.addRecord({
                     target: 'SubclassOf',
                     content: {
                         out: records[src]['@rid'],
                         in: records[tgt]['@rid'],
-                        source
+                        source,
                     },
                     existsOk: true,
-                    fetchExisting: false
+                    fetchExisting: false,
                 });
             }
         }
@@ -214,7 +220,7 @@ const loadEdges = async ({
  * @param {string} opt.filename the path to the input JSON file
  * @param {ApiConnection} opt.conn the api connection object
  */
-const uploadFile = async ({filename, conn}) => {
+const uploadFile = async ({ filename, conn }) => {
     // load the DOID JSON
     logger.info('loading external disease ontology data');
     const DOID = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
@@ -228,29 +234,31 @@ const uploadFile = async ({filename, conn}) => {
         target: 'Source',
         content: {
             ...SOURCE_DEFN,
-            version: doVersion
+            version: doVersion,
         },
         existsOk: true,
-        fetchConditions: {AND: [{name: SOURCE_DEFN.name}, {version: doVersion}]}
+        fetchConditions: { AND: [{ name: SOURCE_DEFN.name }, { version: doVersion }] },
     });
     source = rid(source);
     logger.info(`processing ${DOID.graphs[0].nodes.length} nodes`);
     const recordsBySourceId = {};
 
     const ncitCache = {};
+
     try {
         const ncitSource = await conn.getUniqueRecordBy({
             target: 'Source',
-            filters: {name: ncitName}
+            filters: { name: ncitName },
         });
         logger.info(`fetched ncit source record ${rid(ncitSource)}`);
         logger.info('getting existing ncit records');
         const ncitRecords = await conn.getRecords({
             target: 'Disease',
-            filters: {AND: [{source: rid(ncitSource)}, {dependency: null}]},
-            neighbors: 0
+            filters: { AND: [{ source: rid(ncitSource) }, { dependency: null }] },
+            neighbors: 0,
         });
         logger.info(`cached ${ncitRecords.length} ncit records`);
+
         for (const record of ncitRecords) {
             ncitCache[generateCacheKey(record)] = rid(record);
         }
@@ -258,12 +266,13 @@ const uploadFile = async ({filename, conn}) => {
         logger.error(err);
     }
 
-    const counts = {error: 0, success: 0, skip: 0};
+    const counts = { error: 0, success: 0, skip: 0 };
 
     for (let i = 0; i < DOID.graphs[0].nodes.length; i++) {
         const node = DOID.graphs[0].nodes[i];
         logger.info(`processing ${node.id} (${i} / ${DOID.graphs[0].nodes.length})`);
         let row;
+
         try {
             row = parseNodeRecord(node);
         } catch (err) {
@@ -280,7 +289,7 @@ const uploadFile = async ({filename, conn}) => {
             subsets,
             aliases,
             hasDeprecated,
-            ncitLinks
+            ncitLinks,
         } = row;
 
         if (nodesByName[name] !== undefined) {
@@ -296,14 +305,14 @@ const uploadFile = async ({filename, conn}) => {
                 name,
                 deprecated,
                 description,
-                subsets
+                subsets,
             },
             existsOk: true,
             fetchConditions: {
                 AND: [
-                    {sourceId}, {deprecated}, {name}, {source}
-                ]
-            }
+                    { sourceId }, { deprecated }, { name }, { source },
+                ],
+            },
         });
 
         if (recordsBySourceId[record.sourceId] !== undefined) {
@@ -320,19 +329,19 @@ const uploadFile = async ({filename, conn}) => {
                         sourceId: record.sourceId,
                         name: alias,
                         dependency: rid(record),
-                        source
+                        source,
                     },
-                    existsOk: true
+                    existsOk: true,
                 });
                 await conn.addRecord({
                     target: 'AliasOf',
                     content: {
                         out: rid(synonym),
                         in: rid(record),
-                        source
+                        source,
                     },
                     existsOk: true,
-                    fetchExisting: false
+                    fetchExisting: false,
                 });
             } catch (err) {
                 logger.error(`Failed to create alias (${record.sourceId}, ${record.name}) ${alias}`);
@@ -340,6 +349,7 @@ const uploadFile = async ({filename, conn}) => {
                 logger.error(err);
             }
         }
+
         // create deprecatedBy links for the old sourceIDs
         for (const alternateId of hasDeprecated) {
             try {
@@ -350,44 +360,46 @@ const uploadFile = async ({filename, conn}) => {
                         name: record.name,
                         deprecated: true,
                         dependency: rid(record),
-                        source
+                        source,
                     },
-                    existsOk: true
+                    existsOk: true,
                 });
                 await conn.addRecord({
                     target: 'DeprecatedBy',
-                    content: {out: rid(alternate), in: rid(record), source},
+                    content: { out: rid(alternate), in: rid(record), source },
                     existsOk: true,
-                    fetchExisting: false
+                    fetchExisting: false,
                 });
             } catch (err) {
                 logger.error(`Failed to create deprecated form (${record.sourceId}) ${alternateId}`);
                 logger.error(err);
             }
         }
+
         // link to existing ncit records
         for (const ncit of ncitLinks) {
-            const key = generateCacheKey({sourceId: ncit});
+            const key = generateCacheKey({ sourceId: ncit });
+
             if (!ncitCache[key]) {
                 logger.warn(`failed to link ${record.sourceId} to ${key}. Missing record`);
             } else {
                 await conn.addRecord({
                     target: 'CrossreferenceOf',
-                    content: {out: rid(record), in: rid(ncitCache[key]), source},
+                    content: { out: rid(record), in: rid(ncitCache[key]), source },
                     existsOk: true,
-                    fetchExisting: false
+                    fetchExisting: false,
                 });
             }
         }
     }
 
     await loadEdges({
-        DOID, conn, records: recordsBySourceId, source
+        DOID, conn, records: recordsBySourceId, source,
     });
     logger.info(JSON.stringify(counts));
 };
 
 
 module.exports = {
-    uploadFile, dependencies: [ncitName], SOURCE_DEFN, parseNodeRecord
+    uploadFile, dependencies: [ncitName], SOURCE_DEFN, parseNodeRecord,
 };

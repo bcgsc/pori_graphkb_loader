@@ -16,22 +16,22 @@ const {
     loadXmlToJson,
     parseXmlToJson,
     checkSpec,
-    requestWithRetry
+    requestWithRetry,
 } = require('./util');
 const {
     orderPreferredOntologyTerms,
     preferredDrugs,
     preferredDiseases,
     rid,
-    convertRecordToQueryFilters
+    convertRecordToQueryFilters,
 } = require('./graphkb');
-const {logger} = require('./logging');
+const { logger } = require('./logging');
 
 const SOURCE_DEFN = {
     name: 'clinicaltrials.gov',
     url: 'https://clinicaltrials.gov',
     usage: 'https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use',
-    description: 'ClinicalTrials.gov is a database of privately and publicly funded clinical studies conducted around the world'
+    description: 'ClinicalTrials.gov is a database of privately and publicly funded clinical studies conducted around the world',
 };
 
 const BASE_URL = 'https://clinicaltrials.gov/ct2/show';
@@ -41,8 +41,8 @@ const CACHE = {};
 const ajv = new Ajv();
 
 
-const singleItemArray = (spec = {type: 'string'}) => ({
-    type: 'array', maxItems: 1, minItems: 1, items: {...spec}
+const singleItemArray = (spec = { type: 'string' }) => ({
+    type: 'array', maxItems: 1, minItems: 1, items: { ...spec },
 });
 
 const validateDownloadedTrialRecord = ajv.compile({
@@ -54,10 +54,10 @@ const validateDownloadedTrialRecord = ajv.compile({
         'url',
         'phases',
         'interventions',
-        'conditions'
+        'conditions',
     ],
     properties: {
-        nct_id: singleItemArray({pattern: '^NCT\\d+$'}),
+        nct_id: singleItemArray({ pattern: '^NCT\\d+$' }),
         title: singleItemArray(),
         url: singleItemArray(),
         last_update_posted: singleItemArray(),
@@ -65,15 +65,15 @@ const validateDownloadedTrialRecord = ajv.compile({
             type: 'object',
             required: ['phase'],
             properties: {
-                phase: {type: 'array', minItems: 1, items: {type: 'string'}}
-            }
+                phase: { type: 'array', minItems: 1, items: { type: 'string' } },
+            },
         }),
         conditions: singleItemArray({
             type: 'object',
             required: ['condition'],
             properties: {
-                condition: {type: 'array', minItems: 1, items: {type: 'string'}}
-            }
+                condition: { type: 'array', minItems: 1, items: { type: 'string' } },
+            },
         }),
         interventions: singleItemArray({
             type: 'object',
@@ -86,14 +86,14 @@ const validateDownloadedTrialRecord = ajv.compile({
                         type: 'object',
                         required: ['_', 'type'],
                         properties: {
-                            _: {type: 'string'},
-                            type: singleItemArray()
-                        }
-                    }
-                }
-            }
-        })
-    }
+                            _: { type: 'string' },
+                            type: singleItemArray(),
+                        },
+                    },
+                },
+            },
+        }),
+    },
 });
 
 
@@ -111,13 +111,13 @@ const validateAPITrialRecord = ajv.compile({
                 'intervention',
                 'last_update_posted',
                 'required_header',
-                'location'
+                'location',
             ],
             properties: {
                 required_header: singleItemArray({
                     type: 'object',
                     required: ['url'],
-                    properties: {url: singleItemArray()}
+                    properties: { url: singleItemArray() },
                 }),
                 start_date: singleItemArray({
                     oneOf: [
@@ -125,29 +125,29 @@ const validateAPITrialRecord = ajv.compile({
                             type: 'object',
                             required: ['_'],
                             properties: {
-                                _: {type: 'string'}
-                            }
+                                _: { type: 'string' },
+                            },
                         },
-                        {type: 'string'}
-                    ]
+                        { type: 'string' },
+                    ],
                 }),
                 completion_date: singleItemArray({
                     type: 'object',
                     required: ['_'],
                     properties: {
-                        _: {type: 'string'}
-                    }
+                        _: { type: 'string' },
+                    },
                 }),
                 id_info: singleItemArray({
                     type: 'object',
                     required: ['nct_id'],
-                    properties: {nct_id: singleItemArray({pattern: '^NCT\\d+$'})}
+                    properties: { nct_id: singleItemArray({ pattern: '^NCT\\d+$' }) },
                 }),
                 official_title: singleItemArray(),
                 phase: singleItemArray(),
                 condition: {
                     type: 'array',
-                    items: {type: 'string'}
+                    items: { type: 'string' },
                 },
                 intervention: {
                     type: 'array',
@@ -155,18 +155,18 @@ const validateAPITrialRecord = ajv.compile({
                         type: 'object',
                         required: [
                             'intervention_type',
-                            'intervention_name'
+                            'intervention_name',
                         ],
                         properties: {
                             intervention_name: singleItemArray(),
-                            intervention_type: singleItemArray()
-                        }
-                    }
+                            intervention_type: singleItemArray(),
+                        },
+                    },
                 },
                 last_update_posted: singleItemArray({
                     type: 'object',
                     required: ['_'],
-                    properties: {_: {type: 'string'}}
+                    properties: { _: { type: 'string' } },
                 }),
                 location: {
                     type: 'array',
@@ -184,17 +184,17 @@ const validateAPITrialRecord = ajv.compile({
                                         required: ['city', 'country'],
                                         properties: {
                                             city: singleItemArray(),
-                                            country: singleItemArray()
-                                        }
-                                    })
-                                }
-                            })
-                        }
-                    }
-                }
-            }
-        }
-    }
+                                            country: singleItemArray(),
+                                        },
+                                    }),
+                                },
+                            }),
+                        },
+                    },
+                },
+            },
+        },
+    },
 });
 
 
@@ -215,13 +215,15 @@ const standardizeDate = (dateString) => {
  */
 const convertAPIRecord = (rawRecord) => {
     checkSpec(validateAPITrialRecord, rawRecord, rec => rec.clinical_study.id_info[0].nct_id);
-    const {clinical_study: record} = rawRecord;
+    const { clinical_study: record } = rawRecord;
 
     let startDate,
         completionDate;
+
     try {
         startDate = standardizeDate(record.start_date[0]._ || record.start_date[0]);
     } catch (err) {}
+
     try {
         completionDate = standardizeDate(record.completion_date[0]._);
     } catch (err) {}
@@ -235,20 +237,22 @@ const convertAPIRecord = (rawRecord) => {
         drugs: [],
         startDate,
         completionDate,
-        locations: []
+        locations: [],
     };
+
     if (record.phase) {
         content.phases = record.phase;
     }
-    for (const {intervention_name: [name], intervention_type: [type]} of record.intervention || []) {
+
+    for (const { intervention_name: [name], intervention_type: [type] } of record.intervention || []) {
         if (type.toLowerCase() === 'drug' || type.toLowerCase() === 'biological') {
             content.drugs.push(name);
         }
     }
 
     for (const location of record.location || []) {
-        const {facility: [{address: [{country: [country], city: [city]}]}]} = location;
-        content.locations.push({country: country.toLowerCase(), city: city.toLowerCase()});
+        const { facility: [{ address: [{ country: [country], city: [city] }] }] } = location;
+        content.locations.push({ country: country.toLowerCase(), city: city.toLowerCase() });
     }
     return content;
 };
@@ -266,14 +270,17 @@ const convertDownloadedRecord = (record) => {
         sourceId: record.nct_id[0],
         url: record.url[0],
         name: record.title[0],
-        sourceIdVersion: standardizeDate(record.last_update_posted[0])
+        sourceIdVersion: standardizeDate(record.last_update_posted[0]),
     };
-    for (const {_: name, type: [rawType]} of record.interventions[0].intervention) {
+
+    for (const { _: name, type: [rawType] } of record.interventions[0].intervention) {
         const type = rawType.trim().toLowerCase();
+
         if (type === 'drug' || type === 'biological') {
             content.drugs.push(name);
         }
     }
+
     for (const raw of record.conditions[0].condition) {
         const disease = raw.trim().toLowerCase();
         content.diseases.push(disease);
@@ -284,11 +291,14 @@ const convertDownloadedRecord = (record) => {
 
 const processPhases = (phaseList) => {
     const phases = [];
+
     for (const raw of phaseList || []) {
         const cleanedPhaseList = raw.trim().toLowerCase().replace(/\bn\/a\b/, '').split(/[,/]/);
+
         for (const phase of cleanedPhaseList) {
             if (phase !== '' && phase !== 'not applicable') {
                 const match = /^(early )?phase (\d+)$/.exec(phase);
+
                 if (!match) {
                     throw new Error(`unrecognized phase description (${phase})`);
                 }
@@ -309,7 +319,7 @@ const processPhases = (phaseList) => {
  * @param {object|string} opt.source the 'source' record for clinicaltrials.gov
  */
 const processRecord = async ({
-    conn, record, source
+    conn, record, source,
 }) => {
     const content = {
         sourceId: record.sourceId,
@@ -317,9 +327,10 @@ const processRecord = async ({
         name: record.name,
         sourceIdVersion: record.sourceIdVersion,
         source: rid(source),
-        displayName: record.sourceId.toUpperCase()
+        displayName: record.sourceId.toUpperCase(),
     };
     const phase = processPhases(record.phases);
+
     if (phase) {
         content.phase = phase;
     }
@@ -332,7 +343,8 @@ const processRecord = async ({
     // check if single location or at least single country
     let consensusCountry,
         consensusCity;
-    for (const {city, country} of record.locations) {
+
+    for (const { city, country } of record.locations) {
         if (consensusCountry) {
             if (consensusCountry !== country.toLowerCase()) {
                 consensusCountry = null;
@@ -350,20 +362,23 @@ const processRecord = async ({
             consensusCity = city.toLowerCase();
         }
     }
+
     if (consensusCountry) {
         content.country = consensusCountry;
+
         if (consensusCity) {
             content.city = consensusCity;
         }
     }
 
     const links = [];
+
     for (const drug of record.drugs) {
         try {
             const intervention = await conn.getUniqueRecordBy({
                 target: 'Therapy',
-                filters: {name: drug},
-                sort: preferredDrugs
+                filters: { name: drug },
+                sort: preferredDrugs,
             });
             links.push(intervention);
         } catch (err) {
@@ -371,12 +386,13 @@ const processRecord = async ({
             logger.warn(err);
         }
     }
+
     for (const diseaseName of record.diseases) {
         try {
             const disease = await conn.getUniqueRecordBy({
                 target: 'Disease',
-                filters: {name: diseaseName},
-                sort: preferredDiseases
+                filters: { name: diseaseName },
+                sort: preferredDiseases,
             });
             links.push(disease);
         } catch (err) {
@@ -390,16 +406,16 @@ const processRecord = async ({
         content,
         existsOk: true,
         fetchFirst: true,
-        fetchConditions: convertRecordToQueryFilters(_.omit(content, ['sourceIdVersion'])) // if sourceIdVersion is the only thing different then don't update
+        fetchConditions: convertRecordToQueryFilters(_.omit(content, ['sourceIdVersion'])), // if sourceIdVersion is the only thing different then don't update
     });
 
     // link to the drugs and diseases
     for (const link of links) {
         await conn.addRecord({
             target: 'ElementOf',
-            content: {out: rid(link), in: rid(trialRecord), source: rid(source)},
+            content: { out: rid(link), in: rid(trialRecord), source: rid(source) },
             existsOk: true,
-            fetchExisting: false
+            fetchExisting: false,
         });
     }
     return trialRecord;
@@ -417,17 +433,18 @@ const fetchAndLoadById = async (conn, nctID) => {
     if (CACHE[nctID.toLowerCase()]) {
         return CACHE[nctID.toLowerCase()];
     }
+
     // try to get the record from the gkb db first
     try {
         const trial = await conn.getUniqueRecordBy({
             target: 'ClinicalTrial',
             filters: {
                 AND: [
-                    {source: {target: 'Source', filters: {name: SOURCE_DEFN.name}}},
-                    {sourceId: nctID}
-                ]
+                    { source: { target: 'Source', filters: { name: SOURCE_DEFN.name } } },
+                    { sourceId: nctID },
+                ],
             },
-            sort: orderPreferredOntologyTerms
+            sort: orderPreferredOntologyTerms,
         });
         CACHE[trial.sourceId] = trial;
         return trial;
@@ -437,23 +454,24 @@ const fetchAndLoadById = async (conn, nctID) => {
     const resp = await requestWithRetry({
         method: 'GET',
         uri: url,
-        qs: {displayxml: true},
-        headers: {Accept: 'application/xml'},
-        json: true
+        qs: { displayxml: true },
+        headers: { Accept: 'application/xml' },
+        json: true,
     });
     const result = await parseXmlToJson(resp);
+
     // get or add the source
     if (!CACHE.source) {
         CACHE.source = rid(await conn.addRecord({
             target: 'Source',
             content: SOURCE_DEFN,
-            existsOk: true
+            existsOk: true,
         }));
     }
     const trial = await processRecord({
         conn,
         record: convertAPIRecord(result),
-        source: CACHE.source
+        source: CACHE.source,
     });
     CACHE[trial.sourceId] = trial;
     return trial;
@@ -466,26 +484,27 @@ const fetchAndLoadById = async (conn, nctID) => {
  * @param {ApiConnection} opt.conn the GraphKB connection object
  * @param {string} opt.filename the path to the XML export
  */
-const uploadFile = async ({conn, filename}) => {
+const uploadFile = async ({ conn, filename }) => {
     logger.info(`loading: ${filename}`);
     const data = await loadXmlToJson(filename);
     const source = await conn.addRecord({
         target: 'Source',
         content: SOURCE_DEFN,
-        fetchConditions: {name: SOURCE_DEFN.name},
-        existsOk: true
+        fetchConditions: { name: SOURCE_DEFN.name },
+        existsOk: true,
     });
 
-    const {search_results: {study: records}} = data;
+    const { search_results: { study: records } } = data;
     logger.info(`loading ${records.length} records`);
     const counts = {
-        success: 0, error: 0
+        success: 0, error: 0,
     };
+
     for (const record of records) {
         try {
             const stdContent = convertDownloadedRecord(record);
             await processRecord({
-                conn, record: stdContent, source
+                conn, record: stdContent, source,
             });
             counts.success++;
         } catch (err) {
@@ -497,5 +516,5 @@ const uploadFile = async ({conn, filename}) => {
 };
 
 module.exports = {
-    uploadFile, SOURCE_DEFN, kb: true, fetchAndLoadById, convertAPIRecord
+    uploadFile, SOURCE_DEFN, kb: true, fetchAndLoadById, convertAPIRecord,
 };

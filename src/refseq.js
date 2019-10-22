@@ -2,9 +2,9 @@
  * Import the RefSeq transcripts, ignoring version numbers for now
  * @module importer/refseq
  */
-const {loadDelimToJson} = require('./util');
-const {rid} = require('./graphkb');
-const {logger} = require('./logging');
+const { loadDelimToJson } = require('./util');
+const { rid } = require('./graphkb');
+const { logger } = require('./logging');
 
 const _entrez = require('./entrez/gene');
 
@@ -13,7 +13,7 @@ const SOURCE_DEFN = {
     displayName: 'RefSeq',
     url: 'https://www.ncbi.nlm.nih.gov/refseq',
     usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
-    description: 'A comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.'
+    description: 'A comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.',
 };
 
 /**
@@ -26,14 +26,14 @@ const SOURCE_DEFN = {
  * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async (opt) => {
-    const {filename, conn} = opt;
+    const { filename, conn } = opt;
     const json = await loadDelimToJson(filename);
 
     const source = await conn.addRecord({
         target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
-        fetchConditions: {name: SOURCE_DEFN.name}
+        fetchConditions: { name: SOURCE_DEFN.name },
     });
     logger.log('info', `Loading ${json.length} gene records`);
 
@@ -42,7 +42,7 @@ const uploadFile = async (opt) => {
     await _entrez.fetchAndLoadByIds(conn, json.map(rec => rec.GeneID));
 
     for (let i = 0; i < json.length; i++) {
-        const {RNA, GeneID, Protein} = json[i];
+        const { RNA, GeneID, Protein } = json[i];
         logger.info(`processing (${i} / ${json.length}) ${RNA}`);
 
         // Load the RNA
@@ -50,32 +50,32 @@ const uploadFile = async (opt) => {
         const general = await conn.addRecord({
             target: 'Feature',
             content: {
-                biotype: 'transcript', source: rid(source), sourceId: rnaName, sourceIdVersion: null
+                biotype: 'transcript', source: rid(source), sourceId: rnaName, sourceIdVersion: null,
             },
-            existsOk: true
+            existsOk: true,
         });
         const versioned = await conn.addRecord({
             target: 'Feature',
             content: {
-                biotype: 'transcript', source: rid(source), sourceId: rnaName, sourceIdVersion: rnaVersion
+                biotype: 'transcript', source: rid(source), sourceId: rnaName, sourceIdVersion: rnaVersion,
             },
-            existsOk: true
+            existsOk: true,
         });
         // make the general an alias of the versioned
         await conn.addRecord({
             target: 'generalizationof',
-            content: {out: rid(general), in: rid(versioned), source: rid(source)},
+            content: { out: rid(general), in: rid(versioned), source: rid(source) },
             existsOk: true,
-            fetchExisting: false
+            fetchExisting: false,
         });
 
         try {
             const [hgnc] = await _entrez.fetchAndLoadByIds(conn, [GeneID]);
             await conn.addRecord({
                 target: 'elementof',
-                content: {out: rid(general), in: rid(hgnc), source: rid(source)},
+                content: { out: rid(general), in: rid(hgnc), source: rid(source) },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
         } catch (err) {
             logger.log('error', `failed cross-linking from ${general.sourceId} to ${GeneID}`);
@@ -88,16 +88,16 @@ const uploadFile = async (opt) => {
             const generalProtein = await conn.addRecord({
                 target: 'Feature',
                 content: {
-                    biotype: 'protein', source: rid(source), sourceId: proteinName, sourceIdVersion: null
+                    biotype: 'protein', source: rid(source), sourceId: proteinName, sourceIdVersion: null,
                 },
-                existsOk: true
+                existsOk: true,
             });
             const versionedProtein = await conn.addRecord({
                 target: 'Feature',
                 content: {
-                    biotype: 'protein', source: rid(source), sourceId: proteinName, sourceIdVersion: proteinVersion
+                    biotype: 'protein', source: rid(source), sourceId: proteinName, sourceIdVersion: proteinVersion,
                 },
-                existsOk: true
+                existsOk: true,
             });
             // make the general an alias of the versioned
             await conn.addRecord({
@@ -105,10 +105,10 @@ const uploadFile = async (opt) => {
                 content: {
                     out: rid(generalProtein),
                     in: rid(versionedProtein),
-                    source: rid(source)
+                    source: rid(source),
                 },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
 
             await conn.addRecord({
@@ -116,10 +116,10 @@ const uploadFile = async (opt) => {
                 content: {
                     out: rid(generalProtein),
                     in: rid(general),
-                    source: rid(source)
+                    source: rid(source),
                 },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
 
             await conn.addRecord({
@@ -127,13 +127,13 @@ const uploadFile = async (opt) => {
                 content: {
                     out: rid(versionedProtein),
                     in: rid(versioned),
-                    source: rid(source)
+                    source: rid(source),
                 },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
         }
     }
 };
 
-module.exports = {uploadFile, SOURCE_DEFN};
+module.exports = { uploadFile, SOURCE_DEFN };

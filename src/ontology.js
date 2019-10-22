@@ -8,11 +8,11 @@ const Ajv = require('ajv');
 const fs = require('fs');
 const jsonpath = require('jsonpath');
 
-const {schema, schema: {schema: kbSchema}} = require('@bcgsc/knowledgebase-schema');
+const { schema, schema: { schema: kbSchema } } = require('@bcgsc/knowledgebase-schema');
 
 
-const {logger} = require('./logging');
-const {rid} = require('./graphkb');
+const { logger } = require('./logging');
+const { rid } = require('./graphkb');
 
 const ajv = new Ajv();
 
@@ -22,32 +22,32 @@ const INPUT_ERROR_CODE = 2;
 const validateSpec = ajv.compile({
     type: 'object',
     properties: {
-        defaultNameToSourceId: {type: 'boolean'},
+        defaultNameToSourceId: { type: 'boolean' },
         source: {
             type: 'object',
             required: ['name'],
             properties: {
-                name: {type: 'string', minLength: 1},
-                usage: {type: 'string', format: 'uri'},
-                version: {type: 'string'},
-                description: {type: 'string'},
-                url: {type: 'string', format: 'uri'}
-            }
+                name: { type: 'string', minLength: 1 },
+                usage: { type: 'string', format: 'uri' },
+                version: { type: 'string' },
+                description: { type: 'string' },
+                url: { type: 'string', format: 'uri' },
+            },
         },
         class: {
             type: 'string',
-            enum: kbSchema.Ontology.descendantTree(true).map(model => model.name)
+            enum: kbSchema.Ontology.descendantTree(true).map(model => model.name),
         },
         records: {
             type: 'object',
             additionalProperties: {
                 type: 'object',
                 properties: {
-                    name: {type: 'string'},
-                    sourceIdVersion: {type: 'string'},
-                    url: {type: 'string', format: 'uri'},
-                    description: {type: 'string'},
-                    comment: {type: 'string'},
+                    name: { type: 'string' },
+                    sourceIdVersion: { type: 'string' },
+                    url: { type: 'string', format: 'uri' },
+                    description: { type: 'string' },
+                    comment: { type: 'string' },
                     // edges
                     links: {
                         type: 'array',
@@ -55,16 +55,16 @@ const validateSpec = ajv.compile({
                             type: 'object',
                             required: ['class', 'target'],
                             properties: {
-                                class: {type: 'string', enum: schema.getEdgeModels().map(e => e.name)},
-                                target: {type: 'string', minLength: 1},
-                                additionalProperties: false
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+                                class: { type: 'string', enum: schema.getEdgeModels().map(e => e.name) },
+                                target: { type: 'string', minLength: 1 },
+                                additionalProperties: false,
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
 });
 
 
@@ -75,8 +75,9 @@ const validateSpec = ajv.compile({
  * @param {string} opt.data the JSON data to be loaded
  * @param {ApiConnection} opt.conn the graphKB api connection
  */
-const uploadFromJSON = async ({data, conn}) => {
-    const counts = {success: 0, errors: 0, skipped: 0};
+const uploadFromJSON = async ({ data, conn }) => {
+    const counts = { success: 0, errors: 0, skipped: 0 };
+
     // validate that it follows the expected pattern
     if (!validateSpec(data)) {
         logger.error(
@@ -86,28 +87,32 @@ const uploadFromJSON = async ({data, conn}) => {
                 validateSpec.errors[0].message
             } found ${
                 jsonpath.query(data, `$${validateSpec.errors[0].dataPath}`)
-            }`
+            }`,
         );
         process.exit(INPUT_ERROR_CODE);
     }
     // build the specification for checking records
     // check that all the keys make sense for linking
     const {
-        records, source, class: recordClass, defaultNameToSourceId
+        records, source, class: recordClass, defaultNameToSourceId,
     } = data;
+
     for (const sourceId of Object.keys(records)) {
         const record = records[sourceId];
         record.sourceId = sourceId;
+
         if (!record.name && defaultNameToSourceId) {
             record.name = sourceId;
         }
-        for (const {target, class: edgeClass} of record.links || []) {
+
+        for (const { target, class: edgeClass } of record.links || []) {
             if (records[target] === undefined) {
                 logger.log('error', `Invalid link (${edgeClass}) from ${sourceId} to undefined record ${target}`);
                 counts.errors++;
             }
         }
     }
+
     if (counts.errors) {
         logger.log('error', 'There are errors in the JSON file, will not attempt to upload');
         process.exit(INPUT_ERROR_CODE);
@@ -115,12 +120,13 @@ const uploadFromJSON = async ({data, conn}) => {
 
     // try to create/fetch the source record
     let sourceRID;
+
     try {
         sourceRID = rid(await conn.addRecord({
             target: 'Source',
             content: source,
             existsOk: true,
-            fetchConditions: {name: source.name}
+            fetchConditions: { name: source.name },
         }));
     } catch (err) {
         console.error(err);
@@ -131,12 +137,13 @@ const uploadFromJSON = async ({data, conn}) => {
     const dbRecords = {}; // store the created/fetched records from the db
     // try to create all the records
     logger.log('info', 'creating the records');
-    for (const {links, ...record} of Object.values(records)) {
+
+    for (const { links, ...record } of Object.values(records)) {
         try {
             const dbRecord = await conn.addRecord({
                 target: recordClass,
-                content: {...record, source: sourceRID},
-                existsOk: true
+                content: { ...record, source: sourceRID },
+                existsOk: true,
             });
             dbRecords[record.sourceId] = rid(dbRecord);
             counts.success++;
@@ -147,18 +154,20 @@ const uploadFromJSON = async ({data, conn}) => {
     }
     // try to create all the links
     logger.log('info', 'creating the record links');
-    for (const {links = [], sourceId} of Object.values(records)) {
-        for (const {class: edgeType, target} of links) {
+
+    for (const { links = [], sourceId } of Object.values(records)) {
+        for (const { class: edgeType, target } of links) {
             if (dbRecords[target] === undefined || dbRecords[sourceId] === undefined) {
                 counts.skipped++;
                 continue;
             }
+
             try {
                 await conn.addRecord({
                     target: edgeType,
-                    content: {out: dbRecords[sourceId], in: dbRecords[target], source: sourceRID},
+                    content: { out: dbRecords[sourceId], in: dbRecords[target], source: sourceRID },
                     existsOk: true,
-                    fetchExisting: false
+                    fetchExisting: false,
                 });
                 counts.success++;
             } catch (err) {
@@ -179,12 +188,12 @@ const uploadFromJSON = async ({data, conn}) => {
  * @param {string} opt.filename the path to the JSON input file
  * @param {ApiConnection} opt.conn the graphKB api connection
  */
-const uploadFile = async ({filename, conn}) => {
+const uploadFile = async ({ filename, conn }) => {
     logger.log('info', `reading: ${filename}`);
     const data = JSON.parse(fs.readFileSync(filename));
 
-    await uploadFromJSON({data, conn});
+    await uploadFromJSON({ data, conn });
 };
 
 
-module.exports = {uploadFile, uploadFromJSON};
+module.exports = { uploadFile, uploadFromJSON };

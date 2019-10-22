@@ -13,18 +13,19 @@ const transports = [
     new winston.transports.Console({
         level: GKB_LOG_LEVEL,
         timestamp: true,
-        colorize: true
-    })
+        colorize: true,
+    }),
 ];
 
 let logfile = null;
+
 if (process.env.GKB_LOG_DIR) {
     logfile = path.join(process.env.GKB_LOG_DIR, `${process.env.npm_package_name}-%DATE%-${process.pid}.log`);
     const transport = new DailyRotateFile({
         level: GKB_LOG_LEVEL,
         filename: logfile,
         maxFiles: `${process.env.GKB_LOG_MAX_FILES || 14}d`, // remove logs more than 2 weeks old
-        timestamp: true
+        timestamp: true,
     });
     transports.push(transport);
 }
@@ -36,8 +37,8 @@ const logger = winston.createLogger({
     transports,
     format: winston.format.combine(
         winston.format.timestamp(),
-        logFormat
-    )
+        logFormat,
+    ),
 });
 
 
@@ -52,4 +53,4 @@ if (logfile) {
     logger.log('info', `writing logs to ${getFilename()}`);
 }
 
-module.exports = {logger, getFilename};
+module.exports = { logger, getFilename };

@@ -4,12 +4,12 @@
 const Ajv = require('ajv');
 
 const {
-    checkSpec, requestWithRetry
+    checkSpec, requestWithRetry,
 } = require('./util');
 const {
-    rid, generateCacheKey
+    rid, generateCacheKey,
 } = require('./graphkb');
-const {logger} = require('./logging');
+const { logger } = require('./logging');
 
 const ajv = new Ajv();
 
@@ -17,18 +17,18 @@ const recordSpec = ajv.compile({
     type: 'object',
     required: ['molecule_chembl_id'],
     properties: {
-        molecule_chembl_id: {type: 'string', pattern: '^CHEMBL\\d+$'},
-        pref_name: {type: ['string', 'null']},
-        usan_stem_definition: {type: ['string', 'null']},
+        molecule_chembl_id: { type: 'string', pattern: '^CHEMBL\\d+$' },
+        pref_name: { type: ['string', 'null'] },
+        usan_stem_definition: { type: ['string', 'null'] },
         molecule_properties: {
             oneOf: [{
                 type: 'object',
                 properties: {
-                    full_molformula: {type: 'string'}
-                }
-            }, {type: 'null'}]
-        }
-    }
+                    full_molformula: { type: 'string' },
+                },
+            }, { type: 'null' }],
+        },
+    },
 });
 
 const SOURCE_DEFN = {
@@ -36,7 +36,7 @@ const SOURCE_DEFN = {
     displayName: 'ChEMBL',
     description: 'ChEMBL is a manually curated database of bioactive molecules with drug-like properties. It brings together chemical, bioactivity and genomic data to aid the translation of genomic information into effective new drugs.',
     url: 'https://www.ebi.ac.uk/chembl',
-    usage: 'https://creativecommons.org/licenses/by-sa/3.0'
+    usage: 'https://creativecommons.org/licenses/by-sa/3.0',
 };
 
 const API = 'https://www.ebi.ac.uk/chembl/api/data/molecule';
@@ -50,21 +50,23 @@ const CACHE = {};
  * @param {string} drugId
  */
 const fetchAndLoadById = async (conn, drugId) => {
-    const cacheKey = generateCacheKey({sourceId: drugId});
+    const cacheKey = generateCacheKey({ sourceId: drugId });
+
     if (CACHE[cacheKey]) {
         return CACHE[cacheKey];
     }
     logger.info(`loading: ${API}/${drugId}`);
     const chemblRecord = await requestWithRetry({
         uri: `${API}/${drugId}`,
-        json: true
+        json: true,
     });
     checkSpec(recordSpec, chemblRecord);
+
     if (!CACHE.SOURCE) {
         CACHE.SOURCE = await conn.addRecord({
             target: 'Source',
             content: SOURCE_DEFN,
-            existsOk: true
+            existsOk: true,
         });
     }
     const source = rid(CACHE.SOURCE);
@@ -72,7 +74,7 @@ const fetchAndLoadById = async (conn, drugId) => {
     const content = {
         source,
         sourceId: chemblRecord.molecule_chembl_id,
-        name: chemblRecord.pref_name
+        name: chemblRecord.pref_name,
     };
 
     if (content.name) {
@@ -88,11 +90,12 @@ const fetchAndLoadById = async (conn, drugId) => {
     const record = await conn.addRecord({
         target: 'Therapy',
         content,
-        fetchConditions: {source, sourceId: content.sourceId, name: content.name},
-        existsOk: true
+        fetchConditions: { source, sourceId: content.sourceId, name: content.name },
+        existsOk: true,
     });
 
     CACHE[cacheKey] = record;
+
     if (chemblRecord.usan_stem_definition) {
         try {
             const parent = await conn.addRecord({
@@ -101,9 +104,9 @@ const fetchAndLoadById = async (conn, drugId) => {
                     source,
                     sourceId: chemblRecord.usan_stem_definition,
                     name: chemblRecord.usan_stem_definition,
-                    comment: 'usan stem definition'
+                    comment: 'usan stem definition',
                 },
-                existsOk: true
+                existsOk: true,
             });
 
             await conn.addRecord({
@@ -111,9 +114,9 @@ const fetchAndLoadById = async (conn, drugId) => {
                 content: {
                     source,
                     out: rid(record),
-                    in: rid(parent)
+                    in: rid(parent),
                 },
-                existsOk: true
+                existsOk: true,
             });
         } catch (err) {}
     }
@@ -126,17 +129,18 @@ const preLoadCache = async (api) => {
         target: 'Therapy',
         filters: {
             AND: [
-                {source: {target: 'Source', filters: {name: SOURCE_DEFN.name}}},
-                {dependency: null},
-                {deprecated: false}
-            ]
-        }
+                { source: { target: 'Source', filters: { name: SOURCE_DEFN.name } } },
+                { dependency: null },
+                { deprecated: false },
+            ],
+        },
     });
 
     const dups = new Set();
 
     for (const record of records) {
         const cacheKey = generateCacheKey(record);
+
         if (CACHE[cacheKey]) {
             // duplicate
             dups.add(cacheKey);
@@ -153,5 +157,5 @@ const preLoadCache = async (api) => {
 module.exports = {
     fetchAndLoadById,
     SOURCE_DEFN,
-    preLoadCache
+    preLoadCache,
 };

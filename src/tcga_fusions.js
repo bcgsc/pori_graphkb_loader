@@ -1,9 +1,9 @@
 const readXlsxFile = require('read-excel-file/node');
 const fs = require('fs');
 
-const {logger} = require('./logging');
-const {convertRowFields} = require('./util');
-const {rid, preferredDiseases} = require('./graphkb');
+const { logger } = require('./logging');
+const { convertRowFields } = require('./util');
+const { rid, preferredDiseases } = require('./graphkb');
 const _entrezGene = require('./entrez/gene');
 const _pubmed = require('./entrez/pubmed');
 
@@ -22,16 +22,17 @@ const DISEASE_CODES = {
     OV: 'Ovarian serous cystadenocarcinoma',
     SKCM: 'cutaneous melanoma',
     THCA: 'Thyroid carcinoma',
-    PRAD: 'Prostate adenocarcinoma'
+    PRAD: 'Prostate adenocarcinoma',
 };
 
 
-const parseRecurrentFusions = async ({conn, filename, publication}) => {
+const parseRecurrentFusions = async ({ conn, filename, publication }) => {
     logger.info(`loading: ${filename} (Table S7)`);
-    const rawData = await readXlsxFile(filename, {sheet: 'Table S7'});
+    const rawData = await readXlsxFile(filename, { sheet: 'Table S7' });
     const [, header] = rawData;
     const rows = rawData.slice(2).map((values) => {
         const row = {};
+
         for (let i = 0; i < header.length; i++) {
             row[header[i]] = values[i];
         }
@@ -39,7 +40,7 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
     });
     const specificityCol = 'Specific to a single tumor type';
     const errorList = [];
-    const counts = {error: 0, skip: 0, success: 0};
+    const counts = { error: 0, skip: 0, success: 0 };
 
     const diseaseMap = {};
 
@@ -49,25 +50,26 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
         target: 'Disease',
         filters: {
             OR: [
-                {sourceId: 'cancer'},
-                {name: 'cancer'}
-            ]
+                { sourceId: 'cancer' },
+                { name: 'cancer' },
+            ],
         },
-        sort: preferredDiseases
+        sort: preferredDiseases,
     }));
 
     for (const code of Object.keys(DISEASE_CODES)) {
         logger.info(`retrieving disease for code (${code})`);
+
         try {
             const disease = rid(await conn.getUniqueRecordBy({
                 target: 'Disease',
                 filters: {
                     OR: [
-                        {sourceId: DISEASE_CODES[code]},
-                        {name: DISEASE_CODES[code]}
-                    ]
+                        { sourceId: DISEASE_CODES[code] },
+                        { name: DISEASE_CODES[code] },
+                    ],
                 },
-                sort: preferredDiseases
+                sort: preferredDiseases,
             }));
             diseaseMap[code] = disease;
         } catch (err) {
@@ -87,6 +89,7 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
 
         let diseaseCode = null,
             disease = cancer;
+
         for (const col of Object.keys(row)) {
             if (!['FusionPair', specificityCol, 'Total'].includes(col) && row.Total === row[col]) {
                 // disease count column
@@ -111,9 +114,9 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
                 content: {
                     reference1: rid(reference1),
                     reference2: rid(reference2),
-                    type: fusion
+                    type: fusion,
                 },
-                existsOk: true
+                existsOk: true,
             }));
             await conn.addRecord({
                 target: 'Statement',
@@ -121,15 +124,15 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
                     conditions: [variant, disease],
                     evidence: [publication],
                     relevance,
-                    subject: disease
+                    subject: disease,
                 },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
 
             counts.success++;
         } catch (err) {
-            errorList.push({record: row, error: err.toString()});
+            errorList.push({ record: row, error: err.toString() });
             logger.error(err);
             counts.error++;
         }
@@ -138,11 +141,11 @@ const parseRecurrentFusions = async ({conn, filename, publication}) => {
 };
 
 
-const parseKinaseFusions = async ({conn, filename, publication}) => {
+const parseKinaseFusions = async ({ conn, filename, publication }) => {
     logger.info(`loading: ${filename} (Table S11)`);
-    const counts = {error: 0, success: 0, skip: 0};
+    const counts = { error: 0, success: 0, skip: 0 };
     const errorList = [];
-    const rawData = await readXlsxFile(filename, {sheet: 'Table S11'});
+    const rawData = await readXlsxFile(filename, { sheet: 'Table S11' });
     const [, header] = rawData;
     const headerMap = {
         geneA: 'GeneID_A',
@@ -151,10 +154,11 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
         kinaseB: 'Kinase.B',
         break1: 'Junction_A',
         break2: 'Junction_B',
-        disease: 'Cancer'
+        disease: 'Cancer',
     };
     const rows = rawData.slice(2).map((values) => {
         const row = {};
+
         for (let i = 0; i < header.length; i++) {
             row[header[i]] = values[i];
         }
@@ -166,12 +170,14 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
 
     for (const row of rows) {
         logger.info(`processing (${row.geneA},${row.geneB}):(g.${row.break1},g.${row.break2})`);
+
         if (row.kinaseA === row.kinaseB) {
-            errorList.push({record: row, error: 'skipping: cannot determine kinase partner'});
+            errorList.push({ record: row, error: 'skipping: cannot determine kinase partner' });
             logger.info('skipping: cannot determine kinase partner');
             counts.skip++;
             continue;
         }
+
         try {
             const [geneA] = await _entrezGene.fetchAndLoadByIds(conn, [row.geneA]);
             const [geneB] = await _entrezGene.fetchAndLoadByIds(conn, [row.geneB]);
@@ -180,11 +186,11 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
                 target: 'Disease',
                 filters: {
                     OR: [
-                        {sourceId: DISEASE_CODES[row.disease]},
-                        {name: DISEASE_CODES[row.disease]}
-                    ]
+                        { sourceId: DISEASE_CODES[row.disease] },
+                        { name: DISEASE_CODES[row.disease] },
+                    ],
                 },
-                sort: preferredDiseases
+                sort: preferredDiseases,
             }));
 
             const variant = rid(await conn.addVariant({
@@ -192,14 +198,14 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
                 content: {
                     reference1: rid(geneA),
                     reference2: rid(geneB),
-                    break1Start: {'@class': 'GenomicPosition', pos: row.break1},
-                    break2Start: {'@class': 'GenomicPosition', pos: row.break2},
+                    break1Start: { '@class': 'GenomicPosition', pos: row.break1 },
+                    break2Start: { '@class': 'GenomicPosition', pos: row.break2 },
                     break1Repr: `g.${row.break1}`,
                     break2Repr: `g.${row.break2}`,
                     type: fusion,
-                    displayName: `(${geneA.displayName},${geneB.displayName}):fusion(g.${row.break1},g.${row.break2})`
+                    displayName: `(${geneA.displayName},${geneB.displayName}):fusion(g.${row.break1},g.${row.break2})`,
                 },
-                existsOk: true
+                existsOk: true,
             }));
             await conn.addRecord({
                 target: 'Statement',
@@ -209,15 +215,15 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
                     relevance,
                     subject: row.kinaseA === 'yes'
                         ? rid(geneA)
-                        : rid(geneB)
+                        : rid(geneB),
                 },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
 
             counts.success++;
         } catch (err) {
-            errorList.push({record: row, error: err.toString()});
+            errorList.push({ record: row, error: err.toString() });
             logger.error(err);
             counts.error++;
         }
@@ -226,16 +232,16 @@ const parseKinaseFusions = async ({conn, filename, publication}) => {
     return errorList;
 };
 
-const uploadFile = async ({conn, filename, errorLogPrefix}) => {
+const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
     logger.info('retrieve the publication');
     const publication = rid((await _pubmed.fetchAndLoadByIds(conn, ['25500544']))[0]);
     const errorList = [];
-    errorList.push(...await parseKinaseFusions({conn, filename, publication}));
-    errorList.push(...await parseRecurrentFusions({conn, filename, publication}));
+    errorList.push(...await parseKinaseFusions({ conn, filename, publication }));
+    errorList.push(...await parseRecurrentFusions({ conn, filename, publication }));
 
     const errorJson = `${errorLogPrefix}-tcgaFusions.json`;
     logger.info(`writing: ${errorJson}`);
-    fs.writeFileSync(errorJson, JSON.stringify({records: errorList}, null, 2));
+    fs.writeFileSync(errorJson, JSON.stringify({ records: errorList }, null, 2));
 };
 
-module.exports = {SOURCE_DEFN: {}, uploadFile, kb: true};
+module.exports = { SOURCE_DEFN: {}, uploadFile, kb: true };
