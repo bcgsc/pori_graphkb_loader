@@ -170,7 +170,7 @@ const uploadFile = async ({filename, conn}) => {
             }
             try {
                 const ncitRecord = await conn.getUniqueRecordBy({
-                    target: 'AnatomicalEntities',
+                    target: 'AnatomicalEntity',
                     filters: {
                         AND: [
                             {source: {target: 'Source', filters: {name: ncitName}}},

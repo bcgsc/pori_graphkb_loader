@@ -211,7 +211,7 @@ const processVariants = async ({conn, row, source}) => {
         });
         const type = await conn.getVocabularyTerm(parsed.type);
         genomicVariant = await conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...parsed, reference1, type},
             existsOk: true
         });
@@ -222,7 +222,7 @@ const processVariants = async ({conn, row, source}) => {
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         const type = await conn.getVocabularyTerm(parsed.type);
         proteinVariant = await conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...parsed, reference1: rid(reference1), type},
             existsOk: true
         });
@@ -236,7 +236,7 @@ const processVariants = async ({conn, row, source}) => {
         });
         const type = await conn.getVocabularyTerm(parsed.type);
         cdsVariant = await conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...parsed, reference1, type},
             existsOk: true
         });
@@ -246,7 +246,7 @@ const processVariants = async ({conn, row, source}) => {
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         const type = await conn.getVocabularyTerm(parsed.type);
         exonicVariant = await conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...parsed, reference1: rid(reference1), type},
             existsOk: true
         });
@@ -255,7 +255,7 @@ const processVariants = async ({conn, row, source}) => {
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         const type = rid(await conn.getVocabularyTerm(variantType));
         categoryVariant = await conn.addVariant({
-            target: 'categoryvariants',
+            target: 'CategoryVariant',
             content: {type, reference1: rid(reference1)},
             existsOk: true
         });
@@ -310,7 +310,7 @@ const processRow = async ({row, source, conn}) => {
     ));
 
     const level = rid(await conn.getUniqueRecordBy({
-        target: 'evidencelevels',
+        target: 'EvidenceLevel',
         filters: {AND: [{name: row.evidenceLevel}, {source: rid(source)}]}
     }));
 

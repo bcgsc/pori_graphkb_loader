@@ -108,7 +108,7 @@ const fetchAndLoadByIds = async (api, idListIn) => {
     const result = await Promise.all(records.map(
         async record => uploadRecord(api, record, {
             cache: CACHE,
-            target: 'features',
+            target: 'Feature',
             sourceDefn: SOURCE_DEFN
         })
     ));

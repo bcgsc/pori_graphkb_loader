@@ -225,7 +225,7 @@ const uploadFile = async ({filename, conn}) => {
 
     const doVersion = parseDoVersion(DOID.graphs[0].meta.version);
     let source = await conn.addRecord({
-        target: 'sources',
+        target: 'Source',
         content: {
             ...SOURCE_DEFN,
             version: doVersion

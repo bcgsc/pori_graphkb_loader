@@ -58,7 +58,7 @@ const fetchAndLoadGeneByIds = async (api, idListIn) => util.fetchAndLoadByIds(
         dbName: DB_NAME,
         parser: parseRecord,
         cache: CACHE,
-        target: 'features',
+        target: 'Feature',
         sourceDefn: SOURCE_DEFN,
         MAX_CONSEC
     }
@@ -81,7 +81,7 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
             dbName: DB_NAME,
             parser: parseRecord,
             cache: CACHE,
-            target: 'features',
+            target: 'Feature',
             sourceDefn: SOURCE_DEFN,
             MAX_CONSEC
         }
@@ -95,7 +95,7 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
                 dbName: DB_NAME,
                 parser: parseRecord,
                 cache: CACHE,
-                target: 'features',
+                target: 'Feature',
                 sourceDefn: SOURCE_DEFN,
                 MAX_CONSEC
             }

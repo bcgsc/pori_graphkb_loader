@@ -518,13 +518,13 @@ const processVariant = async (conn, variant) => {
         }
 
         return conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content,
             existsOk: true
         });
     }
     return conn.addVariant({
-        target: 'categoryvariants',
+        target: 'CategoryVariant',
         content: {
             ...variant,
             reference1,
@@ -694,14 +694,14 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
         }
         if (record.createdBy && users[record.createdBy] === undefined) {
             users[record.createdBy] = rid(await conn.addRecord({
-                target: 'users',
+                target: 'User',
                 content: {name: record.createdBy},
                 existsOk: true
             }));
         }
         if (record.reviewedBy && users[record.reviewedBy] === undefined) {
             users[record.reviewedBy] = rid(await conn.addRecord({
-                target: 'users',
+                target: 'User',
                 content: {name: record.reviewedBy},
                 existsOk: true
             }));

@@ -110,7 +110,7 @@ const processVariants = async ({conn, record, source}) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         genomicVariant = rid(await conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...variant},
             existsOk: true
         }));
@@ -137,7 +137,7 @@ const processVariants = async ({conn, record, source}) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         proteinVariant = rid(await conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...variant},
             existsOk: true
         }));
@@ -174,7 +174,7 @@ const processVariants = async ({conn, record, source}) => {
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
 
         cdsVariant = rid(await conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...variant},
             existsOk: true
         }));

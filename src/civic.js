@@ -365,7 +365,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
             body.reference2 = rid(reference2);
         }
         const variant = await conn.addVariant({
-            target: 'categoryvariants',
+            target: 'CategoryVariant',
             content: body,
             existsOk: true
         });
@@ -390,7 +390,7 @@ const processVariantRecord = async ({conn, variantRec, feature}) => {
             parsed.reference2 = rid(reference2);
         }
         const variant = await conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content: parsed,
             existsOk: true
         });

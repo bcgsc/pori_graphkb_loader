@@ -454,7 +454,7 @@ class ApiConnection {
     async addVariant(opt) {
         const {
             content,
-            endpoint
+            target
         } = opt;
         const fetchConditions = {
             zygosity: null,
@@ -462,7 +462,7 @@ class ApiConnection {
             reference2: null
         };
 
-        if (endpoint === 'positionalvariants') {
+        if (target === 'PositionalVariant') {
             Object.assign(fetchConditions, {
                 untemplatedSeq: null,
                 refSeq: null,
@@ -509,7 +509,7 @@ class ApiConnection {
             const sourceId = elements.map(e => e.sourceId).sort().join(' + ');
             const name = elements.map(e => e.name).sort().join(' + ');
             const combinedTherapy = await this.addRecord({
-                target: 'therapies',
+                target: 'Therapy',
                 content: {sourceId, name, source: rid(source)},
                 existsOk: true
             });

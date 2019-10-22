@@ -256,7 +256,7 @@ const processVariant = async (conn, {
         variantType = type;
     try {
         variantType = await getVocabulary(conn, variantType);
-        variantUrl = 'categoryvariants';
+        variantUrl = 'CategoryVariant';
         variant = {};
     } catch (err) {}
 
@@ -272,7 +272,7 @@ const processVariant = async (conn, {
             throw err;
         }
 
-        variantUrl = 'positionalvariants';
+        variantUrl = 'PositionalVariant';
         try {
             variantType = await getVocabulary(conn, variant.type);
         } catch (err) {
@@ -311,7 +311,7 @@ const processVariant = async (conn, {
             parsed.reference1 = rid(reference1);
             parsed.type = rid(await getVocabulary(conn, parsed.type));
             const altVariant = rid(await conn.addVariant({
-                target: 'positionalvariants',
+                target: 'PositionalVariant',
                 content: parsed,
                 existsOk: true
             }));

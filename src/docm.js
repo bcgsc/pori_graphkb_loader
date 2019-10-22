@@ -172,7 +172,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
         } = variantParser(parseDocmVariant(aminoAcid), false);
         const type = await conn.getVocabularyTerm(variant.type);
         protein = variant = await conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...variant, type, reference1: rid(reference1)},
             existsOk: true
         });
@@ -203,7 +203,7 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
             sortFunc: orderPreferredOntologyTerms
         });
         genomic = variant = await conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {
                 ...variant, type, reference1: rid(reference1), assembly: assembly.toLowerCase().trim()
             },

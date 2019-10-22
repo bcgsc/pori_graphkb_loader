@@ -64,7 +64,7 @@ const processVariants = async ({conn, record, source}) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         protein = rid(await conn.addVariant({
-            target: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {...variant},
             existsOk: true
         }));
