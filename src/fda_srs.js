@@ -12,6 +12,7 @@ const { logger } = require('./logging');
 
 const SOURCE_DEFN = {
     displayName: 'FDA-SRS',
+    sort: 3,
     name: 'fda srs',
     longName: 'FDA Substance Registration System',
     url: 'https://fdasis.nlm.nih.gov/srs',

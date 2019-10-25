@@ -13,6 +13,7 @@ const { logger } = require('./logging');
 
 const SOURCE_DEFN = {
     displayName: 'NCIt',
+    sort: 2,
     longName: 'NCI Thesaurus',
     url: 'https://ncit.nci.nih.gov/ncitbrowser',
     usage: 'https://creativecommons.org/licenses/by/4.0',

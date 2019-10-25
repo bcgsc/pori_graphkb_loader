@@ -19,6 +19,7 @@ const ajv = new Ajv();
 
 const SOURCE_DEFN = {
     displayName: 'DrugBank',
+    sort: 0,
     name: 'drugbank',
     usage: 'https://creativecommons.org/licenses/by-nc/4.0/legalcode',
     url: 'https://www.drugbank.ca',

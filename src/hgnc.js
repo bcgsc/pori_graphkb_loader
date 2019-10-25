@@ -24,6 +24,7 @@ const SOURCE_DEFN = {
     longName: 'HUGO Gene Nomenclature Committee',
     displayName: 'HGNC',
     usage: 'https://www.ebi.ac.uk/about/terms-of-use',
+    sort: 2,
     description: `
         The HGNC is responsible for approving unique symbols and names for human loci, including
         protein coding genes, ncRNA genes and pseudogenes, to allow unambiguous scientific

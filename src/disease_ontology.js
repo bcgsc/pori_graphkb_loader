@@ -13,6 +13,7 @@ const { SOURCE_DEFN: { name: ncitName } } = require('./ncit');
 
 const SOURCE_DEFN = {
     displayName: 'Disease Ontology',
+    sort: 1,
     name: 'disease ontology',
     longName: 'Human Disease Ontology',
     url: 'http://disease-ontology.org',

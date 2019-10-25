@@ -24,6 +24,7 @@ const { logger } = require('./logging');
 
 const SOURCE_DEFN = {
     name: 'oncokb',
+    sort: 4, // 4th preferred drug ontology
     description: 'OncoKB is a precision oncology knowledge base and contains information about the effects and treatment implications of specific cancer gene alterations. It is developed and maintained by the Knowledge Systems group in the Marie Josée and Henry R. Kravis Center for Molecular Oncology at Memorial Sloan Kettering Cancer Center (MSK), in partnership with Quest Diagnostics and Watson for Genomics, IBM.',
     usage: 'https://oncokb.org/terms',
     url: 'https://oncokb.org',

@@ -34,6 +34,7 @@ const SOURCE_DEFN = {
     name: _hgnc.ensemblSourceName, // avoid circular dependencies
     usage: 'https://uswest.ensembl.org/info/about/legal/disclaimer.html',
     url: 'https://uswest.ensembl.org',
+    sort: 3,
     description: 'Ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. Ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. Ensembl tools include BLAST, BLAT, BioMart and the Variant Effect Predictor (VEP) for all supported species.',
 };
 

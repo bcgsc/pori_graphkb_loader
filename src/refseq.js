@@ -11,6 +11,7 @@ const _entrez = require('./entrez/gene');
 const SOURCE_DEFN = {
     name: 'refseq',
     displayName: 'RefSeq',
+    sort: 4,
     url: 'https://www.ncbi.nlm.nih.gov/refseq',
     usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
     description: 'A comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.',

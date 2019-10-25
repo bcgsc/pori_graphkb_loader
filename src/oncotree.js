@@ -17,6 +17,7 @@ const SOURCE_DEFN = {
     name: 'oncotree',
     url: 'http://oncotree.mskcc.org',
     displayName: 'OncoTree',
+    sort: 0,
 };
 
 
