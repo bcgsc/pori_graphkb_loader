@@ -15,12 +15,7 @@ const {
 } = require('./graphkb');
 
 
-const SOURCE_DEFN = {
-    name: 'iprkb',
-    url: 'https://ipr.bcgsc.ca/knowledgebase/references',
-    description: 'The predecessor to GraphKB',
-    displayName: 'IPRKB',
-};
+const { iprkb: SOURCE_DEFN } = require('./sources');
 
 const DEFAULT_ASSEMBLY = 'GRCh37';
 

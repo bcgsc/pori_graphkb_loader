@@ -20,15 +20,8 @@ const _pubmed = require('./entrez/pubmed');
 const _entrezGene = require('./entrez/gene');
 const _ncit = require('./ncit');
 const { logger } = require('./logging');
+const { oncokb: SOURCE_DEFN } = require('./sources');
 
-const SOURCE_DEFN = {
-    name: 'oncokb',
-    sort: 4, // 4th preferred drug ontology
-    description: 'OncoKB is a precision oncology knowledge base and contains information about the effects and treatment implications of specific cancer gene alterations. It is developed and maintained by the Knowledge Systems group in the Marie Josée and Henry R. Kravis Center for Molecular Oncology at Memorial Sloan Kettering Cancer Center (MSK), in partnership with Quest Diagnostics and Watson for Genomics, IBM.',
-    usage: 'https://oncokb.org/terms',
-    url: 'https://oncokb.org',
-    displayName: 'OncoKB',
-};
 
 const ajv = new Ajv();
 

@@ -24,17 +24,10 @@ const {
     convertRecordToQueryFilters,
 } = require('./graphkb');
 const { logger } = require('./logging');
-
-const SOURCE_DEFN = {
-    name: 'clinicaltrials.gov',
-    url: 'https://clinicaltrials.gov',
-    usage: 'https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use',
-    description: 'ClinicalTrials.gov is a database of privately and publicly funded clinical studies conducted around the world',
-};
+const { clinicalTrialsGov: SOURCE_DEFN } = require('./sources');
 
 const BASE_URL = 'https://clinicaltrials.gov/ct2/show';
 const CACHE = {};
-
 
 const ajv = new Ajv();
 

@@ -19,7 +19,7 @@ const _refseq = require('./entrez/refseq');
 const _ensembl = require('./ensembl');
 
 const { logger } = require('./logging');
-const { SOURCE_DEFN } = require('./cosmic');
+const { cosmic: SOURCE_DEFN } = require('./sources');
 
 const RECURRENCE_THRESHOLD = 3;
 

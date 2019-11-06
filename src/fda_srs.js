@@ -10,15 +10,7 @@ const {
 const { SOURCE_DEFN: { name: ncitSourceName } } = require('./ncit');
 const { logger } = require('./logging');
 
-const SOURCE_DEFN = {
-    displayName: 'FDA-SRS',
-    sort: 3,
-    name: 'fda srs',
-    longName: 'FDA Substance Registration System',
-    url: 'https://fdasis.nlm.nih.gov/srs',
-    comment: 'https://www.fda.gov/ForIndustry/DataStandards/SubstanceRegistrationSystem-UniqueIngredientIdentifierUNII/default.htm',
-    description: 'The overall purpose of the joint FDA/USP Substance Registration System (SRS) is to support health information technology initiatives by generating unique ingredient identifiers (UNIIs) for substances in drugs, biologics, foods, and devices. The UNII is a non- proprietary, free, unique, unambiguous, non semantic, alphanumeric identifier based on a substance’s molecular structure and/or descriptive information.',
-};
+const { fdaSrs: SOURCE_DEFN } = require('./sources');
 
 const HEADER = {
     id: 'UNII',

@@ -11,15 +11,7 @@ const {
 } = require('./graphkb');
 const { logger } = require('./logging');
 
-const SOURCE_DEFN = {
-    displayName: 'NCIt',
-    sort: 2,
-    longName: 'NCI Thesaurus',
-    url: 'https://ncit.nci.nih.gov/ncitbrowser',
-    usage: 'https://creativecommons.org/licenses/by/4.0',
-    name: 'ncit',
-    description: 'NCI Thesaurus (NCIt) provides reference terminology for many NCI and other systems. It covers vocabulary for clinical care, translational and basic research, and public information and administrative activities.',
-};
+const { ncit: SOURCE_DEFN } = require('./sources');
 
 const diseaseConcepts = [
     'Anatomical Abnormality',

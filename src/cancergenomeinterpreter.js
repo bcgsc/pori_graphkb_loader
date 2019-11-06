@@ -16,15 +16,7 @@ const _pubmed = require('./entrez/pubmed');
 const _gene = require('./entrez/gene');
 const { uploadFromJSON } = require('./ontology');
 
-const SOURCE_DEFN = {
-    displayName: 'CGI',
-    longName: 'cancer genome interpreter - Cancer Biomarkers database',
-    name: 'cancer genome interpreter',
-    url: 'https://www.cancergenomeinterpreter.org/biomarkers',
-    description: 'The Cancer Biomarkers database is curated and maintained by several clinical and scientific experts in the field of precision oncology supported by the European Union’s Horizon 2020 funded project. This database is currently being integrated with knowledge databases of other institutions in a collaborative effort of the Global Alliance for Genomics and Health. The contribution of the community is encouraged and proposals of edition or comments about the information contained in this database can be given by contacting us here or by using the feedback icon located at the left of each entry of the table. The database follows the data model originally described by Dienstmann et al. This table provides a summary of the content of the database that can be interactively browsed. Additional information, including the genomic coordinates of the variants, can be accessed via the download feature. This database is licensed under a Creative Commons Public Domain Dedication (CC0 1.0 Universal). When referring to this database, please cite: Cancer Genome Interpreter Annotates The Biological And Clinical Relevance Of Tumor Alterations; doi: https://doi.org/10.1101/140475.',
-    license: 'https://creativecommons.org/publicdomain/zero/1.0',
-    citation: 'https://doi.org/10.1101/140475',
-};
+const { cgi: SOURCE_DEFN } = require('./sources');
 
 const HEADER = {
     alteration: 'Alteration',

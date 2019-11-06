@@ -9,6 +9,7 @@ const fs = require('fs');
 const { convertOwlGraphToJson } = require('./util');
 const { rid } = require('./graphkb');
 const { logger } = require('./logging');
+const { vario: SOURCE_DEFN } = require('./sources');
 
 
 const PREDICATES = {
@@ -20,12 +21,6 @@ const PREDICATES = {
 
 const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/vario.owl';
 
-const SOURCE_DEFN = {
-    name: 'vario',
-    usage: 'http://variationontology.org/citing.shtml',
-    url: 'http://variationontology.org',
-    description: 'Variation Ontology, VariO, is an ontology for standardized, systematic description of effects, consequences and mechanisms of variations. VariO allows unambiguous description of variation effects as well as computerized analyses over databases utilizing the ontology for annotation. VariO is a position specific ontology that can be used to describe effects of variations on DNA, RNA and/or protein level, whatever is appropriate.',
-};
 
 /**
  * Parse the ID from a url string

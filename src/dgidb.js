@@ -8,13 +8,7 @@ const { logger } = require('./logging');
 const { checkSpec } = require('./util');
 const { rid } = require('./graphkb');
 
-const SOURCE_DEFN = {
-    name: 'dgidb',
-    displayName: 'DGIdb',
-    longName: 'Drug Gene Interaction Database',
-    description: 'Mining the druggable genome for personalized medicine',
-    usage: 'http://dgidb.org/faq',
-};
+const { dgidb: SOURCE_DEFN } = require('./sources');
 
 const ajv = new Ajv();
 

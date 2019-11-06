@@ -12,14 +12,8 @@ const fs = require('fs');
 const { convertOwlGraphToJson } = require('./util');
 const { rid, convertRecordToQueryFilters } = require('./graphkb');
 const { logger } = require('./logging');
+const { sequenceOntology: SOURCE_DEFN } = require('./sources');
 
-
-const SOURCE_DEFN = {
-    name: 'sequence ontology',
-    description: 'The Sequence Ontology is a set of terms and relationships used to describe the features and attributes of biological sequence. SO includes different kinds of features which can be located on the sequence.',
-    url: 'http://www.sequenceontology.org',
-    usage: 'http://www.sequenceontology.org/?page_id=269',
-};
 
 const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/so/so-simple.owl';
 
