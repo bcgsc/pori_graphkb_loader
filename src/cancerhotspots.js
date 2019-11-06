@@ -12,10 +12,8 @@ const {
     hashRecordToId,
 } = require('./util');
 const {
-    preferredDiseases,
     rid,
     orderPreferredOntologyTerms,
-    preferredFeatures,
     convertRecordToQueryFilters,
 } = require('./graphkb');
 const _entrezGene = require('./entrez/gene');
@@ -77,7 +75,7 @@ const processVariants = async ({ conn, record, source }) => {
                 filters: {
                     AND: [{ OR: [{ sourceId: chromosome }, { name: chromosome }] }, { biotype: 'chromosome' }],
                 },
-                sort: preferredFeatures,
+                sort: orderPreferredOntologyTerms,
             });
             chromosomeCache[chromosome] = reference1;
         }
@@ -231,7 +229,7 @@ const processRecord = async (conn, record, source, relevance) => {
                     { source: { target: 'Source', filters: { name: oncotreeName } } },
                 ],
             },
-            sort: preferredDiseases,
+            sort: orderPreferredOntologyTerms,
         }));
         diseasesCache[diseaseId] = disease;
     }

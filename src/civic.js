@@ -10,7 +10,7 @@ const kbParser = require('@bcgsc/knowledgebase-parser');
 
 const { checkSpec } = require('./util');
 const {
-    preferredDiseases,
+    orderPreferredOntologyTerms,
     rid,
 } = require('./graphkb');
 const { logger } = require('./logging');
@@ -467,7 +467,7 @@ const processEvidenceRecord = async (opt) => {
         disease = await conn.getUniqueRecordBy({
             target: 'Disease',
             filters: diseaseQueryFilters,
-            sort: preferredDiseases,
+            sort: orderPreferredOntologyTerms,
         });
     } catch (err) {
         throw err;

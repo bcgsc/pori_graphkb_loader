@@ -3,7 +3,7 @@ const fs = require('fs');
 
 const { logger } = require('./logging');
 const { convertRowFields } = require('./util');
-const { rid, preferredDiseases } = require('./graphkb');
+const { rid, orderPreferredOntologyTerms } = require('./graphkb');
 const _entrezGene = require('./entrez/gene');
 const _pubmed = require('./entrez/pubmed');
 
@@ -54,7 +54,7 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
                 { name: 'cancer' },
             ],
         },
-        sort: preferredDiseases,
+        sort: orderPreferredOntologyTerms,
     }));
 
     for (const code of Object.keys(DISEASE_CODES)) {
@@ -69,7 +69,7 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
                         { name: DISEASE_CODES[code] },
                     ],
                 },
-                sort: preferredDiseases,
+                sort: orderPreferredOntologyTerms,
             }));
             diseaseMap[code] = disease;
         } catch (err) {
@@ -190,7 +190,7 @@ const parseKinaseFusions = async ({ conn, filename, publication }) => {
                         { name: DISEASE_CODES[row.disease] },
                     ],
                 },
-                sort: preferredDiseases,
+                sort: orderPreferredOntologyTerms,
             }));
 
             const variant = rid(await conn.addVariant({

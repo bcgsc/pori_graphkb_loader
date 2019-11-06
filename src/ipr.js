@@ -10,9 +10,8 @@ const _hgnc = require('./hgnc');
 const _ctg = require('./clinicaltrialsgov');
 const { convertRowFields } = require('./util');
 const {
-    preferredDiseases,
+    orderPreferredOntologyTerms,
     rid,
-    preferredFeatures,
 } = require('./graphkb');
 
 
@@ -98,7 +97,7 @@ const getFeature = async (conn, rawName) => {
                     { sourceId: stripRefSeqVersion(name) },
                 ],
             },
-            sort: preferredFeatures,
+            sort: orderPreferredOntologyTerms,
         });
     } catch (err) {
         // see if it is a hugo gene
@@ -151,7 +150,7 @@ const extractAppliesTo = async (conn, record, source) => {
             return conn.getUniqueRecordBy({
                 target: 'Disease',
                 filters: { name: disease },
-                sort: preferredDiseases,
+                sort: orderPreferredOntologyTerms,
             });
         } if (relevance === 'eligibility') {
             if (evidence.length === 1) {
@@ -180,7 +179,7 @@ const extractAppliesTo = async (conn, record, source) => {
                     return conn.getUniqueRecordBy({
                         target: 'Disease',
                         filters: { name: 'cancer' },
-                        sort: preferredDiseases,
+                        sort: orderPreferredOntologyTerms,
                     });
                 }
                 throw new Error(`required disease not defined (relevance=${relevance}, statementType=${statementType})`);
@@ -188,7 +187,7 @@ const extractAppliesTo = async (conn, record, source) => {
             return conn.getUniqueRecordBy({
                 target: 'Disease',
                 filters: { name: disease },
-                sort: preferredDiseases,
+                sort: orderPreferredOntologyTerms,
             });
         } else if (
             [
@@ -210,7 +209,7 @@ const extractAppliesTo = async (conn, record, source) => {
         return conn.getUniqueRecordBy({
             target: 'Disease',
             filters: { name: disease },
-            sort: preferredDiseases,
+            sort: orderPreferredOntologyTerms,
         });
     } else if (statementType === 'prognostic') {
         return conn.getVocabularyTerm('patient');
@@ -587,7 +586,7 @@ const processRecord = async ({ conn, record: inputRecord, source }) => {
             disease = await conn.getUniqueRecordBy({
                 target: 'Disease',
                 filters: { name: record.disease },
-                sort: preferredDiseases,
+                sort: orderPreferredOntologyTerms,
             });
         } catch (err) {
             throw err;

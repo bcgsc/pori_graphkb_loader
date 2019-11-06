@@ -11,9 +11,8 @@ const {
     hashRecordToId,
 } = require('./util');
 const {
-    preferredDiseases,
-    rid,
     orderPreferredOntologyTerms,
+    rid,
 } = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const _gene = require('./entrez/gene');
@@ -153,7 +152,7 @@ const processCosmicRecord = async (conn, record, source) => {
     const disease = await conn.getUniqueRecordBy({
         target: 'Disease',
         filters: { name: diseaseName },
-        sort: preferredDiseases,
+        sort: orderPreferredOntologyTerms,
     });
     // create the resistance statement
     const relevance = await conn.getVocabularyTerm('resistance');

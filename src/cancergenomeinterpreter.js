@@ -8,7 +8,7 @@ const {
     hashRecordToId,
 } = require('./util');
 const {
-    preferredDiseases, preferredFeatures, orderPreferredOntologyTerms, rid,
+    orderPreferredOntologyTerms, rid,
 } = require('./graphkb');
 const { logger } = require('./logging');
 const _trials = require('./clinicaltrialsgov');
@@ -215,7 +215,7 @@ const processVariants = async ({ conn, row, source }) => {
                     },
                 ],
             },
-            sort: preferredFeatures,
+            sort: orderPreferredOntologyTerms,
         });
         const type = await conn.getVocabularyTerm(parsed.type);
         genomicVariant = await conn.addVariant({
@@ -308,7 +308,7 @@ const processRow = async ({ row, source, conn }) => {
     const disease = rid(await conn.getUniqueRecordBy({
         target: 'Disease',
         filters: { name: diseaseName },
-        sort: preferredDiseases,
+        sort: orderPreferredOntologyTerms,
     }));
     const therapyName = row.therapy.includes(';')
         ? row.therapy.split(';').map(n => n.toLowerCase().trim()).sort().join(' + ')

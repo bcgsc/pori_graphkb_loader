@@ -20,8 +20,6 @@ const {
 } = require('./util');
 const {
     orderPreferredOntologyTerms,
-    preferredDrugs,
-    preferredDiseases,
     rid,
     convertRecordToQueryFilters,
 } = require('./graphkb');
@@ -378,7 +376,7 @@ const processRecord = async ({
             const intervention = await conn.getUniqueRecordBy({
                 target: 'Therapy',
                 filters: { name: drug },
-                sort: preferredDrugs,
+                sort: orderPreferredOntologyTerms,
             });
             links.push(intervention);
         } catch (err) {
@@ -392,7 +390,7 @@ const processRecord = async ({
             const disease = await conn.getUniqueRecordBy({
                 target: 'Disease',
                 filters: { name: diseaseName },
-                sort: preferredDiseases,
+                sort: orderPreferredOntologyTerms,
             });
             links.push(disease);
         } catch (err) {

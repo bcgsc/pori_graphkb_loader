@@ -12,8 +12,7 @@ const {
     hashRecordToId,
 } = require('./util');
 const {
-    preferredDiseases,
-    preferredDrugs,
+    orderPreferredOntologyTerms,
     rid,
     convertRecordToQueryFilters,
 } = require('./graphkb');
@@ -357,14 +356,14 @@ const processDisease = async (conn, diseaseName) => {
         disease = await conn.getUniqueRecordBy({
             target: 'Disease',
             filters: { name: diseaseName },
-            sort: preferredDiseases,
+            sort: orderPreferredOntologyTerms,
         });
     } catch (err) {
         if (diseaseName.includes('/')) {
             disease = await conn.getUniqueRecordBy({
                 target: 'Disease',
                 filters: { name: diseaseName.split('/')[0].trim() },
-                sort: preferredDiseases,
+                sort: orderPreferredOntologyTerms,
             });
         } else {
             throw err;
@@ -436,7 +435,7 @@ const processRecord = async ({
             therapy = await conn.getUniqueRecordBy({
                 target: 'Therapy',
                 filters: { AND: [{ name: drug }, { source }] },
-                sort: preferredDrugs,
+                sort: orderPreferredOntologyTerms,
             });
         } catch (err) {
             if (drug.includes('+')) {
@@ -736,7 +735,7 @@ const uploadAllTherapies = async ({ conn, URL, source }) => {
                             { source: { target: 'Source', filters: { name: _ncit.SOURCE_DEFN.name } } },
                         ],
                     },
-                    sort: preferredDrugs,
+                    sort: orderPreferredOntologyTerms,
                 });
                 await conn.addRecord({
                     target: 'crossreferenceof',

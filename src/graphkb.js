@@ -90,7 +90,12 @@ const orderPreferredOntologyTerms = (term1, term2) => {
             return 1;
         }
     } if (term1.source && term2.source) {
-        if (term1.source.version < term2.source.version) {
+        // use source rank to sort results
+        if (term1.source.sort < term2.source.sort) {
+            return -1;
+        } if (term1.source.sort > term2.source.sort) {
+            return 1;
+        } if (term1.source.version < term2.source.version) {
             return -1;
         } if (term1.source.version > term2.source.version) {
             return 1;
@@ -101,83 +106,6 @@ const orderPreferredOntologyTerms = (term1, term2) => {
         }
     }
     return 0;
-};
-
-
-const preferredSources = (sourceRank, term1, term2) => {
-    if (orderPreferredOntologyTerms(term1, term2) === 0) {
-        if (term1.source.name !== term2.source.name) {
-            const rank1 = sourceRank[term1.source.name] === undefined
-                ? 2
-                : sourceRank[term1.source.name];
-            const rank2 = sourceRank[term2.source.name] === undefined
-                ? 2
-                : sourceRank[term2.source.name];
-
-            if (rank1 !== rank2) {
-                return rank1 < rank2
-                    ? -1
-                    : 1;
-            }
-        }
-        return 0;
-    }
-    return orderPreferredOntologyTerms(term1, term2);
-};
-
-/**
- * Given some array create an object where elements are mapped to their position in the array
- */
-const generateRanks = (arr) => {
-    const ranks = {};
-
-    for (let i = 0; i < arr.length; i++) {
-        ranks[arr[i]] = i;
-    }
-    return ranks;
-};
-
-const preferredVocabulary = (term1, term2) => {
-    const sourceRank = generateRanks([
-        INTERNAL_SOURCE_NAME,
-        'sequence ontology',
-        'variation ontology',
-    ]);
-    return preferredSources(sourceRank, term1, term2);
-};
-
-
-const preferredDiseases = (term1, term2) => {
-    const sourceRank = generateRanks([
-        'oncotree',
-        'disease ontology',
-        'ncit',
-    ]);
-    return preferredSources(sourceRank, term1, term2);
-};
-
-const preferredDrugs = (term1, term2) => {
-    const sourceRank = generateRanks([
-        'drugbank',
-        'chembl',
-        'ncit',
-        'fda',
-        'oncokb',
-        'gsc therapeutic ontology',
-    ]);
-    return preferredSources(sourceRank, term1, term2);
-};
-
-
-const preferredFeatures = (term1, term2) => {
-    const sourceRank = generateRanks([
-        'grch',
-        'entrez',
-        'hgnc',
-        'ensembl',
-        'refseq',
-    ]);
-    return preferredSources(sourceRank, term1, term2);
 };
 
 
@@ -337,7 +265,7 @@ class ApiConnection {
         try {
             return await this.getUniqueRecordBy({
                 target: 'Therapy',
-                sort: preferredDrugs,
+                sort: orderPreferredOntologyTerms,
                 filters,
             });
         } catch (err) {
@@ -364,7 +292,7 @@ class ApiConnection {
                 }
                 return await this.getUniqueRecordBy({
                     target: 'Therapy',
-                    sort: preferredDrugs,
+                    sort: orderPreferredOntologyTerms,
                     filters,
                 });
             } catch (err) {
@@ -533,9 +461,5 @@ module.exports = {
     rid,
     generateCacheKey,
     orderPreferredOntologyTerms,
-    preferredDiseases,
-    preferredDrugs,
-    preferredVocabulary,
-    preferredFeatures,
     ApiConnection,
 };
