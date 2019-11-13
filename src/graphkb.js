@@ -6,11 +6,10 @@ const request = require('request-promise');
 const jc = require('json-cycle');
 const jwt = require('jsonwebtoken');
 const { schema } = require('@bcgsc/knowledgebase-schema');
-
+const { graphkb: { name: INTERNAL_SOURCE_NAME } } = require('./sources');
 
 const { logger } = require('./logging');
 
-const INTERNAL_SOURCE_NAME = 'graphkb';
 
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
 
