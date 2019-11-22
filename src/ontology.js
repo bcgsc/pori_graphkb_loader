@@ -45,6 +45,7 @@ const validateSpec = ajv.compile({
                 properties: {
                     name: { type: 'string' },
                     sourceIdVersion: { type: 'string' },
+                    sourceId: { type: 'string' }, // defaults to the record key
                     url: { type: 'string', format: 'uri' },
                     description: { type: 'string' },
                     comment: { type: 'string' },
@@ -97,17 +98,20 @@ const uploadFromJSON = async ({ data, conn }) => {
         records, source, class: recordClass, defaultNameToSourceId,
     } = data;
 
-    for (const sourceId of Object.keys(records)) {
-        const record = records[sourceId];
-        record.sourceId = sourceId;
+    for (const recordKey of Object.keys(records)) {
+        const record = records[recordKey];
+
+        if (!record.sourceId) {
+            record.sourceId = recordKey;
+        }
 
         if (!record.name && defaultNameToSourceId) {
-            record.name = sourceId;
+            record.name = record.sourceId;
         }
 
         for (const { target, class: edgeClass } of record.links || []) {
             if (records[target] === undefined) {
-                logger.log('error', `Invalid link (${edgeClass}) from ${sourceId} to undefined record ${target}`);
+                logger.log('error', `Invalid link (${edgeClass}) from ${recordKey} to undefined record ${target}`);
                 counts.errors++;
             }
         }
