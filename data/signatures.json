@@ -44,12 +44,12 @@
             "links": [
                 {
                     "class": "DeprecatedBy",
-                    "target": "homologous repair deficiency"
+                    "target": "homologous recombination deficiency"
                 }
             ]
         },
-        "homologous repair deficiency": {
-            "name": "homologous repair deficiency",
+        "homologous recombination deficiency": {
+            "name": "homologous recombination deficiency",
             "description": "genetic instability due to genomic alterations in the homologous recombination (HR) DNA repair pathway"
         },
         "immune infiltration": {
