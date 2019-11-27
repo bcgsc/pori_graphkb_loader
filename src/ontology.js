@@ -21,6 +21,7 @@ const INPUT_ERROR_CODE = 2;
 
 const validateSpec = ajv.compile({
     type: 'object',
+    required: ['class', 'source', 'records'],
     properties: {
         defaultNameToSourceId: { type: 'boolean' },
         source: {
@@ -142,14 +143,16 @@ const uploadFromJSON = async ({ data, conn }) => {
     // try to create all the records
     logger.log('info', 'creating the records');
 
-    for (const { links, ...record } of Object.values(records)) {
+    for (const key of Object.keys(records)) {
+        const { links, ...record } = records[key];
+
         try {
             const dbRecord = await conn.addRecord({
                 target: recordClass,
                 content: { ...record, source: sourceRID },
                 existsOk: true,
             });
-            dbRecords[record.sourceId] = rid(dbRecord);
+            dbRecords[key] = rid(dbRecord);
             counts.success++;
         } catch (err) {
             logger.log('error', err);
@@ -159,9 +162,11 @@ const uploadFromJSON = async ({ data, conn }) => {
     // try to create all the links
     logger.log('info', 'creating the record links');
 
-    for (const { links = [], sourceId } of Object.values(records)) {
+    for (const key of Object.keys(records)) {
+        const { links = [] } = records[key];
+
         for (const { class: edgeType, target } of links) {
-            if (dbRecords[target] === undefined || dbRecords[sourceId] === undefined) {
+            if (dbRecords[target] === undefined || dbRecords[key] === undefined) {
                 counts.skipped++;
                 continue;
             }
@@ -169,7 +174,7 @@ const uploadFromJSON = async ({ data, conn }) => {
             try {
                 await conn.addRecord({
                     target: edgeType,
-                    content: { out: dbRecords[sourceId], in: dbRecords[target], source: sourceRID },
+                    content: { out: dbRecords[key], in: dbRecords[target], source: sourceRID },
                     existsOk: true,
                     fetchExisting: false,
                 });
