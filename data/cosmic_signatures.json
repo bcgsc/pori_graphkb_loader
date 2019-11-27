@@ -63,7 +63,7 @@
             "sourceIdVersion": "3"
         },
         "ID1.3": {
-            "descrition": "Slippage during DNA replication of the replicated DNA strand This signature is found in almost all samples, however, substantial number of mutations of this signature in cancers with DNA mismatch repair deficiency",
+            "description": "Slippage during DNA replication of the replicated DNA strand This signature is found in almost all samples, however, substantial number of mutations of this signature in cancers with DNA mismatch repair deficiency",
             "name": "ID1",
             "sourceId": "ID1",
             "sourceIdVersion": "3"
@@ -895,5 +895,6 @@
     },
     "source": {
         "name": "COSMIC"
-    }
+    },
+    "class": "Signature"
 }
