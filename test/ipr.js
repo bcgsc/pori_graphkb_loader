@@ -1,32 +1,34 @@
 
 
 const {
-    convertDeprecatedSyntax
+    convertDeprecatedSyntax,
 } = require('../src/ipr');
 
 describe('convertDeprecatedSyntax', () => {
     test('SV_e.fusion(FGFR2,?)(?,?)', () => {
         const result = convertDeprecatedSyntax('SV_e.fusion(FGFR2,?)(?,?)');
-        expect(result).toEqual({type: 'fusion', reference1: 'fgfr2'});
+        expect(result).toEqual({ type: 'fusion', reference1: 'fgfr2' });
     });
+
     test('SV_e.fusion(?,RET)(?,?)', () => {
         const result = convertDeprecatedSyntax('SV_e.fusion(?,RET)(?,?)');
-        expect(result).toEqual({type: 'fusion', reference1: 'ret'});
+        expect(result).toEqual({ type: 'fusion', reference1: 'ret' });
     });
+
     test('KIT:e.9?', () => {
         const result = convertDeprecatedSyntax('KIT:e.9?');
         const parsed = {
             break1Repr: 'e.9',
             break1Start: {
                 '@class': 'ExonicPosition',
-                pos: 9
+                pos: 9,
             },
             reference1: 'KIT',
-            type: 'mutation'
+            type: 'mutation',
         };
-        console.log(result);
-        expect(result).toEqual({positional: parsed});
+        expect(result).toEqual({ positional: parsed });
     });
+
     test('CNV_12:y.q13_q14copygain_na', () => {
         const result = convertDeprecatedSyntax('CNV_12:y.q13_q14copygain_na');
         const parsed = {
@@ -34,46 +36,49 @@ describe('convertDeprecatedSyntax', () => {
             break1Start: {
                 '@class': 'CytobandPosition',
                 arm: 'q',
-                majorBand: 13
+                majorBand: 13,
             },
             break2Start: {
                 '@class': 'CytobandPosition',
                 arm: 'q',
-                majorBand: 14
+                majorBand: 14,
             },
             break2Repr: 'y.q14',
             reference1: '12',
-            type: 'copy gain'
+            type: 'copy gain',
         };
         expect(result).toEqual({
-            positional: parsed
+            positional: parsed,
         });
     });
+
     test('fusion with specific exons', () => {
         const result = convertDeprecatedSyntax('(CLTC,ALK):fusion(e.31,e.20)');
         const parsed = {
             break1Repr: 'e.31',
             break1Start: {
                 '@class': 'ExonicPosition',
-                pos: 31
+                pos: 31,
             },
             break2Repr: 'e.20',
             break2Start: {
                 '@class': 'ExonicPosition',
-                pos: 20
+                pos: 20,
             },
             reference1: 'CLTC',
             reference2: 'ALK',
-            type: 'fusion'
+            type: 'fusion',
         };
         expect(result).toEqual({
-            positional: parsed
+            positional: parsed,
         });
     });
+
     test('CNV_ERBB2_amplification_na', () => {
         const result = convertDeprecatedSyntax('CNV_ERBB2_amplification_na');
-        expect(result).toEqual({type: 'amplification', reference1: 'erbb2'});
+        expect(result).toEqual({ type: 'amplification', reference1: 'erbb2' });
     });
+
     test('MUT_ARAF:p.S214A', () => {
         const result = convertDeprecatedSyntax('MUT_ARAF:p.S214A');
         const parsed = {
@@ -81,30 +86,34 @@ describe('convertDeprecatedSyntax', () => {
             break1Start: {
                 '@class': 'ProteinPosition',
                 pos: 214,
-                refAA: 'S'
+                refAA: 'S',
             },
             refSeq: 'S',
             reference1: 'ARAF',
             type: 'substitution',
             untemplatedSeq: 'A',
-            untemplatedSeqSize: 1
+            untemplatedSeqSize: 1,
         };
-        expect(result).toEqual({positional: parsed});
+        expect(result).toEqual({ positional: parsed });
     });
+
     test('MUT_ERBB2_any', () => {
         const result = convertDeprecatedSyntax('MUT_ERBB2_any');
-        expect(result).toEqual({type: 'mutation', reference1: 'erbb2'});
+        expect(result).toEqual({ type: 'mutation', reference1: 'erbb2' });
     });
+
     test('MUT_MET:p.Xnspl', () => {
         const result = convertDeprecatedSyntax('MUT_MET:p.Xnspl');
-        expect(result).toEqual({reference1: 'met', type: 'splice-site'});
+        expect(result).toEqual({ reference1: 'met', type: 'splice-site' });
     });
+
     test('NTRK', () => {
         const result = convertDeprecatedSyntax('NTRK');
-        expect(result).toEqual({name: 'NTRK', isFeature: true});
+        expect(result).toEqual({ name: 'NTRK', isFeature: true });
     });
+
     test('CNV_RAD54L_copy loss_homozygous', () => {
         const result = convertDeprecatedSyntax('CNV_RAD54L_copy loss_homozygous');
-        expect(result).toEqual({reference1: 'rad54l', type: 'copy loss', zygosity: 'homozygous'});
+        expect(result).toEqual({ reference1: 'rad54l', type: 'copy loss', zygosity: 'homozygous' });
     });
 });

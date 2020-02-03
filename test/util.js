@@ -2,45 +2,51 @@ const path = require('path');
 
 const {
     loadDelimToJson,
-    loadXmlToJson
+    loadXmlToJson,
 } = require('./../src/util');
 
-const {orderPreferredOntologyTerms} = require('../src/graphkb');
+const { orderPreferredOntologyTerms } = require('../src/graphkb');
 
 describe('util', () => {
     describe('orderPreferredOntologyTerms', () => {
         test('prefer non-deprecated', () => {
             expect(orderPreferredOntologyTerms(
-                {deprecated: true}, {}
+                { deprecated: true }, {},
             )).toBe(1);
             expect(orderPreferredOntologyTerms(
-                {deprecated: false}, {deprecated: true}
+                { deprecated: false }, { deprecated: true },
             )).toBe(-1);
         });
+
         test('prefer newer version of same record', () => {
             expect(orderPreferredOntologyTerms(
-                {sourceIdVersion: '2019-10-08'}, {sourceIdVersion: '2019-09-08'}
+                { sourceIdVersion: '2019-10-08' }, { sourceIdVersion: '2019-09-08' },
             )).toBe(1);
             expect(orderPreferredOntologyTerms(
-                {sourceIdVersion: '2019-10-08'}, {sourceIdVersion: '2019-11-08'}
+                { sourceIdVersion: '2019-10-08' }, { sourceIdVersion: '2019-11-08' },
             )).toBe(-1);
         });
+
         test('prefer records without dependencies', () => {
             expect(orderPreferredOntologyTerms(
-                {dependency: true}, {}
+                { dependency: true }, {},
             )).toBe(1);
             expect(orderPreferredOntologyTerms(
-                {dependency: null}, {dependency: true}
+                { dependency: null }, { dependency: true },
             )).toBe(-1);
         });
     });
+
     test.todo('preferredSources');
+
     test.todo('convertOwlGraphToJson');
+
     test('loadDelimToJson', async () => {
         const filename = path.join(__dirname, 'data/UNII_Records_25Oct2018_sample.txt');
         const result = await loadDelimToJson(filename, '\t');
         expect(result.length).toBe(99);
     });
+
     test('loadXmlToJson', async () => {
         const filename = path.join(__dirname, 'data/drugbank_sample.xml');
         const result = await loadXmlToJson(filename);
