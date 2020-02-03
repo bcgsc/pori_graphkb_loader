@@ -20,23 +20,14 @@ const {
 } = require('./util');
 const {
     orderPreferredOntologyTerms,
-    preferredDrugs,
-    preferredDiseases,
     rid,
     convertRecordToQueryFilters,
 } = require('./graphkb');
 const { logger } = require('./logging');
-
-const SOURCE_DEFN = {
-    name: 'clinicaltrials.gov',
-    url: 'https://clinicaltrials.gov',
-    usage: 'https://clinicaltrials.gov/ct2/about-site/terms-conditions#Use',
-    description: 'ClinicalTrials.gov is a database of privately and publicly funded clinical studies conducted around the world',
-};
+const { clinicalTrialsGov: SOURCE_DEFN } = require('./sources');
 
 const BASE_URL = 'https://clinicaltrials.gov/ct2/show';
 const CACHE = {};
-
 
 const ajv = new Ajv();
 
@@ -378,7 +369,7 @@ const processRecord = async ({
             const intervention = await conn.getUniqueRecordBy({
                 target: 'Therapy',
                 filters: { name: drug },
-                sort: preferredDrugs,
+                sort: orderPreferredOntologyTerms,
             });
             links.push(intervention);
         } catch (err) {
@@ -392,7 +383,7 @@ const processRecord = async ({
             const disease = await conn.getUniqueRecordBy({
                 target: 'Disease',
                 filters: { name: diseaseName },
-                sort: preferredDiseases,
+                sort: orderPreferredOntologyTerms,
             });
             links.push(disease);
         } catch (err) {

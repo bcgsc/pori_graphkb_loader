@@ -11,21 +11,14 @@ const {
     hashRecordToId,
 } = require('./util');
 const {
-    preferredDiseases,
-    rid,
     orderPreferredOntologyTerms,
+    rid,
 } = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const _gene = require('./entrez/gene');
 const { logger } = require('./logging');
 
-const SOURCE_DEFN = {
-    url: 'https://cancer.sanger.ac.uk/cosmic',
-    displayName: 'COSMIC',
-    name: 'cosmic',
-    usage: 'https://cancer.sanger.ac.uk/cosmic/license',
-    description: 'COSMIC, the Catalogue Of Somatic Mutations In Cancer, is the world\'s largest and most comprehensive resource for exploring the impact of somatic mutations in human cancer.',
-};
+const { cosmic: SOURCE_DEFN } = require('./sources');
 
 const HEADER = {
     gene: 'Gene Name',
@@ -153,7 +146,7 @@ const processCosmicRecord = async (conn, record, source) => {
     const disease = await conn.getUniqueRecordBy({
         target: 'Disease',
         filters: { name: diseaseName },
-        sort: preferredDiseases,
+        sort: orderPreferredOntologyTerms,
     });
     // create the resistance statement
     const relevance = await conn.getVocabularyTerm('resistance');

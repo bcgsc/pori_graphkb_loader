@@ -12,18 +12,11 @@ const { rid } = require('./graphkb');
 const _hgnc = require('./hgnc');
 const { logger } = require('./logging');
 const _chembl = require('./chembl');
-const { SOURCE_DEFN: { name: fdaName } } = require('./fda_srs');
+const { drugbank: SOURCE_DEFN, fdaSrs: { name: fdaName } } = require('./sources');
 
 
 const ajv = new Ajv();
 
-const SOURCE_DEFN = {
-    displayName: 'DrugBank',
-    name: 'drugbank',
-    usage: 'https://creativecommons.org/licenses/by-nc/4.0/legalcode',
-    url: 'https://www.drugbank.ca',
-    description: 'The DrugBank database is a unique bioinformatics and cheminformatics resource that combines detailed drug data with comprehensive drug target information.',
-};
 
 // Lists most of the commonly required 'Tags' and Attributes
 const HEADER = {

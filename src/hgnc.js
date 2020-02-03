@@ -11,24 +11,14 @@ const {
 } = require('./graphkb');
 const { logger } = require('./logging');
 const _entrez = require('./entrez/gene');
+const { hgnc: SOURCE_DEFN, ensembl: { name: ensemblSourceName } } = require('./sources');
 
-const ensemblSourceName = 'ensembl';
 
 const ajv = new Ajv();
 
 const HGNC_API = 'http://rest.genenames.org/fetch';
 
-const SOURCE_DEFN = {
-    name: 'hgnc',
-    url: 'https://www.genenames.org/about',
-    longName: 'HUGO Gene Nomenclature Committee',
-    displayName: 'HGNC',
-    usage: 'https://www.ebi.ac.uk/about/terms-of-use',
-    description: `
-        The HGNC is responsible for approving unique symbols and names for human loci, including
-        protein coding genes, ncRNA genes and pseudogenes, to allow unambiguous scientific
-        communication.`.replace(/\s+/, ' '),
-};
+
 const CACHE = {};
 /**
  * This defines the expected format of a response from the HGNC API

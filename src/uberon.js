@@ -10,15 +10,8 @@ const {
 } = require('./graphkb');
 const { SOURCE_DEFN: { name: ncitName } } = require('./ncit');
 const { logger } = require('./logging');
+const { uberon: SOURCE_DEFN } = require('./sources');
 
-const SOURCE_DEFN = {
-    name: 'uberon',
-    displayName: 'Uberon',
-    url: 'http://uberon.github.io',
-    description: 'Uberon is an integrated cross-species ontology covering anatomical structures in animals.',
-    usage: 'http://obofoundry.github.io/principles/fp-001-open.html',
-    comment: 'https://github.com/obophenotype/uberon/issues/1139',
-};
 
 const PREDICATES = {
     CROSS_REF: 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',

@@ -6,19 +6,11 @@ const _ = require('lodash');
 
 const { fetchByIdList, uploadRecord } = require('./util');
 const { checkSpec } = require('../util');
+const { refseq: SOURCE_DEFN } = require('../sources');
 
 const ajv = new Ajv();
 
-const SOURCE_DEFN = {
-    displayName: 'RefSeq',
-    longName: 'RefSeq: NCBI Reference Sequence Database',
-    name: 'refseq',
-    url: 'https://www.ncbi.nlm.nih.gov/refseq',
-    usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
-    description: `
-        A comprehensive, integrated, non-redundant, well-annotated set of reference sequences
-        including genomic, transcript, and protein.`.replace(/\s+/, ' '),
-};
+
 const DB_NAME = 'nucleotide';
 const CACHE = {};
 

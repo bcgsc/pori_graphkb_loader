@@ -8,6 +8,7 @@ const { rid, orderPreferredOntologyTerms } = require('./graphkb');
 const { logger } = require('./logging');
 const { SOURCE_DEFN: { name: drugbankName } } = require('./drugbank');
 const { SOURCE_DEFN: { name: chemblName } } = require('./chembl');
+const { gscTherapeuticOntology: SOURCE_DEFN } = require('./sources');
 
 const HEADER = {
     name: 'source',
@@ -24,11 +25,6 @@ const TAGS = {
     [HEADER.grandparent2]: 'pathway drug class',
 };
 
-const SOURCE_DEFN = {
-    name: 'gsc therapeutic ontology',
-    displayName: 'GSC-TO',
-    description: 'Therapeutic ontology compiled and curated at the Genome Sciences Centre',
-};
 
 /**
  * Try to extact match a drugbank/chembl record. If there isn't one then add this name as a new record instead

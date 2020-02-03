@@ -11,7 +11,7 @@ const {
 const { logger } = require('./logging');
 const _hgnc = require('./hgnc');
 const _entrez = require('./entrez/gene');
-const { SOURCE_DEFN: { name: refseqName } } = require('./refseq');
+const { ensembl: SOURCE_DEFN, refseq: { name: refseqName } } = require('./sources');
 
 const HEADER = {
     geneId: 'Gene stable ID',
@@ -27,14 +27,6 @@ const HEADER = {
     proteinIdVersion: 'Protein stable ID version',
     geneName: 'Gene name',
     geneNameSource: 'Source of gene name',
-};
-
-const SOURCE_DEFN = {
-    displayName: 'Ensembl',
-    name: _hgnc.ensemblSourceName, // avoid circular dependencies
-    usage: 'https://uswest.ensembl.org/info/about/legal/disclaimer.html',
-    url: 'https://uswest.ensembl.org',
-    description: 'Ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. Ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. Ensembl tools include BLAST, BLAT, BioMart and the Variant Effect Predictor (VEP) for all supported species.',
 };
 
 

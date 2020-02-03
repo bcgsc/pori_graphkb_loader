@@ -10,9 +10,8 @@ const {
     hashRecordToId,
 } = require('./util');
 const {
-    preferredDiseases,
-    rid,
     orderPreferredOntologyTerms,
+    rid,
 } = require('./graphkb');
 const _pubmed = require('./entrez/pubmed');
 const _gene = require('./entrez/gene');
@@ -20,7 +19,7 @@ const _refseq = require('./entrez/refseq');
 const _ensembl = require('./ensembl');
 
 const { logger } = require('./logging');
-const { SOURCE_DEFN } = require('./cosmic');
+const { cosmic: SOURCE_DEFN } = require('./sources');
 
 const RECURRENCE_THRESHOLD = 3;
 
@@ -70,7 +69,7 @@ const processDisease = async ({ conn, record }) => {
             disease = await conn.getUniqueRecordBy({
                 target: 'Disease',
                 filters: { name: diseaseName },
-                sort: preferredDiseases,
+                sort: orderPreferredOntologyTerms,
             });
         } catch (err) {
             error = err;
@@ -230,7 +229,7 @@ const processCosmicRecord = async ({
         disease = rid(await conn.getUniqueRecordBy({
             target: 'Disease',
             filters: { name: 'cancer' },
-            sort: preferredDiseases,
+            sort: orderPreferredOntologyTerms,
         }));
     }
     const publications = await _pubmed.fetchAndLoadByIds(conn, record.publications);

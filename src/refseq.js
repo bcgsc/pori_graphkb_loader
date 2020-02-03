@@ -8,13 +8,7 @@ const { logger } = require('./logging');
 
 const _entrez = require('./entrez/gene');
 
-const SOURCE_DEFN = {
-    name: 'refseq',
-    displayName: 'RefSeq',
-    url: 'https://www.ncbi.nlm.nih.gov/refseq',
-    usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
-    description: 'A comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.',
-};
+const { refseq: SOURCE_DEFN } = require('./sources');
 
 /**
  * Parse the tab delimited file to upload features and their relationships

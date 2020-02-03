@@ -31,10 +31,12 @@
             "name": "cd8+ cell infiltration"
         },
         "erv load": {
-            "name": "erv load"
+            "name": "erv load",
+            "description": "endogenous retroviruses (ERV) expression due to epigenetic derepression"
         },
         "hla genotype": {
-            "name": "hla genotype"
+            "name": "hla genotype",
+            "description": "homo- or heterozygosity in HLA class I locus (HLA-A, HLA-B or HLA-C)"
         },
         "hrd": {
             "name": "hrd",
@@ -42,15 +44,17 @@
             "links": [
                 {
                     "class": "DeprecatedBy",
-                    "target": "homologous repair deficiency"
+                    "target": "homologous recombination deficiency"
                 }
             ]
         },
-        "homologous repair deficiency": {
-            "name": "homologous repair deficiency"
+        "homologous recombination deficiency": {
+            "name": "homologous recombination deficiency",
+            "description": "genetic instability due to genomic alterations in the homologous recombination (HR) DNA repair pathway"
         },
         "immune infiltration": {
-            "name": "immune infiltration"
+            "name": "immune infiltration",
+            "description": "proportion of immune/inflammatory cells in the tumour microenvironment"
         },
         "microsatellite instability": {
             "links": [
@@ -59,6 +63,7 @@
                     "target": "microsatellite phenotype"
                 }
             ],
+            "description": "genetic instability in short nucleotide repeats (microsatellites) due to a high mutation rate as a result of abnormal DNA mismatch repair",
             "name": "microsatellite instability"
         },
         "microsatellite phenotype": {
@@ -74,10 +79,12 @@
             "name": "microsatellite stable"
         },
         "mutation burden": {
-            "name": "mutation burden"
+            "name": "mutation burden",
+            "description": "total number of somatic mutations normalized to the genome size"
         },
         "neoantigen load": {
-            "name": "neoantigen load"
+            "name": "neoantigen load",
+            "description": "expression of antigens that are entirely absent from the normal human genome and the results of mutations acquired during carcinogenesis and progression"
         },
         "t cell infiltration": {
             "links": [
@@ -93,6 +100,7 @@
         "displayName": "GraphKB",
         "longName": "Graph Knowledgebase",
         "name": "graphkb",
-        "url": "https://graphkb.bcgsc.ca"
+        "url": "https://graphkb.bcgsc.ca",
+        "sort": 0
     }
 }

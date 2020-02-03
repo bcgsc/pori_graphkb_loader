@@ -12,8 +12,7 @@ const {
     hashRecordToId,
 } = require('./util');
 const {
-    preferredDiseases,
-    preferredDrugs,
+    orderPreferredOntologyTerms,
     rid,
     convertRecordToQueryFilters,
 } = require('./graphkb');
@@ -21,14 +20,8 @@ const _pubmed = require('./entrez/pubmed');
 const _entrezGene = require('./entrez/gene');
 const _ncit = require('./ncit');
 const { logger } = require('./logging');
+const { oncokb: SOURCE_DEFN } = require('./sources');
 
-const SOURCE_DEFN = {
-    name: 'oncokb',
-    description: 'OncoKB is a precision oncology knowledge base and contains information about the effects and treatment implications of specific cancer gene alterations. It is developed and maintained by the Knowledge Systems group in the Marie Josée and Henry R. Kravis Center for Molecular Oncology at Memorial Sloan Kettering Cancer Center (MSK), in partnership with Quest Diagnostics and Watson for Genomics, IBM.',
-    usage: 'https://oncokb.org/terms',
-    url: 'https://oncokb.org',
-    displayName: 'OncoKB',
-};
 
 const ajv = new Ajv();
 
@@ -356,14 +349,14 @@ const processDisease = async (conn, diseaseName) => {
         disease = await conn.getUniqueRecordBy({
             target: 'Disease',
             filters: { name: diseaseName },
-            sort: preferredDiseases,
+            sort: orderPreferredOntologyTerms,
         });
     } catch (err) {
         if (diseaseName.includes('/')) {
             disease = await conn.getUniqueRecordBy({
                 target: 'Disease',
                 filters: { name: diseaseName.split('/')[0].trim() },
-                sort: preferredDiseases,
+                sort: orderPreferredOntologyTerms,
             });
         } else {
             throw err;
@@ -435,7 +428,7 @@ const processRecord = async ({
             therapy = await conn.getUniqueRecordBy({
                 target: 'Therapy',
                 filters: { AND: [{ name: drug }, { source }] },
-                sort: preferredDrugs,
+                sort: orderPreferredOntologyTerms,
             });
         } catch (err) {
             if (drug.includes('+')) {
@@ -735,7 +728,7 @@ const uploadAllTherapies = async ({ conn, URL, source }) => {
                             { source: { target: 'Source', filters: { name: _ncit.SOURCE_DEFN.name } } },
                         ],
                     },
-                    sort: preferredDrugs,
+                    sort: orderPreferredOntologyTerms,
                 });
                 await conn.addRecord({
                     target: 'crossreferenceof',

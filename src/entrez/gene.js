@@ -6,15 +6,10 @@ const Ajv = require('ajv');
 
 const { checkSpec } = require('../util');
 const util = require('./util');
+const { entrezGene: SOURCE_DEFN } = require('../sources');
 
 const ajv = new Ajv();
 
-const SOURCE_DEFN = {
-    name: 'entrez gene',
-    url: 'https://www.ncbi.nlm.nih.gov/gene',
-    usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
-    description: 'Gene integrates information from a wide range of species. A record may include nomenclature, Reference Sequences (RefSeqs), maps, pathways, variations, phenotypes, and links to genome-, phenotype-, and locus-specific resources worldwide.',
-};
 const CACHE = {};
 const SEARCH_CACHE = {};
 const DB_NAME = 'gene';

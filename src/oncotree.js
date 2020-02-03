@@ -8,16 +8,12 @@ const request = require('request-promise');
 const { rid, orderPreferredOntologyTerms } = require('./graphkb');
 const { logger } = require('./logging');
 const { SOURCE_DEFN: { name: ncitName } } = require('./ncit');
+const { oncotree: SOURCE_DEFN } = require('./sources');
+
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
 
 const CURRENT_VERSION_ID = 'oncotree_latest_stable';
-
-const SOURCE_DEFN = {
-    name: 'oncotree',
-    url: 'http://oncotree.mskcc.org',
-    displayName: 'OncoTree',
-};
 
 
 class OncotreeAPI {

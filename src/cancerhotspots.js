@@ -12,24 +12,18 @@ const {
     hashRecordToId,
 } = require('./util');
 const {
-    preferredDiseases,
     rid,
     orderPreferredOntologyTerms,
-    preferredFeatures,
     convertRecordToQueryFilters,
 } = require('./graphkb');
 const _entrezGene = require('./entrez/gene');
-const { SOURCE_DEFN: { name: ensemblName } } = require('./ensembl');
 const { logger } = require('./logging');
-const { SOURCE_DEFN: { name: oncotreeName } } = require('./oncotree');
 
-const SOURCE_DEFN = {
-    url: 'https://www.cancerhotspots.org',
-    displayName: 'cancerhotspots.org',
-    name: 'cancerhotspots.org',
-    description: 'a resource for statistically significant mutations in cancer',
-    license: 'https://opendatacommons.org/licenses/odbl/1.0',
-};
+const {
+    cancerhotspots: SOURCE_DEFN,
+    oncotree: { name: oncotreeName },
+    ensembl: { name: ensemblName },
+} = require('./sources');
 
 const HEADER = {
     geneId: 'Entrez_Gene_Id',
@@ -77,7 +71,7 @@ const processVariants = async ({ conn, record, source }) => {
                 filters: {
                     AND: [{ OR: [{ sourceId: chromosome }, { name: chromosome }] }, { biotype: 'chromosome' }],
                 },
-                sort: preferredFeatures,
+                sort: orderPreferredOntologyTerms,
             });
             chromosomeCache[chromosome] = reference1;
         }
@@ -231,7 +225,7 @@ const processRecord = async (conn, record, source, relevance) => {
                     { source: { target: 'Source', filters: { name: oncotreeName } } },
                 ],
             },
-            sort: preferredDiseases,
+            sort: orderPreferredOntologyTerms,
         }));
         diseasesCache[diseaseId] = disease;
     }
