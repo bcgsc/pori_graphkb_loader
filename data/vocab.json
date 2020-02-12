@@ -855,7 +855,7 @@
                     "target": "loh"
                 },
                 {
-                    "class": "AliasOf",
+                    "class": "SubClassOf",
                     "target": "mutation"
                 }
             ]
@@ -1310,7 +1310,7 @@
             "links": [
                 {
                     "class": "DeprecatedBy",
-                    "target": "mutation"
+                    "target": "structural variant"
                 }
             ]
         },
