@@ -125,6 +125,15 @@
                 }
             ]
         },
+        "low level copy gain": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "copy gain"
+                }
+            ],
+            "description": "A copy gain that is not also considered an amplification"
+        },
         "copy loss": {
             "links": [
                 {
@@ -242,7 +251,11 @@
                 {
                     "class": "SubClassOf",
                     "target": "indel"
-                },
+                }
+            ]
+        },
+        "gene deletion": {
+            "links": [
                 {
                     "class": "SubClassOf",
                     "target": "copy loss"
@@ -855,7 +868,7 @@
                     "target": "loh"
                 },
                 {
-                    "class": "AliasOf",
+                    "class": "SubClassOf",
                     "target": "mutation"
                 }
             ]
@@ -1310,7 +1323,7 @@
             "links": [
                 {
                     "class": "DeprecatedBy",
-                    "target": "mutation"
+                    "target": "structural variant"
                 }
             ]
         },

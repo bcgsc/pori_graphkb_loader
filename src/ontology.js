@@ -7,12 +7,13 @@
 const Ajv = require('ajv');
 const fs = require('fs');
 const jsonpath = require('jsonpath');
+const _ = require('lodash');
 
 const { schema, schema: { schema: kbSchema } } = require('@bcgsc/knowledgebase-schema');
 
 
 const { logger } = require('./logging');
-const { rid } = require('./graphkb');
+const { rid, convertRecordToQueryFilters } = require('./graphkb');
 
 const ajv = new Ajv();
 
@@ -150,6 +151,7 @@ const uploadFromJSON = async ({ data, conn }) => {
             const dbRecord = await conn.addRecord({
                 target: recordClass,
                 content: { ...record, source: sourceRID },
+                fetchConditions: convertRecordToQueryFilters(_.omit(record, ['description'])),
                 existsOk: true,
             });
             dbRecords[key] = rid(dbRecord);
