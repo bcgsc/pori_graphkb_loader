@@ -105,6 +105,14 @@
                 }
             ]
         },
+        "biallelic inactivation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "loss of function"
+                }
+            ]
+        },
         "biological": {
             "name": "biological"
         },
@@ -124,15 +132,6 @@
                     "target": "copy variant"
                 }
             ]
-        },
-        "low level copy gain": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "copy gain"
-                }
-            ],
-            "description": "A copy gain that is not also considered an amplification"
         },
         "copy loss": {
             "links": [
@@ -228,6 +227,14 @@
                 }
             ]
         },
+        "deep deletion": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "copy loss"
+                }
+            ]
+        },
         "deleterious": {
             "deprecated": true,
             "links": [
@@ -254,14 +261,6 @@
                 }
             ]
         },
-        "gene deletion": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "copy loss"
-                }
-            ]
-        },
         "diagnostic indicator": {
             "description": "evidence is diagnostic for a specific disease type, disease subtype or disease state"
         },
@@ -283,6 +282,14 @@
                 {
                     "class": "SubClassOf",
                     "target": "domain mutation"
+                }
+            ]
+        },
+        "domain mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "mutation"
                 }
             ]
         },
@@ -467,6 +474,14 @@
                 {
                     "class": "OppositeOf",
                     "target": "loss of function"
+                }
+            ]
+        },
+        "gene deletion": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "copy loss"
                 }
             ]
         },
@@ -701,22 +716,6 @@
                 }
             ]
         },
-        "domain mutation": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "mutation"
-                }
-            ]
-        },
-        "kinase domain mutation": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "domain mutation"
-                }
-            ]
-        },
         "kinase domain duplication": {
             "links": [
                 {
@@ -729,11 +728,11 @@
                 }
             ]
         },
-        "biallelic inactivation": {
+        "kinase domain mutation": {
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "loss of function"
+                    "target": "domain mutation"
                 }
             ]
         },
@@ -870,6 +869,15 @@
                 {
                     "class": "SubClassOf",
                     "target": "mutation"
+                }
+            ]
+        },
+        "low level copy gain": {
+            "description": "A copy gain that is not also considered an amplification",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "copy gain"
                 }
             ]
         },
@@ -1466,6 +1474,14 @@
                 }
             ]
         },
+        "shallow deletion": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "copy loss"
+                }
+            ]
+        },
         "signature absent": {
             "description": "Some signature (ex. mutational signature) is not expected",
             "links": [
@@ -1764,7 +1780,7 @@
         "displayName": "GraphKB",
         "longName": "Graph Knowledgebase",
         "name": "graphkb",
-        "url": "https://graphkb.bcgsc.ca",
-        "sort": 0
+        "sort": 0,
+        "url": "https://graphkb.bcgsc.ca"
     }
 }
