@@ -9,16 +9,16 @@ const {
     loadDelimToJson,
     convertRowFields,
     hashRecordToId,
-} = require('./util');
+} = require('./../util');
 const {
     orderPreferredOntologyTerms,
     rid,
-} = require('./graphkb');
-const _pubmed = require('./entrez/pubmed');
-const _gene = require('./entrez/gene');
-const { logger } = require('./logging');
+} = require('./../graphkb');
+const _pubmed = require('./../entrez/pubmed');
+const _gene = require('./../entrez/gene');
+const { logger } = require('./../logging');
 
-const { cosmic: SOURCE_DEFN } = require('./sources');
+const { cosmic: SOURCE_DEFN } = require('./../sources');
 
 const HEADER = {
     gene: 'Gene Name',

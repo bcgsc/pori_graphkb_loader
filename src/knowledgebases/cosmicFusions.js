@@ -8,18 +8,18 @@ const {
     loadDelimToJson,
     convertRowFields,
     hashRecordToId,
-} = require('./util');
+} = require('./../util');
 const {
     orderPreferredOntologyTerms,
     rid,
-} = require('./graphkb');
-const _pubmed = require('./entrez/pubmed');
-const _gene = require('./entrez/gene');
-const _refseq = require('./entrez/refseq');
-const _ensembl = require('./ensembl');
+} = require('./../graphkb');
+const _pubmed = require('./../entrez/pubmed');
+const _gene = require('./../entrez/gene');
+const _refseq = require('./../entrez/refseq');
+const _ensembl = require('./../ensembl');
 
-const { logger } = require('./logging');
-const { cosmic: SOURCE_DEFN } = require('./sources');
+const { logger } = require('./../logging');
+const { cosmic: SOURCE_DEFN } = require('./../sources');
 
 const RECURRENCE_THRESHOLD = 3;
 

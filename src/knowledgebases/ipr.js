@@ -4,18 +4,18 @@ const moment = require('moment');
 
 const { variant: { parse: variantParser }, position: { Position } } = require('@bcgsc/knowledgebase-parser');
 
-const { logger } = require('./logging');
-const _pubmed = require('./entrez/pubmed');
-const _hgnc = require('./hgnc');
-const _ctg = require('./clinicaltrialsgov');
-const { convertRowFields } = require('./util');
+const { logger } = require('./../logging');
+const _pubmed = require('./../entrez/pubmed');
+const _hgnc = require('./../hgnc');
+const _ctg = require('./../clinicaltrialsgov');
+const { convertRowFields } = require('./../util');
 const {
     orderPreferredOntologyTerms,
     rid,
-} = require('./graphkb');
+} = require('./../graphkb');
 
 
-const { iprkb: SOURCE_DEFN } = require('./sources');
+const { iprkb: SOURCE_DEFN } = require('./../sources');
 
 const DEFAULT_ASSEMBLY = 'GRCh37';
 
