@@ -1,7 +1,7 @@
 const path = require('path');
 
 const diseaseOntology = require('../src/diseaseOntology');
-const drugbank = require('../src/drugbank');
+const drugbank = require('../src/drugs/drugbank');
 const { rid, convertRecordToQueryFilters } = require('../src/graphkb');
 
 const api = {

@@ -3,12 +3,12 @@
  * @module importer/drug_ontology
  */
 
-const { loadDelimToJson } = require('./util');
-const { rid, orderPreferredOntologyTerms } = require('./graphkb');
-const { logger } = require('./logging');
+const { loadDelimToJson } = require('../util');
+const { rid, orderPreferredOntologyTerms } = require('../graphkb');
+const { logger } = require('../logging');
 const { SOURCE_DEFN: { name: drugbankName } } = require('./drugbank');
 const { SOURCE_DEFN: { name: chemblName } } = require('./chembl');
-const { gscTherapeuticOntology: SOURCE_DEFN } = require('./sources');
+const { gscTherapeuticOntology: SOURCE_DEFN } = require('../sources');
 
 const HEADER = {
     name: 'source',
