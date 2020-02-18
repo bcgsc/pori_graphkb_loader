@@ -28,6 +28,7 @@
                 "fn": "test"
             }
         ],
+        "no-fallthrough": "off",
         "linebreak-style": [
             "error",
             "unix"
