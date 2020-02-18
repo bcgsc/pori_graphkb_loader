@@ -10,17 +10,17 @@ const kbParser = require('@bcgsc/knowledgebase-parser');
 const {
     checkSpec,
     hashRecordToId,
-} = require('./util');
+} = require('./../util');
 const {
     orderPreferredOntologyTerms,
     rid,
     convertRecordToQueryFilters,
-} = require('./graphkb');
-const _pubmed = require('./entrez/pubmed');
-const _entrezGene = require('./entrez/gene');
-const _ncit = require('./ncit');
-const { logger } = require('./logging');
-const { oncokb: SOURCE_DEFN } = require('./sources');
+} = require('./../graphkb');
+const _pubmed = require('./../entrez/pubmed');
+const _entrezGene = require('./../entrez/gene');
+const _ncit = require('./../ncit');
+const { logger } = require('./../logging');
+const { oncokb: SOURCE_DEFN } = require('./../sources');
 
 
 const ajv = new Ajv();

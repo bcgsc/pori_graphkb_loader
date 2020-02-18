@@ -10,20 +10,20 @@ const { variant: { parse: variantParser } } = require('@bcgsc/knowledgebase-pars
 const {
     convertRowFields,
     hashRecordToId,
-} = require('./util');
+} = require('../util');
 const {
     rid,
     orderPreferredOntologyTerms,
     convertRecordToQueryFilters,
-} = require('./graphkb');
-const _entrezGene = require('./entrez/gene');
-const { logger } = require('./logging');
+} = require('../graphkb');
+const _entrezGene = require('../entrez/gene');
+const { logger } = require('../logging');
 
 const {
     cancerhotspots: SOURCE_DEFN,
     oncotree: { name: oncotreeName },
     ensembl: { name: ensemblName },
-} = require('./sources');
+} = require('../sources');
 
 const HEADER = {
     geneId: 'Entrez_Gene_Id',

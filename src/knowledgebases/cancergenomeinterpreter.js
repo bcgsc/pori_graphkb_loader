@@ -6,17 +6,17 @@ const {
     loadDelimToJson,
     convertRowFields,
     hashRecordToId,
-} = require('./util');
+} = require('./../util');
 const {
     orderPreferredOntologyTerms, rid,
-} = require('./graphkb');
-const { logger } = require('./logging');
-const _trials = require('./clinicaltrialsgov');
-const _pubmed = require('./entrez/pubmed');
-const _gene = require('./entrez/gene');
-const { uploadFromJSON } = require('./ontology');
+} = require('./../graphkb');
+const { logger } = require('./../logging');
+const _trials = require('./../clinicaltrialsgov');
+const _pubmed = require('./../entrez/pubmed');
+const _gene = require('./../entrez/gene');
+const { uploadFromJSON } = require('./../ontology');
 
-const { cgi: SOURCE_DEFN } = require('./sources');
+const { cgi: SOURCE_DEFN } = require('./../sources');
 
 const HEADER = {
     alteration: 'Alteration',

@@ -7,12 +7,12 @@ const Ajv = require('ajv');
 const XmlStream = require('xml-stream');
 const fs = require('fs');
 
-const { checkSpec } = require('./util');
-const { rid } = require('./graphkb');
-const _hgnc = require('./hgnc');
-const { logger } = require('./logging');
+const { checkSpec } = require('./../util');
+const { rid } = require('./../graphkb');
+const _hgnc = require('./../hgnc');
+const { logger } = require('./../logging');
 const _chembl = require('./chembl');
-const { drugbank: SOURCE_DEFN, fdaSrs: { name: fdaName } } = require('./sources');
+const { drugbank: SOURCE_DEFN, fdaSrs: { name: fdaName } } = require('./../sources');
 
 
 const ajv = new Ajv();

@@ -2,7 +2,7 @@
 
 const {
     convertDeprecatedSyntax,
-} = require('../src/ipr');
+} = require('../src/knowledgebases/ipr');
 
 describe('convertDeprecatedSyntax', () => {
     test('SV_e.fusion(FGFR2,?)(?,?)', () => {

@@ -9,14 +9,14 @@ const fs = require('fs');
 
 const { variant: { parse: variantParser } } = require('@bcgsc/knowledgebase-parser');
 
-const { checkSpec } = require('./util');
+const { checkSpec } = require('./../util');
 const {
     orderPreferredOntologyTerms, rid,
-} = require('./graphkb');
-const _pubmed = require('./entrez/pubmed');
-const { logger } = require('./logging');
-const _gene = require('./entrez/gene');
-const { docm: SOURCE_DEFN } = require('./sources');
+} = require('./../graphkb');
+const _pubmed = require('./../entrez/pubmed');
+const { logger } = require('./../logging');
+const _gene = require('./../entrez/gene');
+const { docm: SOURCE_DEFN } = require('./../sources');
 
 const ajv = new Ajv();
 

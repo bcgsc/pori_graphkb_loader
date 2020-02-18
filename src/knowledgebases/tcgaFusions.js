@@ -1,11 +1,11 @@
 const readXlsxFile = require('read-excel-file/node');
 const fs = require('fs');
 
-const { logger } = require('./logging');
-const { convertRowFields } = require('./util');
-const { rid, orderPreferredOntologyTerms } = require('./graphkb');
-const _entrezGene = require('./entrez/gene');
-const _pubmed = require('./entrez/pubmed');
+const { logger } = require('./../logging');
+const { convertRowFields } = require('./../util');
+const { rid, orderPreferredOntologyTerms } = require('./../graphkb');
+const _entrezGene = require('./../entrez/gene');
+const _pubmed = require('./../entrez/pubmed');
 
 // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/ Table 1
 // https://gdc.cancer.gov/resources-tcga-users/tcga-code-tables/tcga-study-abbreviations

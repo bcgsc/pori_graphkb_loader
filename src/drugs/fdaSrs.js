@@ -6,11 +6,11 @@
 
 const {
     orderPreferredOntologyTerms, loadDelimToJson, rid, convertRowFields,
-} = require('./util');
-const { SOURCE_DEFN: { name: ncitSourceName } } = require('./ncit');
-const { logger } = require('./logging');
+} = require('./../util');
+const { SOURCE_DEFN: { name: ncitSourceName } } = require('./../ncit');
+const { logger } = require('./../logging');
 
-const { fdaSrs: SOURCE_DEFN } = require('./sources');
+const { fdaSrs: SOURCE_DEFN } = require('./../sources');
 
 const HEADER = {
     id: 'UNII',

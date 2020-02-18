@@ -8,18 +8,18 @@ const fs = require('fs');
 
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
-const { checkSpec } = require('./util');
+const { checkSpec } = require('./../util');
 const {
     orderPreferredOntologyTerms,
     rid,
-} = require('./graphkb');
-const { logger } = require('./logging');
-const _pubmed = require('./entrez/pubmed');
-const _entrezGene = require('./entrez/gene');
+} = require('./../graphkb');
+const { logger } = require('./../logging');
+const _pubmed = require('./../entrez/pubmed');
+const _entrezGene = require('./../entrez/gene');
 
 const ajv = new Ajv();
 
-const { civic: SOURCE_DEFN } = require('./sources');
+const { civic: SOURCE_DEFN } = require('./../sources');
 
 const BASE_URL = 'https://civicdb.org/api';
 
