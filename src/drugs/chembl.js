@@ -5,12 +5,12 @@ const Ajv = require('ajv');
 
 const {
     checkSpec, requestWithRetry,
-} = require('./util');
+} = require('./../util');
 const {
     rid, generateCacheKey,
-} = require('./graphkb');
-const { logger } = require('./logging');
-const { chembl: SOURCE_DEFN } = require('./sources');
+} = require('./../graphkb');
+const { logger } = require('./../logging');
+const { chembl: SOURCE_DEFN } = require('./../sources');
 
 const ajv = new Ajv();
 
