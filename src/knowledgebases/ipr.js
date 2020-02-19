@@ -332,18 +332,23 @@ const convertDeprecatedSyntax = (string) => {
         }
     } else if (match = /^(SV|CNV|MUT)_([^_:]+)(_([^_]+))?$/.exec(string)) {
         let type;
+        const [, category, gene, , vocabulary] = match;
 
-        if (match[1] === 'CNV') {
+        if (category === 'CNV') {
             type = 'copy variant';
-        } else if (match[1] === 'SV') {
+        } else if (category === 'SV') {
             type = 'structural variant';
         } else {
             type = 'mutation';
         }
-        if (match[3] && !['not specified', 'any'].includes(match[4])) {
-            type = match[4];
+        if (vocabulary && !['not specified', 'any'].includes(vocabulary)) {
+            type = vocabulary;
+
+            if (vocabulary === 'copy loss' && result.zygosity === 'homozygous') {
+                type = 'deep deletion';
+            }
         }
-        Object.assign(result, { type, reference1: match[2] });
+        Object.assign(result, { type, reference1: gene });
     } else if (match = /^ELV-(PROT|RNA)_([^_]+)_([^_]+)$/.exec(string)) {
         const type = match[1] === 'PROT'
             ? 'protein'
