@@ -114,6 +114,6 @@ describe('convertDeprecatedSyntax', () => {
 
     test('CNV_RAD54L_copy loss_homozygous', () => {
         const result = convertDeprecatedSyntax('CNV_RAD54L_copy loss_homozygous');
-        expect(result).toEqual({ reference1: 'rad54l', type: 'copy loss', zygosity: 'homozygous' });
+        expect(result).toEqual({ reference1: 'rad54l', type: 'deep deletion', zygosity: 'homozygous' });
     });
 });
