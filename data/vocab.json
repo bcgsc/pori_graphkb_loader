@@ -957,6 +957,19 @@
                 }
             ]
         },
+        "no dominant negative": {
+            "description": "does not adversely affect the normal product in a dominant negative manner",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "no functional effect"
+                },
+                {
+                    "class": "OppositeOf",
+                    "target": "dominant negative"
+                }
+            ]
+        },
         "no expression": {
             "links": [
                 {
