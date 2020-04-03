@@ -125,6 +125,15 @@
                 }
             ]
         },
+        "cooperative gain of function": {
+            "description": "alterations that have an additive effect together which is not observed with either alteration alone",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "gain of function"
+                }
+            ]
+        },
         "copy gain": {
             "links": [
                 {
