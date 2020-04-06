@@ -4,6 +4,7 @@
 const request = require('request-promise');
 const Ajv = require('ajv');
 const fs = require('fs');
+const path = require('path');
 
 const kbParser = require('@bcgsc/knowledgebase-parser');
 
@@ -132,18 +133,12 @@ const parseVariantName = (variantIn, { reference1 } = {}) => {
     try {
         kbParser.variant.parse(`p.${variant}`, false);
         return { type: `p.${variant}` };
-    } catch (err) {}
+    } catch (err) { }
     let match = /^([a-z])?(\d+)_([a-z])?(\d+)splice$/.exec(variant);
 
     if (match) {
         return {
-            type: `p.(${
-                match[1] || '?'
-            }${
-                match[2]}_${match[3] || '?'
-            }${
-                match[4]
-            })spl`,
+            type: `p.(${match[1] || '?'}${match[2]}_${match[3] || '?'}${match[4]})spl`,
         };
     } if (variant.endsWith('_splice')) {
         return { type: `p.${variant.replace('_splice', 'spl')}` };
@@ -160,11 +155,11 @@ const parseVariantName = (variantIn, { reference1 } = {}) => {
                 reference1: match[1].trim().toLowerCase(),
             };
         }
-        throw new Error(`the fusion in the variant ${
-            variant
-        } does not match the name of the gene feature ${
-            reference1
-        }`);
+        throw new Error(
+            `the fusion in the variant ${variant
+            } does not match the name of the gene feature ${reference1
+            }`,
+        );
     } if (match = /^exon (\d+) (mutation|insertion|deletion|deletion\/insertion|splice mutation|indel|missense mutation)s?$/i.exec(variant)) {
         const [, pos, type] = match;
 
@@ -259,7 +254,7 @@ const processVariant = async (conn, {
         variantType = await getVocabulary(conn, variantType);
         variantUrl = 'CategoryVariant';
         variant = {};
-    } catch (err) {}
+    } catch (err) { }
 
     if (!variant) {
         try {
@@ -268,7 +263,7 @@ const processVariant = async (conn, {
             try {
                 // try with adding a p prefix also
                 variant = kbParser.variant.parse(`p.${type}`, false).toJSON();
-            } catch (err2) {}
+            } catch (err2) { }
             logger.warn(`failed to parse the variant (${type}) for record (gene=${gene}, variant=${variantName})`);
             throw err;
         }
@@ -432,7 +427,7 @@ const processRecord = async ({
             });
         } catch (err) {
             if (drug.includes('+')) {
-            // add the combination therapy as a new therapy defined by oncokb
+                // add the combination therapy as a new therapy defined by oncokb
                 therapy = await conn.addTherapyCombination(source, drug, { matchSource: true });
             } else {
                 throw err;
@@ -598,13 +593,8 @@ const parseAnnotatedRecord = (rawRecord) => {
 /**
  * Add the oncokb evidence level terms. Pulls data from: http://oncokb.org/api/v1/levels
  */
-const addEvidenceLevels = async (conn, source) => {
-    const URL = 'http://oncokb.org/api/v1/levels';
-    const levels = await request({
-        method: 'GET',
-        uri: URL,
-        json: true,
-    });
+const addEvidenceLevels = async (conn, proxy, source) => {
+    const levels = proxy.get('levels.json');
     const result = {};
 
     for (let [level, desc] of Object.entries(levels)) {
@@ -623,7 +613,7 @@ const addEvidenceLevels = async (conn, source) => {
                 sourceId: level,
                 name: level,
                 description: desc,
-                url: URL,
+                url: 'http://oncokb.org/api/v1/levels',
             },
             fetchConditions: convertRecordToQueryFilters({ sourceId: level, name: level, source: rid(source) }),
             existsOk: true,
@@ -637,17 +627,14 @@ const addEvidenceLevels = async (conn, source) => {
 /**
  * Upload the gene curation as tumour supressive or oncogenic statements
  */
-const uploadAllCuratedGenes = async ({ conn, baseUrl = URL, source }) => {
-    const genes = await request(`${baseUrl}/utils/allCuratedGenes`, {
-        method: 'GET',
-        json: true,
-    });
+const uploadAllCuratedGenes = async ({ conn, proxy, source }) => {
+    const genes = proxy.get('allCuratedGenes.json');
 
     const tsg = rid(await conn.getVocabularyTerm('tumour suppressive'));
     const oncogene = rid(await conn.getVocabularyTerm('oncogenic'));
 
     for (const gene of genes) {
-        logger.info(`processing gene: ${gene.entrezGeneId}`);
+        logger.debug(`processing gene: ${gene.entrezGeneId}`);
         let record;
 
         try {
@@ -692,17 +679,14 @@ const uploadAllCuratedGenes = async ({ conn, baseUrl = URL, source }) => {
 /**
  * Load the drug ontology from OncoKB
  */
-const uploadAllTherapies = async ({ conn, URL, source }) => {
-    const drugs = await request(`${URL}/drugs`, {
-        method: 'GET',
-        json: true,
-    });
+const uploadAllTherapies = async ({ conn, proxy, source }) => {
+    const drugs = proxy.get('drugs.json');
 
     const aliases = [];
 
 
     for (const drug of drugs) {
-        logger.info(`processing drug: ${drug.uuid}`);
+        logger.debug(`processing drug: ${drug.uuid}`);
         let record;
 
         try {
@@ -778,13 +762,10 @@ const uploadAllTherapies = async ({ conn, URL, source }) => {
 };
 
 
-const getVariantDescriptions = async (url) => {
+const getVariantDescriptions = async (proxy) => {
     // grab all the variant details
     const variantMap = {};
-    const variantRecords = await request(`${url}/variants`, {
-        method: 'GET',
-        json: true,
-    });
+    const variantRecords = proxy.get('variants.json');
 
     for (const record of variantRecords) {
         try {
@@ -819,6 +800,23 @@ const getVariantDescriptions = async (url) => {
 
 
 /**
+ * Reads files as if they were API reponses (API is no longer open but have the original downloads)
+ * @param {string} dirname the directory where the downloaded endpoint responses live
+ */
+const oncokbProxy = (dirname) => {
+    if (!fs.existsSync(dirname)) {
+        throw new Error(`Input directory (${dirname}) does not exist`);
+    }
+
+    const get = (filename) => {
+        const content = fs.readFileSync(path.join(dirname, filename));
+        return JSON.parse(content);
+    };
+    return { get };
+};
+
+
+/**
  * Upload the OncoKB statements from the OncoKB API into GraphKB
  *
  * @param {object} opt options
@@ -827,7 +825,7 @@ const getVariantDescriptions = async (url) => {
  */
 const upload = async (opt) => {
     const { conn, errorLogPrefix } = opt;
-    const URL = opt.url || 'http://oncokb.org/api/v1';
+    const proxy = oncokbProxy(opt.url);
 
     // add the source node
     const source = rid(await conn.addRecord({
@@ -837,7 +835,7 @@ const upload = async (opt) => {
         fetchConditions: { name: SOURCE_DEFN.name },
     }));
 
-    const variantMap = await getVariantDescriptions(URL);
+    const variantMap = await getVariantDescriptions(proxy);
     const previousLoad = await conn.getRecords({
         target: 'Statement',
         filters: { source: { target: 'Source', filters: { name: SOURCE_DEFN.name } } },
@@ -848,11 +846,12 @@ const upload = async (opt) => {
     await _entrezGene.preLoadCache(conn);
     logger.info('pre-loading pubmed articles');
     await _pubmed.preLoadCache(conn);
-    logger.info('load oncogene/tumour suppressor list');
-    await uploadAllCuratedGenes({ conn, baseUrl: URL, source });
+    // can no longer access URL and do not have a download of this file
+    // logger.info('load oncogene/tumour suppressor list');
+    // await uploadAllCuratedGenes({ conn, proxy, source });
     logger.info('load drug ontology');
-    await uploadAllTherapies({ conn, URL, source });
-    await addEvidenceLevels(conn, source);
+    await uploadAllTherapies({ conn, proxy, source });
+    await addEvidenceLevels(conn, proxy, source);
 
     const records = [];
     const counts = {
@@ -872,11 +871,7 @@ const upload = async (opt) => {
     // download and parse all variants
     for (const file of ['allActionableVariants', 'allAnnotatedVariants']) {
         logger.info(`loading: ${URL}/utils/${file}.json`);
-        const result = await request({
-            method: 'GET',
-            json: true,
-            uri: `${URL}/utils/${file}.json`,
-        });
+        const result = proxy.get(`${file}.json`);
         const parser = file === 'allActionableVariants'
             ? parseActionableRecord
             : parseAnnotatedRecord;
@@ -901,7 +896,7 @@ const upload = async (opt) => {
             counts.existing++;
             continue;
         }
-        logger.info(`processing (${i} / ${records.length})`);
+        logger.debug(`processing (${i} / ${records.length})`);
 
         if (record.relevanceName === 'inconclusive') {
             counts.skip++;
@@ -928,6 +923,12 @@ const upload = async (opt) => {
     logger.info(`writing errors to ${errorOutput}`);
     fs.writeFileSync(errorOutput, JSON.stringify({ records: errorList }, null, 2));
     logger.info(JSON.stringify(counts));
+    const created = { ...conn.created };
+
+    for (const key of Object.keys(created)) {
+        created[key] = created[key].length;
+    }
+    logger.info(JSON.stringify(created));
 };
 
 module.exports = {
