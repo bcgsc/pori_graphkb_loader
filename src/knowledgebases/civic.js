@@ -710,7 +710,7 @@ const upload = async (opt) => {
         }
     }
     logger.info(JSON.stringify(counts));
-    logger.info(JSON.stringify(conn.createdCounts()));
+    logger.info(`newly created records: ${JSON.stringify(conn.getCreatedCounts())}`);
     const errorJson = `${errorLogPrefix}-civic.json`;
     logger.info(`writing ${errorJson}`);
     fs.writeFileSync(errorJson, JSON.stringify(errorList, null, 2));
