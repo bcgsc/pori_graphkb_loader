@@ -21,6 +21,8 @@ const ajv = new Ajv();
 
 const { civic: SOURCE_DEFN } = require('./../sources');
 
+const TRUSTED_CURATOR_ID = 968;
+
 const BASE_URL = 'https://civicdb.org/api';
 
 /**
@@ -236,7 +238,7 @@ const getDrug = async (conn, name) => {
         if (match) {
             return await conn.getTherapy(match[1]);
         }
-    } catch (err) {}
+    } catch (err) { }
     logger.error(originalError);
     throw originalError;
 };
@@ -557,32 +559,22 @@ const downloadVariantRecords = async () => {
     return varById;
 };
 
-
 /**
- * Access the CIVic API, parse content, transform and load into GraphKB
+ * Fetch civic approved evidence entries as well as those submitted by trusted curators
  *
- * @param {object} opt options
- * @param {ApiConnection} opt.conn the api connection object for GraphKB
- * @param {string} [opt.url] url to use as the base for accessing the civic api
+ * @param {string} baseUrl the base url for the request
  */
-const upload = async (opt) => {
-    const { conn, errorLogPrefix } = opt;
-    const urlTemplate = `${opt.url || BASE_URL}/evidence_items?count=500&status=accepted`;
+const downloadEvidenceRecords = async (baseUrl) => {
+    const urlTemplate = `${baseUrl}/evidence_items?count=500&status=accepted`;
     // load directly from their api
     const counts = { error: 0, success: 0, skip: 0 };
     let expectedPages = 1,
         currentPage = 1;
 
-    // add the source node
-    const source = await conn.addRecord({
-        target: 'Source',
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-    });
-    const varById = await downloadVariantRecords();
+    const allRecords = [];
     const errorList = [];
 
+    // get the aproved entries
     while (currentPage <= expectedPages) {
         const url = `${urlTemplate}&page=${currentPage}`;
         logger.info(`loading: ${url}`);
@@ -593,70 +585,126 @@ const upload = async (opt) => {
         });
         expectedPages = resp._meta.total_pages;
         logger.info(`loaded ${resp.records.length} records`);
+        allRecords.push(...resp.records);
+        currentPage++;
+    }
 
-        const records = [];
+    // now find entries curated by trusted curators
+    const { results: trustedSubmissions } = await request({
+        uri: `${baseUrl}/evidence_items/search`,
+        method: 'POST',
+        body: {
+            operator: 'AND',
+            queries: [{ field: 'submitter_id', condition: { name: 'is_equal_to', parameters: [`${TRUSTED_CURATOR_ID}`] } }],
+            entity: 'evidence_items',
+            save: true,
+        },
+        json: true,
+    });
+    logger.info(`loaded ${trustedSubmissions.length} from trusted submitters`);
 
-        // validate the records using the spec
-        for (const record of resp.records) {
+    for (const record of trustedSubmissions) {
+        if (record.status !== 'accepted') {
+            allRecords.push(record);
+        }
+    }
+
+    // validate the records using the spec
+    const records = [];
+
+    for (const record of allRecords) {
+        try {
+            checkSpec(validateEvidenceSpec, record);
+        } catch (err) {
+            errorList.push({ record, error: err, errorMessage: err.toString() });
+            logger.error(err);
+            counts.error++;
+            continue;
+        }
+
+        if (
+            record.clinical_significance === 'N/A'
+            || record.evidence_direction === 'Does Not Support'
+            || (record.clinical_significance === null && record.evidence_type === 'Predictive')
+        ) {
+            counts.skip++;
+            logger.debug(`skipping uninformative record (${record.id})`);
+        } else if (record.source.source_type.toLowerCase() !== 'pubmed') {
+            logger.info(`Currently only loading pubmed sources. Found ${record.source.source_type} (${record.id})`);
+            counts.skip++;
+        } else {
+            records.push(record);
+        }
+    }
+    return { records, counts, errorList };
+};
+
+
+/**
+ * Access the CIVic API, parse content, transform and load into GraphKB
+ *
+ * @param {object} opt options
+ * @param {ApiConnection} opt.conn the api connection object for GraphKB
+ * @param {string} [opt.url] url to use as the base for accessing the civic api
+ */
+const upload = async (opt) => {
+    const { conn, errorLogPrefix } = opt;
+    // add the source node
+    const source = await conn.addRecord({
+        target: 'Source',
+        content: SOURCE_DEFN,
+        existsOk: true,
+        fetchConditions: { name: SOURCE_DEFN.name },
+    });
+
+    let { result: previouslyEntered } = await conn.request({
+        method: 'POST',
+        uri: 'query',
+        body: {
+            target: 'Statement',
+            filters: { source: rid(source) },
+            returnProperties: ['sourceId'],
+        },
+    });
+    previouslyEntered = new Set(previouslyEntered.map(r => r.sourceId));
+    logger.info(`Found ${previouslyEntered.size} records previously added from ${SOURCE_DEFN.name}`);
+
+    const varById = await downloadVariantRecords();
+    const { records, errorList, counts } = await downloadEvidenceRecords(opt.url || BASE_URL);
+
+
+    logger.info(`Processing ${records.length} records`);
+    counts.exists = counts.exists || 0;
+
+    for (const record of records) {
+        if (previouslyEntered.has(record.id)) {
+            counts.exists++;
+            continue;
+        }
+        record.variant = varById[record.variant_id];
+
+        if (record.drugs === undefined || record.drugs.length === 0) {
+            record.drugs = [null];
+        }
+
+        for (const drug of record.drugs) {
             try {
-                checkSpec(validateEvidenceSpec, record);
+                logger.debug(`processing ${record.id}`);
+                await processEvidenceRecord({
+                    conn,
+                    sources: { civic: source },
+                    rawRecord: Object.assign({ drug }, _.omit(record, ['drugs'])),
+                });
+                counts.success++;
             } catch (err) {
+                if (err.toString().includes('is not a function')) {
+                    console.error(err);
+                }
                 errorList.push({ record, error: err, errorMessage: err.toString() });
                 logger.error(err);
                 counts.error++;
-                continue;
-            }
-
-            if (
-                record.clinical_significance === 'N/A'
-                || record.evidence_direction === 'Does Not Support'
-                || (record.clinical_significance === null && record.evidence_type === 'Predictive')
-            ) {
-                counts.skip++;
-                logger.info(`skipping uninformative record (${record.id})`);
-            } else if (record.source.source_type.toLowerCase() !== 'pubmed') {
-                logger.info(`Currently only loading pubmed sources. Found ${record.source.source_type} (${record.id})`);
-                counts.skip++;
-            } else {
-                records.push(record);
             }
         }
-
-        // fetch and cache the current pubmed records first
-        const pmidList = Array.from((new Set(records.map(rec => rec.source.citation_id).filter(pmid => pmid))).values());
-        logger.info(`Fetching article metadata for ${pmidList.length} articles from ${records.length} records`);
-        await _pubmed.fetchAndLoadByIds(conn, pmidList);
-
-        logger.info(`Processing ${records.length} records`);
-
-        for (const record of records) {
-            record.variant = varById[record.variant_id];
-
-            if (record.drugs === undefined || record.drugs.length === 0) {
-                record.drugs = [null];
-            }
-
-            for (const drug of record.drugs) {
-                try {
-                    logger.info(`processing ${record.id}`);
-                    await processEvidenceRecord({
-                        conn,
-                        sources: { civic: source },
-                        rawRecord: Object.assign({ drug }, _.omit(record, ['drugs'])),
-                    });
-                    counts.success++;
-                } catch (err) {
-                    if (err.toString().includes('is not a function')) {
-                        console.error(err);
-                    }
-                    errorList.push({ record, error: err, errorMessage: err.toString() });
-                    logger.error(err);
-                    counts.error++;
-                }
-            }
-        }
-        logger.info(JSON.stringify(counts));
-        currentPage++;
     }
     logger.info(JSON.stringify(counts));
     const errorJson = `${errorLogPrefix}-civic.json`;

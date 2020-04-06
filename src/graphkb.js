@@ -121,6 +121,7 @@ class ApiConnection {
         this.username = null;
         this.password = null;
         this.exp = null;
+        this.created = {};
     }
 
     async setAuth({ username, password }) {
@@ -342,7 +343,7 @@ class ApiConnection {
                     target,
                     sortFunc,
                 });
-            } catch (err) {}
+            } catch (err) { }
         }
 
         const model = schema.get(target);
@@ -357,6 +358,11 @@ class ApiConnection {
                 uri: model.routeName,
                 body: content,
             }));
+
+            if (this.created[model.name] === undefined) {
+                this.created[model.name] = [];
+            }
+            this.created[model.name].push(result['@rid']);
             return result;
         } catch (err) {
             if (err.statusCode === 409 && existsOk) {
