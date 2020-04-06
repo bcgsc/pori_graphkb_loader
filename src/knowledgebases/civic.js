@@ -601,13 +601,16 @@ const downloadEvidenceRecords = async (baseUrl) => {
         },
         json: true,
     });
-    logger.info(`loaded ${trustedSubmissions.length} from trusted submitters`);
+
+    let submitted = 0;
 
     for (const record of trustedSubmissions) {
-        if (record.status !== 'accepted') {
+        if (record.status === 'submitted') {
+            submitted += 1;
             allRecords.push(record);
         }
     }
+    logger.info(`loaded ${submitted} unaccepted entries from trusted submitters`);
 
     // validate the records using the spec
     const records = [];
