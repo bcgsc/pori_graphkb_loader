@@ -125,6 +125,15 @@
                 }
             ]
         },
+        "cooperative polygenic gain of function": {
+            "description": "alterations that have an additive effect together which is not observed with either alteration alone",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "gain of function"
+                }
+            ]
+        },
         "copy gain": {
             "links": [
                 {
@@ -954,6 +963,19 @@
                 {
                     "class": "DeprecatedBy",
                     "target": "no functional effect"
+                }
+            ]
+        },
+        "no dominant negative": {
+            "description": "does not adversely affect the normal product in a dominant negative manner",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "no functional effect"
+                },
+                {
+                    "class": "OppositeOf",
+                    "target": "dominant negative"
                 }
             ]
         },
