@@ -171,6 +171,15 @@ class ApiConnection {
         return request(req);
     }
 
+    getCreatedCounts() {
+        const created = {};
+
+        for (const key of Object.keys(this.created)) {
+            created[key] = this.created[key].length;
+        }
+        return created;
+    }
+
     async getRecords(opt) {
         const {
             filters,
