@@ -1,6 +1,63 @@
 {
     "class": "Signature",
     "records": {
+        "cd8+ cell infiltration": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "immune infiltration"
+                }
+            ],
+            "name": "cd8+ cell infiltration"
+        },
+        "erv load": {
+            "description": "endogenous retroviruses (ERV) expression due to epigenetic derepression",
+            "name": "erv load"
+        },
+        "hla genotype": {
+            "description": "homo- or heterozygosity in HLA class I locus (HLA-A, HLA-B or HLA-C)",
+            "name": "hla genotype"
+        },
+        "homologous recombination deficiency": {
+            "description": "genetic instability due to genomic alterations in the homologous recombination (HR) DNA repair pathway",
+            "name": "homologous recombination deficiency"
+        },
+        "hrd": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "homologous recombination deficiency"
+                }
+            ],
+            "name": "hrd"
+        },
+        "immune infiltration": {
+            "description": "proportion of immune/inflammatory cells in the tumour microenvironment",
+            "name": "immune infiltration"
+        },
+        "microsatellite instability": {
+            "description": "genetic instability in short nucleotide repeats (microsatellites) due to a high mutation rate as a result of abnormal DNA mismatch repair",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "microsatellite phenotype"
+                }
+            ],
+            "name": "microsatellite instability"
+        },
+        "microsatellite phenotype": {
+            "name": "microsatellite phenotype"
+        },
+        "microsatellite stable": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "microsatellite phenotype"
+                }
+            ],
+            "name": "microsatellite stable"
+        },
         "msi": {
             "deprecated": true,
             "links": [
@@ -21,70 +78,13 @@
             ],
             "name": "mss"
         },
-        "cd8+ cell infiltration": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "immune infiltration"
-                }
-            ],
-            "name": "cd8+ cell infiltration"
-        },
-        "erv load": {
-            "name": "erv load",
-            "description": "endogenous retroviruses (ERV) expression due to epigenetic derepression"
-        },
-        "hla genotype": {
-            "name": "hla genotype",
-            "description": "homo- or heterozygosity in HLA class I locus (HLA-A, HLA-B or HLA-C)"
-        },
-        "hrd": {
-            "name": "hrd",
-            "deprecated": true,
-            "links": [
-                {
-                    "class": "DeprecatedBy",
-                    "target": "homologous recombination deficiency"
-                }
-            ]
-        },
-        "homologous recombination deficiency": {
-            "name": "homologous recombination deficiency",
-            "description": "genetic instability due to genomic alterations in the homologous recombination (HR) DNA repair pathway"
-        },
-        "immune infiltration": {
-            "name": "immune infiltration",
-            "description": "proportion of immune/inflammatory cells in the tumour microenvironment"
-        },
-        "microsatellite instability": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "microsatellite phenotype"
-                }
-            ],
-            "description": "genetic instability in short nucleotide repeats (microsatellites) due to a high mutation rate as a result of abnormal DNA mismatch repair",
-            "name": "microsatellite instability"
-        },
-        "microsatellite phenotype": {
-            "name": "microsatellite phenotype"
-        },
-        "microsatellite stable": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "microsatellite phenotype"
-                }
-            ],
-            "name": "microsatellite stable"
-        },
         "mutation burden": {
-            "name": "mutation burden",
-            "description": "total number of somatic mutations normalized to the genome size"
+            "description": "total number of somatic mutations normalized to the genome size",
+            "name": "mutation burden"
         },
         "neoantigen load": {
-            "name": "neoantigen load",
-            "description": "expression of antigens that are entirely absent from the normal human genome and the results of mutations acquired during carcinogenesis and progression"
+            "description": "expression of antigens that are entirely absent from the normal human genome and the results of mutations acquired during carcinogenesis and progression",
+            "name": "neoantigen load"
         },
         "t cell infiltration": {
             "links": [
@@ -100,7 +100,7 @@
         "displayName": "GraphKB",
         "longName": "Graph Knowledgebase",
         "name": "graphkb",
-        "url": "https://graphkb.bcgsc.ca",
-        "sort": 0
+        "sort": 0,
+        "url": "https://graphkb.bcgsc.ca"
     }
 }
