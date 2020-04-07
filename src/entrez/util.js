@@ -68,7 +68,7 @@ const fetchByIdList = async (rawIdList, opt) => {
             queryParams.dbfrom = dbfrom;
         }
 
-        logger.info(`loading: ${url}?db=${db}`);
+        logger.debug(`loading: ${url}?db=${db}`);
         const { result } = await requestWithRetry({
             method: 'GET',
             uri: url,
@@ -156,7 +156,7 @@ const uploadRecord = async (api, content, opt = {}) => {
                 cache[cacheKey] = record;
             }
             return record;
-        } catch (err) {}
+        } catch (err) { }
     }
     let source = cache.__source;
 
