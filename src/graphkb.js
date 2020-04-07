@@ -121,6 +121,7 @@ class ApiConnection {
         this.username = null;
         this.password = null;
         this.exp = null;
+        this.created = {};
     }
 
     async setAuth({ username, password }) {
@@ -168,6 +169,15 @@ class ApiConnection {
             req.qs = opt.qs;
         }
         return request(req);
+    }
+
+    getCreatedCounts() {
+        const created = {};
+
+        for (const key of Object.keys(this.created)) {
+            created[key] = this.created[key].length;
+        }
+        return created;
     }
 
     async getRecords(opt) {
@@ -342,7 +352,7 @@ class ApiConnection {
                     target,
                     sortFunc,
                 });
-            } catch (err) {}
+            } catch (err) { }
         }
 
         const model = schema.get(target);
@@ -357,6 +367,11 @@ class ApiConnection {
                 uri: model.routeName,
                 body: content,
             }));
+
+            if (this.created[model.name] === undefined) {
+                this.created[model.name] = [];
+            }
+            this.created[model.name].push(result['@rid']);
             return result;
         } catch (err) {
             if (err.statusCode === 409 && existsOk) {

@@ -7,7 +7,7 @@ const DailyRotateFile = require('winston-daily-rotate-file');
 const path = require('path');
 const moment = require('moment');
 
-const GKB_LOG_LEVEL = process.env.GKB_LOG_LEVEL || 'debug';
+const GKB_LOG_LEVEL = process.env.GKB_LOG_LEVEL || 'info';
 
 const transports = [
     new winston.transports.Console({
