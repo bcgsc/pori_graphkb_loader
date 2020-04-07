@@ -188,7 +188,8 @@ const uploadFromJSON = async ({ data, conn }) => {
         }
     }
     // report the success rate
-    logger.log('info', JSON.stringify(counts));
+    logger.info(`processed: ${JSON.stringify(counts)}`);
+    logger.info(`created: ${JSON.stringify(conn.getCreatedCounts())}`);
 };
 
 
