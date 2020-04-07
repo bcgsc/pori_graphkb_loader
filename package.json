@@ -11,8 +11,8 @@
   },
   "license": "ISC",
   "dependencies": {
-    "@bcgsc/knowledgebase-parser": "^0.5.4",
-    "@bcgsc/knowledgebase-schema": "^3.0.2",
+    "@bcgsc/knowledgebase-parser": "^0.7.0",
+    "@bcgsc/knowledgebase-schema": "^3.4.3",
     "ajv": "^6.10.0",
     "command-line-args": "^5.1.1",
     "command-line-usage": "^5.0.5",
@@ -52,6 +52,7 @@
   "scripts": {
     "start": "node --stack-size=8192  --max-old-space-size=20000 src/index.js --graphkb https://graphkbdev-api.bcgsc.ca/api",
     "start:prod": "node --stack-size=8192  --max-old-space-size=20000 src/index.js",
+    "start:staging": "node --stack-size=8192  --max-old-space-size=20000 src/index.js --graphkb https://graphkbstaging-api.bcgsc.ca/api",
     "test": "NODE_ENV=test jest --config config/jest.config.js",
     "lint": "eslint -c .eslintrc.jon src test",
     "version": "echo $npm_package_version"
