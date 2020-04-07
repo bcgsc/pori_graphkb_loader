@@ -104,6 +104,7 @@ const optionDefinitions = [
     {
         name: 'oncokb',
         description: 'path to the actionable variants JSON from oncokb',
+        type: fileExists,
     },
     {
         name: 'cgi',
@@ -275,6 +276,7 @@ const upload = async () => {
             } else {
                 await currModule.upload({
                     conn: apiConnection,
+                    url: options[moduleName],
                     errorLogPrefix: options.errorLogPrefix,
                 });
             }
