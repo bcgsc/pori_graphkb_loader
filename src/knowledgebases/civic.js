@@ -318,7 +318,7 @@ const getEvidenceLevel = async ({
     conn, rawRecord, sources,
 }) => {
     // get the evidenceLevel
-    let level = `${rawRecord.evidence_level}${rawRecord.rating}`.toLowerCase();
+    let level = `${rawRecord.evidence_level}${rawRecord.rating || ''}`.toLowerCase();
 
     if (EVIDENCE_LEVEL_CACHE[level] === undefined) {
         level = await conn.addRecord({
@@ -327,6 +327,7 @@ const getEvidenceLevel = async ({
                 name: level,
                 sourceId: level,
                 source: rid(sources.civic),
+                displayName: `${SOURCE_DEFN.displayName} ${level.toUpperCase()}`,
                 description: `${VOCAB[rawRecord.evidence_level]} ${VOCAB[rawRecord.rating] || ''}`,
                 url: VOCAB.url,
             },
