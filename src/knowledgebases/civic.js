@@ -681,14 +681,15 @@ const upload = async (opt) => {
     counts.exists = counts.exists || 0;
 
     for (const record of records) {
-        if (previouslyEntered.has(`${record.id}`)) {
-            counts.exists += 1;
-            continue;
-        }
         record.variant = varById[record.variant_id];
 
         if (record.drugs === undefined || record.drugs.length === 0) {
             record.drugs = [null];
+        }
+
+        if (previouslyEntered.has(`${record.id}`)) {
+            counts.exists += record.drugs.length;
+            continue;
         }
 
         for (const drug of record.drugs) {
