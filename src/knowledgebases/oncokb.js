@@ -870,7 +870,7 @@ const upload = async (opt) => {
 
     // download and parse all variants
     for (const file of ['allActionableVariants', 'allAnnotatedVariants']) {
-        logger.info(`loading: ${URL}/utils/${file}.json`);
+        logger.info(`loading: /utils/${file}.json`);
         const result = proxy.get(`${file}.json`);
         const parser = file === 'allActionableVariants'
             ? parseActionableRecord
@@ -922,13 +922,8 @@ const upload = async (opt) => {
     const errorOutput = `${errorLogPrefix}-oncokb.json`;
     logger.info(`writing errors to ${errorOutput}`);
     fs.writeFileSync(errorOutput, JSON.stringify({ records: errorList }, null, 2));
-    logger.info(JSON.stringify(counts));
-    const created = { ...conn.created };
-
-    for (const key of Object.keys(created)) {
-        created[key] = created[key].length;
-    }
-    logger.info(JSON.stringify(created));
+    logger.info(`external records processed: ${JSON.stringify(counts)}`);
+    logger.info(`records created: ${JSON.stringify(conn.getCreatedCounts())}`);
 };
 
 module.exports = {
