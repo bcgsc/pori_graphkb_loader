@@ -35,6 +35,7 @@ IMPORT_MODULES.sequenceOntology = require('./sequenceOntology');
 IMPORT_MODULES.tcgaFusions = require('./knowledgebases/tcgaFusions');
 IMPORT_MODULES.uberon = require('./uberon');
 IMPORT_MODULES.vario = require('./vario');
+IMPORT_MODULES.geneList = require('./geneList');
 
 
 const optionDefinitions = [
@@ -187,6 +188,11 @@ const optionDefinitions = [
         description: 'path to the cancer hotspots maf file',
         type: fileExists,
     },
+    {
+        name: 'geneList',
+        description: 'path to the gene list file.. Expected format is text',
+        type: fileExists,
+    },
 ];
 const options = createOptionsMenu(optionDefinitions,
     {
@@ -202,8 +208,8 @@ if (options.pubmed) {
 }
 
 const compareLoadModules = (name1, name2) => {
-    const module1 = IMPORT_MODULES[name1];
-    const module2 = IMPORT_MODULES[name2];
+    const module1 = IMPORT_MODULES[name1] || {};
+    const module2 = IMPORT_MODULES[name2] || {};
 
     // knowledgebases should always be loaded last
     if (module1.kb !== module2.kb) {
@@ -213,9 +219,9 @@ const compareLoadModules = (name1, name2) => {
             return -1;
         }
     }
-    if (module1.dependencies && module1.dependencies.includes(IMPORT_MODULES[name2].SOURCE_DEFN.name)) {
+    if (module1.dependencies && module1.dependencies.includes(module2.name)) {
         return 1;
-    } if (module2.dependencies && module2.dependencies.includes(IMPORT_MODULES[name1].SOURCE_DEFN.name)) {
+    } if (module2.dependencies && module2.dependencies.includes(module1.name)) {
         return -1;
     }
     return 0;
