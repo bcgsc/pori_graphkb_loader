@@ -92,9 +92,8 @@ const parseXmlToJson = (xmlContent, opts = {}) => new Promise((resolve, reject) 
             ...opts,
         },
         (err, result) => {
-            logger.error(err);
-
             if (err !== null) {
+                logger.error(`xml parsing error: ${err}`);
                 reject(err);
             } else {
                 resolve(result);

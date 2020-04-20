@@ -30,7 +30,7 @@ const fileExists = (fileName) => {
  * @param defns[].default the default value of an option
  * @param {boolean} defns[].required flag to indicate if the option is required
  */
-const createOptionsMenu = (defns, opt) => {
+const createOptionsMenu = (defns, opt = {}) => {
     for (const defn of defns) {
         if (defn.env !== undefined) {
             if (process.env[defn.env] !== undefined) {
@@ -47,7 +47,7 @@ const createOptionsMenu = (defns, opt) => {
         }
     }
     const usage = commandLineUsage([
-        { header: opt.title || 'Help Menu', content: opt.description || '' },
+        { header: opt.title || 'GraphKB ETL Importer', content: opt.description || 'Migrates data from dumps of (or using direct API connection to) other databases/resources into GraphKB' },
         { header: 'Options', optionList: defns },
     ]);
     let options;

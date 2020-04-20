@@ -1,10 +1,11 @@
 /**
  * @module importer/geneList
  */
-const { loadDelimToJson } = require('./util');
-const { logger } = require('./logging');
-const { hgnc: { name: hgnc }, ensembl: { name: ensembl } } = require('./sources');
-const { fetchAndLoadBySymbol } = require('./hgnc');
+const { stdOptions, runLoader } = require('../src');
+const { fileExists, createOptionsMenu } = require('../src/cli');
+const { loadDelimToJson } = require('../src/util');
+const { logger } = require('../src/logging');
+const { fetchAndLoadBySymbol } = require('../src/hgnc');
 
 /**
  * Upload the HGNC genes from a list of symbols
@@ -17,9 +18,12 @@ const uploadFile = async (opt) => {
     const { filename, conn } = opt;
     logger.info(`loading: ${filename}`);
     const genes = await loadDelimToJson(filename);
+    logger.info('fetching existing gene names to avoid spamming external APIs');
     const existingGenes = new Set();
     (await conn.getRecords({
-        target: 'Feature', returnProperies: ['name', 'sourceId'],
+        target: 'Feature',
+        returnProperies: ['name', 'sourceId'],
+        filters: { biotype: 'gene' },
     })).forEach(({ name, sourceId }) => {
         existingGenes.add(sourceId);
         existingGenes.add(name);
@@ -46,7 +50,17 @@ const uploadFile = async (opt) => {
     logger.info(`created: ${JSON.stringify(conn.getCreatedCounts())}`);
 };
 
-module.exports = {
-    uploadFile,
-    dependencies: [ensembl, hgnc],
-};
+
+const options = createOptionsMenu(
+    [
+        ...stdOptions,
+        {
+            name: 'filename',
+            description: 'path to the tab delimited list of gene names',
+            type: fileExists,
+        },
+    ],
+);
+
+
+runLoader(options, 'clinicaltrials.gov xml result', uploadFile, { filename: options.filename });
