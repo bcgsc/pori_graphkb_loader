@@ -1,6 +1,6 @@
 const { stdOptions, runLoader } = require('../src');
 const { createOptionsMenu } = require('../src/cli');
-const { uploadFile } = require('../src/knowledgebases/ipr');
+const { uploadFile } = require('../src/knowledgebases/iprkb');
 const { fileExists } = require('../src/util');
 
 

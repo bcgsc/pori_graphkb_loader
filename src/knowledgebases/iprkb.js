@@ -4,18 +4,18 @@ const moment = require('moment');
 
 const { variant: { parse: variantParser }, position: { Position } } = require('@bcgsc/knowledgebase-parser');
 
-const { logger } = require('./../logging');
-const _pubmed = require('./../entrez/pubmed');
-const _hgnc = require('./../hgnc');
-const _ctg = require('./../clinicaltrialsgov');
-const { convertRowFields } = require('./../util');
+const { logger } = require('../logging');
+const _pubmed = require('../entrez/pubmed');
+const _hgnc = require('../hgnc');
+const _ctg = require('../clinicaltrialsgov');
+const { convertRowFields } = require('../util');
 const {
     orderPreferredOntologyTerms,
     rid,
-} = require('./../graphkb');
+} = require('../graphkb');
 
 
-const { iprkb: SOURCE_DEFN } = require('./../sources');
+const { iprkb: SOURCE_DEFN } = require('../sources');
 
 const DEFAULT_ASSEMBLY = 'GRCh37';
 
@@ -770,7 +770,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
 
     for (let i = 0; i < records.length; i++) {
         const record = records[i];
-        logger.info(`processing ${record.ident} (${i} / ${records.length})`);
+        logger.debug(`processing ${record.ident} (${i} / ${records.length})`);
 
         if (record.history) {
             counts.history++;
