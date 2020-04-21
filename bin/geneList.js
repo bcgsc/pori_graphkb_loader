@@ -55,6 +55,7 @@ const options = createOptionsMenu(
             name: 'filename',
             description: 'path to the tab delimited list of gene names',
             type: fileExists,
+            required: true,
         },
     ],
 );
