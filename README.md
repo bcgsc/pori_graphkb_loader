@@ -4,13 +4,12 @@ This package is used to import content from a variety of sources into GraphKB us
 
 Automatic Import modules are provided for a variety of input sources. To Start importing external data, first the GraphKB API
 must already be running. Then the command line interface can be used for upload. Get the help menu
-detailing the commands and required inputs as follows
+detailing the commands and required inputs as follows on any of the scripts under `bin/`
 
 ```bash
-npm start -- --help
+node bin/<script>.js -- --help
 ```
 
-If loaded in order, some modules will link to one another.
 
 ### Table Of Contents
 
@@ -41,8 +40,7 @@ If loaded in order, some modules will link to one another.
 ### Style
 
 1. In-code documentation should follow [JSDocs](http://usejsdoc.org) format
-2. TDD. New tests should be added for any new functionality. Using mocha (https://mochajs.org/) for testing. As mocha has several
-   test styles, please match the existing style in the current tests.
+2. TDD. New tests should be added for any new functionality. Using jestfor testing
 3. API must follow REST guidelines (for example see https://github.com/Microsoft/api-guidelines/blob/vNext/Guidelines.md)
 4. JS code should be written with ES6 syntax (where possible) see https://github.com/lukehoban/es6features
 
@@ -145,7 +143,7 @@ the ontology term
 Once this file has been built it can be loaded as follows. The script will create records if they do not already exist. Any conflicts will be reported in the logging
 
 ```bash
-npm start -- --ontology /path/to/json/file
+node bin/ontology.js --filename /path/to/json/file
 ```
 
 
@@ -162,7 +160,7 @@ the expected file, follow the steps below
  * Upload the file to GraphKB using this module
 
 ```bash
-npm start -- --clinicaltrialsgov download.xml
+node bin/clinicaltrialsgov.js --filename download.xml
 ```
 
 Note: This may also load trials directly from the API (ot through the CLI)
@@ -178,7 +176,7 @@ The disease ontology releases their data dumps as both XML and JSON from thei gi
 Once downloaded the JSON file can be loaded as follows
 
 ```bash
-npm start -- --diseaseOntology doid.json
+node bin/diseaseOntology.js --filename doid.json
 ```
 
 ### DrugBank (XML)
@@ -188,7 +186,7 @@ Examples
 - /projects/vardb/downloads/drugbank/drugbank_all_full_database_v5.1.4.xml
 
 ```bash
-npm start -- --drugbank drugbank_all_full_database_v5.1.4.xml
+node bin/drugbank.js --filename drugbank_all_full_database_v5.1.4.xml
 ```
 
 ### Ensembl (TAB)
@@ -212,9 +210,6 @@ This requires a BioMart Export with the minimum following columns included
 - Gene name
 - Source of gene name
 
-```bash
-npm start -- --ensembl ensembl_mart_export.tab
-```
 
 ### FDA (TAB)
 
@@ -223,10 +218,6 @@ Example
 - /projects/vardb/downloads/fda/UNII_Records_7Mar2019.txt
 
 
-```bash
-npm start -- --fda UNII_Records_25Oct2018.txt
-```
-
 ### GSC Therapeutic Ontology (TAB)
 
 Example
@@ -234,7 +225,7 @@ Example
 - /projects/vardb/downloads/gsc_therapeutic_ontology/gsc_therapeutic_ontology_2019-07-16.tab
 
 ```bash
-npm start -- --drugOntology gsc_therapeutic_ontology_2019-07-16.tab
+node bin/gscTherapeuticOntology.js --filename gsc_therapeutic_ontology_2019-07-16.tab
 ```
 
 
@@ -244,9 +235,6 @@ Example
 - ftp://ftp.ebi.ac.uk/pub/databases/genenames/new/json/locus_types/gene_with_protein_product.json
 - /projects/vardb/downloads/hgnc/hgnc_complete_set_d1541207688.json
 
-```bash
-npm start -- --hgnc hgnc_complete_set.json
-```
 
 ### NCIT (TAB)
 
@@ -254,22 +242,12 @@ Example
 - https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus_19.05d.FLAT.zip
 - /projects/vardb/downloads/ncit/Thesaurus_v19.05d.flat.txt
 
-```bash
-npm start -- --ncit Thesaurus_18.06d.flat.txt
-```
-
-
 
 ### Refseq (TAB)
 
 Example
 - ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene
 - /projects/vardb/downloads/refseq/LRG_RefSeqGene_d1564008211.tab
-
-
-```bash
-npm start -- --refseq LRG_RefSeqGene.tab
-```
 
 
 ### Sequence Ontology (OWL)
@@ -285,10 +263,6 @@ Example
 | Format          | OWL                                          |
 | CrossReferences |                                              |
 
-```bash
-npm start -- --sequenceOntology so-simple.owl
-```
-
 
 ### Uberon (OWL)
 
@@ -296,19 +270,11 @@ Example
 - http://purl.obolibrary.org/obo/uberon/releases/2018-02-28/uberon.owl
 - /projects/vardb/downloads/uberon/uberon_v2018-10-14.owl
 
-```bash
-npm start -- --uberon uberon.owl
-```
-
 ### VariO (OWL)
 
 Example
 - http://www.variationontology.org/vario_download/vario.owl
 - /projects/vardb/downloads/variationontology/vario_v2018-04-27.owl
-
-```bash
-npm start -- --vario vario.owl
-```
 
 
 ### CGI (TAB)
@@ -316,11 +282,6 @@ npm start -- --vario vario.owl
 Example
 - https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_latest.zip (cgi_biomarkers_per_variant.tsv)
 - /projects/vardb/downloads/cancergenomeinterpreter/v1558729096/cgi_biomarkers_per_variant.tsv
-
-
-```bash
-npm start -- --cgi cgi_biomarkers_per_variant.tsv
-```
 
 ### COSMIC (TAB)
 
@@ -351,10 +312,6 @@ Expects column names like
 - Tier
 
 
-```bash
-npm start -- --cosmic CosmicResistanceMutations.tsv
-```
-
 ### IPRKb (TAB)
 
 The flatfile dump of the IPR KB (Predecessor to GraphKB)
@@ -364,5 +321,5 @@ Example
 
 
 ```bash
-npm start -- --iprkb select_kb_references_ident_as_kb_reference_uuid_kb_references_cr_201905281636.tsv
+node/iprkb.js --filename iprkb_export.tab
 ```
