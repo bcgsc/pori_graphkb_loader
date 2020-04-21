@@ -1,6 +1,3 @@
-/**
- * @module importer/geneList
- */
 const { stdOptions, runLoader } = require('../src');
 const { fileExists, createOptionsMenu } = require('../src/cli');
 const { loadDelimToJson } = require('../src/util');
@@ -63,4 +60,4 @@ const options = createOptionsMenu(
 );
 
 
-runLoader(options, 'clinicaltrials.gov xml result', uploadFile, { filename: options.filename });
+runLoader(options, uploadFile, { filename: options.filename });

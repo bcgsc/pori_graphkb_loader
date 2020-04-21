@@ -11,6 +11,7 @@
  */
 const Ajv = require('ajv');
 const _ = require('lodash');
+const fs = require('fs');
 
 const {
     loadXmlToJson,
@@ -27,6 +28,7 @@ const { logger } = require('./logging');
 const { clinicalTrialsGov: SOURCE_DEFN } = require('./sources');
 
 const BASE_URL = 'https://clinicaltrials.gov/ct2/show';
+const RSS_URL = 'https://clinicaltrials.gov/ct2/results/rss.xml';
 const CACHE = {};
 
 const ajv = new Ajv();
@@ -188,6 +190,44 @@ const validateAPITrialRecord = ajv.compile({
     },
 });
 
+// console.log(xml.rss.channel[0].item[0]);
+const validateRssFeed = ajv.compile({
+    type: 'object',
+    required: ['rss'],
+    properties: {
+        rss: {
+            type: 'object',
+            required: ['channel'],
+            properties: {
+                channel: singleItemArray({
+                    type: 'object',
+                    required: ['item'],
+                    properties: {
+                        item: {
+                            type: 'array',
+                            items: {
+                                type: 'object',
+                                required: ['guid'],
+                                properties: {
+                                    guid: singleItemArray({
+                                        type: 'object',
+                                        required: ['_'],
+                                        properties: {
+                                            _: {
+                                                type: 'string',
+                                                pattern: '^NCT\\d+$',
+                                            },
+                                        },
+                                    }),
+                                },
+                            },
+                        },
+                    },
+                }),
+            },
+        },
+    },
+});
 
 const standardizeDate = (dateString) => {
     const dateObj = new Date(Date.parse(dateString));
@@ -262,6 +302,7 @@ const convertDownloadedRecord = (record) => {
         url: record.url[0],
         name: record.title[0],
         sourceIdVersion: standardizeDate(record.last_update_posted[0]),
+        locations: [],
     };
 
     for (const { _: name, type: [rawType] } of record.interventions[0].intervention) {
@@ -275,6 +316,14 @@ const convertDownloadedRecord = (record) => {
     for (const raw of record.conditions[0].condition) {
         const disease = raw.trim().toLowerCase();
         content.diseases.push(disease);
+    }
+
+    for (const location of record.locations[0].location || []) {
+        const [country, state, city] = location.split(',').reverse();
+        content.locations.push({
+            country: country.toLowerCase().trim(),
+            city: `${city.toLowerCase().trim()} (${state.toLowerCase().trim()})`,
+        });
     }
     return content;
 };
@@ -397,7 +446,9 @@ const processRecord = async ({
         content,
         existsOk: true,
         fetchFirst: true,
-        fetchConditions: convertRecordToQueryFilters(_.omit(content, ['sourceIdVersion'])), // if sourceIdVersion is the only thing different then don't update
+        fetchConditions: convertRecordToQueryFilters(
+            _.omit(content, ['sourceIdVersion', 'city']),
+        ), // if sourceIdVersion is the only thing different then don't update
     });
 
     // link to the drugs and diseases
@@ -456,6 +507,7 @@ const fetchAndLoadById = async (conn, nctID) => {
         CACHE.source = rid(await conn.addRecord({
             target: 'Source',
             content: SOURCE_DEFN,
+            fetchConditions: { name: SOURCE_DEFN.name },
             existsOk: true,
         }));
     }
@@ -467,7 +519,6 @@ const fetchAndLoadById = async (conn, nctID) => {
     CACHE[trial.sourceId] = trial;
     return trial;
 };
-
 
 /**
  * Uploads a file exported from clinicaltrials.gov as XML
@@ -504,8 +555,61 @@ const uploadFile = async ({ conn, filename }) => {
         }
     }
     logger.info(JSON.stringify(counts));
+    logger.info(`created: ${JSON.stringify(conn.getCreatedCounts())}`);
+};
+
+
+/**
+ * Parses clinical trial RSS Feed results for clinical trials in Canada and the US
+ * which were updated in the last 2 weeks
+ */
+const loadNewTrials = async ({ conn }) => {
+    // ping them both to get the list of recently updated trials
+    const recentlyUpdatedTrials = [];
+
+    for (const country of ['CA', 'US']) {
+        const resp = await requestWithRetry({
+            uri: RSS_URL,
+            qs: {
+                rcv_d: '',
+                lup_d: 14,
+                sel_rss: 'mod14',
+                recrs: 'abdef',
+                type: 'Intr', // interventional only
+                cond: 'cancer', // cancer related trials
+                cntry: country,
+                count: 10000,
+            },
+            method: 'GET',
+        });
+        const xml = await parseXmlToJson(resp);
+        fs.writeFileSync('output.json', JSON.stringify(xml, null, 2));
+        checkSpec(validateRssFeed, xml);
+        recentlyUpdatedTrials.push(
+            ...xml.rss.channel[0].item.map(item => item.guid[0]._),
+        );
+    }
+    logger.info(`loading ${recentlyUpdatedTrials.length} recently updated trials`);
+    const counts = { success: 0, error: 0 };
+
+    for (const trialId of recentlyUpdatedTrials) {
+        try {
+            await fetchAndLoadById(conn, trialId);
+            counts.success++;
+        } catch (err) {
+            counts.error++;
+            logger.error(`[${trialId}] ${err}`);
+        }
+    }
+    logger.info(JSON.stringify(counts));
+    logger.info(`created: ${JSON.stringify(conn.getCreatedCounts())}`);
 };
 
 module.exports = {
-    uploadFile, SOURCE_DEFN, kb: true, fetchAndLoadById, convertAPIRecord,
+    upload: loadNewTrials,
+    uploadFile,
+    SOURCE_DEFN,
+    kb: true,
+    fetchAndLoadById,
+    convertAPIRecord,
 };

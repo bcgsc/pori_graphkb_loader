@@ -46,7 +46,7 @@ const stdOptions = [
 ];
 
 
-const runLoader = async (options, name, loaderFunc, loaderOptions = {}) => {
+const runLoader = async (options, loaderFunc, loaderOptions = {}) => {
     const apiConnection = new ApiConnection(options.graphkb);
     await apiConnection.setAuth(options);
 
@@ -55,7 +55,6 @@ const runLoader = async (options, name, loaderFunc, loaderOptions = {}) => {
     }
 
     logger.info('Login Succeeded');
-    logger.info(`loading content for ${name}`);
 
     await loaderFunc({
         ...loaderOptions,

@@ -24,10 +24,10 @@ const options = createOptionsMenu(
 
 
 const main = async () => {
-    if (options.xml) {
-        await runLoader(options, 'clinicaltrials.gov xml result', uploadFile, { filename: options.xml });
+    if (options.xml !== undefined) {
+        await runLoader(options, uploadFile, { filename: options.xml });
     } else {
-        await runLoader(options, 'clinicaltrials.gov recent trials', upload);
+        await runLoader(options, upload);
     }
 };
 
