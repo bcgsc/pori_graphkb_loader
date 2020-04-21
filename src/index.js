@@ -16,7 +16,7 @@ const stdOptions = [
     },
     {
         name: 'graphkb',
-        default: `${process.env.GKB_URL || 'https://graphkb-api.bcgsc.ca/api'}`,
+        default: `${process.env.GKB_URL || 'https://graphkbdev-api.bcgsc.ca/api'}`,
         description: 'URL for the KB API',
         env: 'GKB_URL',
     },
