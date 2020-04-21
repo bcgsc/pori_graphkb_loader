@@ -555,7 +555,6 @@ const uploadFile = async ({ conn, filename }) => {
         }
     }
     logger.info(JSON.stringify(counts));
-    logger.info(`created: ${JSON.stringify(conn.getCreatedCounts())}`);
 };
 
 
@@ -602,7 +601,6 @@ const loadNewTrials = async ({ conn }) => {
         }
     }
     logger.info(JSON.stringify(counts));
-    logger.info(`created: ${JSON.stringify(conn.getCreatedCounts())}`);
 };
 
 module.exports = {

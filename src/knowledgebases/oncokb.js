@@ -923,7 +923,6 @@ const upload = async (opt) => {
     logger.info(`writing errors to ${errorOutput}`);
     fs.writeFileSync(errorOutput, JSON.stringify({ records: errorList }, null, 2));
     logger.info(`external records processed: ${JSON.stringify(counts)}`);
-    logger.info(`records created: ${JSON.stringify(conn.getCreatedCounts())}`);
 };
 
 module.exports = {

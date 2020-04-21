@@ -65,6 +65,7 @@ const runLoader = async (options, loaderFunc, loaderOptions = {}) => {
     if (getFilename()) {
         logger.info(`logs written to ${getFilename()}`);
     }
+    logger.info(`created: ${JSON.stringify(apiConnection.getCreatedCounts())}`);
     logger.info('upload complete');
 };
 

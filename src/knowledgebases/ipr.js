@@ -800,7 +800,6 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     fs.writeFileSync(errorLogFile, JSON.stringify({ records: errorList }, null, 2));
     logger.info(JSON.stringify(counts));
     logger.info(JSON.stringify(users));
-    logger.info(`created: ${JSON.stringify(conn.getCreatedCounts())}`);
 };
 
 module.exports = {

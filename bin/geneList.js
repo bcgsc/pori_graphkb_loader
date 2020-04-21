@@ -44,7 +44,6 @@ const uploadFile = async (opt) => {
         }
     }
     logger.info(`counts: ${JSON.stringify(counts)}`);
-    logger.info(`created: ${JSON.stringify(conn.getCreatedCounts())}`);
 };
 
 
