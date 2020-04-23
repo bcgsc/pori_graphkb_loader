@@ -404,10 +404,11 @@
             ]
         },
         "extension": {
+            "description": "A protein change which extends the open reading frame",
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -449,7 +450,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -1225,7 +1226,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -1567,6 +1568,14 @@
                 }
             ]
         },
+        "small mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "mutation"
+                }
+            ]
+        },
         "splice acceptor mutation": {
             "links": [
                 {
@@ -1597,7 +1606,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -1637,7 +1646,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -1698,7 +1707,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
