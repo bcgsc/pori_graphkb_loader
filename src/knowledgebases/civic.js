@@ -509,7 +509,8 @@ const processEvidenceRecord = async (opt) => {
     if (rawRecord.evidence_type === 'Predictive' && drug) {
         content.subject = rid(drug);
     } if (rawRecord.evidence_type === 'Prognostic') {
-        content.subject = null;
+        // get the patient vocabulary object
+        content.subject = rid(await conn.getVocabularyTerm('patient'));
     }
 
     if (content.subject && !content.conditions.includes(content.subject)) {
@@ -712,7 +713,6 @@ const upload = async (opt) => {
         }
     }
     logger.info(JSON.stringify(counts));
-    logger.info(`newly created records: ${JSON.stringify(conn.getCreatedCounts())}`);
     const errorJson = `${errorLogPrefix}-civic.json`;
     logger.info(`writing ${errorJson}`);
     fs.writeFileSync(errorJson, JSON.stringify(errorList, null, 2));

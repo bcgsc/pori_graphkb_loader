@@ -4,18 +4,18 @@ const moment = require('moment');
 
 const { variant: { parse: variantParser }, position: { Position } } = require('@bcgsc/knowledgebase-parser');
 
-const { logger } = require('./../logging');
-const _pubmed = require('./../entrez/pubmed');
-const _hgnc = require('./../hgnc');
-const _ctg = require('./../clinicaltrialsgov');
-const { convertRowFields } = require('./../util');
+const { logger } = require('../logging');
+const _pubmed = require('../entrez/pubmed');
+const _hgnc = require('../hgnc');
+const _ctg = require('../clinicaltrialsgov');
+const { convertRowFields } = require('../util');
 const {
     orderPreferredOntologyTerms,
     rid,
-} = require('./../graphkb');
+} = require('../graphkb');
 
 
-const { iprkb: SOURCE_DEFN } = require('./../sources');
+const { iprkb: SOURCE_DEFN } = require('../sources');
 
 const DEFAULT_ASSEMBLY = 'GRCh37';
 
@@ -78,6 +78,10 @@ const stripRefSeqVersion = (name) => {
 const getFeature = async (conn, rawName) => {
     let name = rawName;
 
+    if (!name) {
+        throw new Error('getFeature requires a name for input');
+    }
+
     if (/^hla\.[a-z0-9]+$/i.exec(name)) {
         name.replace('.', '-');
     }
@@ -131,6 +135,9 @@ const extractAppliesTo = async (conn, record, source) => {
     const subject = appliesToInput && appliesToInput.replace(/-/g, ' ');
 
     if (statementType === 'therapeutic') {
+        if (!subject) {
+            throw new Error(`therapeutic statement is expected to have a subject 9${record.ident}`);
+        }
         if (relevance.includes('resistance') || relevance.includes('sensitivity') || relevance.includes('response')) {
             let drugName = stripDrugPlurals(subject);
 
@@ -219,6 +226,10 @@ const extractRelevance = (record) => {
         relevance: rawRelevance,
         subject,
     } = record;
+
+    if (!rawRelevance) {
+        throw new Error(`relevance not found and cannot be extracted (${record.ident})`);
+    }
 
     const relevance = rawRelevance
         .replace(/-/g, ' ')
@@ -350,10 +361,15 @@ const convertDeprecatedSyntax = (string) => {
         }
         Object.assign(result, { type, reference1: gene });
     } else if (match = /^ELV-(PROT|RNA)_([^_]+)_([^_]+)$/.exec(string)) {
-        const type = match[1] === 'PROT'
+        let type = match[1] === 'PROT'
             ? 'protein'
-            : 'RNA';
-        Object.assign(result, { reference1: match[2], type: match[3].replace(' ', ` ${type} `) });
+            : 'rna';
+        type = match[3].replace(' ', ` ${type} `);
+
+        if (type === 'not rna expressed') {
+            type = 'no rna expression';
+        }
+        Object.assign(result, { reference1: match[2], type });
     } else if (!/[.;,:_]/.exec(string)) {
         Object.assign(result, { name: string, isFeature: true });
     } else if (!/[!&$#]/.exec(string) && string.includes(':')) {
@@ -595,12 +611,15 @@ const processRecord = async ({ conn, record: inputRecord, source }) => {
     }
 
     // check that the expected pubmedIds exist in the db
-    for (const { sourceId } of record.support) {
+    for (let { sourceId } of record.support) {
         let evidenceRec;
 
         if (sourceId.startsWith('NCT')) {
             evidenceRec = await _ctg.fetchAndLoadById(conn, sourceId);
         } else {
+            if (sourceId.toLowerCase().startsWith('pmid:')) {
+                sourceId = sourceId.slice('pmid:'.length);
+            }
             [evidenceRec] = await _pubmed.fetchAndLoadByIds(conn, [sourceId]);
         }
         if (!evidenceRec) {
@@ -754,7 +773,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
 
     for (let i = 0; i < records.length; i++) {
         const record = records[i];
-        logger.info(`processing ${record.ident} (${i} / ${records.length})`);
+        logger.debug(`processing ${record.ident} (${i} / ${records.length})`);
 
         if (record.history) {
             counts.history++;
