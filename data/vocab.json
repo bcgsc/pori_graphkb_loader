@@ -627,6 +627,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "increased expression"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "protein expression variant"
                 }
             ]
         },
@@ -639,6 +643,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "increased expression"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "rna expression variant"
                 }
             ]
         },
@@ -1388,6 +1396,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "any protein expression"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "protein expression variant"
                 }
             ]
         },
@@ -1396,6 +1408,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "any rna expression"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "rna expression variant"
                 }
             ]
         },
