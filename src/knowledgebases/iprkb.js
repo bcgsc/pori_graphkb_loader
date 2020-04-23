@@ -611,12 +611,15 @@ const processRecord = async ({ conn, record: inputRecord, source }) => {
     }
 
     // check that the expected pubmedIds exist in the db
-    for (const { sourceId } of record.support) {
+    for (let { sourceId } of record.support) {
         let evidenceRec;
 
         if (sourceId.startsWith('NCT')) {
             evidenceRec = await _ctg.fetchAndLoadById(conn, sourceId);
         } else {
+            if (sourceId.toLowerCase().startsWith('pmid:')) {
+                sourceId = sourceId.slice('pmid:'.length);
+            }
             [evidenceRec] = await _pubmed.fetchAndLoadByIds(conn, [sourceId]);
         }
         if (!evidenceRec) {
