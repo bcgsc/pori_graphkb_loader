@@ -1577,6 +1577,7 @@
             ]
         },
         "small mutation": {
+            "description": "any substitution, insertion or deletion affecting a small number of base pairs",
             "links": [
                 {
                     "class": "SubClassOf",
