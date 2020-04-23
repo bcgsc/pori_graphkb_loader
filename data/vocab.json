@@ -267,6 +267,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "indel"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "structural variant"
                 }
             ]
         },
@@ -680,7 +684,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "structural variant"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -697,6 +701,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "indel"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "structural variant"
                 }
             ]
         },
