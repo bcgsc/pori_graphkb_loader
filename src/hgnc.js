@@ -48,7 +48,7 @@ const createDisplayName = symbol => symbol.toUpperCase().replace('ORF', 'orf');
  * @param {object} opt.gene the gene record from HGNC
  */
 const uploadRecord = async ({
-    conn, sources: { hgnc, ensembl }, gene,
+    conn, sources: { hgnc, ensembl }, gene, deprecated = false,
 }) => {
     const body = {
         source: rid(hgnc),
@@ -57,6 +57,7 @@ const uploadRecord = async ({
         name: gene.symbol,
         longName: gene.name,
         biotype: 'gene',
+        deprecated,
         displayName: createDisplayName(gene.symbol),
     };
 
@@ -243,7 +244,14 @@ const fetchAndLoadBySymbol = async ({
             filters: { name: ensemblSourceName },
         });
     } catch (err) { }
-    const result = await uploadRecord({ conn, gene, sources: { hgnc, ensembl } });
+    const result = await uploadRecord({
+        conn,
+        gene,
+        sources: { hgnc, ensembl },
+        deprecated: (
+            paramType === 'prev_symbol' || paramType === 'prev_name'
+        ),
+    });
     CACHE[paramType][symbol] = result;
     return result;
 };
