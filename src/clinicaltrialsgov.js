@@ -570,7 +570,7 @@ const loadNewTrials = async ({ conn }) => {
             qs: {
                 rcv_d: '',
                 lup_d: 14,
-                sel_rss: 'mod14',
+                sel_rss: 'new14', // mod14 for last 2 weeks updated
                 recrs: 'abdef',
                 type: 'Intr', // interventional only
                 cond: 'cancer', // cancer related trials
