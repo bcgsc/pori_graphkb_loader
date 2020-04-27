@@ -41,6 +41,7 @@ const uploadFile = async (opt) => {
         } catch (err) {
             try {
                 await fetchAndLoadBySymbol({ symbol: name, conn, paramType: 'prev_symbol' });
+                counts.success++;
             } catch (err2) {
                 logger.error(`${name} ${err}`);
                 counts.error++;
