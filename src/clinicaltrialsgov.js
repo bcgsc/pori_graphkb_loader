@@ -10,7 +10,6 @@
  * @module importer/clinicaltrialsgov
  */
 const Ajv = require('ajv');
-const _ = require('lodash');
 const fs = require('fs');
 
 const {
@@ -22,7 +21,6 @@ const {
 const {
     orderPreferredOntologyTerms,
     rid,
-    convertRecordToQueryFilters,
 } = require('./graphkb');
 const { logger } = require('./logging');
 const { clinicalTrialsGov: SOURCE_DEFN } = require('./sources');
