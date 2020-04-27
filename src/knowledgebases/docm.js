@@ -7,24 +7,19 @@ const request = require('request-promise');
 const Ajv = require('ajv');
 const fs = require('fs');
 
-const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
+const { variant: { parse: variantParser } } = require('@bcgsc/knowledgebase-parser');
 
+const { checkSpec } = require('./../util');
 const {
-    orderPreferredOntologyTerms, rid, checkSpec
-} = require('./util');
-const _pubmed = require('./entrez/pubmed');
-const {logger} = require('./logging');
-const _gene = require('./entrez/gene');
+    orderPreferredOntologyTerms, rid,
+} = require('./../graphkb');
+const _pubmed = require('./../entrez/pubmed');
+const { logger } = require('./../logging');
+const _gene = require('./../entrez/gene');
+const { docm: SOURCE_DEFN } = require('./../sources');
 
 const ajv = new Ajv();
 
-const SOURCE_DEFN = {
-    name: 'database of curated mutations',
-    displayName: 'DoCM',
-    description: 'DoCM, the Database of Curated Mutations, is a highly curated database of known, disease-causing mutations that provides easily explorable variant lists with direct links to source citations for easy verification.',
-    url: 'http://www.docm.info',
-    usage: 'http://www.docm.info/terms'
-};
 
 const BASE_URL = 'http://www.docm.info/api/v1/variants';
 
@@ -33,8 +28,8 @@ const variantSummarySpec = ajv.compile({
     type: 'object',
     required: ['hgvs'],
     properties: {
-        hgvs: {type: 'string'}
-    }
+        hgvs: { type: 'string' },
+    },
 });
 
 
@@ -42,16 +37,16 @@ const recordSpec = ajv.compile({
     type: 'object',
     required: ['reference_version', 'hgvs', 'gene', 'reference', 'variant', 'start', 'stop', 'variant_type'],
     properties: {
-        hgvs: {type: 'string'},
-        gene: {type: 'string'},
-        amino_acid: {type: 'string', pattern: '^p\\..*'},
-        reference_version: {type: 'string'},
-        reference: {type: 'string', pattern: '^([ATGC]*|-)$'},
-        variant: {type: 'string', pattern: '^([ATGC]*|-)$'},
-        start: {type: 'number', min: 1},
-        stop: {type: 'number', min: 1},
-        chromosome: {type: 'string'},
-        variant_type: {type: 'string', enum: ['SNV', 'DEL', 'INS', 'DNV']},
+        hgvs: { type: 'string' },
+        gene: { type: 'string' },
+        amino_acid: { type: 'string', pattern: '^p\\..*' },
+        reference_version: { type: 'string' },
+        reference: { type: 'string', pattern: '^([ATGC]*|-)$' },
+        variant: { type: 'string', pattern: '^([ATGC]*|-)$' },
+        start: { type: 'number', min: 1 },
+        stop: { type: 'number', min: 1 },
+        chromosome: { type: 'string' },
+        variant_type: { type: 'string', enum: ['SNV', 'DEL', 'INS', 'DNV'] },
         // TODO: process drug interactions (large amount of free text currently)
         meta: {
             type: 'array',
@@ -66,27 +61,27 @@ const recordSpec = ajv.compile({
                             fields: {
                                 type: 'array',
                                 items: [
-                                    {type: 'string', enum: ['Therapeutic Context']},
-                                    {type: 'string', enum: ['Pathway']},
-                                    {type: 'string', enum: ['Effect']},
-                                    {type: 'string', enum: ['Association']},
-                                    {type: 'string', enum: ['Status']},
-                                    {type: 'string', enum: ['Evidence']},
-                                    {type: 'string', enum: ['Source']}
-                                ]
+                                    { type: 'string', enum: ['Therapeutic Context'] },
+                                    { type: 'string', enum: ['Pathway'] },
+                                    { type: 'string', enum: ['Effect'] },
+                                    { type: 'string', enum: ['Association'] },
+                                    { type: 'string', enum: ['Status'] },
+                                    { type: 'string', enum: ['Evidence'] },
+                                    { type: 'string', enum: ['Source'] },
+                                ],
                             },
                             rows: {
                                 type: 'array',
                                 items: {
-                                    type: 'array', items: {type: ['string', 'null']}, minItems: 7, maxItems: 7
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
+                                    type: 'array', items: { type: ['string', 'null'] }, minItems: 7, maxItems: 7,
+                                },
+                            },
+                        },
+                    },
+                },
+            },
+        },
+    },
 });
 
 
@@ -95,9 +90,11 @@ const recordSpec = ajv.compile({
  */
 const parseDocmVariant = (variant) => {
     let match;
+
     if (match = /^p\.([A-Z]+)(\d+)-$/.exec(variant)) {
         const [, seq] = match;
         const pos = parseInt(match[2], 10);
+
         if (seq.length === 1) {
             return `p.${seq}${pos}del${seq}`;
         }
@@ -106,6 +103,7 @@ const parseDocmVariant = (variant) => {
         let [, refseq, pos, altSeq] = match;
         pos = parseInt(match[2], 10);
         let prefix = 0;
+
         for (let i = 0; i < refseq.length && i < altSeq.length; i++) {
             if (altSeq[i] !== refseq[i]) {
                 break;
@@ -115,6 +113,7 @@ const parseDocmVariant = (variant) => {
         pos += prefix;
         refseq = refseq.slice(prefix);
         altSeq = altSeq.slice(prefix);
+
         if (refseq.length !== 0 && altSeq.length !== 0) {
             if (refseq.length > 1) {
                 return `p.${refseq[0]}${pos}_${refseq[refseq.length - 1]}${pos + refseq.length - 1}del${refseq}ins${altSeq}`;
@@ -129,7 +128,7 @@ const parseDocmVariant = (variant) => {
  * Create the string representation of the genomic variant
  */
 const buildGenomicVariant = ({
-    reference, variant, chromosome, start, stop, variant_type: variantType
+    reference, variant, chromosome, start, stop, variant_type: variantType,
 }) => {
     if (variantType === 'SNV') {
         return `${chromosome}:g.${start}${reference}>${variant}`;
@@ -150,14 +149,14 @@ const buildGenomicVariant = ({
 /**
  * Create the protein and genomic variants
  */
-const processVariants = async ({conn, source, record: docmRecord}) => {
+const processVariants = async ({ conn, source, record: docmRecord }) => {
     const {
         amino_acid: aminoAcid,
         gene,
         chromosome,
         reference_version: assembly,
         start,
-        stop
+        stop,
     } = docmRecord;
     // get the feature by name
     let protein,
@@ -171,9 +170,9 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
         } = variantParser(parseDocmVariant(aminoAcid), false);
         const type = await conn.getVocabularyTerm(variant.type);
         protein = variant = await conn.addVariant({
-            endpoint: 'positionalvariants',
-            content: {...variant, type, reference1: rid(reference1)},
-            existsOk: true
+            target: 'PositionalVariant',
+            content: { ...variant, type, reference1: rid(reference1) },
+            existsOk: true,
         });
     } catch (err) {
         logger.error(`Failed to process protein notation (${gene}:${aminoAcid})`);
@@ -187,34 +186,40 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
         } = variantParser(buildGenomicVariant(docmRecord), false);
         const type = await conn.getVocabularyTerm(variant.type);
         const reference1 = await conn.getUniqueRecordBy({
-            endpoint: 'features',
-            where: {
-                sourceId: chromosome,
-                name: chromosome,
-                or: 'name,sourceId',
-                biotype: 'chromosome'
+            target: 'Feature',
+            filters: {
+                AND: [
+                    {
+                        OR: [
+                            { sourceId: chromosome },
+                            { name: chromosome },
+                        ],
+                    },
+                    { biotype: 'chromosome' },
+                ],
             },
-            sortFunc: orderPreferredOntologyTerms
+            sortFunc: orderPreferredOntologyTerms,
         });
         genomic = variant = await conn.addVariant({
-            endpoint: 'positionalvariants',
+            target: 'PositionalVariant',
             content: {
-                ...variant, type, reference1: rid(reference1), assembly: assembly.toLowerCase().trim()
+                ...variant, type, reference1: rid(reference1), assembly: assembly.toLowerCase().trim(),
             },
-            existsOk: true
+            existsOk: true,
         });
     } catch (err) {
         logger.error(`Failed to process genomic notation (${chromosome}.${assembly}:g.${start}_${stop})`);
         logger.error(err);
     }
+
     // TODO: create the cds variant? currently unclear if cdna or cds notation
     // link the variants together
     if (genomic) {
         await conn.addRecord({
-            endpoint: 'infers',
-            content: {out: rid(genomic), in: rid(protein), source: rid(source)},
+            target: 'Infers',
+            content: { out: rid(genomic), in: rid(protein), source: rid(source) },
             existsOk: true,
-            fetchExisting: false
+            fetchExisting: false,
         });
     }
     // return the protein variant
@@ -224,13 +229,13 @@ const processVariants = async ({conn, source, record: docmRecord}) => {
 
 const processRecord = async (opt) => {
     const {
-        conn, source, record
+        conn, source, record,
     } = opt;
     // get the record details
-    const counts = {error: 0, success: 0, skip: 0};
+    const counts = { error: 0, success: 0, skip: 0 };
 
     // get the variant
-    const variant = await processVariants({conn, source, record});
+    const variant = await processVariants({ conn, source, record });
 
     if (!variant) {
         throw new Error('Failed to parse either variant');
@@ -241,35 +246,38 @@ const processRecord = async (opt) => {
             counts.skip++;
             continue;
         }
+
         try {
             // get the vocabulary term
             const relevance = await conn.getVocabularyTerm(diseaseRec.tags[0], conn);
             // get the disease by name
             const disease = await conn.getUniqueRecordBy({
-                endpoint: 'diseases',
-                where: {
-                    sourceId: `doid:${diseaseRec.doid}`,
-                    name: diseaseRec.disease,
-                    source: {name: 'disease ontology'}
+                target: 'Disease',
+                filters: {
+                    AND: [
+                        { sourceId: `doid:${diseaseRec.doid}` },
+                        { name: diseaseRec.disease },
+                        { source: { target: 'Source', filters: { name: 'disease ontology' } } },
+                    ],
                 },
-                sort: orderPreferredOntologyTerms
+                sort: orderPreferredOntologyTerms,
             });
             // get the pubmed article
             const [publication] = await _pubmed.fetchAndLoadByIds(conn, [diseaseRec.source_pubmed_id]);
             // now create the statement
             await conn.addRecord({
-                endpoint: 'statements',
+                target: 'Statement',
                 content: {
-                    impliedBy: [rid(disease), rid(variant)],
-                    supportedBy: [rid(publication)],
+                    conditions: [rid(disease), rid(variant)],
+                    evidence: [rid(publication)],
                     relevance: rid(relevance),
-                    appliesTo: rid(disease),
+                    subject: rid(disease),
                     source: rid(source),
                     reviewStatus: 'not required',
-                    sourceId: record.hgvs
+                    sourceId: record.hgvs,
                 },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
             counts.success++;
         } catch (err) {
@@ -290,25 +298,25 @@ const processRecord = async (opt) => {
  * @param {string} [opt.url] the base url for the DOCM api
  */
 const upload = async (opt) => {
-    const {conn, errorLogPrefix} = opt;
+    const { conn, errorLogPrefix } = opt;
     // load directly from their api:
     logger.info(`loading: ${opt.url || BASE_URL}.json`);
     const recordsList = await request({
         method: 'GET',
         json: true,
-        uri: `${BASE_URL}.json`
+        uri: `${BASE_URL}.json`,
     });
     logger.info(`loaded ${recordsList.length} records`);
     // add the source node
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
-        fetchConditions: {name: SOURCE_DEFN.name}
+        fetchConditions: { name: SOURCE_DEFN.name },
     });
 
     const counts = {
-        error: 0, success: 0, skip: 0, highlight: 0
+        error: 0, success: 0, skip: 0, highlight: 0,
     };
     const filtered = [];
     const pmidList = [];
@@ -320,17 +328,18 @@ const upload = async (opt) => {
         } catch (err) {
             logger.error(err);
             counts.error++;
-            errorList.push({summaryRecord, error: err, isSummary: true});
+            errorList.push({ summaryRecord, error: err, isSummary: true });
             continue;
         }
         logger.info(`loading: ${BASE_URL}/${summaryRecord.hgvs}.json`);
         const record = await request({
             method: 'GET',
             json: true,
-            uri: `${BASE_URL}/${summaryRecord.hgvs}.json`
+            uri: `${BASE_URL}/${summaryRecord.hgvs}.json`,
         });
 
         filtered.push(record);
+
         for (const diseaseRec of record.diseases) {
             if (diseaseRec.source_pubmed_id) {
                 pmidList.push(`${diseaseRec.source_pubmed_id}`);
@@ -340,22 +349,24 @@ const upload = async (opt) => {
     logger.info(`loading ${pmidList.length} pubmed articles`);
     await _pubmed.fetchAndLoadByIds(conn, pmidList);
     logger.info(`processing ${filtered.length} remaining docm records`);
+
     for (let index = 0; index < filtered.length; index++) {
         const record = filtered[index];
         logger.info(`(${index} / ${filtered.length}) ${record.hgvs}`);
+
         try {
             checkSpec(recordSpec, record);
             // replace - as empty
             record.reference = record.reference.replace('-', '');
             record.variant = record.variant.replace('-', '');
             const updates = await processRecord({
-                conn, source, record
+                conn, source, record,
             });
             counts.success += updates.success;
             counts.error += updates.error;
             counts.skip += updates.skip;
         } catch (err) {
-            errorList.push({record, error: err});
+            errorList.push({ record, error: err });
             counts.error++;
             logger.error((err.error || err).message);
         }
@@ -363,9 +374,9 @@ const upload = async (opt) => {
     logger.info(JSON.stringify(counts));
     const errorsJSON = `${errorLogPrefix}-docm.json`;
     logger.info(`writing: ${errorsJSON}`);
-    fs.writeFileSync(errorsJSON, JSON.stringify({records: errorList}, null, 2));
+    fs.writeFileSync(errorsJSON, JSON.stringify({ records: errorList }, null, 2));
 };
 
 module.exports = {
-    upload, SOURCE_DEFN, kb: true, specs: {variantSummarySpec, recordSpec}
+    upload, SOURCE_DEFN, kb: true, specs: { variantSummarySpec, recordSpec },
 };

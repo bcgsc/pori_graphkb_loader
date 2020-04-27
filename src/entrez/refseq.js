@@ -4,21 +4,13 @@
 const Ajv = require('ajv');
 const _ = require('lodash');
 
-const {fetchByIdList, uploadRecord} = require('./util');
-const {checkSpec} = require('../util');
+const { fetchByIdList, uploadRecord } = require('./util');
+const { checkSpec } = require('../util');
+const { refseq: SOURCE_DEFN } = require('../sources');
 
 const ajv = new Ajv();
 
-const SOURCE_DEFN = {
-    displayName: 'RefSeq',
-    longName: 'RefSeq: NCBI Reference Sequence Database',
-    name: 'refseq',
-    url: 'https://www.ncbi.nlm.nih.gov/refseq',
-    usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
-    description: `
-        A comprehensive, integrated, non-redundant, well-annotated set of reference sequences
-        including genomic, transcript, and protein.`.replace(/\s+/, ' ')
-};
+
 const DB_NAME = 'nucleotide';
 const CACHE = {};
 
@@ -26,13 +18,13 @@ const recordSpec = ajv.compile({
     type: 'object',
     required: ['title', 'biomol', 'accessionversion'],
     properties: {
-        accessionversion: {type: 'string', pattern: '^N[A-Z]_\\d+\\.\\d+$'},
-        biomol: {type: 'string', enum: ['genomic', 'rna', 'peptide', 'mRNA']},
-        subname: {type: 'string'},
-        title: {type: 'string'},
-        status: {type: 'string'},
-        replacedby: {type: 'string'}
-    }
+        accessionversion: { type: 'string', pattern: '^N[A-Z]_\\d+\\.\\d+$' },
+        biomol: { type: 'string', enum: ['genomic', 'rna', 'peptide', 'mRNA'] },
+        subname: { type: 'string' },
+        title: { type: 'string' },
+        status: { type: 'string' },
+        replacedby: { type: 'string' },
+    },
 });
 
 /**
@@ -43,6 +35,7 @@ const parseRecord = (record) => {
     checkSpec(recordSpec, record);
     const [sourceId, sourceIdVersion] = record.accessionversion.split('.');
     let biotype = 'transcript';
+
     if (record.biomol === 'genomic') {
         biotype = 'chromosome';
     } else if (record.biomol === 'peptide') {
@@ -53,8 +46,9 @@ const parseRecord = (record) => {
         sourceIdVersion,
         biotype,
         longName: record.title,
-        displayName: record.accessionversion.toUpperCase()
+        displayName: record.accessionversion.toUpperCase(),
     };
+
     if (biotype === 'chromosome') {
         parsed.name = record.subname;
     }
@@ -86,8 +80,8 @@ const fetchAndLoadByIds = async (api, idListIn) => {
         records.push(...await fetchByIdList(
             versionedIds,
             {
-                db: DB_NAME, parser: parseRecord, cache: CACHE
-            }
+                db: DB_NAME, parser: parseRecord, cache: CACHE,
+            },
         ));
     }
 
@@ -95,8 +89,8 @@ const fetchAndLoadByIds = async (api, idListIn) => {
         const fullRecords = await fetchByIdList(
             unversionedIds,
             {
-                db: DB_NAME, parser: parseRecord, cache: CACHE
-            }
+                db: DB_NAME, parser: parseRecord, cache: CACHE,
+            },
         );
         fullRecords.forEach((rec) => {
             const simplified = _.omit(rec, ['sourceIdVersion', 'longName', 'description']);
@@ -108,9 +102,9 @@ const fetchAndLoadByIds = async (api, idListIn) => {
     const result = await Promise.all(records.map(
         async record => uploadRecord(api, record, {
             cache: CACHE,
-            endpoint: 'features',
-            sourceDefn: SOURCE_DEFN
-        })
+            target: 'Feature',
+            sourceDefn: SOURCE_DEFN,
+        }),
     ));
     return result;
 };
@@ -119,5 +113,5 @@ const fetchAndLoadByIds = async (api, idListIn) => {
 module.exports = {
     parseRecord,
     fetchAndLoadByIds,
-    SOURCE_DEFN
+    SOURCE_DEFN,
 };

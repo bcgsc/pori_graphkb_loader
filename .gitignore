@@ -30,5 +30,8 @@ doc/README.md
 *.id_rsa.pub
 logs
 pm2_logs
-errorLog*
+errorLog-*
 .~*
+data/asco.json
+data/ligand_actions.json
+*.log

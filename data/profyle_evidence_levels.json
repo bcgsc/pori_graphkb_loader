@@ -1,0 +1,60 @@
+{
+    "class": "EvidenceLevel",
+    "records": {
+        "T1": {
+            "name": "PROFYLE Therapeutic Level 1",
+            "description": "Biomarkers that predict response or resistance to FDA/HC-approved therapies"
+        },
+        "T2": {
+            "name": "PROFYLE Therapeutic Level 2",
+            "description": "Biomarkers that predict response or resistance to therapies based on well-powered clinical trials"
+        },
+        "T3": {
+            "name": "PROFYLE Therapeutic Level 3",
+            "description": "Biomarkers that predict response or resistance to therapies based on small series, case-reports, or that serve as inclusion criteria for a clinical trial"
+        },
+        "T4": {
+            "name": "PROFYLE Therapeutic Level 4",
+            "description": "Biomarkers that show plausible therapeutic significance based on preclinical studies"
+        },
+        "T5": {
+            "name": "PROFYLE Therapeutic Level 5",
+            "description": "Novel biomarkers predicted to be oncogenic in therapeutically actionable genes, or evidence of activation of a therapeutically actionable pathway"
+        },
+        "D1": {
+            "name": "PROFYLE Diagnostic Level 1",
+            "description": "Biomarkers included in professional guidelines as diagnostic for a specific type of tumor"
+        },
+        "D2": {
+            "name": "PROFYLE Diagnostic Level 2",
+            "description": "Biomarkers of diagnostic significance for a specific type of tumor based on well-powered studies with consensus from experts in the field"
+        },
+        "D3": {
+            "name": "PROFYLE Diagnostic Level 3",
+            "description": "Biomarkers of diagnostic significance based on the results of multiple small studies"
+        },
+        "D4": {
+            "name": "PROFYLE Diagnostic Level 4",
+            "description": "Biomarkers that may assist in disease diagnosis themselves or along with other biomarkers based on small studies or a few case reports"
+        },
+        "P1": {
+            "name": "PROFYLE Prognostic Level 1",
+            "description": "Biomarkers included in professional guidelines as prognostic for a specific type of tumor"
+        },
+        "P2": {
+            "name": "PROFYLE Prognostic Level 2",
+            "description": "Biomarkers of prognostic significance for a specific type of tumor based on well-powered studies with consensus from experts in the field"
+        },
+        "P3": {
+            "name": "PROFYLE Prognostic Level 3",
+            "description": "Biomarkers of prognostic significance based on the results of multiple small studies"
+        },
+        "P4": {
+            "name": "PROFYLE Prognostic Level 4",
+            "description": "Biomarkers that may assist in disease prognosis themselves or along with other biomarkers based on small studies or a few case reports"
+        }
+    },
+    "source": {
+        "name": "profyle"
+    }
+}

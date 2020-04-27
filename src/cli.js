@@ -3,6 +3,7 @@ const commandLineUsage = require('command-line-usage');
 const fs = require('fs');
 const path = require('path');
 
+/* eslint-disable no-console */
 
 const argumentError = (usage, msg) => {
     console.log(usage);
@@ -29,7 +30,7 @@ const fileExists = (fileName) => {
  * @param defns[].default the default value of an option
  * @param {boolean} defns[].required flag to indicate if the option is required
  */
-const createOptionsMenu = (defns, opt) => {
+const createOptionsMenu = (defns, opt = {}) => {
     for (const defn of defns) {
         if (defn.env !== undefined) {
             if (process.env[defn.env] !== undefined) {
@@ -46,15 +47,17 @@ const createOptionsMenu = (defns, opt) => {
         }
     }
     const usage = commandLineUsage([
-        {header: opt.title || 'Help Menu', content: opt.description || ''},
-        {header: 'Options', optionList: defns}
+        { header: opt.title || 'GraphKB ETL Importer', content: opt.description || 'Migrates data from dumps of (or using direct API connection to) other databases/resources into GraphKB' },
+        { header: 'Options', optionList: defns },
     ]);
     let options;
+
     try {
         options = commandLineArgs(defns);
     } catch (err) {
         argumentError(usage, err.message);
     }
+
     // check if they are looking for the help menu
     if (options.help !== undefined) {
         console.log(usage);
@@ -71,6 +74,7 @@ const createOptionsMenu = (defns, opt) => {
             }
         }
     }
+
     // at least one argument must be given, or show the help menu and exit
     if (Object.keys(options).length === 0) {
         console.log(usage);
@@ -79,4 +83,4 @@ const createOptionsMenu = (defns, opt) => {
     return options;
 };
 
-module.exports = {createOptionsMenu, fileExists};
+module.exports = { createOptionsMenu, fileExists };

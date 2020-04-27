@@ -105,6 +105,14 @@
                 }
             ]
         },
+        "biallelic inactivation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "loss of function"
+                }
+            ]
+        },
         "biological": {
             "name": "biological"
         },
@@ -114,6 +122,15 @@
                 {
                     "class": "SubClassOf",
                     "target": "loss of function"
+                }
+            ]
+        },
+        "cooperative polygenic gain of function": {
+            "description": "alterations that have an additive effect together which is not observed with either alteration alone",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "gain of function"
                 }
             ]
         },
@@ -219,6 +236,14 @@
                 }
             ]
         },
+        "deep deletion": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "copy loss"
+                }
+            ]
+        },
         "deleterious": {
             "deprecated": true,
             "links": [
@@ -242,10 +267,6 @@
                 {
                     "class": "SubClassOf",
                     "target": "indel"
-                },
-                {
-                    "class": "SubClassOf",
-                    "target": "copy loss"
                 }
             ]
         },
@@ -270,6 +291,14 @@
                 {
                     "class": "SubClassOf",
                     "target": "domain mutation"
+                }
+            ]
+        },
+        "domain mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "mutation"
                 }
             ]
         },
@@ -454,6 +483,14 @@
                 {
                     "class": "OppositeOf",
                     "target": "loss of function"
+                }
+            ]
+        },
+        "gene deletion": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "copy loss"
                 }
             ]
         },
@@ -688,22 +725,6 @@
                 }
             ]
         },
-        "domain mutation": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "mutation"
-                }
-            ]
-        },
-        "kinase domain mutation": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "domain mutation"
-                }
-            ]
-        },
         "kinase domain duplication": {
             "links": [
                 {
@@ -716,11 +737,11 @@
                 }
             ]
         },
-        "biallelic inactivation": {
+        "kinase domain mutation": {
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "loss of function"
+                    "target": "domain mutation"
                 }
             ]
         },
@@ -855,8 +876,17 @@
                     "target": "loh"
                 },
                 {
-                    "class": "AliasOf",
+                    "class": "SubClassOf",
                     "target": "mutation"
+                }
+            ]
+        },
+        "low level copy gain": {
+            "description": "A copy gain that is not also considered an amplification",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "copy gain"
                 }
             ]
         },
@@ -933,6 +963,19 @@
                 {
                     "class": "DeprecatedBy",
                     "target": "no functional effect"
+                }
+            ]
+        },
+        "no dominant negative": {
+            "description": "does not adversely affect the normal product in a dominant negative manner",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "no functional effect"
+                },
+                {
+                    "class": "OppositeOf",
+                    "target": "dominant negative"
                 }
             ]
         },
@@ -1310,7 +1353,7 @@
             "links": [
                 {
                     "class": "DeprecatedBy",
-                    "target": "mutation"
+                    "target": "structural variant"
                 }
             ]
         },
@@ -1450,6 +1493,14 @@
                 {
                     "class": "SubClassOf",
                     "target": "response"
+                }
+            ]
+        },
+        "shallow deletion": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "copy loss"
                 }
             ]
         },
@@ -1751,6 +1802,7 @@
         "displayName": "GraphKB",
         "longName": "Graph Knowledgebase",
         "name": "graphkb",
+        "sort": 0,
         "url": "https://graphkb.bcgsc.ca"
     }
 }

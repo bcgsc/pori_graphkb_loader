@@ -3,14 +3,15 @@
  */
 
 const {
-    rid, requestWithRetry, orderPreferredOntologyTerms, generateCacheKey
+    requestWithRetry, orderPreferredOntologyTerms,
 } = require('../util');
-const {logger} = require('../logging');
+const { rid, generateCacheKey } = require('../graphkb');
+const { logger } = require('../logging');
 
 
 const DEFAULT_QS = {
     retmode: 'json',
-    rettype: 'docsum'
+    rettype: 'docsum',
 };
 
 const BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi';
@@ -27,6 +28,7 @@ const pullFromCacheById = (rawIdList, cache) => {
     const idList = Array.from(new Set(Array.from(rawIdList, id => `${id}`.toLowerCase().trim())));
     const cached = [];
     const remaining = [];
+
     for (const id of idList) {
         if (cache[id]) {
             cached.push(cache[id]);
@@ -34,7 +36,7 @@ const pullFromCacheById = (rawIdList, cache) => {
             remaining.push(id);
         }
     }
-    return {cached, remaining};
+    return { cached, remaining };
 };
 
 
@@ -50,9 +52,9 @@ const pullFromCacheById = (rawIdList, cache) => {
  */
 const fetchByIdList = async (rawIdList, opt) => {
     const {
-        url = BASE_URL, db = 'pubmed', parser, cache = {}, dbfrom = null
+        url = BASE_URL, db = 'pubmed', parser, cache = {}, dbfrom = null,
     } = opt;
-    const {cached: allRecords, remaining: idList} = pullFromCacheById(rawIdList, cache);
+    const { cached: allRecords, remaining: idList } = pullFromCacheById(rawIdList, cache);
 
     for (let startIndex = 0; startIndex < idList.length; startIndex += MAX_CONSEC_IDS) {
         const idListString = idList
@@ -60,19 +62,19 @@ const fetchByIdList = async (rawIdList, opt) => {
             .map(id => id.toString())
             .join(',');
 
-        const queryParams = {...DEFAULT_QS, db, id: idListString};
+        const queryParams = { ...DEFAULT_QS, db, id: idListString };
 
         if (dbfrom) {
             queryParams.dbfrom = dbfrom;
         }
 
-        logger.info(`loading: ${url}?db=${db}`);
-        const {result} = await requestWithRetry({
+        logger.debug(`loading: ${url}?db=${db}`);
+        const { result } = await requestWithRetry({
             method: 'GET',
             uri: url,
             qs: queryParams,
-            headers: {Accept: 'application/json'},
-            json: true
+            headers: { Accept: 'application/json' },
+            json: true,
         });
 
         const records = [];
@@ -81,7 +83,6 @@ const fetchByIdList = async (rawIdList, opt) => {
                 try {
                     records.push(parser(rec));
                 } catch (err) {
-                    console.log(rec);
                     logger.error(err);
                 }
             }
@@ -96,17 +97,23 @@ const fetchByIdList = async (rawIdList, opt) => {
  * Given some pubmed ID, get the corresponding record from GraphKB
  */
 const fetchRecord = async (api, {
-    sourceId, sourceIdVersion = null, db = 'pubmed', endpoint = 'publications', cache = {}
+    sourceId, sourceIdVersion = null, db = 'pubmed', target = 'Publication', cache = {},
 }) => {
-    const cacheKey = generateCacheKey({sourceId, sourceIdVersion});
+    const cacheKey = generateCacheKey({ sourceId, sourceIdVersion });
 
     if (cache[cacheKey]) {
         return cache[cacheKey];
     }
     const record = await api.getUniqueRecordBy({
-        endpoint,
-        where: {sourceId, sourceIdVersion, source: {name: db}},
-        sort: orderPreferredOntologyTerms
+        target,
+        filters: {
+            AND: [
+                { sourceId },
+                { sourceIdVersion },
+                { source: { target: 'Source', filters: { name: db } } },
+            ],
+        },
+        sort: orderPreferredOntologyTerms,
     });
     cache[cacheKey] = record;
     return record;
@@ -119,7 +126,7 @@ const fetchRecord = async (api, {
  * @param {object} opt
  * @param {boolean} opt.cache add the GraphKB record to the cache
  * @param {boolean} opt.fetchFirst attempt to get the record by source Id before uploading it
- * @param {string} opt.endpoint
+ * @param {string} opt.target
  * @param {object} opt.sourceDefn
  * @param {function} opt.createDisplayName
  */
@@ -127,44 +134,47 @@ const uploadRecord = async (api, content, opt = {}) => {
     const {
         cache = true,
         fetchFirst = true,
-        endpoint = 'publications',
+        target = 'Publication',
         sourceDefn,
-        createDisplayName
+        createDisplayName,
     } = opt;
 
-    const {sourceId, sourceIdVersion} = content;
+    const { sourceId, sourceIdVersion } = content;
 
-    const cacheKey = generateCacheKey({sourceId, sourceIdVersion});
+    const cacheKey = generateCacheKey({ sourceId, sourceIdVersion });
 
     if (cache && cache[cacheKey]) {
         return cache[cacheKey];
     } if (fetchFirst) {
         try {
             const record = await api.getUniqueRecordBy({
-                endpoint,
-                where: {sourceId}
+                target,
+                filters: { sourceId },
             });
+
             if (cache) {
                 cache[cacheKey] = record;
             }
             return record;
-        } catch (err) {}
+        } catch (err) { }
     }
     let source = cache.__source;
+
     if (!source) {
         source = await api.addRecord({
-            endpoint: 'sources',
+            target: 'Source',
             content: sourceDefn,
-            fetchConditions: {name: sourceDefn.name},
-            existsOk: true
+            fetchConditions: { name: sourceDefn.name },
+            existsOk: true,
         });
+
         if (cache) {
             cache.__source = source;
         }
     }
     const formattedContent = {
         ...content,
-        source: rid(source)
+        source: rid(source),
     };
 
     if (createDisplayName) {
@@ -172,14 +182,17 @@ const uploadRecord = async (api, content, opt = {}) => {
     }
 
     const result = await api.addRecord({
-        endpoint,
+        target,
         content: formattedContent,
         existsOk: true,
         fetchConditions: {
-            sourceId,
-            source: rid(source)
-        }
+            AND: [
+                { sourceId },
+                { source: rid(source) },
+            ],
+        },
     });
+
     if (cache) {
         cache[cacheKey] = result;
     }
@@ -187,16 +200,24 @@ const uploadRecord = async (api, content, opt = {}) => {
 };
 
 
-const preLoadCache = async (api, {sourceDefn, cache, endpoint}) => {
+const preLoadCache = async (api, { sourceDefn, cache, target }) => {
     const records = await api.getRecords({
-        endpoint,
-        where: {source: {name: sourceDefn.name}, dependency: null, deprecated: false, neighbors: 0}
+        target,
+        filters: {
+            AND: [
+                { source: { target: 'Source', filters: { name: sourceDefn.name } } },
+                { dependency: null },
+                { deprecated: false },
+            ],
+        },
+        neighbors: 0,
     });
 
     const dups = new Set();
 
     for (const record of records) {
         const cacheKey = generateCacheKey(record);
+
         if (cache[cacheKey]) {
             // duplicate
             dups.add(cacheKey);
@@ -221,29 +242,30 @@ const preLoadCache = async (api, {sourceDefn, cache, endpoint}) => {
  * @param {function} opt.parser function to convert records from the api to the graphkb format
  * @param {object} opt.cache
  * @param {number} opt.MAX_CONSEC maximum consecutive records to upload at once
- * @param {string} opt.endpoint the graphkb api endpoint to upload to
+ * @param {string} opt.target the graphkb api target to upload to
  * @param {object} opt.sourceDefn the object with the source information
  */
 const fetchAndLoadByIds = async (api, idListIn, {
-    dbName, parser, cache, MAX_CONSEC = 100, endpoint, sourceDefn
+    dbName, parser, cache, MAX_CONSEC = 100, target, sourceDefn,
 }) => {
     const records = await fetchByIdList(
         idListIn,
         {
-            db: dbName, parser, cache
-        }
+            db: dbName, parser, cache,
+        },
     );
     const result = [];
     let queue = records;
+
     while (queue.length > 0) {
         const current = queue.slice(0, MAX_CONSEC);
         queue = queue.slice(MAX_CONSEC);
         const newRecords = await Promise.all(current.map(
             async record => uploadRecord(api, record, {
                 cache,
-                endpoint,
-                sourceDefn
-            })
+                target,
+                sourceDefn,
+            }),
         ));
         result.push(...newRecords);
     }
@@ -260,19 +282,19 @@ const fetchAndLoadByIds = async (api, idListIn, {
  * @param {function} opt.parser function to convert records from the api to the graphkb format
  * @param {object} opt.cache
  * @param {number} opt.MAX_CONSEC maximum consecutive records to upload at once
- * @param {string} opt.endpoint the graphkb api endpoint to upload to
+ * @param {string} opt.target the graphkb api target to upload to
  * @param {object} opt.sourceDefn the object with the source information
  */
 const fetchAndLoadBySearchTerm = async (api, term, opt) => {
-    const {dbName} = opt;
+    const { dbName } = opt;
     // get the list of ids
     logger.info(`searching ${BASE_SEARCH_URL}?db=${dbName}&term=${term}`);
-    const {esearchresult: {idlist}} = await requestWithRetry({
+    const { esearchresult: { idlist } } = await requestWithRetry({
         method: 'GET',
         uri: BASE_SEARCH_URL,
-        qs: {...DEFAULT_QS, db: dbName, term},
-        headers: {Accept: 'application/json'},
-        json: true
+        qs: { ...DEFAULT_QS, db: dbName, term },
+        headers: { Accept: 'application/json' },
+        json: true,
     });
     return fetchAndLoadByIds(api, idlist, opt);
 };
@@ -286,5 +308,5 @@ module.exports = {
     DEFAULT_QS,
     preLoadCache,
     fetchAndLoadByIds,
-    fetchAndLoadBySearchTerm
+    fetchAndLoadBySearchTerm,
 };

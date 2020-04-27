@@ -3,27 +3,22 @@
  */
 const fs = require('fs');
 
-const {variant: {parse: variantParser}} = require('@bcgsc/knowledgebase-parser');
+const { variant: { parse: variantParser } } = require('@bcgsc/knowledgebase-parser');
 
 const {
-    preferredDiseases,
     loadDelimToJson,
-    rid,
     convertRowFields,
+    hashRecordToId,
+} = require('./../util');
+const {
     orderPreferredOntologyTerms,
-    hashRecordToId
-} = require('./util');
-const _pubmed = require('./entrez/pubmed');
-const _gene = require('./entrez/gene');
-const {logger} = require('./logging');
+    rid,
+} = require('./../graphkb');
+const _pubmed = require('./../entrez/pubmed');
+const _gene = require('./../entrez/gene');
+const { logger } = require('./../logging');
 
-const SOURCE_DEFN = {
-    url: 'https://cancer.sanger.ac.uk/cosmic',
-    displayName: 'COSMIC',
-    name: 'cosmic',
-    usage: 'https://cancer.sanger.ac.uk/cosmic/license',
-    description: 'COSMIC, the Catalogue Of Somatic Mutations In Cancer, is the world\'s largest and most comprehensive resource for exploring the impact of somatic mutations in human cancer.'
-};
+const { cosmic: SOURCE_DEFN } = require('./../sources');
 
 const HEADER = {
     gene: 'Gene Name',
@@ -36,14 +31,14 @@ const HEADER = {
     sampleId: 'Sample ID',
     mutationId: 'ID Mutation',
     transcript: 'Transcript',
-    cds: 'CDS Mutation'
+    cds: 'CDS Mutation',
 };
 
 
 /**
  * Create and link the variant defuinitions for a single row/record
  */
-const processVariants = async ({conn, record, source}) => {
+const processVariants = async ({ conn, record, source }) => {
     let protein,
         cds;
 
@@ -53,6 +48,7 @@ const processVariants = async ({conn, record, source}) => {
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         // add the protein variant
         let variantString = record.protein;
+
         if (variantString.startsWith('p.') && variantString.includes('>')) {
             variantString = variantString.replace('>', 'delins');
         }
@@ -62,30 +58,34 @@ const processVariants = async ({conn, record, source}) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         protein = rid(await conn.addVariant({
-            endpoint: 'positionalvariants',
-            content: {...variant},
-            existsOk: true
+            target: 'PositionalVariant',
+            content: { ...variant },
+            existsOk: true,
         }));
     } catch (err) {
         logger.error(err);
         throw err;
     }
+
     // create the cds variant
     if (!record.cds.startsWith('c.?')) {
-        let {cds: cdsNotation} = record;
+        let { cds: cdsNotation } = record;
         const match = /^(.*[^ATCG])([ACTG]+)>([ATCG]+)$/.exec(cdsNotation);
+
         if (match) {
             const [, prefix, ref, alt] = match;
+
             if (ref.length > 1 || ref.length !== alt.length) {
                 cdsNotation = `${prefix}del${ref}ins${alt}`;
             }
         }
+
         try {
         // get the hugo gene
             const reference1 = rid(await conn.getUniqueRecordBy({
-                endpoint: 'features',
-                where: {sourceId: record.transcript, biotype: 'transcript'},
-                sort: orderPreferredOntologyTerms
+                target: 'Feature',
+                filters: { AND: [{ sourceId: record.transcript }, { biotype: 'transcript' }] },
+                sort: orderPreferredOntologyTerms,
             }));
             // add the cds variant
             const {
@@ -94,15 +94,15 @@ const processVariants = async ({conn, record, source}) => {
             variant.reference1 = reference1;
             variant.type = rid(await conn.getVocabularyTerm(variant.type));
             cds = rid(await conn.addVariant({
-                endpoint: 'positionalvariants',
-                content: {...variant},
-                existsOk: true
+                target: 'PositionalVariant',
+                content: { ...variant },
+                existsOk: true,
             }));
             await conn.addRecord({
-                endpoint: 'infers',
-                content: {out: cds, in: protein, source: rid(source)},
+                target: 'Infers',
+                content: { out: cds, in: protein, source: rid(source) },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
         } catch (err) {
             logger.error(err);
@@ -112,15 +112,15 @@ const processVariants = async ({conn, record, source}) => {
     if (record.mutationId) {
         try {
             const catalog = await conn.addRecord({
-                endpoint: 'cataloguevariants',
-                content: {source: rid(source), sourceId: record.mutationId},
-                existsOk: true
+                target: 'CatalogueVariant',
+                content: { source: rid(source), sourceId: record.mutationId },
+                existsOk: true,
             });
             await conn.addRecord({
-                endpoint: 'infers',
-                content: {out: catalog, in: cds || protein, source: rid(source)},
+                target: 'Infers',
+                content: { out: catalog, in: cds || protein, source: rid(source) },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
         } catch (err) {
             logger.error(err);
@@ -133,7 +133,7 @@ const processVariants = async ({conn, record, source}) => {
 
 const processCosmicRecord = async (conn, record, source) => {
     // get the protein variant
-    const variantId = await processVariants({conn, record, source});
+    const variantId = await processVariants({ conn, record, source });
     // get the drug by name
     const drug = await conn.getTherapy(record.therapy.toLowerCase().replace(/ - ns$/, ''));
     // get the disease by name
@@ -144,25 +144,25 @@ const processCosmicRecord = async (conn, record, source) => {
     diseaseName = diseaseName.replace('leukaemia', 'leukemia');
     diseaseName = diseaseName.replace('tumour', 'tumor');
     const disease = await conn.getUniqueRecordBy({
-        endpoint: 'diseases',
-        where: {name: diseaseName},
-        sort: preferredDiseases
+        target: 'Disease',
+        filters: { name: diseaseName },
+        sort: orderPreferredOntologyTerms,
     });
     // create the resistance statement
     const relevance = await conn.getVocabularyTerm('resistance');
     await conn.addRecord({
-        endpoint: 'statements',
+        target: 'Statement',
         content: {
             relevance,
-            appliesTo: drug,
-            impliedBy: [variantId, rid(disease)],
-            supportedBy: [rid(record.publication)],
+            subject: drug,
+            conditions: [variantId, rid(disease), drug],
+            evidence: [rid(record.publication)],
             source: rid(source),
             reviewStatus: 'not required',
-            sourceId: record.sourceId
+            sourceId: record.sourceId,
         },
         existsOk: true,
-        fetchExisting: false
+        fetchExisting: false,
     });
 };
 
@@ -173,16 +173,16 @@ const processCosmicRecord = async (conn, record, source) => {
  * @param {string} opt.filename the path to the input tab delimited file
  * @param {ApiConnection} opt.conn the API connection object
  */
-const uploadFile = async ({filename, conn, errorLogPrefix}) => {
+const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     const jsonList = await loadDelimToJson(filename);
     // get the dbID for the source
     const source = rid(await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
-        fetchConditions: {name: SOURCE_DEFN.name}
+        fetchConditions: { name: SOURCE_DEFN.name },
     }));
-    const counts = {success: 0, error: 0, skip: 0};
+    const counts = { success: 0, error: 0, skip: 0 };
     const errorList = [];
     logger.info(`Processing ${jsonList.length} records`);
     // Upload the list of pubmed IDs
@@ -190,26 +190,28 @@ const uploadFile = async ({filename, conn, errorLogPrefix}) => {
 
     for (let index = 0; index < jsonList.length; index++) {
         const sourceId = hashRecordToId(jsonList[index]);
-        const record = {sourceId, ...convertRowFields(HEADER, jsonList[index])};
+        const record = { sourceId, ...convertRowFields(HEADER, jsonList[index]) };
         logger.info(`processing (${index} / ${jsonList.length}) ${sourceId}`);
+
         if (record.protein.startsWith('p.?')) {
             counts.skip++;
             continue;
         }
         record.publication = rid((await _pubmed.fetchAndLoadByIds(conn, [record.pubmed]))[0]);
+
         try {
             await processCosmicRecord(conn, record, source);
             counts.success++;
         } catch (err) {
-            errorList.push({record, error: err.toString()});
+            errorList.push({ record, error: err.toString() });
             logger.log('error', err);
             counts.error++;
         }
     }
     const errorJson = `${errorLogPrefix}-cosmic.json`;
     logger.info(`writing: ${errorJson}`);
-    fs.writeFileSync(errorJson, JSON.stringify({records: errorList}, null, 2));
+    fs.writeFileSync(errorJson, JSON.stringify({ records: errorList }, null, 2));
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = {uploadFile, SOURCE_DEFN, kb: true};
+module.exports = { uploadFile, SOURCE_DEFN, kb: true };

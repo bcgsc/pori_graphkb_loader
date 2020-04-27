@@ -1,26 +1,6 @@
 {
     "class": "Signature",
     "records": {
-        "msi": {
-            "deprecated": true,
-            "links": [
-                {
-                    "class": "DeprecatedBy",
-                    "target": "microsatellite instability"
-                }
-            ],
-            "name": "msi"
-        },
-        "mss": {
-            "deprecated": true,
-            "links": [
-                {
-                    "class": "DeprecatedBy",
-                    "target": "microsatellite stable"
-                }
-            ],
-            "name": "mss"
-        },
         "cd8+ cell infiltration": {
             "links": [
                 {
@@ -31,28 +11,58 @@
             "name": "cd8+ cell infiltration"
         },
         "erv load": {
+            "description": "endogenous retroviruses (ERV) expression due to epigenetic derepression",
             "name": "erv load"
         },
         "hla genotype": {
+            "description": "homo- or heterozygosity in HLA class I locus (HLA-A, HLA-B or HLA-C)",
             "name": "hla genotype"
         },
+        "genomic stability": {
+            "links": [
+                {
+                    "class": "OppositeOf",
+                    "target": "genomic instability"
+                }
+            ]
+        },
+        "homologous recombination proficiency": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "genomic stability"
+                }
+            ]
+        },
+        "genomic instability": {
+            "description": "increased frequency of mutations and genomic alterations"
+        },
+        "homologous recombination deficiency": {
+            "description": "genetic instability due to genomic alterations in the homologous recombination (HR) DNA repair pathway",
+            "name": "homologous recombination deficiency",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "genomic instability"
+                }
+            ]
+        },
         "hrd": {
-            "name": "hrd",
             "deprecated": true,
             "links": [
                 {
                     "class": "DeprecatedBy",
-                    "target": "homologous repair deficiency"
+                    "target": "homologous recombination deficiency"
                 }
-            ]
-        },
-        "homologous repair deficiency": {
-            "name": "homologous repair deficiency"
+            ],
+            "name": "hrd"
         },
         "immune infiltration": {
+            "description": "proportion of immune/inflammatory cells in the tumour microenvironment",
             "name": "immune infiltration"
         },
         "microsatellite instability": {
+            "description": "genetic instability in short nucleotide repeats (microsatellites) due to a high mutation rate as a result of abnormal DNA mismatch repair",
             "links": [
                 {
                     "class": "SubClassOf",
@@ -73,10 +83,32 @@
             ],
             "name": "microsatellite stable"
         },
+        "msi": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "microsatellite instability"
+                }
+            ],
+            "name": "msi"
+        },
+        "mss": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "microsatellite stable"
+                }
+            ],
+            "name": "mss"
+        },
         "mutation burden": {
+            "description": "total number of somatic mutations normalized to the genome size",
             "name": "mutation burden"
         },
         "neoantigen load": {
+            "description": "expression of antigens that are entirely absent from the normal human genome and the results of mutations acquired during carcinogenesis and progression",
             "name": "neoantigen load"
         },
         "t cell infiltration": {
@@ -93,6 +125,7 @@
         "displayName": "GraphKB",
         "longName": "Graph Knowledgebase",
         "name": "graphkb",
+        "sort": 0,
         "url": "https://graphkb.bcgsc.ca"
     }
 }

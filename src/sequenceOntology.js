@@ -9,18 +9,11 @@
 const rdf = require('rdflib');
 const fs = require('fs');
 
-const {
-    convertOwlGraphToJson, rid
-} = require('./util');
-const {logger} = require('./logging');
+const { convertOwlGraphToJson } = require('./util');
+const { rid, convertRecordToQueryFilters } = require('./graphkb');
+const { logger } = require('./logging');
+const { sequenceOntology: SOURCE_DEFN } = require('./sources');
 
-
-const SOURCE_DEFN = {
-    name: 'sequence ontology',
-    description: 'The Sequence Ontology is a set of terms and relationships used to describe the features and attributes of biological sequence. SO includes different kinds of features which can be located on the sequence.',
-    url: 'http://www.sequenceontology.org',
-    usage: 'http://www.sequenceontology.org/?page_id=269'
-};
 
 const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/so/so-simple.owl';
 
@@ -35,7 +28,7 @@ const PREDICATES = {
     TYPE: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
     DESCRIPTION: 'http://purl.obolibrary.org/obo/IAO_0000115',
     DEPRECATEDBY: 'http://purl.obolibrary.org/obo/IAO_0100001',
-    ID: 'http://www.geneontology.org/formats/oboInOwl#id'
+    ID: 'http://www.geneontology.org/formats/oboInOwl#id',
 };
 
 /**
@@ -47,6 +40,7 @@ const PREDICATES = {
  */
 const parseId = (url) => {
     const match = /.*\/SO_(\d+)$/.exec(url);
+
     if (match) {
         return `so:${match[1]}`;
     }
@@ -61,10 +55,10 @@ const parseRecord = (code, rawRecord) => {
     const record = {
         content: {
             sourceId: code.toLowerCase(),
-            name: rawRecord[PREDICATES.LABEL][0].replace(/_/g, ' ')
+            name: rawRecord[PREDICATES.LABEL][0].replace(/_/g, ' '),
         },
         aliases: rawRecord[PREDICATES.ALIASOF] || [],
-        subclassof: []
+        subclassof: [],
     };
 
     if (rawRecord[PREDICATES.DESCRIPTION] && rawRecord[PREDICATES.DESCRIPTION].length) {
@@ -83,7 +77,7 @@ const parseRecord = (code, rawRecord) => {
 };
 
 
-const uploadFile = async ({filename, conn}) => {
+const uploadFile = async ({ filename, conn }) => {
     logger.info('Loading the external sequence ontology data');
     logger.info(`reading: ${filename}`);
     const fileContent = fs.readFileSync(filename).toString();
@@ -92,10 +86,10 @@ const uploadFile = async ({filename, conn}) => {
     rdf.parse(fileContent, graph, OWL_NAMESPACE, 'application/rdf+xml');
 
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
-        fetchConditions: {name: SOURCE_DEFN.name}
+        fetchConditions: { name: SOURCE_DEFN.name },
     });
 
     const nodesByCode = convertOwlGraphToJson(graph, parseId);
@@ -105,33 +99,35 @@ const uploadFile = async ({filename, conn}) => {
 
     for (const [code, rawRecord] of Object.entries(nodesByCode)) {
         try {
-            const {content, subclassof} = parseRecord(code, rawRecord);
+            const { content, subclassof } = parseRecord(code, rawRecord);
             const record = await conn.addRecord({
-                endpoint: 'vocabulary',
+                target: 'vocabulary',
                 existsOk: true,
-                content: {...content, source: rid(source)},
-                fetchConditions: {sourceId: content.sourceId, name: content.name, source: rid(source)}
+                content: { ...content, source: rid(source) },
+                fetchConditions: convertRecordToQueryFilters({ sourceId: content.sourceId, name: content.name, source: rid(source) }),
             });
             records[record.sourceId] = record;
+
             for (const parent of subclassof) {
-                subclassEdges.push({out: code, in: parent});
+                subclassEdges.push({ out: code, in: parent });
             }
         } catch (err) {
             logger.warn(`Failed to create the record (code=${code}): ${err.message}`);
         }
     }
     logger.info(`loading ${subclassEdges.length} subclassof links`);
+
     for (const edge of subclassEdges) {
         if (records[edge.out] && records[edge.in]) {
             await conn.addRecord({
-                endpoint: 'subclassof',
+                target: 'subclassof',
                 content: {
                     source: rid(source),
                     out: rid(records[edge.out]),
-                    in: rid(records[edge.in])
+                    in: rid(records[edge.in]),
                 },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
         } else {
             logger.warn(`Failed to create  subclassof link from ${edge.out} to ${edge.in}`);
@@ -139,4 +135,4 @@ const uploadFile = async ({filename, conn}) => {
     }
 };
 
-module.exports = {uploadFile, SOURCE_DEFN};
+module.exports = { uploadFile, SOURCE_DEFN };

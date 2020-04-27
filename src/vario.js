@@ -6,27 +6,21 @@ const rdf = require('rdflib');
 const fs = require('fs');
 
 
-const {
-    convertOwlGraphToJson, rid
-} = require('./util');
-const {logger} = require('./logging');
+const { convertOwlGraphToJson } = require('./util');
+const { rid } = require('./graphkb');
+const { logger } = require('./logging');
+const { vario: SOURCE_DEFN } = require('./sources');
 
 
 const PREDICATES = {
     name: 'http://www.w3.org/2000/01/rdf-schema#label',
     subclassOf: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
     id: 'http://www.geneontology.org/formats/oboInOwl#id',
-    description: 'http://purl.obolibrary.org/obo/IAO_0000115'
+    description: 'http://purl.obolibrary.org/obo/IAO_0000115',
 };
 
 const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/vario.owl';
 
-const SOURCE_DEFN = {
-    name: 'vario',
-    usage: 'http://variationontology.org/citing.shtml',
-    url: 'http://variationontology.org',
-    description: 'Variation Ontology, VariO, is an ontology for standardized, systematic description of effects, consequences and mechanisms of variations. VariO allows unambiguous description of variation effects as well as computerized analyses over databases utilizing the ontology for annotation. VariO is a position specific ontology that can be used to describe effects of variations on DNA, RNA and/or protein level, whatever is appropriate.'
-};
 
 /**
  * Parse the ID from a url string
@@ -42,6 +36,7 @@ const SOURCE_DEFN = {
 const parseId = (url) => {
     // http://purl.obolibrary.org/obo/VariO_044
     const match = /.*\/(VariO_\d+)$/.exec(url);
+
     if (match) {
         return `${match[1].toLowerCase().replace('_', ':')}`;
     }
@@ -56,7 +51,7 @@ const parseId = (url) => {
  * @param {string} opt.filename the path to the input OWL file
  * @param {ApiConnection} opt.conn the api request connection object
  */
-const uploadFile = async ({filename, conn}) => {
+const uploadFile = async ({ filename, conn }) => {
     logger.info(`Loading external ${SOURCE_DEFN.name} data`);
     logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
@@ -66,10 +61,10 @@ const uploadFile = async ({filename, conn}) => {
     const nodesByCode = convertOwlGraphToJson(graph, parseId);
 
     const source = await conn.addRecord({
-        endpoint: 'sources',
+        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
-        fetchConditions: {name: SOURCE_DEFN.name}
+        fetchConditions: { name: SOURCE_DEFN.name },
     });
 
     const recordsByCode = {};
@@ -83,28 +78,30 @@ const uploadFile = async ({filename, conn}) => {
             name: original[PREDICATES.name][0],
             sourceId: code,
             description: (original[PREDICATES.description] || [null])[0],
-            source: rid(source)
+            source: rid(source),
         };
+
         for (const tgt of original[PREDICATES.subclassOf] || []) {
             subclassEdges.push([code, tgt]);
         }
-        recordsByCode[code] = await conn.addRecord({endpoint: 'vocabulary', content: node, existsOk: true});
+        recordsByCode[code] = await conn.addRecord({ target: 'vocabulary', content: node, existsOk: true });
     }
+
     for (const [srcCode, tgtCode] of subclassEdges) {
         const src = recordsByCode[srcCode];
         const tgt = recordsByCode[tgtCode];
+
         if (src && tgt) {
             await conn.addRecord({
-                endpoint: 'subclassof',
+                target: 'subclassof',
                 content: {
-                    out: rid(src), in: rid(tgt), source: rid(source)
+                    out: rid(src), in: rid(tgt), source: rid(source),
                 },
                 existsOk: true,
-                fetchExisting: false
+                fetchExisting: false,
             });
         }
     }
-    console.log();
 };
 
-module.exports = {uploadFile, SOURCE_DEFN};
+module.exports = { uploadFile, SOURCE_DEFN };
