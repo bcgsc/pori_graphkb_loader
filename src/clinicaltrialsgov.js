@@ -357,6 +357,8 @@ const processPhases = (phaseList) => {
  * @param {ApiConnection} opt.conn the GraphKB connection object
  * @param {object} opt.record the XML record (pre-parsed into JSON)
  * @param {object|string} opt.source the 'source' record for clinicaltrials.gov
+ *
+ * @todo: handle updates to existing clinical trial records
  */
 const processRecord = async ({
     conn, record, source,
@@ -446,9 +448,7 @@ const processRecord = async ({
         content,
         existsOk: true,
         fetchFirst: true,
-        fetchConditions: convertRecordToQueryFilters(
-            _.omit(content, ['sourceIdVersion', 'city']),
-        ), // if sourceIdVersion is the only thing different then don't update
+        fetchConditions: { source: rid(source), sourceId: record.sourceId },
     });
 
     // link to the drugs and diseases
