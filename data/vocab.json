@@ -267,6 +267,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "indel"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "structural variant"
                 }
             ]
         },
@@ -404,10 +408,11 @@
             ]
         },
         "extension": {
+            "description": "A protein change which extends the open reading frame",
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -449,7 +454,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -627,6 +632,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "increased expression"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "protein expression variant"
                 }
             ]
         },
@@ -639,6 +648,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "increased expression"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "rna expression variant"
                 }
             ]
         },
@@ -671,7 +684,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "structural variant"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -688,6 +701,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "indel"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "structural variant"
                 }
             ]
         },
@@ -1217,7 +1234,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -1388,6 +1405,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "any protein expression"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "protein expression variant"
                 }
             ]
         },
@@ -1396,6 +1417,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "any rna expression"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "rna expression variant"
                 }
             ]
         },
@@ -1551,6 +1576,15 @@
                 }
             ]
         },
+        "small mutation": {
+            "description": "any substitution, insertion or deletion affecting a small number of base pairs",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "mutation"
+                }
+            ]
+        },
         "splice acceptor mutation": {
             "links": [
                 {
@@ -1581,7 +1615,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -1621,7 +1655,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -1682,7 +1716,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
