@@ -1387,7 +1387,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "any expression"
+                    "target": "expression variant"
                 }
             ]
         },
@@ -1404,20 +1404,12 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "any protein expression"
-                },
-                {
-                    "class": "SubClassOf",
                     "target": "protein expression variant"
                 }
             ]
         },
         "reduced rna expression": {
             "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "any rna expression"
-                },
                 {
                     "class": "SubClassOf",
                     "target": "rna expression variant"
