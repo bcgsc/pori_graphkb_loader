@@ -589,7 +589,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "any expression"
+                    "target": "expression variant"
                 }
             ]
         },
@@ -627,15 +627,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "any protein expression"
-                },
-                {
-                    "class": "SubClassOf",
                     "target": "increased expression"
-                },
-                {
-                    "class": "SubClassOf",
-                    "target": "protein expression variant"
                 }
             ]
         },
@@ -643,15 +635,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "any rna expression"
-                },
-                {
-                    "class": "SubClassOf",
                     "target": "increased expression"
-                },
-                {
-                    "class": "SubClassOf",
-                    "target": "rna expression variant"
                 }
             ]
         },
@@ -1043,10 +1027,6 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "protein expression variant"
-                },
-                {
-                    "class": "SubClassOf",
                     "target": "no expression"
                 }
             ]
@@ -1078,10 +1058,6 @@
         },
         "no rna expression": {
             "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "rna expression variant"
-                },
                 {
                     "class": "SubClassOf",
                     "target": "no expression"
@@ -1339,14 +1315,6 @@
                 }
             ]
         },
-        "protein expression variant": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "expression variant"
-                }
-            ]
-        },
         "protein overexpression": {
             "deprecated": true,
             "links": [
@@ -1404,7 +1372,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "protein expression variant"
+                    "target": "reduced expression"
                 }
             ]
         },
@@ -1412,7 +1380,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "rna expression variant"
+                    "target": "reduced expression"
                 }
             ]
         },
@@ -1476,14 +1444,6 @@
                 {
                     "class": "DeprecatedBy",
                     "target": "any rna expression"
-                }
-            ]
-        },
-        "rna expression variant": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "expression variant"
                 }
             ]
         },
