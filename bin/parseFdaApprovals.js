@@ -125,7 +125,7 @@ const upload = async ({ conn }) => {
             logger.info(`parsing: ${link}`);
             const record = await parseAnnouncementPage(link);
             await conn.addRecord({
-                target: 'Publication',
+                target: 'CuratedContent',
                 content: { ...record, source },
                 fetchConditions: { sourceId: record.sourceId, source },
                 existsOk: true,
