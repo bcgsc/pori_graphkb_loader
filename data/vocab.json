@@ -267,6 +267,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "indel"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "structural variant"
                 }
             ]
         },
@@ -404,10 +408,11 @@
             ]
         },
         "extension": {
+            "description": "A protein change which extends the open reading frame",
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -449,7 +454,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -584,7 +589,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "any expression"
+                    "target": "expression variant"
                 }
             ]
         },
@@ -622,20 +627,12 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "any protein expression"
-                },
-                {
-                    "class": "SubClassOf",
                     "target": "increased expression"
                 }
             ]
         },
         "increased rna expression": {
             "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "any rna expression"
-                },
                 {
                     "class": "SubClassOf",
                     "target": "increased expression"
@@ -671,7 +668,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "structural variant"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -688,6 +685,10 @@
                 {
                     "class": "SubClassOf",
                     "target": "indel"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "structural variant"
                 }
             ]
         },
@@ -1026,10 +1027,6 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "protein expression variant"
-                },
-                {
-                    "class": "SubClassOf",
                     "target": "no expression"
                 }
             ]
@@ -1061,10 +1058,6 @@
         },
         "no rna expression": {
             "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "rna expression variant"
-                },
                 {
                     "class": "SubClassOf",
                     "target": "no expression"
@@ -1217,7 +1210,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -1322,14 +1315,6 @@
                 }
             ]
         },
-        "protein expression variant": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "expression variant"
-                }
-            ]
-        },
         "protein overexpression": {
             "deprecated": true,
             "links": [
@@ -1370,7 +1355,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "any expression"
+                    "target": "expression variant"
                 }
             ]
         },
@@ -1387,7 +1372,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "any protein expression"
+                    "target": "reduced expression"
                 }
             ]
         },
@@ -1395,7 +1380,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "any rna expression"
+                    "target": "reduced expression"
                 }
             ]
         },
@@ -1459,14 +1444,6 @@
                 {
                     "class": "DeprecatedBy",
                     "target": "any rna expression"
-                }
-            ]
-        },
-        "rna expression variant": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "expression variant"
                 }
             ]
         },
@@ -1551,6 +1528,15 @@
                 }
             ]
         },
+        "small mutation": {
+            "description": "any substitution, insertion or deletion affecting a small number of base pairs",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "mutation"
+                }
+            ]
+        },
         "splice acceptor mutation": {
             "links": [
                 {
@@ -1581,7 +1567,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -1621,7 +1607,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },
@@ -1682,7 +1668,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "small mutation"
                 }
             ]
         },

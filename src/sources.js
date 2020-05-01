@@ -200,6 +200,12 @@ const sources = {
         url: 'https://graphkb.bcgsc.ca',
         sort: 0,
     },
+    fdaApprovals: {
+        name: 'fda approvals',
+        url: 'https://www.fda.gov/drugs/resources-information-approved-drugs/hematologyoncology-cancer-approvals-safety-notifications',
+        longName: 'FDA Hematology/Oncology (Cancer) Approvals & Safety Notifications',
+        displayName: 'FDA Approvals',
+    },
 };
 
 module.exports = sources;

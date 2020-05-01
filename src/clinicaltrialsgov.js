@@ -367,7 +367,7 @@ const processRecord = async ({
         name: record.name,
         sourceIdVersion: record.sourceIdVersion,
         source: rid(source),
-        displayName: record.sourceId.toUpperCase(),
+        displayName: record.name,
     };
     const phase = processPhases(record.phases);
 
