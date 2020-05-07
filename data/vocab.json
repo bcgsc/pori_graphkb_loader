@@ -177,6 +177,15 @@
                 }
             ]
         },
+        "copy number variation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "copy variant"
+                }
+            ]
+        },
         "copy variant": {
             "links": [
                 {
@@ -455,6 +464,23 @@
                 {
                     "class": "SubClassOf",
                     "target": "small mutation"
+                }
+            ]
+        },
+        "frameshift truncation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "frameshift truncation mutation"
+                }
+            ]
+        },
+        "frameshift truncation mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "frameshift mutation"
                 }
             ]
         },
