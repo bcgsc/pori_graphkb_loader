@@ -19,7 +19,7 @@ const _entrezGene = require('./../entrez/gene');
 
 const ajv = new Ajv();
 
-const { civic: SOURCE_DEFN } = require('./../sources');
+const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('./../sources');
 
 const TRUSTED_CURATOR_ID = 968;
 
@@ -60,10 +60,12 @@ const validateEvidenceSpec = ajv.compile({
             type: 'array',
             items: {
                 type: 'object',
+                required: ['name', 'ncit_id'],
                 properties: {
                     id: { type: 'number' },
                     name: { type: 'string' },
                     pubchem_id: { type: ['string', 'null'] },
+                    ncit_id: { type: ['string', 'null'] },
                 },
             },
         },
@@ -222,8 +224,29 @@ const getRelevance = async ({ rawRecord, conn }) => {
 /**
  * Given some drug name, find the drug that is equivalent by name in GraphKB
  */
-const getDrug = async (conn, name) => {
+const getDrug = async (conn, drugRecord) => {
     let originalError;
+
+    // fetch from NCIt first if possible, or pubchem
+    // then use the name as a fallback
+    const name = drugRecord.name.toLowerCase().trim();
+
+    if (drugRecord.ncit_id) {
+        try {
+            const drug = await conn.getUniqueRecordBy({
+                target: 'Therapy',
+                filters: [
+                    { source: { target: 'Source', filters: { name: NCIT_SOURCE_DEFN.name } } },
+                    { sourceId: drugRecord.ncit_id },
+                ],
+                sort: orderPreferredOntologyTerms,
+            });
+            return drug;
+        } catch (err) {
+            logger.error(`had NCIt drug mapping (${drugRecord.ncit_id}) but failed to fetch from graphkb: ${err}`);
+            throw err;
+        }
+    }
 
     try {
         const drug = await conn.getTherapy(name);
@@ -473,7 +496,7 @@ const processEvidenceRecord = async (opt) => {
     let drug;
 
     if (rawRecord.drug) {
-        drug = await getDrug(conn, rawRecord.drug.name.toLowerCase().trim());
+        drug = await getDrug(conn, rawRecord.drug);
     }
     // get the publication by pubmed ID
     let publication;
