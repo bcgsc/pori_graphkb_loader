@@ -311,13 +311,13 @@ class ApiConnection {
         throw error;
     }
 
-    async getVocabularyTerm(term) {
+    async getVocabularyTerm(term, sourceName = INTERNAL_SOURCE_NAME) {
         return this.getUniqueRecordBy({
             target: 'Vocabulary',
             filters: {
                 AND: [
                     { sourceId: term },
-                    { source: { target: 'Source', filters: { name: INTERNAL_SOURCE_NAME } } },
+                    { source: { target: 'Source', filters: { name: sourceName } } },
                 ],
             },
             sortFunc: orderPreferredOntologyTerms,
