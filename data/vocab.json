@@ -472,15 +472,19 @@
             "links": [
                 {
                     "class": "DeprecatedBy",
-                    "target": "frameshift truncation mutation"
+                    "target": "truncating frameshift mutation"
                 }
             ]
         },
-        "frameshift truncation mutation": {
+        "truncating frameshift mutation": {
             "links": [
                 {
                     "class": "SubClassOf",
                     "target": "frameshift mutation"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "truncating"
                 }
             ]
         },

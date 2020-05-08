@@ -281,11 +281,6 @@ const getVariantName = ({ name, variant_types: variantTypes = [] }) => {
         return result.replace(/-/g, ' ');
     }
     const SUBS = {
-        'frameshift truncation': 'frameshift',
-        itd: 'internal tandem duplication',
-        loss: 'copy loss',
-        'copy number variation': 'copy variant',
-        gain: 'copy gain',
         'g12/g13': '(G12_G13)mut',
         'di842-843vm': 'D842_I843delDIinsVM',
         'del 755-759': '?755_?759del',
@@ -395,7 +390,14 @@ const processVariantRecord = async ({ conn, variantRec, feature }) => {
     }
 
     try {
-        const variantClass = await conn.getVocabularyTerm(variantName);
+        let variantClass;
+
+        // try to fetch civic specific term first
+        try {
+            variantClass = await conn.getVocabularyTerm(variantName, SOURCE_DEFN.name);
+        } catch (err) {
+            variantClass = await conn.getVocabularyTerm(variantName);
+        }
         const body = {
             type: rid(variantClass),
             reference1: rid(reference1),
