@@ -18,17 +18,17 @@ const { sequenceOntology: SOURCE_DEFN } = require('./sources');
 const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/so/so-simple.owl';
 
 const PREDICATES = {
-    SUBCLASSOF: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
     ALIASOF: 'http://www.geneontology.org/formats/oboInOwl#hasExactSynonym',
-    LABEL: 'http://www.w3.org/2000/01/rdf-schema#label',
-    SUBSETOF: 'http://www.geneontology.org/formats/oboInOwl#inSubset',
     CROSSREF: 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
     DEPRECATED: 'http://www.w3.org/2002/07/owl#deprecated',
-    GENERALIZATION: 'http://www.geneontology.org/formats/oboInOwl#hasBroadSynonym',
-    TYPE: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
-    DESCRIPTION: 'http://purl.obolibrary.org/obo/IAO_0000115',
     DEPRECATEDBY: 'http://purl.obolibrary.org/obo/IAO_0100001',
+    DESCRIPTION: 'http://purl.obolibrary.org/obo/IAO_0000115',
+    GENERALIZATION: 'http://www.geneontology.org/formats/oboInOwl#hasBroadSynonym',
     ID: 'http://www.geneontology.org/formats/oboInOwl#id',
+    LABEL: 'http://www.w3.org/2000/01/rdf-schema#label',
+    SUBCLASSOF: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
+    SUBSETOF: 'http://www.geneontology.org/formats/oboInOwl#inSubset',
+    TYPE: 'http://www.w3.org/1999/02/22-rdf-syntax-ns#type',
 };
 
 /**
@@ -53,11 +53,11 @@ const parseRecord = (code, rawRecord) => {
         throw new Error('Could not find record label');
     }
     const record = {
-        content: {
-            sourceId: code.toLowerCase(),
-            name: rawRecord[PREDICATES.LABEL][0].replace(/_/g, ' '),
-        },
         aliases: rawRecord[PREDICATES.ALIASOF] || [],
+        content: {
+            name: rawRecord[PREDICATES.LABEL][0].replace(/_/g, ' '),
+            sourceId: code.toLowerCase(),
+        },
         subclassof: [],
     };
 
@@ -86,10 +86,10 @@ const uploadFile = async ({ filename, conn }) => {
     rdf.parse(fileContent, graph, OWL_NAMESPACE, 'application/rdf+xml');
 
     const source = await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     });
 
     const nodesByCode = convertOwlGraphToJson(graph, parseId);
@@ -101,15 +101,15 @@ const uploadFile = async ({ filename, conn }) => {
         try {
             const { content, subclassof } = parseRecord(code, rawRecord);
             const record = await conn.addRecord({
-                target: 'vocabulary',
-                existsOk: true,
                 content: { ...content, source: rid(source) },
-                fetchConditions: convertRecordToQueryFilters({ sourceId: content.sourceId, name: content.name, source: rid(source) }),
+                existsOk: true,
+                fetchConditions: convertRecordToQueryFilters({ name: content.name, source: rid(source), sourceId: content.sourceId }),
+                target: 'vocabulary',
             });
             records[record.sourceId] = record;
 
             for (const parent of subclassof) {
-                subclassEdges.push({ out: code, in: parent });
+                subclassEdges.push({ in: parent, out: code });
             }
         } catch (err) {
             logger.warn(`Failed to create the record (code=${code}): ${err.message}`);
@@ -120,14 +120,14 @@ const uploadFile = async ({ filename, conn }) => {
     for (const edge of subclassEdges) {
         if (records[edge.out] && records[edge.in]) {
             await conn.addRecord({
-                target: 'subclassof',
                 content: {
-                    source: rid(source),
-                    out: rid(records[edge.out]),
                     in: rid(records[edge.in]),
+                    out: rid(records[edge.out]),
+                    source: rid(source),
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'subclassof',
             });
         } else {
             logger.warn(`Failed to create  subclassof link from ${edge.out} to ${edge.in}`);
@@ -135,4 +135,4 @@ const uploadFile = async ({ filename, conn }) => {
     }
 };
 
-module.exports = { uploadFile, SOURCE_DEFN };
+module.exports = { SOURCE_DEFN, uploadFile };

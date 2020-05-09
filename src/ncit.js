@@ -89,17 +89,17 @@ const cleanRawRow = (rawRow) => {
     } = rawRow;
 
     const row = {
+        deprecated: (
+            rawParents.split('|').some(p => DEPRECATED.includes(p))
+                || conceptStatus === 'Obsolete_Concept'
+                || conceptStatus === 'Retired_Concept'
+        ),
+        description: definition,
         parents: (
             rawParents.split('|')
                 .map(parent => parent.trim())
                 .filter(parent => parent && !DEPRECATED.includes(parent))
                 .map(parent => parent.toLowerCase())
-        ),
-        description: definition,
-        deprecated: (
-            rawParents.split('|').some(p => DEPRECATED.includes(p))
-                || conceptStatus === 'Obsolete_Concept'
-                || conceptStatus === 'Retired_Concept'
         ),
     };
     const sourceId = id.toLowerCase().trim();
@@ -142,11 +142,11 @@ const cleanRawRow = (rawRow) => {
     // add the parents
     return {
         ...row,
-        url,
         endpoint,
-        sourceId,
         name,
+        sourceId,
         synonyms: Array.from(new Set(synonyms)).filter(s => s !== name),
+        url,
     };
 };
 
@@ -176,7 +176,7 @@ const uploadFile = async ({ filename, conn }) => {
     // determine unresolvable records
     const rows = [];
     const nameDuplicates = {};
-    const counts = { skip: 0, success: 0, error: 0 };
+    const counts = { error: 0, skip: 0, success: 0 };
 
     for (const raw of rawRows) {
         try {
@@ -203,10 +203,10 @@ const uploadFile = async ({ filename, conn }) => {
     logger.info(`rejected ${rejected.size} rows for unresolveable primary/display name conflicts`);
 
     const source = rid(await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
-        fetchConditions: { name: SOURCE_DEFN.name },
         existsOk: true,
+        fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     }));
     const recordsById = {};
     const subclassEdges = [];
@@ -215,9 +215,9 @@ const uploadFile = async ({ filename, conn }) => {
     const cached = {};
     logger.info('getting previously loaded records');
     const cachedRecords = await conn.getRecords({
-        target: 'Ontology',
         filters: { AND: [{ source }, { dependency: null }] },
         neighbors: 0,
+        target: 'Ontology',
     });
 
     for (const record of cachedRecords) {
@@ -252,22 +252,24 @@ const uploadFile = async ({ filename, conn }) => {
                     endpoint, sourceId, description, url, name, deprecated,
                 } = row;
                 record = await conn.addRecord({
-                    target: endpoint,
                     content: {
-                        source,
-                        sourceId,
-                        name,
-                        description,
-                        url,
                         deprecated,
-                    },
-                    fetchConditions: convertRecordToQueryFilters({ // description can contain url malformed characters
+                        description,
+                        name,
                         source,
                         sourceId,
-                        name: row.name,
-                        dependency: null,
-                    }),
+                        url,
+                    },
                     existsOk: true,
+                    fetchConditions: convertRecordToQueryFilters({
+                        dependency: null,
+
+                        name: row.name,
+                        // description can contain url malformed characters
+                        source,
+                        sourceId,
+                    }),
+                    target: endpoint,
                 });
                 cached[generateCacheKey(record)] = record;
 
@@ -275,21 +277,21 @@ const uploadFile = async ({ filename, conn }) => {
                 await Promise.all(row.synonyms.map(async (synonym) => {
                     try {
                         const alias = await conn.addRecord({
-                            target: endpoint,
                             content: {
-                                source,
-                                sourceId: record.sourceId,
-                                name: synonym,
                                 dependency: rid(record),
                                 deprecated: record.deprecated,
+                                name: synonym,
+                                source,
+                                sourceId: record.sourceId,
                             },
                             existsOk: true,
+                            target: endpoint,
                         });
                         await conn.addRecord({
-                            target: 'aliasof',
-                            content: { out: rid(alias), in: rid(record), source },
+                            content: { in: rid(record), out: rid(alias), source },
                             existsOk: true,
                             fetchExisting: false,
+                            target: 'aliasof',
                         });
                     } catch (err) {
                         logger.error(`failed to link (${record.sourceId}) to alias (${synonym})`);
@@ -311,14 +313,14 @@ const uploadFile = async ({ filename, conn }) => {
     for (const [recordKey, parentKey] of subclassEdges) {
         if (cached[recordKey] && cached[parentKey]) {
             await conn.addRecord({
-                target: 'subclassof',
                 content: {
-                    out: rid(cached[recordKey]),
                     in: rid(cached[parentKey]),
+                    out: rid(cached[recordKey]),
                     source,
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'subclassof',
             });
         }
     }
@@ -326,4 +328,4 @@ const uploadFile = async ({ filename, conn }) => {
 };
 
 
-module.exports = { uploadFile, SOURCE_DEFN };
+module.exports = { SOURCE_DEFN, uploadFile };

@@ -21,33 +21,33 @@ const DEFAULT_ASSEMBLY = 'GRCh37';
 
 
 const HEADER = {
-    ident: 'kb_reference_uuid',
     createdAt: 'kb_reference_created_date',
-    reviewStatus: 'kb_reference_review_status',
     createdBy: 'kb_reference_created_by_user',
-    reviewedBy: 'kb_reference_reviewed_by_user',
-    variants: 'kb_reference_events_expression',
-    statementType: 'kb_reference_type',
-    relevance: 'kb_reference_relevance',
-    subject: 'kb_reference_context',
     diseaseList: 'kb_reference_disease_list',
-    evidenceLevel: 'kb_reference_evidence',
-    evidenceType: 'kb_reference_id_type',
     evidenceId: 'kb_reference_ref_id',
+    evidenceLevel: 'kb_reference_evidence',
     evidenceTitle: 'kb_reference_id_title',
+    evidenceType: 'kb_reference_id_type',
+    ident: 'kb_reference_uuid',
+    relevance: 'kb_reference_relevance',
+    reviewStatus: 'kb_reference_review_status',
+    reviewedBy: 'kb_reference_reviewed_by_user',
+    statementType: 'kb_reference_type',
+    subject: 'kb_reference_context',
+    variants: 'kb_reference_events_expression',
 };
 
 
 const THERAPY_MAPPING = {
-    'gamma secretase inhibitor': 'enzyme inhibitors: gamma secretase inhibitors',
-    'rapamycin (mtor inhibitor)': 'rapamycin',
-    asp3026: 'asp-3026',
     ap26113: 'ap-26113',
-    selumitinib: 'selumetinib',
-    lapitinib: 'lapatinib',
-    tratuzumab: 'trastuzumab',
+    asp3026: 'asp-3026',
     'dacomitinib (pf 00299804)': 'dacomitinib',
+    'gamma secretase inhibitor': 'enzyme inhibitors: gamma secretase inhibitors',
+    lapitinib: 'lapatinib',
     oliparib: 'olaparib',
+    'rapamycin (mtor inhibitor)': 'rapamycin',
+    selumitinib: 'selumetinib',
+    tratuzumab: 'trastuzumab',
 };
 
 
@@ -89,7 +89,6 @@ const getFeature = async (conn, rawName) => {
 
     try {
         return await conn.getUniqueRecordBy({
-            target: 'Feature',
             filters: {
                 OR: [
                     { name: stripRefSeqVersion(name) },
@@ -97,6 +96,7 @@ const getFeature = async (conn, rawName) => {
                 ],
             },
             sort: orderPreferredOntologyTerms,
+            target: 'Feature',
         });
     } catch (err) {
         // see if it is a hugo gene
@@ -106,7 +106,7 @@ const getFeature = async (conn, rawName) => {
 
         // or an old symbol for a hugo gene
         try {
-            return await _hgnc.fetchAndLoadBySymbol({ conn, symbol: name, paramType: 'prev_symbol' });
+            return await _hgnc.fetchAndLoadBySymbol({ conn, paramType: 'prev_symbol', symbol: name });
         } catch (otherErr) {}
         throw err;
     }
@@ -150,9 +150,9 @@ const extractAppliesTo = async (conn, record, source) => {
                 throw new Error(`required disease not defined (relevance=${relevance}, statementType=${statementType})`);
             }
             return conn.getUniqueRecordBy({
-                target: 'Disease',
                 filters: { name: disease },
                 sort: orderPreferredOntologyTerms,
+                target: 'Disease',
             });
         } if (relevance === 'eligibility') {
             if (evidence.length === 1) {
@@ -179,17 +179,17 @@ const extractAppliesTo = async (conn, record, source) => {
             if (!disease) {
                 if (subject && (subject.includes('somatic') || subject === 'cancer')) {
                     return conn.getUniqueRecordBy({
-                        target: 'Disease',
                         filters: { name: 'cancer' },
                         sort: orderPreferredOntologyTerms,
+                        target: 'Disease',
                     });
                 }
                 throw new Error(`required disease not defined (relevance=${relevance}, statementType=${statementType})`);
             }
             return conn.getUniqueRecordBy({
-                target: 'Disease',
                 filters: { name: disease },
                 sort: orderPreferredOntologyTerms,
+                target: 'Disease',
             });
         } else if (
             [
@@ -209,9 +209,9 @@ const extractAppliesTo = async (conn, record, source) => {
         throw new Error(`unable to determine the target gene (${features.length}) or variant (${variants.length}) being referenced (relevance=${relevance})`);
     } else if (statementType === 'diagnostic') {
         return conn.getUniqueRecordBy({
-            target: 'Disease',
             filters: { name: disease },
             sort: orderPreferredOntologyTerms,
+            target: 'Disease',
         });
     } else if (statementType === 'prognostic') {
         return conn.getVocabularyTerm('patient');
@@ -283,22 +283,22 @@ const convertDeprecatedSyntax = (string) => {
     let match = null;
 
     if (string.startsWith('FANN_')) {
-        Object.assign(result, { name: string.slice(5), isFeature: true });
+        Object.assign(result, { isFeature: true, name: string.slice(5) });
     } else if (match = /^SV_e.([^(]+)\(([^,]+)(,\s*([^)]+))?\)\(([^,]+),([^)]+)\)$/.exec(string)) {
         // exon level structural variant
         result.type = 'structural variant';
         const cytobandPattern = /^(1[0-9]|2[0-2]|[1-9]|X|Y)([pq]\d+(\.\d+)?)$/;
         let submatch;
         match = {
-            type: match[1],
+            pos1: match[5],
+            pos1Prefix: 'e',
+            pos2: match[6],
+            pos2Prefix: 'e',
             reference1: match[2],
             reference2: match[3]
                 ? match[4]
                 : match[2],
-            pos1Prefix: 'e',
-            pos2Prefix: 'e',
-            pos1: match[5],
-            pos2: match[6],
+            type: match[1],
         };
 
         if (match.pos1.includes(':')) {
@@ -359,7 +359,7 @@ const convertDeprecatedSyntax = (string) => {
                 type = 'deep deletion';
             }
         }
-        Object.assign(result, { type, reference1: gene });
+        Object.assign(result, { reference1: gene, type });
     } else if (match = /^ELV-(PROT|RNA)_([^_]+)_([^_]+)$/.exec(string)) {
         let type = match[1] === 'PROT'
             ? 'protein'
@@ -371,7 +371,7 @@ const convertDeprecatedSyntax = (string) => {
         }
         Object.assign(result, { reference1: match[2], type });
     } else if (!/[.;,:_]/.exec(string)) {
-        Object.assign(result, { name: string, isFeature: true });
+        Object.assign(result, { isFeature: true, name: string });
     } else if (!/[!&$#]/.exec(string) && string.includes(':')) {
         if (/^(MUT|CNV)_/.exec(string)) {
             string = string.slice(4);
@@ -555,13 +555,12 @@ const processVariant = async (conn, variant) => {
         }
 
         return conn.addVariant({
-            target: 'PositionalVariant',
             content,
             existsOk: true,
+            target: 'PositionalVariant',
         });
     }
     return conn.addVariant({
-        target: 'CategoryVariant',
         content: {
             ...variant,
             reference1,
@@ -569,6 +568,7 @@ const processVariant = async (conn, variant) => {
             type,
         },
         existsOk: true,
+        target: 'CategoryVariant',
     });
 };
 
@@ -600,9 +600,9 @@ const processRecord = async ({ conn, record: inputRecord, source }) => {
     if (record.disease) {
         try {
             disease = await conn.getUniqueRecordBy({
-                target: 'Disease',
                 filters: { name: record.disease },
                 sort: orderPreferredOntologyTerms,
+                target: 'Disease',
             });
         } catch (err) {
             throw err;
@@ -635,7 +635,7 @@ const processRecord = async ({ conn, record: inputRecord, source }) => {
     const subject = await extractAppliesTo(
         conn,
         {
-            ...record, variants, features, evidence, relevance: relevance.name,
+            ...record, evidence, features, relevance: relevance.name, variants,
         },
         source,
     );
@@ -645,16 +645,16 @@ const processRecord = async ({ conn, record: inputRecord, source }) => {
 
     if (record.createdBy) {
         reviews.push({
-            createdBy: record.createdBy,
             createdAt: record.createdAt,
+            createdBy: record.createdBy,
             status: 'initial',
         });
     }
     if (record.reviewedBy && record.reviewedBy !== record.createdBy) {
         reviewStatus = 'passed';
         reviews.push({
-            createdBy: record.reviewedBy,
             createdAt: record.reviewedAt || record.createdAt,
+            createdBy: record.reviewedBy,
             status: 'passed',
         });
     }
@@ -664,19 +664,19 @@ const processRecord = async ({ conn, record: inputRecord, source }) => {
     // console.log(record);
     // now create the statement
     await conn.addRecord({
-        target: 'Statement',
         content: {
-            subject: rid(subject),
-            relevance: rid(relevance),
-            evidence,
             conditions,
-            source: rid(source),
-            sourceId: record.ident,
+            evidence,
+            relevance: rid(relevance),
             reviewStatus,
             reviews,
+            source: rid(source),
+            sourceId: record.ident,
+            subject: rid(subject),
         },
         existsOk: true,
         fetchExisting: false,
+        target: 'Statement',
     });
 };
 
@@ -684,19 +684,19 @@ const processRecord = async ({ conn, record: inputRecord, source }) => {
 const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     logger.info('loading content from IPR');
     const counts = {
-        error: 0, skip: 0, history: 0, success: 0,
+        error: 0, history: 0, skip: 0, success: 0,
     };
     logger.info(`loading: ${filename}`);
     const content = fs.readFileSync(filename, 'utf8');
     logger.info('parsing into json');
 
     const jsonList = parse(content, {
+        auto_parse: true,
+        columns: true,
+        comment: '##',
         delimiter: '\t',
         escape: null,
-        comment: '##',
-        columns: true,
         quote: false,
-        auto_parse: true,
     });
     logger.info(`${jsonList.length} initial records`);
     let records = [];
@@ -716,10 +716,10 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     }
     logger.info(`${records.length} non-skipped records`);
     const source = await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     });
 
     records = cleanHistory(records);
@@ -740,16 +740,16 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
 
         if (record.createdBy && users[record.createdBy] === undefined) {
             users[record.createdBy] = rid(await conn.addRecord({
-                target: 'User',
                 content: { name: record.createdBy },
                 existsOk: true,
+                target: 'User',
             }));
         }
         if (record.reviewedBy && users[record.reviewedBy] === undefined) {
             users[record.reviewedBy] = rid(await conn.addRecord({
-                target: 'User',
                 content: { name: record.reviewedBy },
                 existsOk: true,
+                target: 'User',
             }));
         }
         if (record.createdBy) {
@@ -789,10 +789,10 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
         } catch (err) {
             const error = err.error || err;
             errorList.push({
-                row: record,
-                index: i,
                 error,
                 errorMessage: error.toString(),
+                index: i,
+                row: record,
             });
             logger.error(error);
             counts.error++;
@@ -806,5 +806,5 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
 };
 
 module.exports = {
-    uploadFile, convertDeprecatedSyntax, SOURCE_DEFN, kb: true,
+    SOURCE_DEFN, convertDeprecatedSyntax, kb: true, uploadFile,
 };

@@ -18,16 +18,16 @@ const uploadFile = async (opt) => {
     logger.info('fetching existing gene names to avoid spamming external APIs');
     const existingGenes = new Set();
     (await conn.getRecords({
-        target: 'Feature',
+        filters: [{ biotype: 'gene' }, { source: { filters: { name: 'hgnc' }, target: 'Source' } }],
         returnProperies: ['name', 'sourceId'],
-        filters: [{ biotype: 'gene' }, { source: { target: 'Source', filters: { name: 'hgnc' } } }],
+        target: 'Feature',
     })).forEach(({ name, sourceId }) => {
         existingGenes.add(sourceId);
         existingGenes.add(name);
     });
     logger.info(`fetched ${existingGenes.size} existing gene names`);
     logger.info(`adding ${genes.length} feature records`);
-    const counts = { error: 0, success: 0, exists: 0 };
+    const counts = { error: 0, exists: 0, success: 0 };
 
     for (const { name } of genes) {
         if (existingGenes.has(name.toLowerCase())) {
@@ -36,11 +36,11 @@ const uploadFile = async (opt) => {
         }
 
         try {
-            await fetchAndLoadBySymbol({ symbol: name, conn });
+            await fetchAndLoadBySymbol({ conn, symbol: name });
             counts.success++;
         } catch (err) {
             try {
-                await fetchAndLoadBySymbol({ symbol: name, conn, paramType: 'prev_symbol' });
+                await fetchAndLoadBySymbol({ conn, paramType: 'prev_symbol', symbol: name });
                 counts.success++;
             } catch (err2) {
                 logger.error(`${name} ${err}`);
@@ -56,10 +56,10 @@ const options = createOptionsMenu(
     [
         ...stdOptions,
         {
-            name: 'filename',
             description: 'path to the tab delimited list of gene names',
-            type: fileExists,
+            name: 'filename',
             required: true,
+            type: fileExists,
         },
     ],
 );

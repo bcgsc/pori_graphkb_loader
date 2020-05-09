@@ -21,70 +21,77 @@ const INPUT_ERROR_CODE = 2;
 
 
 const validateSpec = ajv.compile({
-    type: 'object',
-    required: ['class', 'sources', 'records'],
     properties: {
-        defaultNameToSourceId: { type: 'boolean' },
-        sources: {
-            type: 'object',
-            required: ['default'],
-            properties: {
-                default: {
-                    type: 'object',
-                    required: ['name'],
-                    properties: {
-                        name: { type: 'string', minLength: 1 },
-                        usage: { type: 'string', format: 'uri' },
-                        version: { type: 'string' },
-                        description: { type: 'string' },
-                        url: { type: 'string', format: 'uri' },
-                    },
-                },
-            },
-            additionalProperties: {
-                type: 'object',
-                required: ['name'],
-                properties: {
-                    name: { type: 'string', minLength: 1 },
-                    usage: { type: 'string', format: 'uri' },
-                    version: { type: 'string' },
-                    description: { type: 'string' },
-                    url: { type: 'string', format: 'uri' },
-                },
-            },
-        },
         class: {
-            type: 'string',
             enum: kbSchema.Ontology.descendantTree(true).map(model => model.name),
+            type: 'string',
         },
+        defaultNameToSourceId: { type: 'boolean' },
         records: {
-            type: 'object',
             additionalProperties: {
-                type: 'object',
                 properties: {
-                    name: { type: 'string' },
-                    sourceIdVersion: { type: 'string' },
-                    sourceId: { type: 'string' }, // defaults to the record key
-                    url: { type: 'string', format: 'uri' },
-                    description: { type: 'string' },
                     comment: { type: 'string' },
+                    description: { type: 'string' },
                     // edges
                     links: {
-                        type: 'array',
                         items: {
-                            type: 'object',
-                            required: ['class', 'target'],
                             properties: {
-                                class: { type: 'string', enum: schema.getEdgeModels().map(e => e.name) },
-                                target: { type: 'string', minLength: 1 },
                                 additionalProperties: false,
+                                class: { enum: schema.getEdgeModels().map(e => e.name), type: 'string' },
+                                target: { minLength: 1, type: 'string' },
                             },
+                            required: ['class', 'target'],
+                            type: 'object',
                         },
+                        type: 'array',
                     },
+
+                    name: { type: 'string' },
+
+
+                    sourceId: { type: 'string' },
+
+
+                    sourceIdVersion: { type: 'string' },
+
+                    // defaults to the record key
+                    url: { format: 'uri', type: 'string' },
+                },
+                type: 'object',
+            },
+            type: 'object',
+        },
+        sources: {
+            additionalProperties: {
+                properties: {
+                    description: { type: 'string' },
+                    name: { minLength: 1, type: 'string' },
+                    url: { format: 'uri', type: 'string' },
+                    usage: { format: 'uri', type: 'string' },
+                    version: { type: 'string' },
+                },
+                required: ['name'],
+                type: 'object',
+            },
+            properties: {
+                default: {
+                    properties: {
+                        description: { type: 'string' },
+                        name: { minLength: 1, type: 'string' },
+                        url: { format: 'uri', type: 'string' },
+                        usage: { format: 'uri', type: 'string' },
+                        version: { type: 'string' },
+                    },
+                    required: ['name'],
+                    type: 'object',
                 },
             },
+            required: ['default'],
+            type: 'object',
         },
     },
+    required: ['class', 'sources', 'records'],
+    type: 'object',
 });
 
 
@@ -96,7 +103,7 @@ const validateSpec = ajv.compile({
  * @param {ApiConnection} opt.conn the graphKB api connection
  */
 const uploadFromJSON = async ({ data, conn }) => {
-    const counts = { success: 0, errors: 0, skipped: 0 };
+    const counts = { errors: 0, skipped: 0, success: 0 };
 
     // validate that it follows the expected pattern
     if (!validateSpec(data)) {
@@ -155,10 +162,10 @@ const uploadFromJSON = async ({ data, conn }) => {
     try {
         await Promise.all(Object.entries(sources).map(async ([sourceKey, sourceDefn]) => {
             const sourceRID = rid(await conn.addRecord({
-                target: 'Source',
                 content: sourceDefn,
                 existsOk: true,
                 fetchConditions: { name: sourceDefn.name },
+                target: 'Source',
             }));
             sourcesRecords[sourceKey] = sourceRID;
         }));
@@ -183,10 +190,10 @@ const uploadFromJSON = async ({ data, conn }) => {
 
         try {
             const dbRecord = await conn.addRecord({
-                target: recordClass,
                 content: { ...record },
-                fetchConditions: convertRecordToQueryFilters(_.omit(record, ['description'])),
                 existsOk: true,
+                fetchConditions: convertRecordToQueryFilters(_.omit(record, ['description'])),
+                target: recordClass,
             });
             dbRecords[key] = rid(dbRecord);
             counts.success++;
@@ -209,14 +216,14 @@ const uploadFromJSON = async ({ data, conn }) => {
 
             try {
                 await conn.addRecord({
-                    target: edgeType,
                     content: {
-                        out: dbRecords[key],
                         in: dbRecords[target],
+                        out: dbRecords[key],
                         source: sourcesRecords[source],
                     },
                     existsOk: true,
                     fetchExisting: false,
+                    target: edgeType,
                 });
                 counts.success++;
             } catch (err) {
@@ -241,7 +248,7 @@ const uploadFile = async ({ filename, conn }) => {
     logger.log('info', `reading: ${filename}`);
     const data = JSON.parse(fs.readFileSync(filename));
 
-    await uploadFromJSON({ data, conn });
+    await uploadFromJSON({ conn, data });
 };
 
 

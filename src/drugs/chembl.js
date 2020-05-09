@@ -15,21 +15,21 @@ const { chembl: SOURCE_DEFN } = require('./../sources');
 const ajv = new Ajv();
 
 const recordSpec = ajv.compile({
-    type: 'object',
-    required: ['molecule_chembl_id'],
     properties: {
-        molecule_chembl_id: { type: 'string', pattern: '^CHEMBL\\d+$' },
-        pref_name: { type: ['string', 'null'] },
-        usan_stem_definition: { type: ['string', 'null'] },
+        molecule_chembl_id: { pattern: '^CHEMBL\\d+$', type: 'string' },
         molecule_properties: {
             oneOf: [{
-                type: 'object',
                 properties: {
                     full_molformula: { type: 'string' },
                 },
+                type: 'object',
             }, { type: 'null' }],
         },
+        pref_name: { type: ['string', 'null'] },
+        usan_stem_definition: { type: ['string', 'null'] },
     },
+    required: ['molecule_chembl_id'],
+    type: 'object',
 });
 
 
@@ -51,24 +51,24 @@ const fetchAndLoadById = async (conn, drugId) => {
     }
     logger.info(`loading: ${API}/${drugId}`);
     const chemblRecord = await requestWithRetry({
-        uri: `${API}/${drugId}`,
         json: true,
+        uri: `${API}/${drugId}`,
     });
     checkSpec(recordSpec, chemblRecord);
 
     if (!CACHE.SOURCE) {
         CACHE.SOURCE = await conn.addRecord({
-            target: 'Source',
             content: SOURCE_DEFN,
             existsOk: true,
+            target: 'Source',
         });
     }
     const source = rid(CACHE.SOURCE);
 
     const content = {
+        name: chemblRecord.pref_name,
         source,
         sourceId: chemblRecord.molecule_chembl_id,
-        name: chemblRecord.pref_name,
     };
 
     if (content.name) {
@@ -82,10 +82,10 @@ const fetchAndLoadById = async (conn, drugId) => {
     }
 
     const record = await conn.addRecord({
-        target: 'Therapy',
         content,
-        fetchConditions: { source, sourceId: content.sourceId, name: content.name },
         existsOk: true,
+        fetchConditions: { name: content.name, source, sourceId: content.sourceId },
+        target: 'Therapy',
     });
 
     CACHE[cacheKey] = record;
@@ -93,24 +93,24 @@ const fetchAndLoadById = async (conn, drugId) => {
     if (chemblRecord.usan_stem_definition) {
         try {
             const parent = await conn.addRecord({
-                target: 'Therapy',
                 content: {
+                    comment: 'usan stem definition',
+                    name: chemblRecord.usan_stem_definition,
                     source,
                     sourceId: chemblRecord.usan_stem_definition,
-                    name: chemblRecord.usan_stem_definition,
-                    comment: 'usan stem definition',
                 },
                 existsOk: true,
+                target: 'Therapy',
             });
 
             await conn.addRecord({
-                target: 'SubclassOf',
                 content: {
-                    source,
-                    out: rid(record),
                     in: rid(parent),
+                    out: rid(record),
+                    source,
                 },
                 existsOk: true,
+                target: 'SubclassOf',
             });
         } catch (err) {}
     }
@@ -120,14 +120,14 @@ const fetchAndLoadById = async (conn, drugId) => {
 
 const preLoadCache = async (api) => {
     const records = await api.getRecords({
-        target: 'Therapy',
         filters: {
             AND: [
-                { source: { target: 'Source', filters: { name: SOURCE_DEFN.name } } },
+                { source: { filters: { name: SOURCE_DEFN.name }, target: 'Source' } },
                 { dependency: null },
                 { deprecated: false },
             ],
         },
+        target: 'Therapy',
     });
 
     const dups = new Set();
@@ -149,7 +149,7 @@ const preLoadCache = async (api) => {
 
 
 module.exports = {
-    fetchAndLoadById,
     SOURCE_DEFN,
+    fetchAndLoadById,
     preLoadCache,
 };

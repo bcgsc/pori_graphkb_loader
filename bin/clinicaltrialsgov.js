@@ -11,13 +11,13 @@ const options = createOptionsMenu(
     [
         ...stdOptions,
         {
-            name: 'xml',
             description: 'load trials information from an XML export of a search result downloaded from clinicaltrials.gov',
+            name: 'xml',
             type: fileExists,
         },
         {
-            name: 'recent',
             description: 'load recently updated (~2 weeks) clinical trial information',
+            name: 'recent',
         },
     ],
 );

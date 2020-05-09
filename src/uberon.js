@@ -15,11 +15,11 @@ const { uberon: SOURCE_DEFN } = require('./sources');
 
 const PREDICATES = {
     CROSS_REF: 'http://www.geneontology.org/formats/oboInOwl#hasDbXref',
+    DEPRECATED: 'http://www.w3.org/2002/07/owl#deprecated',
+    DESCRIPTION: 'http://purl.obolibrary.org/obo/IAO_0000115',
+    LABEL: 'http://www.w3.org/2000/01/rdf-schema#label',
     SUBCLASSOF: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
     SUBSETOF: 'http://www.geneontology.org/formats/oboInOwl#inSubset',
-    LABEL: 'http://www.w3.org/2000/01/rdf-schema#label',
-    DESCRIPTION: 'http://purl.obolibrary.org/obo/IAO_0000115',
-    DEPRECATED: 'http://www.w3.org/2002/07/owl#deprecated',
 };
 const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/uberon.owl';
 
@@ -78,17 +78,17 @@ const uploadFile = async ({ filename, conn }) => {
 
     const subclassEdges = [];
     const source = await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     });
     let ncitSource = null;
 
     try {
         ncitSource = await conn.getUniqueRecordBy({
-            target: 'Source',
             filters: { name: ncitName },
+            target: 'Source',
         });
     } catch (err) {
         logger.error(`Cannot link records to NCIT. Could not find ncit source record: ${err}`);
@@ -101,8 +101,8 @@ const uploadFile = async ({ filename, conn }) => {
             continue;
         }
         const body = {
-            source: rid(source),
             name: node[PREDICATES.LABEL][0],
+            source: rid(source),
             sourceId: node.code,
         };
 
@@ -122,7 +122,7 @@ const uploadFile = async ({ filename, conn }) => {
                 aliasCode = aliasCode.toLowerCase();
 
                 if (/^ncit:c\d+$/.exec(aliasCode)) {
-                    ncitLinks.push({ src: node.code, tgt: aliasCode.slice('ncit:'.length), source: rid(source) });
+                    ncitLinks.push({ source: rid(source), src: node.code, tgt: aliasCode.slice('ncit:'.length) });
                 }
             }
         }
@@ -130,14 +130,14 @@ const uploadFile = async ({ filename, conn }) => {
             body.deprecated = true;
         }
         const dbEntry = await conn.addRecord({
-            target: 'AnatomicalEntity',
             content: body,
             existsOk: true,
             fetchConditions: convertRecordToQueryFilters({
-                source: rid(source),
                 name: node[PREDICATES.LABEL][0],
+                source: rid(source),
                 sourceId: node.code,
             }),
+            target: 'AnatomicalEntity',
         });
         records[dbEntry.sourceId] = dbEntry;
     }
@@ -147,14 +147,14 @@ const uploadFile = async ({ filename, conn }) => {
         if (records[src] && records[tgt]) {
             try {
                 await conn.addRecord({
-                    target: 'subclassof',
                     content: {
-                        out: records[src]['@rid'],
                         in: records[tgt]['@rid'],
+                        out: records[src]['@rid'],
                         source: rid(source),
                     },
                     existsOk: true,
                     fetchExisting: false,
+                    target: 'subclassof',
                 });
             } catch (err) {
                 logger.error(`Failed to create the subclass relationship from ${src} to ${tgt}`);
@@ -172,24 +172,24 @@ const uploadFile = async ({ filename, conn }) => {
 
             try {
                 const ncitRecord = await conn.getUniqueRecordBy({
-                    target: 'AnatomicalEntity',
                     filters: {
                         AND: [
-                            { source: { target: 'Source', filters: { name: ncitName } } },
+                            { source: { filters: { name: ncitName }, target: 'Source' } },
                             { sourceId: tgt },
                         ],
                     },
                     sort: orderPreferredOntologyTerms,
+                    target: 'AnatomicalEntity',
                 });
                 await conn.addRecord({
-                    target: 'crossreferenceof',
                     content: {
-                        out: records[src]['@rid'],
                         in: rid(ncitRecord),
+                        out: records[src]['@rid'],
                         source: rid(source),
                     },
                     existsOk: true,
                     fetchExisting: false,
+                    target: 'crossreferenceof',
                 });
             } catch (err) {
                 // ignore missing vocabulary
@@ -204,4 +204,4 @@ const uploadFile = async ({ filename, conn }) => {
     }
 };
 
-module.exports = { uploadFile, SOURCE_DEFN, dependencies: [ncitName] };
+module.exports = { SOURCE_DEFN, dependencies: [ncitName], uploadFile };

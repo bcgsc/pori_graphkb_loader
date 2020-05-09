@@ -26,9 +26,9 @@ class OncotreeAPI {
      */
     async getVersions() {
         const versions = await request({
+            json: true,
             method: 'GET',
             uri: `${this.baseurl}/versions`,
-            json: true,
         });
 
         const versionMapping = {};
@@ -36,8 +36,8 @@ class OncotreeAPI {
         for (const version of versions) {
             if (/^oncotree_\d+_\d+_\d+$/.exec(version.api_identifier) || version.api_identifier === CURRENT_VERSION_ID) {
                 versionMapping[version.release_date] = {
-                    name: version.release_date,
                     apiKey: version.api_identifier,
+                    name: version.release_date,
                 };
             }
         }
@@ -59,9 +59,9 @@ class OncotreeAPI {
 
     async getRecords(versionApiKey) {
         const records = await request({
+            json: true,
             method: 'GET',
             uri: `${this.baseurl}/tumorTypes?version=${versionApiKey}`,
-            json: true,
         });
         return records;
     }
@@ -110,13 +110,13 @@ class OncotreeAPI {
             for (const { name, mainType, code } of records) {
                 if (recordsByCode[code] === undefined) {
                     recordsByCode[code] = {
+                        crossReferenceOf: [],
+                        deprecates: [],
                         name,
                         sourceId: code,
                         sourceIdVersion: version.name,
                         subclassOf: [],
-                        crossReferenceOf: [],
                         subsets: [mainType],
-                        deprecates: [],
                     };
                 }
             }
@@ -193,18 +193,18 @@ const upload = async (opt) => {
     const records = await oncotreeApi.getAllRecords(versions);
 
     const source = await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     });
 
     let ncitSource;
 
     try {
         ncitSource = await conn.getUniqueRecordBy({
-            target: 'Source',
             filters: { name: ncitName },
+            target: 'Source',
         });
     } catch (err) {
         logger.log('warn', 'cannot find ncit source. Will not be able to generate cross-reference links');
@@ -216,15 +216,15 @@ const upload = async (opt) => {
     // upload the results
     for (const record of records) {
         const body = {
-            source: rid(source),
             name: record.name,
+            source: rid(source),
             sourceId: record.sourceId,
             sourceIdVersion: record.sourceIdVersion,
         };
         const rec = await conn.addRecord({
-            target: 'Disease',
             content: body,
             existsOk: true,
+            target: 'Disease',
         });
         dbRecordsByCode[record.sourceId] = rec;
 
@@ -234,7 +234,6 @@ const upload = async (opt) => {
 
                 try {
                     const ncitXref = await conn.getUniqueRecordBy({
-                        target: 'Disease',
                         filters: {
                             AND: [
                                 { source: rid(ncitSource) },
@@ -242,12 +241,13 @@ const upload = async (opt) => {
                             ],
                         },
                         sort: orderPreferredOntologyTerms,
+                        target: 'Disease',
                     });
                     await conn.addRecord({
-                        target: 'crossReferenceOf',
-                        content: { out: rid(rec), in: rid(ncitXref), source: rid(source) },
+                        content: { in: rid(ncitXref), out: rid(rec), source: rid(source) },
                         existsOk: true,
                         fetchExisting: false,
+                        target: 'crossReferenceOf',
                     });
                 } catch (err) {
                     ncitMissingRecords.add(xref.sourceId);
@@ -260,27 +260,27 @@ const upload = async (opt) => {
     for (const record of records) {
         for (const parentRecord of record.subclassOf || []) {
             await conn.addRecord({
-                target: 'subclassOf',
                 content: {
-                    out: rid(dbRecordsByCode[record.sourceId]),
                     in: rid(dbRecordsByCode[parentRecord.sourceId]),
+                    out: rid(dbRecordsByCode[record.sourceId]),
                     source: rid(source),
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'subclassOf',
             });
         }
 
         for (const deprecated of record.deprecates || []) {
             await conn.addRecord({
-                target: 'deprecatedBy',
                 content: {
-                    out: rid(dbRecordsByCode[deprecated.sourceId]),
                     in: rid(dbRecordsByCode[record.sourceId]),
+                    out: rid(dbRecordsByCode[deprecated.sourceId]),
                     source: rid(source),
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'deprecatedBy',
             });
         }
     }
@@ -292,5 +292,5 @@ const upload = async (opt) => {
 
 
 module.exports = {
-    upload, OncotreeAPI, dependencies: [ncitName], SOURCE_DEFN,
+    OncotreeAPI, SOURCE_DEFN, dependencies: [ncitName], upload,
 };

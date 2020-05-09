@@ -13,14 +13,14 @@ const { dgidb: SOURCE_DEFN } = require('./../sources');
 const ajv = new Ajv();
 
 const recordSpec = ajv.compile({
-    type: 'object',
-    required: ['entrez_id', 'chembl_id', 'interaction_types', 'id'],
     properties: {
-        id: { type: 'string', format: 'uuid' },
-        entrez_id: { type: 'number', min: 1 },
-        chembl_id: { type: 'string', pattern: '^CHEMBL\\d+$' },
-        interaction_types: { type: 'array', items: { type: 'string' } },
+        chembl_id: { pattern: '^CHEMBL\\d+$', type: 'string' },
+        entrez_id: { min: 1, type: 'number' },
+        id: { format: 'uuid', type: 'string' },
+        interaction_types: { items: { type: 'string' }, type: 'array' },
     },
+    required: ['entrez_id', 'chembl_id', 'interaction_types', 'id'],
+    type: 'object',
 });
 
 const BASE_URL = 'http://dgidb.org/api/v2';
@@ -41,16 +41,16 @@ const processRecord = async ({ conn, record, source }) => {
     const interactionType = interactionTypes.map(i => i.toLowerCase().trim()).sort().join(';');
 
     await conn.addRecord({
-        target: 'TargetOf',
         content: {
-            out: rid(gene),
-            in: rid(drug),
             actionType: interactionType,
+            in: rid(drug),
+            out: rid(gene),
             source: rid(source),
             uuid: id, // use the input uuid as the uuid rather than generating one
         },
         existsOk: true,
         fetchExisting: false,
+        target: 'TargetOf',
     });
 };
 
@@ -58,10 +58,10 @@ const processRecord = async ({ conn, record, source }) => {
 const upload = async ({ conn, url = BASE_URL }) => {
     logger.info('creating the source record');
     const source = rid(await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     }));
     const limit = 100;
     let page = `${url}/interactions?count=${limit}&page=1`;
@@ -76,9 +76,9 @@ const upload = async ({ conn, url = BASE_URL }) => {
     while (page) {
         logger.info(`loading: ${page}`);
         const resp = await request({
-            uri: page,
-            method: 'GET',
             json: true,
+            method: 'GET',
+            uri: page,
         });
         const { _meta: { links: { next } }, records } = resp;
         page = next;
@@ -102,6 +102,6 @@ const upload = async ({ conn, url = BASE_URL }) => {
 
 module.exports = {
     SOURCE_DEFN,
-    upload,
     dependencies: [_entrezGene.SOURCE_DEFN.name, _chembl.SOURCE_DEFN.name],
+    upload,
 };

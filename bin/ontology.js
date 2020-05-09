@@ -6,10 +6,10 @@ const options = createOptionsMenu(
     [
         ...stdOptions,
         {
-            name: 'filename',
             description: 'path to the JSON file containing your ontology definitions',
-            type: fileExists,
+            name: 'filename',
             required: true,
+            type: fileExists,
         },
     ],
 );

@@ -24,14 +24,14 @@ const { cosmic: SOURCE_DEFN } = require('./../sources');
 const RECURRENCE_THRESHOLD = 3;
 
 const HEADER = {
-    sampleId: 'Sample ID',
-    fusionId: 'Fusion ID',
     disease1: 'Primary histology',
     disease2: 'Histology subtype 1',
     disease3: 'Histology subtype 2',
     disease4: 'Histology subtype 3',
+    fusionId: 'Fusion ID',
     fusionName: 'Translocation Name',
     pubmed: 'PUBMED_PMID',
+    sampleId: 'Sample ID',
 };
 
 const parseFusionName = (name) => {
@@ -42,7 +42,7 @@ const parseFusionName = (name) => {
     } if (match = /^(\w+){([^}]+)}:r\.\?_(\w+){([^}]+)}:r.\?$/.exec(name)) {
         const [, gene1, transcript1, gene2, transcript2] = match;
         return {
-            gene1, transcript1, break1: null, gene2, transcript2, break2: null,
+            break1: null, break2: null, gene1, gene2, transcript1, transcript2,
         };
     }
 
@@ -67,9 +67,9 @@ const processDisease = async ({ conn, record }) => {
 
         try {
             disease = await conn.getUniqueRecordBy({
-                target: 'Disease',
                 filters: { name: diseaseName },
                 sort: orderPreferredOntologyTerms,
+                target: 'Disease',
             });
         } catch (err) {
             error = err;
@@ -91,16 +91,16 @@ const fetchTranscript = async (conn, name) => {
 
         try {
             const transcript = await conn.getUniqueRecordBy({
-                target: 'Feature',
                 filters: {
                     AND: [
                         { biotype: 'transcript' },
-                        { source: { target: 'Source', filters: { name: _refseq.SOURCE_DEFN.name } } },
+                        { source: { filters: { name: _refseq.SOURCE_DEFN.name }, target: 'Source' } },
                         { sourceId },
                         { sourceIdVersion },
                     ],
                 },
                 sort: orderPreferredOntologyTerms,
+                target: 'Feature',
             });
             return transcript;
         } catch (err) {
@@ -110,16 +110,16 @@ const fetchTranscript = async (conn, name) => {
         }
     }
     return conn.getUniqueRecordBy({
-        target: 'Feature',
         filters: {
             AND: [
                 { biotype: 'transcript' },
-                { source: { target: 'Source', filters: { name: _ensembl.SOURCE_DEFN.name } } },
+                { source: { filters: { name: _ensembl.SOURCE_DEFN.name }, target: 'Source' } },
                 { sourceId: name },
                 { sourceIdVersion: null },
             ],
         },
         sort: orderPreferredOntologyTerms,
+        target: 'Feature',
     });
 };
 
@@ -144,8 +144,8 @@ const parseRnaPosition = (pos) => {
 
     return {
         '@class': 'RnaPosition',
-        pos: start,
         offset,
+        pos: start,
     };
 };
 
@@ -165,52 +165,52 @@ const processVariants = async ({
 
     await Promise.all([
         conn.addRecord({
-            target: 'ElementOf',
-            content: { out: rid(transcript1), in: rid(gene1), source },
+            content: { in: rid(gene1), out: rid(transcript1), source },
             existsOk: true,
             fetchExisting: false,
+            target: 'ElementOf',
         }),
         conn.addRecord({
-            target: 'ElementOf',
-            content: { out: rid(transcript2), in: rid(gene2), source },
+            content: { in: rid(gene2), out: rid(transcript2), source },
             existsOk: true,
             fetchExisting: false,
+            target: 'ElementOf',
         }),
     ]);
 
     // create the variants
     const general = await conn.addRecord({
-        target: 'CategoryVariant',
         content: {
             reference1: rid(gene1),
             reference2: rid(gene2),
             type: variantType,
         },
         existsOk: true,
+        target: 'CategoryVariant',
     });
     let specific;
 
     if ((parsed.break1 || parsed.break2) && !geneOnly) {
         specific = await conn.addRecord({
-            target: 'PositionalVariant',
             content: {
-                reference1: transcript1,
-                reference2: transcript2,
-                type: variantType,
                 break1Start: parseRnaPosition(parsed.break1),
                 break2Start: parseRnaPosition(parsed.break2),
                 displayName: `(${gene1.displayName},${gene2.displayName}):fusion(r.${parsed.break1},r.${parsed.break2})`,
+                reference1: transcript1,
+                reference2: transcript2,
+                type: variantType,
             },
             existsOk: true,
+            target: 'PositionalVariant',
         });
         await conn.addRecord({
-            target: 'Inters',
             content: {
-                out: rid(specific),
                 in: rid(general),
+                out: rid(specific),
             },
             existsOk: true,
             fetchExisting: false,
+            target: 'Inters',
         });
     }
     return specific || general;
@@ -227,32 +227,32 @@ const processCosmicRecord = async ({
         disease = rid(await processDisease({ conn, record }));
     } else {
         disease = rid(await conn.getUniqueRecordBy({
-            target: 'Disease',
             filters: { name: 'cancer' },
             sort: orderPreferredOntologyTerms,
+            target: 'Disease',
         }));
     }
     const publications = await _pubmed.fetchAndLoadByIds(conn, record.publications);
 
     const variant = rid(await processVariants({
-        conn, record, variantType, source, geneOnly,
+        conn, geneOnly, record, source, variantType,
     }));
 
 
     // create the recurrence statement
     await conn.addRecord({
-        target: 'Statement',
         content: {
-            relevance,
-            subject: disease,
             conditions: [variant, disease],
             evidence: publications.map(rid),
-            source: rid(source),
+            relevance,
             reviewStatus: 'not required',
+            source: rid(source),
             sourceId: record.sourceId,
+            subject: disease,
         },
         existsOk: true,
         fetchExisting: false,
+        target: 'Statement',
     });
 };
 
@@ -271,7 +271,7 @@ const createGeneReccurrenceId = (record) => {
         match = patt.exec(fusionName);
     }
     const geneRecId = hashRecordToId({
-        genes, disease1, disease2, disease3, disease4,
+        disease1, disease2, disease3, disease4, genes,
     });
     return geneRecId;
 };
@@ -287,12 +287,12 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     const jsonList = await loadDelimToJson(filename);
     // get the dbID for the source
     const source = rid(await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     }));
-    const counts = { success: 0, error: 0, skip: 0 };
+    const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
     logger.info(`Processing ${jsonList.length} records`);
 
@@ -315,7 +315,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
             continue;
         }
         const recurrenceId = hashRecordToId({
-            fusionName, disease1, disease2, disease3, disease4,
+            disease1, disease2, disease3, disease4, fusionName,
         });
 
         if (recurrenceCounts[recurrenceId] === undefined) {
@@ -392,23 +392,23 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
         try {
             await processCosmicRecord({
                 conn,
+                diseaseSpecific,
+                geneOnly,
                 record: { ...reprRecord, publications, sourceId },
+                relevance,
                 source,
                 variantType,
-                relevance,
-                geneOnly,
-                diseaseSpecific,
             });
             counts.success++;
         } catch (err) {
             logger.error(err);
             counts.error++;
             errorList.push({
-                record: {
-                    sourceId, reprRecord, sampleCount, publications, diseaseSpecific, geneOnly,
-                },
                 error: err,
                 errorMessage: err.toString(),
+                record: {
+                    diseaseSpecific, geneOnly, publications, reprRecord, sampleCount, sourceId,
+                },
             });
         }
     }
@@ -419,4 +419,4 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = { uploadFile, SOURCE_DEFN, kb: true };
+module.exports = { SOURCE_DEFN, kb: true, uploadFile };

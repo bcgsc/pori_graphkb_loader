@@ -14,15 +14,15 @@ const DB_NAME = 'pubmed';
 const CACHE = {};
 
 const recordSpec = ajv.compile({
-    type: 'object',
-    required: ['uid', 'title', 'fulljournalname'],
     properties: {
-        uid: { type: 'string', pattern: '^\\d+$' },
-        title: { type: 'string' },
         fulljournalname: { type: 'string' },
-        sortpubdate: { type: 'string' },
         sortdate: { type: 'string' },
+        sortpubdate: { type: 'string' },
+        title: { type: 'string' },
+        uid: { pattern: '^\\d+$', type: 'string' },
     },
+    required: ['uid', 'title', 'fulljournalname'],
+    type: 'object',
 });
 
 /**
@@ -32,9 +32,9 @@ const recordSpec = ajv.compile({
 const parseRecord = (record) => {
     checkSpec(recordSpec, record);
     const parsed = {
-        sourceId: record.uid,
-        name: record.title,
         journalName: record.fulljournalname,
+        name: record.title,
+        sourceId: record.uid,
     };
 
     // sortpubdate: '1992/06/01 00:00'
@@ -71,21 +71,21 @@ const fetchAndLoadByIds = async (api, idListIn) => {
     const records = await fetchByIdList(
         idListIn.filter(id => !/^pmc\d+$/i.exec(id)),
         {
-            db: DB_NAME, parser: parseRecord, cache: CACHE,
+            cache: CACHE, db: DB_NAME, parser: parseRecord,
         },
     );
     records.push(...await fetchByIdList(
         pmcIds,
         {
-            dbfrom: DB_NAME, parser: parseRecord, cache: CACHE, db: 'pmc',
+            cache: CACHE, db: 'pmc', dbfrom: DB_NAME, parser: parseRecord,
         },
     ));
     return Promise.all(records.map(
         async record => uploadRecord(api, record, {
             cache: CACHE,
             createDisplayName,
-            target: 'Publication',
             sourceDefn: SOURCE_DEFN,
+            target: 'Publication',
         }),
     ));
 };
@@ -93,14 +93,14 @@ const fetchAndLoadByIds = async (api, idListIn) => {
 const preLoadCache = async api => preLoadAnyCache(
     api,
     {
-        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'Publication',
+        cache: CACHE, sourceDefn: SOURCE_DEFN, target: 'Publication',
     },
 );
 
 
 module.exports = {
-    preLoadCache,
-    parseRecord,
-    fetchAndLoadByIds,
     SOURCE_DEFN,
+    fetchAndLoadByIds,
+    parseRecord,
+    preLoadCache,
 };

@@ -16,13 +16,13 @@ const DB_NAME = 'gene';
 const MAX_CONSEC = 100;
 
 const recordSpec = ajv.compile({
-    type: 'object',
-    required: ['uid', 'name'],
     properties: {
-        uid: { type: 'string', pattern: '^\\d+$' },
-        name: { type: 'string' },
         description: { type: 'string' },
+        name: { type: 'string' },
+        uid: { pattern: '^\\d+$', type: 'string' },
     },
+    required: ['uid', 'name'],
+    type: 'object',
 });
 
 /**
@@ -32,11 +32,11 @@ const recordSpec = ajv.compile({
 const parseRecord = (record) => {
     checkSpec(recordSpec, record);
     return {
-        sourceId: record.uid,
-        name: record.name,
         biotype: 'gene',
         description: record.description,
         displayName: record.name,
+        name: record.name,
+        sourceId: record.uid,
     };
 };
 
@@ -50,12 +50,12 @@ const fetchAndLoadGeneByIds = async (api, idListIn) => util.fetchAndLoadByIds(
     api,
     idListIn,
     {
+        MAX_CONSEC,
+        cache: CACHE,
         dbName: DB_NAME,
         parser: parseRecord,
-        cache: CACHE,
-        target: 'Feature',
         sourceDefn: SOURCE_DEFN,
-        MAX_CONSEC,
+        target: 'Feature',
     },
 );
 
@@ -74,12 +74,12 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
         api,
         `${term}[${termType}] AND human[ORGN] AND alive[prop]`,
         {
+            MAX_CONSEC,
+            cache: CACHE,
             dbName: DB_NAME,
             parser: parseRecord,
-            cache: CACHE,
-            target: 'Feature',
             sourceDefn: SOURCE_DEFN,
-            MAX_CONSEC,
+            target: 'Feature',
         },
     );
 
@@ -89,12 +89,12 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
             api,
             `${term}[${fallbackTermType}] AND human[ORGN] AND alive[prop]`,
             {
+                MAX_CONSEC,
+                cache: CACHE,
                 dbName: DB_NAME,
                 parser: parseRecord,
-                cache: CACHE,
-                target: 'Feature',
                 sourceDefn: SOURCE_DEFN,
-                MAX_CONSEC,
+                target: 'Feature',
             },
         );
     }
@@ -106,7 +106,7 @@ const fetchAndLoadBySearchTerm = async (api, term, termType = 'Preferred Symbol'
 const preLoadCache = async api => util.preLoadCache(
     api,
     {
-        sourceDefn: SOURCE_DEFN, cache: CACHE, target: 'Feature',
+        cache: CACHE, sourceDefn: SOURCE_DEFN, target: 'Feature',
     },
 );
 
@@ -114,10 +114,10 @@ const fetchAndLoadBySymbol = async (api, term) => fetchAndLoadBySearchTerm(api, 
 
 
 module.exports = {
+    SOURCE_DEFN,
     fetchAndLoadByIds: fetchAndLoadGeneByIds,
     fetchAndLoadBySearchTerm,
     fetchAndLoadBySymbol,
     parseRecord,
-    SOURCE_DEFN,
     preLoadCache,
 };
