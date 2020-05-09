@@ -65,10 +65,7 @@ const sources = {
         displayName: 'HGNC',
         usage: 'https://www.ebi.ac.uk/about/terms-of-use',
         sort: 2,
-        description: `
-            The HGNC is responsible for approving unique symbols and names for human loci, including
-            protein coding genes, ncRNA genes and pseudogenes, to allow unambiguous scientific
-            communication.`.replace(/\s+/, ' '),
+        description: 'The HGNC is responsible for approving unique symbols and names for human loci, including protein coding genes, ncRNA genes and pseudogenes, to allow unambiguous scientific communication.',
     },
     fdaSrs: {
         displayName: 'FDA-SRS',
@@ -115,15 +112,7 @@ const sources = {
         longName: 'Human Disease Ontology',
         url: 'http://disease-ontology.org',
         license: 'https://creativecommons.org/publicdomain/zero/1.0',
-        description: `
-            The Disease Ontology has been developed as a standardized ontology for human disease
-            with the purpose of providing the biomedical community with consistent, reusable and
-            sustainable descriptions of human disease terms, phenotype characteristics and related
-            medical vocabulary disease concepts through collaborative efforts of researchers at
-            Northwestern University, Center for Genetic Medicine and the University of Maryland
-            School of Medicine, Institute for Genome Sciences. The Disease Ontology semantically
-            integrates disease and medical vocabularies through extensive cross mapping of DO
-            terms to MeSH, ICD, NCI’s thesaurus, SNOMED and OMIM.`.replace(/\s+/, ' '),
+        description: 'The Disease Ontology has been developed as a standardized ontology for human disease with the purpose of providing the biomedical community with consistent, reusable and sustainable descriptions of human disease terms, phenotype characteristics and related medical vocabulary disease concepts through collaborative efforts of researchers at Northwestern University, Center for Genetic Medicine and the University of Maryland School of Medicine, Institute for Genome Sciences. The Disease Ontology semantically integrates disease and medical vocabularies through extensive cross mapping of DO terms to MeSH, ICD, NCI’s thesaurus, SNOMED and OMIM.',
     },
     dgidb: {
         name: 'dgidb',
@@ -181,10 +170,7 @@ const sources = {
         name: 'pubmed',
         url: 'https://www.ncbi.nlm.nih.gov/pubmed',
         usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
-        description: `
-            pubmed comprises more than 29 million citations for biomedical literature from medline,
-            life science journals, and online books. citations may include links to full-text content
-            from pubmed central and publisher web sites`.replace(/\s+/, ' '),
+        description: 'pubmed comprises more than 29 million citations for biomedical literature from medline, life science journals, and online books. citations may include links to full-text content from pubmed central and publisher web sites',
     },
     entrezGene: {
         name: 'entrez gene',
