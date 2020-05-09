@@ -22,18 +22,35 @@ const INPUT_ERROR_CODE = 2;
 
 const validateSpec = ajv.compile({
     type: 'object',
-    required: ['class', 'source', 'records'],
+    required: ['class', 'sources', 'records'],
     properties: {
         defaultNameToSourceId: { type: 'boolean' },
-        source: {
+        sources: {
             type: 'object',
-            required: ['name'],
+            required: ['default'],
             properties: {
-                name: { type: 'string', minLength: 1 },
-                usage: { type: 'string', format: 'uri' },
-                version: { type: 'string' },
-                description: { type: 'string' },
-                url: { type: 'string', format: 'uri' },
+                default: {
+                    type: 'object',
+                    required: ['name'],
+                    properties: {
+                        name: { type: 'string', minLength: 1 },
+                        usage: { type: 'string', format: 'uri' },
+                        version: { type: 'string' },
+                        description: { type: 'string' },
+                        url: { type: 'string', format: 'uri' },
+                    },
+                },
+            },
+            additionalProperties: {
+                type: 'object',
+                required: ['name'],
+                properties: {
+                    name: { type: 'string', minLength: 1 },
+                    usage: { type: 'string', format: 'uri' },
+                    version: { type: 'string' },
+                    description: { type: 'string' },
+                    url: { type: 'string', format: 'uri' },
+                },
             },
         },
         class: {
@@ -97,7 +114,7 @@ const uploadFromJSON = async ({ data, conn }) => {
     // build the specification for checking records
     // check that all the keys make sense for linking
     const {
-        records, source, class: recordClass, defaultNameToSourceId,
+        records, sources, class: recordClass, defaultNameToSourceId,
     } = data;
 
     for (const recordKey of Object.keys(records)) {
@@ -106,14 +123,22 @@ const uploadFromJSON = async ({ data, conn }) => {
         if (!record.sourceId) {
             record.sourceId = recordKey;
         }
+        if (record.source && !sources[record.source]) {
+            logger.error(`Missing source definition (${record.source})`);
+            counts.errors++;
+        }
 
         if (!record.name && defaultNameToSourceId) {
             record.name = record.sourceId;
         }
 
-        for (const { target, class: edgeClass } of record.links || []) {
+        for (const { target, class: edgeClass, source } of record.links || []) {
             if (records[target] === undefined) {
                 logger.log('error', `Invalid link (${edgeClass}) from ${recordKey} to undefined record ${target}`);
+                counts.errors++;
+            }
+            if (source && !sources[source]) {
+                logger.error(`Missing source definition (${record.source})`);
                 counts.errors++;
             }
         }
@@ -125,18 +150,21 @@ const uploadFromJSON = async ({ data, conn }) => {
     }
 
     // try to create/fetch the source record
-    let sourceRID;
+    const sourcesRecords = {};
 
     try {
-        sourceRID = rid(await conn.addRecord({
-            target: 'Source',
-            content: source,
-            existsOk: true,
-            fetchConditions: { name: source.name },
+        await Promise.all(Object.entries(sources).map(async ([sourceKey, sourceDefn]) => {
+            const sourceRID = rid(await conn.addRecord({
+                target: 'Source',
+                content: sourceDefn,
+                existsOk: true,
+                fetchConditions: { name: sourceDefn.name },
+            }));
+            sourcesRecords[sourceKey] = sourceRID;
         }));
     } catch (err) {
         console.error(err);
-        logger.log('error', `unable to create the source record ${err}`);
+        logger.log('error', `unable to create the source records ${err}`);
         process.exit(INPUT_ERROR_CODE);
     }
 
@@ -147,10 +175,16 @@ const uploadFromJSON = async ({ data, conn }) => {
     for (const key of Object.keys(records)) {
         const { links, ...record } = records[key];
 
+        if (!record.source) {
+            record.source = sourcesRecords.default;
+        } else {
+            record.source = sourcesRecords[record.source];
+        }
+
         try {
             const dbRecord = await conn.addRecord({
                 target: recordClass,
-                content: { ...record, source: sourceRID },
+                content: { ...record },
                 fetchConditions: convertRecordToQueryFilters(_.omit(record, ['description'])),
                 existsOk: true,
             });
@@ -167,7 +201,7 @@ const uploadFromJSON = async ({ data, conn }) => {
     for (const key of Object.keys(records)) {
         const { links = [] } = records[key];
 
-        for (const { class: edgeType, target } of links) {
+        for (const { class: edgeType, target, source = 'default' } of links) {
             if (dbRecords[target] === undefined || dbRecords[key] === undefined) {
                 counts.skipped++;
                 continue;
@@ -176,7 +210,11 @@ const uploadFromJSON = async ({ data, conn }) => {
             try {
                 await conn.addRecord({
                     target: edgeType,
-                    content: { out: dbRecords[key], in: dbRecords[target], source: sourceRID },
+                    content: {
+                        out: dbRecords[key],
+                        in: dbRecords[target],
+                        source: sourcesRecords[source],
+                    },
                     existsOk: true,
                     fetchExisting: false,
                 });
