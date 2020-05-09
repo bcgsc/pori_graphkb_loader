@@ -568,27 +568,14 @@ const loadNewTrials = async ({ conn }) => {
         const resp = await requestWithRetry({
             method: 'GET',
             qs: {
-
-                // cancer related trials
                 cntry: country,
-
-
-                // interventional only
-                cond: 'cancer',
-
-
+                cond: 'cancer', // cancer related trials
                 count: 10000,
-
-
                 lup_d: 14,
-
-
                 rcv_d: '',
-
-                // mod14 for last 2 weeks updated
                 recrs: 'abdef',
-                sel_rss: 'new14',
-                type: 'Intr',
+                sel_rss: 'new14', // mod14 for last 2 weeks updated
+                type: 'Intr', // interventional only
             },
             uri: RSS_URL,
         });

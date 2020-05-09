@@ -73,17 +73,11 @@ const recordSpec = ajv.compile({
             },
             type: 'array',
         },
-
         reference: { pattern: '^([ATGC]*|-)$', type: 'string' },
-
         reference_version: { type: 'string' },
-
         start: { min: 1, type: 'number' },
-
         stop: { min: 1, type: 'number' },
-
         variant: { pattern: '^([ATGC]*|-)$', type: 'string' },
-
         variant_type: { enum: ['SNV', 'DEL', 'INS', 'DNV'], type: 'string' },
     },
     required: ['reference_version', 'hgvs', 'gene', 'reference', 'variant', 'start', 'stop', 'variant_type'],
