@@ -73,7 +73,7 @@ const validateEvidenceSpec = ajv.compile({
         evidence_level: { type: 'string' },
         evidence_type: {
             type: 'string',
-            pattern: '(Predictive|Diagnostic|Prognostic|Predisposing)',
+            pattern: '(Predictive|Diagnostic|Prognostic|Predisposing|Functional)',
         },
         clinical_significance: {
             oneOf: [
@@ -91,6 +91,8 @@ const validateEvidenceSpec = ajv.compile({
                         'Uncertain Significance',
                         'Pathogenic',
                         'N/A',
+                        'Gain of Function',
+                        'Loss of Function',
                     ].join('|')})`,
                 },
                 { type: 'null' },
@@ -151,7 +153,7 @@ const validateVariantSpec = ajv.compile({
  * Convert the CIViC relevance types to GraphKB terms
  */
 const getRelevance = async ({ rawRecord, conn }) => {
-    const translateRelevance = (evidenceType, clinicalSignificance) => {
+    const translateRelevance = ({ evidenceType, clinicalSignificance, evidenceDirection }) => {
         switch (evidenceType) { // eslint-disable-line default-case
             case 'Predictive': {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
@@ -164,6 +166,15 @@ const getRelevance = async ({ rawRecord, conn }) => {
                     }
 
                     case 'Sensitivity/Response': { return 'sensitivity'; }
+                }
+                break;
+            }
+
+            case 'Functional': {
+                if (rawRecord.evidence_direction.toLowerCase() === 'supports') {
+                    if (['gain of function', 'loss of function'].includes(clinicalSignificance.toLowerCase())) {
+                        return clinicalSignificance.toLowerCase();
+                    }
                 }
                 break;
             }
@@ -205,12 +216,16 @@ const getRelevance = async ({ rawRecord, conn }) => {
             }
         }
         throw new Error(
-            `unrecognized evidence type (${evidenceType}) or clinical significance (${clinicalSignificance})`,
+            `unable to process relevance (${JSON.stringify({ evidenceType, clinicalSignificance, evidenceDirection })})`,
         );
     };
 
     // translate the type to a GraphKB vocabulary term
-    let relevance = translateRelevance(rawRecord.evidence_type, rawRecord.clinical_significance).toLowerCase();
+    let relevance = translateRelevance({
+        evidenceType: rawRecord.evidence_type,
+        clinicalSignificance: rawRecord.clinical_significance,
+        evidenceDirection: rawRecord.evidence_direction,
+    }).toLowerCase();
 
     if (RELEVANCE_CACHE[relevance] === undefined) {
         relevance = await conn.getVocabularyTerm(relevance);
@@ -522,9 +537,6 @@ const processEvidenceRecord = async (opt) => {
     };
 
     // create the statement and connecting edges
-    if (!['Diagnostic', 'Predictive', 'Prognostic', 'Predisposing'].includes(rawRecord.evidence_type)) {
-        throw new Error(`Unable to make statement (evidence_type=${rawRecord.evidence_type})`);
-    }
     if (rawRecord.evidence_type === 'Diagnostic' || rawRecord.evidence_type === 'Predisposing') {
         content.subject = rid(disease);
     } else {
@@ -536,6 +548,8 @@ const processEvidenceRecord = async (opt) => {
     } if (rawRecord.evidence_type === 'Prognostic') {
         // get the patient vocabulary object
         content.subject = rid(await conn.getVocabularyTerm('patient'));
+    } if (rawRecord.evidence_type === 'Functional') {
+        content.subject = rid(feature);
     }
 
     if (content.subject && !content.conditions.includes(content.subject)) {
