@@ -7,12 +7,12 @@ const {
 describe('convertDeprecatedSyntax', () => {
     test('SV_e.fusion(FGFR2,?)(?,?)', () => {
         const result = convertDeprecatedSyntax('SV_e.fusion(FGFR2,?)(?,?)');
-        expect(result).toEqual({ type: 'fusion', reference1: 'fgfr2' });
+        expect(result).toEqual({ reference1: 'fgfr2', type: 'fusion' });
     });
 
     test('SV_e.fusion(?,RET)(?,?)', () => {
         const result = convertDeprecatedSyntax('SV_e.fusion(?,RET)(?,?)');
-        expect(result).toEqual({ type: 'fusion', reference1: 'ret' });
+        expect(result).toEqual({ reference1: 'ret', type: 'fusion' });
     });
 
     test('KIT:e.9?', () => {
@@ -38,12 +38,12 @@ describe('convertDeprecatedSyntax', () => {
                 arm: 'q',
                 majorBand: 13,
             },
+            break2Repr: 'y.q14',
             break2Start: {
                 '@class': 'CytobandPosition',
                 arm: 'q',
                 majorBand: 14,
             },
-            break2Repr: 'y.q14',
             reference1: '12',
             type: 'copy gain',
         };
@@ -76,7 +76,7 @@ describe('convertDeprecatedSyntax', () => {
 
     test('CNV_ERBB2_amplification_na', () => {
         const result = convertDeprecatedSyntax('CNV_ERBB2_amplification_na');
-        expect(result).toEqual({ type: 'amplification', reference1: 'erbb2' });
+        expect(result).toEqual({ reference1: 'erbb2', type: 'amplification' });
     });
 
     test('MUT_ARAF:p.S214A', () => {
@@ -99,7 +99,7 @@ describe('convertDeprecatedSyntax', () => {
 
     test('MUT_ERBB2_any', () => {
         const result = convertDeprecatedSyntax('MUT_ERBB2_any');
-        expect(result).toEqual({ type: 'mutation', reference1: 'erbb2' });
+        expect(result).toEqual({ reference1: 'erbb2', type: 'mutation' });
     });
 
     test('MUT_MET:p.Xnspl', () => {
@@ -109,7 +109,7 @@ describe('convertDeprecatedSyntax', () => {
 
     test('NTRK', () => {
         const result = convertDeprecatedSyntax('NTRK');
-        expect(result).toEqual({ name: 'NTRK', isFeature: true });
+        expect(result).toEqual({ isFeature: true, name: 'NTRK' });
     });
 
     test('CNV_RAD54L_copy loss_homozygous', () => {

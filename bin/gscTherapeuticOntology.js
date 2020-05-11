@@ -6,10 +6,10 @@ const options = createOptionsMenu(
     [
         ...stdOptions,
         {
-            name: 'filename',
             description: 'path to the tab delimited file containing the GSC drug ontology',
-            type: fileExists,
+            name: 'filename',
             required: true,
+            type: fileExists,
         },
     ],
 );

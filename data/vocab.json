@@ -177,6 +177,15 @@
                 }
             ]
         },
+        "copy number variation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "copy variant"
+                }
+            ]
+        },
         "copy variant": {
             "links": [
                 {
@@ -455,6 +464,15 @@
                 {
                     "class": "SubClassOf",
                     "target": "small mutation"
+                }
+            ]
+        },
+        "frameshift truncation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "truncating frameshift mutation"
                 }
             ]
         },
@@ -1672,6 +1690,29 @@
                 }
             ]
         },
+        "loss": {
+            "deprecated": true,
+            "source": "civic",
+            "displayName": "loss of function",
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "loss of function"
+                }
+            ]
+        },
+        "truncating frameshift mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "frameshift mutation"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "truncating"
+                }
+            ]
+        },
         "tumour suppressive": {
             "description": "suppresses or blocks the development of cancer",
             "links": [
@@ -1784,11 +1825,16 @@
             ]
         }
     },
-    "source": {
-        "displayName": "GraphKB",
-        "longName": "Graph Knowledgebase",
-        "name": "graphkb",
-        "sort": 0,
-        "url": "https://graphkb.bcgsc.ca"
+    "sources": {
+        "civic": {
+            "name": "civic"
+        },
+        "default": {
+            "displayName": "GraphKB",
+            "longName": "Graph Knowledgebase",
+            "name": "graphkb",
+            "sort": 0,
+            "url": "https://graphkb.bcgsc.ca"
+        }
     }
 }

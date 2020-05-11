@@ -21,17 +21,17 @@ const { logger } = require('./../logging');
 const { cosmic: SOURCE_DEFN } = require('./../sources');
 
 const HEADER = {
-    gene: 'Gene Name',
-    protein: 'AA Mutation',
-    therapy: 'Drug Name',
-    diseaseFamily: 'Histology',
-    disease: 'Histology Subtype 1',
-    pubmed: 'Pubmed Id',
-    sampleName: 'Sample Name',
-    sampleId: 'Sample ID',
-    mutationId: 'ID Mutation',
-    transcript: 'Transcript',
     cds: 'CDS Mutation',
+    disease: 'Histology Subtype 1',
+    diseaseFamily: 'Histology',
+    gene: 'Gene Name',
+    mutationId: 'ID Mutation',
+    protein: 'AA Mutation',
+    pubmed: 'Pubmed Id',
+    sampleId: 'Sample ID',
+    sampleName: 'Sample Name',
+    therapy: 'Drug Name',
+    transcript: 'Transcript',
 };
 
 
@@ -58,9 +58,9 @@ const processVariants = async ({ conn, record, source }) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         protein = rid(await conn.addVariant({
-            target: 'PositionalVariant',
             content: { ...variant },
             existsOk: true,
+            target: 'PositionalVariant',
         }));
     } catch (err) {
         logger.error(err);
@@ -83,9 +83,9 @@ const processVariants = async ({ conn, record, source }) => {
         try {
         // get the hugo gene
             const reference1 = rid(await conn.getUniqueRecordBy({
-                target: 'Feature',
                 filters: { AND: [{ sourceId: record.transcript }, { biotype: 'transcript' }] },
                 sort: orderPreferredOntologyTerms,
+                target: 'Feature',
             }));
             // add the cds variant
             const {
@@ -94,15 +94,15 @@ const processVariants = async ({ conn, record, source }) => {
             variant.reference1 = reference1;
             variant.type = rid(await conn.getVocabularyTerm(variant.type));
             cds = rid(await conn.addVariant({
-                target: 'PositionalVariant',
                 content: { ...variant },
                 existsOk: true,
+                target: 'PositionalVariant',
             }));
             await conn.addRecord({
-                target: 'Infers',
-                content: { out: cds, in: protein, source: rid(source) },
+                content: { in: protein, out: cds, source: rid(source) },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'Infers',
             });
         } catch (err) {
             logger.error(err);
@@ -112,15 +112,15 @@ const processVariants = async ({ conn, record, source }) => {
     if (record.mutationId) {
         try {
             const catalog = await conn.addRecord({
-                target: 'CatalogueVariant',
                 content: { source: rid(source), sourceId: record.mutationId },
                 existsOk: true,
+                target: 'CatalogueVariant',
             });
             await conn.addRecord({
-                target: 'Infers',
-                content: { out: catalog, in: cds || protein, source: rid(source) },
+                content: { in: cds || protein, out: catalog, source: rid(source) },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'Infers',
             });
         } catch (err) {
             logger.error(err);
@@ -144,25 +144,25 @@ const processCosmicRecord = async (conn, record, source) => {
     diseaseName = diseaseName.replace('leukaemia', 'leukemia');
     diseaseName = diseaseName.replace('tumour', 'tumor');
     const disease = await conn.getUniqueRecordBy({
-        target: 'Disease',
         filters: { name: diseaseName },
         sort: orderPreferredOntologyTerms,
+        target: 'Disease',
     });
     // create the resistance statement
     const relevance = await conn.getVocabularyTerm('resistance');
     await conn.addRecord({
-        target: 'Statement',
         content: {
-            relevance,
-            subject: drug,
             conditions: [variantId, rid(disease), drug],
             evidence: [rid(record.publication)],
-            source: rid(source),
+            relevance,
             reviewStatus: 'not required',
+            source: rid(source),
             sourceId: record.sourceId,
+            subject: drug,
         },
         existsOk: true,
         fetchExisting: false,
+        target: 'Statement',
     });
 };
 
@@ -177,12 +177,12 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     const jsonList = await loadDelimToJson(filename);
     // get the dbID for the source
     const source = rid(await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     }));
-    const counts = { success: 0, error: 0, skip: 0 };
+    const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
     logger.info(`Processing ${jsonList.length} records`);
     // Upload the list of pubmed IDs
@@ -203,7 +203,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
             await processCosmicRecord(conn, record, source);
             counts.success++;
         } catch (err) {
-            errorList.push({ record, error: err.toString() });
+            errorList.push({ error: err.toString(), record });
             logger.log('error', err);
             counts.error++;
         }
@@ -214,4 +214,4 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = { uploadFile, SOURCE_DEFN, kb: true };
+module.exports = { SOURCE_DEFN, kb: true, uploadFile };

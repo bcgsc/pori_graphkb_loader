@@ -16,17 +16,17 @@ describe('oncokb', () => {
         test('fusion', () => {
             const parsed = parseVariantName('BCR-ABL1 Fusion');
             expect(parsed).toEqual({
-                type: 'fusion',
                 reference2: 'abl1',
+                type: 'fusion',
             });
         });
 
         test('fusion with gene given', () => {
             const parsed = parseVariantName('BCR-ABL1 Fusion', { reference1: 'ABL1' });
             expect(parsed).toEqual({
-                type: 'fusion',
                 reference1: 'bcr',
                 reference2: 'abl1',
+                type: 'fusion',
             });
         });
     });

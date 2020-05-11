@@ -70,11 +70,11 @@ const fetchByIdList = async (rawIdList, opt) => {
 
         logger.debug(`loading: ${url}?db=${db}`);
         const { result } = await requestWithRetry({
-            method: 'GET',
-            uri: url,
-            qs: queryParams,
             headers: { Accept: 'application/json' },
             json: true,
+            method: 'GET',
+            qs: queryParams,
+            uri: url,
         });
 
         const records = [];
@@ -105,15 +105,15 @@ const fetchRecord = async (api, {
         return cache[cacheKey];
     }
     const record = await api.getUniqueRecordBy({
-        target,
         filters: {
             AND: [
                 { sourceId },
                 { sourceIdVersion },
-                { source: { target: 'Source', filters: { name: db } } },
+                { source: { filters: { name: db }, target: 'Source' } },
             ],
         },
         sort: orderPreferredOntologyTerms,
+        target,
     });
     cache[cacheKey] = record;
     return record;
@@ -148,8 +148,8 @@ const uploadRecord = async (api, content, opt = {}) => {
     } if (fetchFirst) {
         try {
             const record = await api.getUniqueRecordBy({
-                target,
                 filters: { sourceId },
+                target,
             });
 
             if (cache) {
@@ -162,10 +162,10 @@ const uploadRecord = async (api, content, opt = {}) => {
 
     if (!source) {
         source = await api.addRecord({
-            target: 'Source',
             content: sourceDefn,
-            fetchConditions: { name: sourceDefn.name },
             existsOk: true,
+            fetchConditions: { name: sourceDefn.name },
+            target: 'Source',
         });
 
         if (cache) {
@@ -182,7 +182,6 @@ const uploadRecord = async (api, content, opt = {}) => {
     }
 
     const result = await api.addRecord({
-        target,
         content: formattedContent,
         existsOk: true,
         fetchConditions: {
@@ -191,6 +190,7 @@ const uploadRecord = async (api, content, opt = {}) => {
                 { source: rid(source) },
             ],
         },
+        target,
     });
 
     if (cache) {
@@ -202,15 +202,15 @@ const uploadRecord = async (api, content, opt = {}) => {
 
 const preLoadCache = async (api, { sourceDefn, cache, target }) => {
     const records = await api.getRecords({
-        target,
         filters: {
             AND: [
-                { source: { target: 'Source', filters: { name: sourceDefn.name } } },
+                { source: { filters: { name: sourceDefn.name }, target: 'Source' } },
                 { dependency: null },
                 { deprecated: false },
             ],
         },
         neighbors: 0,
+        target,
     });
 
     const dups = new Set();
@@ -251,7 +251,7 @@ const fetchAndLoadByIds = async (api, idListIn, {
     const records = await fetchByIdList(
         idListIn,
         {
-            db: dbName, parser, cache,
+            cache, db: dbName, parser,
         },
     );
     const result = [];
@@ -263,8 +263,8 @@ const fetchAndLoadByIds = async (api, idListIn, {
         const newRecords = await Promise.all(current.map(
             async record => uploadRecord(api, record, {
                 cache,
-                target,
                 sourceDefn,
+                target,
             }),
         ));
         result.push(...newRecords);
@@ -290,23 +290,23 @@ const fetchAndLoadBySearchTerm = async (api, term, opt) => {
     // get the list of ids
     logger.info(`searching ${BASE_SEARCH_URL}?db=${dbName}&term=${term}`);
     const { esearchresult: { idlist } } = await requestWithRetry({
-        method: 'GET',
-        uri: BASE_SEARCH_URL,
-        qs: { ...DEFAULT_QS, db: dbName, term },
         headers: { Accept: 'application/json' },
         json: true,
+        method: 'GET',
+        qs: { ...DEFAULT_QS, db: dbName, term },
+        uri: BASE_SEARCH_URL,
     });
     return fetchAndLoadByIds(api, idlist, opt);
 };
 
 
 module.exports = {
-    uploadRecord,
-    fetchRecord,
-    fetchByIdList,
-    pullFromCacheById,
     DEFAULT_QS,
-    preLoadCache,
     fetchAndLoadByIds,
     fetchAndLoadBySearchTerm,
+    fetchByIdList,
+    fetchRecord,
+    preLoadCache,
+    pullFromCacheById,
+    uploadRecord,
 };

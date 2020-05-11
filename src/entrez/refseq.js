@@ -15,16 +15,16 @@ const DB_NAME = 'nucleotide';
 const CACHE = {};
 
 const recordSpec = ajv.compile({
-    type: 'object',
-    required: ['title', 'biomol', 'accessionversion'],
     properties: {
-        accessionversion: { type: 'string', pattern: '^N[A-Z]_\\d+\\.\\d+$' },
-        biomol: { type: 'string', enum: ['genomic', 'rna', 'peptide', 'mRNA'] },
+        accessionversion: { pattern: '^N[A-Z]_\\d+\\.\\d+$', type: 'string' },
+        biomol: { enum: ['genomic', 'rna', 'peptide', 'mRNA'], type: 'string' },
+        replacedby: { type: 'string' },
+        status: { type: 'string' },
         subname: { type: 'string' },
         title: { type: 'string' },
-        status: { type: 'string' },
-        replacedby: { type: 'string' },
     },
+    required: ['title', 'biomol', 'accessionversion'],
+    type: 'object',
 });
 
 /**
@@ -42,11 +42,11 @@ const parseRecord = (record) => {
         biotype = 'protein';
     }
     const parsed = {
+        biotype,
+        displayName: record.accessionversion.toUpperCase(),
+        longName: record.title,
         sourceId,
         sourceIdVersion,
-        biotype,
-        longName: record.title,
-        displayName: record.accessionversion.toUpperCase(),
     };
 
     if (biotype === 'chromosome') {
@@ -80,7 +80,7 @@ const fetchAndLoadByIds = async (api, idListIn) => {
         records.push(...await fetchByIdList(
             versionedIds,
             {
-                db: DB_NAME, parser: parseRecord, cache: CACHE,
+                cache: CACHE, db: DB_NAME, parser: parseRecord,
             },
         ));
     }
@@ -89,7 +89,7 @@ const fetchAndLoadByIds = async (api, idListIn) => {
         const fullRecords = await fetchByIdList(
             unversionedIds,
             {
-                db: DB_NAME, parser: parseRecord, cache: CACHE,
+                cache: CACHE, db: DB_NAME, parser: parseRecord,
             },
         );
         fullRecords.forEach((rec) => {
@@ -102,8 +102,8 @@ const fetchAndLoadByIds = async (api, idListIn) => {
     const result = await Promise.all(records.map(
         async record => uploadRecord(api, record, {
             cache: CACHE,
-            target: 'Feature',
             sourceDefn: SOURCE_DEFN,
+            target: 'Feature',
         }),
     ));
     return result;
@@ -111,7 +111,7 @@ const fetchAndLoadByIds = async (api, idListIn) => {
 
 
 module.exports = {
-    parseRecord,
-    fetchAndLoadByIds,
     SOURCE_DEFN,
+    fetchAndLoadByIds,
+    parseRecord,
 };

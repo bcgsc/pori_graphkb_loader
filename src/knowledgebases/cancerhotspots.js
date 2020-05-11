@@ -26,19 +26,19 @@ const {
 } = require('../sources');
 
 const HEADER = {
-    geneId: 'Entrez_Gene_Id',
+    assembly: 'NCBI_Build',
     cds: 'HGVSc',
-    protein: 'HGVSp_Short',
-    transcriptId: 'Transcript_ID',
+    chromosome: 'Chromosome',
+    clinSig: 'CLIN_SIG',
     dbsnp: 'dbSNP_RS',
     diseaseId: 'oncotree_detailed',
+    geneId: 'Entrez_Gene_Id',
     impact: 'IMPACT',
-    assembly: 'NCBI_Build',
-    chromosome: 'Chromosome',
+    protein: 'HGVSp_Short',
+    refSeq: 'Reference_Allele',
     start: 'Start_Position',
     stop: 'End_Position',
-    clinSig: 'CLIN_SIG',
-    refSeq: 'Reference_Allele',
+    transcriptId: 'Transcript_ID',
     untemplatedSeq: 'Allele',
 };
 
@@ -67,11 +67,11 @@ const processVariants = async ({ conn, record, source }) => {
             reference1 = chromosomeCache[chromosome];
         } else {
             reference1 = await conn.getUniqueRecordBy({
-                target: 'Feature',
                 filters: {
                     AND: [{ OR: [{ sourceId: chromosome }, { name: chromosome }] }, { biotype: 'chromosome' }],
                 },
                 sort: orderPreferredOntologyTerms,
+                target: 'Feature',
             });
             chromosomeCache[chromosome] = reference1;
         }
@@ -106,9 +106,9 @@ const processVariants = async ({ conn, record, source }) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         genomicVariant = rid(await conn.addVariant({
-            target: 'PositionalVariant',
             content: { ...variant },
             existsOk: true,
+            target: 'PositionalVariant',
         }));
     } catch (err) {
         logger.warn(`failed to create the genomic variant (${chromosome}:${start}-${stop})`);
@@ -134,9 +134,9 @@ const processVariants = async ({ conn, record, source }) => {
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         proteinVariant = rid(await conn.addVariant({
-            target: 'PositionalVariant',
             content: { ...variant },
             existsOk: true,
+            target: 'PositionalVariant',
         }));
     } catch (err) {
         logger.error(`Failed the protein variant (${geneId}:${protein}) ${err}`);
@@ -152,15 +152,15 @@ const processVariants = async ({ conn, record, source }) => {
             reference1 = featureCache[transcriptId];
         } else {
             reference1 = rid(await conn.getUniqueRecordBy({
-                target: 'Feature',
                 filters: {
                     AND: [
                         { sourceId: transcriptId },
                         { biotype: 'transcript' },
-                        { source: { target: 'Source', filters: { name: ensemblName } } },
+                        { source: { filters: { name: ensemblName }, target: 'Source' } },
                     ],
                 },
                 sort: orderPreferredOntologyTerms,
+                target: 'Feature',
             }));
             featureCache[transcriptId] = reference1;
         }
@@ -173,15 +173,15 @@ const processVariants = async ({ conn, record, source }) => {
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
 
         cdsVariant = rid(await conn.addVariant({
-            target: 'PositionalVariant',
             content: { ...variant },
             existsOk: true,
+            target: 'PositionalVariant',
         }));
         await conn.addRecord({
-            target: 'Infers',
-            content: { out: cdsVariant, in: proteinVariant, source: rid(source) },
+            content: { in: proteinVariant, out: cdsVariant, source: rid(source) },
             existsOk: true,
             fetchExisting: false,
+            target: 'Infers',
         });
     } catch (err) {
         logger.error(`Failed the cds variant (${transcriptId}:${cds}) ${err}`);
@@ -190,17 +190,17 @@ const processVariants = async ({ conn, record, source }) => {
     // link the genomic variant
     if (genomicVariant && cdsVariant) {
         await conn.addRecord({
-            target: 'Infers',
-            content: { out: rid(genomicVariant), in: rid(cdsVariant), source: rid(source) },
+            content: { in: rid(cdsVariant), out: rid(genomicVariant), source: rid(source) },
             existsOk: true,
             fetchExisting: false,
+            target: 'Infers',
         });
     } else if (genomicVariant) {
         await conn.addRecord({
-            target: 'Infers',
-            content: { out: rid(genomicVariant), in: rid(proteinVariant), source: rid(source) },
+            content: { in: rid(proteinVariant), out: rid(genomicVariant), source: rid(source) },
             existsOk: true,
             fetchExisting: false,
+            target: 'Infers',
         });
     }
     return proteinVariant;
@@ -218,31 +218,31 @@ const processRecord = async (conn, record, source, relevance) => {
         disease = diseasesCache[diseaseId];
     } else {
         disease = rid(await conn.getUniqueRecordBy({
-            target: 'Disease',
             filters: {
                 AND: [
                     { sourceId: diseaseId },
-                    { source: { target: 'Source', filters: { name: oncotreeName } } },
+                    { source: { filters: { name: oncotreeName }, target: 'Source' } },
                 ],
             },
             sort: orderPreferredOntologyTerms,
+            target: 'Disease',
         }));
         diseasesCache[diseaseId] = disease;
     }
 
     await conn.addRecord({
-        target: 'Statement',
         content: {
-            relevance,
-            subject: disease,
             conditions: [variantId, disease],
             evidence: [source],
+            relevance,
+            reviewStatus: 'not required',
             source,
             sourceId,
-            reviewStatus: 'not required',
+            subject: disease,
         },
         existsOk: true,
         fetchExisting: false,
+        target: 'Statement',
     });
 };
 
@@ -261,13 +261,13 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
 
     // get the dbID for the source
     const source = rid(await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     }));
     const relevance = rid(await conn.getVocabularyTerm('mutation hotspot'));
-    const counts = { success: 0, error: 0, skip: 0 };
+    const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
 
     let index = 0;
@@ -278,7 +278,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     const previousLoad = new Set();
     logger.info('load previous statements');
     const statements = await conn.getRecords({
-        filters: convertRecordToQueryFilters({ source: rid(source), neighbors: 0, returnProperties: 'sourceId' }),
+        filters: convertRecordToQueryFilters({ neighbors: 0, returnProperties: 'sourceId', source: rid(source) }),
         target: 'Statement',
     });
 
@@ -290,7 +290,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     const parserPromise = new Promise((resolve, reject) => {
         const parser = csv
             .parseFile(filename, {
-                headers: true, comment: '#', trim: true, delimiter: '\t',
+                comment: '#', delimiter: '\t', headers: true, trim: true,
             })
             .on('data', (data) => {
                 const record = convertRowFields(HEADER, data);
@@ -323,7 +323,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
                             parser.resume();
                         }).catch((err) => {
                             logger.error(err);
-                            errorList.push({ record, error: err, errorMessage: err.toString() });
+                            errorList.push({ error: err, errorMessage: err.toString(), record });
                             counts.error++;
                             parser.resume();
                         });
@@ -347,5 +347,5 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
 };
 
 module.exports = {
-    uploadFile, SOURCE_DEFN, kb: true, dependencies: [ensemblName, oncotreeName],
+    SOURCE_DEFN, dependencies: [ensemblName, oncotreeName], kb: true, uploadFile,
 };

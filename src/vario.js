@@ -13,10 +13,10 @@ const { vario: SOURCE_DEFN } = require('./sources');
 
 
 const PREDICATES = {
+    description: 'http://purl.obolibrary.org/obo/IAO_0000115',
+    id: 'http://www.geneontology.org/formats/oboInOwl#id',
     name: 'http://www.w3.org/2000/01/rdf-schema#label',
     subclassOf: 'http://www.w3.org/2000/01/rdf-schema#subClassOf',
-    id: 'http://www.geneontology.org/formats/oboInOwl#id',
-    description: 'http://purl.obolibrary.org/obo/IAO_0000115',
 };
 
 const OWL_NAMESPACE = 'http://purl.obolibrary.org/obo/vario.owl';
@@ -61,10 +61,10 @@ const uploadFile = async ({ filename, conn }) => {
     const nodesByCode = convertOwlGraphToJson(graph, parseId);
 
     const source = await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     });
 
     const recordsByCode = {};
@@ -75,16 +75,16 @@ const uploadFile = async ({ filename, conn }) => {
             continue;
         }
         const node = {
-            name: original[PREDICATES.name][0],
-            sourceId: code,
             description: (original[PREDICATES.description] || [null])[0],
+            name: original[PREDICATES.name][0],
             source: rid(source),
+            sourceId: code,
         };
 
         for (const tgt of original[PREDICATES.subclassOf] || []) {
             subclassEdges.push([code, tgt]);
         }
-        recordsByCode[code] = await conn.addRecord({ target: 'vocabulary', content: node, existsOk: true });
+        recordsByCode[code] = await conn.addRecord({ content: node, existsOk: true, target: 'vocabulary' });
     }
 
     for (const [srcCode, tgtCode] of subclassEdges) {
@@ -93,15 +93,15 @@ const uploadFile = async ({ filename, conn }) => {
 
         if (src && tgt) {
             await conn.addRecord({
-                target: 'subclassof',
                 content: {
-                    out: rid(src), in: rid(tgt), source: rid(source),
+                    in: rid(tgt), out: rid(src), source: rid(source),
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'subclassof',
             });
         }
     }
 };
 
-module.exports = { uploadFile, SOURCE_DEFN };
+module.exports = { SOURCE_DEFN, uploadFile };

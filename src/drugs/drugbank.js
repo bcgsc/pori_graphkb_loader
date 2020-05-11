@@ -20,133 +20,133 @@ const ajv = new Ajv();
 
 // Lists most of the commonly required 'Tags' and Attributes
 const HEADER = {
-    unii: 'unii',
-    superclasses: 'atc-codes',
-    superclass: 'atc-code',
     ident: 'drugbank-id',
     mechanism: 'mechanism-of-action',
+    superclass: 'atc-code',
+    superclasses: 'atc-codes',
+    unii: 'unii',
 };
 
 const singleReqProp = (name, spec = {}) => ({
-    oneOf: [{ type: 'string', maxLength: 0 }, { type: ['object', 'null'], required: [name], properties: { [name]: spec } }],
+    oneOf: [{ maxLength: 0, type: 'string' }, { properties: { [name]: spec }, required: [name], type: ['object', 'null'] }],
 });
 
 /**
  * This defines the expected format of the JSON post transform from xml
  */
 const validateDrugbankSpec = ajv.compile({
-    type: 'object',
-    required: ['drugbank-id', 'name', '$'],
     properties: {
-        'drugbank-id': {
-            type: 'array',
-            items: [{
-                type: 'object',
-                properties: {
-                    $text: { type: 'string', pattern: '^DB\\d+$' },
-                },
-            }],
-            minItems: 1,
-        },
-        name: { type: 'string' },
         $: {
-            type: 'object',
-            required: ['updated'],
             properties: {
                 updated: { type: 'string' },
             },
+            required: ['updated'],
+            type: 'object',
         },
-        description: { type: ['string', 'null'] },
-        unii: { type: ['string', 'null'] },
-        'mechanism-of-action': { type: ['string', 'null'] },
-        categories: singleReqProp(
-            'category', {
-                type: 'array',
-                items: { type: 'object', required: ['category'], properties: { category: { type: 'string' } } },
-            },
-        ),
-        'calculated-properties': singleReqProp('property', {
-            type: 'array',
-            items: {
-                type: 'object',
-                required: ['kind', 'value'],
-                properties: {
-                    type: { type: 'string' },
-                    kind: { type: 'string' },
-                },
-            },
-        }),
         'atc-codes': singleReqProp(
             'atc-code', singleReqProp(
                 'level', {
-                    type: 'array',
                     items: {
-                        type: 'object',
-                        required: ['$text', '$'],
                         properties: {
-                            $text: { type: 'string' },
                             $: {
-                                type: 'object',
-                                required: ['code'],
                                 properties: { code: { type: 'string' } },
+                                required: ['code'],
+                                type: 'object',
                             },
+                            $text: { type: 'string' },
                         },
+                        required: ['$text', '$'],
+                        type: 'object',
                     },
+                    type: 'array',
                 },
             ),
         ),
+        'calculated-properties': singleReqProp('property', {
+            items: {
+                properties: {
+                    kind: { type: 'string' },
+                    type: { type: 'string' },
+                },
+                required: ['kind', 'value'],
+                type: 'object',
+            },
+            type: 'array',
+        }),
+        categories: singleReqProp(
+            'category', {
+                items: { properties: { category: { type: 'string' } }, required: ['category'], type: 'object' },
+                type: 'array',
+            },
+        ),
+        description: { type: ['string', 'null'] },
+        'drugbank-id': {
+            items: [{
+                properties: {
+                    $text: { pattern: '^DB\\d+$', type: 'string' },
+                },
+                type: 'object',
+            }],
+            minItems: 1,
+            type: 'array',
+        },
+        'external-identifiers': singleReqProp(
+            'external-identifier', {
+                items: {
+                    properties: {
+                        identifier: { type: 'string' },
+                        resource: { type: 'string' },
+                    },
+                    required: ['resource', 'identifier'],
+                    type: 'object',
+                },
+                type: 'array',
+            },
+        ),
+        'mechanism-of-action': { type: ['string', 'null'] },
+        name: { type: 'string' },
+        products: singleReqProp('product', {
+            items: {
+                properties: { name: { type: 'string' } },
+                required: ['name'],
+                type: 'object',
+            },
+            type: 'array',
+        }),
         targets: singleReqProp(
             'target', {
-                type: 'object',
-                required: ['actions'],
                 properties: {
-                    actions: singleReqProp('action', { type: 'array', items: { type: 'string' } }),
+                    actions: singleReqProp('action', { items: { type: 'string' }, type: 'array' }),
                     polypeptide: {
-                        type: 'array',
                         items: {
-                            type: 'object',
                             properties: {
                                 'external-identifiers': singleReqProp(
                                     'external-identifier', {
-                                        type: 'array',
                                         items: {
-                                            type: 'object',
-                                            required: ['resource', 'identifier'],
                                             properties: {
-                                                resource: { type: 'string' },
                                                 identifier: { type: 'string' },
+                                                resource: { type: 'string' },
                                             },
+                                            required: ['resource', 'identifier'],
+                                            type: 'object',
                                         },
+                                        type: 'array',
                                     },
                                 ),
                             },
+                            type: 'object',
                         },
+                        type: 'array',
                     },
                 },
-            },
-        ),
-        products: singleReqProp('product', {
-            type: 'array',
-            items: {
+                required: ['actions'],
                 type: 'object',
-                required: ['name'],
-                properties: { name: { type: 'string' } },
-            },
-        }),
-        'external-identifiers': singleReqProp(
-            'external-identifier', {
-                type: 'array',
-                items: {
-                    type: 'object',
-                    required: ['resource', 'identifier'],
-                    properties: {
-                        resource: { type: 'string' },
-                        identifier: { type: 'string' },
-                    },
-                },
             },
         ),
+        unii: { type: ['string', 'null'] },
     },
+    required: ['drugbank-id', 'name', '$'],
+    type: 'object',
 });
 
 
@@ -167,12 +167,12 @@ const processRecord = async ({
     } catch (err) {}
     logger.info(`processing ${getDrugBankId(drug)}`);
     const body = {
-        source: rid(current),
-        sourceId: getDrugBankId(drug),
-        name: drug.name,
-        sourceIdVersion: drug.$.updated,
         description: drug.description,
         mechanismOfAction: drug[HEADER.mechanism],
+        name: drug.name,
+        source: rid(current),
+        sourceId: getDrugBankId(drug),
+        sourceIdVersion: drug.$.updated,
     };
 
     if (drug.categories[0] && drug.categories[0].category) {
@@ -193,7 +193,6 @@ const processRecord = async ({
     }
 
     const record = await conn.addRecord({
-        target: 'Therapy',
         content: body,
         existsOk: true,
         fetchConditions: {
@@ -204,19 +203,20 @@ const processRecord = async ({
                 { sourceIdVersion: body.sourceIdVersion },
             ],
         },
+        target: 'Therapy',
     });
 
     // create the categories
     for (const atcLevel of atcLevels) {
         if (ATC[atcLevel.sourceId] === undefined) {
             const level = await conn.addRecord({
-                target: 'Therapy',
                 content: {
-                    source: rid(current),
                     name: atcLevel.name,
+                    source: rid(current),
                     sourceId: atcLevel.sourceId,
                 },
                 existsOk: true,
+                target: 'Therapy',
             });
             ATC[level.sourceId] = level;
         }
@@ -225,27 +225,27 @@ const processRecord = async ({
     if (atcLevels.length > 0) {
         // link the current record to the lowest subclass
         await conn.addRecord({
-            target: 'subclassof',
             content: {
-                source: rid(current),
-                out: rid(record),
                 in: rid(ATC[atcLevels[0].sourceId]),
+                out: rid(record),
+                source: rid(current),
             },
             existsOk: true,
             fetchExisting: false,
+            target: 'subclassof',
         });
 
         // link the subclassing
         for (let i = 0; i < atcLevels.length - 1; i++) {
             await conn.addRecord({
-                target: 'subclassof',
                 content: {
-                    source: rid(current),
-                    out: rid(ATC[atcLevels[i].sourceId]),
                     in: rid(ATC[atcLevels[i + 1].sourceId]),
+                    out: rid(ATC[atcLevels[i].sourceId]),
+                    source: rid(current),
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'subclassof',
             });
         }
     }
@@ -258,21 +258,21 @@ const processRecord = async ({
     );
     await Promise.all(Array.from(aliases, async (aliasName) => {
         const alias = await conn.addRecord({
-            target: 'Therapy',
             content: {
+                dependency: rid(record),
+                name: aliasName,
                 source: rid(current),
                 sourceId: getDrugBankId(drug),
-                name: aliasName,
-                dependency: rid(record),
             },
             existsOk: true,
+            target: 'Therapy',
         });
         // link together
         await conn.addRecord({
-            target: 'aliasof',
-            content: { out: rid(alias), in: rid(record), source: rid(current) },
+            content: { in: rid(record), out: rid(alias), source: rid(current) },
             existsOk: true,
             fetchExisting: false,
+            target: 'aliasof',
         });
     }));
 
@@ -282,13 +282,13 @@ const processRecord = async ({
 
         try {
             fdaRec = await conn.getUniqueRecordBy({
-                target: 'Therapy',
                 filters: {
                     AND: [
                         { source: rid(fda) },
                         { sourceId: drug[HEADER.unii].trim() },
                     ],
                 },
+                target: 'Therapy',
             });
         } catch (err) {
             logger.log('error', `failed cross-linking from ${record.sourceId} to ${drug[HEADER.unii]} (fda)`);
@@ -296,12 +296,12 @@ const processRecord = async ({
 
         if (fdaRec) {
             await conn.addRecord({
-                target: 'crossreferenceof',
                 content: {
-                    source: rid(current), out: rid(record), in: rid(fdaRec),
+                    in: rid(fdaRec), out: rid(record), source: rid(current),
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'crossreferenceof',
             });
         }
     }
@@ -317,10 +317,10 @@ const processRecord = async ({
             try {
                 const chemblDrug = await _chembl.fetchAndLoadById(conn, identifier);
                 await conn.addRecord({
-                    target: 'crossreferenceof',
-                    content: { out: rid(record), in: rid(chemblDrug), source: rid(current) },
+                    content: { in: rid(chemblDrug), out: rid(record), source: rid(current) },
                     existsOk: true,
                     fetchExisting: false,
+                    target: 'crossreferenceof',
                 });
             } catch (err) {
                 logger.error(err);
@@ -348,18 +348,18 @@ const processRecord = async ({
 
         for (const identifier of genes) {
             const gene = await _hgnc.fetchAndLoadBySymbol({
-                conn, symbol: identifier, paramType: 'hgnc_id',
+                conn, paramType: 'hgnc_id', symbol: identifier,
             });
             await conn.addRecord({
-                target: 'targetof',
                 content: {
+                    comment: interactionType,
+                    in: rid(record),
                     out: rid(gene),
                     source: rid(current),
-                    in: rid(record),
-                    comment: interactionType,
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'targetof',
             });
         }
     }
@@ -377,10 +377,10 @@ const uploadFile = async ({ filename, conn }) => {
     logger.info('Loading the external drugbank data');
 
     const source = await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     });
 
     const ATC = {};
@@ -388,13 +388,13 @@ const uploadFile = async ({ filename, conn }) => {
 
     try {
         fdaSource = await conn.getUniqueRecordBy({
-            target: 'Source',
             filters: { name: fdaName },
+            target: 'Source',
         });
     } catch (err) {
         logger.warn('Unable to find fda source record. Will not attempt cross-reference links');
     }
-    const counts = { success: 0, error: 0, skipped: 0 };
+    const counts = { error: 0, skipped: 0, success: 0 };
 
     const parseXML = new Promise((resolve, reject) => {
         logger.log('info', `loading XML data from ${filename}`);
@@ -415,7 +415,7 @@ const uploadFile = async ({ filename, conn }) => {
             }
             xml.pause();
             processRecord({
-                conn, sources: { current: source, fda: fdaSource }, drug: item, ATC,
+                ATC, conn, drug: item, sources: { current: source, fda: fdaSource },
             }).then(() => {
                 counts.success++;
                 xml.resume();
@@ -448,4 +448,4 @@ const uploadFile = async ({ filename, conn }) => {
     logger.log('info', JSON.stringify(counts));
 };
 
-module.exports = { uploadFile, dependencies: [fdaName], SOURCE_DEFN };
+module.exports = { SOURCE_DEFN, dependencies: [fdaName], uploadFile };
