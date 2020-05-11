@@ -12,7 +12,8 @@
     ],
     "plugins": [
         "jest",
-        "jest-formatting"
+        "jest-formatting",
+        "sort-keys-fix"
     ],
     "rules": {
         "indent": [
@@ -28,7 +29,7 @@
                 "fn": "test"
             }
         ],
-        "no-fallthrough": "off",
+        "jest/prefer-hooks-on-top": "error",
         "linebreak-style": [
             "error",
             "unix"
@@ -57,15 +58,11 @@
                 "allowEmptyCatch": true
             }
         ],
+        "no-fallthrough": "off",
         "no-mixed-spaces-and-tabs": "error",
         "no-multi-assign": "off",
         "no-param-reassign": "warn",
-        "no-plusplus": [
-            "warn",
-            {
-                "allowForLoopAfterthoughts": true
-            }
-        ],
+        "no-plusplus": "off",
         "no-restricted-syntax": "off",
         "no-underscore-dangle": "off",
         "no-use-before-define": "warn",
@@ -104,6 +101,8 @@
             "error",
             "always"
         ],
+        "sort-keys": "warn",
+        "sort-keys-fix/sort-keys-fix": "warn",
         "space-in-parens": [
             "error",
             "never"
