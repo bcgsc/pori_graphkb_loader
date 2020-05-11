@@ -19,6 +19,7 @@ const recordSpec = ajv.compile({
     properties: {
         description: { type: 'string' },
         name: { type: 'string' },
+        summary: { type: 'string' },
         uid: { pattern: '^\\d+$', type: 'string' },
     },
     required: ['uid', 'name'],
@@ -33,8 +34,9 @@ const parseRecord = (record) => {
     checkSpec(recordSpec, record);
     return {
         biotype: 'gene',
-        description: record.description,
+        description: record.summary,
         displayName: record.name,
+        longName: record.description,
         name: record.name,
         sourceId: record.uid,
     };
@@ -44,7 +46,7 @@ const parseRecord = (record) => {
 /**
  *
  * @param {ApiConnection} api connection to GraphKB
- * @param {Array.<string>} idList list of pubmed IDs
+ * @param {Array.<string>} idList list of gene IDs
  */
 const fetchAndLoadGeneByIds = async (api, idListIn) => util.fetchAndLoadByIds(
     api,
