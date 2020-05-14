@@ -43,6 +43,13 @@ const sources = {
         url: 'https://cancer.sanger.ac.uk/cosmic',
         usage: 'https://cancer.sanger.ac.uk/cosmic/license',
     },
+    dbSnp: {
+        description: 'dbSNP contains human single nucleotide variations, microsatellites, and small-scale insertions and deletions along with publication, population frequency, molecular consequence, and genomic and RefSeq mapping information for both common variations and clinical mutations.',
+        displayName: 'dbSNP',
+        name: 'dbsnp',
+        url: 'https://www.ncbi.nlm.nih.gov/snp',
+        usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
+    },
     dgidb: {
         description: 'Mining the druggable genome for personalized medicine',
         displayName: 'DGIdb',
@@ -78,11 +85,8 @@ const sources = {
         description: 'Ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. Ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. Ensembl tools include BLAST, BLAT, BioMart and the Variant Effect Predictor (VEP) for all supported species.',
         displayName: 'Ensembl',
         name: 'ensembl',
-
         sort: 3,
-
         url: 'https://uswest.ensembl.org',
-        // avoid circular dependencies
         usage: 'https://uswest.ensembl.org/info/about/legal/disclaimer.html',
     },
     entrezGene: {
@@ -145,9 +149,7 @@ const sources = {
         usage: 'https://creativecommons.org/licenses/by/4.0',
     },
     oncokb: {
-        // 4th preferred drug ontology
         description: 'OncoKB is a precision oncology knowledge base and contains information about the effects and treatment implications of specific cancer gene alterations. It is developed and maintained by the Knowledge Systems group in the Marie Josée and Henry R. Kravis Center for Molecular Oncology at Memorial Sloan Kettering Cancer Center (MSK), in partnership with Quest Diagnostics and Watson for Genomics, IBM.',
-
         displayName: 'OncoKB',
         name: 'oncokb',
         sort: 4,
@@ -168,9 +170,7 @@ const sources = {
         usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
     },
     refseq: {
-        description: `
-            A comprehensive, integrated, non-redundant, well-annotated set of reference sequences
-            including genomic, transcript, and protein.`.replace(/\s+/, ' '),
+        description: 'A comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.',
         displayName: 'RefSeq',
         longName: 'RefSeq: NCBI Reference Sequence Database',
         name: 'refseq',

@@ -16,6 +16,7 @@ const {
 const { logger } = require('./../logging');
 const _pubmed = require('./../entrez/pubmed');
 const _entrezGene = require('./../entrez/gene');
+const _snp = require('../entrez/snp');
 
 const ajv = new Ajv();
 
@@ -383,6 +384,14 @@ const processVariantRecord = async ({ conn, variantRec, feature }) => {
 
     // parse the variant record
     const variantName = getVariantName(variantRec);
+
+    if (/^\s*rs\d+\s*$/gi.exec(variantName)) {
+        const [variant] = await _snp.fetchAndLoadByIds(conn, [variantName]);
+
+        if (variant) {
+            return variant;
+        }
+    }
 
     let reference1,
         reference2 = null;
