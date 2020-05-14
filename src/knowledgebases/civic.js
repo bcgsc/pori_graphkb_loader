@@ -50,26 +50,25 @@ const RELEVANCE_CACHE = {};
 const validateEvidenceSpec = ajv.compile({
     properties: {
         clinical_significance: {
-            oneOf: [
-                {
-                    pattern: `(${[
-                        'Sensitivity',
-                        'Adverse Response',
-                        'Resistance',
-                        'Sensitivity/Response',
-                        'Positive',
-                        'Negative',
-                        'Poor Outcome',
-                        'Better Outcome',
-                        'Uncertain Significance',
-                        'Pathogenic',
-                        'N/A',
-                        'Gain of Function',
-                        'Loss of Function',
-                    ].join('|')})`,
-                    type: 'string',
-                },
-                { type: 'null' },
+            enum: [
+                'Sensitivity',
+                'Adverse Response',
+                'Resistance',
+                'Sensitivity/Response',
+                'Reduced Sensitivity',
+                'Positive',
+                'Negative',
+                'Poor Outcome',
+                'Better Outcome',
+                'Uncertain Significance',
+                'Pathogenic',
+                'Likely Pathogenic',
+                'N/A',
+                'Gain of Function',
+                'Loss of Function',
+                'Neomorphic',
+                'Dominant Negative',
+                null,
             ],
         },
         description: { type: 'string' },
@@ -91,11 +90,10 @@ const validateEvidenceSpec = ajv.compile({
             },
             type: 'array',
         },
-        evidence_direction: { type: ['string', 'null'] },
+        evidence_direction: { enum: ['Supports', 'N/A', 'Does Not Support', null] },
         evidence_level: { type: 'string' },
         evidence_type: {
-            pattern: '(Predictive|Diagnostic|Prognostic|Predisposing|Functional)',
-            type: 'string',
+            enum: ['Predictive', 'Diagnostic', 'Prognostic', 'Predisposing', 'Functional'],
         },
         id: { type: 'number' },
         rating: { type: ['number', 'null'] },
@@ -172,12 +170,7 @@ const getRelevance = async ({ rawRecord, conn }) => {
             }
 
             case 'Functional': {
-                if (rawRecord.evidence_direction.toLowerCase() === 'supports') {
-                    if (['gain of function', 'loss of function'].includes(clinicalSignificance.toLowerCase())) {
-                        return clinicalSignificance.toLowerCase();
-                    }
-                }
-                break;
+                return clinicalSignificance.toLowerCase();
             }
 
             case 'Diagnostic': {
@@ -216,6 +209,7 @@ const getRelevance = async ({ rawRecord, conn }) => {
                 break;
             }
         }
+
         throw new Error(
             `unable to process relevance (${JSON.stringify({ clinicalSignificance, evidenceDirection, evidenceType })})`,
         );
