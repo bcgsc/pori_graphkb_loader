@@ -1260,6 +1260,14 @@
             ],
             "name": "microsatellite stable"
         },
+        "mismatch repair deficiency": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "genomic instability"
+                }
+            ]
+        },
         "msi": {
             "deprecated": true,
             "links": [
