@@ -16,6 +16,7 @@ const DEFAULT_QS = {
 
 const BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi';
 const BASE_SEARCH_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi';
+const BASE_FETCH_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi';
 const MAX_CONSEC_IDS = 150;
 
 
@@ -301,6 +302,8 @@ const fetchAndLoadBySearchTerm = async (api, term, opt) => {
 
 
 module.exports = {
+    BASE_FETCH_URL,
+    BASE_URL,
     DEFAULT_QS,
     fetchAndLoadByIds,
     fetchAndLoadBySearchTerm,

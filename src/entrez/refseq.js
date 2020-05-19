@@ -6,6 +6,7 @@ const _ = require('lodash');
 
 const { fetchByIdList, uploadRecord } = require('./util');
 const { checkSpec } = require('../util');
+const { rid } = require('../graphkb');
 const { refseq: SOURCE_DEFN } = require('../sources');
 
 const ajv = new Ajv();
@@ -58,14 +59,14 @@ const parseRecord = (record) => {
 
 /**
  * Given some list of refseq IDs, return if cached,
- * If they do not exist, grab from the refseq api
+ * If they do not exist, grab from the refseq graphkbConn
  * and then upload to GraphKB
  *
  * @param {ApiConnection} api connection to GraphKB
  * @param {Array.<string>} idList list of IDs
  */
 const fetchAndLoadByIds = async (api, idListIn) => {
-    const versionedIds = []; idListIn.filter(id => /\.\d+$/.exec(id));
+    const versionedIds = [];
     const unversionedIds = [];
     idListIn.forEach((id) => {
         if (/\.\d+$/.exec(id)) {
@@ -106,6 +107,26 @@ const fetchAndLoadByIds = async (api, idListIn) => {
             target: 'Feature',
         }),
     ));
+    // for versioned records link to the unversioned version
+    await Promise.all(result.map(async (record) => {
+        if (record.sourceIdVersion !== undefined && record.sourceIdVersion !== null) {
+            const unversioned = await api.addRecord({
+                content: _.omit(record, ['sourceIdVersion', '@rid', '@class']),
+                fetchConditions: {
+                    name: record.name,
+                    source: record.source,
+                    sourceId: record.sourceId,
+                    sourceIdVersion: null,
+                },
+                target: 'Feature',
+            });
+            await api.addRecord({
+                content: { in: rid(record), out: rid(unversioned), source: record.source },
+                target: 'GeneralizationOf',
+            });
+        }
+    }));
+
     return result;
 };
 

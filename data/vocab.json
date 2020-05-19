@@ -194,6 +194,14 @@
                 }
             ]
         },
+        "copy-neutral loss of heterozygosity": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "loss of heterozygosity"
+                }
+            ]
+        },
         "cytoplasmic expression": {
             "deprecated": true,
             "links": [
@@ -866,6 +874,17 @@
         "loh": {
             "displayName": "LOH"
         },
+        "loss": {
+            "deprecated": true,
+            "displayName": "loss of function",
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "loss of function"
+                }
+            ],
+            "source": "civic"
+        },
         "loss of function": {
             "description": "some normal functionality has been lost",
             "links": [
@@ -973,6 +992,16 @@
                 {
                     "class": "SubClassOf",
                     "target": "highly recurrent"
+                }
+            ]
+        },
+        "neomorphic": {
+            "deprecated": true,
+            "description": "gain of a novel molecular function that is distinct from wild-type function",
+            "links": [
+                {
+                    "class": "AliasOf",
+                    "target": "switch of function"
                 }
             ]
         },
@@ -1687,17 +1716,6 @@
                 {
                     "class": "SubClassOf",
                     "target": "small mutation"
-                }
-            ]
-        },
-        "loss": {
-            "deprecated": true,
-            "source": "civic",
-            "displayName": "loss of function",
-            "links": [
-                {
-                    "class": "DeprecatedBy",
-                    "target": "loss of function"
                 }
             ]
         },
