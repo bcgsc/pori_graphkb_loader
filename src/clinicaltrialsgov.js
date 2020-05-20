@@ -444,7 +444,7 @@ const processRecord = async ({
     const trialRecord = await conn.addRecord({
         content,
         existsOk: true,
-        fetchConditions: { source: rid(source), sourceId: record.sourceId },
+        fetchConditions: { AND: [{ source: rid(source) }, { sourceId: record.sourceId }] },
         fetchFirst: true,
         target: 'ClinicalTrial',
     });

@@ -70,7 +70,7 @@ const getDrugOrAdd = async (conn, source, name, rawRecord = {}) => {
             name, source: rid(source), sourceId: name, subsets: tags,
         },
         existsOk: true,
-        fetchConditions: { name, source: rid(source), sourceId: name },
+        fetchConditions: { AND: [{ name }, { source: rid(source) }, { sourceId: name }] },
         target: 'Therapy',
     });
 };
@@ -101,9 +101,11 @@ const addDrugClass = async (conn, source, name, rawRecord) => {
         },
         existsOk: true,
         fetchConditions: {
-            name,
-            source: rid(source),
-            sourceId: name,
+            AND: [
+                { name },
+                { source: rid(source) },
+                { sourceId: name },
+            ],
         },
         target: 'Therapy',
     });

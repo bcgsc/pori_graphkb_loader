@@ -113,10 +113,12 @@ const fetchAndLoadByIds = async (api, idListIn) => {
             const unversioned = await api.addRecord({
                 content: _.omit(record, ['sourceIdVersion', '@rid', '@class']),
                 fetchConditions: {
-                    name: record.name,
-                    source: record.source,
-                    sourceId: record.sourceId,
-                    sourceIdVersion: null,
+                    AND: [
+                        { name: record.name },
+                        { source: record.source },
+                        { sourceId: record.sourceId },
+                        { sourceIdVersion: null },
+                    ],
                 },
                 target: 'Feature',
             });
