@@ -6,10 +6,10 @@ const options = createOptionsMenu(
     [
         ...stdOptions,
         {
-            name: 'filename',
             description: 'path to the XML export of drugbank',
-            type: fileExists,
+            name: 'filename',
             required: true,
+            type: fileExists,
         },
     ],
 );

@@ -6,6 +6,7 @@ const _ = require('lodash');
 
 const { fetchByIdList, uploadRecord } = require('./util');
 const { checkSpec } = require('../util');
+const { rid } = require('../graphkb');
 const { refseq: SOURCE_DEFN } = require('../sources');
 
 const ajv = new Ajv();
@@ -15,16 +16,16 @@ const DB_NAME = 'nucleotide';
 const CACHE = {};
 
 const recordSpec = ajv.compile({
-    type: 'object',
-    required: ['title', 'biomol', 'accessionversion'],
     properties: {
-        accessionversion: { type: 'string', pattern: '^N[A-Z]_\\d+\\.\\d+$' },
-        biomol: { type: 'string', enum: ['genomic', 'rna', 'peptide', 'mRNA'] },
+        accessionversion: { pattern: '^N[A-Z]_\\d+\\.\\d+$', type: 'string' },
+        biomol: { enum: ['genomic', 'rna', 'peptide', 'mRNA'], type: 'string' },
+        replacedby: { type: 'string' },
+        status: { type: 'string' },
         subname: { type: 'string' },
         title: { type: 'string' },
-        status: { type: 'string' },
-        replacedby: { type: 'string' },
     },
+    required: ['title', 'biomol', 'accessionversion'],
+    type: 'object',
 });
 
 /**
@@ -42,11 +43,11 @@ const parseRecord = (record) => {
         biotype = 'protein';
     }
     const parsed = {
-        sourceId,
-        sourceIdVersion,
         biotype,
-        longName: record.title,
         displayName: record.accessionversion.toUpperCase(),
+        longName: record.title,
+        sourceId,
+        sourceIdVersion: sourceIdVersion || null,
     };
 
     if (biotype === 'chromosome') {
@@ -58,14 +59,14 @@ const parseRecord = (record) => {
 
 /**
  * Given some list of refseq IDs, return if cached,
- * If they do not exist, grab from the refseq api
+ * If they do not exist, grab from the refseq graphkbConn
  * and then upload to GraphKB
  *
  * @param {ApiConnection} api connection to GraphKB
  * @param {Array.<string>} idList list of IDs
  */
 const fetchAndLoadByIds = async (api, idListIn) => {
-    const versionedIds = []; idListIn.filter(id => /\.\d+$/.exec(id));
+    const versionedIds = [];
     const unversionedIds = [];
     idListIn.forEach((id) => {
         if (/\.\d+$/.exec(id)) {
@@ -80,7 +81,7 @@ const fetchAndLoadByIds = async (api, idListIn) => {
         records.push(...await fetchByIdList(
             versionedIds,
             {
-                db: DB_NAME, parser: parseRecord, cache: CACHE,
+                cache: CACHE, db: DB_NAME, parser: parseRecord,
             },
         ));
     }
@@ -89,29 +90,62 @@ const fetchAndLoadByIds = async (api, idListIn) => {
         const fullRecords = await fetchByIdList(
             unversionedIds,
             {
-                db: DB_NAME, parser: parseRecord, cache: CACHE,
+                cache: CACHE, db: DB_NAME, parser: parseRecord,
             },
         );
         fullRecords.forEach((rec) => {
             const simplified = _.omit(rec, ['sourceIdVersion', 'longName', 'description']);
             simplified.displayName = simplified.sourceId.toUpperCase();
-            records.push(simplified);
+            records.push({ ...simplified, sourceIdVersion: null });
         });
     }
 
     const result = await Promise.all(records.map(
         async record => uploadRecord(api, record, {
             cache: CACHE,
-            target: 'Feature',
             sourceDefn: SOURCE_DEFN,
+            target: 'Feature',
         }),
     ));
+    // for versioned records link to the unversioned version
+    await Promise.all(result.map(async (record) => {
+        if (record.sourceIdVersion !== undefined && record.sourceIdVersion !== null) {
+            const unversioned = await api.addRecord({
+                content: {
+                    biotype: record.biotype,
+                    description: record.description,
+                    displayName: record.sourceId.toUpperCase(),
+                    longName: record.longName,
+                    name: record.name,
+                    source: rid(record.source),
+                    sourceId: record.sourceId,
+                    sourceIdVersion: null,
+                },
+                existsOk: true,
+                fetchConditions: {
+                    AND: [
+                        { name: record.name },
+                        { source: rid(record.source) },
+                        { sourceId: record.sourceId },
+                        { sourceIdVersion: null },
+                    ],
+                },
+                target: 'Feature',
+            });
+            await api.addRecord({
+                content: { in: rid(record), out: rid(unversioned), source: record.source },
+                existsOk: true,
+                target: 'GeneralizationOf',
+            });
+        }
+    }));
+
     return result;
 };
 
 
 module.exports = {
-    parseRecord,
-    fetchAndLoadByIds,
     SOURCE_DEFN,
+    fetchAndLoadByIds,
+    parseRecord,
 };

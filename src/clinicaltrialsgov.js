@@ -33,11 +33,48 @@ const ajv = new Ajv();
 
 
 const singleItemArray = (spec = { type: 'string' }) => ({
-    type: 'array', maxItems: 1, minItems: 1, items: { ...spec },
+    items: { ...spec }, maxItems: 1, minItems: 1, type: 'array',
 });
 
 const validateDownloadedTrialRecord = ajv.compile({
-    type: 'object',
+    properties: {
+        conditions: singleItemArray({
+            properties: {
+                condition: { items: { type: 'string' }, minItems: 1, type: 'array' },
+            },
+            required: ['condition'],
+            type: 'object',
+        }),
+        interventions: singleItemArray({
+            properties: {
+                intervention: {
+                    items: {
+                        properties: {
+                            _: { type: 'string' },
+                            type: singleItemArray(),
+                        },
+                        required: ['_', 'type'],
+                        type: 'object',
+                    },
+                    minItems: 1,
+                    type: 'array',
+                },
+            },
+            required: ['intervention'],
+            type: 'object',
+        }),
+        last_update_posted: singleItemArray(),
+        nct_id: singleItemArray({ pattern: '^NCT\\d+$' }),
+        phases: singleItemArray({
+            properties: {
+                phase: { items: { type: 'string' }, minItems: 1, type: 'array' },
+            },
+            required: ['phase'],
+            type: 'object',
+        }),
+        title: singleItemArray(),
+        url: singleItemArray(),
+    },
     required: [
         'nct_id',
         'title',
@@ -47,53 +84,93 @@ const validateDownloadedTrialRecord = ajv.compile({
         'interventions',
         'conditions',
     ],
-    properties: {
-        nct_id: singleItemArray({ pattern: '^NCT\\d+$' }),
-        title: singleItemArray(),
-        url: singleItemArray(),
-        last_update_posted: singleItemArray(),
-        phases: singleItemArray({
-            type: 'object',
-            required: ['phase'],
-            properties: {
-                phase: { type: 'array', minItems: 1, items: { type: 'string' } },
-            },
-        }),
-        conditions: singleItemArray({
-            type: 'object',
-            required: ['condition'],
-            properties: {
-                condition: { type: 'array', minItems: 1, items: { type: 'string' } },
-            },
-        }),
-        interventions: singleItemArray({
-            type: 'object',
-            required: ['intervention'],
-            properties: {
-                intervention: {
-                    type: 'array',
-                    minItems: 1,
-                    items: {
-                        type: 'object',
-                        required: ['_', 'type'],
-                        properties: {
-                            _: { type: 'string' },
-                            type: singleItemArray(),
-                        },
-                    },
-                },
-            },
-        }),
-    },
+    type: 'object',
 });
 
 
 const validateAPITrialRecord = ajv.compile({
-    type: 'object',
-    required: ['clinical_study'],
     properties: {
         clinical_study: {
-            type: 'object',
+            properties: {
+                completion_date: singleItemArray({
+                    properties: {
+                        _: { type: 'string' },
+                    },
+                    required: ['_'],
+                    type: 'object',
+                }),
+                condition: {
+                    items: { type: 'string' },
+                    type: 'array',
+                },
+                id_info: singleItemArray({
+                    properties: { nct_id: singleItemArray({ pattern: '^NCT\\d+$' }) },
+                    required: ['nct_id'],
+                    type: 'object',
+                }),
+                intervention: {
+                    items: {
+                        properties: {
+                            intervention_name: singleItemArray(),
+                            intervention_type: singleItemArray(),
+                        },
+                        required: [
+                            'intervention_type',
+                            'intervention_name',
+                        ],
+                        type: 'object',
+                    },
+                    type: 'array',
+                },
+                last_update_posted: singleItemArray({
+                    properties: { _: { type: 'string' } },
+                    required: ['_'],
+                    type: 'object',
+                }),
+                location: {
+                    items: {
+                        properties: {
+                            facility: singleItemArray({
+                                properties: {
+                                    address: singleItemArray({
+                                        properties: {
+                                            city: singleItemArray(),
+                                            country: singleItemArray(),
+                                        },
+                                        required: ['city', 'country'],
+                                        type: 'object',
+                                    }),
+                                },
+                                required: ['address'],
+                                type: 'object',
+                            }),
+                        },
+                        required: ['facility'],
+                        type: 'object',
+                    },
+                    minItems: 1,
+                    type: 'array',
+                },
+                official_title: singleItemArray(),
+                phase: singleItemArray(),
+                required_header: singleItemArray({
+                    properties: { url: singleItemArray() },
+                    required: ['url'],
+                    type: 'object',
+                }),
+                start_date: singleItemArray({
+                    oneOf: [
+                        {
+                            properties: {
+                                _: { type: 'string' },
+                            },
+                            required: ['_'],
+                            type: 'object',
+                        },
+                        { type: 'string' },
+                    ],
+                }),
+            },
             required: [
                 'id_info',
                 'official_title',
@@ -104,127 +181,50 @@ const validateAPITrialRecord = ajv.compile({
                 'required_header',
                 'location',
             ],
-            properties: {
-                required_header: singleItemArray({
-                    type: 'object',
-                    required: ['url'],
-                    properties: { url: singleItemArray() },
-                }),
-                start_date: singleItemArray({
-                    oneOf: [
-                        {
-                            type: 'object',
-                            required: ['_'],
-                            properties: {
-                                _: { type: 'string' },
-                            },
-                        },
-                        { type: 'string' },
-                    ],
-                }),
-                completion_date: singleItemArray({
-                    type: 'object',
-                    required: ['_'],
-                    properties: {
-                        _: { type: 'string' },
-                    },
-                }),
-                id_info: singleItemArray({
-                    type: 'object',
-                    required: ['nct_id'],
-                    properties: { nct_id: singleItemArray({ pattern: '^NCT\\d+$' }) },
-                }),
-                official_title: singleItemArray(),
-                phase: singleItemArray(),
-                condition: {
-                    type: 'array',
-                    items: { type: 'string' },
-                },
-                intervention: {
-                    type: 'array',
-                    items: {
-                        type: 'object',
-                        required: [
-                            'intervention_type',
-                            'intervention_name',
-                        ],
-                        properties: {
-                            intervention_name: singleItemArray(),
-                            intervention_type: singleItemArray(),
-                        },
-                    },
-                },
-                last_update_posted: singleItemArray({
-                    type: 'object',
-                    required: ['_'],
-                    properties: { _: { type: 'string' } },
-                }),
-                location: {
-                    type: 'array',
-                    minItems: 1,
-                    items: {
-                        type: 'object',
-                        required: ['facility'],
-                        properties: {
-                            facility: singleItemArray({
-                                type: 'object',
-                                required: ['address'],
-                                properties: {
-                                    address: singleItemArray({
-                                        type: 'object',
-                                        required: ['city', 'country'],
-                                        properties: {
-                                            city: singleItemArray(),
-                                            country: singleItemArray(),
-                                        },
-                                    }),
-                                },
-                            }),
-                        },
-                    },
-                },
-            },
+            type: 'object',
         },
     },
+    required: ['clinical_study'],
+    type: 'object',
 });
 
 // console.log(xml.rss.channel[0].item[0]);
 const validateRssFeed = ajv.compile({
-    type: 'object',
-    required: ['rss'],
     properties: {
         rss: {
-            type: 'object',
-            required: ['channel'],
             properties: {
                 channel: singleItemArray({
-                    type: 'object',
-                    required: ['item'],
                     properties: {
                         item: {
-                            type: 'array',
                             items: {
-                                type: 'object',
-                                required: ['guid'],
                                 properties: {
                                     guid: singleItemArray({
-                                        type: 'object',
-                                        required: ['_'],
                                         properties: {
                                             _: {
-                                                type: 'string',
                                                 pattern: '^NCT\\d+$',
+                                                type: 'string',
                                             },
                                         },
+                                        required: ['_'],
+                                        type: 'object',
                                     }),
                                 },
+                                required: ['guid'],
+                                type: 'object',
                             },
+                            type: 'array',
                         },
                     },
+                    required: ['item'],
+                    type: 'object',
                 }),
             },
+            required: ['channel'],
+            type: 'object',
         },
     },
+    required: ['rss'],
+    type: 'object',
 });
 
 const standardizeDate = (dateString) => {
@@ -258,15 +258,15 @@ const convertAPIRecord = (rawRecord) => {
     } catch (err) {}
 
     const content = {
-        sourceId: record.id_info[0].nct_id[0],
-        name: record.official_title[0],
-        url: record.required_header[0].url[0],
-        sourceIdVersion: standardizeDate(record.last_update_posted[0]._),
+        completionDate,
         diseases: record.condition,
         drugs: [],
-        startDate,
-        completionDate,
         locations: [],
+        name: record.official_title[0],
+        sourceId: record.id_info[0].nct_id[0],
+        sourceIdVersion: standardizeDate(record.last_update_posted[0]._),
+        startDate,
+        url: record.required_header[0].url[0],
     };
 
     if (record.phase) {
@@ -281,7 +281,7 @@ const convertAPIRecord = (rawRecord) => {
 
     for (const location of record.location || []) {
         const { facility: [{ address: [{ country: [country], city: [city] }] }] } = location;
-        content.locations.push({ country: country.toLowerCase(), city: city.toLowerCase() });
+        content.locations.push({ city: city.toLowerCase(), country: country.toLowerCase() });
     }
     return content;
 };
@@ -293,14 +293,14 @@ const convertAPIRecord = (rawRecord) => {
 const convertDownloadedRecord = (record) => {
     checkSpec(validateDownloadedTrialRecord, record, rec => rec.nct_id[0]);
     const content = {
-        phases: record.phases[0].phase || [],
-        drugs: [],
         diseases: [],
-        sourceId: record.nct_id[0],
-        url: record.url[0],
-        name: record.title[0],
-        sourceIdVersion: standardizeDate(record.last_update_posted[0]),
+        drugs: [],
         locations: [],
+        name: record.title[0],
+        phases: record.phases[0].phase || [],
+        sourceId: record.nct_id[0],
+        sourceIdVersion: standardizeDate(record.last_update_posted[0]),
+        url: record.url[0],
     };
 
     for (const { _: name, type: [rawType] } of record.interventions[0].intervention) {
@@ -319,8 +319,8 @@ const convertDownloadedRecord = (record) => {
     for (const location of record.locations[0].location || []) {
         const [country, state, city] = location.split(',').reverse();
         content.locations.push({
-            country: country.toLowerCase().trim(),
             city: `${city.toLowerCase().trim()} (${state.toLowerCase().trim()})`,
+            country: country.toLowerCase().trim(),
         });
     }
     return content;
@@ -362,12 +362,12 @@ const processRecord = async ({
     conn, record, source,
 }) => {
     const content = {
-        sourceId: record.sourceId,
-        url: record.url,
-        name: record.name,
-        sourceIdVersion: record.sourceIdVersion,
-        source: rid(source),
         displayName: record.name,
+        name: record.name,
+        source: rid(source),
+        sourceId: record.sourceId,
+        sourceIdVersion: record.sourceIdVersion,
+        url: record.url,
     };
     const phase = processPhases(record.phases);
 
@@ -416,9 +416,9 @@ const processRecord = async ({
     for (const drug of record.drugs) {
         try {
             const intervention = await conn.getUniqueRecordBy({
-                target: 'Therapy',
                 filters: { name: drug },
                 sort: orderPreferredOntologyTerms,
+                target: 'Therapy',
             });
             links.push(intervention);
         } catch (err) {
@@ -430,9 +430,9 @@ const processRecord = async ({
     for (const diseaseName of record.diseases) {
         try {
             const disease = await conn.getUniqueRecordBy({
-                target: 'Disease',
                 filters: { name: diseaseName },
                 sort: orderPreferredOntologyTerms,
+                target: 'Disease',
             });
             links.push(disease);
         } catch (err) {
@@ -442,20 +442,20 @@ const processRecord = async ({
     }
     // create the clinical trial record
     const trialRecord = await conn.addRecord({
-        target: 'ClinicalTrial',
         content,
         existsOk: true,
+        fetchConditions: { AND: [{ source: rid(source) }, { sourceId: record.sourceId }] },
         fetchFirst: true,
-        fetchConditions: { source: rid(source), sourceId: record.sourceId },
+        target: 'ClinicalTrial',
     });
 
     // link to the drugs and diseases
     for (const link of links) {
         await conn.addRecord({
-            target: 'ElementOf',
-            content: { out: rid(link), in: rid(trialRecord), source: rid(source) },
+            content: { in: rid(trialRecord), out: rid(link), source: rid(source) },
             existsOk: true,
             fetchExisting: false,
+            target: 'ElementOf',
         });
     }
     return trialRecord;
@@ -477,14 +477,14 @@ const fetchAndLoadById = async (conn, nctID) => {
     // try to get the record from the gkb db first
     try {
         const trial = await conn.getUniqueRecordBy({
-            target: 'ClinicalTrial',
             filters: {
                 AND: [
-                    { source: { target: 'Source', filters: { name: SOURCE_DEFN.name } } },
+                    { source: { filters: { name: SOURCE_DEFN.name }, target: 'Source' } },
                     { sourceId: nctID },
                 ],
             },
             sort: orderPreferredOntologyTerms,
+            target: 'ClinicalTrial',
         });
         CACHE[trial.sourceId] = trial;
         return trial;
@@ -492,21 +492,21 @@ const fetchAndLoadById = async (conn, nctID) => {
     logger.info(`loading: ${url}`);
     // fetch from the external api
     const resp = await requestWithRetry({
-        method: 'GET',
-        uri: url,
-        qs: { displayxml: true },
         headers: { Accept: 'application/xml' },
         json: true,
+        method: 'GET',
+        qs: { displayxml: true },
+        uri: url,
     });
     const result = await parseXmlToJson(resp);
 
     // get or add the source
     if (!CACHE.source) {
         CACHE.source = rid(await conn.addRecord({
-            target: 'Source',
             content: SOURCE_DEFN,
-            fetchConditions: { name: SOURCE_DEFN.name },
             existsOk: true,
+            fetchConditions: { name: SOURCE_DEFN.name },
+            target: 'Source',
         }));
     }
     const trial = await processRecord({
@@ -528,16 +528,16 @@ const uploadFile = async ({ conn, filename }) => {
     logger.info(`loading: ${filename}`);
     const data = await loadXmlToJson(filename);
     const source = await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
-        fetchConditions: { name: SOURCE_DEFN.name },
         existsOk: true,
+        fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     });
 
     const { search_results: { study: records } } = data;
     logger.info(`loading ${records.length} records`);
     const counts = {
-        success: 0, error: 0,
+        error: 0, success: 0,
     };
 
     for (const record of records) {
@@ -566,18 +566,18 @@ const loadNewTrials = async ({ conn }) => {
 
     for (const country of ['CA', 'US']) {
         const resp = await requestWithRetry({
-            uri: RSS_URL,
-            qs: {
-                rcv_d: '',
-                lup_d: 14,
-                sel_rss: 'new14', // mod14 for last 2 weeks updated
-                recrs: 'abdef',
-                type: 'Intr', // interventional only
-                cond: 'cancer', // cancer related trials
-                cntry: country,
-                count: 10000,
-            },
             method: 'GET',
+            qs: {
+                cntry: country,
+                cond: 'cancer', // cancer related trials
+                count: 10000,
+                lup_d: 14,
+                rcv_d: '',
+                recrs: 'abdef',
+                sel_rss: 'new14', // mod14 for last 2 weeks updated
+                type: 'Intr', // interventional only
+            },
+            uri: RSS_URL,
         });
         const xml = await parseXmlToJson(resp);
         fs.writeFileSync('output.json', JSON.stringify(xml, null, 2));
@@ -587,7 +587,7 @@ const loadNewTrials = async ({ conn }) => {
         );
     }
     logger.info(`loading ${recentlyUpdatedTrials.length} recently updated trials`);
-    const counts = { success: 0, error: 0 };
+    const counts = { error: 0, success: 0 };
 
     for (const trialId of recentlyUpdatedTrials) {
         try {
@@ -602,10 +602,10 @@ const loadNewTrials = async ({ conn }) => {
 };
 
 module.exports = {
+    SOURCE_DEFN,
+    convertAPIRecord,
+    fetchAndLoadById,
+    kb: true,
     upload: loadNewTrials,
     uploadFile,
-    SOURCE_DEFN,
-    kb: true,
-    fetchAndLoadById,
-    convertAPIRecord,
 };

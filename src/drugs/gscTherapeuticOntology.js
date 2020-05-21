@@ -11,12 +11,12 @@ const { SOURCE_DEFN: { name: chemblName } } = require('./chembl');
 const { gscTherapeuticOntology: SOURCE_DEFN } = require('../sources');
 
 const HEADER = {
-    name: 'source',
-    parent: 'Class_1',
+    alias: 'alias',
+    drugbank: 'DrugBankID',
     grandparent1: 'Class_2',
     grandparent2: 'Class_3_pathway',
-    drugbank: 'DrugBankID',
-    alias: 'alias',
+    name: 'source',
+    parent: 'Class_1',
 };
 
 const TAGS = {
@@ -44,34 +44,34 @@ const getDrugOrAdd = async (conn, source, name, rawRecord = {}) => {
 
     try {
         record = await conn.getUniqueRecordBy({
-            target: 'Therapy',
             filters: {
                 AND: [
-                    { source: { target: 'Source', filters: { name: drugbankName } } },
+                    { source: { filters: { name: drugbankName }, target: 'Source' } },
                     { name },
                 ],
             },
             sort: orderPreferredOntologyTerms,
+            target: 'Therapy',
         });
         return record;
     } catch (err) {}
 
     try {
         record = await conn.getUniqueRecordBy({
-            target: 'Therapy',
-            filters: { AND: [{ source: { target: 'Source', filters: { name: chemblName } } }, { name }] },
+            filters: { AND: [{ source: { filters: { name: chemblName }, target: 'Source' } }, { name }] },
             sort: orderPreferredOntologyTerms,
+            target: 'Therapy',
         });
         return record;
     } catch (err) {}
 
     return conn.addRecord({
-        target: 'Therapy',
         content: {
-            name, sourceId: name, source: rid(source), subsets: tags,
+            name, source: rid(source), sourceId: name, subsets: tags,
         },
-        fetchConditions: { name, sourceId: name, source: rid(source) },
         existsOk: true,
+        fetchConditions: { AND: [{ name }, { source: rid(source) }, { sourceId: name }] },
+        target: 'Therapy',
     });
 };
 
@@ -93,38 +93,40 @@ const addDrugClass = async (conn, source, name, rawRecord) => {
     }
 
     const record = await conn.addRecord({
-        target: 'Therapy',
         content: {
             name,
-            sourceId: name,
             source: rid(source),
+            sourceId: name,
             subsets: tags,
         },
         existsOk: true,
         fetchConditions: {
-            name,
-            sourceId: name,
-            source: rid(source),
+            AND: [
+                { name },
+                { source: rid(source) },
+                { sourceId: name },
+            ],
         },
+        target: 'Therapy',
     });
 
     // link to drugs with exact name matches
     try {
         const drugbankDrug = await conn.getUniqueRecordBy({
-            target: 'Therapy',
             filters: {
                 AND: [
-                    { source: { target: 'Source', filters: { name: drugbankName } } },
+                    { source: { filters: { name: drugbankName }, target: 'Source' } },
                     { name },
                 ],
             },
             sort: orderPreferredOntologyTerms,
+            target: 'Therapy',
         });
         await conn.addRecord({
-            target: 'CrossReferenceOf',
-            content: { out: rid(record), in: rid(drugbankDrug), source: rid(source) },
+            content: { in: rid(drugbankDrug), out: rid(record), source: rid(source) },
             existsOk: true,
             fetchExistsing: false,
+            target: 'CrossReferenceOf',
         });
     } catch (err) {}
     return record;
@@ -144,12 +146,12 @@ const uploadFile = async (opt) => {
     const content = await loadDelimToJson(filename);
 
     const source = rid(await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
+        target: 'Source',
     }));
 
-    const counts = { success: 0, error: 0 };
+    const counts = { error: 0, success: 0 };
 
     for (let i = 0; i < content.length; i++) {
         const record = content[i];
@@ -175,57 +177,57 @@ const uploadFile = async (opt) => {
             );
             // link the drug to its alias terms
             await Promise.all(aliases.map(async alias => conn.addRecord({
-                target: 'aliasof',
-                content: { out: rid(alias), in: rid(drug), source: rid(source) },
+                content: { in: rid(drug), out: rid(alias), source: rid(source) },
                 existsOk: true,
+                target: 'aliasof',
             })));
 
             if (parent) {
                 if (rid(drug) !== rid(parent)) {
                     await conn.addRecord({
-                        target: 'subclassof',
-                        content: { out: rid(drug), in: rid(parent), source },
+                        content: { in: rid(parent), out: rid(drug), source },
                         existsOk: true,
                         fetchExistsing: false,
+                        target: 'subclassof',
                     });
                 }
                 if (grandparent1 && rid(parent) !== rid(grandparent1)) {
                     await conn.addRecord({
-                        target: 'subclassof',
-                        content: { out: rid(parent), in: rid(grandparent1), source },
+                        content: { in: rid(grandparent1), out: rid(parent), source },
                         existsOk: true,
                         fetchExistsing: false,
+                        target: 'subclassof',
                     });
                 }
                 if (grandparent2 && rid(parent) !== rid(grandparent2)) {
                     await conn.addRecord({
-                        target: 'subclassof',
-                        content: { out: rid(parent), in: rid(grandparent2), source },
+                        content: { in: rid(grandparent2), out: rid(parent), source },
                         existsOk: true,
                         fetchExistsing: false,
+                        target: 'subclassof',
                     });
                 }
             }
             // get the mapped drugbank drug
             if (/^DB\d+$/i.exec(record[HEADER.drugbank])) {
                 const dbDrug = rid(await conn.getUniqueRecordBy({
-                    target: 'Therapy',
                     filters: {
                         AND: [
-                            { source: { target: 'Source', filters: { name: drugbankName } } },
+                            { source: { filters: { name: drugbankName }, target: 'Source' } },
                             { sourceId: record[HEADER.drugbank] },
                         ],
                     },
                     sort: orderPreferredOntologyTerms,
+                    target: 'Therapy',
                 }));
 
                 // now link the records together
                 if (dbDrug !== rid(drug)) {
                     await conn.addRecord({
-                        target: 'crossreferenceof',
-                        content: { out: rid(drug), in: dbDrug, source },
+                        content: { in: dbDrug, out: rid(drug), source },
                         existsOk: true,
                         fetchExistsing: false,
+                        target: 'crossreferenceof',
                     });
                 }
             }
@@ -239,4 +241,4 @@ const uploadFile = async (opt) => {
 };
 
 
-module.exports = { SOURCE_DEFN, uploadFile, dependencies: [drugbankName] };
+module.exports = { SOURCE_DEFN, dependencies: [drugbankName], uploadFile };

@@ -34,7 +34,9 @@ const convertRecordToQueryFilters = (record) => {
     const filters = [];
 
     for (const [prop, value] of Object.entries(record).sort()) {
-        filters.push({ [prop]: value });
+        if (value !== undefined) {
+            filters.push({ [prop]: value });
+        }
     }
     return { AND: filters };
 };
@@ -133,10 +135,10 @@ class ApiConnection {
     async login() {
         logger.log('info', `login to ${this.baseUrl}`);
         const token = await request({
+            body: { password: this.password, username: this.username },
+            json: true,
             method: 'POST',
             uri: `${this.baseUrl}/token`,
-            json: true,
-            body: { username: this.username, password: this.password },
         });
         this.headers.Authorization = token.kbToken;
         const tokenContent = jwt.decode(token.kbToken);
@@ -156,10 +158,10 @@ class ApiConnection {
             await this.login();
         }
         const req = {
-            method: opt.method || 'GET',
             headers: this.headers,
-            uri: `${this.baseUrl}/${opt.uri.replace(/^\//, '')}`,
             json: true,
+            method: opt.method || 'GET',
+            uri: `${this.baseUrl}/${opt.uri.replace(/^\//, '')}`,
         };
 
         if (opt.body) {
@@ -168,7 +170,24 @@ class ApiConnection {
         if (opt.qs) {
             req.qs = opt.qs;
         }
-        return request(req);
+
+        try {
+            const result = await request(req);
+            return result;
+        } catch (err) {
+            let errorMessage = err.message;
+
+            try {
+                const errorContent = err.error;
+                errorMessage = `${errorContent.name}: ${errorContent.message}`;
+            } catch (err2) {}
+
+            if (err.statusCode === 400) {
+                logger.error(`bad request ${opt.method || 'GET'} ${opt.uri} ${JSON.stringify(opt.body)}`);
+                logger.error(errorMessage);
+            }
+            throw err;
+        }
     }
 
     getCreatedCounts() {
@@ -195,16 +214,16 @@ class ApiConnection {
 
         while (lastFetch === limit) {
             const { result: records } = await this.request({
-                uri: '/query',
-                method: 'POST',
                 body: {
-                    target,
                     filters,
-                    neighbors,
                     limit,
-                    skip,
+                    neighbors,
                     returnProperties,
+                    skip,
+                    target,
                 },
+                method: 'POST',
+                uri: '/query',
             });
             result.push(...records);
             lastFetch = records.length;
@@ -238,15 +257,15 @@ class ApiConnection {
         } = opt;
 
         const { result: records } = await this.request({
+            body: { filters, neighbors, target },
             method: 'POST',
             uri: '/query',
-            body: { target, filters, neighbors },
         });
         records.sort(sortFunc);
 
         if (records.length > 1) {
             if (sortFunc(records[0], records[1]) === 0) {
-                throw new Error(`expected a single ${target} record but found multiple: [${rid(records[0])}, ${rid(records[1])}]`);
+                throw new Error(`expected a single ${target} record but found multiple: [${rid(records[0])}, ${rid(records[1])}] where ${JSON.stringify(filters)}`);
             }
         } else if (records.length === 0) {
             throw new Error(`missing ${target} record where ${JSON.stringify(filters)}`);
@@ -273,9 +292,9 @@ class ApiConnection {
 
         try {
             return await this.getUniqueRecordBy({
-                target: 'Therapy',
-                sort: orderPreferredOntologyTerms,
                 filters,
+                sort: orderPreferredOntologyTerms,
+                target: 'Therapy',
             });
         } catch (err) {
             error = err;
@@ -300,9 +319,9 @@ class ApiConnection {
                     filters = { AND: [{ source }, filters] };
                 }
                 return await this.getUniqueRecordBy({
-                    target: 'Therapy',
-                    sort: orderPreferredOntologyTerms,
                     filters,
+                    sort: orderPreferredOntologyTerms,
+                    target: 'Therapy',
                 });
             } catch (err) {
                 error = err;
@@ -311,16 +330,16 @@ class ApiConnection {
         throw error;
     }
 
-    async getVocabularyTerm(term) {
+    async getVocabularyTerm(term, sourceName = INTERNAL_SOURCE_NAME) {
         return this.getUniqueRecordBy({
-            target: 'Vocabulary',
             filters: {
                 AND: [
                     { sourceId: term },
-                    { source: { target: 'Source', filters: { name: INTERNAL_SOURCE_NAME } } },
+                    { source: { filters: { name: sourceName }, target: 'Source' } },
                 ],
             },
             sortFunc: orderPreferredOntologyTerms,
+            target: 'Vocabulary',
         });
     }
 
@@ -349,8 +368,8 @@ class ApiConnection {
                 const filters = fetchConditions || convertRecordToQueryFilters(content);
                 return await this.getUniqueRecordBy({
                     filters,
-                    target,
                     sortFunc,
+                    target,
                 });
             } catch (err) { }
         }
@@ -363,9 +382,9 @@ class ApiConnection {
 
         try {
             const { result } = jc.retrocycle(await this.request({
+                body: content,
                 method: 'POST',
                 uri: model.routeName,
-                body: content,
             }));
 
             if (this.created[model.name] === undefined) {
@@ -379,8 +398,8 @@ class ApiConnection {
                     const filters = fetchConditions || convertRecordToQueryFilters(content);
                     return this.getUniqueRecordBy({
                         filters,
-                        target,
                         sortFunc,
+                        target,
                     });
                 }
                 return null;
@@ -400,19 +419,19 @@ class ApiConnection {
             target,
         } = opt;
         const fetchConditions = {
-            zygosity: null,
             germline: null,
             reference2: null,
+            zygosity: null,
         };
 
         if (target === 'PositionalVariant') {
             Object.assign(fetchConditions, {
-                untemplatedSeq: null,
-                refSeq: null,
+                assembly: null,
                 break1Repr: null,
                 break2Repr: null,
+                refSeq: null,
                 truncation: null,
-                assembly: null,
+                untemplatedSeq: null,
             });
         }
         const {
@@ -455,9 +474,9 @@ class ApiConnection {
             const sourceId = elements.map(e => e.sourceId).sort().join(' + ');
             const name = elements.map(e => e.name).sort().join(' + ');
             const combinedTherapy = await this.addRecord({
-                target: 'Therapy',
-                content: { sourceId, name, source: rid(source) },
+                content: { name, source: rid(source), sourceId },
                 existsOk: true,
+                target: 'Therapy',
             });
             return combinedTherapy;
         } catch (err) {
@@ -470,10 +489,10 @@ class ApiConnection {
 
 
 module.exports = {
-    convertRecordToQueryFilters,
+    ApiConnection,
     INTERNAL_SOURCE_NAME,
-    rid,
+    convertRecordToQueryFilters,
     generateCacheKey,
     orderPreferredOntologyTerms,
-    ApiConnection,
+    rid,
 };

@@ -17,67 +17,67 @@ const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
 const DOID_PATTERN = `^${PREFIX_TO_STRIP}DOID_\\d+$`;
 
 const nodeSpec = ajv.compile({
-    type: 'object',
-    required: ['id', 'lbl'],
     properties: {
-        id: { type: 'string', pattern: DOID_PATTERN },
+        id: { pattern: DOID_PATTERN, type: 'string' },
         lbl: { type: 'string' },
         meta: {
-            type: 'object',
             properties: {
-                deprecated: { type: 'boolean' },
-                definition: {
-                    type: 'object',
-                    required: ['val'],
-                    properties: { val: { type: 'string' } },
-                },
-                subsets: {
+                basicPropertyValues: {
+                    items: {
+                        properties: {
+                            pred: { type: 'string' },
+                            val: { type: 'string' },
+                        },
+                        required: ['val', 'pred'],
+                        type: 'object',
+                    },
                     type: 'array',
+                },
+                definition: {
+                    properties: { val: { type: 'string' } },
+                    required: ['val'],
+                    type: 'object',
+                },
+                deprecated: { type: 'boolean' },
+                subsets: {
                     items: {
                         type: 'string',
                     },
+                    type: 'array',
                 },
                 synonyms: {
-                    type: 'array',
                     items: {
-                        type: 'object',
-                        required: ['val'],
                         properties: { val: { type: 'string' } },
-                    },
-                },
-                basicPropertyValues: {
-                    type: 'array',
-                    items: {
+                        required: ['val'],
                         type: 'object',
-                        required: ['val', 'pred'],
-                        properties: {
-                            val: { type: 'string' },
-                            pred: { type: 'string' },
-                        },
                     },
+                    type: 'array',
                 },
                 xrefs: {
-                    type: 'array',
                     items: {
-                        type: 'object',
-                        required: ['val'],
                         properties: { val: { type: 'string' } },
+                        required: ['val'],
+                        type: 'object',
                     },
+                    type: 'array',
                 },
             },
+            type: 'object',
         },
     },
+    required: ['id', 'lbl'],
+    type: 'object',
 });
 
 
 const edgeSpec = ajv.compile({
-    type: 'object',
-    required: ['sub', 'pred', 'obj'],
     properties: {
-        sub: { type: 'string', pattern: DOID_PATTERN },
+        obj: { pattern: DOID_PATTERN, type: 'string' },
         pred: { type: 'string' },
-        obj: { type: 'string', pattern: DOID_PATTERN },
+        sub: { pattern: DOID_PATTERN, type: 'string' },
     },
+    required: ['sub', 'pred', 'obj'],
+    type: 'object',
 });
 
 
@@ -140,13 +140,13 @@ const parseNodeRecord = (record) => {
     }
 
     return {
-        ncitLinks,
-        hasDeprecated,
-        deprecated,
         aliases,
-        sourceId: parseDoid(id),
-        name,
+        deprecated,
         description,
+        hasDeprecated,
+        name,
+        ncitLinks,
+        sourceId: parseDoid(id),
         subsets: subsets.map(subset => subset.replace(PREFIX_TO_STRIP, '')),
     };
 };
@@ -182,14 +182,14 @@ const loadEdges = async ({
 
             if (records[src] && records[tgt]) {
                 await conn.addRecord({
-                    target: 'SubclassOf',
                     content: {
-                        out: records[src]['@rid'],
                         in: records[tgt]['@rid'],
+                        out: records[src]['@rid'],
                         source,
                     },
                     existsOk: true,
                     fetchExisting: false,
+                    target: 'SubclassOf',
                 });
             }
         }
@@ -214,13 +214,13 @@ const uploadFile = async ({ filename, conn }) => {
 
     const doVersion = parseDoVersion(DOID.graphs[0].meta.version);
     let source = await conn.addRecord({
-        target: 'Source',
         content: {
             ...SOURCE_DEFN,
             version: doVersion,
         },
         existsOk: true,
         fetchConditions: { AND: [{ name: SOURCE_DEFN.name }, { version: doVersion }] },
+        target: 'Source',
     });
     source = rid(source);
     logger.info(`processing ${DOID.graphs[0].nodes.length} nodes`);
@@ -230,15 +230,15 @@ const uploadFile = async ({ filename, conn }) => {
 
     try {
         const ncitSource = await conn.getUniqueRecordBy({
-            target: 'Source',
             filters: { name: ncitName },
+            target: 'Source',
         });
         logger.info(`fetched ncit source record ${rid(ncitSource)}`);
         logger.info('getting existing ncit records');
         const ncitRecords = await conn.getRecords({
-            target: 'Disease',
             filters: { AND: [{ source: rid(ncitSource) }, { dependency: null }] },
             neighbors: 0,
+            target: 'Disease',
         });
         logger.info(`cached ${ncitRecords.length} ncit records`);
 
@@ -249,7 +249,7 @@ const uploadFile = async ({ filename, conn }) => {
         logger.error(err);
     }
 
-    const counts = { error: 0, success: 0, skip: 0 };
+    const counts = { error: 0, skip: 0, success: 0 };
 
     for (let i = 0; i < DOID.graphs[0].nodes.length; i++) {
         const node = DOID.graphs[0].nodes[i];
@@ -281,13 +281,12 @@ const uploadFile = async ({ filename, conn }) => {
         synonymsByName[name] = [];
         // create the database entry
         const record = await conn.addRecord({
-            target: 'Disease',
             content: {
-                source,
-                sourceId,
-                name,
                 deprecated,
                 description,
+                name,
+                source,
+                sourceId,
                 subsets,
             },
             existsOk: true,
@@ -296,6 +295,7 @@ const uploadFile = async ({ filename, conn }) => {
                     { sourceId }, { deprecated }, { name }, { source },
                 ],
             },
+            target: 'Disease',
         });
 
         if (recordsBySourceId[record.sourceId] !== undefined) {
@@ -307,24 +307,24 @@ const uploadFile = async ({ filename, conn }) => {
         for (const alias of aliases) {
             try {
                 const synonym = await conn.addRecord({
-                    target: 'Disease',
                     content: {
-                        sourceId: record.sourceId,
-                        name: alias,
                         dependency: rid(record),
+                        name: alias,
                         source,
+                        sourceId: record.sourceId,
                     },
                     existsOk: true,
+                    target: 'Disease',
                 });
                 await conn.addRecord({
-                    target: 'AliasOf',
                     content: {
-                        out: rid(synonym),
                         in: rid(record),
+                        out: rid(synonym),
                         source,
                     },
                     existsOk: true,
                     fetchExisting: false,
+                    target: 'AliasOf',
                 });
             } catch (err) {
                 logger.error(`Failed to create alias (${record.sourceId}, ${record.name}) ${alias}`);
@@ -337,21 +337,21 @@ const uploadFile = async ({ filename, conn }) => {
         for (const alternateId of hasDeprecated) {
             try {
                 const alternate = await conn.addRecord({
-                    target: 'Disease',
                     content: {
-                        sourceId: alternateId,
-                        name: record.name,
-                        deprecated: true,
                         dependency: rid(record),
+                        deprecated: true,
+                        name: record.name,
                         source,
+                        sourceId: alternateId,
                     },
                     existsOk: true,
+                    target: 'Disease',
                 });
                 await conn.addRecord({
-                    target: 'DeprecatedBy',
-                    content: { out: rid(alternate), in: rid(record), source },
+                    content: { in: rid(record), out: rid(alternate), source },
                     existsOk: true,
                     fetchExisting: false,
+                    target: 'DeprecatedBy',
                 });
             } catch (err) {
                 logger.error(`Failed to create deprecated form (${record.sourceId}) ${alternateId}`);
@@ -367,10 +367,10 @@ const uploadFile = async ({ filename, conn }) => {
                 logger.warn(`failed to link ${record.sourceId} to ${key}. Missing record`);
             } else {
                 await conn.addRecord({
-                    target: 'CrossreferenceOf',
-                    content: { out: rid(record), in: rid(ncitCache[key]), source },
+                    content: { in: rid(ncitCache[key]), out: rid(record), source },
                     existsOk: true,
                     fetchExisting: false,
+                    target: 'CrossreferenceOf',
                 });
             }
         }
@@ -384,5 +384,5 @@ const uploadFile = async ({ filename, conn }) => {
 
 
 module.exports = {
-    uploadFile, dependencies: [ncitName], SOURCE_DEFN, parseNodeRecord,
+    SOURCE_DEFN, dependencies: [ncitName], parseNodeRecord, uploadFile,
 };

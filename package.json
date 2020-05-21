@@ -12,7 +12,7 @@
   "license": "ISC",
   "dependencies": {
     "@bcgsc/knowledgebase-parser": "^0.7.1",
-    "@bcgsc/knowledgebase-schema": "^3.4.3",
+    "@bcgsc/knowledgebase-schema": "^3.9.0",
     "ajv": "^6.10.0",
     "command-line-args": "^5.1.1",
     "command-line-usage": "^5.0.5",
@@ -27,6 +27,7 @@
     "jsonwebtoken": "^8.5.1",
     "lodash": "^4.17.15",
     "moment": "^2.24.0",
+    "orientjs": "^3.0.11",
     "parse5": "^5.1.1",
     "rdflib": "^0.20.1",
     "read-excel-file": "^4.0.1",
@@ -45,6 +46,7 @@
     "eslint-plugin-jest-formatting": "^1.1.0",
     "eslint-plugin-jsx-a11y": "^6.1.1",
     "eslint-plugin-react": "^7.14.3",
+    "eslint-plugin-sort-keys-fix": "^1.1.1",
     "jest": "^24.8.0",
     "jest-bamboo-formatter": "^1.0.1",
     "jest-circus": "^24.8.0",
@@ -55,6 +57,8 @@
     "lint": "eslint -c .eslintrc.jon src test",
     "version": "echo $npm_package_version",
     "start:recent-trials": "node bin/clinicaltrialsgov.js",
-    "start:fda-approvals": "node bin/fdaApprovals.js"
+    "start:fda-approvals": "node bin/fdaApprovals.js",
+    "start:oncotree": "node bin/oncotree.js",
+    "start:civic": "node bin/civic.js"
   }
 }

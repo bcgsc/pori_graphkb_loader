@@ -10,38 +10,38 @@ const { logger, getFilename } = require('./logging');
 
 const stdOptions = [
     {
-        name: 'help',
         alias: 'h',
         description: 'Print this help menu',
+        name: 'help',
     },
     {
-        name: 'graphkb',
         default: `${process.env.GKB_URL || 'https://graphkbdev-api.bcgsc.ca/api'}`,
         description: 'URL for the KB API',
         env: 'GKB_URL',
+        name: 'graphkb',
     },
     {
-        name: 'username',
         default: 'graphkb_importer',
-        required: true,
         description: 'ldap username required for access to the kb (USER|GKB_USER)',
         env: 'GKB_USER',
+        name: 'username',
+        required: true,
     },
     {
+        description: 'the password for access to the kb api (GKB_PASS)',
+        env: 'GKB_PASS',
         name: 'password',
         required: true,
-        env: 'GKB_PASS',
-        description: 'the password for access to the kb api (GKB_PASS)',
     },
     {
-        name: 'pubmed',
-        env: 'PUBMED_API_KEY',
         description: 'The pubmed API key to use for pubmed requests',
+        env: 'PUBMED_API_KEY',
+        name: 'pubmed',
     },
     {
-        name: 'errorLogPrefix',
-        description: 'prefix to use for any module specific log files that are written',
         default: `${process.cwd()}/errorLog-${new Date().valueOf()}`,
+        description: 'prefix to use for any module specific log files that are written',
+        name: 'errorLogPrefix',
     },
 ];
 

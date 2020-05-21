@@ -47,7 +47,7 @@ const createOptionsMenu = (defns, opt = {}) => {
         }
     }
     const usage = commandLineUsage([
-        { header: opt.title || 'GraphKB ETL Importer', content: opt.description || 'Migrates data from dumps of (or using direct API connection to) other databases/resources into GraphKB' },
+        { content: opt.description || 'Migrates data from dumps of (or using direct API connection to) other databases/resources into GraphKB', header: opt.title || 'GraphKB ETL Importer' },
         { header: 'Options', optionList: defns },
     ]);
     let options;

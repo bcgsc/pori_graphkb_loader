@@ -177,11 +177,28 @@
                 }
             ]
         },
+        "copy number variation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "copy variant"
+                }
+            ]
+        },
         "copy variant": {
             "links": [
                 {
                     "class": "SubClassOf",
                     "target": "structural variant"
+                }
+            ]
+        },
+        "copy-neutral loss of heterozygosity": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "loss of heterozygosity"
                 }
             ]
         },
@@ -455,6 +472,15 @@
                 {
                     "class": "SubClassOf",
                     "target": "small mutation"
+                }
+            ]
+        },
+        "frameshift truncation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "truncating frameshift mutation"
                 }
             ]
         },
@@ -848,6 +874,17 @@
         "loh": {
             "displayName": "LOH"
         },
+        "loss": {
+            "deprecated": true,
+            "displayName": "loss of function",
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "loss of function"
+                }
+            ],
+            "source": "civic"
+        },
         "loss of function": {
             "description": "some normal functionality has been lost",
             "links": [
@@ -955,6 +992,16 @@
                 {
                     "class": "SubClassOf",
                     "target": "highly recurrent"
+                }
+            ]
+        },
+        "neomorphic": {
+            "deprecated": true,
+            "description": "gain of a novel molecular function that is distinct from wild-type function",
+            "links": [
+                {
+                    "class": "AliasOf",
+                    "target": "switch of function"
                 }
             ]
         },
@@ -1672,6 +1719,18 @@
                 }
             ]
         },
+        "truncating frameshift mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "frameshift mutation"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "truncating"
+                }
+            ]
+        },
         "tumour suppressive": {
             "description": "suppresses or blocks the development of cancer",
             "links": [
@@ -1784,11 +1843,16 @@
             ]
         }
     },
-    "source": {
-        "displayName": "GraphKB",
-        "longName": "Graph Knowledgebase",
-        "name": "graphkb",
-        "sort": 0,
-        "url": "https://graphkb.bcgsc.ca"
+    "sources": {
+        "civic": {
+            "name": "civic"
+        },
+        "default": {
+            "displayName": "GraphKB",
+            "longName": "Graph Knowledgebase",
+            "name": "graphkb",
+            "sort": 0,
+            "url": "https://graphkb.bcgsc.ca"
+        }
     }
 }

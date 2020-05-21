@@ -14,19 +14,19 @@ const _entrez = require('./entrez/gene');
 const { ensembl: SOURCE_DEFN, refseq: { name: refseqName } } = require('./sources');
 
 const HEADER = {
+    chromosome: 'Chromosome/scaffold name',
     geneId: 'Gene stable ID',
     geneIdVersion: 'Version (gene)',
-    transcriptId: 'Transcript stable ID',
-    transcriptIdVersion: 'Version (transcript)',
-    chromosome: 'Chromosome/scaffold name',
+    geneName: 'Gene name',
+    geneNameSource: 'Source of gene name',
     hgncId: 'HGNC ID',
     hgncName: 'HGNC symbol',
-    refseqId: 'RefSeq mRNA ID',
     lrgGene: 'LRG display in Ensembl gene ID',
     proteinId: 'Protein stable ID',
     proteinIdVersion: 'Protein stable ID version',
-    geneName: 'Gene name',
-    geneNameSource: 'Source of gene name',
+    refseqId: 'RefSeq mRNA ID',
+    transcriptId: 'Transcript stable ID',
+    transcriptIdVersion: 'Version (transcript)',
 };
 
 
@@ -42,17 +42,17 @@ const uploadFile = async (opt) => {
     const contentList = await loadDelimToJson(filename);
 
     const source = await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     });
     let refseqSource;
 
     try {
         refseqSource = await conn.getUniqueRecordBy({
-            target: 'Source',
             filters: { name: refseqName },
+            target: 'Source',
         });
     } catch (err) {
         logger.warn('Unable to find refseq source. Will not attempt to create cross-reference links');
@@ -68,16 +68,16 @@ const uploadFile = async (opt) => {
     logger.info('retreiving the list of previously loaded genes');
     const preLoaded = new Set();
     const genesList = await conn.getRecords({
-        target: 'Feature',
         filters: {
             AND: [
                 { source: rid(source) }, { biotype: 'gene' }, { dependency: null },
             ],
         },
         neighbors: 0,
+        target: 'Feature',
     });
 
-    const counts = { success: 0, error: 0, skip: 0 };
+    const counts = { error: 0, skip: 0, success: 0 };
 
     for (const record of genesList) {
         const gene = generateCacheKey(record);
@@ -106,88 +106,88 @@ const uploadFile = async (opt) => {
 
         if (visited[key] === undefined) {
             visited[key] = await conn.addRecord({
-                target: 'Feature',
                 content: {
+                    biotype: 'gene',
                     source: rid(source),
                     sourceId: geneId,
                     sourceIdVersion: geneIdVersion,
-                    biotype: 'gene',
                 },
                 existsOk: true,
+                target: 'Feature',
             });
         }
 
         if (visited[geneId] === undefined) {
             newGene = true;
             visited[geneId] = await conn.addRecord({
-                target: 'Feature',
                 content: {
+                    biotype: 'gene',
                     source: rid(source),
                     sourceId: geneId,
                     sourceIdVersion: null,
-                    biotype: 'gene',
                 },
                 existsOk: true,
+                target: 'Feature',
             });
         }
         const gene = visited[geneId];
         const versionedGene = visited[key];
 
         await conn.addRecord({
-            target: 'generalizationof',
             content: {
-                out: rid(gene), in: rid(versionedGene), source: rid(source),
+                in: rid(versionedGene), out: rid(gene), source: rid(source),
             },
             existsOk: true,
             fetchExisting: false,
+            target: 'generalizationof',
         });
 
         // transcript
         const versionedTranscript = await conn.addRecord({
-            target: 'Feature',
             content: {
+                biotype: 'transcript',
                 source: rid(source),
                 sourceId: record[HEADER.transcriptId],
                 sourceIdVersion: record[HEADER.transcriptIdVersion],
-                biotype: 'transcript',
             },
             existsOk: true,
+            target: 'Feature',
         });
         const transcript = await conn.addRecord({
-            target: 'Feature',
             content: {
+                biotype: 'transcript',
                 source: rid(source),
                 sourceId: record[HEADER.transcriptId],
                 sourceIdVersion: null,
-                biotype: 'transcript',
             },
             existsOk: true,
+            target: 'Feature',
         });
         await conn.addRecord({
-            target: 'generalizationof',
             content: {
-                out: rid(transcript), in: rid(versionedTranscript), source: rid(source),
+                in: rid(versionedTranscript), out: rid(transcript), source: rid(source),
             },
             existsOk: true,
             fetchExisting: false,
+            target: 'generalizationof',
         });
 
         // transcript -> elementof -> gene
         await conn.addRecord({
-            target: 'elementof',
             content: {
-                out: rid(transcript), in: rid(gene), source: rid(source),
+                in: rid(gene), out: rid(transcript), source: rid(source),
             },
             existsOk: true,
             fetchExisting: false,
+            target: 'elementof',
         });
         await conn.addRecord({
-            target: 'elementof',
             content: {
-                out: rid(versionedTranscript), in: rid(versionedGene), source: rid(source),
+                in: rid(versionedGene), out: rid(versionedTranscript), source: rid(source),
             },
             existsOk: true,
             fetchExisting: false,
+            target: 'elementof',
         });
 
         // TODO: protein
@@ -197,7 +197,6 @@ const uploadFile = async (opt) => {
         if (refseqSource && record[HEADER.refseqId]) {
             try {
                 const refseq = await conn.getUniqueRecordBy({
-                    target: 'Feature',
                     filters: {
                         AND: [
                             { source: rid(refseqSource) },
@@ -206,14 +205,15 @@ const uploadFile = async (opt) => {
                         ],
                     },
                     sort: orderPreferredOntologyTerms,
+                    target: 'Feature',
                 });
                 await conn.addRecord({
-                    target: 'crossreferenceof',
                     content: {
-                        out: rid(transcript), in: rid(refseq), source: rid(source),
+                        in: rid(refseq), out: rid(transcript), source: rid(source),
                     },
                     existsOk: true,
                     fetchExisting: false,
+                    target: 'crossreferenceof',
                 });
             } catch (err) {
                 refseqMissingRecords.add(record[HEADER.refseqId]);
@@ -224,12 +224,12 @@ const uploadFile = async (opt) => {
             try {
                 const hgnc = await _hgnc.fetchAndLoadBySymbol({ conn, paramType: 'hgnc_id', symbol: record[HEADER.hgncId] });
                 await conn.addRecord({
-                    target: 'crossreferenceof',
                     content: {
-                        out: rid(gene), in: rid(hgnc), source: rid(source),
+                        in: rid(hgnc), out: rid(gene), source: rid(source),
                     },
                     existsOk: true,
                     fetchExisting: false,
+                    target: 'crossreferenceof',
                 });
             } catch (err) {
                 hgncMissingRecords.add(record[HEADER.hgncId]);
@@ -248,4 +248,4 @@ const uploadFile = async (opt) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = { uploadFile, dependencies: [refseqName], SOURCE_DEFN };
+module.exports = { SOURCE_DEFN, dependencies: [refseqName], uploadFile };

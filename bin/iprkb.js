@@ -7,10 +7,10 @@ const { fileExists } = require('../src/util');
 const options = createOptionsMenu([
     ...stdOptions,
     {
-        name: 'filename',
         description: 'path to the tab delimited export of IPRKb',
-        type: fileExists,
+        name: 'filename',
         required: true,
+        type: fileExists,
     },
 ]);
 

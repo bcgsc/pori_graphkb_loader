@@ -20,44 +20,44 @@ const { cgi: SOURCE_DEFN } = require('./../sources');
 
 const HEADER = {
     alteration: 'Alteration',
-    protein: 'individual_mutation',
-    transcript: 'transcript',
+    biomarker: 'Biomarker',
     cds: 'cDNA',
-    genomic: 'gDNA',
     disease: 'Primary Tumor type full name',
+    drug: 'Drug',
+    drugFamily: 'Drug family',
     evidence: 'Source',
     evidenceLevel: 'Evidence level',
     gene: 'Gene',
-    drug: 'Drug',
-    drugFamily: 'Drug family',
-    reviewer: 'Curator',
-    reviewData: 'Curation date',
+    genomic: 'gDNA',
+    protein: 'individual_mutation',
     relevance: 'Association',
-    biomarker: 'Biomarker',
+    reviewData: 'Curation date',
+    reviewer: 'Curator',
+    transcript: 'transcript',
     variantClass: 'Alteration type',
 };
 
 const evidenceLevels = {
     class: 'EvidenceLevel',
-    source: SOURCE_DEFN,
+    defaultNameToSourceId: true,
     records: {
-        'Pre-clinical': {},
         'CPIC guidelines': {},
-        'NCCN/CAP guidelines': {},
-        'Late trials': {},
-        'NCCN guidelines': {},
-        'European LeukemiaNet guidelines': {},
-        'FDA guidelines': {},
         'Case report': {},
         'Early trials': {},
+        'European LeukemiaNet guidelines': {},
+        'FDA guidelines': {},
+        'Late trials': {},
+        'NCCN guidelines': {},
+        'NCCN/CAP guidelines': {},
+        'Pre-clinical': {},
     },
-    defaultNameToSourceId: true,
+    source: SOURCE_DEFN,
 };
 
 const relevanceMapping = {
+    'no responsive': 'no response',
     resistant: 'resistance',
     responsive: 'response',
-    'no responsive': 'no response',
 };
 
 const diseaseMapping = {
@@ -153,7 +153,7 @@ const preprocessVariants = (row) => {
 
             if (match = /^exon (\d+) (insertion|deletion)s?$/.exec(tail)) {
                 const [, pos, type] = match;
-                variants.push({ gene, exonic: `e.${pos}${type.slice(0, 3)}` });
+                variants.push({ exonic: `e.${pos}${type.slice(0, 3)}`, gene });
             } else {
                 variants.push(parseCategoryVariant({ biomarker, gene }));
             }
@@ -195,7 +195,6 @@ const processVariants = async ({ conn, row, source }) => {
     if (genomic) {
         const parsed = kbParser.variant.parse(genomic).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
-            target: 'Feature',
             filters: {
                 AND: [
                     { biotype: 'chromosome' },
@@ -208,12 +207,13 @@ const processVariants = async ({ conn, row, source }) => {
                 ],
             },
             sort: orderPreferredOntologyTerms,
+            target: 'Feature',
         });
         const type = await conn.getVocabularyTerm(parsed.type);
         genomicVariant = await conn.addVariant({
-            target: 'PositionalVariant',
             content: { ...parsed, reference1, type },
             existsOk: true,
+            target: 'PositionalVariant',
         });
     }
 
@@ -222,23 +222,23 @@ const processVariants = async ({ conn, row, source }) => {
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         const type = await conn.getVocabularyTerm(parsed.type);
         proteinVariant = await conn.addVariant({
-            target: 'PositionalVariant',
             content: { ...parsed, reference1: rid(reference1), type },
             existsOk: true,
+            target: 'PositionalVariant',
         });
     }
     if (transcript && cds) {
         const parsed = kbParser.variant.parse(`${transcript}:${cds}`).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
-            target: 'Feature',
             filters: { AND: [{ biotype: 'transcript' }, { sourceId: transcript }, { sourceIdVersion: null }] },
             sort: orderPreferredOntologyTerms,
+            target: 'Feature',
         });
         const type = await conn.getVocabularyTerm(parsed.type);
         cdsVariant = await conn.addVariant({
-            target: 'PositionalVariant',
             content: { ...parsed, reference1, type },
             existsOk: true,
+            target: 'PositionalVariant',
         });
     }
     if (exonic) {
@@ -246,9 +246,9 @@ const processVariants = async ({ conn, row, source }) => {
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         const type = await conn.getVocabularyTerm(parsed.type);
         exonicVariant = await conn.addVariant({
-            target: 'PositionalVariant',
             content: { ...parsed, reference1: rid(reference1), type },
             existsOk: true,
+            target: 'PositionalVariant',
         });
     }
 
@@ -256,9 +256,9 @@ const processVariants = async ({ conn, row, source }) => {
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         const type = rid(await conn.getVocabularyTerm(variantType));
         categoryVariant = await conn.addVariant({
-            target: 'CategoryVariant',
-            content: { type, reference1: rid(reference1) },
+            content: { reference1: rid(reference1), type },
             existsOk: true,
+            target: 'CategoryVariant',
         });
     } catch (err) {
         // category variant is optional if any of the positional variants are defined
@@ -278,14 +278,14 @@ const processVariants = async ({ conn, row, source }) => {
     for (const [src, tgt] of combinations) {
         if (src && tgt) {
             await conn.addRecord({
-                target: 'Infers',
                 content: {
-                    out: rid(src),
                     in: rid(tgt),
+                    out: rid(src),
                     source: rid(source),
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'Infers',
             });
         }
     }
@@ -298,9 +298,9 @@ const processRow = async ({ row, source, conn }) => {
     const diseaseName = diseaseMapping[row.disease] || `${row.disease}|${row.disease} cancer`;
 
     const disease = rid(await conn.getUniqueRecordBy({
-        target: 'Disease',
         filters: { name: diseaseName },
         sort: orderPreferredOntologyTerms,
+        target: 'Disease',
     }));
     const therapyName = row.therapy.includes(';')
         ? row.therapy.split(';').map(n => n.toLowerCase().trim()).sort().join(' + ')
@@ -312,8 +312,8 @@ const processRow = async ({ row, source, conn }) => {
     ));
 
     const level = rid(await conn.getUniqueRecordBy({
-        target: 'EvidenceLevel',
         filters: { AND: [{ name: row.evidenceLevel }, { source: rid(source) }] },
+        target: 'EvidenceLevel',
     }));
 
     const articles = await _pubmed.fetchAndLoadByIds(
@@ -339,18 +339,18 @@ const processRow = async ({ row, source, conn }) => {
 
     // create the statement
     await conn.addRecord({
-        target: 'Statement',
         content: {
-            evidenceLevel: level,
-            relevance,
-            subject: drug,
             conditions: [...variants.map(rid), disease, drug],
             evidence,
+            evidenceLevel: level,
+            relevance,
             source: rid(source),
             sourceId: row.sourceId,
+            subject: drug,
         },
         existsOk: true,
         fetchExisting: false,
+        target: 'Statement',
     });
 };
 
@@ -359,11 +359,11 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
     const rows = await loadDelimToJson(filename);
     logger.info('creating the source record');
     const source = rid(await conn.addRecord({
-        target: 'Source',
-        existsOk: true,
         content: SOURCE_DEFN,
+        existsOk: true,
+        target: 'Source',
     }));
-    const counts = { skip: 0, error: 0, success: 0 };
+    const counts = { error: 0, skip: 0, success: 0 };
 
     logger.info('creating the evidence levels');
     await uploadFromJSON({ conn, data: evidenceLevels });
@@ -399,10 +399,10 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
         } catch (err) {
             logger.error(err);
             errorList.push({
-                row,
                 error: err,
-                index,
                 errorMessage: err.toString(),
+                index,
+                row,
             });
             counts.error++;
             continue;
@@ -420,14 +420,14 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
         for (const disease of row.disease.split(';')) {
             for (const combo of variants) {
                 try {
-                    await processRow({ row: { ...row, variants: combo, disease }, conn, source });
+                    await processRow({ conn, row: { ...row, disease, variants: combo }, source });
                     counts.success++;
                 } catch (err) {
                     errorList.push({
-                        row,
                         error: err,
-                        index,
                         errorMessage: err.toString(),
+                        index,
+                        row,
                     });
                     logger.error(err);
                     counts.error++;
@@ -446,4 +446,4 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
 };
 
 
-module.exports = { uploadFile, SOURCE_DEFN, kb: true };
+module.exports = { SOURCE_DEFN, kb: true, uploadFile };

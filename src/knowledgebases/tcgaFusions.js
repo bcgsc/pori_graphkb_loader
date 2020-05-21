@@ -20,9 +20,9 @@ const DISEASE_CODES = {
     LUAD: 'Lung adenocarcinoma',
     LUSC: 'Lung squamous cell carcinoma',
     OV: 'Ovarian serous cystadenocarcinoma',
+    PRAD: 'Prostate adenocarcinoma',
     SKCM: 'cutaneous melanoma',
     THCA: 'Thyroid carcinoma',
-    PRAD: 'Prostate adenocarcinoma',
 };
 
 
@@ -47,7 +47,6 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
     const fusion = rid(await conn.getVocabularyTerm('in-frame fusion'));
     const relevance = rid(await conn.getVocabularyTerm('recurrent'));
     const cancer = rid(await conn.getUniqueRecordBy({
-        target: 'Disease',
         filters: {
             OR: [
                 { sourceId: 'cancer' },
@@ -55,6 +54,7 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
             ],
         },
         sort: orderPreferredOntologyTerms,
+        target: 'Disease',
     }));
 
     for (const code of Object.keys(DISEASE_CODES)) {
@@ -62,7 +62,6 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
 
         try {
             const disease = rid(await conn.getUniqueRecordBy({
-                target: 'Disease',
                 filters: {
                     OR: [
                         { sourceId: DISEASE_CODES[code] },
@@ -70,6 +69,7 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
                     ],
                 },
                 sort: orderPreferredOntologyTerms,
+                target: 'Disease',
             }));
             diseaseMap[code] = disease;
         } catch (err) {
@@ -110,16 +110,15 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
             const [reference2] = await _entrezGene.fetchAndLoadBySymbol(conn, geneB);
 
             const variant = rid(await conn.addVariant({
-                target: 'CategoryVariant',
                 content: {
                     reference1: rid(reference1),
                     reference2: rid(reference2),
                     type: fusion,
                 },
                 existsOk: true,
+                target: 'CategoryVariant',
             }));
             await conn.addRecord({
-                target: 'Statement',
                 content: {
                     conditions: [variant, disease],
                     evidence: [publication],
@@ -128,11 +127,12 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'Statement',
             });
 
             counts.success++;
         } catch (err) {
-            errorList.push({ record: row, error: err.toString() });
+            errorList.push({ error: err.toString(), record: row });
             logger.error(err);
             counts.error++;
         }
@@ -143,18 +143,18 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
 
 const parseKinaseFusions = async ({ conn, filename, publication }) => {
     logger.info(`loading: ${filename} (Table S11)`);
-    const counts = { error: 0, success: 0, skip: 0 };
+    const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
     const rawData = await readXlsxFile(filename, { sheet: 'Table S11' });
     const [, header] = rawData;
     const headerMap = {
+        break1: 'Junction_A',
+        break2: 'Junction_B',
+        disease: 'Cancer',
         geneA: 'GeneID_A',
         geneB: 'GeneID_B',
         kinaseA: 'Kinase.A',
         kinaseB: 'Kinase.B',
-        break1: 'Junction_A',
-        break2: 'Junction_B',
-        disease: 'Cancer',
     };
     const rows = rawData.slice(2).map((values) => {
         const row = {};
@@ -172,7 +172,7 @@ const parseKinaseFusions = async ({ conn, filename, publication }) => {
         logger.info(`processing (${row.geneA},${row.geneB}):(g.${row.break1},g.${row.break2})`);
 
         if (row.kinaseA === row.kinaseB) {
-            errorList.push({ record: row, error: 'skipping: cannot determine kinase partner' });
+            errorList.push({ error: 'skipping: cannot determine kinase partner', record: row });
             logger.info('skipping: cannot determine kinase partner');
             counts.skip++;
             continue;
@@ -183,7 +183,6 @@ const parseKinaseFusions = async ({ conn, filename, publication }) => {
             const [geneB] = await _entrezGene.fetchAndLoadByIds(conn, [row.geneB]);
 
             const disease = rid(await conn.getUniqueRecordBy({
-                target: 'Disease',
                 filters: {
                     OR: [
                         { sourceId: DISEASE_CODES[row.disease] },
@@ -191,24 +190,24 @@ const parseKinaseFusions = async ({ conn, filename, publication }) => {
                     ],
                 },
                 sort: orderPreferredOntologyTerms,
+                target: 'Disease',
             }));
 
             const variant = rid(await conn.addVariant({
-                target: 'PostionalVariant',
                 content: {
+                    break1Repr: `g.${row.break1}`,
+                    break1Start: { '@class': 'GenomicPosition', pos: row.break1 },
+                    break2Repr: `g.${row.break2}`,
+                    break2Start: { '@class': 'GenomicPosition', pos: row.break2 },
+                    displayName: `(${geneA.displayName},${geneB.displayName}):fusion(g.${row.break1},g.${row.break2})`,
                     reference1: rid(geneA),
                     reference2: rid(geneB),
-                    break1Start: { '@class': 'GenomicPosition', pos: row.break1 },
-                    break2Start: { '@class': 'GenomicPosition', pos: row.break2 },
-                    break1Repr: `g.${row.break1}`,
-                    break2Repr: `g.${row.break2}`,
                     type: fusion,
-                    displayName: `(${geneA.displayName},${geneB.displayName}):fusion(g.${row.break1},g.${row.break2})`,
                 },
                 existsOk: true,
+                target: 'PostionalVariant',
             }));
             await conn.addRecord({
-                target: 'Statement',
                 content: {
                     conditions: [variant, disease],
                     evidence: [publication],
@@ -219,11 +218,12 @@ const parseKinaseFusions = async ({ conn, filename, publication }) => {
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'Statement',
             });
 
             counts.success++;
         } catch (err) {
-            errorList.push({ record: row, error: err.toString() });
+            errorList.push({ error: err.toString(), record: row });
             logger.error(err);
             counts.error++;
         }
@@ -244,4 +244,4 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
     fs.writeFileSync(errorJson, JSON.stringify({ records: errorList }, null, 2));
 };
 
-module.exports = { SOURCE_DEFN: {}, uploadFile, kb: true };
+module.exports = { SOURCE_DEFN: {}, kb: true, uploadFile };

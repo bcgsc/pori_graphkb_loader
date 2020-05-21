@@ -28,81 +28,83 @@ const ajv = new Ajv();
 
 
 const actionableRecordSpec = ajv.compile({
-    type: 'object',
     properties: {
+        abstracts: { type: 'string' },
         cancerType: { type: 'string' },
         drugs: { type: 'string' },
         entrezGeneId: { type: 'number' },
         gene: { type: 'string' },
         level: { type: 'string' },
         pmids: { type: 'string' },
-        proteinChange: { type: 'string' }, // TODO: Link variant to protein change with 'infers' where different
+        proteinChange: { type: 'string' },
+        // TODO: Link variant to protein change with 'infers' where different
         variant: { type: 'string' },
-        abstracts: { type: 'string' },
     },
+    type: 'object',
 });
 const annotatedRecordSpec = ajv.compile({
-    type: 'object',
     properties: {
-        gene: { type: 'string' },
         entrezGeneId: { type: 'number' },
+        gene: { type: 'string' },
         mutationEffect: { type: 'string' },
+        mutationEffectAbstracts: { type: 'string' },
         mutationEffectPmids: { type: 'string' },
         oncogenicity: { type: 'string' },
-        proteinChange: { type: 'string' }, // TODO: Link variant to protein change with 'infers' where different
+        proteinChange: { type: 'string' },
+        // TODO: Link variant to protein change with 'infers' where different
         variant: { type: 'string' },
-        mutationEffectAbstracts: { type: 'string' },
     },
+    type: 'object',
 });
 const drugRecordSpec = ajv.compile({
-    type: 'object',
-    required: ['drugName', 'uuid'],
     properties: {
-        uuid: { type: 'string', format: 'uuid' },
-        ncitCode: { type: 'string', pattern: '^C\\d+$' },
         drugName: { type: 'string' },
+        ncitCode: { pattern: '^C\\d+$', type: 'string' },
         synonyms: {
-            type: 'array',
             items: { type: 'string' },
+            type: 'array',
         },
+        uuid: { format: 'uuid', type: 'string' },
     },
+    required: ['drugName', 'uuid'],
+    type: 'object',
 });
 const curatedGeneSpec = ajv.compile({
-    type: 'object',
-    requried: ['entrezGeneId', 'oncogene', 'tsg'],
     properties: {
         entrezGeneId: { type: 'number' },
         oncogene: { type: 'boolean' },
         tsg: { type: 'boolean' },
     },
+    requried: ['entrezGeneId', 'oncogene', 'tsg'],
+    type: 'object',
 });
 
 const variantSpec = ajv.compile({
-    type: 'object',
-    required: ['gene', 'consequence', 'name', 'proteinStart', 'proteinEnd', 'alteration'],
     properties: {
-        gene: {
-            type: 'object',
-            required: ['entrezGeneId'],
-            properties: { entrezGeneId: { type: 'number' } },
-        },
-        consequence: {
-            type: 'object',
-            required: ['term'],
-            properties: { term: { type: 'string' } },
-        },
-        proteinStart: { type: 'number' },
-        proteinEnd: { type: 'number' },
-        name: { type: 'string' },
         alteration: { type: 'string' },
+        consequence: {
+            properties: { term: { type: 'string' } },
+            required: ['term'],
+            type: 'object',
+        },
+        gene: {
+            properties: { entrezGeneId: { type: 'number' } },
+            required: ['entrezGeneId'],
+            type: 'object',
+        },
+        name: { type: 'string' },
+        proteinEnd: { type: 'number' },
+        proteinStart: { type: 'number' },
     },
+    required: ['gene', 'consequence', 'name', 'proteinStart', 'proteinEnd', 'alteration'],
+    type: 'object',
 });
 
 const VOCABULARY_MAPPING = {
-    'oncogenic mutations': 'oncogenic mutation',
     fusions: 'fusion',
-    'truncating mutations': 'truncating',
+    'oncogenic mutations': 'oncogenic mutation',
     'promoter mutations': 'promoter mutation',
+    'truncating mutations': 'truncating',
 };
 
 const DISEASE_MAPPING = {
@@ -145,14 +147,14 @@ const parseVariantName = (variantIn, { reference1 } = {}) => {
     } if (match = /^([^-\s]+)-([^-\s]+) fusion$/i.exec(variant)) {
         if (!reference1 || match[1].toLowerCase() === reference1.toLowerCase()) {
             return {
-                type: 'fusion',
                 reference2: match[2].trim().toLowerCase(),
+                type: 'fusion',
             };
         } if (match[2].toLowerCase() === reference1.toLowerCase()) {
             return {
-                type: 'fusion',
-                reference2: reference1.toLowerCase(),
                 reference1: match[1].trim().toLowerCase(),
+                reference2: reference1.toLowerCase(),
+                type: 'fusion',
             };
         }
         throw new Error(
@@ -196,8 +198,8 @@ const processVariant = async (conn, {
             }
             type = 'strong signature';
             gene1 = await conn.getUniqueRecordBy({
-                target: 'Signature',
                 filters: { name: 'microsatellite instability' },
+                target: 'Signature',
             });
         } catch (err) {
             logger.warn(`failed to retrieve the associated vocabulary for (variant=${variantName})`);
@@ -291,9 +293,9 @@ const processVariant = async (conn, {
     }
 
     variant = await conn.addVariant({
-        target: variantUrl,
         content: variant,
         existsOk: true,
+        target: variantUrl,
     });
 
     // if there is an alternate representation, link it to this one
@@ -313,18 +315,18 @@ const processVariant = async (conn, {
             parsed.reference1 = rid(reference1);
             parsed.type = rid(await getVocabulary(conn, parsed.type));
             const altVariant = rid(await conn.addVariant({
-                target: 'PositionalVariant',
                 content: parsed,
                 existsOk: true,
+                target: 'PositionalVariant',
             }));
             await conn.addRecord({
-                target: 'infers',
                 content: {
-                    out: altVariant,
                     in: rid(variant),
+                    out: altVariant,
                 },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'infers',
             });
         } catch (err) {
             logger.warn(`failed to parse the alternate variant form (${alternate.variant}) for record (gene=${gene}, variant=${variantName})`);
@@ -342,16 +344,16 @@ const processDisease = async (conn, diseaseName) => {
 
     try {
         disease = await conn.getUniqueRecordBy({
-            target: 'Disease',
             filters: { name: diseaseName },
             sort: orderPreferredOntologyTerms,
+            target: 'Disease',
         });
     } catch (err) {
         if (diseaseName.includes('/')) {
             disease = await conn.getUniqueRecordBy({
-                target: 'Disease',
                 filters: { name: diseaseName.split('/')[0].trim() },
                 sort: orderPreferredOntologyTerms,
+                target: 'Disease',
             });
         } else {
             throw err;
@@ -373,7 +375,7 @@ const parseAbstractCitation = (citation) => {
 
     if (match = /.*Abstract\s*#\s*([A-Z0-9a-z][A-Za-z0-9-]+)[.,]? (AACR|ASCO),? (2\d{3})[., ]*/.exec(citation)) {
         const [, abstractNumber, sourceName, year] = match;
-        return { abstractNumber, year, source: sourceName };
+        return { abstractNumber, source: sourceName, year };
     }
     throw new Error(`unable to parse abstract citation (${citation})`);
 };
@@ -406,7 +408,7 @@ const processRecord = async ({
     } = record;
     const key = `${entrezGeneId}:${variantName}`;
     const variant = await processVariant(conn, {
-        gene, entrezGeneId, variantName, alternate: variantMap[key],
+        alternate: variantMap[key], entrezGeneId, gene, variantName,
     });
     // next attempt to find the cancer type (oncotree?)
     let disease;
@@ -421,9 +423,9 @@ const processRecord = async ({
     if (drug) {
         try {
             therapy = await conn.getUniqueRecordBy({
-                target: 'Therapy',
                 filters: { AND: [{ name: drug }, { source }] },
                 sort: orderPreferredOntologyTerms,
+                target: 'Therapy',
             });
         } catch (err) {
             if (drug.includes('+')) {
@@ -440,8 +442,8 @@ const processRecord = async ({
 
     if (levelName) {
         level = await conn.getUniqueRecordBy({
-            target: 'EvidenceLevel',
             filters: { AND: [{ sourceId: levelName }, { source }] },
+            target: 'EvidenceLevel',
         });
     }
     const relevance = await getVocabulary(conn, relevanceName);
@@ -465,14 +467,14 @@ const processRecord = async ({
 
         try {
             const absRecord = await conn.getUniqueRecordBy({
-                target: 'Abstract',
                 filters: {
                     AND: [
-                        { source: { target: 'Source', filters: { name: parsed.source } } },
+                        { source: { filters: { name: parsed.source }, target: 'Source' } },
                         { year: parsed.year },
                         { abstractNumber: parsed.abstractNumber },
                     ],
                 },
+                target: 'Abstract',
             });
             abstracts.push(absRecord);
         } catch (err) {
@@ -485,9 +487,9 @@ const processRecord = async ({
         conditions: [rid(variant)],
         evidence: [...publications.map(rid), ...abstracts.map(rid)],
         relevance: rid(relevance),
+        reviewStatus: 'not required',
         source,
         sourceId,
-        reviewStatus: 'not required',
     };
 
     if (disease) {
@@ -509,10 +511,10 @@ const processRecord = async ({
     }
     // make the actual statement
     await conn.addRecord({
-        target: 'Statement',
         content,
         existsOk: true,
         fetchExisting: false,
+        target: 'Statement',
     });
 };
 
@@ -544,16 +546,16 @@ const parseActionableRecord = (rawRecord) => {
 
     for (const drug of Array.from(rawRecord.drugs.split(','), x => x.trim().toLowerCase()).filter(x => x.length > 0)) {
         statements.push({
-            variantName: variant,
             _raw: rawRecord,
-            gene: rawRecord.gene.toLowerCase().trim(),
+            appliesToTarget: 'drug',
             diseaseName: disease,
             drug,
+            entrezGeneId: rawRecord.entrezGeneId,
+            gene: rawRecord.gene.toLowerCase().trim(),
             levelName: rawRecord.level,
             relevanceName: relevance,
             support,
-            entrezGeneId: rawRecord.entrezGeneId,
-            appliesToTarget: 'drug',
+            variantName: variant,
         });
     }
 
@@ -572,20 +574,20 @@ const parseAnnotatedRecord = (rawRecord) => {
     support.push(...(rawRecord.mutationEffectAbstracts || '').split(';').filter(c => c.trim()));
     return [{
         _raw: rawRecord,
-        relevanceName: rawRecord.mutationEffect.replace(/-/g, ' ').toLowerCase().trim(),
-        gene,
-        variantName: variant,
-        support,
-        entrezGeneId: rawRecord.entrezGeneId,
         appliesToTarget: 'gene',
+        entrezGeneId: rawRecord.entrezGeneId,
+        gene,
+        relevanceName: rawRecord.mutationEffect.replace(/-/g, ' ').toLowerCase().trim(),
+        support,
+        variantName: variant,
     }, {
         _raw: rawRecord,
-        variantName: variant,
-        relevanceName: rawRecord.oncogenicity.toLowerCase().trim(),
-        gene,
-        support,
-        entrezGeneId: rawRecord.entrezGeneId,
         appliesToTarget: 'variant',
+        entrezGeneId: rawRecord.entrezGeneId,
+        gene,
+        relevanceName: rawRecord.oncogenicity.toLowerCase().trim(),
+        support,
+        variantName: variant,
     }].map(rec => ({ ...rec, sourceId: generateSourceId(rec) }));
 };
 
@@ -600,23 +602,23 @@ const addEvidenceLevels = async (conn, proxy, source) => {
     for (let [level, desc] of Object.entries(levels)) {
         if (!/^LEVEL_[A-Z0-9]+$/.exec(level)) {
             throw new kbParser.error.ParsingError({
-                message: `Error in parsing the level name: ${level}`,
                 expected: '/^LEVEL_[A-Z0-9]+$/',
+                message: `Error in parsing the level name: ${level}`,
                 observed: level,
             });
         }
         level = level.slice('LEVEL_'.length);
         const record = await conn.addRecord({
-            target: 'EvidenceLevel',
             content: {
+                description: desc,
+                name: level,
                 source: rid(source),
                 sourceId: level,
-                name: level,
-                description: desc,
                 url: 'http://oncokb.org/api/v1/levels',
             },
-            fetchConditions: convertRecordToQueryFilters({ sourceId: level, name: level, source: rid(source) }),
             existsOk: true,
+            fetchConditions: convertRecordToQueryFilters({ name: level, source: rid(source), sourceId: level }),
+            target: 'EvidenceLevel',
         });
         result[level] = record;
     }
@@ -657,17 +659,17 @@ const uploadAllCuratedGenes = async ({ conn, proxy, source }) => {
         await Promise.all(relevance.map(async (rel) => {
             try {
                 await conn.addRecord({
-                    target: 'Statement',
                     content: {
                         conditions: [record],
-                        evidence: [rid(source)],
-                        source: rid(source),
                         description: gene.summary,
-                        subject: record,
+                        evidence: [rid(source)],
                         relevance: rel,
+                        source: rid(source),
+                        subject: record,
                     },
                     existsOk: true,
                     fetchExisting: false,
+                    target: 'Statement',
                 });
             } catch (err) {
                 logger.error(err);
@@ -692,9 +694,9 @@ const uploadAllTherapies = async ({ conn, proxy, source }) => {
         try {
             checkSpec(drugRecordSpec, drug, d => d.uuid);
             record = await conn.addRecord({
-                target: 'Therapy',
-                content: { source, sourceId: drug.uuid, name: drug.drugName },
+                content: { name: drug.drugName, source, sourceId: drug.uuid },
                 existsOk: true,
+                target: 'Therapy',
             });
         } catch (err) {
             logger.error(err);
@@ -705,20 +707,20 @@ const uploadAllTherapies = async ({ conn, proxy, source }) => {
         if (drug.ncitCode) {
             try {
                 const ncit = await conn.getUniqueRecordBy({
-                    target: 'Therapy',
                     filters: {
                         AND: [
                             { sourceId: drug.ncitCode },
-                            { source: { target: 'Source', filters: { name: _ncit.SOURCE_DEFN.name } } },
+                            { source: { filters: { name: _ncit.SOURCE_DEFN.name }, target: 'Source' } },
                         ],
                     },
                     sort: orderPreferredOntologyTerms,
+                    target: 'Therapy',
                 });
                 await conn.addRecord({
-                    target: 'crossreferenceof',
-                    content: { out: rid(record), in: rid(ncit), source },
+                    content: { in: rid(ncit), out: rid(record), source },
                     existsOk: true,
                     fetchExisting: false,
+                    target: 'crossreferenceof',
                 });
             } catch (err) {
                 logger.warn(`Failed to link ${drug.uuid} to ${drug.ncitCode}`);
@@ -738,20 +740,20 @@ const uploadAllTherapies = async ({ conn, proxy, source }) => {
 
         try {
             const alias = await conn.addRecord({
-                target: 'Therapy',
                 content: {
-                    source,
-                    name: aliasName,
-                    sourceId: record.sourceId,
                     dependency: rid(record),
+                    name: aliasName,
+                    source,
+                    sourceId: record.sourceId,
                 },
                 existsOk: true,
+                target: 'Therapy',
             });
             await conn.addRecord({
-                target: 'AliasOf',
-                content: { out: rid(record), in: rid(alias), source },
+                content: { in: rid(alias), out: rid(record), source },
                 existsOk: true,
                 fetchExisting: false,
+                target: 'AliasOf',
             });
         } catch (err) {
             logger.warn(`Failed to link alias ${record.sourceId} to ${aliasName} (${err})`);
@@ -829,17 +831,17 @@ const upload = async (opt) => {
 
     // add the source node
     const source = rid(await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     }));
 
     const variantMap = await getVariantDescriptions(proxy);
     const previousLoad = await conn.getRecords({
-        target: 'Statement',
-        filters: { source: { target: 'Source', filters: { name: SOURCE_DEFN.name } } },
+        filters: { source: { filters: { name: SOURCE_DEFN.name }, target: 'Source' } },
         returnProperties: 'sourceId',
+        target: 'Statement',
     });
 
     logger.info('pre-loading entrez genes');
@@ -855,7 +857,7 @@ const upload = async (opt) => {
 
     const records = [];
     const counts = {
-        errors: 0, success: 0, skip: 0, existing: 0,
+        errors: 0, existing: 0, skip: 0, success: 0,
     };
 
     const loadedIds = new Set();
@@ -905,7 +907,7 @@ const upload = async (opt) => {
 
         try {
             await processRecord({
-                conn, source, record, variantMap,
+                conn, record, source, variantMap,
             });
             counts.success++;
         } catch (err) {
@@ -926,14 +928,14 @@ const upload = async (opt) => {
 };
 
 module.exports = {
-    upload,
-    parseVariantName,
     SOURCE_DEFN,
     kb: true,
+    parseVariantName,
     specs: {
         actionableRecordSpec,
         annotatedRecordSpec,
-        drugRecordSpec,
         curatedGeneSpec,
+        drugRecordSpec,
     },
+    upload,
 };

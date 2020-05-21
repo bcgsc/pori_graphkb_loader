@@ -16,10 +16,11 @@ const {
 const { logger } = require('./../logging');
 const _pubmed = require('./../entrez/pubmed');
 const _entrezGene = require('./../entrez/gene');
+const _snp = require('../entrez/snp');
 
 const ajv = new Ajv();
 
-const { civic: SOURCE_DEFN } = require('./../sources');
+const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('./../sources');
 
 const TRUSTED_CURATOR_ID = 968;
 
@@ -29,17 +30,17 @@ const BASE_URL = 'https://civicdb.org/api';
  * https://civicdb.org/glossary
  */
 const VOCAB = {
-    url: 'https://civicdb.org/glossary',
-    A: 'Trusted association in clinical medicine that routinely informs treatment, including large scale metaanalyses, standard of care associations, and organizational recommendations.',
-    B: 'Clinical evidence from clinical trials and other primary tumor data.',
-    C: 'Case study evidence from individual case reports in peer reviewed journals.',
-    D: 'Preclinical evidence from cell line studies, mouse models, and other in vitro or in vivo models.',
-    E: 'Inferential association made from experimental data.',
     1: 'Evidence likely does not belong in CIViC. Claim is not supported well by experimental evidence. Results are not reproducible, or have very small sample size. No follow-up is done to validate novel claims.',
     2: 'Evidence is not well supported by experimental data, and little follow-up data is available. Publication is from a journal with low academic impact. Experiments may lack proper controls, have small sample size, or are not statistically convincing.',
     3: 'Evidence is convincing, but not supported by a breadth of experiments. May be smaller scale projects, or novel results without many follow-up experiments. Discrepancies from expected results are explained and not concerning.',
     4: 'Strong, well supported evidence. Experiments are well controlled, and results are convincing. Any discrepancies from expected results are well-explained and not concerning.',
     5: 'Strong, well supported evidence from a lab or journal with respected academic standing. Experiments are well controlled, and results are clean and reproducible across multiple replicates. Evidence confirmed using separate methods.',
+    A: 'Trusted association in clinical medicine that routinely informs treatment, including large scale metaanalyses, standard of care associations, and organizational recommendations.',
+    B: 'Clinical evidence from clinical trials and other primary tumor data.',
+    C: 'Case study evidence from individual case reports in peer reviewed journals.',
+    D: 'Preclinical evidence from cell line studies, mouse models, and other in vitro or in vivo models.',
+    E: 'Inferential association made from experimental data.',
+    url: 'https://civicdb.org/glossary',
 };
 
 const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evidence levels
@@ -47,109 +48,111 @@ const RELEVANCE_CACHE = {};
 
 
 const validateEvidenceSpec = ajv.compile({
-    type: 'object',
     properties: {
-        id: { type: 'number' },
+        clinical_significance: {
+            enum: [
+                'Sensitivity',
+                'Adverse Response',
+                'Resistance',
+                'Sensitivity/Response',
+                'Reduced Sensitivity',
+                'Positive',
+                'Negative',
+                'Poor Outcome',
+                'Better Outcome',
+                'Uncertain Significance',
+                'Pathogenic',
+                'Likely Pathogenic',
+                'N/A',
+                'Gain of Function',
+                'Loss of Function',
+                'Neomorphic',
+                'Dominant Negative',
+                null,
+            ],
+        },
         description: { type: 'string' },
         disease: {
-            type: 'object',
-            name: { type: 'string' },
             doid: { type: 'string' },
+            name: { type: 'string' },
+            type: 'object',
         },
         drugs: {
-            type: 'array',
             items: {
-                type: 'object',
                 properties: {
                     id: { type: 'number' },
                     name: { type: 'string' },
+                    ncit_id: { type: ['string', 'null'] },
                     pubchem_id: { type: ['string', 'null'] },
                 },
+                required: ['name', 'ncit_id'],
+                type: 'object',
             },
+            type: 'array',
         },
-        rating: { type: ['number', 'null'] },
+        evidence_direction: { enum: ['Supports', 'N/A', 'Does Not Support', null] },
         evidence_level: { type: 'string' },
         evidence_type: {
-            type: 'string',
-            pattern: '(Predictive|Diagnostic|Prognostic|Predisposing)',
+            enum: ['Predictive', 'Diagnostic', 'Prognostic', 'Predisposing', 'Functional'],
         },
-        clinical_significance: {
-            oneOf: [
-                {
-                    type: 'string',
-                    pattern: `(${[
-                        'Sensitivity',
-                        'Adverse Response',
-                        'Resistance',
-                        'Sensitivity/Response',
-                        'Positive',
-                        'Negative',
-                        'Poor Outcome',
-                        'Better Outcome',
-                        'Uncertain Significance',
-                        'Pathogenic',
-                        'N/A',
-                    ].join('|')})`,
-                },
-                { type: 'null' },
-            ],
-        },
-        evidence_direction: { type: ['string', 'null'] },
-        status: { type: 'string' },
+        id: { type: 'number' },
+        rating: { type: ['number', 'null'] },
         source: {
             properties: {
                 citation_id: { type: 'string' },
-                source_type: { type: 'string' },
                 name: { type: ['string', 'null'] },
+                source_type: { type: 'string' },
             },
         },
+        status: { type: 'string' },
         variant_id: { type: 'number' },
     },
+    type: 'object',
 });
 
 
 const validateVariantSpec = ajv.compile({
-    type: 'object',
     properties: {
-        id: { type: 'number' },
-        entrez_name: { type: 'string' },
-        entrez_id: { type: 'number' },
-        name: { type: 'string' },
-        description: { type: 'string' },
         civic_actionability_score: { type: 'number' },
         coordinates: {
-            type: 'object',
             properties: {
                 chromosome: { type: ['string', 'null'] },
-                start: { type: ['number', 'null'] },
-                stop: { type: ['number', 'null'] },
-                reference_bases: { type: ['string', 'null'] },
-                variant_bases: { type: ['string', 'null'] },
-                representative_transcript: { type: ['string', 'null'] },
                 chromosome2: { type: ['string', 'null'] },
-                start2: { type: ['number', 'null'] },
-                stop2: { type: ['number', 'null'] },
-                representative_transcript2: { type: ['string', 'null'] },
                 ensembl_version: { type: ['number', 'null'] },
+                reference_bases: { type: ['string', 'null'] },
                 reference_build: { type: ['string', 'null'] },
+                representative_transcript: { type: ['string', 'null'] },
+                representative_transcript2: { type: ['string', 'null'] },
+                start: { type: ['number', 'null'] },
+                start2: { type: ['number', 'null'] },
+                stop: { type: ['number', 'null'] },
+                stop2: { type: ['number', 'null'] },
+                variant_bases: { type: ['string', 'null'] },
             },
+            type: 'object',
         },
+        description: { type: 'string' },
+        entrez_id: { type: 'number' },
+        entrez_name: { type: 'string' },
+        id: { type: 'number' },
+        name: { type: 'string' },
         variant_types: {
-            type: 'array',
             items: {
-                type: 'object',
                 name: { type: 'string' },
                 so_id: { type: 'string' },
+                type: 'object',
             },
+            type: 'array',
         },
     },
+    type: 'object',
 });
 
 /**
  * Convert the CIViC relevance types to GraphKB terms
  */
 const getRelevance = async ({ rawRecord, conn }) => {
-    const translateRelevance = (evidenceType, clinicalSignificance) => {
+    const translateRelevance = ({ evidenceType, clinicalSignificance, evidenceDirection }) => {
         switch (evidenceType) { // eslint-disable-line default-case
             case 'Predictive': {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
@@ -164,6 +167,10 @@ const getRelevance = async ({ rawRecord, conn }) => {
                     case 'Sensitivity/Response': { return 'sensitivity'; }
                 }
                 break;
+            }
+
+            case 'Functional': {
+                return clinicalSignificance.toLowerCase();
             }
 
             case 'Diagnostic': {
@@ -202,13 +209,18 @@ const getRelevance = async ({ rawRecord, conn }) => {
                 break;
             }
         }
+
         throw new Error(
-            `unrecognized evidence type (${evidenceType}) or clinical significance (${clinicalSignificance})`,
+            `unable to process relevance (${JSON.stringify({ clinicalSignificance, evidenceDirection, evidenceType })})`,
         );
     };
 
     // translate the type to a GraphKB vocabulary term
-    let relevance = translateRelevance(rawRecord.evidence_type, rawRecord.clinical_significance).toLowerCase();
+    let relevance = translateRelevance({
+        clinicalSignificance: rawRecord.clinical_significance,
+        evidenceDirection: rawRecord.evidence_direction,
+        evidenceType: rawRecord.evidence_type,
+    }).toLowerCase();
 
     if (RELEVANCE_CACHE[relevance] === undefined) {
         relevance = await conn.getVocabularyTerm(relevance);
@@ -222,8 +234,29 @@ const getRelevance = async ({ rawRecord, conn }) => {
 /**
  * Given some drug name, find the drug that is equivalent by name in GraphKB
  */
-const getDrug = async (conn, name) => {
+const getDrug = async (conn, drugRecord) => {
     let originalError;
+
+    // fetch from NCIt first if possible, or pubchem
+    // then use the name as a fallback
+    const name = drugRecord.name.toLowerCase().trim();
+
+    if (drugRecord.ncit_id) {
+        try {
+            const drug = await conn.getUniqueRecordBy({
+                filters: [
+                    { source: { filters: { name: NCIT_SOURCE_DEFN.name }, target: 'Source' } },
+                    { sourceId: drugRecord.ncit_id },
+                ],
+                sort: orderPreferredOntologyTerms,
+                target: 'Therapy',
+            });
+            return drug;
+        } catch (err) {
+            logger.error(`had NCIt drug mapping (${drugRecord.ncit_id}) but failed to fetch from graphkb: ${err}`);
+            throw err;
+        }
+    }
 
     try {
         const drug = await conn.getTherapy(name);
@@ -258,14 +291,9 @@ const getVariantName = ({ name, variant_types: variantTypes = [] }) => {
         return result.replace(/-/g, ' ');
     }
     const SUBS = {
-        'frameshift truncation': 'frameshift',
-        itd: 'internal tandem duplication',
-        loss: 'copy loss',
-        'copy number variation': 'copy variant',
-        gain: 'copy gain',
-        'g12/g13': '(G12_G13)mut',
-        'di842-843vm': 'D842_I843delDIinsVM',
         'del 755-759': '?755_?759del',
+        'di842-843vm': 'D842_I843delDIinsVM',
+        'g12/g13': '(G12_G13)mut',
     };
 
     if (SUBS[result] !== undefined) {
@@ -322,17 +350,17 @@ const getEvidenceLevel = async ({
 
     if (EVIDENCE_LEVEL_CACHE[level] === undefined) {
         level = await conn.addRecord({
-            target: 'EvidenceLevel',
             content: {
-                name: level,
-                sourceId: level,
-                source: rid(sources.civic),
-                displayName: `${SOURCE_DEFN.displayName} ${level.toUpperCase()}`,
                 description: `${VOCAB[rawRecord.evidence_level]} ${VOCAB[rawRecord.rating] || ''}`,
+                displayName: `${SOURCE_DEFN.displayName} ${level.toUpperCase()}`,
+                name: level,
+                source: rid(sources.civic),
+                sourceId: level,
                 url: VOCAB.url,
             },
             existsOk: true,
             fetchConditions: { AND: [{ sourceId: level }, { name: level }, { source: rid(sources.civic) }] },
+            target: 'EvidenceLevel',
 
         });
         EVIDENCE_LEVEL_CACHE[level.sourceId] = level;
@@ -350,6 +378,14 @@ const processVariantRecord = async ({ conn, variantRec, feature }) => {
 
     // parse the variant record
     const variantName = getVariantName(variantRec);
+
+    if (/^\s*rs\d+\s*$/gi.exec(variantName)) {
+        const [variant] = await _snp.fetchAndLoadByIds(conn, [variantName]);
+
+        if (variant) {
+            return variant;
+        }
+    }
 
     let reference1,
         reference2 = null;
@@ -372,19 +408,26 @@ const processVariantRecord = async ({ conn, variantRec, feature }) => {
     }
 
     try {
-        const variantClass = await conn.getVocabularyTerm(variantName);
+        let variantClass;
+
+        // try to fetch civic specific term first
+        try {
+            variantClass = await conn.getVocabularyTerm(variantName, SOURCE_DEFN.name);
+        } catch (err) {
+            variantClass = await conn.getVocabularyTerm(variantName);
+        }
         const body = {
-            type: rid(variantClass),
             reference1: rid(reference1),
+            type: rid(variantClass),
         };
 
         if (reference2) {
             body.reference2 = rid(reference2);
         }
         const variant = await conn.addVariant({
-            target: 'CategoryVariant',
             content: body,
             existsOk: true,
+            target: 'CategoryVariant',
         });
         return variant;
     } catch (err) {
@@ -409,9 +452,9 @@ const processVariantRecord = async ({ conn, variantRec, feature }) => {
             parsed.reference2 = rid(reference2);
         }
         const variant = await conn.addVariant({
-            target: 'PositionalVariant',
             content: parsed,
             existsOk: true,
+            target: 'PositionalVariant',
         });
         return variant;
     }
@@ -440,7 +483,7 @@ const processEvidenceRecord = async (opt) => {
     let variant;
 
     try {
-        variant = await processVariantRecord({ variantRec: rawRecord.variant, feature, conn });
+        variant = await processVariantRecord({ conn, feature, variantRec: rawRecord.variant });
     } catch (err) {
         logger.error(`Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name})`);
         throw err;
@@ -452,7 +495,7 @@ const processEvidenceRecord = async (opt) => {
         diseaseQueryFilters = {
             AND: [
                 { sourceId: `doid:${rawRecord.disease.doid}` },
-                { source: { target: 'Source', filters: { name: 'disease ontology' } } },
+                { source: { filters: { name: 'disease ontology' }, target: 'Source' } },
             ],
         };
     } else {
@@ -462,9 +505,9 @@ const processEvidenceRecord = async (opt) => {
 
     try {
         disease = await conn.getUniqueRecordBy({
-            target: 'Disease',
             filters: diseaseQueryFilters,
             sort: orderPreferredOntologyTerms,
+            target: 'Disease',
         });
     } catch (err) {
         throw err;
@@ -473,7 +516,7 @@ const processEvidenceRecord = async (opt) => {
     let drug;
 
     if (rawRecord.drug) {
-        drug = await getDrug(conn, rawRecord.drug.name.toLowerCase().trim());
+        drug = await getDrug(conn, rawRecord.drug);
     }
     // get the publication by pubmed ID
     let publication;
@@ -486,20 +529,17 @@ const processEvidenceRecord = async (opt) => {
 
     // common content
     const content = {
-        relevance: rid(relevance),
-        source: rid(sources.civic),
-        reviewStatus: 'not required',
-        sourceId: rawRecord.id,
-        evidenceLevel: rid(level),
-        evidence: [rid(publication)],
         conditions: [rid(variant)],
         description: rawRecord.description,
+        evidence: [rid(publication)],
+        evidenceLevel: rid(level),
+        relevance: rid(relevance),
+        reviewStatus: 'not required',
+        source: rid(sources.civic),
+        sourceId: rawRecord.id,
     };
 
     // create the statement and connecting edges
-    if (!['Diagnostic', 'Predictive', 'Prognostic', 'Predisposing'].includes(rawRecord.evidence_type)) {
-        throw new Error(`Unable to make statement (evidence_type=${rawRecord.evidence_type})`);
-    }
     if (rawRecord.evidence_type === 'Diagnostic' || rawRecord.evidence_type === 'Predisposing') {
         content.subject = rid(disease);
     } else {
@@ -511,16 +551,18 @@ const processEvidenceRecord = async (opt) => {
     } if (rawRecord.evidence_type === 'Prognostic') {
         // get the patient vocabulary object
         content.subject = rid(await conn.getVocabularyTerm('patient'));
+    } if (rawRecord.evidence_type === 'Functional') {
+        content.subject = rid(feature);
     }
 
     if (content.subject && !content.conditions.includes(content.subject)) {
         content.conditions.push(content.subject);
     }
     await conn.addRecord({
-        target: 'Statement',
         content,
         existsOk: true,
         fetchExisting: false,
+        target: 'Statement',
     });
 };
 
@@ -537,8 +579,8 @@ const downloadVariantRecords = async () => {
         const url = `${urlTemplate}&page=${currentPage}`;
         logger.info(`loading: ${url}`);
         const resp = await request({
-            method: 'GET',
             json: true,
+            method: 'GET',
             uri: url,
         });
         expectedPages = resp._meta.total_pages;
@@ -569,7 +611,7 @@ const downloadVariantRecords = async () => {
 const downloadEvidenceRecords = async (baseUrl) => {
     const urlTemplate = `${baseUrl}/evidence_items?count=500&status=accepted`;
     // load directly from their api
-    const counts = { error: 0, success: 0, skip: 0 };
+    const counts = { error: 0, skip: 0, success: 0 };
     let expectedPages = 1,
         currentPage = 1;
 
@@ -581,8 +623,8 @@ const downloadEvidenceRecords = async (baseUrl) => {
         const url = `${urlTemplate}&page=${currentPage}`;
         logger.info(`loading: ${url}`);
         const resp = await request({
-            method: 'GET',
             json: true,
+            method: 'GET',
             uri: url,
         });
         expectedPages = resp._meta.total_pages;
@@ -593,15 +635,15 @@ const downloadEvidenceRecords = async (baseUrl) => {
 
     // now find entries curated by trusted curators
     const { results: trustedSubmissions } = await request({
-        uri: `${baseUrl}/evidence_items/search`,
-        method: 'POST',
         body: {
-            operator: 'AND',
-            queries: [{ field: 'submitter_id', condition: { name: 'is_equal_to', parameters: [`${TRUSTED_CURATOR_ID}`] } }],
             entity: 'evidence_items',
+            operator: 'AND',
+            queries: [{ condition: { name: 'is_equal_to', parameters: [`${TRUSTED_CURATOR_ID}`] }, field: 'submitter_id' }],
             save: true,
         },
         json: true,
+        method: 'POST',
+        uri: `${baseUrl}/evidence_items/search`,
     });
 
     let submitted = 0;
@@ -621,7 +663,7 @@ const downloadEvidenceRecords = async (baseUrl) => {
         try {
             checkSpec(validateEvidenceSpec, record);
         } catch (err) {
-            errorList.push({ record, error: err, errorMessage: err.toString() });
+            errorList.push({ error: err, errorMessage: err.toString(), record });
             logger.error(err);
             counts.error++;
             continue;
@@ -641,7 +683,7 @@ const downloadEvidenceRecords = async (baseUrl) => {
             records.push(record);
         }
     }
-    return { records, counts, errorList };
+    return { counts, errorList, records };
 };
 
 
@@ -656,20 +698,20 @@ const upload = async (opt) => {
     const { conn, errorLogPrefix } = opt;
     // add the source node
     const source = await conn.addRecord({
-        target: 'Source',
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
+        target: 'Source',
     });
 
     let { result: previouslyEntered } = await conn.request({
-        method: 'POST',
-        uri: 'query',
         body: {
-            target: 'Statement',
             filters: { source: rid(source) },
             returnProperties: ['sourceId'],
+            target: 'Statement',
         },
+        method: 'POST',
+        uri: 'query',
     });
     previouslyEntered = new Set(previouslyEntered.map(r => r.sourceId));
     logger.info(`Found ${previouslyEntered.size} records previously added from ${SOURCE_DEFN.name}`);
@@ -698,15 +740,15 @@ const upload = async (opt) => {
                 logger.debug(`processing ${record.id}`);
                 await processEvidenceRecord({
                     conn,
-                    sources: { civic: source },
                     rawRecord: Object.assign({ drug }, _.omit(record, ['drugs'])),
+                    sources: { civic: source },
                 });
                 counts.success += 1;
             } catch (err) {
                 if (err.toString().includes('is not a function')) {
                     console.error(err);
                 }
-                errorList.push({ record, error: err, errorMessage: err.toString() });
+                errorList.push({ error: err, errorMessage: err.toString(), record });
                 logger.error(err);
                 counts.error += 1;
             }
@@ -719,9 +761,9 @@ const upload = async (opt) => {
 };
 
 module.exports = {
-    upload,
-    getVariantName,
     SOURCE_DEFN,
+    getVariantName,
     kb: true,
     specs: { validateEvidenceSpec, validateVariantSpec },
+    upload,
 };
