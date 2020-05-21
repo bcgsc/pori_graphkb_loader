@@ -132,7 +132,7 @@ describe('entrez', () => {
                 expect(result).toHaveProperty('name', '3');
                 expect(result).not.toHaveProperty('longName');
                 expect(result).toHaveProperty('sourceId', 'NC_000003');
-                expect(result).not.toHaveProperty('sourceIdVersion');
+                expect(result).toHaveProperty('sourceIdVersion', null);
                 expect(result).toHaveProperty('source');
                 expect(result).toHaveProperty('displayName', 'NC_000003');
             });
