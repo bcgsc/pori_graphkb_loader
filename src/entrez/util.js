@@ -149,7 +149,14 @@ const uploadRecord = async (api, content, opt = {}) => {
     } if (fetchFirst) {
         try {
             const record = await api.getUniqueRecordBy({
-                filters: { sourceId },
+                filters: {
+                    source: {
+                        filters: { name: sourceDefn.name },
+                        target: 'Source',
+                    },
+                    sourceId,
+                    sourceIdVersion: sourceIdVersion || null,
+                },
                 target,
             });
 
@@ -189,6 +196,7 @@ const uploadRecord = async (api, content, opt = {}) => {
             AND: [
                 { sourceId },
                 { source: rid(source) },
+                { sourceIdVersion: sourceIdVersion || null },
             ],
         },
         target,

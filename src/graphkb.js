@@ -34,7 +34,9 @@ const convertRecordToQueryFilters = (record) => {
     const filters = [];
 
     for (const [prop, value] of Object.entries(record).sort()) {
-        filters.push({ [prop]: value });
+        if (value !== undefined) {
+            filters.push({ [prop]: value });
+        }
     }
     return { AND: filters };
 };
@@ -168,7 +170,24 @@ class ApiConnection {
         if (opt.qs) {
             req.qs = opt.qs;
         }
-        return request(req);
+
+        try {
+            const result = await request(req);
+            return result;
+        } catch (err) {
+            let errorMessage = err.message;
+
+            try {
+                const errorContent = err.error;
+                errorMessage = `${errorContent.name}: ${errorContent.message}`;
+            } catch (err2) {}
+
+            if (err.statusCode === 400) {
+                logger.error(`bad request ${opt.method || 'GET'} ${opt.uri} ${JSON.stringify(opt.body)}`);
+                logger.error(errorMessage);
+            }
+            throw err;
+        }
     }
 
     getCreatedCounts() {
@@ -246,7 +265,7 @@ class ApiConnection {
 
         if (records.length > 1) {
             if (sortFunc(records[0], records[1]) === 0) {
-                throw new Error(`expected a single ${target} record but found multiple: [${rid(records[0])}, ${rid(records[1])}]`);
+                throw new Error(`expected a single ${target} record but found multiple: [${rid(records[0])}, ${rid(records[1])}] where ${JSON.stringify(filters)}`);
             }
         } else if (records.length === 0) {
             throw new Error(`missing ${target} record where ${JSON.stringify(filters)}`);

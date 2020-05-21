@@ -58,6 +58,7 @@
     "version": "echo $npm_package_version",
     "start:recent-trials": "node bin/clinicaltrialsgov.js",
     "start:fda-approvals": "node bin/fdaApprovals.js",
-    "start:oncotree": "node bin/oncotree.js"
+    "start:oncotree": "node bin/oncotree.js",
+    "start:civic": "node bin/civic.js"
   }
 }
