@@ -84,7 +84,7 @@ const fetchAndLoadById = async (conn, drugId) => {
     const record = await conn.addRecord({
         content,
         existsOk: true,
-        fetchConditions: { name: content.name, source, sourceId: content.sourceId },
+        fetchConditions: { AND: [{ name: content.name }, { source }, { sourceId: content.sourceId }] },
         target: 'Therapy',
     });
 

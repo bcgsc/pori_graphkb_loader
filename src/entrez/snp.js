@@ -48,9 +48,11 @@ const loadFromDocsumHgvs = async (api, hgvsVariants) => {
 
     try {
         if (hgvsVariants.cds) {
-            const parsed = variantParser(hgvsVariants.cds, true);
-            const transcript = await refseq.fetchAndLoadByIds(api, [cds.reference1]);
-            const type = await api.getVocabularyTerm(cds.type);
+            const {
+                multiFeature, noFeatures, prefix, ...parsed
+            } = variantParser(hgvsVariants.cds.split('|')[0], true);
+            const [transcript] = await refseq.fetchAndLoadByIds(api, [parsed.reference1]);
+            const type = await api.getVocabularyTerm(parsed.type);
             cds = await api.addVariant({
                 content: { ...parsed, reference1: rid(transcript), type: rid(type) },
                 existsOk: true,
@@ -58,14 +60,16 @@ const loadFromDocsumHgvs = async (api, hgvsVariants) => {
             });
         }
     } catch (err) {
-        logger.error(err);
+        logger.error(`creating HGVSc (${hgvsVariants.cds}): ${err}`);
     }
 
     try {
         if (hgvsVariants.protein) {
             const gene = hgvsVariants.protein.split('|').find(p => p.startsWith('GENE='));
-            const parsed = variantParser(protein.split('|')[0], true);
-            const reference1 = await refseq.fetchAndLoadByIds(api, [parsed.reference1]);
+            const {
+                multiFeature, noFeatures, prefix, ...parsed
+            } = variantParser(hgvsVariants.protein.split('|')[0], true);
+            const [reference1] = await refseq.fetchAndLoadByIds(api, [parsed.reference1]);
             const type = await api.getVocabularyTerm(parsed.type);
             protein = await api.addVariant({
                 content: { ...parsed, reference1: rid(reference1), type: rid(type) },
@@ -82,9 +86,9 @@ const loadFromDocsumHgvs = async (api, hgvsVariants) => {
             }
 
             if (gene) {
-                const geneId = rid(await entrezGene.fetchAndLoadByIds(api, gene.split(':')[1]));
+                const [geneRec] = await entrezGene.fetchAndLoadByIds(api, gene.split(':')[1]);
                 const alternateProtein = await api.addVariant({
-                    content: { ...cds, reference1: geneId, type: rid(type) },
+                    content: { ...parsed, reference1: rid(geneRec), type: rid(type) },
                     existsOk: true,
                     target: 'PositionalVariant',
                 });
@@ -96,7 +100,7 @@ const loadFromDocsumHgvs = async (api, hgvsVariants) => {
             }
         }
     } catch (err) {
-        logger.error(err);
+        logger.error(`creating HGVSp (${hgvsVariants.protein}): ${err}`);
     }
     return cds || protein;
 };

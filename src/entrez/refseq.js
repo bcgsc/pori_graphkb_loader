@@ -47,7 +47,7 @@ const parseRecord = (record) => {
         displayName: record.accessionversion.toUpperCase(),
         longName: record.title,
         sourceId,
-        sourceIdVersion,
+        sourceIdVersion: sourceIdVersion || null,
     };
 
     if (biotype === 'chromosome') {
@@ -96,7 +96,7 @@ const fetchAndLoadByIds = async (api, idListIn) => {
         fullRecords.forEach((rec) => {
             const simplified = _.omit(rec, ['sourceIdVersion', 'longName', 'description']);
             simplified.displayName = simplified.sourceId.toUpperCase();
-            records.push(simplified);
+            records.push({ ...simplified, sourceIdVersion: null });
         });
     }
 
@@ -111,17 +111,30 @@ const fetchAndLoadByIds = async (api, idListIn) => {
     await Promise.all(result.map(async (record) => {
         if (record.sourceIdVersion !== undefined && record.sourceIdVersion !== null) {
             const unversioned = await api.addRecord({
-                content: _.omit(record, ['sourceIdVersion', '@rid', '@class']),
-                fetchConditions: {
+                content: {
+                    biotype: record.biotype,
+                    description: record.description,
+                    displayName: record.sourceId.toUpperCase(),
+                    longName: record.longName,
                     name: record.name,
-                    source: record.source,
+                    source: rid(record.source),
                     sourceId: record.sourceId,
                     sourceIdVersion: null,
+                },
+                existsOk: true,
+                fetchConditions: {
+                    AND: [
+                        { name: record.name },
+                        { source: rid(record.source) },
+                        { sourceId: record.sourceId },
+                        { sourceIdVersion: null },
+                    ],
                 },
                 target: 'Feature',
             });
             await api.addRecord({
                 content: { in: rid(record), out: rid(unversioned), source: record.source },
+                existsOk: true,
                 target: 'GeneralizationOf',
             });
         }
