@@ -1,7 +1,7 @@
 /**
  * @module importer/oncokb
  */
-const request = require('request-promise');
+// const request = require('request-promise');
 const Ajv = require('ajv');
 const fs = require('fs');
 const path = require('path');
@@ -130,7 +130,7 @@ const getVocabulary = async (conn, term) => {
  * Parse the variant string preresentation from oncokb to its graphkB equivalent
  */
 const parseVariantName = (variantIn, { reference1 } = {}) => {
-    const variant = variantIn.toLowerCase();
+    const variant = variantIn.toLowerCase().trim();
 
     try {
         kbParser.variant.parse(`p.${variant}`, false);
@@ -144,24 +144,31 @@ const parseVariantName = (variantIn, { reference1 } = {}) => {
         };
     } if (variant.endsWith('_splice')) {
         return { type: `p.${variant.replace('_splice', 'spl')}` };
-    } if (match = /^([^-\s]+)-([^-\s]+) fusion$/i.exec(variant)) {
-        if (!reference1 || match[1].toLowerCase() === reference1.toLowerCase()) {
+    } if (match = /^([a-z0-9_]+)[\u8211-]([a-z0-9_]+)(\s+fusion)?$/i.exec(variant)) {
+        const [, gene1, gene2] = match;
+
+        if (reference1) {
+            if (reference1.toLowerCase() === gene1) {
+                return {
+                    flipped: false,
+                    reference2: gene2,
+                    type: 'fusion',
+                };
+            } if (reference1.toLowerCase() === gene2) {
+                return {
+                    flipped: true,
+                    reference2: gene1,
+                    type: 'fusion',
+                };
+            }
+            throw new Error(`Fusion gene names (${gene1},${gene2}) do not match expected gene name (${reference1})`);
+        } else {
             return {
-                reference2: match[2].trim().toLowerCase(),
-                type: 'fusion',
-            };
-        } if (match[2].toLowerCase() === reference1.toLowerCase()) {
-            return {
-                reference1: match[1].trim().toLowerCase(),
-                reference2: reference1.toLowerCase(),
+                flipped: false,
+                reference2: gene2,
                 type: 'fusion',
             };
         }
-        throw new Error(
-            `the fusion in the variant ${variant
-            } does not match the name of the gene feature ${reference1
-            }`,
-        );
     } if (match = /^exon (\d+) (mutation|insertion|deletion|deletion\/insertion|splice mutation|indel|missense mutation)s?$/i.exec(variant)) {
         const [, pos, type] = match;
 
@@ -173,8 +180,17 @@ const parseVariantName = (variantIn, { reference1 } = {}) => {
         return { type: VOCABULARY_MAPPING[variant.toLowerCase().trim()] };
     } if (match = /^Exon (\d+) and (\d+) deletion$/i.exec(variant)) {
         return { type: `e.${match[1]}_${match[2]}del` };
+    } if (match = /^([A-Z]\d+)_([A-Z]\d+)(trunc|fs)$/i.exec(variant)) {
+        const [, pos1, pos2, type] = match;
+
+        return {
+            type: `p.(${pos1}_${pos2})${type === 'trunc'
+                ? '*'
+                : 'fs'
+            }`,
+        };
     }
-    throw new Error(`Unable to parse variant notation (variantIn=${variantIn}, reference1=${reference1})`);
+    throw new Error(`Unable to parse variant from variantName (variantName=${variantIn}, reference1=${reference1})`);
 };
 
 
@@ -187,7 +203,8 @@ const processVariant = async (conn, {
     let gene1,
         type,
         reference2,
-        gene2;
+        gene2,
+        flipped = false;
 
     if (gene.toLowerCase() === 'other biomarkers') {
         try {
@@ -216,11 +233,12 @@ const processVariant = async (conn, {
 
         // determine the type of variant we are dealing with
         try {
-            ({ type, reference2 } = parseVariantName(
+            ({ type, reference2, flipped } = parseVariantName(
                 variantName,
                 { reference1: gene1.name },
             ));
         } catch (err) {
+            logger.warn(`${err} assume vocabulary term`);
             type = variantName;
         }
 
@@ -229,21 +247,18 @@ const processVariant = async (conn, {
                 const candidates = await _entrezGene.fetchAndLoadBySymbol(conn, reference2);
 
                 if (candidates.length !== 1) {
-                    throw new Error(`Unable to find single (${candidates.length}) unique records by symbol (${reference2})`);
+                    throw new Error(`Unable to find single (${candidates.map(c => `${c['@rid']}(${c.name})`)}) unique records by symbol (${reference2})`);
                 }
-                gene2 = candidates[0];
+                [gene2] = candidates;
             }
         } catch (err) {
             logger.warn(err);
             throw err;
         }
     }
-    // swap them for fusions listed in opposite order
-    if (reference2
-        && gene2
-        && reference2.name === gene1.name
-        && reference2.name !== gene2.name
-    ) {
+    // swap them for fusions listed in opposite order. Use the variant name to determin the order
+    // ex. GENE1-GENE2
+    if (flipped) {
         [gene1, gene2] = [gene2, gene1];
     }
 
@@ -256,7 +271,9 @@ const processVariant = async (conn, {
         variantType = await getVocabulary(conn, variantType);
         variantUrl = 'CategoryVariant';
         variant = {};
-    } catch (err) { }
+    } catch (err) {
+        logger.warn(err);
+    }
 
     if (!variant) {
         try {
@@ -629,7 +646,7 @@ const addEvidenceLevels = async (conn, proxy, source) => {
 /**
  * Upload the gene curation as tumour supressive or oncogenic statements
  */
-const uploadAllCuratedGenes = async ({ conn, proxy, source }) => {
+const uploadAllCuratedGenes = async ({ conn, proxy, source }) => {  // eslint-disable-line
     const genes = proxy.get('allCuratedGenes.json');
 
     const tsg = rid(await conn.getVocabularyTerm('tumour suppressive'));
