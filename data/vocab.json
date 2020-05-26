@@ -97,6 +97,14 @@
         "associated with": {
             "name": "associated with"
         },
+        "b2 domain mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "domain mutation"
+                }
+            ]
+        },
         "benign": {
             "links": [
                 {
@@ -219,6 +227,14 @@
                 }
             ]
         },
+        "n-terminal frame shift": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "frameshift mutation"
+                }
+            ]
+        },
         "decreased dosage": {
             "description": "requires decreased dosage",
             "links": [
@@ -291,6 +307,18 @@
                 }
             ]
         },
+        "deletion polymorphism": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "polymorphism"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "deletion"
+                }
+            ]
+        },
         "diagnostic indicator": {
             "description": "evidence is diagnostic for a specific disease type, disease subtype or disease state"
         },
@@ -300,6 +328,14 @@
                 {
                     "class": "SubClassOf",
                     "target": "fusion"
+                }
+            ]
+        },
+        "dna binding domain mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "domain mutation"
                 }
             ]
         },
@@ -1257,7 +1293,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "small mutation"
+                    "target": "mutation"
                 }
             ]
         },
@@ -1517,6 +1553,14 @@
                 {
                     "class": "SubClassOf",
                     "target": "response"
+                }
+            ]
+        },
+        "sh2 domain mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "domain mutation"
                 }
             ]
         },

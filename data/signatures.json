@@ -1260,6 +1260,15 @@
             ],
             "name": "microsatellite stable"
         },
+        "mismatch repair deficiency": {
+            "description": "deficiency of the DNA mismatch repair pathway",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "mutation burden"
+                }
+            ]
+        },
         "msi": {
             "deprecated": true,
             "links": [

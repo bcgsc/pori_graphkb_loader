@@ -55,6 +55,10 @@ const fetchByIdList = async (rawIdList, opt) => {
     const {
         url = BASE_URL, db = 'pubmed', parser, cache = {}, dbfrom = null,
     } = opt;
+
+    if (rawIdList.length === 0) {
+        return [];
+    }
     const { cached: allRecords, remaining: idList } = pullFromCacheById(rawIdList, cache);
 
     for (let startIndex = 0; startIndex < idList.length; startIndex += MAX_CONSEC_IDS) {

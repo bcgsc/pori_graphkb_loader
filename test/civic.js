@@ -7,7 +7,7 @@ const { getVariantName } = require('./../src/knowledgebases/civic');
 describe('civic', () => {
     describe('getVariantName', () => {
         test('parses exon mutations', () => {
-            const parsedName = getVariantName({ name: 'EXON 12 MUTATION' });
+            const parsedName = getVariantName('EXON 12 MUTATION');
             expect(parsedName).toBe('e.12mut');
             // external parser should not throw error
             expect(() => {
@@ -26,12 +26,12 @@ describe('civic', () => {
         });
 
         test('deleterious mutation', () => {
-            const parsedName = getVariantName({ name: 'DELETERIOUS MUTATION' });
+            const parsedName = getVariantName('DELETERIOUS MUTATION');
             expect(parsedName).toBe('deleterious mutation');
         });
 
         test('phos variant', () => {
-            const parsedName = getVariantName({ name: 'Y1234 phosphorylation' });
+            const parsedName = getVariantName('Y1234 phosphorylation');
             expect(parsedName).toBe('p.y1234phos');
         });
     });

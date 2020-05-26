@@ -277,7 +277,7 @@ const getDrug = async (conn, drugRecord) => {
 };
 
 
-const getVariantName = ({ name, variant_types: variantTypes = [] }) => {
+const getVariantName = (name, variantTypes = []) => {
     const result = name.toLowerCase().trim();
 
     if ([
@@ -289,15 +289,6 @@ const getVariantName = ({ name, variant_types: variantTypes = [] }) => {
         'mutation',
     ].includes(result)) {
         return result.replace(/-/g, ' ');
-    }
-    const SUBS = {
-        'del 755-759': '?755_?759del',
-        'di842-843vm': 'D842_I843delDIinsVM',
-        'g12/g13': '(G12_G13)mut',
-    };
-
-    if (SUBS[result] !== undefined) {
-        return SUBS[result];
     }
 
     let match;
@@ -337,6 +328,8 @@ const getVariantName = ({ name, variant_types: variantTypes = [] }) => {
         return `e.${start}_${end}del`;
     } if (match = /^([a-z]\d+) phosphorylation$/.exec(result)) {
         return `p.${match[1]}phos`;
+    } if (result.includes(' fusion ')) {
+        return 'fusion';
     }
     return result;
 };
@@ -370,94 +363,230 @@ const getEvidenceLevel = async ({
     return level;
 };
 
+
+const createHgvsVariant = async (conn, feature, variantName) => {
+    let match,
+        cds;
+
+    if (match = /^(\S+)\s\((c\.\d+\S+)\)$/.exec(variantName) && !/^[cg]\..*/.exec(variantName)) {
+        try {
+            cds = await createHgvsVariant(conn, feature, match[2]);
+            [, variantName] = match;
+        } catch (err) {
+            logger.error(`${variantName} ${err}`);
+        }
+    }
+    const parsed = kbParser.variant.parse(
+        `${/^[cpe]\..*/.exec(variantName)
+            ? ''
+            : 'p.'}${variantName}`, false,
+    ).toJSON();
+    const variantClass = await conn.getVocabularyTerm(parsed.type);
+    Object.assign(parsed, {
+        reference1: rid(feature),
+        type: rid(variantClass),
+    });
+
+    const variant = await conn.addVariant({
+        content: parsed,
+        existsOk: true,
+        target: 'PositionalVariant',
+    });
+
+    if (cds) {
+        await conn.addRecord({
+            content: { in: rid(variant), out: rid(cds) },
+            target: 'Infers',
+        });
+    }
+
+    return variant;
+};
+
+
+/**
+ * @param {ApiConnection} conn connection to GraphKB
+ * @param {*} inputFusionName  the variant name from CIVIc
+ * @param {*} feature the graphkb gene record linked to this variant in CIVIc (fetched by entrez ID)
+ */
+const processFusionVariants = async (conn, inputFusionName, feature) => {
+    const compareGeneNames = (gene1, gene2) => {
+        if (['abl1', 'abl'].includes(gene1) && ['abl1', 'abl'].includes(gene2)) {
+            return true;
+        } if (gene1 === gene2) {
+            return true;
+        }
+        return false;
+    };
+
+    if ((inputFusionName.match(/-/g) || []).length > 1) {
+        throw new Error(`multiple hyphens in fusion name (${inputFusionName}). Unable to parse second gene name`);
+    }
+    const fusionName = inputFusionName.toLowerCase();
+    let missingGene,
+        reference1,
+        reference2,
+        mutations;
+
+    try {
+        [, reference1,, reference2,, mutations] = /([^-\s]+)(-([^-\s]+))?(\s+fusion)?(\s+[^-\s]+)*$/.exec(fusionName);
+
+        if (mutations) {
+            mutations = mutations.trim();
+        }
+    } catch (err) {
+        throw new Error(`Fusion name (${inputFusionName}) does not match the expected pattern`);
+    }
+
+    if (compareGeneNames(feature.name, reference1)) {
+        reference1 = feature.name;
+        missingGene = reference2;
+    } else if (reference2 && compareGeneNames(feature.name, reference2)) {
+        reference2 = feature.name;
+        missingGene = reference1;
+    } else if (reference2) {
+        throw new Error(`Fusion gene names (${reference1},${reference2}) do not match the linked gene name (${feature.name})`);
+    }
+
+    let otherFeature = null;
+
+    if (missingGene) {
+        const search = await _entrezGene.fetchAndLoadBySymbol(conn, missingGene);
+
+        if (search.length !== 1) {
+            throw new Error(`unable to find specific (${search.length}) gene for symbol (${missingGene})`);
+        }
+        [otherFeature] = search;
+    }
+    const fusionType = await conn.getVocabularyTerm('fusion');
+    const result = [];
+
+
+    if (mutations) {
+        const exonsMatch = /^[a-z](\d+);[a-z](\d+)$/.exec(mutations);
+
+        if (exonsMatch && otherFeature) {
+            const [, exon1, exon2] = exonsMatch;
+            const fusion = await conn.addVariant({
+                content: {
+                    break1Repr: `e.${exon1}`,
+                    break1Start: {
+                        '@class': 'ExonicPosition',
+                        pos: exon1,
+                    },
+                    break2Repr: `e.${exon2}`,
+                    break2Start: {
+                        '@class': 'ExonicPosition',
+                        pos: exon2,
+                    },
+                    reference1: compareGeneNames(feature.name, reference1)
+                        ? rid(feature)
+                        : rid(otherFeature),
+                    reference2: compareGeneNames(feature.name, reference1)
+                        ? rid(otherFeature)
+                        : rid(feature),
+                    type: rid(fusionType),
+                },
+                existsOk: true,
+                target: 'PositionalVariant',
+            });
+            return [fusion];
+        }
+
+        for (const mutation of mutations.split(/\s+/g).filter(m => m.trim())) {
+            const variant = await processVariantRecord(conn, { name: mutation }, feature);
+            result.push(...variant);
+        }
+    }
+    const fusion = await conn.addVariant({
+        content: {
+            reference1: compareGeneNames(feature.name, reference1)
+                ? rid(feature)
+                : rid(otherFeature, true),
+            reference2: compareGeneNames(feature.name, reference1)
+                ? rid(otherFeature, true)
+                : rid(feature),
+            type: rid(fusionType),
+        },
+        existsOk: true,
+        target: 'CategoryVariant',
+    });
+    result.push(fusion);
+
+    return result;
+};
+
 /**
  * Given some variant record and a feature, process the variant and return a GraphKB equivalent
  */
-const processVariantRecord = async ({ conn, variantRec, feature }) => {
+const processVariantRecord = async (conn, { name, variant_types: variantTypes }, feature) => {
     // get the feature (entrez name appears to be synonymous with hugo symbol)
+    const result = [];
+    // based on discussion with cam here: https://www.bcgsc.ca/jira/browse/KBDEV-844
+    const SUBS = {
+        'E746_T751>I': 'E746_T751delinsI',
+        'EML4-ALK C1156Y-L1196M': 'EML4-ALK and C1156Y and L1196M',
+        'EML4-ALK C1156Y-L1198F': 'EML4-ALK and C1156Y and L1198F',
+        'EML4-ALK G1202R-L1196M': 'EML4-ALK and G1202R and L1196M',
+        'EML4-ALK G1202R-L1198F': 'EML4-ALK and G1202R and L1198F',
+        'EML4-ALK L1196M-L1198F': 'EML4-ALK and L1196M and L1198F',
+        'EML4-ALK T1151INST': 'EML4-ALK and T1151_?1152insT',
+        K558NP: 'K558delKinsNP',
+        T1151insT: 'T1151_?1152insT',
+        'V600E AMPLIFICATION': 'V600E and AMPLIFICATION',
+        'V600E+V600M': 'V600E and V600M',
+        'V600_K601>E': 'V600_K601delVKinsE',
+        'del 755-759': '?755_?759del',
+        'di842-843vm': 'D842_I843delDIinsVM',
+        'g12/g13': '(G12_G13)mut',
+        'p26.3-25.3 11mb del': 'y.p26.3_p25.3del',
+    };
 
-    // parse the variant record
-    const variantName = getVariantName(variantRec);
+    const variants = (SUBS[name] || name).replace(' + ', ' and ').split(' and ').map(v => v.trim()).filter(v => v);
 
-    if (/^\s*rs\d+\s*$/gi.exec(variantName)) {
-        const [variant] = await _snp.fetchAndLoadByIds(conn, [variantName]);
+    for (const variant of variants) {
+        // parse the variant record
+        const variantName = getVariantName(variant, variantTypes || []);
 
-        if (variant) {
-            return variant;
+        if (/^\s*rs\d+\s*$/gi.exec(variantName)) {
+            const [rsVariant] = await _snp.fetchAndLoadByIds(conn, [variantName]);
+
+            if (rsVariant) {
+                result.push(rsVariant);
+                continue;
+            }
         }
-    }
 
-    let reference1,
-        reference2 = null;
-
-    if (variantName === 'fusion' && variantRec.name.includes('-')) {
-        [reference1, reference2] = variantRec.name.toLowerCase().split('-');
-
-        if (feature.name !== reference1) {
-            [reference1, reference2] = [reference2, reference1];
+        if (variantName === 'fusion' && (/\s+fusion\s+\S+/gi.exec(variant) || variant.includes('-'))) {
+            const fusionVariants = await processFusionVariants(conn, variant, feature);
+            result.push(...fusionVariants);
+            continue;
         }
-        reference1 = feature;
-        const search = await _entrezGene.fetchAndLoadBySymbol(conn, reference2);
 
-        if (search.length !== 1) {
-            throw new Error(`unable to find specific (${search.length}) gene for symbol (${reference2})`);
-        }
-        [reference2] = search;
-    } else {
-        reference1 = feature;
-    }
-
-    try {
-        let variantClass;
-
-        // try to fetch civic specific term first
         try {
-            variantClass = await conn.getVocabularyTerm(variantName, SOURCE_DEFN.name);
+            let variantClass;
+
+            // try to fetch civic specific term first
+            try {
+                variantClass = await conn.getVocabularyTerm(variantName, SOURCE_DEFN.name);
+            } catch (err) {
+                variantClass = await conn.getVocabularyTerm(variantName);
+            }
+            const catVariant = await conn.addVariant({
+                content: {
+                    reference1: rid(feature),
+                    type: rid(variantClass),
+                },
+                existsOk: true,
+                target: 'CategoryVariant',
+            });
+            result.push(catVariant);
         } catch (err) {
-            variantClass = await conn.getVocabularyTerm(variantName);
+            const hgvsVariant = await createHgvsVariant(conn, feature, variant);
+            result.push(hgvsVariant);
         }
-        const body = {
-            reference1: rid(reference1),
-            type: rid(variantClass),
-        };
-
-        if (reference2) {
-            body.reference2 = rid(reference2);
-        }
-        const variant = await conn.addVariant({
-            content: body,
-            existsOk: true,
-            target: 'CategoryVariant',
-        });
-        return variant;
-    } catch (err) {
-        let parsed;
-
-        try {
-            parsed = kbParser.variant.parse(
-                `${/^[cpe]\..*/.exec(variantName)
-                    ? ''
-                    : 'p.'}${variantName}`, false,
-            ).toJSON();
-        } catch (parsingError) {
-            throw new Error(`could not match ${variantName} (${err}) or parse (${parsingError}) variant`);
-        }
-        const variantClass = await conn.getVocabularyTerm(parsed.type);
-        Object.assign(parsed, {
-            reference1: rid(feature),
-            type: rid(variantClass),
-        });
-
-        if (reference2) {
-            parsed.reference2 = rid(reference2);
-        }
-        const variant = await conn.addVariant({
-            content: parsed,
-            existsOk: true,
-            target: 'PositionalVariant',
-        });
-        return variant;
     }
+    return result;
 };
 
 
@@ -480,12 +609,13 @@ const processEvidenceRecord = async (opt) => {
         getRelevance(opt),
         _entrezGene.fetchAndLoadByIds(conn, [rawRecord.variant.entrez_id]),
     ]);
-    let variant;
+    let variants;
 
     try {
-        variant = await processVariantRecord({ conn, feature, variantRec: rawRecord.variant });
+        variants = await processVariantRecord(conn, rawRecord.variant, feature);
+        logger.info(`converted variant name (${rawRecord.variant.name}) to variants (${variants.map(v => v.displayName).join(', and ')})`);
     } catch (err) {
-        logger.error(`Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name})`);
+        logger.error(`evidence (${rawRecord.id}) Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name}): ${err}`);
         throw err;
     }
     // get the disease by doid
@@ -529,7 +659,7 @@ const processEvidenceRecord = async (opt) => {
 
     // common content
     const content = {
-        conditions: [rid(variant)],
+        conditions: [...variants.map(v => rid(v))],
         description: rawRecord.description,
         evidence: [rid(publication)],
         evidenceLevel: rid(level),
@@ -557,6 +687,10 @@ const processEvidenceRecord = async (opt) => {
 
     if (content.subject && !content.conditions.includes(content.subject)) {
         content.conditions.push(content.subject);
+    }
+
+    if (!content.subject) {
+        throw Error(`unable to determine statement subject for evidence (${content.sourceId}) record`);
     }
     await conn.addRecord({
         content,
@@ -704,17 +838,15 @@ const upload = async (opt) => {
         target: 'Source',
     });
 
-    let { result: previouslyEntered } = await conn.request({
-        body: {
-            filters: { source: rid(source) },
-            returnProperties: ['sourceId'],
-            target: 'Statement',
-        },
-        method: 'POST',
-        uri: 'query',
+    let previouslyEntered = await conn.getRecords({
+        filters: { source: rid(source) },
+        returnProperties: ['sourceId'],
+        target: 'Statement',
     });
     previouslyEntered = new Set(previouslyEntered.map(r => r.sourceId));
     logger.info(`Found ${previouslyEntered.size} records previously added from ${SOURCE_DEFN.name}`);
+    logger.info('caching publication records');
+    _pubmed.preLoadCache(conn);
 
     const varById = await downloadVariantRecords();
     const { records, errorList, counts } = await downloadEvidenceRecords(opt.url || BASE_URL);
@@ -724,7 +856,7 @@ const upload = async (opt) => {
     counts.exists = counts.exists || 0;
 
     for (const record of records) {
-        record.variant = varById[record.variant_id];
+        record.variants = [varById[record.variant_id]]; // OR-ing of variants
 
         if (record.drugs === undefined || record.drugs.length === 0) {
             record.drugs = [null];
@@ -735,22 +867,34 @@ const upload = async (opt) => {
             continue;
         }
 
-        for (const drug of record.drugs) {
-            try {
-                logger.debug(`processing ${record.id}`);
-                await processEvidenceRecord({
-                    conn,
-                    rawRecord: Object.assign({ drug }, _.omit(record, ['drugs'])),
-                    sources: { civic: source },
-                });
-                counts.success += 1;
-            } catch (err) {
-                if (err.toString().includes('is not a function')) {
-                    console.error(err);
+        let orCombination;
+
+        if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variants[0].name)) {
+            const [, prefix, tail1, tail2] = orCombination;
+            record.variants = [
+                { ...record.variants[0], name: `${prefix}${tail1}` },
+                { ...record.variants[0], name: `${prefix}${tail2}` },
+            ];
+        }
+
+        for (const variant of record.variants) {
+            for (const drug of record.drugs) {
+                try {
+                    logger.debug(`processing ${record.id}`);
+                    await processEvidenceRecord({
+                        conn,
+                        rawRecord: { ..._.omit(record, ['drugs', 'variants']), drug, variant },
+                        sources: { civic: source },
+                    });
+                    counts.success += 1;
+                } catch (err) {
+                    if (err.toString().includes('is not a function')) {
+                        console.error(err);
+                    }
+                    errorList.push({ error: err, errorMessage: err.toString(), record });
+                    logger.error(`evidence (${record.id}) ${err}`);
+                    counts.error += 1;
                 }
-                errorList.push({ error: err, errorMessage: err.toString(), record });
-                logger.error(err);
-                counts.error += 1;
             }
         }
     }
