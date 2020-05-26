@@ -176,11 +176,19 @@ const uploadFile = async ({ filename, conn }) => {
     // determine unresolvable records
     const rows = [];
     const nameDuplicates = {};
-    const counts = { error: 0, skip: 0, success: 0 };
+    const counts = {
+        error: 0, exists: 0, skip: 0, success: 0,
+    };
 
     for (const raw of rawRows) {
         try {
             const row = cleanRawRow(raw);
+
+            if (row.deprecated) {
+                logger.verbose(`skipping retired or obsolete concept ${row.sourceId}`);
+                counts.skip++;
+                continue;
+            }
 
             if (!nameDuplicates[row.name]) {
                 nameDuplicates[row.name] = [];
@@ -245,7 +253,8 @@ const uploadFile = async ({ filename, conn }) => {
             let record;
 
             if (cached[cacheKey]) {
-                record = cached[cacheKey];
+                counts.exists++;
+                continue;
             } else {
                 // create the new record
                 const {
