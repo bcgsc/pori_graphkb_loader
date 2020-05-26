@@ -521,53 +521,72 @@ const processFusionVariants = async (conn, inputFusionName, feature) => {
  */
 const processVariantRecord = async (conn, { name, variant_types: variantTypes }, feature) => {
     // get the feature (entrez name appears to be synonymous with hugo symbol)
+    const result = [];
+    // based on discussion with cam here: https://www.bcgsc.ca/jira/browse/KBDEV-844
+    const SUBS = {
+        'E746_T751>I': 'E746_T751delinsI',
+        'EML4-ALK C1156Y-L1196M': 'EML4-ALK and C1156Y and L1196M',
+        'EML4-ALK C1156Y-L1198F': 'EML4-ALK and C1156Y and L1198F',
+        'EML4-ALK G1202R-L1196M': 'EML4-ALK and G1202R and L1196M',
+        'EML4-ALK G1202R-L1198F': 'EML4-ALK and G1202R and L1198F',
+        'EML4-ALK L1196M-L1198F': 'EML4-ALK and L1196M and L1198F',
+        'EML4-ALK T1151INST': 'EML4-ALK and T1151_?1152insT',
+        K558NP: 'K558delKinsNP',
+        T1151insT: 'T1151_?1152insT',
+        'V600E AMPLIFICATION': 'V600E and AMPLIFICATION',
+        'V600E+V600M': 'V600E and V600M',
+        'V600_K601>E': 'V600_K601delVKinsE',
+        'del 755-759': '?755_?759del',
+        'di842-843vm': 'D842_I843delDIinsVM',
+        'g12/g13': '(G12_G13)mut',
+        'p26.3-25.3 11mb del': 'y.p26.3_p25.3del',
+    };
 
-    // parse the variant record
-    const variantName = getVariantName(name, variantTypes || []);
+    const variants = (SUBS[name] || name).replace(' + ', ' and ').split(' and ').map(v => v.trim()).filter(v => v);
 
-    if (/^\s*rs\d+\s*$/gi.exec(variantName)) {
-        const [variant] = await _snp.fetchAndLoadByIds(conn, [variantName]);
+    for (const variant of variants) {
+        // parse the variant record
+        const variantName = getVariantName(variant, variantTypes || []);
 
-        if (variant) {
-            return [variant];
-        }
-    }
+        if (/^\s*rs\d+\s*$/gi.exec(variantName)) {
+            const [rsVariant] = await _snp.fetchAndLoadByIds(conn, [variantName]);
 
-    if (variantName === 'fusion' && (/\s+fusion\s+\S+/gi.exec(name) || name.includes('-'))) {
-        return processFusionVariants(conn, name, feature);
-    }
-
-    try {
-        let variantClass;
-
-        // try to fetch civic specific term first
-        try {
-            variantClass = await conn.getVocabularyTerm(variantName, SOURCE_DEFN.name);
-        } catch (err) {
-            variantClass = await conn.getVocabularyTerm(variantName);
-        }
-        const variant = await conn.addVariant({
-            content: {
-                reference1: rid(feature),
-                type: rid(variantClass),
-            },
-            existsOk: true,
-            target: 'CategoryVariant',
-        });
-        return [variant];
-    } catch (err) {
-        const result = [];
-
-        for (const variantPart of variantName.split(/\s+((and)|\+)\s+/)) {
-            if (!variantPart || ['and', '+', ''].includes(variantPart.trim())) {
+            if (rsVariant) {
+                result.push(rsVariant);
                 continue;
             }
-            const variant = await createHgvsVariant(conn, feature, variantPart.trim());
-            result.push(variant);
         }
 
-        return result;
+        if (variantName === 'fusion' && (/\s+fusion\s+\S+/gi.exec(variant) || variant.includes('-'))) {
+            const fusionVariants = await processFusionVariants(conn, variant, feature);
+            result.push(...fusionVariants);
+            continue;
+        }
+
+        try {
+            let variantClass;
+
+            // try to fetch civic specific term first
+            try {
+                variantClass = await conn.getVocabularyTerm(variantName, SOURCE_DEFN.name);
+            } catch (err) {
+                variantClass = await conn.getVocabularyTerm(variantName);
+            }
+            const catVariant = await conn.addVariant({
+                content: {
+                    reference1: rid(feature),
+                    type: rid(variantClass),
+                },
+                existsOk: true,
+                target: 'CategoryVariant',
+            });
+            result.push(catVariant);
+        } catch (err) {
+            const hgvsVariant = await createHgvsVariant(conn, feature, variant);
+            result.push(hgvsVariant);
+        }
     }
+    return result;
 };
 
 
@@ -594,6 +613,7 @@ const processEvidenceRecord = async (opt) => {
 
     try {
         variants = await processVariantRecord(conn, rawRecord.variant, feature);
+        logger.info(`converted variant name (${rawRecord.variant.name}) to variants (${variants.map(v => v.displayName).join(', and ')})`);
     } catch (err) {
         logger.error(`evidence (${rawRecord.id}) Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name}): ${err}`);
         throw err;
@@ -708,24 +728,6 @@ const downloadVariantRecords = async () => {
             try {
                 checkSpec(validateVariantSpec, record);
                 varById[record.id] = record;
-
-                const SUBS = {
-                    'E746_T751>I': 'E746_T751delinsI',
-                    'EML4-ALK T1151INST': 'EML4-ALK T1151_?1152insT',
-                    K558NP: 'K558delKinsNP',
-                    T1151insT: 'T1151_?1152insT',
-                    'V600E+V600M': 'V600E + V600M',
-                    'V600_K601>E': 'V600_K601delVKinsE',
-                    'del 755-759': '?755_?759del',
-                    'di842-843vm': 'D842_I843delDIinsVM',
-                    'g12/g13': '(G12_G13)mut',
-                    'p26.3-25.3 11mb del': 'y.p26.3_p25.3del',
-                };
-
-                if (SUBS[record.name] !== undefined) {
-                    record._originalName = record.name;
-                    record.name = SUBS[record.name];
-                }
             } catch (err) {
                 logger.error(err);
             }
