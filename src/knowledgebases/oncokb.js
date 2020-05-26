@@ -144,7 +144,7 @@ const parseVariantName = (variantIn, { reference1 } = {}) => {
         };
     } if (variant.endsWith('_splice')) {
         return { type: `p.${variant.replace('_splice', 'spl')}` };
-    } if (match = /^([a-z0-9_]+)[\u8211-]([a-z0-9_]+)(\s+fusion)?$/i.exec(variant)) {
+    } if (match = /^([a-z0-9_]+)[\u2013-]([a-z0-9_]+)(\s+fusion)?$/iu.exec(variant)) {
         const [, gene1, gene2] = match;
 
         if (reference1) {
