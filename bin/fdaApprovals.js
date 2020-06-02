@@ -127,7 +127,8 @@ const upload = async ({ conn }) => {
             await conn.addRecord({
                 content: { ...record, source },
                 existsOk: true,
-                fetchConditions: { source, sourceId: record.sourceId },
+                fetchConditions: { AND: [{ source }, { sourceId: record.sourceId }] },
+                fetchExisting: false,
                 target: 'CuratedContent',
             });
             counts.success++;
