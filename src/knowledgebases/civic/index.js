@@ -274,11 +274,12 @@ const getEvidenceLevel = async ({
  * @param {ApiConnection} opt.conn the API connection object for GraphKB
  * @param {object} opt.rawRecord the unparsed record from CIViC
  * @param {object} opt.sources the sources by name
+ * @param {object} opt.variantsCache keeps track of errors and results processing variants to avoid repeating
  * @param
  */
 const processEvidenceRecord = async (opt) => {
     const {
-        conn, rawRecord, sources,
+        conn, rawRecord, sources, variantsCache,
     } = opt;
 
     const [level, relevance, [feature]] = await Promise.all([
@@ -288,12 +289,20 @@ const processEvidenceRecord = async (opt) => {
     ]);
     let variants;
 
-    try {
-        variants = await processVariantRecord(conn, rawRecord.variant, feature);
-        logger.info(`converted variant name (${rawRecord.variant.name}) to variants (${variants.map(v => v.displayName).join(', and ')})`);
-    } catch (err) {
-        logger.error(`evidence (${rawRecord.id}) Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name}): ${err}`);
-        throw err;
+    if (variantsCache.records[rawRecord.variant.id]) {
+        variants = variantsCache.records[rawRecord.variant.id];
+    } else if (variantsCache.errors[rawRecord.variant.id]) {
+        throw variantsCache.errors[rawRecord.variant.id];
+    } else {
+        try {
+            variants = await processVariantRecord(conn, rawRecord.variant, feature);
+            variantsCache.records[rawRecord.variant.id] = variants;
+            logger.info(`converted variant name (${rawRecord.variant.name}) to variants (${variants.map(v => v.displayName).join(', and ')})`);
+        } catch (err) {
+            variantsCache.errors[rawRecord.variant.id] = err;
+            logger.error(`evidence (${rawRecord.id}) Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name}): ${err}`);
+            throw err;
+        }
     }
     // get the disease by doid
     let diseaseQueryFilters = {};
@@ -496,6 +505,12 @@ const upload = async (opt) => {
     logger.info(`Processing ${records.length} records`);
     counts.exists = counts.exists || 0;
 
+    // keep track of errors and already processed variants by their CIViC IDs to avoid repeat logging
+    const variantsCache = {
+        errors: {},
+        records: {},
+    };
+
     for (const record of records) {
         record.variants = [varById[record.variant_id]]; // OR-ing of variants
 
@@ -526,6 +541,7 @@ const upload = async (opt) => {
                         conn,
                         rawRecord: { ..._.omit(record, ['drugs', 'variants']), drug, variant },
                         sources: { civic: source },
+                        variantsCache,
                     });
                     counts.success += 1;
                 } catch (err) {
