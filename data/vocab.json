@@ -1058,6 +1058,16 @@
                 }
             ]
         },
+        "mutations": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "mutation"
+                }
+            ],
+            "source": "civic"
+        },
         "n-terminal frame shift": {
             "links": [
                 {
@@ -1689,6 +1699,14 @@
             ]
         },
         "splice donor variant": {},
+        "splice site insertion": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "splice-site"
+                }
+            ]
+        },
         "splice-site": {
             "links": [
                 {
@@ -1701,11 +1719,20 @@
                 }
             ]
         },
+        "splice-site mutation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "splice-site"
+                }
+            ]
+        },
         "splicing alteration": {
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "mutation"
+                    "target": "variant"
                 }
             ],
             "source": "civic"
