@@ -32,6 +32,14 @@
                 }
             ]
         },
+        "activating mutation": {
+            "links": [
+                {
+                    "class": "AliasOf",
+                    "target": "gain of function"
+                }
+            ]
+        },
         "adverse response": {
             "deprecated": true,
             "links": [
@@ -224,14 +232,6 @@
                 {
                     "class": "SubClassOf",
                     "target": "any protein expression"
-                }
-            ]
-        },
-        "n-terminal frame shift": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "frameshift mutation"
                 }
             ]
         },
@@ -638,6 +638,14 @@
                 }
             ]
         },
+        "inactivating mutation": {
+            "links": [
+                {
+                    "class": "AliasOf",
+                    "target": "loss of function"
+                }
+            ]
+        },
         "increased dosage": {
             "description": "requires increased dosage",
             "links": [
@@ -753,6 +761,15 @@
                     "target": "structural variant"
                 }
             ]
+        },
+        "internal duplication": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "duplication"
+                }
+            ],
+            "source": "civic"
         },
         "internal tandem duplication": {
             "deprecated": true,
@@ -1005,6 +1022,16 @@
                 }
             ]
         },
+        "missense variant": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "missense mutation"
+                }
+            ],
+            "source": "civic"
+        },
         "moderate signature": {
             "links": [
                 {
@@ -1028,6 +1055,14 @@
                 {
                     "class": "SubClassOf",
                     "target": "highly recurrent"
+                }
+            ]
+        },
+        "n-terminal frame shift": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "frameshift mutation"
                 }
             ]
         },
@@ -1659,8 +1694,21 @@
                 {
                     "class": "SubClassOf",
                     "target": "small mutation"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "splicing alteration"
                 }
             ]
+        },
+        "splicing alteration": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "mutation"
+                }
+            ],
+            "source": "civic"
         },
         "start gain": {
             "links": [
@@ -1739,6 +1787,16 @@
         "therapeutic indicator": {
             "name": "therapeutic indicator"
         },
+        "tkd mutation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "tyrosine kinase domain mutation"
+                }
+            ],
+            "source": "civic"
+        },
         "toxicity": {
             "links": [
                 {
@@ -1775,6 +1833,16 @@
                 }
             ]
         },
+        "truncating mutation": {
+            "deprecated": false,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "truncating"
+                }
+            ],
+            "source": "civic"
+        },
         "tumour suppressive": {
             "description": "suppresses or blocks the development of cancer",
             "links": [
@@ -1789,6 +1857,14 @@
                 {
                     "class": "SubClassOf",
                     "target": "biological"
+                }
+            ]
+        },
+        "tyrosine kinase domain mutation": {
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "kinase domain mutation"
                 }
             ]
         },
