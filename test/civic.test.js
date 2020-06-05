@@ -433,6 +433,76 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
+    test('protein deletion with cds deletion sequence', () => {
+        // r79_s80del (c.236_241delgcagtc)
+        // r82_v84del (c.244_252del)
+        const variants = normalizeVariantRecord({
+            entrezId: 1,
+            entrezName: 'ALK',
+            name: 'r79_s80del (c.236_241delgcagtc)',
+        });
+        expect(variants).toEqual([
+            {
+                inferredBy: [
+                    {
+                        positional: true,
+                        reference1: { name: 'alk', sourceId: '1' },
+                        variant: 'c.236_241delgcagtc',
+                    },
+                ],
+                positional: true,
+                reference1: { name: 'alk', sourceId: '1' },
+                variant: 'p.r79_s80del',
+            },
+        ]);
+    });
+
+    test('protein deletion with cds deletion no sequence', () => {
+        const variants = normalizeVariantRecord({
+            entrezId: 1,
+            entrezName: 'ALK',
+            name: 'r82_v84del (c.244_252del)',
+        });
+        expect(variants).toEqual([
+            {
+                inferredBy: [
+                    {
+                        positional: true,
+                        reference1: { name: 'alk', sourceId: '1' },
+                        variant: 'c.244_252del',
+                    },
+                ],
+                positional: true,
+                reference1: { name: 'alk', sourceId: '1' },
+                variant: 'p.r82_v84del',
+            },
+        ]);
+    });
+
+
+    test('protein dup with cds dup', () => {
+        // p.s193_c196dupstsc (c.577_588dupagcaccagctgc)
+        const variants = normalizeVariantRecord({
+            entrezId: 1,
+            entrezName: 'ALK',
+            name: 'p.s193_c196dupstsc (c.577_588dupagcaccagctgc)',
+        });
+        expect(variants).toEqual([
+            {
+                inferredBy: [
+                    {
+                        positional: true,
+                        reference1: { name: 'alk', sourceId: '1' },
+                        variant: 'c.577_588dupagcaccagctgc',
+                    },
+                ],
+                positional: true,
+                reference1: { name: 'alk', sourceId: '1' },
+                variant: 'p.s193_c196dupstsc',
+            },
+        ]);
+    });
+
     test('protein with cds notation', () => {
         // A122I (c.364_365GC>AT)
         const variants = normalizeVariantRecord({

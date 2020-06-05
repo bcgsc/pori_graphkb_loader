@@ -141,7 +141,7 @@ const normalizeVariantRecord = ({
             reference2: { name: chr2 },
             variant: `translocation(${pos1}, ${pos2})`,
         }];
-    } if (match = /^(p\.)?([a-z*]\d+[a-z*]\S*)\s+\((c\.[^)]+)\)$/i.exec(name)) {
+    } if (match = /^(p\.)?([a-z*]\d+\S*)\s+\((c\.[^)]+)\)$/i.exec(name)) {
         let [, , protein, cds] = match;
 
         // correct deprecated cds syntac
