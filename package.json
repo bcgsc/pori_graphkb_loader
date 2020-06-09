@@ -1,7 +1,7 @@
 {
   "name": "@bcgsc/knowledgebase-importer",
   "main": "src/index.js",
-  "version": "2.2.0",
+  "version": "2.3.0",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/dat/repos/knowledgebase_importer/browse"
@@ -9,6 +9,7 @@
   "bugs": {
     "email": "graphkb@bcgsc.ca"
   },
+  "private": true,
   "license": "ISC",
   "dependencies": {
     "@bcgsc/knowledgebase-parser": "^0.7.1",
@@ -39,6 +40,8 @@
     "xml2js": "^0.4.19"
   },
   "devDependencies": {
+    "commitizen": "^4.1.2",
+    "cz-conventional-changelog": "^3.2.0",
     "eslint": "^4.19.1",
     "eslint-config-airbnb": "^17.0.0",
     "eslint-plugin-import": "^2.13.0",
@@ -59,6 +62,12 @@
     "start:recent-trials": "node bin/clinicaltrialsgov.js",
     "start:fda-approvals": "node bin/fdaApprovals.js",
     "start:oncotree": "node bin/oncotree.js",
-    "start:civic": "node bin/civic.js"
+    "start:civic": "node bin/civic.js",
+    "commit": "git-cz"
+  },
+  "config": {
+    "commitizen": {
+      "path": "./node_modules/cz-conventional-changelog"
+    }
   }
 }
