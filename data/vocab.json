@@ -1677,7 +1677,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "splice-site"
+                    "target": "splice-site mutation"
                 },
                 {
                     "class": "AliasOf",
@@ -1690,7 +1690,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "splice-site"
+                    "target": "splice-site mutation"
                 },
                 {
                     "class": "AliasOf",
@@ -1703,7 +1703,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "splice-site"
+                    "target": "splice-site mutation"
                 }
             ]
         },
@@ -1725,6 +1725,14 @@
                 {
                     "class": "DeprecatedBy",
                     "target": "splice-site"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "small mutation"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "splicing alteration"
                 }
             ]
         },
