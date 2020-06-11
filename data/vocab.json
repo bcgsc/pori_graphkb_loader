@@ -1327,7 +1327,7 @@
             ]
         },
         "phenotype absent": {
-            "description": "Some phenotype (ex. HRD) is not expected",
+            "description": "condition is not associated with a phenotype (ex. condition is not expected to be associated with high mutation burden)",
             "links": [
                 {
                     "class": "OppositeOf",
@@ -1340,7 +1340,7 @@
             ]
         },
         "phenotype present": {
-            "description": "Some phenotype (ex. HRD) is expected",
+            "description": "condition is associated with a phenotype (ex. condition is expected to be associated with high mutation burden)",
             "links": [
                 {
                     "class": "SubClassOf",
