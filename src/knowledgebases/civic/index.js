@@ -503,7 +503,6 @@ const upload = async (opt) => {
 
 
     logger.info(`Processing ${records.length} records`);
-    counts.exists = counts.exists || 0;
 
     // keep track of errors and already processed variants by their CIViC IDs to avoid repeat logging
     const variantsCache = {
@@ -516,11 +515,6 @@ const upload = async (opt) => {
 
         if (record.drugs === undefined || record.drugs.length === 0) {
             record.drugs = [null];
-        }
-
-        if (previouslyEntered.has(`${record.id}`)) {
-            counts.exists += record.drugs.length;
-            continue;
         }
 
         let orCombination;

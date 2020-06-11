@@ -1326,6 +1326,31 @@
                 }
             ]
         },
+        "phenotype absent": {
+            "description": "condition is not associated with a phenotype (ex. condition is not expected to be associated with high mutation burden)",
+            "links": [
+                {
+                    "class": "OppositeOf",
+                    "target": "phenotype present"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "phenotype variant"
+                }
+            ]
+        },
+        "phenotype present": {
+            "description": "condition is associated with a phenotype (ex. condition is expected to be associated with high mutation burden)",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "phenotype variant"
+                }
+            ]
+        },
+        "phenotype variant": {
+            "description": "Variation is expected with respect to some reference phenotype element"
+        },
         "phosphorylation": {
             "links": [
                 {
@@ -1761,6 +1786,14 @@
                 }
             ]
         },
+        "strong phenotype": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "phenotype present"
+                }
+            ]
+        },
         "strong signature": {
             "links": [
                 {
@@ -1950,6 +1983,18 @@
         },
         "variant": {
             "name": "variant"
+        },
+        "weak phenotype": {
+            "links": [
+                {
+                    "class": "OppositeOf",
+                    "target": "strong phenotype"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "phenotype present"
+                }
+            ]
         },
         "weak signature": {
             "links": [
