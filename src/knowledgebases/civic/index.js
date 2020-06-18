@@ -75,6 +75,7 @@ const validateEvidenceSpec = ajv.compile({
             name: { type: 'string' },
             type: 'object',
         },
+        drug_interaction_type: { enum: ['Combination', 'Substitutes', 'Sequential', null] },
         drugs: {
             items: {
                 properties: {
@@ -238,6 +239,41 @@ const getDrug = async (conn, drugRecord) => {
 };
 
 
+/** *
+ * Add or fetch an drug combination if there is not an existing record
+ * Link the drug combination to its individual elements
+ */
+const addOrFetchDrug = async (conn, source, drugsRecords, combinationType) => {
+    if (drugsRecords.length <= 1) {
+        if (drugsRecords[0] === null) {
+            return null;
+        }
+        return getDrug(conn, drugsRecords[0]);
+    }
+    const drugs = await Promise.all(drugsRecords.map(async drug => getDrug(conn, drug)));
+    const sourceId = drugs.map(e => e.sourceId).sort().join(' + ');
+    const name = drugs.map(e => e.name).sort().join(' + ');
+    const combinedTherapy = await conn.addRecord({
+        content: {
+            combinationType, name, source: rid(source), sourceId,
+        },
+        existsOk: true,
+        target: 'Therapy',
+    });
+
+    for (const drug of drugs) {
+        await conn.addRecord({
+            content: {
+                in: rid(combinedTherapy), out: rid(drug), source: rid(source),
+            },
+            existsOk: true,
+            target: 'ElementOf',
+        });
+    }
+    return combinedTherapy;
+};
+
+
 const getEvidenceLevel = async ({
     conn, rawRecord, sources,
 }) => {
@@ -331,8 +367,13 @@ const processEvidenceRecord = async (opt) => {
     // get the drug(s) by name
     let drug;
 
-    if (rawRecord.drug) {
-        drug = await getDrug(conn, rawRecord.drug);
+    if (rawRecord.drugs) {
+        drug = await addOrFetchDrug(
+            conn,
+            rid(sources.civic),
+            rawRecord.drugs,
+            (rawRecord.drug_interaction_type || '').toLowerCase(),
+        );
     }
     // get the publication by pubmed ID
     let publication;
@@ -515,6 +556,15 @@ const upload = async (opt) => {
 
         if (record.drugs === undefined || record.drugs.length === 0) {
             record.drugs = [null];
+        } else if (record.drug_interaction_type === 'Combination' || record.drug_interaction_type === 'Sequential') {
+            record.drugs = [record.drugs];
+        } else if (record.drug_interaction_type === 'Substitutes' || record.drugs.length < 2) {
+            record.drugs = record.drugs.map(drug => [drug]);
+            record.drug_interaction_type = null;
+        } else {
+            logger.error(`(evidence: ${record.id}) unsupported drug interaction type (${record.drug_interaction_type}) for a multiple drug (${record.drugs.length}) statement`);
+            counts.skip++;
+            continue;
         }
 
         let orCombination;
@@ -528,18 +578,18 @@ const upload = async (opt) => {
         }
 
         for (const variant of record.variants) {
-            for (const drug of record.drugs) {
+            for (const drugs of record.drugs) {
                 try {
                     logger.debug(`processing ${record.id}`);
                     await processEvidenceRecord({
                         conn,
-                        rawRecord: { ..._.omit(record, ['drugs', 'variants']), drug, variant },
+                        rawRecord: { ..._.omit(record, ['drugs', 'variants']), drugs, variant },
                         sources: { civic: source },
                         variantsCache,
                     });
                     counts.success += 1;
                 } catch (err) {
-                    if (err.toString().includes('is not a function')) {
+                    if (err.toString().includes('is not a function') || err.toString().includes('of undefined')) {
                         console.error(err);
                     }
                     errorList.push({ error: err, errorMessage: err.toString(), record });
