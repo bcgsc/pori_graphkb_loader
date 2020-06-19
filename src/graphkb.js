@@ -6,12 +6,31 @@ const request = require('request-promise');
 const jc = require('json-cycle');
 const jwt = require('jsonwebtoken');
 const { schema } = require('@bcgsc/knowledgebase-schema');
+const _ = require('lodash');
+
 const { graphkb: { name: INTERNAL_SOURCE_NAME } } = require('./sources');
+
 
 const { logger } = require('./logging');
 
 
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
+
+
+const shouldUpdate = (model, originalContent, newContent) => {
+    const formatted = model.formatRecord(newContent, {
+        addDefaults: false,
+        dropExtra: true,
+        ignoreMissing: true,
+    });
+
+    for (const key of Object.keys(formatted)) {
+        if (!_.isEqual(originalContent[key], formatted[key])) {
+            return true;
+        }
+    }
+    return false;
+};
 
 const generateCacheKey = (record) => {
     if (record.sourceIdVersion !== undefined && record.sourceIdVersion !== null) {
@@ -124,6 +143,7 @@ class ApiConnection {
         this.password = null;
         this.exp = null;
         this.created = {};
+        this.updated = {};
     }
 
     async setAuth({ username, password }) {
@@ -194,7 +214,11 @@ class ApiConnection {
         const created = {};
 
         for (const key of Object.keys(this.created)) {
-            created[key] = this.created[key].length;
+            created[key] = { created: this.created[key].length };
+        }
+
+        for (const key of Object.keys(this.updated)) {
+            created[key] = { ...(created[key] || {}), updated: this.updated[key].length };
         }
         return created;
     }
@@ -343,6 +367,21 @@ class ApiConnection {
         });
     }
 
+    async updateRecord(target, recordId, newContent) {
+        const model = schema.get(target);
+        const { result } = jc.retrocycle(await this.request({
+            body: newContent,
+            method: 'PATCH',
+            uri: `${model.routeName}/${recordId.replace(/^#/, '')}`,
+        }));
+
+        if (this.updated[model.name] === undefined) {
+            this.updated[model.name] = [];
+        }
+        this.updated[model.name].push(result['@rid']);
+        return result;
+    }
+
     /**
      * @param {object} opt
      * @param {string} opt.target
@@ -361,20 +400,26 @@ class ApiConnection {
             fetchExisting = true,
             fetchFirst = false,
             sortFunc = () => 0,
+            upsert = false,
         } = opt;
+        const model = schema.get(target);
 
         if (fetchFirst) {
             try {
                 const filters = fetchConditions || convertRecordToQueryFilters(content);
-                return await this.getUniqueRecordBy({
+                const result = await this.getUniqueRecordBy({
                     filters,
                     sortFunc,
                     target,
                 });
+
+                if (upsert && shouldUpdate(model, result, content)) {
+                    return await this.updateRecord(target, result['@rid'], content);
+                }
+                return result;
             } catch (err) { }
         }
 
-        const model = schema.get(target);
 
         if (!model) {
             throw new Error(`cannot find model from target (${target})`);
@@ -393,14 +438,19 @@ class ApiConnection {
             this.created[model.name].push(result['@rid']);
             return result;
         } catch (err) {
-            if (err.statusCode === 409 && existsOk) {
-                if (fetchExisting) {
+            if (err.statusCode === 409 && (existsOk || upsert)) {
+                if (fetchExisting || upsert) {
                     const filters = fetchConditions || convertRecordToQueryFilters(content);
-                    return this.getUniqueRecordBy({
+                    const result = await this.getUniqueRecordBy({
                         filters,
                         sortFunc,
                         target,
                     });
+
+                    if (upsert && shouldUpdate(model, result, content)) {
+                        return this.updateRecord(target, result['@rid'], content);
+                    }
+                    return result;
                 }
                 return null;
             }

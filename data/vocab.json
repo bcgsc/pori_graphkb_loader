@@ -156,7 +156,8 @@
                     "class": "SubClassOf",
                     "target": "copy variant"
                 }
-            ]
+            ],
+            "shortName": "copygain"
         },
         "copy loss": {
             "links": [
@@ -164,7 +165,8 @@
                     "class": "SubClassOf",
                     "target": "copy variant"
                 }
-            ]
+            ],
+            "shortName": "copyloss"
         },
         "copy number gain": {
             "deprecated": true,
@@ -173,7 +175,8 @@
                     "class": "DeprecatedBy",
                     "target": "copy gain"
                 }
-            ]
+            ],
+            "shortName": "copygain"
         },
         "copy number loss": {
             "deprecated": true,
@@ -182,7 +185,8 @@
                     "class": "DeprecatedBy",
                     "target": "copy loss"
                 }
-            ]
+            ],
+            "shortName": "copyloss"
         },
         "copy number variant": {
             "deprecated": true,
@@ -305,7 +309,8 @@
                     "class": "SubClassOf",
                     "target": "structural variant"
                 }
-            ]
+            ],
+            "shortName": "del"
         },
         "deletion polymorphism": {
             "links": [
@@ -317,7 +322,8 @@
                     "class": "SubClassOf",
                     "target": "deletion"
                 }
-            ]
+            ],
+            "shortName": "del"
         },
         "diagnostic indicator": {
             "description": "evidence is diagnostic for a specific disease type, disease subtype or disease state"
@@ -418,7 +424,8 @@
                     "class": "SubClassOf",
                     "target": "structural variant"
                 }
-            ]
+            ],
+            "shortName": "dup"
         },
         "eligibility": {
             "name": "eligibility"
@@ -467,7 +474,8 @@
                     "class": "SubClassOf",
                     "target": "small mutation"
                 }
-            ]
+            ],
+            "shortName": "ext"
         },
         "favourable prognosis": {
             "description": "event imparts a favourable outcome",
@@ -501,7 +509,8 @@
                     "class": "DeprecatedBy",
                     "target": "frameshift mutation"
                 }
-            ]
+            ],
+            "shortName": "fs"
         },
         "frameshift mutation": {
             "links": [
@@ -509,7 +518,8 @@
                     "class": "SubClassOf",
                     "target": "small mutation"
                 }
-            ]
+            ],
+            "shortName": "fs"
         },
         "frameshift truncation": {
             "deprecated": true,
@@ -518,7 +528,8 @@
                     "class": "DeprecatedBy",
                     "target": "truncating frameshift mutation"
                 }
-            ]
+            ],
+            "shortName": "fs"
         },
         "functional effect": {
             "links": [
@@ -538,7 +549,8 @@
                     "class": "SubClassOf",
                     "target": "structural variant"
                 }
-            ]
+            ],
+            "shortName": "fusion"
         },
         "gain of function": {
             "description": "event imparts an acquired function on the product leading to a specific observable phenotype",
@@ -610,7 +622,8 @@
                     "class": "SubClassOf",
                     "target": "deletion"
                 }
-            ]
+            ],
+            "shortName": "del"
         },
         "in-frame fusion": {
             "links": [
@@ -619,7 +632,8 @@
                     "target": "fusion"
                 }
             ],
-            "name": "in-frame fusion"
+            "name": "in-frame fusion",
+            "shortName": "fusion"
         },
         "in-frame insertion": {
             "links": [
@@ -627,7 +641,8 @@
                     "class": "SubClassOf",
                     "target": "insertion"
                 }
-            ]
+            ],
+            "shortName": "ins"
         },
         "inactivating": {
             "deprecated": true,
@@ -740,7 +755,8 @@
                     "class": "SubClassOf",
                     "target": "small mutation"
                 }
-            ]
+            ],
+            "shortName": "delins"
         },
         "innate resistance": {
             "links": [
@@ -760,7 +776,8 @@
                     "class": "SubClassOf",
                     "target": "structural variant"
                 }
-            ]
+            ],
+            "shortName": "ins"
         },
         "internal duplication": {
             "links": [
@@ -786,7 +803,8 @@
                     "class": "SubClassOf",
                     "target": "structural variant"
                 }
-            ]
+            ],
+            "shortName": "inv"
         },
         "inverted translocation": {
             "links": [
@@ -794,7 +812,8 @@
                     "class": "SubClassOf",
                     "target": "translocation"
                 }
-            ]
+            ],
+            "shortName": "itrans"
         },
         "is characteristic of": {
             "description": "a hallmark of this disease type",
@@ -1012,7 +1031,8 @@
                     "class": "DeprecatedBy",
                     "target": "missense mutation"
                 }
-            ]
+            ],
+            "shortName": ">"
         },
         "missense mutation": {
             "links": [
@@ -1020,7 +1040,8 @@
                     "class": "SubClassOf",
                     "target": "substitution"
                 }
-            ]
+            ],
+            "shortName": ">"
         },
         "missense variant": {
             "deprecated": true,
@@ -1030,7 +1051,8 @@
                     "target": "missense mutation"
                 }
             ],
-            "source": "civic"
+            "source": "civic",
+            "shortName": ">"
         },
         "moderate signature": {
             "links": [
@@ -1047,7 +1069,8 @@
                     "class": "SubClassOf",
                     "target": "biological"
                 }
-            ]
+            ],
+            "shortName": "mut"
         },
         "mutation hotspot": {
             "description": "the specific residue noted has been observed to be recurrently and commonly mutated at some signifiant frequency above random in numerrous independent observations",
@@ -1066,7 +1089,8 @@
                     "target": "mutation"
                 }
             ],
-            "source": "civic"
+            "source": "civic",
+            "shortName": "mut"
         },
         "n-terminal frame shift": {
             "links": [
@@ -1287,7 +1311,8 @@
                     "target": "in-frame fusion"
                 }
             ],
-            "name": "out-of-frame fusion"
+            "name": "out-of-frame fusion",
+            "shortName": "fusion"
         },
         "overexpression": {
             "deprecated": true,
@@ -1687,7 +1712,8 @@
                     "class": "SubClassOf",
                     "target": "polymorphism"
                 }
-            ]
+            ],
+            "shortName": ">"
         },
         "small mutation": {
             "description": "any substitution, insertion or deletion affecting a small number of base pairs",
@@ -1696,7 +1722,8 @@
                     "class": "SubClassOf",
                     "target": "mutation"
                 }
-            ]
+            ],
+            "shortName": "mut"
         },
         "splice acceptor mutation": {
             "links": [
@@ -1708,9 +1735,12 @@
                     "class": "AliasOf",
                     "target": "splice acceptor variant"
                 }
-            ]
+            ],
+            "shortName": "spl"
         },
-        "splice acceptor variant": {},
+        "splice acceptor variant": {
+            "shortName": "spl"
+        },
         "splice donor mutation": {
             "links": [
                 {
@@ -1721,16 +1751,20 @@
                     "class": "AliasOf",
                     "target": "splice donor variant"
                 }
-            ]
+            ],
+            "shortName": "spl"
         },
-        "splice donor variant": {},
+        "splice donor variant": {
+            "shortName": "spl"
+        },
         "splice site insertion": {
             "links": [
                 {
                     "class": "SubClassOf",
                     "target": "splice-site mutation"
                 }
-            ]
+            ],
+            "shortName": "spl"
         },
         "splice-site": {
             "links": [
@@ -1742,7 +1776,8 @@
                     "class": "SubClassOf",
                     "target": "splicing alteration"
                 }
-            ]
+            ],
+            "shortName": "spl"
         },
         "splice-site mutation": {
             "deprecated": true,
@@ -1759,7 +1794,8 @@
                     "class": "SubClassOf",
                     "target": "splicing alteration"
                 }
-            ]
+            ],
+            "shortName": "spl"
         },
         "splicing alteration": {
             "links": [
@@ -1776,7 +1812,8 @@
                     "class": "SubClassOf",
                     "target": "extension"
                 }
-            ]
+            ],
+            "shortName": "ext"
         },
         "stop loss": {
             "links": [
@@ -1784,7 +1821,8 @@
                     "class": "SubClassOf",
                     "target": "extension"
                 }
-            ]
+            ],
+            "shortName": "ext"
         },
         "strong phenotype": {
             "links": [
@@ -1816,7 +1854,8 @@
                     "class": "SubClassOf",
                     "target": "small mutation"
                 }
-            ]
+            ],
+            "shortName": ">"
         },
         "switch of function": {
             "description": "some wild-type/normal functionality is lost and some novel functionality is gained",
@@ -1887,7 +1926,8 @@
                     "class": "SubClassOf",
                     "target": "small mutation"
                 }
-            ]
+            ],
+            "shortName": ">"
         },
         "truncating frameshift mutation": {
             "links": [
@@ -1899,7 +1939,8 @@
                     "class": "SubClassOf",
                     "target": "truncating"
                 }
-            ]
+            ],
+            "shortName": "fs"
         },
         "truncating mutation": {
             "deprecated": false,
@@ -1909,7 +1950,8 @@
                     "target": "truncating"
                 }
             ],
-            "source": "civic"
+            "source": "civic",
+            "shortName": ">"
         },
         "tumour suppressive": {
             "description": "suppresses or blocks the development of cancer",
