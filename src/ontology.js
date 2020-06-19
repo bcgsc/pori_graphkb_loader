@@ -7,7 +7,6 @@
 const Ajv = require('ajv');
 const fs = require('fs');
 const jsonpath = require('jsonpath');
-const _ = require('lodash');
 
 const { schema, schema: { schema: kbSchema } } = require('@bcgsc/knowledgebase-schema');
 
@@ -45,15 +44,9 @@ const validateSpec = ajv.compile({
                         },
                         type: 'array',
                     },
-
                     name: { type: 'string' },
-
-
                     sourceId: { type: 'string' },
-
-
                     sourceIdVersion: { type: 'string' },
-
                     // defaults to the record key
                     url: { format: 'uri', type: 'string' },
                 },
@@ -166,6 +159,7 @@ const uploadFromJSON = async ({ data, conn }) => {
                 existsOk: true,
                 fetchConditions: { name: sourceDefn.name },
                 target: 'Source',
+                upsert: true,
             }));
             sourcesRecords[sourceKey] = sourceRID;
         }));
@@ -192,8 +186,14 @@ const uploadFromJSON = async ({ data, conn }) => {
             const dbRecord = await conn.addRecord({
                 content: { ...record },
                 existsOk: true,
-                fetchConditions: convertRecordToQueryFilters(_.omit(record, ['description'])),
+                fetchConditions: convertRecordToQueryFilters({
+                    name: record.name,
+                    source: record.source,
+                    sourceId: record.sourceId,
+                    sourceIdVersion: record.sourceIdVersion,
+                }),
                 target: recordClass,
+                upsert: true,
             });
             dbRecords[key] = rid(dbRecord);
             counts.success++;
@@ -233,6 +233,7 @@ const uploadFromJSON = async ({ data, conn }) => {
         }
     }
     // report the success rate
+    logger.info(JSON.stringify(conn.updated));
     logger.info(`processed: ${JSON.stringify(counts)}`);
 };
 
