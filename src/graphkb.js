@@ -144,6 +144,7 @@ class ApiConnection {
         this.exp = null;
         this.created = {};
         this.updated = {};
+        this.pendingRequests = 0;
     }
 
     async setAuth({ username, password }) {
@@ -177,6 +178,8 @@ class ApiConnection {
         if (this.exp <= epochSeconds()) {
             await this.login();
         }
+        this.pendingRequests += 1;
+        const startTime = new Date().getTime();
         const req = {
             headers: this.headers,
             json: true,
@@ -191,8 +194,19 @@ class ApiConnection {
             req.qs = opt.qs;
         }
 
+        const logResponseTime = (returnCode = 200) => {
+            this.pendingRequests -= 1;
+            const respTime = new Date().getTime() - startTime;
+
+            if (respTime > 2000) {
+                logger.warn(`${respTime}ms [${req.method}] ${req.uri} ${JSON.stringify(req.body)}`);
+            }
+            logger.debug(`[${req.method}] ${req.uri} ${this.pendingRequests} ${returnCode} - ${respTime} ms`);
+        };
+
         try {
             const result = await request(req);
+            logResponseTime();
             return result;
         } catch (err) {
             let errorMessage = err.message;
@@ -206,6 +220,7 @@ class ApiConnection {
                 logger.error(`bad request ${opt.method || 'GET'} ${opt.uri} ${JSON.stringify(opt.body)}`);
                 logger.error(errorMessage);
             }
+            logResponseTime(err.statusCode);
             throw err;
         }
     }
