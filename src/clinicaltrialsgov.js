@@ -72,6 +72,12 @@ const validateDownloadedTrialRecord = ajv.compile({
             required: ['phase'],
             type: 'object',
         }),
+        status: singleItemArray({
+            properties: {
+                _: { type: 'string' },
+            },
+            required: ['_'],
+        }),
         title: singleItemArray(),
         url: singleItemArray(),
     },
@@ -80,6 +86,7 @@ const validateDownloadedTrialRecord = ajv.compile({
         'title',
         'last_update_posted',
         'url',
+        'status',
         'phases',
         'interventions',
         'conditions',
@@ -151,7 +158,8 @@ const validateAPITrialRecord = ajv.compile({
                     minItems: 1,
                     type: 'array',
                 },
-                official_title: singleItemArray(),
+                official_title: singleItemArray({ type: 'string' }),
+                overall_status: singleItemArray({ type: 'string' }),
                 phase: singleItemArray(),
                 required_header: singleItemArray({
                     properties: { url: singleItemArray() },
@@ -180,6 +188,7 @@ const validateAPITrialRecord = ajv.compile({
                 'last_update_posted',
                 'required_header',
                 'location',
+                'overall_status',
             ],
             type: 'object',
         },
@@ -227,6 +236,7 @@ const validateRssFeed = ajv.compile({
     type: 'object',
 });
 
+
 const standardizeDate = (dateString) => {
     const dateObj = new Date(Date.parse(dateString));
     const month = dateObj.getMonth() + 1 < 10
@@ -260,6 +270,7 @@ const convertAPIRecord = (rawRecord) => {
     const content = {
         completionDate,
         diseases: record.condition,
+        displayName: record.official_title[0],
         drugs: [],
         locations: [],
         name: record.official_title[0],
@@ -294,10 +305,12 @@ const convertDownloadedRecord = (record) => {
     checkSpec(validateDownloadedTrialRecord, record, rec => rec.nct_id[0]);
     const content = {
         diseases: [],
+        displayName: record.title[0],
         drugs: [],
         locations: [],
         name: record.title[0],
         phases: record.phases[0].phase || [],
+        recruitmentStatus: record.status[0]._,
         sourceId: record.nct_id[0],
         sourceIdVersion: standardizeDate(record.last_update_posted[0]),
         url: record.url[0],
@@ -359,16 +372,21 @@ const processPhases = (phaseList) => {
  * @todo: handle updates to existing clinical trial records
  */
 const processRecord = async ({
-    conn, record, source,
+    conn, record, source, upsert = false,
 }) => {
     const content = {
-        displayName: record.name,
+        displayName: record.displayName,
         name: record.name,
+        recruitmentStatus: record.recruitmentStatus,
         source: rid(source),
         sourceId: record.sourceId,
         sourceIdVersion: record.sourceIdVersion,
         url: record.url,
     };
+
+    if (content.recruitmentStatus && content.recruitmentStatus.toLowerCase() === 'unknown status') {
+        content.recruitmentStatus = 'unknown';
+    }
     const phase = processPhases(record.phases);
 
     if (phase) {
@@ -412,6 +430,7 @@ const processRecord = async ({
     }
 
     const links = [];
+    const missingLinks = [];
 
     for (const drug of record.drugs) {
         try {
@@ -424,8 +443,10 @@ const processRecord = async ({
         } catch (err) {
             logger.warn(`[${record.sourceId}] failed to find drug by name`);
             logger.warn(err);
+            missingLinks.push(`Therapy(${drug})`);
         }
     }
+
 
     for (const diseaseName of record.diseases) {
         try {
@@ -438,7 +459,12 @@ const processRecord = async ({
         } catch (err) {
             logger.warn(`[${record.sourceId}] failed to find disease by name`);
             logger.warn(err);
+            missingLinks.push(`Disease(${diseaseName})`);
         }
+    }
+
+    if (missingLinks.length) {
+        content.comment = `Missing: ${missingLinks.join('; ')}`;
     }
     // create the clinical trial record
     const trialRecord = await conn.addRecord({
@@ -447,6 +473,7 @@ const processRecord = async ({
         fetchConditions: { AND: [{ source: rid(source) }, { sourceId: record.sourceId }] },
         fetchFirst: true,
         target: 'ClinicalTrial',
+        upsert,
     });
 
     // link to the drugs and diseases
@@ -467,7 +494,7 @@ const processRecord = async ({
  *
  * https://clinicaltrials.gov/ct2/show/NCT03478891?displayxml=true
  */
-const fetchAndLoadById = async (conn, nctID) => {
+const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
     const url = `${BASE_URL}/${nctID}`;
 
     if (CACHE[nctID.toLowerCase()]) {
@@ -513,6 +540,7 @@ const fetchAndLoadById = async (conn, nctID) => {
         conn,
         record: convertAPIRecord(result),
         source: CACHE.source,
+        upsert,
     });
     CACHE[trial.sourceId] = trial;
     return trial;
@@ -544,7 +572,7 @@ const uploadFile = async ({ conn, filename }) => {
         try {
             const stdContent = convertDownloadedRecord(record);
             await processRecord({
-                conn, record: stdContent, source,
+                conn, record: stdContent, source, upsert: true,
             });
             counts.success++;
         } catch (err) {
@@ -574,7 +602,7 @@ const loadNewTrials = async ({ conn }) => {
                 lup_d: 14,
                 rcv_d: '',
                 recrs: 'abdef',
-                sel_rss: 'new14', // mod14 for last 2 weeks updated
+                sel_rss: 'mod14', // mod14 for last 2 weeks updated
                 type: 'Intr', // interventional only
             },
             uri: RSS_URL,
@@ -591,7 +619,7 @@ const loadNewTrials = async ({ conn }) => {
 
     for (const trialId of recentlyUpdatedTrials) {
         try {
-            await fetchAndLoadById(conn, trialId);
+            await fetchAndLoadById(conn, trialId, { upsert: true });
             counts.success++;
         } catch (err) {
             counts.error++;

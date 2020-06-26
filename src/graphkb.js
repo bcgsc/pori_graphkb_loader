@@ -16,9 +16,39 @@ const { logger } = require('./logging');
 
 const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
 
+const rid = (record, nullOk) => {
+    if (nullOk && !record) {
+        return null;
+    }
+    return (record['@rid'] || record).toString();
+};
 
-const shouldUpdate = (model, originalContent, newContent) => {
-    const formatted = model.formatRecord(newContent, {
+
+const simplifyRecordsLinks = (content, level = 0) => {
+    if (typeof content === 'object' && content !== null) {
+        const simple = {};
+
+        if (level && content['@rid']) {
+            // convert linked objects to their record Ids for comparison
+            return content['@rid'].toString();
+        }
+
+        for (const [key, value] of Object.entries(content)) {
+            if (Array.isArray(value)) {
+                simple[key] = value.map(simplifyRecordsLinks, level + 1);
+            } else {
+                simple[key] = simplifyRecordsLinks(value, level + 1);
+            }
+        }
+        return simple;
+    }
+    return content;
+};
+
+
+const shouldUpdate = (model, originalContentIn, newContentIn) => {
+    const originalContent = simplifyRecordsLinks(originalContentIn);
+    const formatted = model.formatRecord(simplifyRecordsLinks(newContentIn), {
         addDefaults: false,
         dropExtra: true,
         ignoreMissing: true,
@@ -26,6 +56,16 @@ const shouldUpdate = (model, originalContent, newContent) => {
 
     for (const key of Object.keys(formatted)) {
         if (!_.isEqual(originalContent[key], formatted[key])) {
+            logger.info(`should update record (${
+                originalContent['@rid']
+            }) on model (${
+                model.name}) because the property ${
+                key
+            } has changed from ${
+                originalContent[key]
+            } to ${
+                formatted[key]
+            }`);
             return true;
         }
     }
@@ -39,12 +79,6 @@ const generateCacheKey = (record) => {
     return `${record.sourceId}`.toLowerCase();
 };
 
-const rid = (record, nullOk) => {
-    if (nullOk && !record) {
-        return null;
-    }
-    return (record['@rid'] || record).toString();
-};
 
 const nullOrUndefined = value => value === undefined || value === null;
 
