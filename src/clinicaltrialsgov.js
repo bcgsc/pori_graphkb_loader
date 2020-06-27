@@ -514,28 +514,26 @@ const loadNewTrials = async ({ conn }) => {
     // ping them both to get the list of recently updated trials
     const recentlyUpdatedTrials = [];
 
-    for (const country of ['CA', 'US']) {
-        const resp = await requestWithRetry({
-            method: 'GET',
-            qs: {
-                cntry: country,
-                cond: 'cancer', // cancer related trials
-                count: 10000,
-                lup_d: 14,
-                rcv_d: '',
-                recrs: 'abdef',
-                sel_rss: 'mod14', // mod14 for last 2 weeks updated
-                type: 'Intr', // interventional only
-            },
-            uri: RSS_URL,
-        });
-        const xml = await parseXmlToJson(resp);
-        fs.writeFileSync('output.json', JSON.stringify(xml, null, 2));
-        checkSpec(validateRssFeed, xml);
-        recentlyUpdatedTrials.push(
-            ...xml.rss.channel[0].item.map(item => item.guid[0]._),
-        );
-    }
+    const resp = await requestWithRetry({
+        method: 'GET',
+        qs: {
+            cond: 'cancer', // cancer related trials
+            count: 10000,
+            lup_d: 14,
+            rcv_d: '',
+            recrs: 'abdef',
+            sel_rss: 'mod14', // mod14 for last 2 weeks updated
+            type: 'Intr', // interventional only
+        },
+        uri: RSS_URL,
+    });
+    const xml = await parseXmlToJson(resp);
+    fs.writeFileSync('output.json', JSON.stringify(xml, null, 2));
+    checkSpec(validateRssFeed, xml);
+    recentlyUpdatedTrials.push(
+        ...xml.rss.channel[0].item.map(item => item.guid[0]._),
+    );
+
     logger.info(`loading ${recentlyUpdatedTrials.length} recently updated trials`);
     const counts = { error: 0, success: 0 };
 
