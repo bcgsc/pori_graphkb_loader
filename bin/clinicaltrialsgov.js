@@ -1,9 +1,10 @@
 /**
  * Parses clinical trial RSS Feed results
  */
-
+const fs = require('fs');
+const path = require('path');
 const { stdOptions, runLoader } = require('../src');
-const { upload, uploadFile } = require('../src/clinicaltrialsgov');
+const { upload, uploadFiles } = require('../src/clinicaltrialsgov');
 const { fileExists, createOptionsMenu } = require('../src/cli');
 
 
@@ -11,8 +12,14 @@ const options = createOptionsMenu(
     [
         ...stdOptions,
         {
-            description: 'load trials information from an XML export of a search result downloaded from clinicaltrials.gov',
-            name: 'xml',
+            description: 'directory containing XML record files downloaded from NCT. 1 Trial per record',
+            name: 'dir',
+            type: fileExists,
+        },
+        {
+            description: 'XML record files downloaded from NCT. 1 Trial per record',
+            multiple: true,
+            name: 'file',
             type: fileExists,
         },
         {
@@ -24,8 +31,11 @@ const options = createOptionsMenu(
 
 
 const main = async () => {
-    if (options.xml !== undefined) {
-        await runLoader(options, uploadFile, { filename: options.xml });
+    if (options.dir !== undefined) {
+        const files = fs.readdirSync(options.dir).map(filename => path.join(options.dir, filename));
+        await runLoader(options, uploadFiles, { files });
+    } else if (options.file !== undefined) {
+        await runLoader(options, uploadFiles, { files: options.file });
     } else {
         await runLoader(options, upload);
     }
