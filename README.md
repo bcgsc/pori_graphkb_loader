@@ -70,15 +70,16 @@ npm run test
 
 ### General Ontology file (JSON)
 
-Any ontology can be uploaded (without cross reference links) as long as the JSON file is in the expected format.
+Any ontology can be uploaded (for a single record class) as long as the JSON file is
+in the expected format.
 
 The file should have a source definition. This must contain at least a name, but
 may optionally include any of the attributes expected for a source definition (ex. description, url, usage).
 
 ```json
 {
-    "source": {
-        "name": "pubmed"
+    "sources": {
+        "default": {"name": "pubmed"}
     }
 }
 ```
@@ -87,25 +88,25 @@ The class of records this ontology belongs to must also be defined.
 
 ```json
 {
-    "source": {
-        "name": "pubmed"
+    "sources": {
+        "default": {"name": "pubmed"}
     },
     "class": "Publication"
 }
 ```
 
-The last top level attribute is the records. This must be an object where the
-sourceId of each record is its key
+The last top level attribute is the records. This must be an object. The keys will be used
+as the record sourceId if an explicit sourceId is not given.
 
 ```json
 {
-    "source": {
-        "name": "pubmed"
+    "sources": {
+        "default": {"name": "pubmed"}
     },
     "class": "Publication",
     "records": {
-        "<sourceId1>": {},
-        "<sourceId2>": {}
+        "<key1>": {},
+        "<key1>": {}
     }
 }
 ```
@@ -114,8 +115,8 @@ Each record will then define the properties of each ontology term.
 
 ```json
 {
-    "source": {
-        "name": "pubmed"
+    "sources": {
+        "default": {"name": "pubmed"}
     },
     "class": "Publication",
     "records": {
@@ -135,7 +136,7 @@ the ontology term
 {
     "name": "a small molecule blocking oncogenic protein ews-fli1 interaction with rna helicase a inhibits growth of ewing's sarcoma.",
     "links": [
-        {"class": "<Relationship type>", "target": "<sourceId of another term>"}
+        {"class": "<Relationship type>", "target": "<key of another term>"}
     ]
 }
 ```
@@ -146,24 +147,16 @@ Once this file has been built it can be loaded as follows. The script will creat
 node bin/ontology.js --filename /path/to/json/file
 ```
 
-
-
 ### clinicaltrials.gov (XML)
 
-Loads an XML file. The XML file is expected to be exported from the clinicaltrials.gov website. To retrieve
-the expected file, follow the steps below
+Loads Trial records from XML files. See: https://clinicaltrials.gov/ct2/resources/download#DownloadMultipleRecords
 
- * Perform a search on their site, for example https://clinicaltrials.gov/ct2/results?recrs=ab&cond=Cancer&term=&cntry=CA&state=&city=&dist=
- * Click their Download link/Button
- * Adjust the settings in the Pop up dialog (Include all studies, all columns, and export as XML)
- * Download and save the file
- * Upload the file to GraphKB using this module
 
 ```bash
-node bin/clinicaltrialsgov.js --filename download.xml
+node bin/clinicaltrialsgov.js --file NCT001.xml
 ```
 
-Note: This may also load trials directly from the API (ot through the CLI)
+Note: This may also load trials directly from the API (not through the CLI)
 
 ### Disease Ontology (JSON)
 
@@ -321,5 +314,5 @@ Example
 
 
 ```bash
-node/iprkb.js --filename iprkb_export.tab
+node bin/iprkb.js --filename iprkb_export.tab
 ```
