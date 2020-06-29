@@ -476,7 +476,6 @@ const uploadFiles = async ({ conn, files }) => {
         target: 'Source',
     });
 
-    // const { search_results: { study: records } } = data;
     logger.info(`loading ${files.length} records`);
     const counts = {
         error: 0, success: 0,
