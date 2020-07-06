@@ -17,27 +17,43 @@ const diseaseConcepts = [
     'Anatomical Abnormality',
     'Congenital Abnormality',
     'Disease or Syndrome',
+    'Experimental Model of Disease',
     'Mental or Behavioral Dysfunction',
     'Neoplastic Process',
+    'Sign or Symptom',
 ];
 
 const anatomyConcepts = [
     'Anatomical Structure',
     'Body Location or Region',
     'Body Part, Organ, or Organ Component',
+    'Body Space or Junction',
+    'Body System',
     'Tissue',
 ];
 
 const therapeuticConcepts = [
     'Antibiotic',
     'Biologically Active Substance',
+    'Biomedical or Dental Material',
     'Chemical Viewed Functionally',
     'Chemical Viewed Structurally',
     'Chemical',
+    'Clinical Drug',
+    'Drug Delivery Device',
+    'Element, Ion, or Isotope',
+    'Food',
+    'Hazardous or Poisonous Substance',
+    'Hormone',
     'Immunologic Factor',
+    'Indicator, Reagent, or Diagnostic Aid',
     'Inorganic Chemical',
+    'Medical Device',
     'Organic Chemical',
     'Pharmacologic Substance',
+    'Plant',
+    'Steroid',
+    'Substance',
     'Therapeutic or Preventive Procedure',
     'Vitamin',
 ];
@@ -49,7 +65,7 @@ const DEPRECATED = [
 ];
 
 
-const pickEndpoint = (conceptName) => {
+const pickEndpoint = (conceptName, parentConcepts = '') => {
     let endpoint = null;
 
     if (anatomyConcepts.some(term => conceptName.includes(term))) {
@@ -70,6 +86,13 @@ const pickEndpoint = (conceptName) => {
     if (endpoint) {
         return endpoint;
     }
+
+    if (parentConcepts) {
+        try {
+            endpoint = pickEndpoint(parentConcepts);
+            return endpoint;
+        } catch (err) {}
+    }
     throw new Error(`Concept not implemented (${conceptName})`);
 };
 
@@ -86,6 +109,7 @@ const cleanRawRow = (rawRow) => {
         definition,
         semanticType,
         conceptStatus,
+        parentConcepts,
     } = rawRow;
 
     const row = {
@@ -103,7 +127,7 @@ const cleanRawRow = (rawRow) => {
         ),
     };
     const sourceId = id.toLowerCase().trim();
-    const endpoint = pickEndpoint(semanticType);
+    const endpoint = pickEndpoint(semanticType, parentConcepts);
 
     // use the synonym name if no name given
     const synonyms = rawSynonyms.split('|')
@@ -134,7 +158,7 @@ const cleanRawRow = (rawRow) => {
     // use the synonym name if no name given
     if (!name && synonyms.length > 0) {
         synonyms.sort();
-        name = synonyms[0];
+        [name] = synonyms;
     }
 
     const url = xmlTag.replace(/^</, '').replace(/>$/, '');
@@ -179,6 +203,19 @@ const uploadFile = async ({ filename, conn }) => {
     const counts = {
         error: 0, exists: 0, skip: 0, success: 0,
     };
+    const errors = {};
+
+    const rowsById = {};
+
+    for (const row of rawRows) {
+        rowsById[row.id] = row;
+    }
+
+    for (const row of rawRows) {
+        row.parentConcepts = row.parents.split('|')
+            .map(parent => (rowsById[parent.trim()] || {}).semanticType || '')
+            .join('|');
+    }
 
     for (const raw of rawRows) {
         try {
@@ -196,6 +233,11 @@ const uploadFile = async ({ filename, conn }) => {
             nameDuplicates[row.name].push(row);
             rows.push(row);
         } catch (err) {
+            if (!errors[err]) {
+                errors[err] = err;
+                logger.error(err);
+            }
+
             counts.skip++;
         }
     }
@@ -204,7 +246,7 @@ const uploadFile = async ({ filename, conn }) => {
     // if possible, assign the row another name from its list of synonyms (instead of the display name)
     for (const [name, dups] of Object.entries(nameDuplicates)) {
         if (name && dups && dups.length > 1) {
-            logger.info(`ncit terms (${dups.map(r => r.sourceId).join(', ')}) have non-unique name (${name})`);
+            logger.debug(`ncit terms (${dups.map(r => r.sourceId).join(', ')}) have non-unique name (${name})`);
             dups.forEach(d => rejected.add(d.sourceId));
         }
     }
@@ -236,7 +278,7 @@ const uploadFile = async ({ filename, conn }) => {
 
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
-        logger.info(`processing (${i} / ${rows.length}) ${row.sourceId}`);
+        logger.verbose(`processing (${i} / ${rows.length}) ${row.sourceId}`);
 
         if (rejected.has(row.sourceId)) {
             counts.error++;
@@ -283,7 +325,7 @@ const uploadFile = async ({ filename, conn }) => {
                 cached[generateCacheKey(record)] = record;
 
                 // add the synonyms
-                await Promise.all(row.synonyms.map(async (synonym) => {
+                for (const synonym of row.synonyms) {
                     try {
                         const alias = await conn.addRecord({
                             content: {
@@ -306,7 +348,7 @@ const uploadFile = async ({ filename, conn }) => {
                         logger.error(`failed to link (${record.sourceId}) to alias (${synonym})`);
                         logger.error(err);
                     }
-                }));
+                }
             }
 
             // add the parents
