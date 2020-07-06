@@ -5,8 +5,9 @@
  */
 
 const {
-    orderPreferredOntologyTerms, loadDelimToJson, rid, convertRowFields,
+    loadDelimToJson, convertRowFields,
 } = require('./../util');
+const { rid, orderPreferredOntologyTerms } = require('../graphkb');
 const { SOURCE_DEFN: { name: ncitSourceName } } = require('./../ncit');
 const { logger } = require('./../logging');
 
@@ -27,9 +28,9 @@ const HEADER = {
  * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async (opt) => {
-    const { filename, conn: api } = opt;
+    const { filename, conn: graphkbConn } = opt;
     const jsonList = await loadDelimToJson(filename);
-    const source = await api.addRecord({
+    const source = await graphkbConn.addRecord({
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
@@ -38,7 +39,7 @@ const uploadFile = async (opt) => {
 
     // only load FDA records if we have already loaded NCIT
     try {
-        await api.getUniqueRecordBy({
+        await graphkbConn.getUniqueRecordBy({
             filters: { name: ncitSourceName },
             target: 'Source',
         });
@@ -49,23 +50,29 @@ const uploadFile = async (opt) => {
     const counts = { error: 0, skip: 0, success: 0 };
 
     logger.info(`loading ${jsonList.length} records`);
+    const intervalSize = 1000;
 
     for (let i = 0; i < jsonList.length; i++) {
         const {
-            pubchem, id, ncit, name,
+            id, ncit, name,
         } = convertRowFields(HEADER, jsonList[i]);
 
-        if (!name || !id || (!ncit && !pubchem)) {
+        if (!name || !id) {
             // only load records with at min these 3 values filled out
             counts.skip++;
             continue;
         }
         let ncitRec;
-        logger.info(`processing ${id} (${i} / ${jsonList.length})`);
+
+        if (i % intervalSize === 0) {
+            logger.info(`processing ${id} (${i} / ${jsonList.length})`);
+        } else {
+            logger.verbose(`processing ${id} (${i} / ${jsonList.length})`);
+        }
 
         if (ncit) {
             try {
-                ncitRec = await api.getUniqueRecordBy({
+                ncitRec = await graphkbConn.getUniqueRecordBy({
                     filters: {
                         AND: [
                             { source: { filters: { name: ncitSourceName }, target: 'Source' } },
@@ -76,7 +83,8 @@ const uploadFile = async (opt) => {
                     target: 'Therapy',
                 });
             } catch (err) {
-                counts.skip++;
+                logger.error(err);
+                counts.error++;
                 continue;
             }
         }
@@ -84,18 +92,18 @@ const uploadFile = async (opt) => {
         let drug;
 
         try {
-            drug = await api.addRecord({
+            drug = await graphkbConn.addRecord({
                 content: { name, source: rid(source), sourceId: id },
                 existsOk: true,
                 target: 'Therapy',
             });
 
             if (ncitRec) {
-                await api.addRecord({
+                await graphkbConn.addRecord({
                     content: { in: rid(ncitRec), out: rid(drug), source: rid(source) },
                     existsOk: true,
                     fetchExisting: false,
-                    target: 'crossreferenceof',
+                    target: 'CrossReferenceOf',
                 });
             }
             counts.success++;

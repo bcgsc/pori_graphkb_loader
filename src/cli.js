@@ -73,6 +73,11 @@ const createOptionsMenu = (defns, opt = {}) => {
                 argumentError(usage, `--${option.name} is a required argument`);
             }
         }
+
+        // check choices
+        if (options[option.name] && option.enum && !option.enum.includes(options[option.name])) {
+            argumentError(usage, `--${option.name} must be one of ${option.enum.join(', ')}`);
+        }
     }
 
     // at least one argument must be given, or show the help menu and exit
@@ -80,6 +85,7 @@ const createOptionsMenu = (defns, opt = {}) => {
         console.log(usage);
         process.exit(0);
     }
+
     return options;
 };
 
