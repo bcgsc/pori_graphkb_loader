@@ -200,9 +200,9 @@ const processRecord = async ({
                 { name: body.name },
                 { source: rid(current) },
                 { sourceId: body.sourceId },
-                { sourceIdVersion: body.sourceIdVersion },
             ],
         },
+        fetchFirst: true,
         target: 'Therapy',
     });
 
@@ -250,17 +250,18 @@ const processRecord = async ({
         }
     }
     // process the commerical product names
-    const aliases = new Set(
+    const aliases = Array.from(new Set(
         (drug.products.product || [])
             .map(p => p.name)
             // only keep simple alias names (over 100k otherwise)
             .filter(p => /^[a-zA-Z]\w+$/.exec(p) && p.toLowerCase() !== drug.name.toLowerCase()),
-    );
-    await Promise.all(Array.from(aliases, async (aliasName) => {
+    ));
+
+    for (const aliasName of aliases) {
         const alias = await conn.addRecord({
             content: {
                 dependency: rid(record),
-                name: aliasName,
+                name: aliasName.toLowerCase(),
                 source: rid(current),
                 sourceId: getDrugBankId(drug),
             },
@@ -274,7 +275,7 @@ const processRecord = async ({
             fetchExisting: false,
             target: 'aliasof',
         });
-    }));
+    }
 
     // link to the FDA UNII
     if (fda && drug[HEADER.unii]) {
@@ -301,7 +302,7 @@ const processRecord = async ({
                 },
                 existsOk: true,
                 fetchExisting: false,
-                target: 'crossreferenceof',
+                target: 'CrossReferenceOf',
             });
         }
     }
@@ -394,6 +395,8 @@ const uploadFile = async ({ filename, conn }) => {
     } catch (err) {
         logger.warn('Unable to find fda source record. Will not attempt cross-reference links');
     }
+    logger.info('caching previously requested CHEMBL drugs');
+    await _chembl.preLoadCache(conn);
     const counts = { error: 0, skipped: 0, success: 0 };
 
     const parseXML = new Promise((resolve, reject) => {
