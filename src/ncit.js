@@ -140,7 +140,6 @@ const cleanRawRow = (rawRow) => {
         const names = name.split('|')
             .map(s => s.toLowerCase().trim())
             .filter(s => s);
-        names.sort();
         [name] = names;
         synonyms.push(...names.slice(1));
     }
