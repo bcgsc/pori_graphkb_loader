@@ -46,7 +46,7 @@ const simplifyRecordsLinks = (content, level = 0) => {
 };
 
 
-const shouldUpdate = (model, originalContentIn, newContentIn) => {
+const shouldUpdate = (model, originalContentIn, newContentIn, upsertCheckExclude = []) => {
     const originalContent = simplifyRecordsLinks(originalContentIn);
     const formatted = model.formatRecord(simplifyRecordsLinks(newContentIn), {
         addDefaults: false,
@@ -55,6 +55,9 @@ const shouldUpdate = (model, originalContentIn, newContentIn) => {
     });
 
     for (const key of Object.keys(formatted)) {
+        if (upsertCheckExclude.includes(key)) {
+            continue;
+        }
         if (!_.isEqual(originalContent[key], formatted[key])) {
             logger.info(`should update record (${
                 originalContent['@rid']
@@ -450,19 +453,20 @@ class ApiConnection {
             fetchFirst = false,
             sortFunc = () => 0,
             upsert = false,
+            upsertCheckExclude = [],
         } = opt;
         const model = schema.get(target);
+        const filters = fetchConditions || convertRecordToQueryFilters(content);
 
         if (fetchFirst) {
             try {
-                const filters = fetchConditions || convertRecordToQueryFilters(content);
                 const result = await this.getUniqueRecordBy({
                     filters,
                     sortFunc,
                     target,
                 });
 
-                if (upsert && shouldUpdate(model, result, content)) {
+                if (upsert && shouldUpdate(model, result, content, upsertCheckExclude)) {
                     return await this.updateRecord(target, result['@rid'], content);
                 }
                 return result;
@@ -489,14 +493,13 @@ class ApiConnection {
         } catch (err) {
             if (err.statusCode === 409 && (existsOk || upsert)) {
                 if (fetchExisting || upsert) {
-                    const filters = fetchConditions || convertRecordToQueryFilters(content);
                     const result = await this.getUniqueRecordBy({
                         filters,
                         sortFunc,
                         target,
                     });
 
-                    if (upsert && shouldUpdate(model, result, content)) {
+                    if (upsert && shouldUpdate(model, result, content, upsertCheckExclude)) {
                         return this.updateRecord(target, result['@rid'], content);
                     }
                     return result;
