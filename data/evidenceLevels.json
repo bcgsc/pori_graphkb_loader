@@ -29,7 +29,7 @@
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
+                    "source": "pori",
                     "target": "profyle-t1"
                 },
                 {
@@ -54,8 +54,8 @@
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
-                    "target": "gsc-a"
+                    "source": "pori",
+                    "target": "pori-a"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -87,7 +87,7 @@
             "links": [
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
+                    "source": "pori",
                     "target": "profyle-t2"
                 },
                 {
@@ -116,8 +116,8 @@
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
-                    "target": "gsc-b"
+                    "source": "pori",
+                    "target": "pori-b"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -141,13 +141,13 @@
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
+                    "source": "pori",
                     "target": "profyle-t3"
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
-                    "target": "gsc-c"
+                    "source": "pori",
+                    "target": "pori-c"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -171,13 +171,13 @@
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
+                    "source": "pori",
                     "target": "profyle-t4"
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
-                    "target": "gsc-d"
+                    "source": "pori",
+                    "target": "pori-d"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -452,61 +452,66 @@
             "sourceId": "e5",
             "url": "https://civicdb.org/glossary"
         },
-        "gsc-a": {
-            "displayName": "GSC-A",
-            "source": "gsc",
+        "pori-a": {
+            "description": "Evidence pertaining to biomarkers associated with FDA-approved therapies or professional guidelines for this tumour type",
+            "displayName": "PORI-A",
+            "source": "pori",
             "sourceId": "a"
         },
-        "gsc-b": {
-            "displayName": "GSC-B",
-            "source": "gsc",
+        "pori-b": {
+            "description": "Evidence for biomarkers that predict response or resistance to therapies for this tumour type based on well-powered clinical trials with expert consensus.",
+            "displayName": "PORI-B",
+            "source": "pori",
             "sourceId": "b"
         },
-        "gsc-c": {
-            "displayName": "GSC-C",
-            "source": "gsc",
+        "pori-c": {
+            "description": "Evidence that a biomarker predicts response or resistance to a drug based on case studies or small scale clinical trials in the same tumour type, or that predict response or resistance to FDA-approved or investigational drugs in another tumour type.",
+            "displayName": "PORI-C",
+            "source": "pori",
             "sourceId": "c"
         },
-        "gsc-d": {
-            "displayName": "GSC-D",
-            "source": "gsc",
-            "sourceId": "d"
+        "pori-d": {
+            "displayName": "PORI-D",
+            "source": "pori",
+            "sourceId": "d",
+            "description": "Evidence that demonstrates plausible therapeutic significance associated with the biomarker based on preclinical studies."
         },
-        "gsc-e": {
-            "displayName": "GSC-E",
+        "pori-e": {
+            "displayName": "PORI-E",
+            "description": "Inferred therapeutic association based on a variant of uncertain significance including copy variants and outlier expression of targetable genes without direct preclinical or clinical evidence.",
             "links": [
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
+                    "source": "pori",
                     "target": "civic-e1"
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
+                    "source": "pori",
                     "target": "civic-e2"
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
+                    "source": "pori",
                     "target": "civic-e3"
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
+                    "source": "pori",
                     "target": "civic-e4"
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
+                    "source": "pori",
                     "target": "civic-e5"
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "gsc",
+                    "source": "pori",
                     "target": "profyle-t5"
                 }
             ],
-            "source": "gsc",
+            "source": "pori",
             "sourceId": "e"
         },
         "oncokb-1": {
@@ -681,9 +686,10 @@
             "name": "Variant Interpretation for Cancer Consortium",
             "url": "https://cancervariants.org"
         },
-        "gsc": {
-            "displayName": "GSC-AEL",
-            "name": "GSC aggregated Evidence Levels"
+        "pori": {
+            "displayName": "PORI",
+            "name": "pori",
+            "longName": "Platform for Oncogenomic Reporting and Interpretation (PORI) Aggregated Evidence Levels"
         },
         "oncokb": {
             "description": "OncoKB is a precision oncology knowledge base and contains information about the effects and treatment implications of specific cancer gene alterations. It is developed and maintained by the Knowledge Systems group in the Marie Josée and Henry R. Kravis Center for Molecular Oncology at Memorial Sloan Kettering Cancer Center (MSK), in partnership with Quest Diagnostics and Watson for Genomics, IBM.",
