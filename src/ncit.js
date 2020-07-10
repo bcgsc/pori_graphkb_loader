@@ -155,8 +155,8 @@ const cleanRawRow = (rawRow) => {
     }
 
     // use the synonym name if no name given
-    if (!name && synonyms.length > 0) {
-        [name] = synonyms;
+    if (!name) {
+        name = sourceId;
     }
 
     const url = xmlTag.replace(/^</, '').replace(/>$/, '');
