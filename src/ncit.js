@@ -155,8 +155,8 @@ const cleanRawRow = (rawRow) => {
     }
 
     // use the synonym name if no name given
-    if (!name && synonyms.length > 0) {
-        [name] = synonyms;
+    if (!name) {
+        name = sourceId;
     }
 
     const url = xmlTag.replace(/^</, '').replace(/>$/, '');
@@ -270,9 +270,16 @@ const uploadFile = async ({ filename, conn }) => {
         neighbors: 0,
         target: 'Ontology',
     });
+    const exists = new Set();
+    const existsHashCheck = record => [
+        generateCacheKey(record),
+        record.name,
+        record.displayName,
+    ].join('____');
 
     for (const record of cachedRecords) {
         cached[generateCacheKey(record)] = record;
+        exists.add(existsHashCheck(record));
     }
     logger.info(`loaded and cached ${Object.keys(cached).length} records`);
 
@@ -285,6 +292,7 @@ const uploadFile = async ({ filename, conn }) => {
             counts.error++;
             continue;
         }
+        let record;
 
         try {
             const cacheKey = generateCacheKey(row);
@@ -292,69 +300,67 @@ const uploadFile = async ({ filename, conn }) => {
             if (recordsById[cacheKey]) {
                 throw new Error(`code is not unique (${cacheKey})`);
             }
-
-            let record;
-
-            if (cached[cacheKey]) {
+            if (exists.has(existsHashCheck(row))) {
                 counts.exists++;
                 continue;
-            } else {
-                // create the new record
-                const {
-                    endpoint, sourceId, description, url, name, deprecated,
-                } = row;
-                record = await conn.addRecord({
-                    content: {
-                        deprecated,
-                        description,
-                        name,
-                        source,
-                        sourceId,
-                        url,
-                    },
-                    existsOk: true,
-                    fetchConditions: convertRecordToQueryFilters({
-                        name: row.name,
-                        source,
-                        sourceId,
-                    }),
-                    target: endpoint,
-                    upsert: true,
-                });
-                cached[generateCacheKey(record)] = record;
+            }
 
-                // add the synonyms
-                for (const synonym of row.synonyms) {
-                    try {
-                        const alias = await conn.addRecord({
-                            content: {
-                                alias: true,
-                                deprecated,
-                                name: synonym,
-                                source,
-                                sourceId: record.sourceId,
-                            },
-                            existsOk: true,
-                            fetchConditions: convertRecordToQueryFilters({
-                                name: synonym,
-                                source,
-                                sourceId,
-                            }),
-                            target: endpoint,
-                            upsert: true,
-                        });
-                        await conn.addRecord({
-                            content: { in: rid(record), out: rid(alias), source },
-                            existsOk: true,
-                            fetchExisting: false,
-                            target: 'aliasof',
-                        });
-                    } catch (err) {
-                        logger.error(`failed to link (${record.sourceId}) to alias (${synonym})`);
-                        logger.error(err);
-                    }
+            // create the new record
+            const {
+                endpoint, sourceId, description, url, name, deprecated,
+            } = row;
+            record = await conn.addRecord({
+                content: {
+                    deprecated,
+                    description,
+                    name,
+                    source,
+                    sourceId,
+                    url,
+                },
+                existsOk: true,
+                fetchConditions: convertRecordToQueryFilters({
+                    name: row.name,
+                    source,
+                    sourceId,
+                }),
+                target: endpoint,
+                upsert: true,
+            });
+            cached[generateCacheKey(record)] = record;
+
+            // add the synonyms
+            for (const synonym of row.synonyms) {
+                try {
+                    const alias = await conn.addRecord({
+                        content: {
+                            alias: true,
+                            deprecated,
+                            name: synonym,
+                            source,
+                            sourceId: record.sourceId,
+                        },
+                        existsOk: true,
+                        fetchConditions: convertRecordToQueryFilters({
+                            name: synonym,
+                            source,
+                            sourceId,
+                        }),
+                        target: endpoint,
+                        upsert: true,
+                    });
+                    await conn.addRecord({
+                        content: { in: rid(record), out: rid(alias), source },
+                        existsOk: true,
+                        fetchExisting: false,
+                        target: 'aliasof',
+                    });
+                } catch (err) {
+                    logger.error(`failed to link (${record.sourceId}) to alias (${synonym})`);
+                    logger.error(err);
                 }
             }
+
 
             // add the parents
             subclassEdges.push(row.parents.map(parent => [cacheKey, generateCacheKey({ sourceId: parent })]));
@@ -376,7 +382,7 @@ const uploadFile = async ({ filename, conn }) => {
                 },
                 existsOk: true,
                 fetchExisting: false,
-                target: 'subclassof',
+                target: 'SubClassOf',
             });
         }
     }
