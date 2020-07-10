@@ -687,7 +687,8 @@
             "url": "https://cancervariants.org"
         },
         "ipr": {
-            "description": "IPR (Integrated Pipeline Reports) is the reporting platform used in the platform for oncogenomic reporting and interpretation (PORI)",
+            "description": "IPR (Integrated Pipeline Reports) is the reporting module used in the Platform for Oncogenomic Reporting and Interpretation (PORI)",
+            "url": "https://ipr.bcgsc.ca",
             "displayName": "IPR",
             "longName": "Integrated Pipeline Reports (IPR) Aggregated Evidence Levels",
             "name": "ipr"
