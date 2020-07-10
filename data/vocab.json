@@ -779,6 +779,15 @@
             ],
             "shortName": "ins"
         },
+        "intermediate metabolizer": {
+            "description": "intermediate metabolizer: with a genotype carrying one normal function allele plus one no function allele or one decreased function allele, or carrying two decreased function alleles",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "toxicity"
+                }
+            ]
+        },
         "internal duplication": {
             "links": [
                 {
@@ -1051,8 +1060,8 @@
                     "target": "missense mutation"
                 }
             ],
-            "source": "civic",
-            "shortName": ">"
+            "shortName": ">",
+            "source": "civic"
         },
         "moderate signature": {
             "links": [
@@ -1089,8 +1098,8 @@
                     "target": "mutation"
                 }
             ],
-            "source": "civic",
-            "shortName": "mut"
+            "shortName": "mut",
+            "source": "civic"
         },
         "n-terminal frame shift": {
             "links": [
@@ -1389,6 +1398,15 @@
                 {
                     "class": "SubClassOf",
                     "target": "mutation"
+                }
+            ]
+        },
+        "poor metabolizer": {
+            "description": "with a genotype carrying two no function alleles, or carrying one no function plus one decreased function allele",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "toxicity"
                 }
             ]
         },
@@ -1950,8 +1968,8 @@
                     "target": "truncating"
                 }
             ],
-            "source": "civic",
-            "shortName": ">"
+            "shortName": ">",
+            "source": "civic"
         },
         "tumour suppressive": {
             "description": "suppresses or blocks the development of cancer",
