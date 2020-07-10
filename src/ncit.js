@@ -131,14 +131,14 @@ const cleanRawRow = (rawRow) => {
 
     // use the synonym name if no name given
     const synonyms = rawSynonyms.split('|')
-        .map(s => s.toLowerCase().trim())
+        .map(s => s.trim())
         .filter(s => s);
-    let name = rawName.toLowerCase().trim();
+    let name = rawName.trim();
 
     // split up the name if it is a list
     if (name && name.includes('|')) {
         const names = name.split('|')
-            .map(s => s.toLowerCase().trim())
+            .map(s => s.trim())
             .filter(s => s);
         [name] = names;
         synonyms.push(...names.slice(1));
@@ -156,7 +156,6 @@ const cleanRawRow = (rawRow) => {
 
     // use the synonym name if no name given
     if (!name && synonyms.length > 0) {
-        synonyms.sort();
         [name] = synonyms;
     }
 
@@ -165,10 +164,13 @@ const cleanRawRow = (rawRow) => {
     // add the parents
     return {
         ...row,
+        displayName: `${name} [${sourceId}]`,
         endpoint,
-        name,
+        name: name.toLowerCase(),
         sourceId,
-        synonyms: Array.from(new Set(synonyms)).filter(s => s !== name),
+        synonyms: Array.from(new Set(synonyms))
+            .map(s => s.toLowerCase())
+            .filter(s => s !== name.toLowerCase()),
         url,
     };
 };
