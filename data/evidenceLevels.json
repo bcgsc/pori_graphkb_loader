@@ -465,7 +465,7 @@
             "sourceId": "b"
         },
         "ipr-c": {
-            "description": "Evidence that a biomarker predicts response or resistance to a drug based on case studies or small scale clinical trials in the same tumour type, or that predict response or resistance to FDA-approved or investigational drugs in another tumour type.",
+            "description": "Evidence that a biomarker predicts response or resistance to a drug based on case studies or small scale clinical trials, is an inclusion criteria for a clinical trial, or predicts response or resistance to FDA-approved or investigational drugs in another tumour type.",
             "displayName": "IPR-C",
             "source": "ipr",
             "sourceId": "c"
