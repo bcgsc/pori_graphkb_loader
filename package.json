@@ -1,7 +1,7 @@
 {
   "name": "@bcgsc/knowledgebase-importer",
   "main": "src/index.js",
-  "version": "2.6.0",
+  "version": "2.7.0",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/dat/repos/knowledgebase_importer/browse"
