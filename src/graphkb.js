@@ -113,6 +113,11 @@ const orderPreferredOntologyTerms = (term1, term2) => {
         return -1;
     }
     // prefer terms with independent sourceId
+    if (term1.alias === false & term2.alias !== false) {
+        return -1;
+    } if (term2.alias === false & term1.alias !== false) {
+        return 1;
+    }
     if (term1.dependency == null & term2.dependency != null) {
         return -1;
     } if (term2.dependency == null & term1.dependency != null) {
