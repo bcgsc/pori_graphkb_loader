@@ -6,6 +6,7 @@ const { rid, convertRecordToQueryFilters } = require('../src/graphkb');
 
 const api = {
     addRecord: jest.fn().mockImplementation(async ({ content }) => content),
+    getRecords: jest.fn().mockImplementation(async () => []),
     getUniqueRecordBy: jest.fn().mockImplementation(async ({ where }) => where),
 };
 
@@ -50,8 +51,8 @@ describe('drugBank', () => {
                 name: 'Erlotinib',
                 source: rid(drugbank.SOURCE_DEFN),
                 sourceId: 'DB00530',
-                sourceIdVersion: '2019-07-02',
             }),
+            fetchFirst: true,
             target: 'Therapy',
         });
     });

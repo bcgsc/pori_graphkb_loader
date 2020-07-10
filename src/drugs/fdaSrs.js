@@ -85,7 +85,6 @@ const uploadFile = async (opt) => {
             } catch (err) {
                 logger.error(err);
                 counts.error++;
-                continue;
             }
         }
 

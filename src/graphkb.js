@@ -46,7 +46,7 @@ const simplifyRecordsLinks = (content, level = 0) => {
 };
 
 
-const shouldUpdate = (model, originalContentIn, newContentIn) => {
+const shouldUpdate = (model, originalContentIn, newContentIn, upsertCheckExclude = []) => {
     const originalContent = simplifyRecordsLinks(originalContentIn);
     const formatted = model.formatRecord(simplifyRecordsLinks(newContentIn), {
         addDefaults: false,
@@ -55,17 +55,20 @@ const shouldUpdate = (model, originalContentIn, newContentIn) => {
     });
 
     for (const key of Object.keys(formatted)) {
+        if (upsertCheckExclude.includes(key)) {
+            continue;
+        }
         if (!_.isEqual(originalContent[key], formatted[key])) {
             logger.info(`should update record (${
                 originalContent['@rid']
             }) on model (${
                 model.name}) because the property ${
                 key
-            } has changed from ${
+            } has changed from (${
                 originalContent[key]
-            } to ${
+            }) to (${
                 formatted[key]
-            }`);
+            })`);
             return true;
         }
     }
@@ -110,6 +113,11 @@ const orderPreferredOntologyTerms = (term1, term2) => {
         return -1;
     }
     // prefer terms with independent sourceId
+    if (term1.alias === false & term2.alias !== false) {
+        return -1;
+    } if (term2.alias === false & term1.alias !== false) {
+        return 1;
+    }
     if (term1.dependency == null & term2.dependency != null) {
         return -1;
     } if (term2.dependency == null & term1.dependency != null) {
@@ -450,19 +458,20 @@ class ApiConnection {
             fetchFirst = false,
             sortFunc = () => 0,
             upsert = false,
+            upsertCheckExclude = [],
         } = opt;
         const model = schema.get(target);
+        const filters = fetchConditions || convertRecordToQueryFilters(content);
 
         if (fetchFirst) {
             try {
-                const filters = fetchConditions || convertRecordToQueryFilters(content);
                 const result = await this.getUniqueRecordBy({
                     filters,
                     sortFunc,
                     target,
                 });
 
-                if (upsert && shouldUpdate(model, result, content)) {
+                if (upsert && shouldUpdate(model, result, content, upsertCheckExclude)) {
                     return await this.updateRecord(target, result['@rid'], content);
                 }
                 return result;
@@ -489,14 +498,13 @@ class ApiConnection {
         } catch (err) {
             if (err.statusCode === 409 && (existsOk || upsert)) {
                 if (fetchExisting || upsert) {
-                    const filters = fetchConditions || convertRecordToQueryFilters(content);
                     const result = await this.getUniqueRecordBy({
                         filters,
                         sortFunc,
                         target,
                     });
 
-                    if (upsert && shouldUpdate(model, result, content)) {
+                    if (upsert && shouldUpdate(model, result, content, upsertCheckExclude)) {
                         return this.updateRecord(target, result['@rid'], content);
                     }
                     return result;

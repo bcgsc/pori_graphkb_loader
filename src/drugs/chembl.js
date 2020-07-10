@@ -60,6 +60,7 @@ const fetchAndLoadById = async (conn, drugId) => {
         CACHE.SOURCE = await conn.addRecord({
             content: SOURCE_DEFN,
             existsOk: true,
+            fetchConditions: { name: SOURCE_DEFN.name },
             target: 'Source',
         });
     }
@@ -110,7 +111,7 @@ const fetchAndLoadById = async (conn, drugId) => {
                     source,
                 },
                 existsOk: true,
-                target: 'SubclassOf',
+                target: 'SubClassOf',
             });
         } catch (err) {}
     }
