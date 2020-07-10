@@ -209,13 +209,14 @@ const getDrug = async (conn, drugRecord) => {
                 filters: [
                     { source: { filters: { name: NCIT_SOURCE_DEFN.name }, target: 'Source' } },
                     { sourceId: drugRecord.ncit_id },
+                    { name: drugRecord.name },
                 ],
                 sort: orderPreferredOntologyTerms,
                 target: 'Therapy',
             });
             return drug;
         } catch (err) {
-            logger.error(`had NCIt drug mapping (${drugRecord.ncit_id}) but failed to fetch from graphkb: ${err}`);
+            logger.error(`had NCIt drug mapping (${drugRecord.ncit_id}) named (${drugRecord.name}) but failed to fetch from graphkb: ${err}`);
             throw err;
         }
     }
