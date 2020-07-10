@@ -264,7 +264,7 @@ const uploadFile = async ({ filename, conn }) => {
     const cached = {};
     logger.info('getting previously loaded records');
     const cachedRecords = await conn.getRecords({
-        filters: { AND: [{ source }, { dependency: null }] },
+        filters: { AND: [{ source }, { alias: false }] },
         neighbors: 0,
         target: 'Ontology',
     });
@@ -312,14 +312,12 @@ const uploadFile = async ({ filename, conn }) => {
                     },
                     existsOk: true,
                     fetchConditions: convertRecordToQueryFilters({
-                        dependency: null,
-
                         name: row.name,
-                        // description can contain url malformed characters
                         source,
                         sourceId,
                     }),
                     target: endpoint,
+                    upsert: true,
                 });
                 cached[generateCacheKey(record)] = record;
 
@@ -328,14 +326,20 @@ const uploadFile = async ({ filename, conn }) => {
                     try {
                         const alias = await conn.addRecord({
                             content: {
-                                dependency: rid(record),
-                                deprecated: record.deprecated,
+                                alias: true,
+                                deprecated,
                                 name: synonym,
                                 source,
                                 sourceId: record.sourceId,
                             },
                             existsOk: true,
+                            fetchConditions: convertRecordToQueryFilters({
+                                name: synonym,
+                                source,
+                                sourceId,
+                            }),
                             target: endpoint,
+                            upsert: true,
                         });
                         await conn.addRecord({
                             content: { in: rid(record), out: rid(alias), source },

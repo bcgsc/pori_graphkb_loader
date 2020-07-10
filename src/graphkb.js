@@ -64,11 +64,11 @@ const shouldUpdate = (model, originalContentIn, newContentIn, upsertCheckExclude
             }) on model (${
                 model.name}) because the property ${
                 key
-            } has changed from ${
+            } has changed from (${
                 originalContent[key]
-            } to ${
+            }) to (${
                 formatted[key]
-            }`);
+            })`);
             return true;
         }
     }
