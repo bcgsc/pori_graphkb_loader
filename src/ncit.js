@@ -164,7 +164,9 @@ const cleanRawRow = (rawRow) => {
     // add the parents
     return {
         ...row,
-        displayName: `${name} [${sourceId}]`,
+        displayName: name.toLowerCase() === sourceId.toLowerCase()
+            ? sourceId
+            : `${name} [${sourceId}]`,
         endpoint,
         name: name.toLowerCase(),
         sourceId,
@@ -307,12 +309,13 @@ const uploadFile = async ({ filename, conn }) => {
 
             // create the new record
             const {
-                endpoint, sourceId, description, url, name, deprecated,
+                endpoint, sourceId, description, url, name, deprecated, displayName,
             } = row;
             record = await conn.addRecord({
                 content: {
                     deprecated,
                     description,
+                    displayName,
                     name,
                     source,
                     sourceId,
@@ -336,6 +339,7 @@ const uploadFile = async ({ filename, conn }) => {
                         content: {
                             alias: true,
                             deprecated,
+                            displayName: `${synonym} [${record.sourceId}]`,
                             name: synonym,
                             source,
                             sourceId: record.sourceId,
