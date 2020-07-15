@@ -437,7 +437,9 @@ const processEvidenceRecord = async (opt) => {
 const downloadEvidenceRecords = async (baseUrl) => {
     const urlTemplate = `${baseUrl}/evidence_items?count=500&status=accepted`;
     // load directly from their api
-    const counts = { error: 0, skip: 0, success: 0 };
+    const counts = {
+        error: 0, exists: 0, skip: 0, success: 0,
+    };
     let expectedPages = 1,
         currentPage = 1;
 
@@ -553,6 +555,10 @@ const upload = async (opt) => {
     };
 
     for (const record of records) {
+        if (previouslyEntered.has(record.id.toString()) && process.env.IGNORE_CIVIC_CACHE !== '1') {
+            counts.exists++;
+            continue;
+        }
         record.variants = [varById[record.variant_id]]; // OR-ing of variants
 
         if (record.drugs === undefined || record.drugs.length === 0) {
