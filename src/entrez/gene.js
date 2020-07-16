@@ -13,6 +13,7 @@ const ajv = new Ajv();
 const CACHE = {};
 const SEARCH_CACHE = {};
 const DB_NAME = 'gene';
+const LINK_URL = 'https://www.ncbi.nlm.nih.gov/gene';
 const MAX_CONSEC = 100;
 
 const recordSpec = ajv.compile({
@@ -39,6 +40,7 @@ const parseRecord = (record) => {
         longName: record.description,
         name: record.name,
         sourceId: record.uid,
+        url: `${LINK_URL}/${record.uid}`,
     };
 };
 

@@ -16,6 +16,7 @@ const ajv = new Ajv();
 const { dbSnp: SOURCE_DEFN } = require('../sources');
 
 const DB_NAME = 'snp';
+const LINK_URL = 'https://www.ncbi.nlm.nih.gov/snp';
 const CACHE = {};
 
 const recordSpec = ajv.compile({
@@ -118,6 +119,7 @@ const parseRecord = (record) => {
         name: `rs${record.snp_id}`,
         sourceId: record.uid,
         sourceIdVersion: record.updatedate,
+        url: `${LINK_URL}/rs${record.snp_id}`,
     };
 
     for (const tag of record.docsum.replace(/&gt;/g, '>').split(';')) {
