@@ -20,7 +20,7 @@ const loadCdsVariant = async (graphkbConn, transcriptId, cdsNotation) => {
     const transcripts = await _refseq.fetchAndLoadByIds(graphkbConn, [transcriptId]);
 
     if (transcripts.length !== 1) {
-        throw new Error(`unable to find unique transcript (${transcriptId})`);
+        throw new Error(`unable to find unique transcript (${transcriptId}) (found: ${transcripts.length})`);
     }
     if (!cdsNotation.startsWith('c.')) {
         throw new Error(`invalid HGVSc notation (${cdsNotation})`);
@@ -187,6 +187,10 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     });
     const relevance = await conn.getVocabularyTerm('pathogenic');
 
+    // load all transcripts (entrez sometimes misses requests for single ones for some reason)
+    logger.info('loading all transcripts');
+    await _refseq.preLoadCache(conn);
+
     for (let index = 0; index < jsonList.length; index++) {
         const sourceId = hashRecordToId(jsonList[index]);
         const record = jsonList[index];
@@ -197,9 +201,18 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
             genomic;
 
         try {
-            protein = await loadProteinVariant(conn, record.gene, record.protein_hgvs);
             cds = await loadCdsVariant(conn, record.transcript, record.coding_hgvs);
+        } catch (err) {
+            logger.warn(`failed to load the cds variant (${record.transcript}:${record.coding_hgvs}) ${err}`);
+        }
 
+        try {
+            protein = await loadProteinVariant(conn, record.gene, record.protein_hgvs);
+        } catch (err) {
+            logger.warn(`failed to load the protein variant (${record.gene}:${record.protein_hgvs}) ${err}`);
+        }
+
+        try {
             if (protein && cds) {
                 await conn.addRecord({
                     content: { in: rid(protein), out: rid(cds) },
@@ -208,23 +221,46 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
                     target: 'Infers',
                 });
             }
+        } catch (err) {
+            logger.warn(`failed to link the protein variant ${err}`);
+        }
 
-            try {
-                genomic = await loadGenomicVariant(conn, record.chr_CGL, record.pos_CGL, record.ref, record.alt);
-            } catch (err2) {
-                logger.warn(`failed to create genomic representation of variant (${record.chromosome}:g.${record.position}${record.ref}>${record.alt}): ${err2}`);
-            }
+        try {
+            genomic = await loadGenomicVariant(conn, record.chr_CGL, record.pos_CGL, record.ref, record.alt);
+        } catch (err) {
+            logger.warn(`failed to create genomic representation of variant (${record.chromosome}:g.${record.position}${record.ref}>${record.alt}): ${err}`);
+        }
 
+        try {
             if (genomic) {
-                await conn.addRecord({
-                    content: { in: rid(cds), out: rid(genomic) },
-                    existsOk: true,
-                    fetchExisting: false,
-                    target: 'Infers',
-                });
+                if (cds) {
+                    await conn.addRecord({
+                        content: { in: rid(cds), out: rid(genomic) },
+                        existsOk: true,
+                        fetchExisting: false,
+                        target: 'Infers',
+                    });
+                } else if (protein) {
+                    await conn.addRecord({
+                        content: { in: rid(protein), out: rid(genomic) },
+                        existsOk: true,
+                        fetchExisting: false,
+                        target: 'Infers',
+                    });
+                }
+            }
+        } catch (err) {
+            logger.warn(`failed to link the genomic variant ${err}`);
+        }
+
+
+        try {
+            const variant = protein || cds || genomic;
+
+            if (!variant) {
+                throw new Error('unable to load any variants');
             }
 
-            const variant = protein || cds || genomic;
             await conn.addRecord({
                 content: {
                     conditions: [rid(variant), rid(disease)],
