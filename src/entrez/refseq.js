@@ -4,7 +4,9 @@
 const Ajv = require('ajv');
 const _ = require('lodash');
 
-const { fetchByIdList, uploadRecord } = require('./util');
+const {
+    fetchByIdList, uploadRecord, preLoadCache: preLoadAnyCache, fetchAndLoadBySearchTerm: search,
+} = require('./util');
 const { checkSpec } = require('../util');
 const { rid } = require('../graphkb');
 const { refseq: SOURCE_DEFN } = require('../sources');
@@ -78,12 +80,13 @@ const fetchAndLoadByIds = async (api, idListIn) => {
     const records = [];
 
     if (versionedIds.length > 0) {
-        records.push(...await fetchByIdList(
+        const fullRecords = await fetchByIdList(
             versionedIds,
             {
                 cache: CACHE, db: DB_NAME, parser: parseRecord,
             },
-        ));
+        );
+        records.push(...fullRecords);
     }
 
     if (unversionedIds.length > 0) {
@@ -144,8 +147,28 @@ const fetchAndLoadByIds = async (api, idListIn) => {
 };
 
 
+const preLoadCache = async api => preLoadAnyCache(
+    api,
+    {
+        cache: CACHE, sourceDefn: SOURCE_DEFN, target: 'Feature',
+    },
+);
+
+
+const fetchAndLoadBySearchTerm = (api, term, opt = {}) => search(api, term, {
+    ...opt,
+    cache: CACHE,
+    dbName: DB_NAME,
+    parser: parseRecord,
+    sourceDefn: SOURCE_DEFN,
+    target: 'Feature',
+});
+
+
 module.exports = {
     SOURCE_DEFN,
     fetchAndLoadByIds,
+    fetchAndLoadBySearchTerm,
     parseRecord,
+    preLoadCache,
 };

@@ -74,7 +74,7 @@ const fetchByIdList = async (rawIdList, opt) => {
         }
 
         logger.debug(`loading: ${url}?db=${db}`);
-        const { result } = await requestWithRetry({
+        const { result, error } = await requestWithRetry({
             headers: { Accept: 'application/json' },
             json: true,
             method: 'GET',
@@ -82,14 +82,18 @@ const fetchByIdList = async (rawIdList, opt) => {
             uri: url,
         });
 
+        if (error) {
+            logger.error(error);
+        }
+
         const records = [];
-        Object.values(result).forEach((rec) => {
-            if (!Array.isArray(rec)) {
-                try {
-                    records.push(parser(rec));
-                } catch (err) {
-                    logger.error(err);
-                }
+        Object.keys(result).filter(k => k !== 'uids').forEach((key) => {
+            const rec = result[key];
+
+            try {
+                records.push(parser(rec));
+            } catch (err) {
+                logger.error(err);
             }
         });
         allRecords.push(...records);
@@ -137,7 +141,7 @@ const fetchRecord = async (api, {
  */
 const uploadRecord = async (api, content, opt = {}) => {
     const {
-        cache = true,
+        cache = false,
         fetchFirst = true,
         target = 'Publication',
         sourceDefn,
@@ -177,6 +181,7 @@ const uploadRecord = async (api, content, opt = {}) => {
             content: sourceDefn,
             existsOk: true,
             fetchConditions: { name: sourceDefn.name },
+            fetchFirst: true,
             target: 'Source',
         });
 
