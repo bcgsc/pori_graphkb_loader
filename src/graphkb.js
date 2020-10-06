@@ -35,7 +35,7 @@ const simplifyRecordsLinks = (content, level = 0) => {
 
         for (const [key, value] of Object.entries(content)) {
             if (Array.isArray(value)) {
-                simple[key] = value.map(simplifyRecordsLinks, level + 1);
+                simple[key] = value.map(v => simplifyRecordsLinks(v, level + 1)).sort();
             } else {
                 simple[key] = simplifyRecordsLinks(value, level + 1);
             }
@@ -436,6 +436,15 @@ class ApiConnection {
             this.updated[model.name] = [];
         }
         this.updated[model.name].push(result['@rid']);
+        return result;
+    }
+
+    async deleteRecord(target, recordId) {
+        const model = schema.get(target);
+        const { result } = jc.retrocycle(await this.request({
+            method: 'DELETE',
+            uri: `${model.routeName}/${recordId.replace(/^#/, '')}`,
+        }));
         return result;
     }
 

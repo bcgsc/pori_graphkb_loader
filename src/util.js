@@ -121,6 +121,7 @@ const requestWithRetry = async (requestOpt, { waitSeconds = 2, retries = 1 } = {
     } catch (err) {
         if (err.statusCode === HTTP_STATUS_CODES.TOO_MANY_REQUESTS && retries > 0) {
             await sleep(waitSeconds);
+            logger.warn(`TIMEOUT, retrying request ${requestOpt.url}`);
             return requestWithRetry(requestOpt, { retries: retries - 1, waitSeconds });
         }
         throw err;

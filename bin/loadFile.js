@@ -5,6 +5,7 @@ const { stdOptions, runLoader } = require('../src');
 const { fileExists, createOptionsMenu } = require('../src/cli');
 
 const MODULES = {
+    cgl: 'knowledgebases/cgl',
     diseaseOntology: 'diseaseOntology',
     drugbank: 'drugs/drugbank',
     fdaSrs: 'drugs/fdaSrs',

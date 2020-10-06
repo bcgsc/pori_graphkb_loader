@@ -311,12 +311,13 @@ const getEvidenceLevel = async ({
  * @param {ApiConnection} opt.conn the API connection object for GraphKB
  * @param {object} opt.rawRecord the unparsed record from CIViC
  * @param {object} opt.sources the sources by name
+ * @param {boolean} opt.oneToOne civic statements to graphkb statements is a 1 to 1 mapping
  * @param {object} opt.variantsCache keeps track of errors and results processing variants to avoid repeating
  * @param
  */
 const processEvidenceRecord = async (opt) => {
     const {
-        conn, rawRecord, sources, variantsCache,
+        conn, rawRecord, sources, variantsCache, oneToOne = false,
     } = opt;
 
     const [level, relevance, [feature]] = await Promise.all([
@@ -334,7 +335,7 @@ const processEvidenceRecord = async (opt) => {
         try {
             variants = await processVariantRecord(conn, rawRecord.variant, feature);
             variantsCache.records[rawRecord.variant.id] = variants;
-            logger.info(`converted variant name (${rawRecord.variant.name}) to variants (${variants.map(v => v.displayName).join(', and ')})`);
+            logger.verbose(`converted variant name (${rawRecord.variant.name}) to variants (${variants.map(v => v.displayName).join(', and ')})`);
         } catch (err) {
             variantsCache.errors[rawRecord.variant.id] = err;
             logger.error(`evidence (${rawRecord.id}) Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name}): ${err}`);
@@ -390,7 +391,7 @@ const processEvidenceRecord = async (opt) => {
         conditions: [...variants.map(v => rid(v))],
         description: rawRecord.description,
         evidence: [rid(publication)],
-        evidenceLevel: rid(level),
+        evidenceLevel: [rid(level)],
         relevance: rid(relevance),
         reviewStatus: 'not required',
         source: rid(sources.civic),
@@ -420,11 +421,34 @@ const processEvidenceRecord = async (opt) => {
     if (!content.subject) {
         throw Error(`unable to determine statement subject for evidence (${content.sourceId}) record`);
     }
-    await conn.addRecord({
+
+    const fetchConditions = [
+        { sourceId: content.sourceId },
+        { source: content.source },
+        { evidence: content.evidence }, // civic evidence items are per publication
+    ];
+
+    if (!oneToOne) {
+        fetchConditions.push(...[
+            { relevance: content.relevance },
+            { subject: content.subject },
+            { conditions: content.conditions },
+        ]);
+    }
+
+    return conn.addRecord({
         content,
         existsOk: true,
-        fetchExisting: false,
+        fetchConditions: {
+            AND: fetchConditions,
+        },
         target: 'Statement',
+        upsert: true,
+        upsertCheckExclude: [
+            'comment',
+            'displayNameTemplate',
+            'reviews',
+        ],
     });
 };
 
@@ -554,55 +578,105 @@ const upload = async (opt) => {
         records: {},
     };
 
+    const recordsById = {};
+
     for (const record of records) {
-        if (previouslyEntered.has(record.id.toString()) && process.env.IGNORE_CIVIC_CACHE !== '1') {
+        if (!recordsById[record.id]) {
+            recordsById[record.id] = [];
+        }
+        recordsById[record.id].push(record);
+    }
+
+    for (const [sourceId, recordList] of Object.entries(recordsById)) {
+        if (previouslyEntered.has(sourceId) && process.env.IGNORE_CIVIC_CACHE !== '1') {
             counts.exists++;
-            continue;
+            // continue;
         }
-        record.variants = [varById[record.variant_id]]; // OR-ing of variants
+        const preupload = new Set((await conn.getRecords({
+            filters: [
+                { source: rid(source) }, { sourceId },
+            ],
+            target: 'Statement',
+        })).map(rid));
 
-        if (record.drugs === undefined || record.drugs.length === 0) {
-            record.drugs = [null];
-        } else if (record.drug_interaction_type === 'Combination' || record.drug_interaction_type === 'Sequential') {
-            record.drugs = [record.drugs];
-        } else if (record.drug_interaction_type === 'Substitutes' || record.drugs.length < 2) {
-            record.drugs = record.drugs.map(drug => [drug]);
-            record.drug_interaction_type = null;
-        } else {
-            logger.error(`(evidence: ${record.id}) unsupported drug interaction type (${record.drug_interaction_type}) for a multiple drug (${record.drugs.length}) statement`);
-            counts.skip++;
-            continue;
+        let mappedCount = 0;
+        const postupload = [];
+
+        // resolve combinations
+        for (const record of recordList) {
+            record.variants = [varById[record.variant_id]]; // OR-ing of variants
+
+            if (record.drugs === undefined || record.drugs.length === 0) {
+                record.drugs = [null];
+            } else if (record.drug_interaction_type === 'Combination' || record.drug_interaction_type === 'Sequential') {
+                record.drugs = [record.drugs];
+            } else if (record.drug_interaction_type === 'Substitutes' || record.drugs.length < 2) {
+                record.drugs = record.drugs.map(drug => [drug]);
+                record.drug_interaction_type = null;
+            } else {
+                logger.error(`(evidence: ${record.id}) unsupported drug interaction type (${record.drug_interaction_type}) for a multiple drug (${record.drugs.length}) statement`);
+                counts.skip++;
+                continue;
+            }
+
+            let orCombination;
+
+            if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variants[0].name)) {
+                const [, prefix, tail1, tail2] = orCombination;
+                record.variants = [
+                    { ...record.variants[0], name: `${prefix}${tail1}` },
+                    { ...record.variants[0], name: `${prefix}${tail2}` },
+                ];
+            }
+            mappedCount += record.variants.length * record.drugs.length;
         }
 
-        let orCombination;
+        const oneToOne = mappedCount === 1 && preupload.length === 1;
 
-        if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variants[0].name)) {
-            const [, prefix, tail1, tail2] = orCombination;
-            record.variants = [
-                { ...record.variants[0], name: `${prefix}${tail1}` },
-                { ...record.variants[0], name: `${prefix}${tail2}` },
-            ];
-        }
-
-        for (const variant of record.variants) {
-            for (const drugs of record.drugs) {
-                try {
-                    logger.debug(`processing ${record.id}`);
-                    await processEvidenceRecord({
-                        conn,
-                        rawRecord: { ..._.omit(record, ['drugs', 'variants']), drugs, variant },
-                        sources: { civic: source },
-                        variantsCache,
-                    });
-                    counts.success += 1;
-                } catch (err) {
-                    if (err.toString().includes('is not a function') || err.toString().includes('of undefined')) {
-                        console.error(err);
+        for (const record of recordList) {
+            for (const variant of record.variants) {
+                for (const drugs of record.drugs) {
+                    try {
+                        logger.debug(`processing ${record.id}`);
+                        const result = await processEvidenceRecord({
+                            conn,
+                            oneToOne,
+                            rawRecord: { ..._.omit(record, ['drugs', 'variants']), drugs, variant },
+                            sources: { civic: source },
+                            variantsCache,
+                        });
+                        postupload.push(rid(result));
+                        counts.success += 1;
+                    } catch (err) {
+                        if (err.toString().includes('is not a function') || err.toString().includes('of undefined')) {
+                            console.error(err);
+                        }
+                        errorList.push({ error: err, errorMessage: err.toString(), record });
+                        logger.error(`evidence (${record.id}) ${err}`);
+                        counts.error += 1;
                     }
-                    errorList.push({ error: err, errorMessage: err.toString(), record });
-                    logger.error(`evidence (${record.id}) ${err}`);
-                    counts.error += 1;
                 }
+            }
+        }
+
+        // compare statments before/after upload to determine if any records should be soft-deleted
+        postupload.forEach((id) => {
+            preupload.delete(id);
+        });
+
+        if (preupload.size) {
+            if (postupload.length) {
+                logger.warn(`deleting ${preupload.size} outdated statement records (${Array.from(preupload).join(' ')}) has new/retained statements (${postupload.join(' ')})`);
+
+                try {
+                    await Promise.all(Array.from(preupload).map(async outdatedId => conn.deleteRecord(
+                        'Statement', outdatedId,
+                    )));
+                } catch (err) {
+                    logger.error(err);
+                }
+            } else {
+                logger.error(`NOT deleting ${preupload.size} outdated statement records (${Array.from(preupload).join(' ')}) because failed to create replacements`);
             }
         }
     }

@@ -15,6 +15,13 @@ const sources = {
         name: 'cancer genome interpreter',
         url: 'https://www.cancergenomeinterpreter.org/biomarkers',
     },
+    cgl: {
+        description: 'The CGL is mandated to provide molecular genetic diagnostics and paraffin FISH testing for all cancer patients in British Columbia',
+        displayName: 'CGL',
+        longName: 'BC Cancer Genetics and Genomics Laboratory',
+        name: 'cgl',
+        url: 'http://cancergeneticslab.ca',
+    },
     chembl: {
         description: 'ChEMBL is a manually curated database of bioactive molecules with drug-like properties. It brings together chemical, bioactivity and genomic data to aid the translation of genomic information into effective new drugs.',
         displayName: 'ChEMBL',

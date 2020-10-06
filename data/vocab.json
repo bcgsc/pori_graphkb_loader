@@ -391,7 +391,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "therapeutic indicator"
+                    "target": "pharmacogenomic"
                 }
             ]
         },
@@ -1019,7 +1019,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "therapeutic indicator"
+                    "target": "pharmacogenomic"
                 }
             ]
         },
@@ -1351,10 +1351,9 @@
             "description": "Used in statements (primarily prognostic) to indicate when something applies to a patient (ex. increased survival)"
         },
         "pharmacogenomic": {
-            "deprecated": true,
             "links": [
                 {
-                    "class": "DeprecatedBy",
+                    "class": "SubClassOf",
                     "target": "therapeutic indicator"
                 }
             ]
@@ -1939,7 +1938,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "therapeutic indicator"
+                    "target": "pharmacogenomic"
                 }
             ]
         },
