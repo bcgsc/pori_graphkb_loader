@@ -17,15 +17,32 @@ const { cgl: SOURCE_DEFN } = require('./../sources');
 
 
 const loadCdsVariant = async (graphkbConn, transcriptId, cdsNotation) => {
-    const transcripts = await _refseq.fetchAndLoadByIds(graphkbConn, [transcriptId]);
+    let reference1;
 
-    if (transcripts.length !== 1) {
-        throw new Error(`unable to find unique transcript (${transcriptId}) (found: ${transcripts.length})`);
+    try {
+        reference1 = await graphkbConn.getUniqueRecordBy({
+            filters: {
+                AND: [
+                    { source: { filters: { name: SOURCE_DEFN.name }, target: 'Source' } },
+                    { sourceId: transcriptId.split('.')[0] },
+                    { sourceIdVersion: transcriptId.split('.')[1] || null },
+                    { biotype: 'transcript' },
+                ],
+            },
+            target: 'Feature',
+        });
+    } catch (err) {
+        const transcripts = await _refseq.fetchAndLoadByIds(graphkbConn, [transcriptId]);
+
+        if (transcripts.length !== 1) {
+            throw new Error(`unable to find unique transcript (${transcriptId}) (found: ${transcripts.length})`);
+        }
+        [reference1] = transcripts;
     }
+
     if (!cdsNotation.startsWith('c.')) {
         throw new Error(`invalid HGVSc notation (${cdsNotation})`);
     }
-    const [reference1] = transcripts;
     // add the cds variant
     const {
         noFeatures, multiFeature, prefix, ...variant
