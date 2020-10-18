@@ -241,6 +241,8 @@ class ApiConnection {
             const respTime = new Date().getTime() - startTime;
 
             if (respTime > 2000) {
+                logger.verbose(`${respTime}ms [${req.method}] ${req.uri} ${JSON.stringify(req.body)}`);
+            } else if (respTime > 5000) {
                 logger.warn(`${respTime}ms [${req.method}] ${req.uri} ${JSON.stringify(req.body)}`);
             }
             logger.debug(`[${req.method}] ${req.uri} ${this.pendingRequests} ${returnCode} - ${respTime} ms`);
