@@ -68,7 +68,7 @@ const createDisplayName = sourceId => `pmid:${sourceId}`;
  * @param {ApiConnection} api connection to GraphKB
  * @param {Array.<string>} idList list of pubmed IDs
  */
-const fetchAndLoadByIds = async (api, idListIn) => {
+const fetchAndLoadByIds = async (api, idListIn, opt = {}) => {
     const pmcIds = idListIn.filter(id => /^pmc\d+$/i.exec(id)).map(id => id.replace(/^pmc/i, ''));
     const records = await fetchByIdList(
         idListIn.filter(id => !/^pmc\d+$/i.exec(id)),
@@ -84,6 +84,7 @@ const fetchAndLoadByIds = async (api, idListIn) => {
     ));
     return Promise.all(records.map(
         async record => uploadRecord(api, record, {
+            ...opt,
             cache: CACHE,
             createDisplayName,
             sourceDefn: SOURCE_DEFN,
