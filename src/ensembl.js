@@ -4,7 +4,7 @@
  * @module importer/ensembl
  */
 
-const { loadDelimToJson } = require('./util');
+const { loadDelimToJson, requestWithRetry } = require('./util');
 const {
     rid, orderPreferredOntologyTerms, generateCacheKey,
 } = require('./graphkb');
@@ -13,20 +13,163 @@ const _hgnc = require('./hgnc');
 const _entrez = require('./entrez/gene');
 const { ensembl: SOURCE_DEFN, refseq: { name: refseqName } } = require('./sources');
 
-const HEADER = {
-    chromosome: 'Chromosome/scaffold name',
-    geneId: 'Gene stable ID',
-    geneIdVersion: 'Version (gene)',
-    geneName: 'Gene name',
-    geneNameSource: 'Source of gene name',
-    hgncId: 'HGNC ID',
-    hgncName: 'HGNC symbol',
-    lrgGene: 'LRG display in Ensembl gene ID',
-    proteinId: 'Protein stable ID',
-    proteinIdVersion: 'Protein stable ID version',
-    refseqId: 'RefSeq mRNA ID',
-    transcriptId: 'Transcript stable ID',
-    transcriptIdVersion: 'Version (transcript)',
+const BASE_URL = 'http://rest.ensembl.org';
+
+
+const CACHE = {};
+
+/**
+ * Create and link a non-versioned record of the current versioned record
+ */
+const generalize = async (conn, record) => {
+    const general = await conn.addRecord({
+        content: {
+            biotype: record.biotype,
+            name: record.name,
+            source: record.source,
+            sourceId: record.sourceId,
+            sourceIdVersion: null,
+        },
+        existsOk: true,
+        target: 'Feature',
+    });
+
+    await conn.addRecord({
+        content: { in: rid(record), out: rid(general), source: rid(record.source) },
+        existsOk: true,
+        target: 'Generalizationof',
+    });
+    return general;
+};
+
+
+/**
+ * Fetch the parent feature: gene for transcript, or transcript for protein
+ * and then link via element of, return the parent feature
+ */
+const linkFeatureToParent = async (conn, transcript, parentBiotype = 'gene') => {
+    const { Parent: geneId } = await requestWithRetry({
+        method: 'GET',
+        uri: `${BASE_URL}/lookup/id/${transcript.sourceId}`,
+    });
+
+    if (!geneId) {
+        return null;
+    }
+    const gene = await conn.addRecord({
+        content: {
+            biotype: parentBiotype,
+            source: rid(transcript.source),
+            sourceId: geneId,
+            sourceIdVersion: null,
+        },
+        existsOk: true,
+        target: 'Feature',
+    });
+    await conn.addRecord({
+        content: { in: rid(gene), out: rid(transcript), source: rid(transcript.source) },
+        existsOk: true,
+        fetchExisting: false,
+        target: 'ElementOf',
+    });
+    return gene;
+};
+
+
+/**
+ * Fetch and link the ensembl gene to the entrez gene
+ */
+const linkGeneToEntrez = async (conn, record) => {
+    const xrefs = await requestWithRetry({
+        method: 'GET',
+        uri: `${BASE_URL}/xrefs/id/${record.sourceId}`,
+    });
+
+    for (const xref of xrefs) {
+        if (xref.dbname === 'EntrezGene') {
+            const [gene] = await _entrez.fetchAndLoadByIds(conn, [xref.primary_id]);
+
+            // link to the current record
+            await conn.addRecord({
+                content: { in: rid(gene), out: rid(record), source: rid(record.source) },
+                existsOk: true,
+                target: 'CrossReferenceOf',
+            });
+            return gene;
+        }
+    }
+    return null;
+};
+
+
+const fetchAndLoadById = async (conn, { sourceId, sourceIdVersion, biotype }) => {
+    if (sourceId.includes('.') && !sourceIdVersion) {
+        [sourceId, sourceIdVersion] = sourceId.split('.');
+    }
+    const cacheKey = generateCacheKey({ sourceId, sourceIdVersion });
+
+    if (CACHE[cacheKey]) {
+        return CACHE[cacheKey];
+    }
+    // get the source record from the cache
+    if (!CACHE._source) {
+        CACHE._source = rid(await conn.addRecord({
+            content: SOURCE_DEFN,
+            existsOk: true,
+            fetchConditions: { name: SOURCE_DEFN.name },
+            target: 'Source',
+        }));
+    }
+
+    // try to fetch from graphkb first
+    try {
+        const result = await conn.getUniqueRecordBy({
+            filters: [
+                { sourceId },
+                { sourceIdVersion },
+                { biotype },
+                { source: CACHE._source },
+            ],
+            target: 'Feature',
+        });
+        CACHE[cacheKey] = result;
+        return CACHE[cacheKey];
+    } catch (err) {}
+
+    const current = await conn.addRecord({
+        content: {
+            biotype,
+            source: CACHE._source,
+            sourceId,
+            sourceIdVersion,
+        },
+        target: 'Feature',
+    });
+
+    let generalCurrent;
+
+    if (sourceIdVersion != null) {
+        generalCurrent = await generalize(conn, current);
+    } else {
+        generalCurrent = current;
+    }
+
+    if (biotype === 'gene') {
+        await linkGeneToEntrez(conn, current);
+        return current;
+    } if (biotype === 'transcript') {
+        // link to the gene
+        await linkFeatureToParent(conn, generalCurrent, 'gene');
+    } else if (biotype === 'protein') {
+        // link to the transcript
+        const transcript = await linkFeatureToParent(conn, generalCurrent, 'transcript');
+        // link to the gene
+        await linkFeatureToParent(conn, transcript, 'gene');
+    } else {
+        throw Error(`unsupported biotype: ${biotype}`);
+    }
+    CACHE[cacheKey] = current;
+    return current;
 };
 
 
@@ -38,6 +181,21 @@ const HEADER = {
  * @param {ApiConnection} opt.conn the api connection object
  */
 const uploadFile = async (opt) => {
+    const HEADER = {
+        chromosome: 'Chromosome/scaffold name',
+        geneId: 'Gene stable ID',
+        geneIdVersion: 'Version (gene)',
+        geneName: 'Gene name',
+        geneNameSource: 'Source of gene name',
+        hgncId: 'HGNC ID',
+        hgncName: 'HGNC symbol',
+        lrgGene: 'LRG display in Ensembl gene ID',
+        proteinId: 'Protein stable ID',
+        proteinIdVersion: 'Protein stable ID version',
+        refseqId: 'RefSeq mRNA ID',
+        transcriptId: 'Transcript stable ID',
+        transcriptIdVersion: 'Version (transcript)',
+    };
     const { filename, conn } = opt;
     const contentList = await loadDelimToJson(filename);
 
@@ -248,4 +406,9 @@ const uploadFile = async (opt) => {
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = { SOURCE_DEFN, dependencies: [refseqName], uploadFile };
+module.exports = {
+    SOURCE_DEFN,
+    dependencies: [refseqName],
+    fetchAndLoadById,
+    uploadFile,
+};
