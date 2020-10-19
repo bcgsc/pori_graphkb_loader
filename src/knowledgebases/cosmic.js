@@ -16,17 +16,20 @@ const {
 } = require('./../graphkb');
 const _pubmed = require('./../entrez/pubmed');
 const _gene = require('./../entrez/gene');
+const _ensembl = require('./../ensembl');
+const _hgnc = require('./../hgnc');
 const { logger } = require('./../logging');
 
 const { cosmic: SOURCE_DEFN } = require('./../sources');
 
 const HEADER = {
-    cds: 'CDS Mutation',
+    cds: 'HGVSC',
     disease: 'Histology Subtype 1',
     diseaseFamily: 'Histology',
     gene: 'Gene Name',
-    mutationId: 'ID Mutation',
-    protein: 'AA Mutation',
+    genomic: 'HGVSG',
+    mutationId: 'LEGACY_MUTATION_ID',
+    protein: 'HGVSP',
     pubmed: 'Pubmed Id',
     sampleId: 'Sample ID',
     sampleName: 'Sample Name',
@@ -40,130 +43,281 @@ const HEADER = {
  */
 const processVariants = async ({ conn, record, source }) => {
     let protein,
-        cds;
+        cds,
+        gene,
+        genomic,
+        catalog,
+        generalProtein;
 
     try {
-        // get the hugo gene
-        const [gene] = record.gene.split('_'); // convert MAP2K2_ENST00000262948 to MAP2K2
-        const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
-        // add the protein variant
-        let variantString = record.protein;
+        // get the entrez gene
+        const [geneName] = record.gene.split('_'); // convert MAP2K2_ENST00000262948 to MAP2K2
+        [gene] = await _gene.fetchAndLoadBySymbol(conn, geneName);
 
-        if (variantString.startsWith('p.') && variantString.includes('>')) {
-            variantString = variantString.replace('>', 'delins');
+        if (!gene) {
+            throw Error(`failed to find the Entrez gene for ${record.gene}`);
         }
-        const {
-            noFeatures, multiFeature, prefix, ...variant
-        } = variantParser(variantString, false);
-        variant.reference1 = rid(reference1);
-        variant.type = rid(await conn.getVocabularyTerm(variant.type));
-        protein = rid(await conn.addVariant({
-            content: { ...variant },
-            existsOk: true,
-            target: 'PositionalVariant',
-        }));
     } catch (err) {
-        logger.error(err);
-        throw err;
+        logger.warn(err);
     }
 
-    // create the cds variant
-    if (!record.cds.startsWith('c.?')) {
-        let { cds: cdsNotation } = record;
-        const match = /^(.*[^ATCG])([ACTG]+)>([ATCG]+)$/.exec(cdsNotation);
-
-        if (match) {
-            const [, prefix, ref, alt] = match;
-
-            if (ref.length > 1 || ref.length !== alt.length) {
-                cdsNotation = `${prefix}del${ref}ins${alt}`;
-            }
-        }
-
+    if (!gene) {
         try {
-        // get the hugo gene
-            const reference1 = rid(await conn.getUniqueRecordBy({
-                filters: { AND: [{ sourceId: record.transcript }, { biotype: 'transcript' }] },
-                sort: orderPreferredOntologyTerms,
-                target: 'Feature',
-            }));
-            // add the cds variant
-            const {
-                noFeatures, multiFeature, prefix, ...variant
-            } = variantParser(cdsNotation, false);
-            variant.reference1 = reference1;
-            variant.type = rid(await conn.getVocabularyTerm(variant.type));
-            cds = rid(await conn.addVariant({
-                content: { ...variant },
-                existsOk: true,
-                target: 'PositionalVariant',
-            }));
-            await conn.addRecord({
-                content: { in: protein, out: cds, source: rid(source) },
-                existsOk: true,
-                fetchExisting: false,
-                target: 'Infers',
-            });
+            // get the hugo gene
+            const [geneName] = record.gene.split('_'); // convert MAP2K2_ENST00000262948 to MAP2K2
+            gene = await _hgnc.fetchAndLoadBySymbol({ conn, symbol: geneName });
+
+            if (!gene) {
+                throw Error(`failed to find the HGNC gene for ${record.gene}`);
+            }
         } catch (err) {
             logger.error(err);
         }
     }
-    // create the catalog variant
-    if (record.mutationId) {
-        try {
-            const catalog = await conn.addRecord({
-                content: { source: rid(source), sourceId: record.mutationId },
+
+    try {
+        // add the protein variant with its protein translation
+        const {
+            noFeatures, multiFeature, prefix, ...variant
+        } = variantParser(record.protein, false);
+        variant.type = rid(await conn.getVocabularyTerm(variant.type));
+
+        const reference1 = rid(await _ensembl.fetchAndLoadById(
+            conn,
+            { biotype: 'protein', sourceId: variant.reference1 },
+        ));
+        protein = rid(await conn.addVariant({
+            content: { ...variant, reference1 },
+            existsOk: true,
+            target: 'PositionalVariant',
+        }));
+
+        if (gene) {
+            // add the same protein varaint with the gene notation
+            generalProtein = rid(await conn.addVariant({
+                content: { ...variant, reference1: gene },
                 existsOk: true,
-                target: 'CatalogueVariant',
-            });
+                target: 'PositionalVariant',
+            }));
+
+            // link the translation version to the gene version
             await conn.addRecord({
-                content: { in: cds || protein, out: catalog, source: rid(source) },
+                content: { in: generalProtein, out: protein },
                 existsOk: true,
                 fetchExisting: false,
                 target: 'Infers',
             });
+        }
+    } catch (err) {
+        logger.error(err);
+    }
+
+    // create the cds variant
+    if (record.cds && record.cds.trim()) {
+        try {
+            const {
+                noFeatures, multiFeature, prefix, ...variant
+            } = variantParser(record.cds, false);
+            // get the ensembl transcript
+            const reference1 = rid(await _ensembl.fetchAndLoadById(
+                conn,
+                { biotype: 'transcript', sourceId: variant.reference1 },
+            ));
+            // add the cds variant
+            variant.type = rid(await conn.getVocabularyTerm(variant.type));
+            cds = rid(await conn.addVariant({
+                content: { ...variant, reference1 },
+                existsOk: true,
+                target: 'PositionalVariant',
+            }));
+
+            if (protein) {
+                await conn.addRecord({
+                    content: { in: protein, out: cds },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'Infers',
+                });
+            }
+        } catch (err) {
+            logger.error(err);
+        }
+    }
+
+    // add the genomic representation
+    if (record.genomic) {
+        try {
+            const {
+                noFeatures, multiFeature, prefix, ...variant
+            } = variantParser(record.genomic, false);
+            // get the chromosome
+            const reference1 = rid(await conn.getUniqueRecordBy({
+                filters: {
+                    AND: [
+                        { sourceId: variant.reference1 },
+                        { sourceIdVersion: null },
+                        { biotype: 'chromosome' },
+                    ],
+                },
+                sort: orderPreferredOntologyTerms,
+                target: 'Feature',
+            }));
+            // add the cds variant
+            variant.type = rid(await conn.getVocabularyTerm(variant.type));
+            genomic = rid(await conn.addVariant({
+                content: { ...variant, assembly: 'GRCh38', reference1 },
+                existsOk: true,
+                target: 'PositionalVariant',
+            }));
+
+            if (cds || protein) {
+                await conn.addRecord({
+                    content: { in: rid(cds || protein), out: genomic },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'Infers',
+                });
+            }
+        } catch (err) {
+            logger.error(err);
+        }
+    }
+
+    // create the catalog variant
+    if (record.mutationId) {
+        try {
+            catalog = await conn.addRecord({
+                content: { source: rid(source), sourceId: record.mutationId },
+                existsOk: true,
+                target: 'CatalogueVariant',
+            });
+
+            if (genomic || cds || protein) {
+                await conn.addRecord({
+                    content: { in: rid(genomic || cds || protein), out: rid(catalog) },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'Infers',
+                });
+            }
         } catch (err) {
             logger.error(err);
         }
     }
 
     // return the protein variant
-    return protein;
+    // prefers the gene:protein-hgvs version b/c original cosmic file didn't have the HGVSp so these were
+    // likely annotated based backfilling on positions not the original article
+    return generalProtein || protein || cds || genomic || catalog;
 };
+
+
+/**
+ * Match the disease associated with the current record
+ */
+const processDisease = async (conn, record) => {
+    let ncit;
+
+    if (record.ncit) {
+        try {
+            ncit = await conn.getUniqueRecordBy({
+                filters: {
+                    AND: [
+                        { source: { filters: { name: 'ncit' }, target: 'Source' } },
+                        { sourceId: record.ncit },
+                    ],
+                },
+                sort: orderPreferredOntologyTerms,
+                target: 'Disease',
+            });
+        } catch (err) {}
+    }
+    // get the disease by name
+    let disease = ncit;
+
+    const cleanDiseaseName = (name) => {
+        let result = name.replace(/_/g, ' ');
+        result = result.replace('leukaemia', 'leukemia');
+        result = result.replace('tumour', 'tumor');
+        return result;
+    };
+
+    if (!disease) {
+        // try the more specific disease name first
+        if (record.disease !== 'NS') {
+            try {
+                disease = await conn.getUniqueRecordBy({
+                    filters: { name: cleanDiseaseName(record.disease) },
+                    sort: orderPreferredOntologyTerms,
+                    target: 'Disease',
+                });
+            } catch (err) {}
+        }
+    }
+
+    if (!disease) {
+        // try the less specific classification
+        try {
+            disease = await conn.getUniqueRecordBy({
+                filters: { name: cleanDiseaseName(record.diseaseFamily) },
+                sort: orderPreferredOntologyTerms,
+                target: 'Disease',
+            });
+        } catch (err) {}
+    }
+
+    if (!disease) {
+        throw new Error(`missing: Disease (ncit=${record.ncit}; diseaseFamily=${record.diseaseFamily}; disease=${record.disease})`);
+    }
+    return disease;
+};
+
 
 const processCosmicRecord = async (conn, record, source) => {
     // get the protein variant
-    const variantId = await processVariants({ conn, record, source });
+    const variant = await processVariants({ conn, record, source });
+
+    if (!variant) {
+        throw Error(`failed to parse variant from record (${record.HGVSP}, ${record.HGVSC}, ${record.HGVSG})`);
+    }
     // get the drug by name
-    const drug = await conn.getTherapy(record.therapy.toLowerCase().replace(/ - ns$/, ''));
-    // get the disease by name
-    let diseaseName = record.disease === 'NS'
-        ? record.diseaseFamily
-        : record.disease;
-    diseaseName = diseaseName.replace(/_/g, ' ');
-    diseaseName = diseaseName.replace('leukaemia', 'leukemia');
-    diseaseName = diseaseName.replace('tumour', 'tumor');
-    const disease = await conn.getUniqueRecordBy({
-        filters: { name: diseaseName },
-        sort: orderPreferredOntologyTerms,
-        target: 'Disease',
-    });
+    const drug = rid(await conn.getTherapy(record.therapy.toLowerCase().replace(/ - ns$/, '')));
+    // get the disease by NCIT code first if the mapping mapped one
+    const disease = rid(await processDisease(conn, record));
     // create the resistance statement
-    const relevance = await conn.getVocabularyTerm('resistance');
-    await conn.addRecord({
+    const relevance = rid(await conn.getVocabularyTerm('resistance'));
+    const result = await conn.addRecord({
         content: {
-            conditions: [variantId, rid(disease), drug],
+            conditions: [rid(variant), rid(disease), drug],
             evidence: [rid(record.publication)],
             relevance,
             reviewStatus: 'not required',
             source: rid(source),
-            sourceId: record.sourceId,
             subject: drug,
         },
         existsOk: true,
-        fetchExisting: false,
         target: 'Statement',
     });
+    return rid(result);
+};
+
+/**
+ * Disease mappings
+ */
+const loadClassifications = async (filename) => {
+    const classifications = await loadDelimToJson(filename, { delim: ',' });
+    const mapping = {};
+
+    for (const row of classifications) {
+        const disease = row.HISTOLOGY_COSMIC;
+        const subdisease = row.HIST_SUBTYPE1_COSMIC;
+
+        if (!mapping[disease]) {
+            mapping[disease] = {};
+        }
+        mapping[disease][subdisease] = row.NCI_CODE;
+    }
+    return mapping;
 };
 
 /**
@@ -173,8 +327,13 @@ const processCosmicRecord = async (conn, record, source) => {
  * @param {string} opt.filename the path to the input tab delimited file
  * @param {ApiConnection} opt.conn the API connection object
  */
-const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
+const uploadFile = async ({
+    filename, mappingFilename, conn, errorLogPrefix,
+}) => {
     const jsonList = await loadDelimToJson(filename);
+
+    const mapping = await loadClassifications(mappingFilename);
+    logger.info(`loaded ${jsonList.length} records`);
     // get the dbID for the source
     const source = rid(await conn.addRecord({
         content: SOURCE_DEFN,
@@ -182,11 +341,23 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
         fetchConditions: { name: SOURCE_DEFN.name },
         target: 'Source',
     }));
+
+    // soft-delete the previous cosmic upload (no stable IDs, can't update)
+    const originalStatements = new Set((await conn.getRecords({
+        filters: [
+            { source },
+        ],
+        returnProperties: ['@rid'],
+        target: 'Statement',
+    })).map(rid));
+    const retainedStatements = new Set();
+    const newStatements = new Set();
+
     const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
     logger.info(`Processing ${jsonList.length} records`);
     // Upload the list of pubmed IDs
-    await _pubmed.fetchAndLoadByIds(conn, jsonList.map(rec => rec[HEADER.pubmed]));
+    await _pubmed.fetchAndLoadByIds(conn, jsonList.map(rec => rec[HEADER.pubmed]), { upsert: true });
 
     for (let index = 0; index < jsonList.length; index++) {
         const sourceId = hashRecordToId(jsonList[index]);
@@ -197,10 +368,17 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
             counts.skip++;
             continue;
         }
-        record.publication = rid((await _pubmed.fetchAndLoadByIds(conn, [record.pubmed]))[0]);
 
         try {
-            await processCosmicRecord(conn, record, source);
+            record.ncit = (mapping[record.diseaseFamily] || {})[record.disease];
+            record.publication = rid((await _pubmed.fetchAndLoadByIds(conn, [record.pubmed]))[0]);
+            const statement = await processCosmicRecord(conn, record, source);
+
+            if (originalStatements.has(statement)) {
+                retainedStatements.add(statement);
+            } else {
+                newStatements.add(statement);
+            }
             counts.success++;
         } catch (err) {
             errorList.push({ error: err.toString(), record });
@@ -208,10 +386,22 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
             counts.error++;
         }
     }
+    logger.info(`${originalStatements.size} original cosmic statements`);
+    logger.info(`retained ${retainedStatements.size} statements and created ${newStatements.size} statements`);
+
+    if (!counts.error) {
+        for (const statement of Array.from(originalStatements)) {
+            if (!retainedStatements.has(statement)) {
+                await conn.deleteRecord('Statement', statement);
+            }
+        }
+    } else {
+        logger.info('Cannot delete previously existing statements when errors were encoutered');
+    }
     const errorJson = `${errorLogPrefix}-cosmic.json`;
     logger.info(`writing: ${errorJson}`);
     fs.writeFileSync(errorJson, JSON.stringify({ records: errorList }, null, 2));
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = { SOURCE_DEFN, kb: true, uploadFile };
+module.exports = { SOURCE_DEFN, uploadFile };

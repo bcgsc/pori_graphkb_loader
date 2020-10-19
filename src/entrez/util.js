@@ -59,6 +59,7 @@ const fetchByIdList = async (rawIdList, opt) => {
     if (rawIdList.length === 0) {
         return [];
     }
+    rawIdList = Array.from(new Set(rawIdList));
     const { cached: allRecords, remaining: idList } = pullFromCacheById(rawIdList, cache);
 
     for (let startIndex = 0; startIndex < idList.length; startIndex += MAX_CONSEC_IDS) {
@@ -145,6 +146,7 @@ const uploadRecord = async (api, content, opt = {}) => {
         fetchFirst = true,
         target = 'Publication',
         sourceDefn,
+        upsert = false,
         createDisplayName,
     } = opt;
 
@@ -154,26 +156,8 @@ const uploadRecord = async (api, content, opt = {}) => {
 
     if (cache && cache[cacheKey]) {
         return cache[cacheKey];
-    } if (fetchFirst) {
-        try {
-            const record = await api.getUniqueRecordBy({
-                filters: {
-                    source: {
-                        filters: { name: sourceDefn.name },
-                        target: 'Source',
-                    },
-                    sourceId,
-                    sourceIdVersion: sourceIdVersion || null,
-                },
-                target,
-            });
-
-            if (cache) {
-                cache[cacheKey] = record;
-            }
-            return record;
-        } catch (err) { }
     }
+
     let source = cache.__source;
 
     if (!source) {
@@ -189,6 +173,27 @@ const uploadRecord = async (api, content, opt = {}) => {
             cache.__source = source;
         }
     }
+
+    if (fetchFirst) {
+        try {
+            const record = await api.getUniqueRecordBy({
+                filters: {
+                    AND: [
+                        { sourceId },
+                        { source: rid(source) },
+                        { sourceIdVersion: sourceIdVersion || null },
+                    ],
+                },
+                target,
+            });
+
+            if (cache) {
+                cache[cacheKey] = record;
+            }
+            return record;
+        } catch (err) { }
+    }
+
     const formattedContent = {
         ...content,
         source: rid(source),
@@ -209,6 +214,7 @@ const uploadRecord = async (api, content, opt = {}) => {
             ],
         },
         target,
+        upsert,
     });
 
     if (cache) {

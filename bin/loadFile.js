@@ -1,7 +1,7 @@
 /**
  * Parses clinical trial RSS Feed results
  */
-const { stdOptions, runLoader } = require('../src');
+const { runLoader } = require('../src');
 const { fileExists, createOptionsMenu } = require('../src/cli');
 
 const MODULES = {
@@ -16,23 +16,16 @@ const MODULES = {
     ontology: 'ontology',
 };
 
-const options = createOptionsMenu(
-    [
-        ...stdOptions,
-        {
-            description: 'path to the file to be loaded',
-            name: 'filename',
-            required: true,
-            type: fileExists,
-        },
-        {
-            description: 'module to run',
-            enum: Object.keys(MODULES),
-            name: 'module',
-            required: true,
-        },
-    ],
-);
+const parser = createOptionsMenu();
+parser.add_argument('module', {
+    choices: Object.keys(MODULES),
+    help: 'module to run',
+});
+parser.add_argument('filename', {
+    help: 'path to the file to be loaded',
+    type: fileExists,
+});
+const options = parser.parse_args();
 
 const { uploadFile } = require(`./../src/${MODULES[options.module]}`); // eslint-disable-line
 

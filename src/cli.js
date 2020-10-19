@@ -1,24 +1,14 @@
-const commandLineArgs = require('command-line-args');
-const commandLineUsage = require('command-line-usage');
+const { ArgumentParser, ArgumentTypeError } = require('argparse');
 const fs = require('fs');
 const path = require('path');
 
 /* eslint-disable no-console */
-
-const argumentError = (usage, msg) => {
-    console.log(usage);
-    console.error(`Argument Error: ${msg}\n`);
-    process.exit(2);
-};
-
-
 const fileExists = (fileName) => {
     if (!fs.existsSync(fileName)) {
-        throw new Error(`File does not exist: ${fileName}`);
+        throw new ArgumentTypeError(`File does not exist: ${fileName}`);
     }
     return path.resolve(fileName);
 };
-
 
 /**
  * Creates the command line help menu
@@ -30,63 +20,30 @@ const fileExists = (fileName) => {
  * @param defns[].default the default value of an option
  * @param {boolean} defns[].required flag to indicate if the option is required
  */
-const createOptionsMenu = (defns, opt = {}) => {
-    for (const defn of defns) {
-        if (defn.env !== undefined) {
-            if (process.env[defn.env] !== undefined) {
-                defn.default = process.env[defn.env];
-            }
-            defn.description = `${defn.description} (${defn.env})`;
-        }
-        if (defn.default !== undefined) {
-            defn.description = `[default: ${
-                /\bpass(word)?\b/.exec(defn.name) === null
-                    ? defn.default
-                    : '****'
-            }] ${defn.description}`;
-        }
-    }
-    const usage = commandLineUsage([
-        { content: opt.description || 'Migrates data from dumps of (or using direct API connection to) other databases/resources into GraphKB', header: opt.title || 'GraphKB ETL Importer' },
-        { header: 'Options', optionList: defns },
-    ]);
-    let options;
-
-    try {
-        options = commandLineArgs(defns);
-    } catch (err) {
-        argumentError(usage, err.message);
-    }
-
-    // check if they are looking for the help menu
-    if (options.help !== undefined) {
-        console.log(usage);
-        process.exit(0);
-    }
-
-    // check all required arguments
-    for (const option of defns) {
-        if (options[option.name] === undefined) {
-            if (option.default !== undefined) {
-                options[option.name] = option.default;
-            } else if (option.required) {
-                argumentError(usage, `--${option.name} is a required argument`);
-            }
-        }
-
-        // check choices
-        if (options[option.name] && option.enum && !option.enum.includes(options[option.name])) {
-            argumentError(usage, `--${option.name} must be one of ${option.enum.join(', ')}`);
-        }
-    }
-
-    // at least one argument must be given, or show the help menu and exit
-    if (Object.keys(options).length === 0) {
-        console.log(usage);
-        process.exit(0);
-    }
-
-    return options;
+const createOptionsMenu = (opt = {}) => {
+    const parser = new ArgumentParser(opt);
+    parser.add_argument('-g', '--graphkb', {
+        default: `${process.env.GKB_URL || 'https://graphkbdev-api.bcgsc.ca/api'}`,
+        help: 'URL for the KB API',
+    });
+    parser.add_argument('-u', '--username', {
+        default: process.env.GKB_USER || 'graphkb_importer',
+        help: 'ldap username required for access to the kb (USER|GKB_USER)',
+    });
+    parser.add_argument('-p', '--password', {
+        default: process.env.GKB_PASS,
+        help: 'the password for access to the kb api (GKB_PASS)',
+        required: !process.env.GKB_PASS,
+    });
+    parser.add_argument('--pubmed', {
+        default: process.env.PUBMED_API_KEY,
+        help: 'The pubmed API key to use for pubmed requests',
+    });
+    parser.add_argument('--errorLogPrefix', {
+        default: `${process.cwd()}/errorLog-${new Date().valueOf()}`,
+        help: 'prefix to use for any module specific log files that are written',
+    });
+    return parser;
 };
 
 module.exports = { createOptionsMenu, fileExists };
