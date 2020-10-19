@@ -389,7 +389,7 @@ const uploadFile = async ({
     logger.info(`${originalStatements.size} original cosmic statements`);
     logger.info(`retained ${retainedStatements.size} statements and created ${newStatements.size} statements`);
 
-    if (!counts.error++) {
+    if (!counts.error) {
         for (const statement of Array.from(originalStatements)) {
             if (!retainedStatements.has(statement)) {
                 await conn.deleteRecord('Statement', statement);
