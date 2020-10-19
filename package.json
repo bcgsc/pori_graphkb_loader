@@ -61,8 +61,8 @@
     "start:fda-approvals": "node bin/fdaApprovals.js",
     "start:oncotree": "node bin/oncotree.js",
     "start:civic": "node bin/civic.js",
-    "start:signatures": "node bin/ontology.js --filename data/signatures.json",
-    "start:vocabulary": "node bin/ontology.js --filename data/vocab.json",
+    "start:signatures": "node bin/ontology.js data/signatures.json",
+    "start:vocabulary": "node bin/ontology.js data/vocab.json",
     "commit": "git-cz"
   },
   "config": {
