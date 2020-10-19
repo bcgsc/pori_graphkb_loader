@@ -342,16 +342,20 @@ const uploadFile = async ({
         target: 'Source',
     }));
 
-    // soft-delete the previous cosmic upload (no stable IDs, can't update)
+    const relevance = rid(await conn.getVocabularyTerm('resistance'));
+    // soft-delete the previous cosmic resistance mutations upload (no stable IDs, can't update)
     const originalStatements = new Set((await conn.getRecords({
         filters: [
             { source },
+            { relevance },
+            { createdBy: { filters: { name: conn.username }, target: 'User' } },
         ],
         returnProperties: ['@rid'],
         target: 'Statement',
     })).map(rid));
     const retainedStatements = new Set();
     const newStatements = new Set();
+    logger.info(`${originalStatements.size} original cosmic statements`);
 
     const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
