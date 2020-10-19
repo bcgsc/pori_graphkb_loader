@@ -333,6 +333,7 @@ const uploadFile = async ({
     const jsonList = await loadDelimToJson(filename);
 
     const mapping = await loadClassifications(mappingFilename);
+    logger.info(`loaded ${jsonList.length} records`);
     // get the dbID for the source
     const source = rid(await conn.addRecord({
         content: SOURCE_DEFN,

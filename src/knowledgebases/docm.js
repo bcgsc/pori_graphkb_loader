@@ -21,7 +21,7 @@ const { docm: SOURCE_DEFN } = require('./../sources');
 const ajv = new Ajv();
 
 
-const BASE_URL = 'http://www.docm.info/api/v1/variants';
+const BASE_URL = 'http://docm.info/api/v1/variants';
 
 
 const variantSummarySpec = ajv.compile({
@@ -308,19 +308,27 @@ const upload = async (opt) => {
     });
     logger.info(`loaded ${recordsList.length} records`);
     // add the source node
-    const source = await conn.addRecord({
+    const source = rid(await conn.addRecord({
         content: SOURCE_DEFN,
         existsOk: true,
         fetchConditions: { name: SOURCE_DEFN.name },
         target: 'Source',
-    });
+    }));
 
     const counts = {
-        error: 0, highlight: 0, skip: 0, success: 0,
+        error: 0, existing: 0, highlight: 0, skip: 0, success: 0,
     };
     const filtered = [];
     const pmidList = [];
     const errorList = [];
+
+    const existingRecords = await conn.getRecords({
+        filters: [{ source }],
+        returnProperties: ['@rid', 'sourceId'],
+        target: 'Statement',
+    });
+
+    const existingIds = new Set(existingRecords.map(r => r.sourceId));
 
     for (const summaryRecord of recordsList) {
         try {
@@ -329,6 +337,11 @@ const upload = async (opt) => {
             logger.error(err);
             counts.error++;
             errorList.push({ error: err, isSummary: true, summaryRecord });
+            continue;
+        }
+
+        if (existingIds.has(summaryRecord.hgvs)) {
+            counts.existing++;
             continue;
         }
         logger.info(`loading: ${BASE_URL}/${summaryRecord.hgvs}.json`);
