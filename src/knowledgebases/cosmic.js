@@ -113,7 +113,7 @@ const processVariants = async ({ conn, record, source }) => {
     }
 
     // create the cds variant
-    if (record.cds) {
+    if (record.cds && record.cds.trim()) {
         try {
             const {
                 noFeatures, multiFeature, prefix, ...variant

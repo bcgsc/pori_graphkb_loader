@@ -391,5 +391,5 @@ const upload = async (opt) => {
 };
 
 module.exports = {
-    SOURCE_DEFN, kb: true, specs: { recordSpec, variantSummarySpec }, upload,
+    SOURCE_DEFN, specs: { recordSpec, variantSummarySpec }, upload,
 };
