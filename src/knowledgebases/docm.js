@@ -249,7 +249,7 @@ const processRecord = async (opt) => {
 
         try {
             // get the vocabulary term
-            const relevance = await conn.getVocabularyTerm(diseaseRec.tags[0], conn);
+            const relevance = await conn.getVocabularyTerm(diseaseRec.tags[0]);
             // get the disease by name
             const disease = await conn.getUniqueRecordBy({
                 filters: {
