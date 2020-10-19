@@ -190,7 +190,14 @@ const processVariants = async ({ conn, row, source }) => {
         cdsVariant,
         categoryVariant,
         genomicVariant,
-        exonicVariant;
+        exonicVariant,
+        geneRecord;
+
+    try {
+        [geneRecord] = await _gene.fetchAndLoadBySymbol(conn, gene);
+    } catch (err) {
+        logger.error(err);
+    }
 
     if (genomic) {
         const parsed = kbParser.variant.parse(genomic).toJSON();
@@ -219,10 +226,9 @@ const processVariants = async ({ conn, row, source }) => {
 
     if (protein) {
         const parsed = kbParser.variant.parse(`${gene}:${protein.split(':')[1]}`).toJSON();
-        const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         const type = await conn.getVocabularyTerm(parsed.type);
         proteinVariant = await conn.addVariant({
-            content: { ...parsed, reference1: rid(reference1), type },
+            content: { ...parsed, reference1: rid(geneRecord), type },
             existsOk: true,
             target: 'PositionalVariant',
         });
@@ -243,20 +249,18 @@ const processVariants = async ({ conn, row, source }) => {
     }
     if (exonic) {
         const parsed = kbParser.variant.parse(`${gene}:${exonic}`).toJSON();
-        const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         const type = await conn.getVocabularyTerm(parsed.type);
         exonicVariant = await conn.addVariant({
-            content: { ...parsed, reference1: rid(reference1), type },
+            content: { ...parsed, reference1: rid(geneRecord), type },
             existsOk: true,
             target: 'PositionalVariant',
         });
     }
 
     try {
-        const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
         const type = rid(await conn.getVocabularyTerm(variantType));
         categoryVariant = await conn.addVariant({
-            content: { reference1: rid(reference1), type },
+            content: { reference1: rid(geneRecord), type },
             existsOk: true,
             target: 'CategoryVariant',
         });
@@ -446,4 +450,4 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
 };
 
 
-module.exports = { SOURCE_DEFN, kb: true, uploadFile };
+module.exports = { SOURCE_DEFN, uploadFile };

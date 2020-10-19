@@ -2,7 +2,7 @@ const request = require('request-promise');
 const parse5 = require('parse5');
 const htmlToText = require('html-to-text');
 
-const { stdOptions, runLoader } = require('../src');
+const { runLoader } = require('../src');
 const { rid } = require('../src/graphkb');
 const { createOptionsMenu } = require('../src/cli');
 const { logger } = require('../src/logging');
@@ -140,7 +140,7 @@ const upload = async ({ conn }) => {
     logger.info(`counts: ${JSON.stringify(counts)}`);
 };
 
-const options = createOptionsMenu([...stdOptions]);
+const options = createOptionsMenu().parse_args();
 
 
 runLoader(options, upload);

@@ -1,4 +1,4 @@
-const { stdOptions, runLoader } = require('../src');
+const { runLoader } = require('../src');
 const { fileExists, createOptionsMenu } = require('../src/cli');
 const { loadDelimToJson } = require('../src/util');
 const { logger } = require('../src/logging');
@@ -51,18 +51,11 @@ const uploadFile = async (opt) => {
     logger.info(`counts: ${JSON.stringify(counts)}`);
 };
 
-
-const options = createOptionsMenu(
-    [
-        ...stdOptions,
-        {
-            description: 'path to the tab delimited list of gene names',
-            name: 'filename',
-            required: true,
-            type: fileExists,
-        },
-    ],
-);
-
+const parser = createOptionsMenu();
+parser.add_argument('filename', {
+    help: 'path to the tab delimited list of gene names',
+    type: fileExists,
+});
+const options = parser.parse_args();
 
 runLoader(options, uploadFile, { filename: options.filename });

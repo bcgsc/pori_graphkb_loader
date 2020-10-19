@@ -1,18 +1,12 @@
-const { stdOptions, runLoader } = require('../src');
+const { runLoader } = require('../src');
 const { fileExists, createOptionsMenu } = require('../src/cli');
 const { uploadFile } = require('../src/ontology');
 
-const options = createOptionsMenu(
-    [
-        ...stdOptions,
-        {
-            description: 'path to the JSON file containing your ontology definitions',
-            name: 'filename',
-            required: true,
-            type: fileExists,
-        },
-    ],
-);
-
+const parser = createOptionsMenu();
+parser.add_argument('filename', {
+    help: 'path to the JSON file containing your ontology definitions',
+    type: fileExists,
+});
+const options = parser.parse_args();
 
 runLoader(options, uploadFile, { filename: options.filename });
