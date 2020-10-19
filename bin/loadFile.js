@@ -6,7 +6,6 @@ const { fileExists, createOptionsMenu } = require('../src/cli');
 
 const MODULES = {
     cgl: 'knowledgebases/cgl',
-    cosmic: 'knowledgebases/cosmic',
     diseaseOntology: 'diseaseOntology',
     drugbank: 'drugs/drugbank',
     fdaSrs: 'drugs/fdaSrs',
