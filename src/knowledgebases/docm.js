@@ -276,8 +276,17 @@ const processRecord = async (opt) => {
                     subject: rid(disease),
                 },
                 existsOk: true,
+                fetchConditions: {
+                    AND: [
+                        { sourceId: record.hgvs },
+                        { source: rid(source) },
+                        { subject: rid(disease) },
+                        { relevance: rid(relevance) },
+                    ],
+                },
                 fetchExisting: false,
                 target: 'Statement',
+                upsert: true,
             });
             counts.success++;
         } catch (err) {
@@ -340,7 +349,7 @@ const upload = async (opt) => {
             continue;
         }
 
-        if (existingIds.has(summaryRecord.hgvs)) {
+        if (existingIds.has(summaryRecord.hgvs.toLowerCase())) {
             counts.existing++;
             continue;
         }
