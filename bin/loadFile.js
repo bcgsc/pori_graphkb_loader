@@ -5,6 +5,7 @@ const { runLoader } = require('../src');
 const { fileExists, createOptionsMenu } = require('../src/cli');
 
 const MODULES = {
+    cgi: 'knowledgebases/cancergenomeinterpreter',
     cgl: 'knowledgebases/cgl',
     diseaseOntology: 'diseaseOntology',
     drugbank: 'drugs/drugbank',

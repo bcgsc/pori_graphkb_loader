@@ -90,12 +90,6 @@ const parseDoid = (ident) => {
     return match[1].replace('_', ':').toLowerCase();
 };
 
-const parseDoVersion = (version) => {
-    // ex. 'http://purl.obolibrary.org/obo/doid/releases/2018-03-02/doid.owl'
-    const m = /releases\/(\d\d\d\d-\d\d-\d\d)\//.exec(version);
-    return m[1];
-};
-
 
 const parseNodeRecord = (record) => {
     checkSpec(nodeSpec, record);
@@ -212,14 +206,12 @@ const uploadFile = async ({ filename, conn }) => {
     const nodesByName = {}; // store by name
     const synonymsByName = {};
 
-    const doVersion = parseDoVersion(DOID.graphs[0].meta.version);
     let source = await conn.addRecord({
         content: {
             ...SOURCE_DEFN,
-            version: doVersion,
         },
         existsOk: true,
-        fetchConditions: { AND: [{ name: SOURCE_DEFN.name }, { version: doVersion }] },
+        fetchConditions: { AND: [{ name: SOURCE_DEFN.name }] },
         target: 'Source',
     });
     source = rid(source);
@@ -236,7 +228,7 @@ const uploadFile = async ({ filename, conn }) => {
         logger.info(`fetched ncit source record ${rid(ncitSource)}`);
         logger.info('getting existing ncit records');
         const ncitRecords = await conn.getRecords({
-            filters: { AND: [{ source: rid(ncitSource) }, { dependency: null }] },
+            filters: { AND: [{ source: rid(ncitSource) }, { alias: false }] },
             neighbors: 0,
             target: 'Disease',
         });
@@ -282,6 +274,7 @@ const uploadFile = async ({ filename, conn }) => {
         // create the database entry
         const record = await conn.addRecord({
             content: {
+                alias: false,
                 deprecated,
                 description,
                 name,
@@ -292,10 +285,13 @@ const uploadFile = async ({ filename, conn }) => {
             existsOk: true,
             fetchConditions: {
                 AND: [
-                    { sourceId }, { deprecated }, { name }, { source },
+                    { sourceId }, { name }, { source },
                 ],
             },
+            fetchFirst: true,
             target: 'Disease',
+            upsert: true,
+            upsertCheckExclude: ['sourceIdVersion'],
         });
 
         if (recordsBySourceId[record.sourceId] !== undefined) {
@@ -308,13 +304,21 @@ const uploadFile = async ({ filename, conn }) => {
             try {
                 const synonym = await conn.addRecord({
                     content: {
-                        dependency: rid(record),
+                        alias: true,
                         name: alias,
                         source,
                         sourceId: record.sourceId,
                     },
                     existsOk: true,
+                    fetchConditions: {
+                        AND: [
+                            { name: alias },
+                            { source },
+                            { sourceId: record.sourceId },
+                        ],
+                    },
                     target: 'Disease',
+                    upsert: true,
                 });
                 await conn.addRecord({
                     content: {
@@ -338,14 +342,21 @@ const uploadFile = async ({ filename, conn }) => {
             try {
                 const alternate = await conn.addRecord({
                     content: {
-                        dependency: rid(record),
                         deprecated: true,
                         name: record.name,
                         source,
                         sourceId: alternateId,
                     },
                     existsOk: true,
+                    fetchConditions: {
+                        AND: [
+                            { source },
+                            { sourceId: alternateId },
+                            { name: record.name },
+                        ],
+                    },
                     target: 'Disease',
+                    upsert: true,
                 });
                 await conn.addRecord({
                     content: { in: rid(record), out: rid(alternate), source },
@@ -384,5 +395,5 @@ const uploadFile = async ({ filename, conn }) => {
 
 
 module.exports = {
-    SOURCE_DEFN, dependencies: [ncitName], parseNodeRecord, uploadFile,
+    SOURCE_DEFN, parseNodeRecord, uploadFile,
 };
