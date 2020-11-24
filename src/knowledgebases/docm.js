@@ -282,6 +282,7 @@ const processRecord = async (opt) => {
                         { source: rid(source) },
                         { subject: rid(disease) },
                         { relevance: rid(relevance) },
+                        { evidence: [rid(publication)] },
                     ],
                 },
                 fetchExisting: false,
