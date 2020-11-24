@@ -1,7 +1,7 @@
 {
   "name": "@bcgsc/knowledgebase-importer",
   "main": "src/index.js",
-  "version": "2.8.0",
+  "version": "3.0.2",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/dat/repos/knowledgebase_importer/browse"
@@ -61,8 +61,8 @@
     "start:fda-approvals": "node bin/fdaApprovals.js",
     "start:oncotree": "node bin/oncotree.js",
     "start:civic": "node bin/civic.js",
-    "start:signatures": "node bin/ontology.js --filename data/signatures.json",
-    "start:vocabulary": "node bin/ontology.js --filename data/vocab.json",
+    "start:signatures": "node bin/ontology.js data/signatures.json",
+    "start:vocabulary": "node bin/ontology.js data/vocab.json",
     "commit": "git-cz"
   },
   "config": {
