@@ -21,6 +21,7 @@ group.add_argument('--file', {
     type: fileExists,
 });
 group.add_argument('--recent', {
+    action: 'store_true',
     help: 'load recently updated (~2 weeks) clinical trial information',
 });
 
