@@ -334,6 +334,10 @@ const uploadFile = async ({ filename, conn }) => {
 
             // add the synonyms
             for (const synonym of row.synonyms) {
+                if (synonym.toLowerCase() === row.name.toLowerCase()) {
+                    continue;
+                }
+
                 try {
                     const alias = await conn.addRecord({
                         content: {
@@ -352,6 +356,10 @@ const uploadFile = async ({ filename, conn }) => {
                         }),
                         target: endpoint,
                         upsert: true,
+                        upsertCheckExclude: [
+                            'comment',
+                            'displayName',
+                        ],
                     });
                     await conn.addRecord({
                         content: { in: rid(record), out: rid(alias), source },
