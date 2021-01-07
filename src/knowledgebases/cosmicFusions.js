@@ -17,6 +17,7 @@ const _pubmed = require('./../entrez/pubmed');
 const _gene = require('./../entrez/gene');
 const _refseq = require('./../entrez/refseq');
 const _ensembl = require('./../ensembl');
+const { loadClassifications, processDisease } = require('./cosmic');
 
 const { logger } = require('./../logging');
 const { cosmic: SOURCE_DEFN } = require('./../sources');
@@ -24,14 +25,16 @@ const { cosmic: SOURCE_DEFN } = require('./../sources');
 const RECURRENCE_THRESHOLD = 3;
 
 const HEADER = {
-    disease1: 'Primary histology',
-    disease2: 'Histology subtype 1',
-    disease3: 'Histology subtype 2',
-    disease4: 'Histology subtype 3',
-    fusionId: 'Fusion ID',
-    fusionName: 'Translocation Name',
+    disease: 'HISTOLOGY_SUBTYPE_1',
+    diseaseFamily: 'PRIMARY_HISTOLOGY',
+    exon1: '5\'_LAST_OBSERVED_EXON',
+    exon2: '3\'_FIRST_OBSERVED_EXON',
+    fusionId: 'FUSION_ID',
+    fusionName: 'TRANSLOCATION_NAME',
+    gene1: '5\'_GENE_NAME',
+    gene2: '3\'_GENE_NAME',
     pubmed: 'PUBMED_PMID',
-    sampleId: 'Sample ID',
+    sampleId: 'SAMPLE_ID',
 };
 
 const parseFusionName = (name) => {
@@ -47,39 +50,6 @@ const parseFusionName = (name) => {
     }
 
     throw new Error(`Fusion Name format not recognized (${name})`);
-};
-
-
-const processDisease = async ({ conn, record }) => {
-    const {
-        disease1, disease2, disease3, disease4,
-    } = record;
-    let disease,
-        error;
-
-    for (const rawName of [disease4, disease3, disease2, disease1]) {
-        if (rawName === 'NS' || !rawName || disease) {
-            continue;
-        }
-        const diseaseName = rawName.replace(/_/g, ' ')
-            .replace('leukaemia', 'leukemia')
-            .replace(/\bB cell\b/ig, 'b-cell');
-
-        try {
-            disease = await conn.getUniqueRecordBy({
-                filters: { name: diseaseName },
-                sort: orderPreferredOntologyTerms,
-                target: 'Disease',
-            });
-        } catch (err) {
-            error = err;
-        }
-    }
-
-    if (!disease) {
-        throw (error || new Error(`No valid disease types (${disease1}, ${disease2}, ${disease3}, ${disease4})`));
-    }
-    return disease;
 };
 
 
@@ -221,17 +191,7 @@ const processCosmicRecord = async ({
     conn, record, source, relevance, variantType, geneOnly, diseaseSpecific,
 }) => {
     // get the disease name
-    let disease;
-
-    if (diseaseSpecific) {
-        disease = rid(await processDisease({ conn, record }));
-    } else {
-        disease = rid(await conn.getUniqueRecordBy({
-            filters: { name: 'cancer' },
-            sort: orderPreferredOntologyTerms,
-            target: 'Disease',
-        }));
-    }
+    const disease = rid(await processDisease(conn, record));
     const publications = await _pubmed.fetchAndLoadByIds(conn, record.publications);
 
     const variant = rid(await processVariants({
@@ -283,8 +243,11 @@ const createGeneReccurrenceId = (record) => {
  * @param {string} opt.filename the path to the input tab delimited file
  * @param {ApiConnection} opt.conn the API connection object
  */
-const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
+const uploadFile = async ({
+    filename, conn, mappingFilename, errorLogPrefix,
+}) => {
     const jsonList = await loadDelimToJson(filename);
+    const mapping = await loadClassifications(mappingFilename);
     // get the dbID for the source
     const source = rid(await conn.addRecord({
         content: SOURCE_DEFN,
@@ -305,17 +268,37 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
 
     await _pubmed.fetchAndLoadByIds(conn, records.map(rec => rec.pumbed));
 
+    // pre-process/clean records
+    for (const record of records) {
+        record.ncit = (mapping[record.diseaseFamily] || {})[record.disease];
+
+        record.disease = record.disease.toUpperCase() === 'NS'
+            ? ''
+            : record.disease;
+
+        record.diseaseFamily = record.diseaseFamily.toUpperCase() === 'NS'
+            ? ''
+            : record.diseaseFamily;
+
+        if (!record.disease && !record.diseaseFamily) {
+            record.diseaseFamily = 'cancer';
+        }
+
+        [record.gene1] = record.gene1.split('_');
+        [record.gene2] = record.gene2.split('_');
+    }
+
     // find recurrence 'counts'
     for (const record of records) {
         const {
-            fusionName, disease1, disease2, disease3, disease4,
+            fusionName, fusionId, diseaseFamily, disease, gene1, gene2, exon1, exon2,
         } = record;
 
         if (!fusionName) {
             continue;
         }
         const recurrenceId = hashRecordToId({
-            disease1, disease2, disease3, disease4, fusionName,
+            disease, diseaseFamily, fusionId, fusionName,
         });
 
         if (recurrenceCounts[recurrenceId] === undefined) {
@@ -324,7 +307,13 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
         recurrenceCounts[recurrenceId].push(record);
 
         // simple recc
-        const geneRecId = createGeneReccurrenceId(record);
+        if (!gene1 || !gene2) {
+            // cannot do gene level counts for non-gene fusions
+            continue;
+        }
+        const geneRecId = hashRecordToId({
+            disease, diseaseFamily, exon1, exon2, gene1, gene2,
+        });
 
         if (diseaseGeneRecurrence[geneRecId] === undefined) {
             diseaseGeneRecurrence[geneRecId] = [];
@@ -332,7 +321,9 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
         diseaseGeneRecurrence[geneRecId].push(record);
 
         // non-disease specific recurrence
-        const nonSpecificRecId = createGeneReccurrenceId(_.omit(record, ['disease1', 'disease2', 'disease3', 'disease4']));
+        const nonSpecificRecId = hashRecordToId({
+            exon1, exon2, gene1, gene2,
+        });
 
         if (geneRecurrence[nonSpecificRecId] === undefined) {
             geneRecurrence[nonSpecificRecId] = [];
