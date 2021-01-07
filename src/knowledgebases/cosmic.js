@@ -3,7 +3,7 @@
  */
 const fs = require('fs');
 
-const { variant: { parse: variantParser } } = require('@bcgsc/knowledgebase-parser');
+const { variant: { parse: variantParser } } = require('@bcgsc-pori/graphkb-parser');
 
 const {
     loadDelimToJson,

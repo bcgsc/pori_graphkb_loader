@@ -5,7 +5,7 @@
 const request = require('request-promise');
 const jc = require('json-cycle');
 const jwt = require('jsonwebtoken');
-const { schema } = require('@bcgsc/knowledgebase-schema');
+const { schema } = require('@bcgsc-pori/graphkb-schema');
 const _ = require('lodash');
 
 const { graphkb: { name: INTERNAL_SOURCE_NAME } } = require('./sources');

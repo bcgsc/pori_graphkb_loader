@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const kbParser = require('@bcgsc/knowledgebase-parser');
+const kbParser = require('@bcgsc-pori/graphkb-parser');
 
 const {
     loadDelimToJson,

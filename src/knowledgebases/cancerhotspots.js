@@ -5,7 +5,7 @@ const fs = require('fs');
 
 const csv = require('fast-csv');
 
-const { variant: { parse: variantParser } } = require('@bcgsc/knowledgebase-parser');
+const { variant: { parse: variantParser } } = require('@bcgsc-pori/graphkb-parser');
 
 const {
     convertRowFields,

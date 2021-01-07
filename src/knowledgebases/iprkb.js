@@ -2,7 +2,7 @@ const parse = require('csv-parse/lib/sync');
 const fs = require('fs');
 const moment = require('moment');
 
-const { variant: { parse: variantParser }, position: { Position } } = require('@bcgsc/knowledgebase-parser');
+const { variant: { parse: variantParser }, position: { Position } } = require('@bcgsc-pori/graphkb-parser');
 
 const { logger } = require('../logging');
 const _pubmed = require('../entrez/pubmed');
