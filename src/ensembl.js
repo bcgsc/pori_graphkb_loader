@@ -11,7 +11,8 @@ const {
 const { logger } = require('./logging');
 const _hgnc = require('./hgnc');
 const _entrez = require('./entrez/gene');
-const { ensembl: SOURCE_DEFN, refseq: { name: refseqName } } = require('./sources');
+const _refseq = require('./entrez/refseq');
+const { ensembl: SOURCE_DEFN, refseq: refseqSourceDefn } = require('./sources');
 
 const BASE_URL = 'http://rest.ensembl.org';
 
@@ -182,16 +183,9 @@ const fetchAndLoadById = async (conn, { sourceId, sourceIdVersion, biotype }) =>
  */
 const uploadFile = async (opt) => {
     const HEADER = {
-        chromosome: 'Chromosome/scaffold name',
         geneId: 'Gene stable ID',
         geneIdVersion: 'Version (gene)',
-        geneName: 'Gene name',
-        geneNameSource: 'Source of gene name',
         hgncId: 'HGNC ID',
-        hgncName: 'HGNC symbol',
-        lrgGene: 'LRG display in Ensembl gene ID',
-        proteinId: 'Protein stable ID',
-        proteinIdVersion: 'Protein stable ID version',
         refseqId: 'RefSeq mRNA ID',
         transcriptId: 'Transcript stable ID',
         transcriptIdVersion: 'Version (transcript)',
@@ -205,16 +199,14 @@ const uploadFile = async (opt) => {
         fetchConditions: { name: SOURCE_DEFN.name },
         target: 'Source',
     });
-    let refseqSource;
 
-    try {
-        refseqSource = await conn.getUniqueRecordBy({
-            filters: { name: refseqName },
-            target: 'Source',
-        });
-    } catch (err) {
-        logger.warn('Unable to find refseq source. Will not attempt to create cross-reference links');
-    }
+    const refseqSource = await conn.addRecord({
+        content: refseqSourceDefn,
+        existsOk: true,
+        fetchConditions: { name: refseqSourceDefn.name },
+        target: 'Source',
+    });
+
 
     const visited = {}; // cache genes to speed up adding records
     const hgncMissingRecords = new Set();
@@ -243,13 +235,15 @@ const uploadFile = async (opt) => {
         logger.info(`${gene} has already been loaded`);
     }
 
+    logger.info('pre-fetching refseq entries');
+    await _refseq.preLoadCache(conn);
+    logger.info('fetching missing refseq entries');
+    await _refseq.fetchAndLoadByIds(conn, contentList.map(r => r[HEADER.refseqId]).filter(r => r));
+
     logger.info(`processing ${contentList.length} records`);
 
     for (let index = 0; index < contentList.length; index++) {
         const record = contentList[index];
-        record.hgncName = record[HEADER.geneNameSource] === 'HGNC Symbol'
-            ? record[HEADER.geneName]
-            : null;
 
         const geneId = record[HEADER.geneId];
         const geneIdVersion = record[HEADER.geneIdVersion];
@@ -352,7 +346,7 @@ const uploadFile = async (opt) => {
         // TODO: protein -> elementof -> transcript
 
         // transcript -> aliasof -> refseq
-        if (refseqSource && record[HEADER.refseqId]) {
+        if (record[HEADER.refseqId]) {
             try {
                 const refseq = await conn.getUniqueRecordBy({
                     filters: {
@@ -374,6 +368,7 @@ const uploadFile = async (opt) => {
                     target: 'crossreferenceof',
                 });
             } catch (err) {
+                logger.log('error', `failed cross-linking from ${record[HEADER.transcriptId]} to ${record[HEADER.refseqId]}`);
                 refseqMissingRecords.add(record[HEADER.refseqId]);
             }
         }
@@ -408,7 +403,6 @@ const uploadFile = async (opt) => {
 
 module.exports = {
     SOURCE_DEFN,
-    dependencies: [refseqName],
     fetchAndLoadById,
     uploadFile,
 };
