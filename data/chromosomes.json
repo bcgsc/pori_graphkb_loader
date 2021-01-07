@@ -102,9 +102,11 @@
             "name": "chrY"
         }
     },
-    "source": {
-        "displayName": "GRCh",
-        "name": "GRCh",
-        "sort": 0
+    "sources": {
+        "default": {
+            "displayName": "GRCh",
+            "name": "GRCh",
+            "sort": 0
+        }
     }
 }
