@@ -14,29 +14,32 @@ const ajv = new Ajv();
 
 const recordSpec = ajv.compile({
     properties: {
-        chembl_id: { pattern: '^CHEMBL\\d+$', type: 'string' },
+        concept_id: { pattern: '^chembl:CHEMBL\\d+$', type: 'string' },
         entrez_id: { min: 1, type: 'number' },
         id: { format: 'uuid', type: 'string' },
+        interaction_direction: { items: { type: ['string', 'null'] }, type: 'array' },
         interaction_types: { items: { type: 'string' }, type: 'array' },
+        score: { type: 'number' },
+        sources: { items: { type: 'string' }, type: 'array' },
     },
-    required: ['entrez_id', 'chembl_id', 'interaction_types', 'id'],
+    required: ['entrez_id', 'concept_id', 'interaction_types', 'id'],
     type: 'object',
 });
 
-const BASE_URL = 'http://dgidb.org/api/v2';
+const BASE_URL = 'https://dgidb.org/api/v2';
 
 
 const processRecord = async ({ conn, record, source }) => {
     checkSpec(recordSpec, record);
     const {
         entrez_id: entrezId,
-        chembl_id: chemblId,
+        concept_id: chemblId,
         interaction_types: interactionTypes,
         id,
     } = record;
 
     const [gene] = await _entrezGene.fetchAndLoadByIds(conn, [entrezId]);
-    const drug = await _chembl.fetchAndLoadById(conn, chemblId);
+    const drug = await _chembl.fetchAndLoadById(conn, chemblId.replace('chembl:', ''));
 
     const interactionType = interactionTypes.map(i => i.toLowerCase().trim()).sort().join(';');
 
@@ -63,7 +66,7 @@ const upload = async ({ conn, url = BASE_URL }) => {
         fetchConditions: { name: SOURCE_DEFN.name },
         target: 'Source',
     }));
-    const limit = 100;
+    const limit = 1000;
     let page = `${url}/interactions?count=${limit}&page=1`;
     const counts = { error: 0, skip: 0, success: 0 };
 

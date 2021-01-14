@@ -5,6 +5,7 @@ const { runLoader } = require('../src');
 const { fileExists, createOptionsMenu } = require('../src/cli');
 
 const MODULES = {
+    cgi: 'knowledgebases/cancergenomeinterpreter',
     cgl: 'knowledgebases/cgl',
     diseaseOntology: 'diseaseOntology',
     drugbank: 'drugs/drugbank',
@@ -14,6 +15,9 @@ const MODULES = {
     ncit: 'ncit',
     ncitFdaXref: 'drugs/ncitFdaXref',
     ontology: 'ontology',
+    refseq: 'refseq',
+    tcgaFusions: 'knowledgebases/tcgaFusions',
+    uberon: 'uberon',
 };
 
 const parser = createOptionsMenu();

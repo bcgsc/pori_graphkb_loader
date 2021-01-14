@@ -1,6 +1,6 @@
 const Ajv = require('ajv');
 
-const { variant: { parse: variantParser } } = require('@bcgsc/knowledgebase-parser');
+const { variant: { parse: variantParser } } = require('@bcgsc-pori/graphkb-parser');
 
 const { checkSpec } = require('../util');
 const {

@@ -1,5 +1,5 @@
 {
-  "name": "@bcgsc/knowledgebase-importer",
+  "name": "@bcgsc-pori/graphkb-loader",
   "main": "src/index.js",
   "version": "3.0.2",
   "repository": {
@@ -9,10 +9,11 @@
   "bugs": {
     "email": "graphkb@bcgsc.ca"
   },
+  "private": true,
   "license": "ISC",
   "dependencies": {
-    "@bcgsc/knowledgebase-parser": "^0.8.1",
-    "@bcgsc/knowledgebase-schema": "^3.12.0",
+    "@bcgsc-pori/graphkb-parser": "^1.0.0",
+    "@bcgsc-pori/graphkb-schema": "^3.14.2",
     "ajv": "^6.10.0",
     "argparse": "^2.0.1",
     "csv-parse": "^4.6.5",

@@ -5,7 +5,7 @@
 const request = require('request-promise');
 const jc = require('json-cycle');
 const jwt = require('jsonwebtoken');
-const { schema } = require('@bcgsc/knowledgebase-schema');
+const { schema } = require('@bcgsc-pori/graphkb-schema');
 const _ = require('lodash');
 
 const { graphkb: { name: INTERNAL_SOURCE_NAME } } = require('./sources');
@@ -414,6 +414,9 @@ class ApiConnection {
     }
 
     async getVocabularyTerm(term, sourceName = INTERNAL_SOURCE_NAME) {
+        if (!term) {
+            throw new Error('Cannot fetch vocabulary for empty term name');
+        }
         return this.getUniqueRecordBy({
             filters: {
                 AND: [
@@ -474,7 +477,7 @@ class ApiConnection {
         const model = schema.get(target);
         const filters = fetchConditions || convertRecordToQueryFilters(content);
 
-        if (fetchFirst) {
+        if (fetchFirst || upsert) {
             try {
                 const result = await this.getUniqueRecordBy({
                     filters,
@@ -613,4 +616,5 @@ module.exports = {
     generateCacheKey,
     orderPreferredOntologyTerms,
     rid,
+    shouldUpdate,
 };
