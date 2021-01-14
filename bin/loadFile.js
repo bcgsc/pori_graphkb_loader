@@ -15,6 +15,9 @@ const MODULES = {
     ncit: 'ncit',
     ncitFdaXref: 'drugs/ncitFdaXref',
     ontology: 'ontology',
+    refseq: 'refseq',
+    tcgaFusions: 'knowledgebases/tcgaFusions',
+    uberon: 'uberon',
 };
 
 const parser = createOptionsMenu();
