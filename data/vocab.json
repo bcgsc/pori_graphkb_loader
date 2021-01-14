@@ -1085,6 +1085,30 @@
             ],
             "shortName": ">"
         },
+        "nonsense": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "nonsense mutation"
+                }
+            ],
+            "shortName": ">"
+        },
+        "nonsense mutation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "truncating"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "substitution"
+                }
+            ],
+            "shortName": ">"
+        },
         "missense mutation": {
             "links": [
                 {
