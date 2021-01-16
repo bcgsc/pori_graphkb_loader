@@ -1,7 +1,7 @@
 {
   "name": "@bcgsc-pori/graphkb-loader",
   "main": "src/index.js",
-  "version": "3.0.2",
+  "version": "4.0.0",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/dat/repos/knowledgebase_importer/browse"
