@@ -90,7 +90,7 @@ describe('convertDeprecatedSyntax', () => {
             },
             refSeq: 'S',
             reference1: 'ARAF',
-            type: 'substitution',
+            type: 'missense mutation',
             untemplatedSeq: 'A',
             untemplatedSeqSize: 1,
         };
