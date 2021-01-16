@@ -35,4 +35,8 @@ const options = parser.parse_args();
 const { uploadFile } = require(`./../src/${MODULES[options.module]}`); // eslint-disable-line
 
 
-runLoader(options, uploadFile, { filename: options.filename });
+runLoader(options, uploadFile, { filename: options.filename })
+    .catch((err) => {
+        console.error(err);
+        process.exit(1);
+    });

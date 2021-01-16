@@ -27,4 +27,8 @@ runLoader(
         filename: options.mainFile,
         mappingFilename: options.classification,
     },
-);
+)
+    .catch((err) => {
+        console.error(err);
+        process.exit(1);
+    });

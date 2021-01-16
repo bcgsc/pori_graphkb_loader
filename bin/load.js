@@ -21,4 +21,8 @@ const options = parser.parse_args();
 const { upload } = require(`./../src/${MODULES[options.module]}`); // eslint-disable-line
 
 
-runLoader(options, upload);
+runLoader(options, upload)
+    .catch((err) => {
+        console.error(err);
+        process.exit(1);
+    });
