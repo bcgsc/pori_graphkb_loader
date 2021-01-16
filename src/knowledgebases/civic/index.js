@@ -10,6 +10,7 @@ const { checkSpec } = require('../../util');
 const {
     orderPreferredOntologyTerms,
     rid,
+    shouldUpdate,
 } = require('../../graphkb');
 const { logger } = require('../../logging');
 const _pubmed = require('../../entrez/pubmed');
@@ -436,6 +437,48 @@ const processEvidenceRecord = async (opt) => {
         ]);
     }
 
+    let original;
+
+    if (oneToOne) {
+        // get previous iteration
+        const originals = await conn.getRecords({
+            filters: {
+                AND: [
+                    { source: rid(sources.civic) },
+                    { sourceId: rawRecord.id },
+                ],
+            },
+            target: 'Statement',
+        });
+
+        if (originals.length > 1) {
+            throw Error(`Supposed to be 1to1 mapping between graphKB and civic but found multiple records with source ID (${rawRecord.id})`);
+        }
+        if (originals.length === 1) {
+            [original] = originals;
+
+            const excludeTerms = [
+                '@rid',
+                '@version',
+                'comment',
+                'createdAt',
+                'createdBy',
+                'reviews',
+                'updatedAt',
+                'updatedBy',
+            ];
+
+            if (!shouldUpdate('Statement', original, content, excludeTerms)) {
+                return original;
+            }
+        }
+    }
+
+    if (original) {
+        // update the existing record
+        return conn.updateRecord('Statement', rid(original), content);
+    }
+    // create a new record
     return conn.addRecord({
         content,
         existsOk: true,
@@ -631,7 +674,7 @@ const upload = async (opt) => {
             mappedCount += record.variants.length * record.drugs.length;
         }
 
-        const oneToOne = mappedCount === 1 && preupload.length === 1;
+        const oneToOne = mappedCount === 1 && preupload.size === 1;
 
         for (const record of recordList) {
             for (const variant of record.variants) {

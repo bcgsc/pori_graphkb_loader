@@ -46,7 +46,10 @@ const simplifyRecordsLinks = (content, level = 0) => {
 };
 
 
-const shouldUpdate = (model, originalContentIn, newContentIn, upsertCheckExclude = []) => {
+const shouldUpdate = (modelIn, originalContentIn, newContentIn, upsertCheckExclude = []) => {
+    const model = typeof modelIn === 'string'
+        ? schema.get(modelIn)
+        : modelIn;
     const originalContent = simplifyRecordsLinks(originalContentIn);
     const formatted = model.formatRecord(simplifyRecordsLinks(newContentIn), {
         addDefaults: false,

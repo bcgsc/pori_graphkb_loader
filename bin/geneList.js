@@ -58,4 +58,8 @@ parser.add_argument('filename', {
 });
 const options = parser.parse_args();
 
-runLoader(options, uploadFile, { filename: options.filename });
+runLoader(options, uploadFile, { filename: options.filename })
+    .catch((err) => {
+        console.error(err);
+        process.exit(1);
+    });
