@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const kbParser = require('@bcgsc/knowledgebase-parser');
+const kbParser = require('@bcgsc-pori/graphkb-parser');
 
 const {
     loadDelimToJson,
@@ -51,10 +51,11 @@ const evidenceLevels = {
         'NCCN/CAP guidelines': {},
         'Pre-clinical': {},
     },
-    source: SOURCE_DEFN,
+    sources: { default: SOURCE_DEFN },
 };
 
 const relevanceMapping = {
+    'increased toxicity (myelosupression)': 'increased toxicity (myelosuppression)',
     'no responsive': 'no response',
     resistant: 'resistance',
     responsive: 'response',
@@ -88,11 +89,11 @@ const parseEvidence = (row) => {
     for (const item of row.evidence.split(';').map(i => i.trim())) {
         if (item.startsWith('PMID:')) {
             evidence.push(item.slice('PMID:'.length));
+        } else if (item.startsWith('PMC')) {
+            evidence.push(item);
         } else if (/^NCT\d+$/.exec(item)) {
             evidence.push(item);
-        } else if (item.startsWith('FDA') || item.startsWith('NCCN')) {
-            evidence.push('other');
-        } else {
+        } else if (!item.startsWith('FDA') && !item.startsWith('NCCN')) {
             throw new Error(`cannot process non-pubmed/nct evidence ${item}`);
         }
     }
@@ -155,8 +156,13 @@ const preprocessVariants = (row) => {
                 const [, pos, type] = match;
                 variants.push({ exonic: `e.${pos}${type.slice(0, 3)}`, gene });
             } else {
-                variants.push(parseCategoryVariant({ biomarker, gene }));
+                variants.push(parseCategoryVariant({ biomarker, gene, isCat: true }));
             }
+        } else if (match = /^([A-Za-z0-9.]+)-([A-Za-z0-9.]+) fusion$/.exec(variant)) {
+            const [, gene1, gene2] = match;
+            variants.push({
+                gene: gene1, gene2, isCat: true, type: 'fusion',
+            });
         } else {
             throw new Error(`unable to process variant (${variant})`);
         }
@@ -184,22 +190,29 @@ const preprocessVariants = (row) => {
  */
 const processVariants = async ({ conn, row, source }) => {
     const {
-        genomic, protein, transcript, cds, type: variantType, gene, exonic,
+        genomic, protein, transcript, cds, type: variantType, gene, exonic, gene2, isCat = false,
     } = row;
     let proteinVariant,
         cdsVariant,
         categoryVariant,
         genomicVariant,
         exonicVariant,
-        geneRecord;
+        gene1Record,
+        gene2Record;
 
     try {
-        [geneRecord] = await _gene.fetchAndLoadBySymbol(conn, gene);
+        [gene1Record] = await _gene.fetchAndLoadBySymbol(conn, gene);
     } catch (err) {
         logger.error(err);
     }
 
-    if (genomic) {
+    try {
+        [gene2Record] = await _gene.fetchAndLoadBySymbol(conn, gene2);
+    } catch (err) {
+        logger.error(err);
+    }
+
+    if (genomic && !isCat) {
         const parsed = kbParser.variant.parse(genomic).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
             filters: {
@@ -224,16 +237,16 @@ const processVariants = async ({ conn, row, source }) => {
         });
     }
 
-    if (protein) {
+    if (protein && !isCat) {
         const parsed = kbParser.variant.parse(`${gene}:${protein.split(':')[1]}`).toJSON();
         const type = await conn.getVocabularyTerm(parsed.type);
         proteinVariant = await conn.addVariant({
-            content: { ...parsed, reference1: rid(geneRecord), type },
+            content: { ...parsed, reference1: rid(gene1Record), type },
             existsOk: true,
             target: 'PositionalVariant',
         });
     }
-    if (transcript && cds) {
+    if (transcript && cds && !isCat) {
         const parsed = kbParser.variant.parse(`${transcript}:${cds}`).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
             filters: { AND: [{ biotype: 'transcript' }, { sourceId: transcript }, { sourceIdVersion: null }] },
@@ -247,11 +260,11 @@ const processVariants = async ({ conn, row, source }) => {
             target: 'PositionalVariant',
         });
     }
-    if (exonic) {
+    if (exonic && !isCat) {
         const parsed = kbParser.variant.parse(`${gene}:${exonic}`).toJSON();
         const type = await conn.getVocabularyTerm(parsed.type);
         exonicVariant = await conn.addVariant({
-            content: { ...parsed, reference1: rid(geneRecord), type },
+            content: { ...parsed, reference1: rid(gene1Record), type },
             existsOk: true,
             target: 'PositionalVariant',
         });
@@ -260,7 +273,13 @@ const processVariants = async ({ conn, row, source }) => {
     try {
         const type = rid(await conn.getVocabularyTerm(variantType));
         categoryVariant = await conn.addVariant({
-            content: { reference1: rid(geneRecord), type },
+            content: {
+                reference1: rid(gene1Record),
+                reference2: gene2Record
+                    ? rid(gene2Record)
+                    : null,
+                type,
+            },
             existsOk: true,
             target: 'CategoryVariant',
         });
@@ -296,16 +315,44 @@ const processVariants = async ({ conn, row, source }) => {
     return proteinVariant || cdsVariant || genomicVariant || exonicVariant || categoryVariant;
 };
 
+
+const processDisease = async (conn, originalDiseaseName) => {
+    const diseaseName = diseaseMapping[originalDiseaseName] || `${originalDiseaseName}|${originalDiseaseName} cancer`;
+
+    // find the exact disease name
+    let disease;
+
+    try {
+        disease = rid(await conn.getUniqueRecordBy({
+            filters: { name: diseaseName },
+            sort: orderPreferredOntologyTerms,
+            target: 'Disease',
+        }));
+        return disease;
+    } catch (err) {}
+
+    // split on the vertical bar that indicates aliases
+    for (const alias of diseaseName.split('|')) {
+        try {
+            disease = rid(await conn.getUniqueRecordBy({
+                filters: { name: alias },
+                sort: orderPreferredOntologyTerms,
+                target: 'Disease',
+            }));
+            return disease;
+        } catch (err) {}
+    }
+
+    if (!disease) {
+        throw new Error(`missing disease for input: ${originalDiseaseName}`);
+    }
+    return disease;
+};
+
 const processRow = async ({ row, source, conn }) => {
     // process the protein notation
     // look up the disease by name
-    const diseaseName = diseaseMapping[row.disease] || `${row.disease}|${row.disease} cancer`;
-
-    const disease = rid(await conn.getUniqueRecordBy({
-        filters: { name: diseaseName },
-        sort: orderPreferredOntologyTerms,
-        target: 'Disease',
-    }));
+    const disease = await processDisease(conn, row.disease);
     const therapyName = row.therapy.includes(';')
         ? row.therapy.split(';').map(n => n.toLowerCase().trim()).sort().join(' + ')
         : row.therapy;
@@ -331,9 +378,17 @@ const processRow = async ({ row, source, conn }) => {
     );
 
     // determine the relevance of the statement
-    const relevance = rid(await conn.getVocabularyTerm(
-        relevanceMapping[row.relevance.toLowerCase()] || row.relevance,
-    ));
+    let relevance;
+
+    try {
+        relevance = rid(await conn.getVocabularyTerm(
+            relevanceMapping[row.relevance.toLowerCase()] || row.relevance,
+        ));
+    } catch (err) {
+        relevance = rid(await conn.getVocabularyTerm(
+            relevanceMapping[row.relevance.toLowerCase()] || row.relevance, SOURCE_DEFN.name,
+        ));
+    }
 
     const evidence = [...articles.map(rid), ...trials.map(rid)];
 
@@ -367,7 +422,8 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
         existsOk: true,
         target: 'Source',
     }));
-    const counts = { error: 0, skip: 0, success: 0 };
+    const counts = { error: 0, skip: 0, success: 0 }; // tracking errors relative to the number of total statements
+    const inputCounts = { error: 0, skip: 0, success: 0 }; // tracking errors relative to the input number of records
 
     logger.info('creating the evidence levels');
     await uploadFromJSON({ conn, data: evidenceLevels });
@@ -390,10 +446,7 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
 
         if (row.evidenceLevel.includes(',')) {
             logger.info(`skipping row #${index} due to multiple evidence levels (${row.evidenceLevel})`);
-            counts.skip++;
-            continue;
-        } if (row.gene.includes(';')) {
-            logger.info(`skipping row #${index} due to multiple genes (${row.gene})`);
+            inputCounts.skip++;
             counts.skip++;
             continue;
         }
@@ -408,7 +461,8 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
                 index,
                 row,
             });
-            counts.error++;
+            counts.error += row.disease.split(';').length;
+            inputCounts.error++;
             continue;
         }
         let variants;
@@ -416,10 +470,13 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
         try {
             variants = preprocessVariants(row);
         } catch (err) {
-            counts.error++;
+            counts.error += row.disease.split(';').length;
+            inputCounts.error++;
             logger.error(err);
             continue;
         }
+
+        let errors = false;
 
         for (const disease of row.disease.split(';')) {
             for (const combo of variants) {
@@ -433,6 +490,7 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
                         index,
                         row,
                     });
+                    errors = true;
                     logger.error(err);
                     counts.error++;
 
@@ -442,11 +500,18 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
                 }
             }
         }
+
+        if (errors) {
+            inputCounts.error++;
+        } else {
+            inputCounts.success++;
+        }
     }
     const errorLogFile = `${errorLogPrefix}-cgi.json`;
     logger.info(`writing errors to: ${errorLogFile}`);
     fs.writeFileSync(errorLogFile, JSON.stringify({ records: errorList }, null, 2));
-    logger.info(JSON.stringify(counts));
+    logger.info(`statements ${JSON.stringify(counts)}`);
+    logger.info(`inputs ${JSON.stringify(counts)}`);
 };
 
 

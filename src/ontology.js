@@ -8,7 +8,7 @@ const Ajv = require('ajv');
 const fs = require('fs');
 const jsonpath = require('jsonpath');
 
-const { schema, schema: { schema: kbSchema } } = require('@bcgsc/knowledgebase-schema');
+const { schema, schema: { schema: kbSchema } } = require('@bcgsc-pori/graphkb-schema');
 
 
 const { logger } = require('./logging');

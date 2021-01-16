@@ -5,7 +5,7 @@
 const request = require('request-promise');
 const jc = require('json-cycle');
 const jwt = require('jsonwebtoken');
-const { schema } = require('@bcgsc/knowledgebase-schema');
+const { schema } = require('@bcgsc-pori/graphkb-schema');
 const _ = require('lodash');
 
 const { graphkb: { name: INTERNAL_SOURCE_NAME } } = require('./sources');
@@ -46,7 +46,10 @@ const simplifyRecordsLinks = (content, level = 0) => {
 };
 
 
-const shouldUpdate = (model, originalContentIn, newContentIn, upsertCheckExclude = []) => {
+const shouldUpdate = (modelIn, originalContentIn, newContentIn, upsertCheckExclude = []) => {
+    const model = typeof modelIn === 'string'
+        ? schema.get(modelIn)
+        : modelIn;
     const originalContent = simplifyRecordsLinks(originalContentIn);
     const formatted = model.formatRecord(simplifyRecordsLinks(newContentIn), {
         addDefaults: false,
@@ -414,6 +417,9 @@ class ApiConnection {
     }
 
     async getVocabularyTerm(term, sourceName = INTERNAL_SOURCE_NAME) {
+        if (!term) {
+            throw new Error('Cannot fetch vocabulary for empty term name');
+        }
         return this.getUniqueRecordBy({
             filters: {
                 AND: [
@@ -474,7 +480,7 @@ class ApiConnection {
         const model = schema.get(target);
         const filters = fetchConditions || convertRecordToQueryFilters(content);
 
-        if (fetchFirst) {
+        if (fetchFirst || upsert) {
             try {
                 const result = await this.getUniqueRecordBy({
                     filters,
@@ -613,4 +619,5 @@ module.exports = {
     generateCacheKey,
     orderPreferredOntologyTerms,
     rid,
+    shouldUpdate,
 };

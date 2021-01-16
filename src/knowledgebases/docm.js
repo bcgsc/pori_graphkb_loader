@@ -7,7 +7,7 @@ const request = require('request-promise');
 const Ajv = require('ajv');
 const fs = require('fs');
 
-const { variant: { parse: variantParser } } = require('@bcgsc/knowledgebase-parser');
+const { variant: { parse: variantParser } } = require('@bcgsc-pori/graphkb-parser');
 
 const { checkSpec } = require('./../util');
 const {
@@ -282,6 +282,7 @@ const processRecord = async (opt) => {
                         { source: rid(source) },
                         { subject: rid(disease) },
                         { relevance: rid(relevance) },
+                        { evidence: [rid(publication)] },
                     ],
                 },
                 fetchExisting: false,

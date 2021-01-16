@@ -1,7 +1,7 @@
 {
-  "name": "@bcgsc/knowledgebase-importer",
+  "name": "@bcgsc-pori/graphkb-loader",
   "main": "src/index.js",
-  "version": "3.0.2",
+  "version": "4.0.0",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/dat/repos/knowledgebase_importer/browse"
@@ -9,10 +9,11 @@
   "bugs": {
     "email": "graphkb@bcgsc.ca"
   },
+  "private": true,
   "license": "ISC",
   "dependencies": {
-    "@bcgsc/knowledgebase-parser": "^0.8.1",
-    "@bcgsc/knowledgebase-schema": "^3.12.0",
+    "@bcgsc-pori/graphkb-parser": "^1.1.1",
+    "@bcgsc-pori/graphkb-schema": "^3.14.2",
     "ajv": "^6.10.0",
     "argparse": "^2.0.1",
     "csv-parse": "^4.6.5",
@@ -59,10 +60,10 @@
     "version": "echo $npm_package_version",
     "start:recent-trials": "node bin/clinicaltrialsgov.js --recent",
     "start:fda-approvals": "node bin/fdaApprovals.js",
-    "start:oncotree": "node bin/oncotree.js",
-    "start:civic": "node bin/civic.js",
-    "start:signatures": "node bin/ontology.js data/signatures.json",
-    "start:vocabulary": "node bin/ontology.js data/vocab.json",
+    "start:oncotree": "node bin/load.js oncotree",
+    "start:civic": "node bin/load.js civic",
+    "start:signatures": "node bin/loadFile.js ontology data/signatures.json",
+    "start:vocabulary": "node bin/loadFile.js ontology data/vocab.json",
     "commit": "git-cz"
   },
   "config": {

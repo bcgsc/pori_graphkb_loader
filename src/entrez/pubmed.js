@@ -22,7 +22,7 @@ const recordSpec = ajv.compile({
         title: { type: 'string' },
         uid: { pattern: '^\\d+$', type: 'string' },
     },
-    required: ['uid', 'title', 'fulljournalname'],
+    required: ['uid', 'title'],
     type: 'object',
 });
 
@@ -33,11 +33,14 @@ const recordSpec = ajv.compile({
 const parseRecord = (record) => {
     checkSpec(recordSpec, record);
     const parsed = {
-        journalName: record.fulljournalname,
         name: record.title,
         sourceId: record.uid,
         url: `${LINK_URL}/${record.uid}`,
     };
+
+    if (record.fulljournalname) {
+        parsed.journalName = record.fulljournalname;
+    }
 
     // sortpubdate: '1992/06/01 00:00'
     if (record.sortpubdate) {

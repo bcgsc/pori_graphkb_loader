@@ -35,3 +35,4 @@ errorLog-*
 data/asco.json
 data/ligand_actions.json
 *.log
+tmp

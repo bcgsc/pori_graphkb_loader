@@ -205,7 +205,7 @@ const parseKinaseFusions = async ({ conn, filename, publication }) => {
                     type: fusion,
                 },
                 existsOk: true,
-                target: 'PostionalVariant',
+                target: 'PositionalVariant',
             }));
             await conn.addRecord({
                 content: {

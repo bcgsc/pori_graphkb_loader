@@ -414,8 +414,8 @@
             ]
         },
         "down-regulated rna expression": {
-            "displayName": "down-regulated RNA expression",
             "deprecated": true,
+            "displayName": "down-regulated RNA expression",
             "links": [
                 {
                     "class": "DeprecatedBy",
@@ -722,7 +722,7 @@
             ]
         },
         "increased rna expression": {
-            "displayName":  "increased RNA expression",
+            "displayName": "increased RNA expression",
             "links": [
                 {
                     "class": "SubClassOf",
@@ -754,6 +754,42 @@
                     "target": "toxicity"
                 }
             ]
+        },
+        "increased toxicity (haemolytic anemia)": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "increased toxicity"
+                }
+            ],
+            "source": "cgi"
+        },
+        "increased toxicity (hyperbilirubinemia)": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "increased toxicity"
+                }
+            ],
+            "source": "cgi"
+        },
+        "increased toxicity (myelosuppression)": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "increased toxicity"
+                }
+            ],
+            "source": "cgi"
+        },
+        "increased toxicity (ototoxicity)": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "increased toxicity"
+                }
+            ],
+            "source": "cgi"
         },
         "indel": {
             "links": [
@@ -1045,6 +1081,30 @@
                 {
                     "class": "DeprecatedBy",
                     "target": "missense mutation"
+                }
+            ],
+            "shortName": ">"
+        },
+        "nonsense": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "nonsense mutation"
+                }
+            ],
+            "shortName": ">"
+        },
+        "nonsense mutation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "truncating"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "substitution"
                 }
             ],
             "shortName": ">"
@@ -1642,8 +1702,8 @@
             ]
         },
         "rna expression": {
-            "displayName": "RNA expression",
             "deprecated": true,
+            "displayName": "RNA expression",
             "links": [
                 {
                     "class": "DeprecatedBy",
@@ -1652,8 +1712,8 @@
             ]
         },
         "rna overexpression": {
-            "displayName": "RNA overexpression",
             "deprecated": true,
+            "displayName": "RNA overexpression",
             "links": [
                 {
                     "class": "DeprecatedBy",
@@ -1662,8 +1722,8 @@
             ]
         },
         "rna underexpression": {
-            "displayName": "RNA underexpression",
             "deprecated": true,
+            "displayName": "RNA underexpression",
             "links": [
                 {
                     "class": "DeprecatedBy",
@@ -1924,8 +1984,8 @@
             "name": "therapeutic indicator"
         },
         "tkd mutation": {
-            "displayName":  "TKD mutation",
             "deprecated": true,
+            "displayName": "TKD mutation",
             "links": [
                 {
                     "class": "DeprecatedBy",
@@ -2045,8 +2105,8 @@
             ]
         },
         "up-regulated rna expression": {
-            "displayName": "up-regulated RNA expression",
             "deprecated": true,
+            "displayName": "up-regulated RNA expression",
             "links": [
                 {
                     "class": "DeprecatedBy",
@@ -2117,6 +2177,9 @@
         }
     },
     "sources": {
+        "cgi": {
+            "name": "cancer genome interpreter"
+        },
         "civic": {
             "name": "civic"
         },

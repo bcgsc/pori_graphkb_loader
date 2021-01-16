@@ -6,7 +6,7 @@ const Ajv = require('ajv');
 const fs = require('fs');
 const path = require('path');
 
-const kbParser = require('@bcgsc/knowledgebase-parser');
+const kbParser = require('@bcgsc-pori/graphkb-parser');
 
 const {
     checkSpec,

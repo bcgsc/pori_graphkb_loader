@@ -143,4 +143,8 @@ const upload = async ({ conn }) => {
 const options = createOptionsMenu().parse_args();
 
 
-runLoader(options, upload);
+runLoader(options, upload)
+    .catch((err) => {
+        console.error(err);
+        process.exit(1);
+    });

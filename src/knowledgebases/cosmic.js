@@ -1,9 +1,9 @@
 /**
- * @module importer/cosmic
+ * Creates resistance statements from the cosmic reistance mutations download file
  */
 const fs = require('fs');
 
-const { variant: { parse: variantParser } } = require('@bcgsc/knowledgebase-parser');
+const { variant: { parse: variantParser } } = require('@bcgsc-pori/graphkb-parser');
 
 const {
     loadDelimToJson,
@@ -408,4 +408,6 @@ const uploadFile = async ({
     logger.info(JSON.stringify(counts));
 };
 
-module.exports = { SOURCE_DEFN, uploadFile };
+module.exports = {
+    SOURCE_DEFN, loadClassifications, processDisease, uploadFile,
+};

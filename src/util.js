@@ -11,7 +11,7 @@ const HTTP_STATUS_CODES = require('http-status-codes');
 const jsonpath = require('jsonpath');
 const crypto = require('crypto');
 const stableStringify = require('json-stable-stringify');
-
+const _ = require('lodash');
 
 const { logger } = require('./logging');
 
@@ -130,7 +130,13 @@ const requestWithRetry = async (requestOpt, { waitSeconds = 2, retries = 1 } = {
 
 
 const hashStringToId = input => crypto.createHash('md5').update(input).digest('hex');
-const hashRecordToId = input => hashStringToId(stableStringify(input));
+
+const hashRecordToId = (input, propertyList = null) => {
+    if (!propertyList) {
+        return hashStringToId(stableStringify(input));
+    }
+    return hashStringToId(stableStringify(_.pick(input, propertyList)));
+};
 
 
 const shallowObjectKey = obj => JSON.stringify(obj, (k, v) => (k
