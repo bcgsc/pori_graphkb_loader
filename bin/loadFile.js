@@ -18,6 +18,7 @@ const MODULES = {
     refseq: 'refseq',
     tcgaFusions: 'knowledgebases/tcgaFusions',
     uberon: 'uberon',
+
 };
 
 const parser = createOptionsMenu();
