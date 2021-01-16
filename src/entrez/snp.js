@@ -49,9 +49,7 @@ const loadFromDocsumHgvs = async (api, hgvsVariants) => {
 
     try {
         if (hgvsVariants.cds) {
-            const {
-                multiFeature, noFeatures, prefix, ...parsed
-            } = variantParser(hgvsVariants.cds.split('|')[0], true);
+            const parsed = variantParser(hgvsVariants.cds.split('|')[0], true).toJSON();
             const [transcript] = await refseq.fetchAndLoadByIds(api, [parsed.reference1]);
             const type = await api.getVocabularyTerm(parsed.type);
             cds = await api.addVariant({
@@ -67,9 +65,7 @@ const loadFromDocsumHgvs = async (api, hgvsVariants) => {
     try {
         if (hgvsVariants.protein) {
             const gene = hgvsVariants.protein.split('|').find(p => p.startsWith('GENE='));
-            const {
-                multiFeature, noFeatures, prefix, ...parsed
-            } = variantParser(hgvsVariants.protein.split('|')[0], true);
+            const parsed = variantParser(hgvsVariants.protein.split('|')[0], true).toJSON();
             const [reference1] = await refseq.fetchAndLoadByIds(api, [parsed.reference1]);
             const type = await api.getVocabularyTerm(parsed.type);
             protein = await api.addVariant({
