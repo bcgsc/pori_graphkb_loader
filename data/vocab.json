@@ -946,6 +946,14 @@
                 }
             ]
         },
+        "likely oncogenic mutation": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "oncogenic mutation"
+                }
+            ]
+        },
         "likely pathogenic": {
             "links": [
                 {
