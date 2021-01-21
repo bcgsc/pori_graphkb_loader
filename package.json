@@ -1,7 +1,7 @@
 {
   "name": "@bcgsc-pori/graphkb-loader",
   "main": "src/index.js",
-  "version": "4.0.1",
+  "version": "4.0.2",
   "repository": {
     "type": "git",
     "url": "https://svn.bcgsc.ca/bitbucket/projects/dat/repos/knowledgebase_importer/browse"
@@ -13,7 +13,7 @@
   "license": "ISC",
   "dependencies": {
     "@bcgsc-pori/graphkb-parser": "^1.1.1",
-    "@bcgsc-pori/graphkb-schema": "^3.14.2",
+    "@bcgsc-pori/graphkb-schema": "^3.14.3",
     "ajv": "^6.10.0",
     "argparse": "^2.0.1",
     "csv-parse": "^4.6.5",
