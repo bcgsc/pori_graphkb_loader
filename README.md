@@ -10,11 +10,7 @@ detailing the commands and required inputs as follows on any of the scripts unde
 node bin/<script>.js -- --help
 ```
 
-
-### Table Of Contents
-
 - [Guidelines for Developers](#guidelines-for-developers)
-  - [Style](#style)
   - [Getting Started](#getting-started)
 - [Expected File Formats](#expected-file-formats)
   - [General Ontology file (JSON)](#general-ontology-file-json)
@@ -34,15 +30,7 @@ node bin/<script>.js -- --help
   - [COSMIC (TAB)](#cosmic-tab)
   - [IPRKb (TAB)](#iprkb-tab)
 
-
 ## Guidelines for Developers
-
-### Style
-
-1. In-code documentation should follow [JSDocs](http://usejsdoc.org) format
-2. TDD. New tests should be added for any new functionality. Using jestfor testing
-3. API must follow REST guidelines (for example see https://github.com/Microsoft/api-guidelines/blob/vNext/Guidelines.md)
-4. JS code should be written with ES6 syntax (where possible) see https://github.com/lukehoban/es6features
 
 ### Getting Started
 
@@ -151,7 +139,6 @@ node bin/ontology.js --filename /path/to/json/file
 
 Loads Trial records from XML files. See: https://clinicaltrials.gov/ct2/resources/download#DownloadMultipleRecords
 
-
 ```bash
 node bin/clinicaltrialsgov.js --file NCT001.xml
 ```
@@ -203,13 +190,11 @@ This requires a BioMart Export with the minimum following columns included
 - Gene name
 - Source of gene name
 
-
 ### FDA (TAB)
 
 Example
 - https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip
 - /projects/vardb/downloads/fda/UNII_Records_7Mar2019.txt
-
 
 ### GSC Therapeutic Ontology (TAB)
 
@@ -220,7 +205,6 @@ Example
 ```bash
 node bin/gscTherapeuticOntology.js --filename gsc_therapeutic_ontology_2019-07-16.tab
 ```
-
 
 ### HGNC (JSON)
 
@@ -304,14 +288,12 @@ Expects column names like
 - Genome Coordinates (GRCh38)
 - Tier
 
-
 ### IPRKb (TAB)
 
 The flatfile dump of the IPR KB (Predecessor to GraphKB)
 
 Example
 - /projects/vardb/downloads/ipr/select_kb_references_ident_as_kb_reference_uuid_kb_references_cr_201905281636.tsv
-
 
 ```bash
 node bin/iprkb.js --filename iprkb_export.tab
