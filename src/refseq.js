@@ -30,104 +30,111 @@ const uploadFile = async (opt) => {
         target: 'Source',
     });
     logger.log('info', `Loading ${json.length} gene records`);
-
+    const counts = { error: 0, skipped: 0, success: 0 };
     // batch load entrez genes
     await _entrez.preLoadCache(conn);
     await _entrez.fetchAndLoadByIds(conn, json.map(rec => rec.GeneID));
 
     for (let i = 0; i < json.length; i++) {
-        const { RNA, GeneID, Protein } = json[i];
-        logger.info(`processing (${i} / ${json.length}) ${RNA}`);
-
-        // Load the RNA
-        const [rnaName, rnaVersion] = RNA.split('.');
-        const general = await conn.addRecord({
-            content: {
-                biotype: 'transcript', source: rid(source), sourceId: rnaName, sourceIdVersion: null,
-            },
-            existsOk: true,
-            target: 'Feature',
-        });
-        const versioned = await conn.addRecord({
-            content: {
-                biotype: 'transcript', source: rid(source), sourceId: rnaName, sourceIdVersion: rnaVersion,
-            },
-            existsOk: true,
-            target: 'Feature',
-        });
-        // make the general an alias of the versioned
-        await conn.addRecord({
-            content: { in: rid(versioned), out: rid(general), source: rid(source) },
-            existsOk: true,
-            fetchExisting: false,
-            target: 'generalizationof',
-        });
-
         try {
-            const [hgnc] = await _entrez.fetchAndLoadByIds(conn, [GeneID]);
-            await conn.addRecord({
-                content: { in: rid(hgnc), out: rid(general), source: rid(source) },
-                existsOk: true,
-                fetchExisting: false,
-                target: 'elementof',
-            });
-        } catch (err) {
-            logger.log('error', `failed cross-linking from ${general.sourceId} to ${GeneID}`);
-            logger.error(err);
-        }
+            const { RNA, GeneID, Protein } = json[i];
+            logger.info(`processing (${i} / ${json.length}) ${RNA}`);
 
-        // load the protein
-        if (Protein) {
-            const [proteinName, proteinVersion] = Protein.split('.');
-            const generalProtein = await conn.addRecord({
+            // Load the RNA
+            const [rnaName, rnaVersion] = RNA.split('.');
+            const general = await conn.addRecord({
                 content: {
-                    biotype: 'protein', source: rid(source), sourceId: proteinName, sourceIdVersion: null,
+                    biotype: 'transcript', source: rid(source), sourceId: rnaName, sourceIdVersion: null,
                 },
                 existsOk: true,
                 target: 'Feature',
             });
-            const versionedProtein = await conn.addRecord({
+            const versioned = await conn.addRecord({
                 content: {
-                    biotype: 'protein', source: rid(source), sourceId: proteinName, sourceIdVersion: proteinVersion,
+                    biotype: 'transcript', source: rid(source), sourceId: rnaName, sourceIdVersion: rnaVersion,
                 },
                 existsOk: true,
                 target: 'Feature',
             });
             // make the general an alias of the versioned
             await conn.addRecord({
-                content: {
-                    in: rid(versionedProtein),
-                    out: rid(generalProtein),
-                    source: rid(source),
-                },
+                content: { in: rid(versioned), out: rid(general), source: rid(source) },
                 existsOk: true,
                 fetchExisting: false,
                 target: 'generalizationof',
             });
 
-            await conn.addRecord({
-                content: {
-                    in: rid(general),
-                    out: rid(generalProtein),
-                    source: rid(source),
-                },
-                existsOk: true,
-                fetchExisting: false,
-                target: 'elementof',
-            });
+            try {
+                const [hgnc] = await _entrez.fetchAndLoadByIds(conn, [GeneID]);
+                await conn.addRecord({
+                    content: { in: rid(hgnc), out: rid(general), source: rid(source) },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'elementof',
+                });
+            } catch (err) {
+                logger.log('error', `failed cross-linking from ${general.sourceId} to ${GeneID}`);
+                logger.error(err);
+            }
 
-            await conn.addRecord({
-                content: {
-                    in: rid(versioned),
-                    out: rid(versionedProtein),
-                    source: rid(source),
-                },
-                existsOk: true,
-                fetchExisting: false,
-                target: 'elementof',
-            });
+            // load the protein
+            if (Protein) {
+                const [proteinName, proteinVersion] = Protein.split('.');
+                const generalProtein = await conn.addRecord({
+                    content: {
+                        biotype: 'protein', source: rid(source), sourceId: proteinName, sourceIdVersion: null,
+                    },
+                    existsOk: true,
+                    target: 'Feature',
+                });
+                const versionedProtein = await conn.addRecord({
+                    content: {
+                        biotype: 'protein', source: rid(source), sourceId: proteinName, sourceIdVersion: proteinVersion,
+                    },
+                    existsOk: true,
+                    target: 'Feature',
+                });
+                // make the general an alias of the versioned
+                await conn.addRecord({
+                    content: {
+                        in: rid(versionedProtein),
+                        out: rid(generalProtein),
+                        source: rid(source),
+                    },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'generalizationof',
+                });
+
+                await conn.addRecord({
+                    content: {
+                        in: rid(general),
+                        out: rid(generalProtein),
+                        source: rid(source),
+                    },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'elementof',
+                });
+
+                await conn.addRecord({
+                    content: {
+                        in: rid(versioned),
+                        out: rid(versionedProtein),
+                        source: rid(source),
+                    },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'elementof',
+                });
+            }
+            counts.success++;
+        } catch (err) {
+            logger.error(err);
+            counts.error++;
         }
     }
+    logger.info(JSON.stringify(counts));
 };
 
 module.exports = { SOURCE_DEFN, uploadFile };
