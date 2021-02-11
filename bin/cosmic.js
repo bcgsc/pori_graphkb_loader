@@ -1,7 +1,7 @@
 const { runLoader } = require('../src');
 const { createOptionsMenu, fileExists } = require('../src/cli');
-const { uploadFile: uploadResistanceFile } = require('../src/knowledgebases/cosmic');
-const { uploadFile: uploadFusionsFile } = require('../src/knowledgebases/cosmicFusions');
+const { uploadFile: uploadResistanceFile } = require('../src/cosmic/resistance');
+const { uploadFile: uploadFusionsFile } = require('../src/cosmic/fusions');
 
 const parser = createOptionsMenu();
 parser.add_argument('fileType', {

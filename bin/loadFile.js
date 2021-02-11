@@ -5,19 +5,19 @@ const { runLoader } = require('../src');
 const { fileExists, createOptionsMenu } = require('../src/cli');
 
 const MODULES = {
-    cgi: 'knowledgebases/cancergenomeinterpreter',
-    cgl: 'knowledgebases/cgl',
+    cgi: 'cancergenomeinterpreter',
+    cgl: 'cgl',
     diseaseOntology: 'diseaseOntology',
-    drugbank: 'drugs/drugbank',
+    drugbank: 'drugbank',
     ensembl: 'ensembl',
-    fdaSrs: 'drugs/fdaSrs',
-    gscTherapeuticOntology: 'drugs/gscTherapeuticOntology',
+    fdaSrs: 'fdaSrs',
+    gscTherapeuticOntology: 'gscTherapeuticOntology',
     iprkb: 'iprkb',
     ncit: 'ncit',
-    ncitFdaXref: 'drugs/ncitFdaXref',
+    ncitFdaXref: 'ncit/ncitFdaXref',
     ontology: 'ontology',
     refseq: 'refseq',
-    tcgaFusions: 'knowledgebases/tcgaFusions',
+    tcgaFusions: 'tcgaFusions',
     uberon: 'uberon',
 };
 

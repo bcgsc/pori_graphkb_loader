@@ -5,9 +5,9 @@ const { runLoader } = require('../src');
 const { createOptionsMenu } = require('../src/cli');
 
 const MODULES = {
-    civic: 'knowledgebases/civic',
-    dgidb: 'drugs/dgidb',
-    docm: 'knowledgebases/docm',
+    civic: 'civic',
+    dgidb: 'dgidb',
+    docm: 'docm',
     oncotree: 'oncotree',
 };
 
