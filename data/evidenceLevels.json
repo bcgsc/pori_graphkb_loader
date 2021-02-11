@@ -680,6 +680,16 @@
             "url": "https://civicdb.org",
             "usage": "https://creativecommons.org/publicdomain/zero/1.0"
         },
+        "cpic": {
+            "citation": "https://cpicpgx.org/publications",
+            "description": "the clinical pharmacogenetics implementation consortium (cpic®) is an international consortium of individual volunteers and a small dedicated staff who are interested in facilitating use of pharmacogenetic tests for patient care.​ cpic guidelines are indexed in pubmed as clinical guidelines, endorsed by ashp and ascpt, and referenced in clingen and pharmgkb",
+            "displayName": "CPIC",
+            "licenseType": "cc0 1.0 universal (cc0 1.0) public domain dedication",
+            "longName": "clinical pharmacogenetics implementation consortium",
+            "name": "cpic",
+            "url": "https://cpicpgx.org",
+            "usage": "https://cpicpgx.org/license"
+        },
         "default": {
             "description": "The Variant Interpretation for Cancer Consortium (VICC) is a Driver Project of the Global Alliance for Genomics and Health. Our mission is to standardize the curation, representation, and interpretation of clinically-relevant evidence associated with genomic variation in cancers.",
             "displayName": "VICC",
