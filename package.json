@@ -4,7 +4,7 @@
   "version": "4.0.2",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bcgsc/pori_graphkb_importer.git"
+    "url": "https://github.com/bcgsc/pori_graphkb_loader.git"
   },
   "bugs": {
     "email": "graphkb@bcgsc.ca"
