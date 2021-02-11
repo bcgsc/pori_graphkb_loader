@@ -23,31 +23,31 @@ node bin/<script>.js -- --help
 
 ### Ontologies
 
-- [ChEMBL](./src/chembl/README.md)
-- [Disease Ontology](./src/diseaseOntology/README.md)
-- [DrugBank](./src/drugbank/README.md)
-- [Ensembl](./src/ensembl/README.md)
-- [Entrez Utilities](./src/entrez/README.md)
-- [FDA SRS](./src/fdaSrs/README.md)
-- [HGNC](./src/hgnc/README.md)
-- [NCIt](./src/ncit/README.md)
-- [OncoTree](./src/oncotree/README.md)
-- [GraphKB Ontology JSON](./src/ontology/README.md)
-- [RefSeq](./src/refseq/README.md)
-- [Uberon](./src/uberon/README.md)
+- [ChEMBL](./src/chembl)
+- [Disease Ontology](./src/diseaseOntology)
+- [DrugBank](./src/drugbank)
+- [Ensembl](./src/ensembl)
+- [Entrez Utilities](./src/entrez)
+- [FDA SRS](./src/fdaSrs)
+- [HGNC](./src/hgnc)
+- [NCIt](./src/ncit)
+- [OncoTree](./src/oncotree)
+- [GraphKB Ontology JSON](./src/ontology)
+- [RefSeq](./src/refseq)
+- [Uberon](./src/uberon)
 
 ### Knowledge Bases
 
-- [Cancer Genome Interpreter](./src/cancergenomeinterpreter/README.md)
-- [Cancer Hotspots](./src/cancerhotspots/README.md)
-- [CGL](./src/cgl/README.md)
-- [CIViC](./src/civic/README.md)
-- [ClinicalTrials.gov](./src/clinicaltrialsgov/README.md)
-- [COSMIC](./src/cosmic/README.md)
-- [DGIdb](./src/dgidb/README.md)
-- [DoCM](./src/docm/README.md)
-- [OncoKB](./src/oncokb/README.md)
-- [tcgaFusions](./src/tcgaFusions/README.md)
+- [Cancer Genome Interpreter](./src/cancergenomeinterpreter)
+- [Cancer Hotspots](./src/cancerhotspots)
+- [CGL](./src/cgl)
+- [CIViC](./src/civic)
+- [ClinicalTrials.gov](./src/clinicaltrialsgov)
+- [COSMIC](./src/cosmic)
+- [DGIdb](./src/dgidb)
+- [DoCM](./src/docm)
+- [OncoKB](./src/oncokb)
+- [tcgaFusions](./src/tcgaFusions)
 
 ## Guidelines for Developers
 
@@ -83,7 +83,7 @@ There are 2 main patterns used by the loaders
 
 #### API Loaders
 
-These loaders do not require a file input and directly access an API (ex. [CIViC](./src/civic/README.md)).
+These loaders do not require a file input and directly access an API (ex. [CIViC](./src/civic)).
 Their main module will export a function called `upload` which has the following signature
 
 ```js
@@ -100,8 +100,7 @@ GraphKB API instance.
 #### File Loaders
 
 Other loaders which use a file to load content follow a similar pattern except the function they
-export is called `uploadFile` and accepts an additional argument. For example see the [disease ontology](./src/diseaseOntology/README.md) loader.
-
+export is called `uploadFile` and accepts an additional argument. For example see the [disease ontology](./src/diseaseOntology) loader.
 
 ```js
 /**

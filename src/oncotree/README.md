@@ -9,4 +9,4 @@ set terms lost from one version to the next as deprecated.
 node bin/load.js oncotree
 ```
 
-> :warning: This resource contains cross-reference mappings to [NCIt](../ncit/README.md) so it preferred to load after loading NCIt
+> :warning: This resource contains cross-reference mappings to [NCIt](../ncit) so it preferred to load after loading NCIt

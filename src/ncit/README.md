@@ -34,7 +34,7 @@ Next use the general file loader to load the NCIt terms
 node bin/loadFile ncit Thesaurus_v*.txt
 ```
 
-Then, after you have loaded the [FDA-SRS](../fdaSrs/README.md) data (if you are planning to load it)
+Then, after you have loaded the [FDA-SRS](../fdaSrs) data (if you are planning to load it)
 load the cross-reference mapping data
 
 ```bash

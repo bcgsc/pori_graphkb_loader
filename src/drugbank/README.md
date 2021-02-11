@@ -21,5 +21,5 @@ Then use the general file loader to load this into GraphKB
 node bin/loadFile.js drugbank_all_full_database_*.xml
 ```
 
-> :warning: Since this contains cross-mappings to [FDA-SRS](../fdaSrs/README.md) UNII identifiers it is useful to load that file
+> :warning: Since this contains cross-mappings to [FDA-SRS](../fdaSrs) UNII identifiers it is useful to load that file
 first

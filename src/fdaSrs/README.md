@@ -24,4 +24,4 @@ Now use the general file loader to load this into GraphKB
 node bin/loadFile.js fdaSrs UNII*.txt
 ```
 
-> :warning: Since this file contains cross-reference mappings to [NCIt](../ncit/README.md), it is useful to load NCIt first.
+> :warning: Since this file contains cross-reference mappings to [NCIt](../ncit), it is useful to load NCIt first.
