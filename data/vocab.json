@@ -1093,30 +1093,6 @@
             ],
             "shortName": ">"
         },
-        "nonsense": {
-            "deprecated": true,
-            "links": [
-                {
-                    "class": "DeprecatedBy",
-                    "target": "nonsense mutation"
-                }
-            ],
-            "shortName": ">"
-        },
-        "nonsense mutation": {
-            "deprecated": true,
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "truncating"
-                },
-                {
-                    "class": "SubClassOf",
-                    "target": "substitution"
-                }
-            ],
-            "shortName": ">"
-        },
         "missense mutation": {
             "links": [
                 {
@@ -1324,6 +1300,30 @@
                     "target": "switch of function"
                 }
             ]
+        },
+        "nonsense": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "DeprecatedBy",
+                    "target": "nonsense mutation"
+                }
+            ],
+            "shortName": ">"
+        },
+        "nonsense mutation": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "truncating"
+                },
+                {
+                    "class": "SubClassOf",
+                    "target": "substitution"
+                }
+            ],
+            "shortName": ">"
         },
         "nuclear expression": {
             "deprecated": true,
