@@ -6,16 +6,16 @@ const _ = require('lodash');
 const Ajv = require('ajv');
 const fs = require('fs');
 
-const { checkSpec } = require('../../util');
+const { checkSpec } = require('../util');
 const {
     orderPreferredOntologyTerms,
     rid,
     shouldUpdate,
-} = require('../../graphkb');
-const { logger } = require('../../logging');
-const _pubmed = require('../../entrez/pubmed');
-const _entrezGene = require('../../entrez/gene');
-const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../../sources');
+} = require('../graphkb');
+const { logger } = require('../logging');
+const _pubmed = require('../entrez/pubmed');
+const _entrezGene = require('../entrez/gene');
+const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
 const { downloadVariantRecords, processVariantRecord } = require('./variant');
 
 const ajv = new Ajv();

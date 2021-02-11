@@ -1,4 +1,4 @@
-const { normalizeVariantRecord } = require('../src/knowledgebases/civic/variant');
+const { normalizeVariantRecord } = require('../src/civic/variant');
 
 
 describe('normalizeVariantRecord', () => {

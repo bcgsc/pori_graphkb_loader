@@ -7,7 +7,7 @@ const ctg = require('../src/clinicaltrialsgov');
 const gene = require('../src/entrez/gene');
 const pubmed = require('../src/entrez/pubmed');
 const refseq = require('../src/entrez/refseq');
-const chembl = require('../src/drugs/chembl');
+const chembl = require('../src/chembl');
 
 const api = {
     addRecord: jest.fn().mockImplementation(async ({ content }) => content),

@@ -56,7 +56,7 @@
   },
   "scripts": {
     "test": "NODE_ENV=test jest --config config/jest.config.js",
-    "lint": "eslint -c .eslintrc.jon src test",
+    "lint": "eslint -c .eslintrc.json src test",
     "version": "echo $npm_package_version",
     "start:recent-trials": "node bin/clinicaltrialsgov.js --recent",
     "start:fda-approvals": "node bin/fdaApprovals.js",

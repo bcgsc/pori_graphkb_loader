@@ -1,4 +1,4 @@
-const { parseVariantName } = require('../src/knowledgebases/oncokb');
+const { parseVariantName } = require('../src/oncokb');
 
 
 describe('oncokb', () => {
