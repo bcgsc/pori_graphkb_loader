@@ -1,7 +1,6 @@
-# GraphKB Importer
+# GraphKB Loader
 
 This package is used to import content from a variety of sources into GraphKB using the API.
-
 
 - [Loaders](#loaders)
   - [Ontologies](#ontologies)
