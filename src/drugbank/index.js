@@ -11,7 +11,7 @@ const { checkSpec } = require('../util');
 const { rid } = require('../graphkb');
 const _hgnc = require('../hgnc');
 const { logger } = require('../logging');
-const _chembl = require('./chembl');
+const _chembl = require('../chembl');
 const { drugbank: SOURCE_DEFN, fdaSrs: { name: fdaName } } = require('../sources');
 
 

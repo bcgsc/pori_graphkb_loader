@@ -8,3 +8,5 @@ set terms lost from one version to the next as deprecated.
 ```bash
 node bin/load.js oncotree
 ```
+
+> :warning: This resource contains cross-reference mappings to [NCIt](../ncit/README.md) so it preferred to load after loading NCIt

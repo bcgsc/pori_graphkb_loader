@@ -65,8 +65,6 @@ download_fda_srs() {
         unzip UNII_Data.zip
         rm UNII_Data.zip
 
-        rm "READ ME UNII Lists.txt"
-
         for filename in UNII*txt
         do
             echo $filename
