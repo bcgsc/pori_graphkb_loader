@@ -8,6 +8,7 @@ const MODULES = {
     cgi: 'cancergenomeinterpreter',
     cgl: 'cgl',
     diseaseOntology: 'diseaseOntology',
+    cancerhotspots: 'cancerhotspots',
     drugbank: 'drugbank',
     ensembl: 'ensembl',
     fdaSrs: 'fdaSrs',

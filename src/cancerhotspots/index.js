@@ -99,9 +99,7 @@ const processVariants = async ({ conn, record, source }) => {
             // deletion
             notation = `${notation}${start}_${stop}del${refSeq}`;
         }
-        const {
-            noFeatures, multiFeature, prefix, ...variant
-        } = variantParser(notation);
+        const variant = variantParser(notation).toJSON();
 
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
@@ -125,12 +123,10 @@ const processVariants = async ({ conn, record, source }) => {
             [reference1] = await _entrezGene.fetchAndLoadByIds(conn, [geneId]);
             featureCache[geneId] = reference1;
         }
-        const {
-            noFeatures, multiFeature, prefix, ...variant
-        } = variantParser(
+        const variant = variantParser(
             protein.replace(/fs\*\?$/, 'fs'), // ignore uncertain truncations
             false,
-        );
+        ).toJSON();
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
         proteinVariant = rid(await conn.addVariant({
@@ -165,9 +161,7 @@ const processVariants = async ({ conn, record, source }) => {
             featureCache[transcriptId] = reference1;
         }
         // parse the cds variant
-        const {
-            noFeatures, multiFeature, prefix, ...variant
-        } = variantParser(cds, false);
+        const variant = variantParser(cds, false).toJSON();
 
         variant.reference1 = reference1;
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
@@ -347,5 +341,5 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
 };
 
 module.exports = {
-    SOURCE_DEFN, dependencies: [ensemblName, oncotreeName], kb: true, uploadFile,
+    SOURCE_DEFN, uploadFile,
 };
