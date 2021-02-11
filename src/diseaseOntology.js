@@ -169,22 +169,23 @@ const loadEdges = async ({
                 checkSpec(edgeSpec, edge);
                 src = parseDoid(sub).toLowerCase();
                 tgt = parseDoid(obj).toLowerCase();
+
+
+                if (records[src] && records[tgt]) {
+                    await conn.addRecord({
+                        content: {
+                            in: records[tgt]['@rid'],
+                            out: records[src]['@rid'],
+                            source,
+                        },
+                        existsOk: true,
+                        fetchExisting: false,
+                        target: 'SubclassOf',
+                    });
+                }
             } catch (err) {
                 logger.warn(err);
                 continue;
-            }
-
-            if (records[src] && records[tgt]) {
-                await conn.addRecord({
-                    content: {
-                        in: records[tgt]['@rid'],
-                        out: records[src]['@rid'],
-                        source,
-                    },
-                    existsOk: true,
-                    fetchExisting: false,
-                    target: 'SubclassOf',
-                });
             }
         }
     }

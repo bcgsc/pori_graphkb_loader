@@ -165,12 +165,10 @@ const processVariants = async ({ conn, source, record: docmRecord }) => {
     try {
         // create the protein variant
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
-        let {
-            noFeatures, prefix, multiFeature, ...variant
-        } = variantParser(parseDocmVariant(aminoAcid), false);
+        let variant = variantParser(parseDocmVariant(aminoAcid), false).toJSON();
         const type = await conn.getVocabularyTerm(variant.type);
         protein = variant = await conn.addVariant({
-            content: { ...variant, reference1: rid(reference1), type },
+            content: { ...variant, reference1: rid(reference1), type: rid(type) },
             existsOk: true,
             target: 'PositionalVariant',
         });
@@ -181,9 +179,7 @@ const processVariants = async ({ conn, source, record: docmRecord }) => {
 
     try {
         // create the genomic variant
-        let {
-            noFeatures, prefix, multiFeature, ...variant
-        } = variantParser(buildGenomicVariant(docmRecord), false);
+        let variant = variantParser(buildGenomicVariant(docmRecord), false).toJSON();
         const type = await conn.getVocabularyTerm(variant.type);
         const reference1 = await conn.getUniqueRecordBy({
             filters: {
