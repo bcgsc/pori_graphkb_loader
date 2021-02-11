@@ -10,7 +10,7 @@
     "email": "graphkb@bcgsc.ca"
   },
   "private": true,
-  "license": "ISC",
+  "license": "GPL-3",
   "dependencies": {
     "@bcgsc-pori/graphkb-parser": "^1.1.1",
     "@bcgsc-pori/graphkb-schema": "^3.14.3",
