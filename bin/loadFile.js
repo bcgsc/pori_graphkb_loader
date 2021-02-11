@@ -9,6 +9,7 @@ const MODULES = {
     cgl: 'knowledgebases/cgl',
     diseaseOntology: 'diseaseOntology',
     drugbank: 'drugs/drugbank',
+    ensembl: 'ensembl',
     fdaSrs: 'drugs/fdaSrs',
     gscTherapeuticOntology: 'drugs/gscTherapeuticOntology',
     iprkb: 'iprkb',
@@ -18,7 +19,6 @@ const MODULES = {
     refseq: 'refseq',
     tcgaFusions: 'knowledgebases/tcgaFusions',
     uberon: 'uberon',
-
 };
 
 const parser = createOptionsMenu();
