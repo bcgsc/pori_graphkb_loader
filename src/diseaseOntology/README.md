@@ -15,5 +15,5 @@ mv doid.json doid_${LATEST}.json
 Then load this through the general loadFile script
 
 ```bash
-node bin/loadFile.js diseaseOntology doid_${LATEST}.json
+node bin/load.js file diseaseOntology doid_${LATEST}.json
 ```

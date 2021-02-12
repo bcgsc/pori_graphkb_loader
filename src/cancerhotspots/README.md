@@ -12,5 +12,5 @@ gunzip cancerhotspots.v2.maf.gz
 Then load with the general file loader
 
 ```bash
-node bin/loadFile.js cancerhotspots cancerhotspots.v2.maf
+node bin/load.js cancerhotspots cancerhotspots.v2.maf
 ```

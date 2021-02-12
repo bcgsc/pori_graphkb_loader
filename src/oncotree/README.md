@@ -6,7 +6,7 @@ This can be loaded into GraphKB via the API. By default it will load all availab
 set terms lost from one version to the next as deprecated.
 
 ```bash
-node bin/load.js oncotree
+node bin/load.js api oncotree
 ```
 
 > :warning: This resource contains cross-reference mappings to [NCIt](../ncit) so it preferred to load after loading NCIt

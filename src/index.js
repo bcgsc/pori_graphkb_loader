@@ -21,7 +21,12 @@ const { logger, getFilename } = require('./logging');
 
 const runLoader = async (options, loaderFunc, loaderOptions = {}) => {
     const apiConnection = new ApiConnection(options.graphkb);
-    await apiConnection.setAuth(options);
+
+    try {
+        await apiConnection.setAuth(options);
+    } catch (err) {
+        throw Error(`Login failed: ${err}`);
+    }
 
     if (options.pubmed) {
         DEFAULT_QS.api_key = options.pubmed;

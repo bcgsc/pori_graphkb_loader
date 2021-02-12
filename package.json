@@ -58,12 +58,12 @@
     "test": "NODE_ENV=test jest --config config/jest.config.js",
     "lint": "eslint -c .eslintrc.json src test",
     "version": "echo $npm_package_version",
-    "start:recent-trials": "node bin/clinicaltrialsgov.js --recent",
-    "start:fda-approvals": "node bin/fdaApprovals.js",
-    "start:oncotree": "node bin/load.js oncotree",
-    "start:civic": "node bin/load.js civic",
-    "start:signatures": "node bin/loadFile.js ontology data/signatures.json",
-    "start:vocabulary": "node bin/loadFile.js ontology data/vocab.json",
+    "start:recent-trials": "node bin/load.js api clinicaltrialsgov",
+    "start:fda-approvals": "node bin/load.js api fdaApprovals",
+    "start:oncotree": "node bin/load.js api oncotree",
+    "start:civic": "node bin/load.js api civic",
+    "start:signatures": "node bin/load.js file ontology data/signatures.json",
+    "start:vocabulary": "node bin/load.js file ontology data/vocab.json",
     "commit": "git-cz"
   },
   "config": {

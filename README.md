@@ -15,10 +15,10 @@ This package is used to import content from a variety of sources into GraphKB us
 
 Automatic Import modules are provided for a variety of input sources. To Start importing external data, first the GraphKB API
 must already be running. Then the command line interface can be used for upload. Get the help menu
-detailing the commands and required inputs as follows on any of the scripts under `bin/`
+detailing the commands and required inputs as follows
 
 ```bash
-node bin/<script>.js -- --help
+node bin/load.js -- --help
 ```
 
 ## Loaders
@@ -31,6 +31,7 @@ node bin/<script>.js -- --help
 - [Ensembl](./src/ensembl)
 - [Entrez Utilities](./src/entrez)
 - [FDA SRS](./src/fdaSrs)
+- [FDA Approval Announcements](./src/fdaApprovals)
 - [HGNC](./src/hgnc)
 - [NCIt](./src/ncit)
 - [OncoTree](./src/oncotree)

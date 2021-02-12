@@ -2,11 +2,9 @@ const request = require('request-promise');
 const parse5 = require('parse5');
 const htmlToText = require('html-to-text');
 
-const { runLoader } = require('../src');
-const { rid } = require('../src/graphkb');
-const { createOptionsMenu } = require('../src/cli');
-const { logger } = require('../src/logging');
-const { fdaApprovals: SOURCE_DEFN } = require('../src/sources');
+const { rid } = require('../graphkb');
+const { logger } = require('../logging');
+const { fdaApprovals: SOURCE_DEFN } = require('../sources');
 
 
 const BASE_URL = 'https://www.fda.gov';
@@ -140,11 +138,4 @@ const upload = async ({ conn }) => {
     logger.info(`counts: ${JSON.stringify(counts)}`);
 };
 
-const options = createOptionsMenu().parse_args();
-
-
-runLoader(options, upload)
-    .catch((err) => {
-        console.error(err);
-        process.exit(1);
-    });
+module.exports = { upload };

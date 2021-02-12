@@ -15,5 +15,5 @@ wget https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/bin/NIHMS632238-supple
 Next use the file loader to load it
 
 ```bash
-node bin/loadFile.js tcgaFusions NIHMS632238-supplement-2.xlsx
+node bin/load.js file tcgaFusions NIHMS632238-supplement-2.xlsx
 ```

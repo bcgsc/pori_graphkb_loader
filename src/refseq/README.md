@@ -13,5 +13,5 @@ wget -O LRG_RefSeqGene.tab ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LR
 This can then be loaded with the general file loader
 
 ```bash
-node bin/loadFile.js refseq LRG_RefSeqGene.tab
+node bin/load.js file refseq LRG_RefSeqGene.tab
 ```

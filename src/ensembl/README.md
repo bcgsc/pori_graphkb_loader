@@ -14,5 +14,5 @@ wget -O biomart_export.tsv "http://www.ensembl.org/biomart/martservice?query=$qu
 Next use the general file loader
 
 ```bash
-node bin/loadFile.js ensembl biomart_export.tsv
+node bin/load.js file ensembl biomart_export.tsv
 ```
