@@ -1,7 +1,13 @@
 # General Ontology file (JSON)
 
 Any ontology can be uploaded (for a single record class) as long as the JSON file is
-in the expected custom GraphKB JSON format as detailed below.
+in the expected custom GraphKB JSON format as detailed. There are a number of examples included
+by default in this repository
+
+- [GraphKB General Vocabulary](../../data/vocab.json)
+- [Molecular Signatures](../../data/signatures.json)
+- [Basic Chromosomes](../../data/chromosomes.json)
+- [Cross-KB Evidence Levels](../../data/evidenceLevels.json)
 
 The file should have a source definition. This must contain at least a name, but
 may optionally include any of the attributes expected for a source definition (ex. description, url, usage).
