@@ -67,7 +67,7 @@ const ALL_MODULES = {
 
 const parser = createOptionsMenu();
 
-const subparsers = parser.add_subparsers({ help: 'Sub-command help' });
+const subparsers = parser.add_subparsers({ help: 'Sub-command help', required: true });
 const apiParser = subparsers.add_parser('api');
 apiParser.add_argument('module', {
     choices: Object.keys(API_MODULES),
