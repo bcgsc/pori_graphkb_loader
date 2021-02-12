@@ -1,5 +1,7 @@
 # GraphKB Loader
 
+![build](https://github.com/bcgsc/pori_graphkb_loader/workflows/build/badge.svg?branch=master)
+
 This package is used to import content from a variety of sources into GraphKB using the API.
 
 - [Loaders](#loaders)
