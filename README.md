@@ -59,8 +59,8 @@ node bin/load.js -- --help
 Clone the repository
 
 ```bash
-git clone https://svn.bcgsc.ca/bitbucket/scm/dat/knowledgebase_importer.git
-cd knowledgebase_importer
+git clone https://github.com/bcgsc/pori_graphkb_loader.git
+cd pori_graphkb_loader
 git checkout develop
 ```
 
