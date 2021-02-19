@@ -1,6 +1,6 @@
 # GraphKB Loader
 
-![build](https://github.com/bcgsc/pori_graphkb_loader/workflows/build/badge.svg?branch=master)
+![build](https://github.com/bcgsc/pori_graphkb_loader/workflows/build/badge.svg?branch=master) ![node versions](https://img.shields.io/badge/node-10-blue)
 
 This package is used to import content from a variety of sources into GraphKB using the API.
 
