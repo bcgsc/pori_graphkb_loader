@@ -23,7 +23,7 @@ const ncit = require('../src/ncit');
 const ncitFdaXref = require('../src/ncit/ncitFdaXref');
 const ontology = require('../src/ontology');
 const refseq = require('../src/refseq');
-const tcgaFusions = require('../src/tcgaFusions');
+const PMC4468049 = require('../src/PMC4468049');
 const uberon = require('../src/uberon');
 
 const clinicaltrialsgov = require('../src/clinicaltrialsgov');
@@ -36,6 +36,7 @@ const API_MODULES = {
 };
 
 const FILE_MODULES = {
+    PMC4468049,
     cancerhotspots,
     cgi,
     cgl,
@@ -50,7 +51,6 @@ const FILE_MODULES = {
     ncitFdaXref,
     ontology,
     refseq,
-    tcgaFusions,
     uberon,
 };
 

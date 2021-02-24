@@ -7,6 +7,8 @@ const { rid, orderPreferredOntologyTerms } = require('../graphkb');
 const _entrezGene = require('../entrez/gene');
 const _pubmed = require('../entrez/pubmed');
 
+const URL = 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/bin/NIHMS632238-supplement-2.xlsx';
+
 // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/ Table 1
 // https://gdc.cancer.gov/resources-tcga-users/tcga-code-tables/tcga-study-abbreviations
 const DISEASE_CODES = {
@@ -26,9 +28,11 @@ const DISEASE_CODES = {
 };
 
 
-const parseRecurrentFusions = async ({ conn, filename, publication }) => {
+const parseRecurrentFusions = async ({
+    conn, filename, fileStream, publication,
+}) => {
     logger.info(`loading: ${filename} (Table S7)`);
-    const rawData = await readXlsxFile(filename, { sheet: 'Table S7' });
+    const rawData = await readXlsxFile(fileStream || filename, { sheet: 'Table S7' });
     const [, header] = rawData;
     const rows = rawData.slice(2).map((values) => {
         const row = {};
@@ -141,11 +145,13 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
 };
 
 
-const parseKinaseFusions = async ({ conn, filename, publication }) => {
+const parseKinaseFusions = async ({
+    conn, filename, fileStream, publication,
+}) => {
     logger.info(`loading: ${filename} (Table S11)`);
     const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
-    const rawData = await readXlsxFile(filename, { sheet: 'Table S11' });
+    const rawData = await readXlsxFile(fileStream || filename, { sheet: 'Table S11' });
     const [, header] = rawData;
     const headerMap = {
         break1: 'Junction_A',
@@ -239,9 +245,11 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
     errorList.push(...await parseKinaseFusions({ conn, filename, publication }));
     errorList.push(...await parseRecurrentFusions({ conn, filename, publication }));
 
-    const errorJson = `${errorLogPrefix}-tcgaFusions.json`;
+    const errorJson = `${errorLogPrefix}-PMC4468049.json`;
     logger.info(`writing: ${errorJson}`);
     fs.writeFileSync(errorJson, JSON.stringify({ records: errorList }, null, 2));
 };
 
-module.exports = { SOURCE_DEFN: {}, kb: true, uploadFile };
+module.exports = {
+    SOURCE_DEFN: {}, kb: true, uploadFile,
+};
