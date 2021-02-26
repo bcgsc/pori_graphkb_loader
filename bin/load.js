@@ -18,7 +18,6 @@ const drugbank = require('../src/drugbank');
 const ensembl = require('../src/ensembl');
 const fdaSrs = require('../src/fdaSrs');
 const gscTherapeuticOntology = require('../src/gscTherapeuticOntology');
-const iprkb = require('../src/iprkb');
 const ncit = require('../src/ncit');
 const ncitFdaXref = require('../src/ncit/ncitFdaXref');
 const ontology = require('../src/ontology');
@@ -46,7 +45,6 @@ const FILE_MODULES = {
     ensembl,
     fdaSrs,
     gscTherapeuticOntology,
-    iprkb,
     ncit,
     ncitFdaXref,
     ontology,
