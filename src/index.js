@@ -16,7 +16,7 @@ const sources = require('./sources');
 const ontology = require('./ontology');
 const util = require('./util');
 
-const { logger, getFilename } = require('./logging');
+const { logger } = require('./logging');
 
 
 const runLoader = async (options, loaderFunc, loaderOptions = {}) => {
@@ -40,9 +40,6 @@ const runLoader = async (options, loaderFunc, loaderOptions = {}) => {
         errorLogPrefix: options.errorLogPrefix,
     });
 
-    if (getFilename()) {
-        logger.info(`logs written to ${getFilename()}`);
-    }
     logger.info(`created: ${JSON.stringify(apiConnection.getCreatedCounts())}`);
     logger.info('upload complete');
 };
