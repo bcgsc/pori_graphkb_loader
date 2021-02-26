@@ -56,7 +56,7 @@ docker run bcgsc/pori-graphkb-loader --help
 - [DGIdb](./src/dgidb)
 - [DoCM](./src/docm)
 - [OncoKB](./src/oncokb)
-- [tcgaFusions](./src/tcgaFusions)
+- [PMC4468049](./src/PMC4468049)
 
 ## Guidelines for Developers
 
