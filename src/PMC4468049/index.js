@@ -7,8 +7,6 @@ const { rid, orderPreferredOntologyTerms } = require('../graphkb');
 const _entrezGene = require('../entrez/gene');
 const _pubmed = require('../entrez/pubmed');
 
-const URL = 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/bin/NIHMS632238-supplement-2.xlsx';
-
 // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/ Table 1
 // https://gdc.cancer.gov/resources-tcga-users/tcga-code-tables/tcga-study-abbreviations
 const DISEASE_CODES = {
