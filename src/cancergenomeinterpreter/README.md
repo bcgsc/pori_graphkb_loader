@@ -15,5 +15,5 @@ unzip cgi_biomarkers_latest.zip
 Then load into graphkb
 
 ```bash
-node bin/load.js file cancergenomeinterpreter cgi_biomarkers_per_variant.tsv
+node bin/load.js file cgi cgi_biomarkers_per_variant.tsv
 ```
