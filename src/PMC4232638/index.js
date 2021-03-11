@@ -68,7 +68,7 @@ const readSupplementaryFile = async (filename) => {
         const kinase = row[KINASE_COL] === 'yes';
         const pathway = row[PATHWAY_COL] === 'yes';
 
-        if (kinase && (pathway || growth)) {
+        if (growth + kinase + pathway > 1) {
             row.relevance = 'gain of function';
         }
     }
