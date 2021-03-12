@@ -115,8 +115,8 @@ const parseEvidence = (row) => {
             evidence.push(item);
         } else if (/^NCT\d+$/.exec(item)) {
             evidence.push(item);
-        } else if (!item.startsWith('FDA') && !item.startsWith('NCCN')) {
-            throw new Error(`cannot process non-pubmed/nct evidence ${item}`);
+        } else if (!['FDA', 'NCCN', 'ASCO', 'AACR'].some(prefix => item.startsWith(prefix))) {
+            throw new Error(`cannot process non-pubmed/nct/aacr/asco evidence ${item}`);
         }
     }
     return evidence;
@@ -371,6 +371,26 @@ const processDisease = async (conn, originalDiseaseName) => {
     return disease;
 };
 
+
+const fetchAbstract = async (conn, abstractString) => {
+    const m = /^(ASCO|AACR)\s+(20[0-2][0-9])\s+\((abstr(act)?)?\s*(\w+)\)$/.exec(abstractString);
+
+    if (!m) {
+        throw new Error(`unable to parse abstract from ${abstractString}`);
+    }
+    const [, source, year,, abstractNumber] = m;
+    const abstract = await conn.getUniqueRecordBy({
+        filters: [
+            { year },
+            { source: { filters: { name: source }, target: 'Source' } },
+            { abstractNumber },
+        ],
+        target: 'Abstract',
+    });
+    return abstract;
+};
+
+
 const processRow = async ({ row, source, conn }) => {
     // process the protein notation
     // look up the disease by name
@@ -393,12 +413,16 @@ const processRow = async ({ row, source, conn }) => {
 
     const articles = await _pubmed.fetchAndLoadByIds(
         conn,
-        row.evidence.filter(ev => !ev.startsWith('NCT')),
+        row.evidence.filter(ev => ['NCT', 'ASCO', 'AACR'].every(prefix => !ev.startsWith(prefix))),
     );
     const trials = await Promise.all(
         row.evidence
             .filter(ev => ev.startsWith('NCT'))
             .map(async evidence => _trials.fetchAndLoadById(conn, evidence)),
+    );
+    const abstracts = await Promise.all(
+        row.evidence.filter(ev => ev.startsWith('AACR') || ev.startsWith('ASCO'))
+            .map(async ev => fetchAbstract(conn, ev)),
     );
 
     // determine the relevance of the statement
@@ -414,7 +438,7 @@ const processRow = async ({ row, source, conn }) => {
         ));
     }
 
-    const evidence = [...articles.map(rid), ...trials.map(rid)];
+    const evidence = [...articles.map(rid), ...trials.map(rid), ...abstracts.map(rid)];
 
     if (evidence.length === 0) {
         evidence.push(rid(source));
@@ -517,10 +541,6 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
                     errors = true;
                     logger.error(err);
                     counts.error++;
-
-                    if (err.toString().includes('of undefined')) {
-                        throw err;
-                    }
                 }
             }
         }
