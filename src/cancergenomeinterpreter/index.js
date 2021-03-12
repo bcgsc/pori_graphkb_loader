@@ -54,6 +54,7 @@ const evidenceLevels = {
     sources: { default: SOURCE_DEFN },
 };
 
+// mappings are given primarily to fix known typos
 const relevanceMapping = {
     'increased toxicity (myelosupression)': 'increased toxicity (myelosuppression)',
     'no responsive': 'no response',
@@ -62,7 +63,28 @@ const relevanceMapping = {
 };
 
 const diseaseMapping = {
-    'Any cancer type': 'cancer',
+    'any cancer type': 'cancer',
+    'billiary tract': 'Biliary tract cancer',
+    'cervix squamous cell': 'cervix squamous cell carcinoma',
+    endometrium: 'endometrial cancer',
+    'gastrointestinal stromal': 'gastrointestinal stromal tumor',
+    'head an neck': 'head and neck cancer',
+    'head an neck squamous': 'head and neck squamous cell carcinoma',
+    'lung squamous cell': 'lung squamous cell carcinoma',
+    'malignant peripheral nerve sheat tumor': 'malignant peripheral nerve sheath tumor',
+    ovary: 'ovarian cancer',
+    thymic: 'thymic tumor',
+};
+
+const therapyMapping = {
+    'MEK inhibitor (alone or in combination)': 'mek inhibitor',
+    'egfr tk inhibitor': 'egfr tyrosine kinase inhibitor',
+    'egfr tk inhibitors': 'egfr tyrosine kinase inhibitor',
+    flourouracil: 'fluorouracil',
+    fluvestrant: 'fulvestrant',
+    'jak inhibitors (alone or in combination)': 'jak inhibitor',
+    'mek inhibitors (alone or in combination)': 'mek inhibitor',
+    tensirolimus: 'temsirolimus',
 };
 
 
@@ -317,7 +339,7 @@ const processVariants = async ({ conn, row, source }) => {
 
 
 const processDisease = async (conn, originalDiseaseName) => {
-    const diseaseName = diseaseMapping[originalDiseaseName] || `${originalDiseaseName}|${originalDiseaseName} cancer`;
+    const diseaseName = diseaseMapping[originalDiseaseName.toLowerCase().trim()] || `${originalDiseaseName}|${originalDiseaseName} cancer`;
 
     // find the exact disease name
     let disease;
@@ -344,7 +366,7 @@ const processDisease = async (conn, originalDiseaseName) => {
     }
 
     if (!disease) {
-        throw new Error(`missing disease for input: ${originalDiseaseName}`);
+        throw new Error(`missing disease for input: ${originalDiseaseName} (${diseaseName})`);
     }
     return disease;
 };
@@ -357,7 +379,9 @@ const processRow = async ({ row, source, conn }) => {
         ? row.therapy.split(';').map(n => n.toLowerCase().trim()).sort().join(' + ')
         : row.therapy;
     // look up the drug by name
-    const drug = rid(await conn.addTherapyCombination(source, therapyName));
+    const drug = rid(await conn.addTherapyCombination(
+        source, therapyMapping[therapyName.toLowerCase().trim()] || therapyName,
+    ));
     const variants = await Promise.all(row.variants.map(
         async variant => processVariants({ conn, row: variant, source }),
     ));
