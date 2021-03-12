@@ -101,7 +101,7 @@
             "error",
             "always"
         ],
-        "sort-keys": "warn",
+        "sort-keys": ["warn", "asc", {"caseSensitive": true, "natural": false}],
         "sort-keys-fix/sort-keys-fix": "warn",
         "space-in-parens": [
             "error",
