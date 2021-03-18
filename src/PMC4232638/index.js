@@ -59,7 +59,7 @@ const readSupplementaryFile = async (filename) => {
             rows.push(row);
         }
     }
-    rows.filter(row => row[KINASE_COL] === 'yes' && row.Type === 'Oncogene')
+    rows.filter(row => row[KINASE_COL] === 'yes' && ['Oncogene', 'New cancer gene'].includes(row.Type))
         .forEach((row) => {
             row.relevance = 'likely gain of function';
         });
@@ -153,7 +153,7 @@ const uploadFile = async ({ conn, filename }) => {
             // now create the statement
             await conn.addRecord({
                 content: {
-                    conditions: [rid(variant)],
+                    conditions: [rid(variant), rid(gene)],
                     evidence: evidence.map(rid),
                     relevance: rid(relevance),
                     source: rid(source),
