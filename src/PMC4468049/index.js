@@ -6,6 +6,7 @@ const { convertRowFields } = require('../util');
 const { rid, orderPreferredOntologyTerms } = require('../graphkb');
 const _entrezGene = require('../entrez/gene');
 const _pubmed = require('../entrez/pubmed');
+const { PMC4468049: SOURCE_DEFN } = require('../sources');
 
 // https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/ Table 1
 // https://gdc.cancer.gov/resources-tcga-users/tcga-code-tables/tcga-study-abbreviations
@@ -26,9 +27,11 @@ const DISEASE_CODES = {
 };
 
 
-const parseRecurrentFusions = async ({ conn, filename, publication }) => {
+const parseRecurrentFusions = async ({
+    conn, filename, fileStream, publication, source,
+}) => {
     logger.info(`loading: ${filename} (Table S7)`);
-    const rawData = await readXlsxFile(filename, { sheet: 'Table S7' });
+    const rawData = await readXlsxFile(fileStream || filename, { sheet: 'Table S7' });
     const [, header] = rawData;
     const rows = rawData.slice(2).map((values) => {
         const row = {};
@@ -123,6 +126,7 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
                     conditions: [variant, disease],
                     evidence: [publication],
                     relevance,
+                    source,
                     subject: disease,
                 },
                 existsOk: true,
@@ -141,11 +145,13 @@ const parseRecurrentFusions = async ({ conn, filename, publication }) => {
 };
 
 
-const parseKinaseFusions = async ({ conn, filename, publication }) => {
+const parseKinaseFusions = async ({
+    conn, filename, fileStream, publication, source,
+}) => {
     logger.info(`loading: ${filename} (Table S11)`);
     const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
-    const rawData = await readXlsxFile(filename, { sheet: 'Table S11' });
+    const rawData = await readXlsxFile(fileStream || filename, { sheet: 'Table S11' });
     const [, header] = rawData;
     const headerMap = {
         break1: 'Junction_A',
@@ -212,6 +218,7 @@ const parseKinaseFusions = async ({ conn, filename, publication }) => {
                     conditions: [variant, disease],
                     evidence: [publication],
                     relevance,
+                    source,
                     subject: row.kinaseA === 'yes'
                         ? rid(geneA)
                         : rid(geneB),
@@ -235,13 +242,22 @@ const parseKinaseFusions = async ({ conn, filename, publication }) => {
 const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
     logger.info('retrieve the publication');
     const publication = rid((await _pubmed.fetchAndLoadByIds(conn, ['25500544']))[0]);
+    const source = rid(await conn.addRecord({
+        content: { ...SOURCE_DEFN }, existsOk: true, fetchConditions: { name: SOURCE_DEFN.name }, target: 'Source',
+    }));
     const errorList = [];
-    errorList.push(...await parseKinaseFusions({ conn, filename, publication }));
-    errorList.push(...await parseRecurrentFusions({ conn, filename, publication }));
+    errorList.push(...await parseKinaseFusions({
+        conn, filename, publication, source,
+    }));
+    errorList.push(...await parseRecurrentFusions({
+        conn, filename, publication, source,
+    }));
 
-    const errorJson = `${errorLogPrefix}-tcgaFusions.json`;
+    const errorJson = `${errorLogPrefix}-PMC4468049.json`;
     logger.info(`writing: ${errorJson}`);
     fs.writeFileSync(errorJson, JSON.stringify({ records: errorList }, null, 2));
 };
 
-module.exports = { SOURCE_DEFN: {}, kb: true, uploadFile };
+module.exports = {
+    SOURCE_DEFN: {}, uploadFile,
+};

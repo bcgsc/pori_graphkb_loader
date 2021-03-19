@@ -1,4 +1,16 @@
 const sources = {
+    PMC4232638: {
+        description: 'Statements derived from the supplementary files accompanying this publication',
+        displayName: 'PMC4232638-supp',
+        name: 'PMC4232638-supp',
+        url: 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4232638/bin/13059_2014_484_MOESM2_ESM.xlsx',
+    },
+    PMC4468049: {
+        description: 'Statements derived from the supplementary files accompanying this publication',
+        displayName: 'PMC4468049-supp',
+        name: 'PMC4468049-supp',
+        url: 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/bin/NIHMS632238-supplement-2.xlsx',
+    },
     cancerhotspots: {
         description: 'a resource for statistically significant mutations in cancer',
         displayName: 'cancerhotspots.org',

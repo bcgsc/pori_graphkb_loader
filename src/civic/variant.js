@@ -1,6 +1,3 @@
-/**
- * @module importer/civic
- */
 const request = require('request-promise');
 const Ajv = require('ajv');
 
@@ -24,7 +21,9 @@ const {
 
 const BASE_URL = 'https://civicdb.org/api';
 
-
+/**
+ * This is the expected format of the JSON body of a response to a variant request to the CIVIC API
+ */
 const validateVariantSpec = ajv.compile({
     properties: {
         civic_actionability_score: { type: 'number' },

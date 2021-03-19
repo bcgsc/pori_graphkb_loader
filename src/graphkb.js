@@ -459,6 +459,7 @@ class ApiConnection {
     /**
      * @param {object} opt
      * @param {string} opt.target
+     * @param {object} opt.content
      * @param {boolean} [opt.existsOk=false] do not error if a record cannot be created because it already exists
      * @param {object} [opt.fetchConditions=null] the filters clause to be used in attempting to fetch this record
      * @param {boolean} [opt.fetchExisting=true] return the record if it already exists

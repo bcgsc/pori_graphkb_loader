@@ -2,6 +2,7 @@
 .nyc_output
 coverage
 node_modules/
+node_modules.bk
 .orientdb_history
 dist
 *png

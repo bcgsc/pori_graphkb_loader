@@ -1,6 +1,6 @@
 # GraphKB Loader
 
-![build](https://github.com/bcgsc/pori_graphkb_loader/workflows/build/badge.svg?branch=master) ![node versions](https://img.shields.io/badge/node-10-blue)
+![build](https://github.com/bcgsc/pori_graphkb_loader/workflows/build/badge.svg?branch=master) ![Docker Image Version (latest semver)](https://img.shields.io/docker/v/bcgsc/pori-graphkb-loader?label=docker%20image) ![node versions](https://img.shields.io/badge/node-10%20%7C%2012%20%7C%2014-blue)
 
 This package is used to import content from a variety of sources into GraphKB using the API.
 
@@ -19,6 +19,12 @@ detailing the commands and required inputs as follows
 
 ```bash
 node bin/load.js -- --help
+```
+
+or using docker
+
+```bash
+docker run bcgsc/pori-graphkb-loader --help
 ```
 
 ## Loaders
@@ -50,7 +56,8 @@ node bin/load.js -- --help
 - [DGIdb](./src/dgidb)
 - [DoCM](./src/docm)
 - [OncoKB](./src/oncokb)
-- [tcgaFusions](./src/tcgaFusions)
+- [PMC4468049](./src/PMC4468049)
+- [PMC4232638](./src/PMC4232638)
 
 ## Guidelines for Developers
 
