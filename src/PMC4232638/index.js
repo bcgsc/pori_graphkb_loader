@@ -18,8 +18,6 @@ const TP53_COLS = {
 const THIS_PUBMED_ID = '25348012';
 
 const KINASE_COL = 'Functional categories for oncogenes/ new cancer genes - Change in kinase, GTPase, or other enzymatic activity (i.e. RNase)';
-const PATHWAY_COL = 'Functional categories for oncogenes/ new cancer genes - Effect in response to ligand/ substrate, impact on downstream effectors/ pathways, or cell proliferation/ survival, differentiation, apoptosis';
-const GROWTH_COL = 'Functional categories for oncogenes/ new cancer genes - Ability to immortalize or transform human or murine cells (e.g. MCF10A, BaF3, NIH3T3), anchorage-independent growth';
 
 /**
  * Parse the excel supplmentary file to assign relevance to rows
@@ -61,17 +59,10 @@ const readSupplementaryFile = async (filename) => {
             rows.push(row);
         }
     }
-    const oncogenes = rows.filter(row => row.Type === 'Oncogene' || row.Type === 'New cancer gene');
-
-    for (const row of oncogenes) {
-        const growth = row[GROWTH_COL] === 'yes';
-        const kinase = row[KINASE_COL] === 'yes';
-        const pathway = row[PATHWAY_COL] === 'yes';
-
-        if (growth + kinase + pathway > 1) {
-            row.relevance = 'gain of function';
-        }
-    }
+    rows.filter(row => row[KINASE_COL] === 'yes' && ['Oncogene', 'New cancer gene'].includes(row.Type))
+        .forEach((row) => {
+            row.relevance = 'likely gain of function';
+        });
 
     // now loop over TP53 mutations
     for (const row of rows) {
@@ -162,7 +153,7 @@ const uploadFile = async ({ conn, filename }) => {
             // now create the statement
             await conn.addRecord({
                 content: {
-                    conditions: [rid(variant)],
+                    conditions: [rid(variant), rid(gene)],
                     evidence: evidence.map(rid),
                     relevance: rid(relevance),
                     source: rid(source),
