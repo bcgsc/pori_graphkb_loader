@@ -17,9 +17,9 @@ KRAS:p.G12_G13insK
 KRAS:p.G13delG
 ```
 
-Would be the input to load the 3 KRAS variants above into GraphKB as positional variant records.
+Would be the input to load the 4 KRAS variants above into GraphKB as positional variant records.
 
-The above file would be loaded
+The above file would be loaded by the following command
 
 ```bash
 node bin/load.js file variant input.txt
