@@ -54,6 +54,7 @@ const evidenceLevels = {
     sources: { default: SOURCE_DEFN },
 };
 
+// mappings are given primarily to fix known typos
 const relevanceMapping = {
     'increased toxicity (myelosupression)': 'increased toxicity (myelosuppression)',
     'no responsive': 'no response',
@@ -62,7 +63,28 @@ const relevanceMapping = {
 };
 
 const diseaseMapping = {
-    'Any cancer type': 'cancer',
+    'any cancer type': 'cancer',
+    'billiary tract': 'Biliary tract cancer',
+    'cervix squamous cell': 'cervix squamous cell carcinoma',
+    endometrium: 'endometrial cancer',
+    'gastrointestinal stromal': 'gastrointestinal stromal tumor',
+    'head an neck': 'head and neck cancer',
+    'head an neck squamous': 'head and neck squamous cell carcinoma',
+    'lung squamous cell': 'lung squamous cell carcinoma',
+    'malignant peripheral nerve sheat tumor': 'malignant peripheral nerve sheath tumor',
+    ovary: 'ovarian cancer',
+    thymic: 'thymic tumor',
+};
+
+const therapyMapping = {
+    'MEK inhibitor (alone or in combination)': 'mek inhibitor',
+    'egfr tk inhibitor': 'egfr tyrosine kinase inhibitor',
+    'egfr tk inhibitors': 'egfr tyrosine kinase inhibitor',
+    flourouracil: 'fluorouracil',
+    fluvestrant: 'fulvestrant',
+    'jak inhibitors (alone or in combination)': 'jak inhibitor',
+    'mek inhibitors (alone or in combination)': 'mek inhibitor',
+    tensirolimus: 'temsirolimus',
 };
 
 
@@ -93,8 +115,8 @@ const parseEvidence = (row) => {
             evidence.push(item);
         } else if (/^NCT\d+$/.exec(item)) {
             evidence.push(item);
-        } else if (!item.startsWith('FDA') && !item.startsWith('NCCN')) {
-            throw new Error(`cannot process non-pubmed/nct evidence ${item}`);
+        } else if (!['FDA', 'NCCN', 'ASCO', 'AACR'].some(prefix => item.startsWith(prefix))) {
+            throw new Error(`cannot process non-pubmed/nct/aacr/asco evidence ${item}`);
         }
     }
     return evidence;
@@ -317,7 +339,7 @@ const processVariants = async ({ conn, row, source }) => {
 
 
 const processDisease = async (conn, originalDiseaseName) => {
-    const diseaseName = diseaseMapping[originalDiseaseName] || `${originalDiseaseName}|${originalDiseaseName} cancer`;
+    const diseaseName = diseaseMapping[originalDiseaseName.toLowerCase().trim()] || `${originalDiseaseName}|${originalDiseaseName} cancer`;
 
     // find the exact disease name
     let disease;
@@ -344,10 +366,30 @@ const processDisease = async (conn, originalDiseaseName) => {
     }
 
     if (!disease) {
-        throw new Error(`missing disease for input: ${originalDiseaseName}`);
+        throw new Error(`missing disease for input: ${originalDiseaseName} (${diseaseName})`);
     }
     return disease;
 };
+
+
+const fetchAbstract = async (conn, abstractString) => {
+    const m = /^(ASCO|AACR)\s+(20[0-2][0-9])\s+\((abstr(act)?)?\s*(\w+)\)$/.exec(abstractString);
+
+    if (!m) {
+        throw new Error(`unable to parse abstract from ${abstractString}`);
+    }
+    const [, source, year,, abstractNumber] = m;
+    const abstract = await conn.getUniqueRecordBy({
+        filters: [
+            { year },
+            { source: { filters: { name: source }, target: 'Source' } },
+            { abstractNumber },
+        ],
+        target: 'Abstract',
+    });
+    return abstract;
+};
+
 
 const processRow = async ({ row, source, conn }) => {
     // process the protein notation
@@ -357,7 +399,9 @@ const processRow = async ({ row, source, conn }) => {
         ? row.therapy.split(';').map(n => n.toLowerCase().trim()).sort().join(' + ')
         : row.therapy;
     // look up the drug by name
-    const drug = rid(await conn.addTherapyCombination(source, therapyName));
+    const drug = rid(await conn.addTherapyCombination(
+        source, therapyMapping[therapyName.toLowerCase().trim()] || therapyName,
+    ));
     const variants = await Promise.all(row.variants.map(
         async variant => processVariants({ conn, row: variant, source }),
     ));
@@ -369,12 +413,16 @@ const processRow = async ({ row, source, conn }) => {
 
     const articles = await _pubmed.fetchAndLoadByIds(
         conn,
-        row.evidence.filter(ev => !ev.startsWith('NCT')),
+        row.evidence.filter(ev => ['NCT', 'ASCO', 'AACR'].every(prefix => !ev.startsWith(prefix))),
     );
     const trials = await Promise.all(
         row.evidence
             .filter(ev => ev.startsWith('NCT'))
             .map(async evidence => _trials.fetchAndLoadById(conn, evidence)),
+    );
+    const abstracts = await Promise.all(
+        row.evidence.filter(ev => ev.startsWith('AACR') || ev.startsWith('ASCO'))
+            .map(async ev => fetchAbstract(conn, ev)),
     );
 
     // determine the relevance of the statement
@@ -390,7 +438,7 @@ const processRow = async ({ row, source, conn }) => {
         ));
     }
 
-    const evidence = [...articles.map(rid), ...trials.map(rid)];
+    const evidence = [...articles.map(rid), ...trials.map(rid), ...abstracts.map(rid)];
 
     if (evidence.length === 0) {
         evidence.push(rid(source));
@@ -493,10 +541,6 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
                     errors = true;
                     logger.error(err);
                     counts.error++;
-
-                    if (err.toString().includes('of undefined')) {
-                        throw err;
-                    }
                 }
             }
         }

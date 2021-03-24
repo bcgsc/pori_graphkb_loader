@@ -33,7 +33,6 @@ logs
 pm2_logs
 errorLog-*
 .~*
-data/asco.json
 data/ligand_actions.json
 *.log
 tmp
