@@ -1,2 +1,7 @@
 node_modules
 npm-debug.log
+snakemake_logs
+snakemake_data
+logs
+.snakemake
+venv

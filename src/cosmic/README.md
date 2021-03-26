@@ -33,11 +33,11 @@ gunzip CosmicFusionExport.tsv.gz
 Since this loader requires 2 files, it is separate from the other more general loaders
 
 ```bash
-node bin/cosmic.js resistance CosmicResistanceMutations.tsv classification.csv
+node bin/load.js cosmic resistance CosmicResistanceMutations.tsv classification.csv
 ```
 
 And then to load the fusions (Will create recurrency statements)
 
 ```bash
-node bin/cosmic.js fusions CosmicFusionExport.tsv classification.csv
+node bin/load.js cosmic fusions CosmicFusionExport.tsv classification.csv
 ```
