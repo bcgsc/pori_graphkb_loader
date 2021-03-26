@@ -25,6 +25,7 @@ const refseq = require('../src/refseq');
 const PMC4468049 = require('../src/PMC4468049');
 const PMC4232638 = require('../src/PMC4232638');
 const uberon = require('../src/uberon');
+const variants = require('../src/variants');
 
 const clinicaltrialsgov = require('../src/clinicaltrialsgov');
 
@@ -52,6 +53,7 @@ const FILE_MODULES = {
     ontology,
     refseq,
     uberon,
+    variants,
 };
 
 const COSMIC_MODULES = {
