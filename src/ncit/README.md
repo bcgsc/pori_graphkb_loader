@@ -1,42 +1,50 @@
 # NCI Thesuarus
 
 First download the latest version of the plain text tab delimited files. This should include both
-the main thesaurus file
+the main thesaurus file and the cross mapping file
+
+- [Load the Main Flat File](#load-the-main-flat-file)
+- [FDA Cross Mapping File](#fda-cross-mapping-file)
+
+## Load the Main Flat File
+
+Download the file
 
 ```bash
-wget https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/archive/
-LATEST=$(cat index.html | grep '"[0-9][0-9]*\.[0-9][0-9][a-z]*_Release' -o | grep -o '[0-9][0-9]*\.[0-9][0-9][a-z]*' | tail -n 1)
-rm index.html
-echo "Latest Release: $LATEST"
-
-NAME=Thesaurus_$LATEST
-wget https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/archive/${LATEST}_Release/Thesaurus_${LATEST}.FLAT.zip
-
-unzip ${NAME}.FLAT.zip
-rm ${NAME}.FLAT.zip
-mv Thesaurus.txt Thesaurus_v${LATEST}.txt
-rm -rf __MACOSX
+wget https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus.FLAT.zip
+unzip Thesaurus.FLAT.zip
+rm Thesaurus.FLAT.zip
 ```
 
-As well as the FDA cross-mapping reference file
+This is a headerless tab delimited file with the following
+[format](https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/ReadMe.txt)
 
-```bash
-wget https://evs.nci.nih.gov/ftp1/FDA/UNII/Archive/
-LATEST=$(cat index.html | grep -P  'href="[^"]+txt"' -o | cut -f 2 -d\" | sort | tail -n 1)
-rm index.html
-echo "Latest Release: $LATEST"
-wget https://evs.nci.nih.gov/ftp1/FDA/UNII/Archive/$LATEST
-```
+- code
+- concept name
+- parents
+- synonyms
+- definition
+- display name
+- concept status
+- semantic type
 
 Next use the general file loader to load the NCIt terms
 
 ```bash
-node bin/loadFile ncit Thesaurus_v*.txt
+node bin/loadFile ncit Thesaurus.txt
+```
+
+## FDA Cross Mapping File
+
+Now download the FDA cross-mapping reference file
+
+```bash
+wget https://evs.nci.nih.gov/ftp1/FDA/UNII/FDA-UNII_NCIt_Subsets.txt
 ```
 
 Then, after you have loaded the [FDA-SRS](../fdaSrs) data (if you are planning to load it)
 load the cross-reference mapping data
 
 ```bash
-node bin/loadFile ncitFdaXref FDA-UNII_NCIt_Subsets_*.txt
+node bin/loadFile ncitFdaXref FDA-UNII_NCIt_Subsets.txt
 ```
