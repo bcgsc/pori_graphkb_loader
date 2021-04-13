@@ -73,6 +73,7 @@ const uploadFile = async ({ filename, conn }) => {
     const ncitLinks = [];
     logger.info(`parsing: ${filename}`);
     rdf.parse(content, graph, OWL_NAMESPACE, 'application/rdf+xml');
+    logger.info('finished parsing');
 
     const nodesByCode = convertOwlGraphToJson(graph, parseUberonId);
 
