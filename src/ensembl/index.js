@@ -4,7 +4,7 @@
  * @module importer/ensembl
  */
 
-const { loadDelimToJson, requestWithRetry } = require('../util');
+const { loadDelimToJson, requestWithRetry, convertRowFields } = require('../util');
 const {
     rid, orderPreferredOntologyTerms, generateCacheKey,
 } = require('../graphkb');
@@ -183,15 +183,20 @@ const fetchAndLoadById = async (conn, { sourceId, sourceIdVersion, biotype }) =>
  */
 const uploadFile = async (opt) => {
     const HEADER = {
-        geneId: 'Gene stable ID',
-        geneIdVersion: 'Version (gene)',
+        geneIdVersion: 'Gene stable ID version',
         hgncId: 'HGNC ID',
         refseqId: 'RefSeq mRNA ID',
-        transcriptId: 'Transcript stable ID',
-        transcriptIdVersion: 'Version (transcript)',
+        transcriptIdVersion: 'Transcript stable ID version',
     };
     const { filename, conn } = opt;
     const contentList = await loadDelimToJson(filename);
+    const rows = contentList.map(row => convertRowFields(HEADER, row));
+
+    // process versions
+    for (const row of rows) {
+        [row.geneId, row.geneIdVersion] = row.geneIdVersion.split('.');
+        [row.transcriptId, row.transcriptIdVersion] = row.transcriptIdVersion.split('.');
+    }
 
     const source = await conn.addRecord({
         content: SOURCE_DEFN,
@@ -237,23 +242,30 @@ const uploadFile = async (opt) => {
 
     logger.info('pre-fetching refseq entries');
     await _refseq.preLoadCache(conn);
-    logger.info('fetching missing refseq entries');
-    await _refseq.fetchAndLoadByIds(conn, contentList.map(r => r[HEADER.refseqId]).filter(r => r));
+    const missingRefSeqIds = new Set();
+    rows.map(r => r.refseqId || '').forEach((id) => {
+        if (!_refseq.cacheHas(id) && id) {
+            missingRefSeqIds.add(id);
+        }
+    });
 
-    logger.info(`processing ${contentList.length} records`);
+    logger.info(`fetching ${missingRefSeqIds.size} missing refseq entries`);
+    await _refseq.fetchAndLoadByIds(conn, Array.from(missingRefSeqIds));
 
-    for (let index = 0; index < contentList.length; index++) {
-        const record = contentList[index];
+    logger.info(`processing ${rows.length} records`);
 
-        const geneId = record[HEADER.geneId];
-        const geneIdVersion = record[HEADER.geneIdVersion];
+    for (let index = 0; index < rows.length; index++) {
+        const record = rows[index];
+
+        const { geneId, geneIdVersion } = record;
+
         const key = generateCacheKey({ sourceId: geneId, sourceIdVersion: geneIdVersion });
 
         if (preLoaded.has(key)) {
             counts.skip++;
             continue;
         }
-        logger.info(`processing ${geneId}.${geneIdVersion || ''} (${index} / ${contentList.length})`);
+        logger.info(`processing ${geneId}.${geneIdVersion || ''} (${index} / ${rows.length})`);
         let newGene = false;
 
         if (visited[key] === undefined) {
@@ -299,8 +311,8 @@ const uploadFile = async (opt) => {
             content: {
                 biotype: 'transcript',
                 source: rid(source),
-                sourceId: record[HEADER.transcriptId],
-                sourceIdVersion: record[HEADER.transcriptIdVersion],
+                sourceId: record.transcriptId,
+                sourceIdVersion: record.transcriptIdVersion,
             },
             existsOk: true,
             target: 'Feature',
@@ -309,7 +321,7 @@ const uploadFile = async (opt) => {
             content: {
                 biotype: 'transcript',
                 source: rid(source),
-                sourceId: record[HEADER.transcriptId],
+                sourceId: record.transcriptId,
                 sourceIdVersion: null,
             },
             existsOk: true,
@@ -346,13 +358,13 @@ const uploadFile = async (opt) => {
         // TODO: protein -> elementof -> transcript
 
         // transcript -> aliasof -> refseq
-        if (record[HEADER.refseqId]) {
+        if (record.refseqId) {
             try {
                 const refseq = await conn.getUniqueRecordBy({
                     filters: {
                         AND: [
                             { source: rid(refseqSource) },
-                            { sourceId: record[HEADER.refseqId] },
+                            { sourceId: record.refseqId },
                             { sourceIdVersion: null },
                         ],
                     },
@@ -368,14 +380,14 @@ const uploadFile = async (opt) => {
                     target: 'crossreferenceof',
                 });
             } catch (err) {
-                logger.log('error', `failed cross-linking from ${record[HEADER.transcriptId]} to ${record[HEADER.refseqId]}`);
-                refseqMissingRecords.add(record[HEADER.refseqId]);
+                logger.log('error', `failed cross-linking from ${record.transcriptId} to ${record.refseqId}`);
+                refseqMissingRecords.add(record.refseqId);
             }
         }
         // gene -> aliasof -> hgnc
-        if (record[HEADER.hgncId] && newGene) {
+        if (record.hgncId && newGene) {
             try {
-                const hgnc = await _hgnc.fetchAndLoadBySymbol({ conn, paramType: 'hgnc_id', symbol: record[HEADER.hgncId] });
+                const hgnc = await _hgnc.fetchAndLoadBySymbol({ conn, paramType: 'hgnc_id', symbol: record.hgncId });
                 await conn.addRecord({
                     content: {
                         in: rid(hgnc), out: rid(gene), source: rid(source),
@@ -385,8 +397,8 @@ const uploadFile = async (opt) => {
                     target: 'crossreferenceof',
                 });
             } catch (err) {
-                hgncMissingRecords.add(record[HEADER.hgncId]);
-                logger.log('error', `failed cross-linking from ${gene.sourceid} to ${record[HEADER.hgncId]}`);
+                hgncMissingRecords.add(record.hgncId);
+                logger.log('error', `failed cross-linking from ${gene.sourceid} to ${record.hgncId}`);
             }
         }
         counts.success++;
