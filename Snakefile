@@ -19,6 +19,7 @@ COSMIC_PASSWORD = config.get('cosmic_password')
 USE_COSMIC = COSMIC_EMAIL or COSMIC_PASSWORD
 BACKFILL_TRIALS = config.get('trials')
 GITHUB_DATA = 'https://raw.githubusercontent.com/bcgsc/pori_graphkb_loader/develop/data'
+CONTAINER = 'docker://bcgsc/pori-graphkb-loader:latest'
 
 rule all:
     input: f'{DATA_DIR}/civic.COMPLETE',
@@ -200,6 +201,7 @@ rule download_cosmic_fusions:
 
 rule load_local:
     input: f'{DATA_DIR}/local/{{local}}.json'
+    container: CONTAINER
     log: f'{LOGS_DIR}/local-{{local}}.logs.txt'
     output: f'{DATA_DIR}/local-{{local}}.COMPLETE'
     shell: 'node bin/load.js file ontology {input} &> {log}; cp {log} {output}'
@@ -208,6 +210,7 @@ rule load_local:
 rule load_ncit:
     input: expand(rules.load_local.output, local=['vocab']),
         data=rules.download_ncit.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/ncit.logs.txt'
     output: f'{DATA_DIR}/ncit.COMPLETE'
     shell: 'node bin/load.js file ncit {input.data} &> {log}; cp {log} {output}'
@@ -216,6 +219,7 @@ rule load_ncit:
 rule load_fda_srs:
     input: expand(rules.load_local.output, local=['vocab']),
         data=rules.download_fda_srs.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/fdaSrs.logs.txt'
     output: f'{DATA_DIR}/fdaSrs.COMPLETE'
     shell: 'node bin/load.js file fdaSrs {input.data} &> {log}; cp {log} {output}'
@@ -225,6 +229,7 @@ rule load_ncit_fda:
     input: rules.load_ncit.output,
         rules.load_fda_srs.output,
         data=rules.download_ncit_fda.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/ncitFdaXref.logs.txt'
     output: f'{DATA_DIR}/ncitFdaXref.COMPLETE'
     shell: 'node bin/load.js file ncitFdaXref {input.data} &> {log}; cp {log} {output}'
@@ -233,6 +238,7 @@ rule load_ncit_fda:
 rule load_refseq:
     input: expand(rules.load_local.output, local=['vocab']),
         data=rules.download_refseq.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/refseq.logs.txt'
     output: f'{DATA_DIR}/refseq.COMPLETE'
     shell: 'node bin/load.js file refseq {input.data} &> {log}; cp {log} {output}'
@@ -241,6 +247,7 @@ rule load_refseq:
 rule load_ensembl:
     input: rules.load_refseq.output,
         data=rules.download_ensembl.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/ensembl.logs.txt'
     output: f'{DATA_DIR}/ensembl.COMPLETE'
     shell: 'node bin/load.js file ensembl {input.data} &> {log}; cp {log} {output}'
@@ -249,6 +256,7 @@ rule load_ensembl:
 rule load_do:
     input: rules.load_ncit.output,
         data=rules.download_do.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/do.logs.txt'
     output: f'{DATA_DIR}/do.COMPLETE'
     shell: 'node bin/load.js file diseaseOntology {input.data} &> {log}; cp {log} {output}'
@@ -257,6 +265,7 @@ rule load_do:
 rule load_uberon:
     input: rules.load_ncit.output,
         data=rules.download_uberon.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/uberon.logs.txt'
     output: f'{DATA_DIR}/uberon.COMPLETE'
     shell: 'node bin/load.js file uberon {input.data} &> {log}; cp {log} {output}'
@@ -265,6 +274,7 @@ rule load_uberon:
 rule load_drugbank:
     input: rules.load_fda_srs.output,
         data=rules.download_drugbank.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/drugbank.logs.txt'
     output: f'{DATA_DIR}/drugbank.COMPLETE'
     shell: 'node bin/load.js file drugbank {input.data} &> {log}; cp {log} {output}'
@@ -272,6 +282,7 @@ rule load_drugbank:
 
 rule load_oncotree:
     input: rules.load_ncit.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/oncotree.logs.txt'
     output: f'{DATA_DIR}/oncotree.COMPLETE'
     shell: 'node bin/load.js api oncotree &> {log}; cp {log} {output}'
@@ -279,6 +290,7 @@ rule load_oncotree:
 
 rule load_dgidb:
     input: rules.load_local.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/dgidb.logs.txt'
     output: f'{DATA_DIR}/dgidb.COMPLETE'
     shell: 'node bin/load.js api dgidb &> {log}; cp {log} {output}'
@@ -286,6 +298,7 @@ rule load_dgidb:
 
 def get_drug_inputs(wildcards):
     inputs = [*rules.load_fda_srs.output, *rules.load_ncit.output]
+    container: CONTAINER
     if USE_DRUGBANK:
         inputs.append(*rules.load_drugbank.output)
     return inputs
@@ -293,6 +306,7 @@ def get_drug_inputs(wildcards):
 
 rule all_drugs:
     input: lambda wildcards: get_drug_inputs(wildcards)
+    container: CONTAINER
     output: f'{LOGS_DIR}/all_drugs.COMPLETE'
     shell: 'touch {output}'
 
@@ -301,6 +315,7 @@ rule all_diseases:
     input: rules.load_do.output,
         rules.load_ncit.output,
         rules.load_oncotree.output
+    container: CONTAINER
     output: f'{LOGS_DIR}/all_diseases.COMPLETE'
     shell: 'touch {output}'
 
@@ -310,6 +325,7 @@ rule load_cancerhotspots:
         rules.load_oncotree.output,
         rules.load_ensembl.output,
         data=rules.download_cancerhotspots.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/cancerhotspots.logs.txt'
     output: f'{DATA_DIR}/cancerhotspots.COMPLETE'
     shell: 'node bin/load.js file cancerhotspots {input.data} &> {log}; cp {log} {output}'
@@ -318,6 +334,7 @@ rule load_cancerhotspots:
 rule load_PMC4232638:
     input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes']),
         data=rules.download_PMC4232638.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/PMC4232638.logs.txt'
     output: f'{DATA_DIR}/PMC4232638.COMPLETE'
     shell: 'node bin/load.js file PMC4232638 {input.data} &> {log}; cp {log} {output}'
@@ -327,6 +344,7 @@ rule load_PMC4468049:
     input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes']),
         rules.all_diseases.output,
         data=rules.download_PMC4468049.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/PMC4468049.logs.txt'
     output: f'{DATA_DIR}/PMC4468049.COMPLETE'
     shell: 'node bin/load.js file PMC4468049 {input.data} &> {log}; cp {log} {output}'
@@ -336,6 +354,7 @@ rule load_civic:
     input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes', 'evidenceLevels', 'aacr', 'asco']),
         rules.load_ncit.output,
         rules.load_do.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/civic.logs.txt'
     output: f'{DATA_DIR}/civic.COMPLETE'
     shell: 'node bin/load.js api civic &> {log}; cp {log} {output}'
@@ -346,6 +365,7 @@ rule load_cgi:
         rules.all_diseases.output,
         rules.all_drugs.output,
         data=rules.download_cgi.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/cgi.logs.txt'
     output: f'{DATA_DIR}/cgi.COMPLETE'
     shell: 'node bin/load.js file cgi {input.data} &> {log}; cp {log} {output}'
@@ -355,12 +375,14 @@ rule load_docm:
     input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes']),
         rules.load_ncit.output,
         rules.load_do.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/docm.logs.txt'
     output: f'{DATA_DIR}/docm.COMPLETE'
     shell: 'node bin/load.js api docm &> {log}; cp {log} {output}'
 
 
 rule load_approvals:
+    container: CONTAINER
     log: f'{LOGS_DIR}/fdaApprovals.logs.txt'
     output: f'{DATA_DIR}/fdaApprovals.COMPLETE'
     shell: 'node bin/load.js api fdaApprovals &> {log}; cp {log} {output}'
@@ -371,6 +393,7 @@ rule load_clinicaltrialsgov:
         rules.all_diseases.output,
         rules.all_drugs.output,
         data=rules.download_clinicaltrialsgov.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/clinicaltrialsgov.logs.txt'
     output: f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'
     shell: 'node bin/load.js api clinicaltrialsgov &> {log}; cp {log} {output}'
@@ -382,6 +405,7 @@ rule load_cosmic_resistance:
         rules.all_drugs.output,
         main=rules.download_cosmic_resistance.output,
         supp=rules.download_cosmic_diseases.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/cosmic_resistance.logs.txt'
     output: f'{DATA_DIR}/cosmic_resistance.COMPLETE'
     shell: 'node bin/load.js cosmic resistance {input.main} {input.supp} &> {log}; cp {log} {output}'
@@ -391,6 +415,7 @@ rule load_cosmic_fusions:
     input: rules.all_diseases.output,
         main=rules.download_cosmic_fusions.output,
         supp=rules.download_cosmic_diseases.output
+    container: CONTAINER
     log: f'{LOGS_DIR}/cosmic_fusions.logs.txt'
     output: f'{DATA_DIR}/cosmic_fusions.COMPLETE'
     shell: 'node bin/load.js cosmic fusions {input.main} {input.supp} &> {log}; cp {log} {output}'
