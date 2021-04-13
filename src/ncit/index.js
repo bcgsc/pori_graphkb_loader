@@ -230,14 +230,14 @@ const uploadFile = async ({ filename, conn }) => {
             .map(parent => (rowsById[parent.trim()] || {}).semanticType || '')
             .join('|');
     }
-    const deprecated = [];
+    const deprecatedRows = [];
 
     for (const raw of rawRows) {
         try {
             const row = cleanRawRow(raw);
 
             if (row.deprecated) {
-                deprecated.push(row);
+                deprecatedRows.push(row);
                 counts.skip++;
                 continue;
             }
@@ -256,7 +256,7 @@ const uploadFile = async ({ filename, conn }) => {
             counts.skip++;
         }
     }
-    logger.verbose(`skipping (${deprecated.length}) retired or obsolete concepts: ${deprecated.map(d => d.sourceId).join(',')}`);
+    logger.verbose(`skipping (${deprecatedRows.length}) retired or obsolete concepts: ${deprecatedRows.map(d => d.sourceId).join(',')}`);
     const rejected = new Set();
 
     // if possible, assign the row another name from its list of synonyms (instead of the display name)
