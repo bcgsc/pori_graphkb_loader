@@ -452,6 +452,42 @@
             "sourceId": "e5",
             "url": "https://civicdb.org/glossary"
         },
+        "cosmic-1": {
+            "description": "Approved marketed drug with demonstrated efficacy at the mutation",
+            "displayName": "COSMIC-1",
+            "source": "cosmic",
+            "sourceId": "1"
+        },
+        "cosmic-2": {
+            "description": "Phase 2/3 clinical results meet primary outcome measures",
+            "displayName": "COSMIC-2",
+            "source": "cosmic",
+            "sourceId": "2"
+        },
+        "cosmic-3": {
+            "description": "Drug in ongoing clinical trials",
+            "displayName": "COSMIC-3",
+            "source": "cosmic",
+            "sourceId": "3"
+        },
+        "cosmic-4": {
+            "description": "Case studies",
+            "displayName": "COSMIC-4",
+            "source": "cosmic",
+            "sourceId": "4"
+        },
+        "cosmic-6": {
+            "description": "Use dependent on test for another mutation",
+            "displayName": "COSMIC-6",
+            "source": "cosmic",
+            "sourceId": "6"
+        },
+        "cosmic-7": {
+            "description": "Trial results all negative",
+            "displayName": "COSMIC-7",
+            "source": "cosmic",
+            "sourceId": "7"
+        },
         "ipr-a": {
             "description": "Evidence pertaining to biomarkers associated with FDA-approved therapies or professional guidelines for this tumour type",
             "displayName": "IPR-A",
@@ -679,6 +715,13 @@
             "name": "civic",
             "url": "https://civicdb.org",
             "usage": "https://creativecommons.org/publicdomain/zero/1.0"
+        },
+        "cosmic": {
+            "description": "COSMIC, the Catalogue Of Somatic Mutations In Cancer, is the world's largest and most comprehensive resource for exploring the impact of somatic mutations in human cancer.",
+            "displayName": "COSMIC",
+            "name": "cosmic",
+            "url": "https://cancer.sanger.ac.uk/cosmic",
+            "usage": "https://cancer.sanger.ac.uk/cosmic/license"
         },
         "cpic": {
             "citation": "https://cpicpgx.org/publications",

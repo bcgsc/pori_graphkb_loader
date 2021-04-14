@@ -14,7 +14,6 @@ const {
 const {
     rid,
     orderPreferredOntologyTerms,
-    convertRecordToQueryFilters,
 } = require('../graphkb');
 const _entrezGene = require('../entrez/gene');
 const { logger } = require('../logging');
@@ -68,7 +67,10 @@ const processVariants = async ({ conn, record, source }) => {
         } else {
             reference1 = await conn.getUniqueRecordBy({
                 filters: {
-                    AND: [{ OR: [{ sourceId: chromosome }, { name: chromosome }] }, { biotype: 'chromosome' }],
+                    AND: [
+                        { OR: [{ sourceId: chromosome }, { name: chromosome }] },
+                        { biotype: 'chromosome' },
+                    ],
                 },
                 sort: orderPreferredOntologyTerms,
                 target: 'Feature',
@@ -272,7 +274,8 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     const previousLoad = new Set();
     logger.info('load previous statements');
     const statements = await conn.getRecords({
-        filters: convertRecordToQueryFilters({ neighbors: 0, returnProperties: 'sourceId', source: rid(source) }),
+        filters: { source: rid(source) },
+        returnProperties: ['sourceId'],
         target: 'Statement',
     });
 

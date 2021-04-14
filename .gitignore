@@ -6,6 +6,7 @@ node_modules.bk
 .orientdb_history
 dist
 *png
+!docs/*png
 *gz
 *zip
 *tar
@@ -36,3 +37,11 @@ errorLog-*
 data/ligand_actions.json
 *.log
 tmp
+
+# snakemake stuff
+.snakemake
+venv
+snakemake_data
+snakemake_logs
+dag.svg
+dag.png

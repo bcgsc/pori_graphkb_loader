@@ -12,6 +12,7 @@ This package is used to import content from a variety of sources into GraphKB us
   - [Creating a new Loader](#creating-a-new-loader)
     - [API Loaders](#api-loaders)
     - [File Loaders](#file-loaders)
+- [Initializing GraphKB Content](#initializing-graphkb-content)
 
 Automatic Import modules are provided for a variety of input sources. To Start importing external data, first the GraphKB API
 must already be running. Then the command line interface can be used for upload. Get the help menu
@@ -120,3 +121,39 @@ export is called `uploadFile` and accepts an additional argument. For example se
  */
 const uploadFile = async ({ filename, conn }) => {
 ```
+
+## Initializing GraphKB Content
+
+For convenience, a snakemake workflow is included to run all available loaders in an optimal order
+to initialize the content in a new instance of GraphKB. This is done via python snakemake. To set
+up snakemake in a virtual environment run the following
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -U pip setuptools
+pip install snakemake
+```
+
+Then the workflow can be run as follows (single core by default but can be adjusted depending on
+your server settings)
+
+```bash
+snakemake -j 1
+```
+
+![default workflow](./docs/basic_workflow.png)
+
+The COSMIC and DrugBank options require licensing and are therefore not run by default. If you have
+a license to use them then you can include one or both of them by providing email and password
+as config parameters
+
+```bash
+snakemake -j 1 \
+  --config drugbank_email="YOUR EMAIL" \
+  drugbank_password="YOUR PASSWORD" \
+  cosmic_email="YOUR EMAIL" \
+  cosmic_password="YOUR PASSWORD"
+```
+
+![full workflow](./docs/full_workflow.png)

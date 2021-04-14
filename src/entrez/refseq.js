@@ -3,6 +3,8 @@
  */
 const Ajv = require('ajv');
 const _ = require('lodash');
+const pLimit = require('p-limit');
+
 
 const {
     fetchByIdList, uploadRecord, preLoadCache: preLoadAnyCache, fetchAndLoadBySearchTerm: search,
@@ -10,10 +12,12 @@ const {
 const { checkSpec } = require('../util');
 const { rid } = require('../graphkb');
 const { refseq: SOURCE_DEFN } = require('../sources');
+const { logger } = require('../logging');
+
 
 const ajv = new Ajv();
 
-
+const CONCURENCY_LIMIT = 100;
 const DB_NAME = 'nucleotide';
 const CACHE = {};
 
@@ -102,46 +106,50 @@ const fetchAndLoadByIds = async (api, idListIn) => {
             records.push({ ...simplified, sourceIdVersion: null });
         });
     }
+    logger.verbose(`uploading ${records.length} records`);
 
-    const result = await Promise.all(records.map(
-        async record => uploadRecord(api, record, {
-            cache: CACHE,
-            sourceDefn: SOURCE_DEFN,
-            target: 'Feature',
-        }),
-    ));
+    const limit = pLimit(CONCURENCY_LIMIT);
+    const result = await Promise.all(records.map(rec => limit(() => uploadRecord(api, rec, {
+        cache: CACHE,
+        sourceDefn: SOURCE_DEFN,
+        target: 'Feature',
+    }))));
+
     // for versioned records link to the unversioned version
-    await Promise.all(result.map(async (record) => {
-        if (record.sourceIdVersion !== undefined && record.sourceIdVersion !== null) {
-            const unversioned = await api.addRecord({
-                content: {
-                    biotype: record.biotype,
-                    description: record.description,
-                    displayName: record.sourceId.toUpperCase(),
-                    longName: record.longName,
-                    name: record.name,
-                    source: rid(record.source),
-                    sourceId: record.sourceId,
-                    sourceIdVersion: null,
-                },
-                existsOk: true,
-                fetchConditions: {
-                    AND: [
-                        { name: record.name },
-                        { source: rid(record.source) },
-                        { sourceId: record.sourceId },
-                        { sourceIdVersion: null },
-                    ],
-                },
-                target: 'Feature',
-            });
-            await api.addRecord({
-                content: { in: rid(record), out: rid(unversioned), source: record.source },
-                existsOk: true,
-                target: 'GeneralizationOf',
-            });
-        }
-    }));
+    await Promise.all(result
+        .filter(r => (r.sourceIdVersion !== undefined && r.sourceIdVersion !== null))
+        .map((record) => {
+            const linkRecords = async () => {
+                const unversioned = await api.addRecord({
+                    content: {
+                        biotype: record.biotype,
+                        description: record.description,
+                        displayName: record.sourceId.toUpperCase(),
+                        longName: record.longName,
+                        name: record.name,
+                        source: rid(record.source),
+                        sourceId: record.sourceId,
+                        sourceIdVersion: null,
+                    },
+                    existsOk: true,
+                    fetchConditions: {
+                        AND: [
+                            { name: record.name },
+                            { source: rid(record.source) },
+                            { sourceId: record.sourceId },
+                            { sourceIdVersion: null },
+                        ],
+                    },
+                    target: 'Feature',
+                });
+                await api.addRecord({
+                    content: { in: rid(record), out: rid(unversioned), source: record.source },
+                    existsOk: true,
+                    target: 'GeneralizationOf',
+                });
+            };
+            return limit(() => linkRecords);
+        }));
 
     return result;
 };
@@ -164,9 +172,12 @@ const fetchAndLoadBySearchTerm = (api, term, opt = {}) => search(api, term, {
     target: 'Feature',
 });
 
+const cacheHas = key => Boolean(CACHE[key]);
+
 
 module.exports = {
     SOURCE_DEFN,
+    cacheHas,
     fetchAndLoadByIds,
     fetchAndLoadBySearchTerm,
     parseRecord,
