@@ -1,6 +1,6 @@
 # GraphKB Loader
 
-![build](https://github.com/bcgsc/pori_graphkb_loader/workflows/build/badge.svg?branch=master)
+![build](https://github.com/bcgsc/pori_graphkb_loader/workflows/build/badge.svg?branch=master) ![Docker Image Version (latest semver)](https://img.shields.io/docker/v/bcgsc/pori-graphkb-loader?label=docker%20image) ![node versions](https://img.shields.io/badge/node-10%20%7C%2012%20%7C%2014-blue)
 
 This package is used to import content from a variety of sources into GraphKB using the API.
 
@@ -12,6 +12,7 @@ This package is used to import content from a variety of sources into GraphKB us
   - [Creating a new Loader](#creating-a-new-loader)
     - [API Loaders](#api-loaders)
     - [File Loaders](#file-loaders)
+- [Initializing GraphKB Content](#initializing-graphkb-content)
 
 Automatic Import modules are provided for a variety of input sources. To Start importing external data, first the GraphKB API
 must already be running. Then the command line interface can be used for upload. Get the help menu
@@ -19,6 +20,12 @@ detailing the commands and required inputs as follows
 
 ```bash
 node bin/load.js -- --help
+```
+
+or using docker
+
+```bash
+docker run bcgsc/pori-graphkb-loader --help
 ```
 
 ## Loaders
@@ -50,7 +57,8 @@ node bin/load.js -- --help
 - [DGIdb](./src/dgidb)
 - [DoCM](./src/docm)
 - [OncoKB](./src/oncokb)
-- [tcgaFusions](./src/tcgaFusions)
+- [PMC4468049](./src/PMC4468049)
+- [PMC4232638](./src/PMC4232638)
 
 ## Guidelines for Developers
 
@@ -59,8 +67,8 @@ node bin/load.js -- --help
 Clone the repository
 
 ```bash
-git clone https://svn.bcgsc.ca/bitbucket/scm/dat/knowledgebase_importer.git
-cd knowledgebase_importer
+git clone https://github.com/bcgsc/pori_graphkb_loader.git
+cd pori_graphkb_loader
 git checkout develop
 ```
 
@@ -113,3 +121,39 @@ export is called `uploadFile` and accepts an additional argument. For example se
  */
 const uploadFile = async ({ filename, conn }) => {
 ```
+
+## Initializing GraphKB Content
+
+For convenience, a snakemake workflow is included to run all available loaders in an optimal order
+to initialize the content in a new instance of GraphKB. This is done via python snakemake. To set
+up snakemake in a virtual environment run the following
+
+```bash
+python3 -m venv venv
+source venv/bin/activate
+pip install -U pip setuptools
+pip install snakemake
+```
+
+Then the workflow can be run as follows (single core by default but can be adjusted depending on
+your server settings)
+
+```bash
+snakemake -j 1
+```
+
+![default workflow](./docs/basic_workflow.png)
+
+The COSMIC and DrugBank options require licensing and are therefore not run by default. If you have
+a license to use them then you can include one or both of them by providing email and password
+as config parameters
+
+```bash
+snakemake -j 1 \
+  --config drugbank_email="YOUR EMAIL" \
+  drugbank_password="YOUR PASSWORD" \
+  cosmic_email="YOUR EMAIL" \
+  cosmic_password="YOUR PASSWORD"
+```
+
+![full workflow](./docs/full_workflow.png)

@@ -251,7 +251,6 @@ const processRecord = async (opt) => {
                 filters: {
                     AND: [
                         { sourceId: `doid:${diseaseRec.doid}` },
-                        { name: diseaseRec.disease },
                         { source: { filters: { name: 'disease ontology' }, target: 'Source' } },
                     ],
                 },

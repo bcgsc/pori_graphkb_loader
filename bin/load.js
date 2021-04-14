@@ -18,13 +18,14 @@ const drugbank = require('../src/drugbank');
 const ensembl = require('../src/ensembl');
 const fdaSrs = require('../src/fdaSrs');
 const gscTherapeuticOntology = require('../src/gscTherapeuticOntology');
-const iprkb = require('../src/iprkb');
 const ncit = require('../src/ncit');
 const ncitFdaXref = require('../src/ncit/ncitFdaXref');
 const ontology = require('../src/ontology');
 const refseq = require('../src/refseq');
-const tcgaFusions = require('../src/tcgaFusions');
+const PMC4468049 = require('../src/PMC4468049');
+const PMC4232638 = require('../src/PMC4232638');
 const uberon = require('../src/uberon');
+const variants = require('../src/variants');
 
 const clinicaltrialsgov = require('../src/clinicaltrialsgov');
 
@@ -36,6 +37,8 @@ const API_MODULES = {
 };
 
 const FILE_MODULES = {
+    PMC4232638,
+    PMC4468049,
     cancerhotspots,
     cgi,
     cgl,
@@ -45,13 +48,12 @@ const FILE_MODULES = {
     ensembl,
     fdaSrs,
     gscTherapeuticOntology,
-    iprkb,
     ncit,
     ncitFdaXref,
     ontology,
     refseq,
-    tcgaFusions,
     uberon,
+    variants,
 };
 
 const COSMIC_MODULES = {

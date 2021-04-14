@@ -737,7 +737,6 @@ const upload = async (opt) => {
 
 module.exports = {
     SOURCE_DEFN,
-    kb: true,
     specs: { validateEvidenceSpec },
     upload,
 };

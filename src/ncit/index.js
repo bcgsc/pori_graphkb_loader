@@ -1,10 +1,3 @@
-/**
- * Module responsible for parsing the NCIT owl file and uploading the converted records to the Graph KB
- *
- * NCIT owl file is very large. When uploading additional arguments were specified for node (--stack-size=8192  --max-old-space-size=20000)
- * Additionally node v10 is required since the string size is too small in previous versions
- * @module importer/ncit
- */
 const { loadDelimToJson } = require('../util');
 const {
     rid, generateCacheKey, convertRecordToQueryFilters,
@@ -64,7 +57,9 @@ const DEPRECATED = [
     'C85834', // retired concept
 ];
 
-
+/**
+ * Determine if the term is a body part, disease, or drug
+ */
 const pickEndpoint = (conceptName, parentConcepts = '') => {
     let endpoint = null;
 
@@ -119,44 +114,60 @@ const cleanRawRow = (rawRow) => {
                 || conceptStatus === 'Retired_Concept'
         ),
         description: definition,
+        name: rawName.trim(),
         parents: (
             rawParents.split('|')
                 .map(parent => parent.trim())
                 .filter(parent => parent && !DEPRECATED.includes(parent))
                 .map(parent => parent.toLowerCase())
         ),
+        species: '',
+        synonyms: (rawSynonyms.split('|')
+            .map(s => s.trim())
+            .filter(s => s)),
     };
     const sourceId = id.toLowerCase().trim();
     const endpoint = pickEndpoint(semanticType, parentConcepts);
 
-    // use the synonym name if no name given
-    const synonyms = rawSynonyms.split('|')
-        .map(s => s.trim())
-        .filter(s => s);
-    let name = rawName.trim();
-
     // split up the name if it is a list
-    if (name && name.includes('|')) {
-        const names = name.split('|')
+    if (row.name && row.name.includes('|')) {
+        const names = row.name.split('|')
             .map(s => s.trim())
             .filter(s => s);
-        [name] = names;
-        synonyms.push(...names.slice(1));
+        [row.name] = names;
+        row.synonyms.push(...names.slice(1));
     }
 
+    const speciesMatch = (termName) => {
+        const m = /\b(murine|mouse|rat)\b/ig.exec(termName);
+
+        if (m) {
+            return m[1];
+        }
+        return '';
+    };
+
     // non-human concepts should use fuller name
-    if (!/\b(murine|mouse|rat)\b/.exec(name)) {
-        for (const synonym of synonyms) {
-            if (/\b(murine|mouse|rat)\b/.exec(synonym)) {
-                name = synonym;
+    if (!speciesMatch(row.name)) {
+        for (const synonym of row.synonyms) {
+            if (speciesMatch(synonym)) {
+                row.name = synonym;
+                [, row.species] = speciesMatch(synonym);
                 break;
             }
         }
+        const species = row.parents.map(speciesMatch).filter(s => s);
+
+        if (species.length) {
+            [row.species] = species;
+        }
+    } else {
+        row.species = speciesMatch(row.name);
     }
 
     // use the synonym name if no name given
-    if (!name) {
-        name = sourceId;
+    if (!row.name) {
+        row.name = sourceId;
     }
 
     const url = xmlTag.replace(/^</, '').replace(/>$/, '');
@@ -164,15 +175,15 @@ const cleanRawRow = (rawRow) => {
     // add the parents
     return {
         ...row,
-        displayName: name.toLowerCase() === sourceId.toLowerCase()
+        displayName: row.name.toLowerCase() === sourceId.toLowerCase()
             ? sourceId
-            : `${name} [${sourceId}]`,
+            : `${row.name} [${sourceId}]`,
         endpoint,
-        name: name.toLowerCase(),
+        name: row.name.toLowerCase(),
         sourceId,
-        synonyms: Array.from(new Set(synonyms))
+        synonyms: Array.from(new Set(row.synonyms))
             .map(s => s.toLowerCase())
-            .filter(s => s !== name.toLowerCase()),
+            .filter(s => s !== row.name.toLowerCase()),
         url,
     };
 };
@@ -219,13 +230,14 @@ const uploadFile = async ({ filename, conn }) => {
             .map(parent => (rowsById[parent.trim()] || {}).semanticType || '')
             .join('|');
     }
+    const deprecatedRows = [];
 
     for (const raw of rawRows) {
         try {
             const row = cleanRawRow(raw);
 
             if (row.deprecated) {
-                logger.verbose(`skipping retired or obsolete concept ${row.sourceId}`);
+                deprecatedRows.push(row);
                 counts.skip++;
                 continue;
             }
@@ -244,16 +256,32 @@ const uploadFile = async ({ filename, conn }) => {
             counts.skip++;
         }
     }
+    logger.verbose(`skipping (${deprecatedRows.length}) retired or obsolete concepts: ${deprecatedRows.map(d => d.sourceId).join(',')}`);
     const rejected = new Set();
 
     // if possible, assign the row another name from its list of synonyms (instead of the display name)
     for (const [name, dups] of Object.entries(nameDuplicates)) {
-        if (name && dups && dups.length > 1) {
-            logger.debug(`ncit terms (${dups.map(r => r.sourceId).join(', ')}) have non-unique name (${name})`);
-            dups.forEach(d => rejected.add(d.sourceId));
+        if (dups.length < 2) {
+            continue;
+        }
+        // filter non-human name duplicates
+        const humanDups = [];
+
+        for (const dup of dups) {
+            if (dup.species) {
+                rejected.add(dup.sourceId);
+                logger.warn(`dropping non-human ncit term (${dup.sourceId}) has non-unique name (${name})`);
+            } else {
+                humanDups.push(dup);
+            }
+        }
+
+        if (name && humanDups.length > 1) {
+            logger.warn(`ncit terms (${humanDups.map(r => r.sourceId).join(', ')}) have non-unique name (${name})`);
+            humanDups.forEach(d => rejected.add(d.sourceId));
         }
     }
-    logger.info(`rejected ${rejected.size} rows for unresolveable primary/display name conflicts`);
+    logger.warn(`rejected ${rejected.size} rows for unresolveable primary/display name conflicts`);
 
     const source = rid(await conn.addRecord({
         content: SOURCE_DEFN,
@@ -288,12 +316,12 @@ const uploadFile = async ({ filename, conn }) => {
 
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
-        logger.verbose(`processing (${i} / ${rows.length}) ${row.sourceId}`);
 
         if (rejected.has(row.sourceId)) {
             counts.error++;
             continue;
         }
+        logger.verbose(`processing (${i} / ${rows.length}) ${row.sourceId}`);
         let record;
 
         try {
@@ -361,12 +389,15 @@ const uploadFile = async ({ filename, conn }) => {
                             'displayName',
                         ],
                     });
-                    await conn.addRecord({
-                        content: { in: rid(record), out: rid(alias), source },
-                        existsOk: true,
-                        fetchExisting: false,
-                        target: 'aliasof',
-                    });
+
+                    if (rid(alias) !== rid(record)) {
+                        await conn.addRecord({
+                            content: { in: rid(record), out: rid(alias), source },
+                            existsOk: true,
+                            fetchExisting: false,
+                            target: 'aliasof',
+                        });
+                    }
                 } catch (err) {
                     logger.error(`failed to link (${record.sourceId}) to alias (${synonym})`);
                     logger.error(err);

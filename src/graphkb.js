@@ -57,11 +57,16 @@ const shouldUpdate = (modelIn, originalContentIn, newContentIn, upsertCheckExclu
         ignoreMissing: true,
     });
 
+    const nullLike = [undefined, '', null];
+
     for (const key of Object.keys(formatted)) {
         if (upsertCheckExclude.includes(key)) {
             continue;
         }
         if (!_.isEqual(originalContent[key], formatted[key])) {
+            if (nullLike.includes(originalContent[key]) && nullLike.includes(formatted[key])) {
+                continue;
+            }
             logger.info(`should update record (${
                 originalContent['@rid']
             }) on model (${
@@ -459,6 +464,7 @@ class ApiConnection {
     /**
      * @param {object} opt
      * @param {string} opt.target
+     * @param {object} opt.content
      * @param {boolean} [opt.existsOk=false] do not error if a record cannot be created because it already exists
      * @param {object} [opt.fetchConditions=null] the filters clause to be used in attempting to fetch this record
      * @param {boolean} [opt.fetchExisting=true] return the record if it already exists
