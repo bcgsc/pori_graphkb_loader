@@ -58,7 +58,7 @@ const DEPRECATED = [
 ];
 
 /**
- * Determine if the term is an body part, disease, or drug
+ * Determine if the term is a body part, disease, or drug
  */
 const pickEndpoint = (conceptName, parentConcepts = '') => {
     let endpoint = null;
