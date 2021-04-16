@@ -682,6 +682,7 @@ const upload = async (opt) => {
 
         const oneToOne = mappedCount === 1 && preupload.size === 1;
 
+        // upload all GraphKB statements for this CIViC Evidence Item
         for (const record of recordList) {
             for (const variant of record.variants) {
                 for (const drugs of record.drugs) {
