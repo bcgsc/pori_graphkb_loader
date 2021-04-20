@@ -133,6 +133,7 @@ const normalizeVariantRecord = ({
             type: name.replace(/-/g, ' '),
         }];
     } if (match = /^t\(([^;()]+);([^;()]+)\)\(([^;()]+);([^;()]+)\)$/i.exec(name)) {
+        // convert translocation syntax
         const [, chr1, chr2, pos1, pos2] = match;
         return [{
             positional: true,
@@ -141,6 +142,7 @@ const normalizeVariantRecord = ({
             variant: `translocation(${pos1}, ${pos2})`,
         }];
     } if (match = /^(p\.)?([a-z*]\d+\S*)\s+\((c\.[^)]+)\)$/i.exec(name)) {
+        // split combined protein + cds notation
         let [, , protein, cds] = match;
 
         // correct deprecated cds syntac
@@ -152,7 +154,7 @@ const normalizeVariantRecord = ({
             }
         }
         return [{
-            inferredBy: [
+            inferredBy: [ // keep the cds variant as a link to the protein variant
                 {
                     positional: true,
                     reference1: { ...referenceGene },
