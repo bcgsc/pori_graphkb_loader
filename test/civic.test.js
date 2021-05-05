@@ -1,5 +1,5 @@
 const { normalizeVariantRecord } = require('../src/civic/variant');
-
+const { translateRelevance } = require('../src/civic');
 
 describe('normalizeVariantRecord', () => {
     test('exon mutation', () => {
@@ -614,4 +614,32 @@ describe('normalizeVariantRecord', () => {
             }]);
         });
     });
+});
+
+describe('translateRelevance', () => {
+    test.each([
+        ['Predictive', 'Supports', 'Sensitivity', 'sensitivity'],
+        ['Predictive', 'Supports', 'Adverse Response', 'adverse response'],
+        ['Predictive', 'Supports', 'Reduced Sensitivity', 'reduced sensitivity'],
+        ['Predictive', 'Supports', 'Resistance', 'resistance'],
+        ['Predictive', 'Supports', 'Sensitivity/Response', 'sensitivity'],
+        ['Diagnostic', 'Supports', 'Positive', 'favours diagnosis'],
+        ['Diagnostic', 'Supports', 'Negative', 'opposes diagnosis'],
+        ['Prognostic', 'Supports', 'Negative', 'unfavourable prognosis'],
+        ['Prognostic', 'Supports', 'Poor Outcome', 'unfavourable prognosis'],
+        ['Prognostic', 'Supports', 'Positive', 'favourable prognosis'],
+        ['Prognostic', 'Supports', 'Better Outcome', 'favourable prognosis'],
+        ['Predisposing', 'Supports', 'Positive', 'predisposing'],
+        ['Predisposing', 'Supports', null, 'predisposing'],
+        ['Predisposing', 'Supports', 'null', 'predisposing'],
+        ['Predisposing', 'Supports', 'Pathogenic', 'pathogenic'],
+        ['Predisposing', 'Supports', 'Likely Pathogenic', 'likely pathogenic'],
+        ['Functional', 'Supports', 'Gain of Function', 'gain of function'],
+        // ['Predictive', 'Does not Support', 'Sensitivity', 'no response'],
+        // ['Predictive', 'Does not Support', 'Sensitivity/Response', 'no response'],
+    ])(
+        '%s|%s|%s returns %s', (evidenceType, evidenceDirection, clinicalSignificance, expected) => {
+            expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
+        },
+    );
 });
