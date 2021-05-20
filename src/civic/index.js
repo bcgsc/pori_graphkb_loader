@@ -132,6 +132,7 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
                 case 'Resistance': {
                     return clinicalSignificance.toLowerCase();
                 }
+
                 case 'Sensitivity/Response': {
                     switch (evidenceDirection) { // eslint-disable-line default-case
                         case 'Does Not Support': { return 'no response'; }
