@@ -119,6 +119,11 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
         case 'Predictive': {
             switch (clinicalSignificance) { // eslint-disable-line default-case
                 case 'Sensitivity':
+                    switch (evidenceDirection) {
+                        case 'Does Not Support': { return 'no response'; }
+                        case 'Supports': { return clinicalSignificance.toLowerCase(); }
+                    }
+
                 case 'Adverse Response':
                 case 'Reduced Sensitivity':
 
@@ -126,7 +131,12 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
                     return clinicalSignificance.toLowerCase();
                 }
 
-                case 'Sensitivity/Response': { return 'sensitivity'; }
+                case 'Sensitivity/Response':
+                    switch (evidenceDirection) {
+                        case 'Does Not Support': { return 'no response'; }
+                        case 'Supports': { return 'sensitivity'; }
+                    }
+
             }
             break;
         }
