@@ -588,7 +588,7 @@ const downloadEvidenceRecords = async (baseUrl) => {
 
         if (
             record.clinical_significance === 'N/A'
-//            || record.evidence_direction === 'Does Not Support'
+            //|| record.evidence_direction === 'Does Not Support'
             || (record.clinical_significance === null && record.evidence_type === 'Predictive')
         ) {
             counts.skip++;
