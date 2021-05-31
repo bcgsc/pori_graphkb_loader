@@ -258,24 +258,6 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
-    test('fusion with exon positions', () => {
-        // EML4-ALK E20;A20
-        // ALK FUSIONS
-        const variants = normalizeVariantRecord({
-            entrezId: 1,
-            entrezName: 'ALK',
-            name: 'EML4-ALK E20;A20',
-        });
-        expect(variants).toEqual([
-            {
-                positional: true,
-                reference1: { name: 'eml4' },
-                reference2: { name: 'alk', sourceId: '1' },
-                variant: 'fusion(e.20,e.20)',
-            },
-        ]);
-    });
-
     test('fusion with new exon notation', () => {
         // EWSR1-FLI1 e7-e6
         // FLI1 Fusion
