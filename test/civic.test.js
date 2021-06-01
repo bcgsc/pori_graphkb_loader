@@ -269,8 +269,8 @@ describe('normalizeVariantRecord', () => {
         expect(variants).toEqual([
             {
                 positional: true,
-                reference1: { name: 'ewsr1', sourceId: '1' },
-                reference2: { name: 'fli1' },
+                reference1: { name: 'ewsr1' },
+                reference2: { name: 'fli1', sourceId: '1' },
                 variant: 'fusion(e.7,e.6)',
             },
         ]);
