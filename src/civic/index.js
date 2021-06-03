@@ -117,31 +117,32 @@ const validateEvidenceSpec = ajv.compile({
 const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificance) => {
     switch (evidenceType) { // eslint-disable-line default-case
         case 'Predictive': {
-            switch (clinicalSignificance) { // eslint-disable-line default-case
-                case 'Sensitivity': {
-                    switch (evidenceDirection) { // eslint-disable-line default-case
-                        case 'Does Not Support': { return 'no response'; }
+            if (evidenceDirection == 'Does Not Support') {
+                switch (clinicalSignificance) { // eslint-disable-line default-case
+                    case 'Sensitivity':
 
-                        case 'Supports': { return clinicalSignificance.toLowerCase(); }
+                    case 'Sensitivity/Response': {
+                        return 'no response';
                     }
                 }
-                case 'Adverse Response':
 
-                case 'Reduced Sensitivity':
+            } else if (evidenceDirection == 'Supports') {
+                switch (clinicalSignificance) { // eslint-disable-line default-case
+                    case 'Sensitivity':
+                    case 'Adverse Response':
+                    case 'Reduced Sensitivity':
 
-                case 'Resistance': {
-                    return clinicalSignificance.toLowerCase();
-                }
-
-                case 'Sensitivity/Response': {
-                    switch (evidenceDirection) { // eslint-disable-line default-case
-                        case 'Does Not Support': { return 'no response'; }
-
-                        case 'Supports': { return 'sensitivity'; }
+                    case 'Resistance': {
+                        return clinicalSignificance.toLowerCase();
                     }
+
+                    case 'Sensitivity/Response': { return 'sensitivity'; }
                 }
             }
-            break;
+
+            throw new Error(
+                `unable to process relevance (${JSON.stringify({ clinicalSignificance, evidenceDirection, evidenceType })})`,
+            );
         }
 
         case 'Functional': {
@@ -588,7 +589,6 @@ const downloadEvidenceRecords = async (baseUrl) => {
 
         if (
             record.clinical_significance === 'N/A'
-            // || record.evidence_direction === 'Does Not Support'
             || (record.clinical_significance === null && record.evidence_type === 'Predictive')
         ) {
             counts.skip++;
