@@ -138,10 +138,7 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
                     case 'Sensitivity/Response': { return 'sensitivity'; }
                 }
             }
-
-            throw new Error(
-                `unable to process relevance (${JSON.stringify({ clinicalSignificance, evidenceDirection, evidenceType })})`,
-            );
+            break;
         }
 
         case 'Functional': {
