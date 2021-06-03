@@ -117,7 +117,7 @@ const validateEvidenceSpec = ajv.compile({
 const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificance) => {
     switch (evidenceType) { // eslint-disable-line default-case
         case 'Predictive': {
-            if (evidenceDirection == 'Does Not Support') {
+            if (evidenceDirection === 'Does Not Support') {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
                     case 'Sensitivity':
 
@@ -125,8 +125,7 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
                         return 'no response';
                     }
                 }
-
-            } else if (evidenceDirection == 'Supports') {
+            } else if (evidenceDirection === 'Supports') {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
                     case 'Sensitivity':
                     case 'Adverse Response':
