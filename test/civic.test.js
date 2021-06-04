@@ -635,8 +635,8 @@ describe('translateRelevance', () => {
         ['Predisposing', 'Supports', 'Pathogenic', 'pathogenic'],
         ['Predisposing', 'Supports', 'Likely Pathogenic', 'likely pathogenic'],
         ['Functional', 'Supports', 'Gain of Function', 'gain of function'],
-        // ['Predictive', 'Does not Support', 'Sensitivity', 'no response'],
-        // ['Predictive', 'Does not Support', 'Sensitivity/Response', 'no response'],
+        ['Predictive', 'Does Not Support', 'Sensitivity', 'no response'],
+        ['Predictive', 'Does Not Support', 'Sensitivity/Response', 'no response'],
     ])(
         '%s|%s|%s returns %s', (evidenceType, evidenceDirection, clinicalSignificance, expected) => {
             expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
