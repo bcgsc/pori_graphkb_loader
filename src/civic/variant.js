@@ -188,6 +188,9 @@ const normalizeVariantRecord = ({
             if (match = /^[e](\d+)-[e](\d+)$/.exec(tail || '')) {
                 const [, exon1, exon2] = match;
                 rest = { positional: true, variant: `fusion(e.${exon1},e.${exon2})` };
+            } else if (match = /^[a-z](\d+);[a-z](\d+)$/.exec(tail || '')) {
+                const [, exon1, exon2] = match;
+                rest = { positional: true, variant: `fusion(e.${exon1},e.${exon2})` };
             } else {
                 return [
                     ...normalizeVariantRecord({ entrezId, entrezName, name: `${gene1}-${gene2}` }),
