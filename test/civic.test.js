@@ -258,6 +258,24 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
+    test('fusion with new exon notation', () => {
+        // EWSR1-FLI1 e7-e6
+        // FLI1 Fusion
+        const variants = normalizeVariantRecord({
+            entrezId: 1,
+            entrezName: 'FLI1',
+            name: 'EWSR1-FLI1 e7-e6',
+        });
+        expect(variants).toEqual([
+            {
+                positional: true,
+                reference1: { name: 'ewsr1' },
+                reference2: { name: 'fli1', sourceId: '1' },
+                variant: 'fusion(e.7,e.6)',
+            },
+        ]);
+    });
+
     test('fusion with reference2 input gene', () => {
         // EML4-ALK E20;A20
         // ALK FUSIONS
