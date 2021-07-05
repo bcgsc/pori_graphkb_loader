@@ -69,9 +69,11 @@ const validateEvidenceSpec = ajv.compile({
         },
         description: { type: 'string' },
         disease: {
-            doid: { type: 'string' },
-            name: { type: 'string' },
-            type: 'object',
+            oneOf: [{
+                doid: { type: 'string' },
+                name: { type: 'string' },
+                type: 'object',
+            }, { type: 'null' }],
         },
         drug_interaction_type: { enum: ['Combination', 'Substitutes', 'Sequential', null] },
         drugs: {
@@ -354,28 +356,32 @@ const processEvidenceRecord = async (opt) => {
         }
     }
     // get the disease by doid
-    let diseaseQueryFilters = {};
-
-    if (rawRecord.disease.doid) {
-        diseaseQueryFilters = {
-            AND: [
-                { sourceId: `doid:${rawRecord.disease.doid}` },
-                { source: { filters: { name: 'disease ontology' }, target: 'Source' } },
-            ],
-        };
-    } else {
-        diseaseQueryFilters = { name: rawRecord.disease.name };
-    }
     let disease;
 
-    try {
-        disease = await conn.getUniqueRecordBy({
-            filters: diseaseQueryFilters,
-            sort: orderPreferredOntologyTerms,
-            target: 'Disease',
-        });
-    } catch (err) {
-        throw err;
+    // find the disease if it is not null
+    if (rawRecord.disease) {
+        let diseaseQueryFilters = {};
+
+        if (rawRecord.disease.doid) {
+            diseaseQueryFilters = {
+                AND: [
+                    { sourceId: `doid:${rawRecord.disease.doid}` },
+                    { source: { filters: { name: 'disease ontology' }, target: 'Source' } },
+                ],
+            };
+        } else {
+            diseaseQueryFilters = { name: rawRecord.disease.name };
+        }
+
+        try {
+            disease = await conn.getUniqueRecordBy({
+                filters: diseaseQueryFilters,
+                sort: orderPreferredOntologyTerms,
+                target: 'Disease',
+            });
+        } catch (err) {
+            throw err;
+        }
     }
     // get the drug(s) by name
     let drug;
@@ -410,15 +416,21 @@ const processEvidenceRecord = async (opt) => {
         evidence: [rid(publication)],
         evidenceLevel: [rid(level)],
         relevance: rid(relevance),
-        reviewStatus: 'not required',
+        reviewStatus: (rawRecord.status === 'accepted'
+            ? 'not required'
+            : 'pending'
+        ),
         source: rid(sources.civic),
         sourceId: rawRecord.id,
     };
 
     // create the statement and connecting edges
     if (rawRecord.evidence_type === 'Diagnostic' || rawRecord.evidence_type === 'Predisposing') {
+        if (!disease) {
+            throw new Error('Unable to create a diagnostic or predisposing statement without a corresponding disease');
+        }
         content.subject = rid(disease);
-    } else {
+    } else if (disease) {
         content.conditions.push(rid(disease));
     }
 
