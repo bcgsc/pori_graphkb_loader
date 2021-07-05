@@ -33,7 +33,7 @@ const cosmicResistance = require('../src/cosmic/resistance');
 const cosmicFusions = require('../src/cosmic/fusions');
 
 const API_MODULES = {
-    civic, clinicaltrialsgov, dgidb, docm, fdaApprovals, oncotree,
+    clinicaltrialsgov, dgidb, docm, fdaApprovals, oncotree,
 };
 
 const FILE_MODULES = {
@@ -65,6 +65,7 @@ const ALL_MODULES = {
     ...API_MODULES,
     ...FILE_MODULES,
     ...COSMIC_MODULES,
+    civic,
 };
 
 const parser = createOptionsMenu();
@@ -86,6 +87,14 @@ fileParser.add_argument('input', {
     type: fileExists,
 });
 
+const civicParser = subparsers.add_parser('civic');
+civicParser.add_argument('--trustedCurators', {
+    default: [],
+    help: 'CIViC User IDs of curators whose statements should be imported even if they have not yet been reviewed (evidence is submitted but not accepted)',
+    nargs: '+',
+});
+
+
 const cosmicParser = subparsers.add_parser('cosmic');
 cosmicParser.add_argument('module', {
     choices: Object.keys(COSMIC_MODULES),
@@ -100,29 +109,29 @@ cosmicParser.add_argument('classification', {
     type: fileExists,
 });
 
-const options = parser.parse_args();
+const { module: moduleName, input, ...options } = parser.parse_args();
 
 let loaderFunction;
 
-if (options.input) {
-    loaderFunction = ALL_MODULES[options.module].uploadFile;
+if (input) {
+    loaderFunction = ALL_MODULES[moduleName || 'civic'].uploadFile;
 } else {
-    loaderFunction = ALL_MODULES[options.module].upload;
+    loaderFunction = ALL_MODULES[moduleName || 'civic'].upload;
 }
 
-const loaderOptions = {};
+const loaderOptions = { ...options };
 
-if (options.input) {
-    if (options.module === 'clinicaltrialsgov') {
-        if (fs.lstatSync(options.input).isDirectory()) {
-            const files = fs.readdirSync(options.input)
-                .map(filename => path.join(options.input, filename));
+if (input) {
+    if (moduleName === 'clinicaltrialsgov') {
+        if (fs.lstatSync(input).isDirectory()) {
+            const files = fs.readdirSync(input)
+                .map(filename => path.join(input, filename));
             loaderOptions.files = files;
         } else {
-            loaderOptions.files = [options.input];
+            loaderOptions.files = [input];
         }
     } else {
-        loaderOptions.filename = options.input;
+        loaderOptions.filename = input;
 
         if (options.module === 'cosmic') {
             loaderOptions.mappingFilename = options.mappingFilename;
