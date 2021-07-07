@@ -59,7 +59,7 @@
     "start:recent-trials": "node bin/load.js api clinicaltrialsgov",
     "start:fda-approvals": "node bin/load.js api fdaApprovals",
     "start:oncotree": "node bin/load.js api oncotree",
-    "start:civic": "node bin/load.js api civic",
+    "start:civic": "node bin/load.js civic",
     "start:signatures": "node bin/load.js file ontology data/signatures.json",
     "start:vocabulary": "node bin/load.js file ontology data/vocab.json",
     "commit": "git-cz"

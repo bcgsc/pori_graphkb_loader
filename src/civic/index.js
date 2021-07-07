@@ -20,9 +20,6 @@ const { downloadVariantRecords, processVariantRecord } = require('./variant');
 
 const ajv = new Ajv();
 
-
-const TRUSTED_CURATOR_ID = 968;
-
 const BASE_URL = 'https://civicdb.org/api';
 
 /**
@@ -72,9 +69,11 @@ const validateEvidenceSpec = ajv.compile({
         },
         description: { type: 'string' },
         disease: {
-            doid: { type: 'string' },
-            name: { type: 'string' },
-            type: 'object',
+            oneOf: [{
+                doid: { type: 'string' },
+                name: { type: 'string' },
+                type: 'object',
+            }, { type: 'null' }],
         },
         drug_interaction_type: { enum: ['Combination', 'Substitutes', 'Sequential', null] },
         drugs: {
@@ -357,28 +356,32 @@ const processEvidenceRecord = async (opt) => {
         }
     }
     // get the disease by doid
-    let diseaseQueryFilters = {};
-
-    if (rawRecord.disease.doid) {
-        diseaseQueryFilters = {
-            AND: [
-                { sourceId: `doid:${rawRecord.disease.doid}` },
-                { source: { filters: { name: 'disease ontology' }, target: 'Source' } },
-            ],
-        };
-    } else {
-        diseaseQueryFilters = { name: rawRecord.disease.name };
-    }
     let disease;
 
-    try {
-        disease = await conn.getUniqueRecordBy({
-            filters: diseaseQueryFilters,
-            sort: orderPreferredOntologyTerms,
-            target: 'Disease',
-        });
-    } catch (err) {
-        throw err;
+    // find the disease if it is not null
+    if (rawRecord.disease) {
+        let diseaseQueryFilters = {};
+
+        if (rawRecord.disease.doid) {
+            diseaseQueryFilters = {
+                AND: [
+                    { sourceId: `doid:${rawRecord.disease.doid}` },
+                    { source: { filters: { name: 'disease ontology' }, target: 'Source' } },
+                ],
+            };
+        } else {
+            diseaseQueryFilters = { name: rawRecord.disease.name };
+        }
+
+        try {
+            disease = await conn.getUniqueRecordBy({
+                filters: diseaseQueryFilters,
+                sort: orderPreferredOntologyTerms,
+                target: 'Disease',
+            });
+        } catch (err) {
+            throw err;
+        }
     }
     // get the drug(s) by name
     let drug;
@@ -413,15 +416,21 @@ const processEvidenceRecord = async (opt) => {
         evidence: [rid(publication)],
         evidenceLevel: [rid(level)],
         relevance: rid(relevance),
-        reviewStatus: 'not required',
+        reviewStatus: (rawRecord.status === 'accepted'
+            ? 'not required'
+            : 'pending'
+        ),
         source: rid(sources.civic),
         sourceId: rawRecord.id,
     };
 
     // create the statement and connecting edges
     if (rawRecord.evidence_type === 'Diagnostic' || rawRecord.evidence_type === 'Predisposing') {
+        if (!disease) {
+            throw new Error('Unable to create a diagnostic or predisposing statement without a corresponding disease');
+        }
         content.subject = rid(disease);
-    } else {
+    } else if (disease) {
         content.conditions.push(rid(disease));
     }
 
@@ -519,8 +528,9 @@ const processEvidenceRecord = async (opt) => {
  * Fetch civic approved evidence entries as well as those submitted by trusted curators
  *
  * @param {string} baseUrl the base url for the request
+ * @param {string[]} trustedCurators a list of curator IDs to also fetch submitted only evidence items for
  */
-const downloadEvidenceRecords = async (baseUrl) => {
+const downloadEvidenceRecords = async (baseUrl, trustedCurators) => {
     const urlTemplate = `${baseUrl}/evidence_items?count=500&status=accepted`;
     // load directly from their api
     const counts = {
@@ -548,17 +558,24 @@ const downloadEvidenceRecords = async (baseUrl) => {
     }
 
     // now find entries curated by trusted curators
-    const { results: trustedSubmissions } = await request({
-        body: {
-            entity: 'evidence_items',
-            operator: 'AND',
-            queries: [{ condition: { name: 'is_equal_to', parameters: [`${TRUSTED_CURATOR_ID}`] }, field: 'submitter_id' }],
-            save: true,
-        },
-        json: true,
-        method: 'POST',
-        uri: `${baseUrl}/evidence_items/search`,
-    });
+    const trustedSubmissions = [];
+
+    // NOTE: purposefully not async and in a for-loop to avoid spamming their API with requests
+    for (const submitter of Array.from(new Set(trustedCurators))) {
+        const { results } = await request({
+            body: {
+                entity: 'evidence_items',
+                operator: 'AND',
+                queries: [{ condition: { name: 'is_equal_to', parameters: [`${submitter}`] }, field: 'submitter_id' }],
+                save: true,
+            },
+            json: true,
+            method: 'POST',
+            uri: `${baseUrl}/evidence_items/search`,
+        });
+
+        trustedSubmissions.push(...results);
+    }
 
     let submitted = 0;
 
@@ -605,10 +622,11 @@ const downloadEvidenceRecords = async (baseUrl) => {
  *
  * @param {object} opt options
  * @param {ApiConnection} opt.conn the api connection object for GraphKB
- * @param {string} [opt.url] url to use as the base for accessing the civic api
+ * @param {string} [opt.url] url to use as the base for accessing the civic ApiConnection
+ * @param {string[]} opt.trustedCurators a list of curator IDs to also fetch submitted only evidence items for
  */
 const upload = async (opt) => {
-    const { conn, errorLogPrefix } = opt;
+    const { conn, errorLogPrefix, trustedCurators } = opt;
     // add the source node
     const source = await conn.addRecord({
         content: SOURCE_DEFN,
@@ -628,7 +646,7 @@ const upload = async (opt) => {
     _pubmed.preLoadCache(conn);
 
     const varById = await downloadVariantRecords();
-    const { records, errorList, counts } = await downloadEvidenceRecords(opt.url || BASE_URL);
+    const { records, errorList, counts } = await downloadEvidenceRecords(opt.url || BASE_URL, trustedCurators);
 
 
     logger.info(`Processing ${records.length} records`);
