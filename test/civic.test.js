@@ -1,5 +1,5 @@
 const { normalizeVariantRecord } = require('../src/civic/variant');
-
+const { translateRelevance } = require('../src/civic');
 
 describe('normalizeVariantRecord', () => {
     test('exon mutation', () => {
@@ -254,6 +254,24 @@ describe('normalizeVariantRecord', () => {
                 reference1: { name: 'eml4' },
                 reference2: { name: 'alk', sourceId: '1' },
                 variant: 'fusion(e.20,e.20)',
+            },
+        ]);
+    });
+
+    test('fusion with new exon notation', () => {
+        // EWSR1-FLI1 e7-e6
+        // FLI1 Fusion
+        const variants = normalizeVariantRecord({
+            entrezId: 1,
+            entrezName: 'FLI1',
+            name: 'EWSR1-FLI1 e7-e6',
+        });
+        expect(variants).toEqual([
+            {
+                positional: true,
+                reference1: { name: 'ewsr1' },
+                reference2: { name: 'fli1', sourceId: '1' },
+                variant: 'fusion(e.7,e.6)',
             },
         ]);
     });
@@ -614,4 +632,32 @@ describe('normalizeVariantRecord', () => {
             }]);
         });
     });
+});
+
+describe('translateRelevance', () => {
+    test.each([
+        ['Predictive', 'Supports', 'Sensitivity', 'sensitivity'],
+        ['Predictive', 'Supports', 'Adverse Response', 'adverse response'],
+        ['Predictive', 'Supports', 'Reduced Sensitivity', 'reduced sensitivity'],
+        ['Predictive', 'Supports', 'Resistance', 'resistance'],
+        ['Predictive', 'Supports', 'Sensitivity/Response', 'sensitivity'],
+        ['Diagnostic', 'Supports', 'Positive', 'favours diagnosis'],
+        ['Diagnostic', 'Supports', 'Negative', 'opposes diagnosis'],
+        ['Prognostic', 'Supports', 'Negative', 'unfavourable prognosis'],
+        ['Prognostic', 'Supports', 'Poor Outcome', 'unfavourable prognosis'],
+        ['Prognostic', 'Supports', 'Positive', 'favourable prognosis'],
+        ['Prognostic', 'Supports', 'Better Outcome', 'favourable prognosis'],
+        ['Predisposing', 'Supports', 'Positive', 'predisposing'],
+        ['Predisposing', 'Supports', null, 'predisposing'],
+        ['Predisposing', 'Supports', 'null', 'predisposing'],
+        ['Predisposing', 'Supports', 'Pathogenic', 'pathogenic'],
+        ['Predisposing', 'Supports', 'Likely Pathogenic', 'likely pathogenic'],
+        ['Functional', 'Supports', 'Gain of Function', 'gain of function'],
+        ['Predictive', 'Does Not Support', 'Sensitivity', 'no response'],
+        ['Predictive', 'Does Not Support', 'Sensitivity/Response', 'no response'],
+    ])(
+        '%s|%s|%s returns %s', (evidenceType, evidenceDirection, clinicalSignificance, expected) => {
+            expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
+        },
+    );
 });

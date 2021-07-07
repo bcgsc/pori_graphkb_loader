@@ -112,12 +112,20 @@ const validateEvidenceSpec = ajv.compile({
 
 
 /**
- * Convert the CIViC relevance types to GraphKB terms
+ * Extract the appropriate GraphKB relevance term from a CIViC evidence record
  */
-const getRelevance = async ({ rawRecord, conn }) => {
-    const translateRelevance = ({ evidenceType, clinicalSignificance, evidenceDirection }) => {
-        switch (evidenceType) { // eslint-disable-line default-case
-            case 'Predictive': {
+const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificance) => {
+    switch (evidenceType) { // eslint-disable-line default-case
+        case 'Predictive': {
+            if (evidenceDirection === 'Does Not Support') {
+                switch (clinicalSignificance) { // eslint-disable-line default-case
+                    case 'Sensitivity':
+
+                    case 'Sensitivity/Response': {
+                        return 'no response';
+                    }
+                }
+            } else if (evidenceDirection === 'Supports') {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
                     case 'Sensitivity':
                     case 'Adverse Response':
@@ -129,61 +137,66 @@ const getRelevance = async ({ rawRecord, conn }) => {
 
                     case 'Sensitivity/Response': { return 'sensitivity'; }
                 }
-                break;
             }
-
-            case 'Functional': {
-                return clinicalSignificance.toLowerCase();
-            }
-
-            case 'Diagnostic': {
-                switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'Positive': { return 'favours diagnosis'; }
-
-                    case 'Negative': { return 'opposes diagnosis'; }
-                }
-                break;
-            }
-
-            case 'Prognostic': {
-                switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'Negative':
-
-                    case 'Poor Outcome': {
-                        return 'unfavourable prognosis';
-                    }
-                    case 'Positive':
-
-                    case 'Better Outcome': {
-                        return 'favourable prognosis';
-                    }
-                }
-                break;
-            }
-
-            case 'Predisposing': {
-                if (['Positive', null, 'null'].includes(clinicalSignificance)) {
-                    return 'Predisposing';
-                } if (clinicalSignificance.includes('Pathogenic')) {
-                    return clinicalSignificance;
-                } if (clinicalSignificance === 'Uncertain Significance') {
-                    return 'likely predisposing';
-                }
-                break;
-            }
+            break;
         }
 
-        throw new Error(
-            `unable to process relevance (${JSON.stringify({ clinicalSignificance, evidenceDirection, evidenceType })})`,
-        );
-    };
+        case 'Functional': {
+            return clinicalSignificance.toLowerCase();
+        }
 
+        case 'Diagnostic': {
+            switch (clinicalSignificance) { // eslint-disable-line default-case
+                case 'Positive': { return 'favours diagnosis'; }
+
+                case 'Negative': { return 'opposes diagnosis'; }
+            }
+            break;
+        }
+
+        case 'Prognostic': {
+            switch (clinicalSignificance) { // eslint-disable-line default-case
+                case 'Negative':
+
+                case 'Poor Outcome': {
+                    return 'unfavourable prognosis';
+                }
+                case 'Positive':
+
+                case 'Better Outcome': {
+                    return 'favourable prognosis';
+                }
+            }
+            break;
+        }
+
+        case 'Predisposing': {
+            if (['Positive', null, 'null'].includes(clinicalSignificance)) {
+                return 'predisposing';
+            } if (clinicalSignificance.includes('Pathogenic')) {
+                return clinicalSignificance.toLowerCase();
+            } if (clinicalSignificance === 'Uncertain Significance') {
+                return 'likely predisposing';
+            }
+            break;
+        }
+    }
+
+    throw new Error(
+        `unable to process relevance (${JSON.stringify({ clinicalSignificance, evidenceDirection, evidenceType })})`,
+    );
+};
+
+/**
+ * Convert the CIViC relevance types to GraphKB terms
+ */
+const getRelevance = async ({ rawRecord, conn }) => {
     // translate the type to a GraphKB vocabulary term
-    let relevance = translateRelevance({
-        clinicalSignificance: rawRecord.clinical_significance,
-        evidenceDirection: rawRecord.evidence_direction,
-        evidenceType: rawRecord.evidence_type,
-    }).toLowerCase();
+    let relevance = translateRelevance(
+        rawRecord.evidence_type,
+        rawRecord.evidence_direction,
+        rawRecord.clinical_significance,
+    ).toLowerCase();
 
     if (RELEVANCE_CACHE[relevance] === undefined) {
         relevance = await conn.getVocabularyTerm(relevance);
@@ -572,7 +585,6 @@ const downloadEvidenceRecords = async (baseUrl) => {
 
         if (
             record.clinical_significance === 'N/A'
-            || record.evidence_direction === 'Does Not Support'
             || (record.clinical_significance === null && record.evidence_type === 'Predictive')
         ) {
             counts.skip++;
@@ -682,6 +694,7 @@ const upload = async (opt) => {
 
         const oneToOne = mappedCount === 1 && preupload.size === 1;
 
+        // upload all GraphKB statements for this CIViC Evidence Item
         for (const record of recordList) {
             for (const variant of record.variants) {
                 for (const drugs of record.drugs) {
@@ -738,5 +751,6 @@ const upload = async (opt) => {
 module.exports = {
     SOURCE_DEFN,
     specs: { validateEvidenceSpec },
+    translateRelevance,
     upload,
 };

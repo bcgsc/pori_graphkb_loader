@@ -45,7 +45,14 @@ const simplifyRecordsLinks = (content, level = 0) => {
     return content;
 };
 
-
+/**
+ * Check if things have changed and we should send an update request
+ *
+ * @param {string|ClassModel} modelIn the model name or model object this record belongs to
+ * @param {Object} originalContentIn the original record
+ * @param {Object} newContentIn the new record
+ * @param {string[]} upsertCheckExclude a list of properties to ignore changes in
+ */
 const shouldUpdate = (modelIn, originalContentIn, newContentIn, upsertCheckExclude = []) => {
     const model = typeof modelIn === 'string'
         ? schema.get(modelIn)
@@ -290,6 +297,15 @@ class ApiConnection {
         return created;
     }
 
+    /**
+     * Given some query, fetch all matching records (handles paginating over large queries)
+     * @param {Object} opt
+     * @param {Object} opt.filters query filters
+     * @param {string} opt.target the target class to be queried
+     * @param {Number} opt.limit maximum number of records to fetch per request
+     * @param {Number} opt.neighbors maximum record depth to fetch
+     * @param {string[]} opt.returnProperties properties to return from each record
+     */
     async getRecords(opt) {
         const {
             filters,
@@ -333,11 +349,16 @@ class ApiConnection {
     }
 
     /**
+     * Fetch a record with a query. Error if the record cannot be uniquely identified.
      *
-     * @param {object} opt
-     * @param {object} opt.filters the conditions/query parameters for the selection
-     * @param {string} opt.target the target to query
-     * @param {function} opt.sort the function to use in sorting if multiple results are found
+     * @param {Object} opt
+     * @param {Object} opt.filters query filters
+     * @param {string} opt.target the target class to be queried
+     * @param {Number} opt.limit maximum number of records to fetch per request
+     * @param {Number} opt.neighbors maximum record depth to fetch
+     * @param {function} opt.sort the comparator function to use in sorting if multiple results are found
+     *
+     * @throws on multiple records matching the query that do not have a non-zero sort comparison value
      */
     async getUniqueRecordBy(opt) {
         const {
@@ -367,6 +388,9 @@ class ApiConnection {
 
     /**
      * Fetch therapy by name, ignore plurals for some cases
+     *
+     * @param {string} term the name or sourceId of the therapeutic term
+     * @param {string} source the source record ID the therapy is expected to belong to
      */
     async getTherapy(term, source) {
         let error,
@@ -421,6 +445,10 @@ class ApiConnection {
         throw error;
     }
 
+    /**
+     * @param {string} term the name of the vocabulary term to be fetched
+     * @param {string} sourceName the name of the source the vocabulary term belongs to
+     */
     async getVocabularyTerm(term, sourceName = INTERNAL_SOURCE_NAME) {
         if (!term) {
             throw new Error('Cannot fetch vocabulary for empty term name');
@@ -452,6 +480,12 @@ class ApiConnection {
         return result;
     }
 
+    /**
+     * This will soft-delete a record via the API
+     *
+     * @param {string} target the class this record belongs to
+     * @param {string} recordId the ID of the record being deleted
+     */
     async deleteRecord(target, recordId) {
         const model = schema.get(target);
         const { result } = jc.retrocycle(await this.request({
@@ -540,8 +574,8 @@ class ApiConnection {
 
     /**
      * @param {object} opt
-     * @param {object} opt.content
-     * @param {string} opt.target
+     * @param {object} opt.content the content of the variant record
+     * @param {string} opt.target the class to add the record to (PositionalVariant or CategoryVariant)
      */
     async addVariant(opt) {
         const {
@@ -574,6 +608,17 @@ class ApiConnection {
         });
     }
 
+    /**
+     * Add a therapy combination. Will split the input name by "+" and query to find individual
+     * components. These will they be used to create the combination record
+     *
+     * TODO: link elements to combination therapy
+     *
+     * @param {string|Object} source the source record ID or source record this therapy belongs to
+     * @param {string} therapyName the name of the therpeutic combination
+     * @param {Object} opt
+     * @param {boolean} opt.matchSource flag to indicate sub-components of the therapy must be from the same source
+     */
     async addTherapyCombination(source, therapyName, opt = {}) {
         const { matchSource = false } = opt;
 
