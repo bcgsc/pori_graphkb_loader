@@ -1,6 +1,7 @@
 const fs = require('fs');
 
 const kbParser = require('@bcgsc-pori/graphkb-parser');
+const _ = require('lodash');
 
 const {
     loadDelimToJson,
@@ -15,7 +16,6 @@ const _trials = require('../clinicaltrialsgov');
 const _pubmed = require('../entrez/pubmed');
 const _gene = require('../entrez/gene');
 const { uploadFromJSON } = require('../ontology');
-
 const { cgi: SOURCE_DEFN } = require('../sources');
 
 const HEADER = {
@@ -43,6 +43,7 @@ const evidenceLevels = {
     records: {
         'CPIC guidelines': {},
         'Case report': {},
+        'Clinical Trials': {},
         'Early trials': {},
         'European LeukemiaNet guidelines': {},
         'FDA guidelines': {},
@@ -87,13 +88,21 @@ const therapyMapping = {
     tensirolimus: 'temsirolimus',
 };
 
+// map abstracts given only by their URL, manually they put here
+const abstractMapping = {
+    'http://ascopubs.org/doi/abs/10.1200/PO.16.00054': '32913971',
+    'http://cancerres.aacrjournals.org/content/75/15_Supplement/CT322': 'AACR 2015 (abstract CT322)',
+    'http://meetinglibrary.asco.org/content/83791-102': 'ASCO 2011 (abstract 8061)',
+    'http://www.jci.org/articles/view/72763': '24569458',
+    'https://academic.oup.com/neuro-oncology/article-abstract/18/suppl_4/iv50/2222864/P08-41-Development-of-a-novel-TERT-targeting?cited-by=yes&legid=neuonc': 'PMC5782670',
+};
 
-const parseCategoryVariant = (row) => {
-    const type = row.biomarker
-        .slice(row.gene.length)
-        .trim()
-        .replace('undexpression', 'underexpression'); // fix typo
-    const result = { gene: row.gene, type };
+
+const parseCategoryVariant = (row, content) => {
+    const match = /([A-Z][A-Z0-9-]*)\s+(.+)$/.exec(content);
+    const [, gene, parsedType] = match;
+    const type = parsedType.replace('undexpression', 'underexpression'); // fix typo
+    const result = { gene, isCat: true, type };
 
     if (row.variantClass === 'CNA') {
         if (type === 'deletion') {
@@ -107,6 +116,7 @@ const parseCategoryVariant = (row) => {
 
 const parseEvidence = (row) => {
     const evidence = [];
+    const skipped = [];
 
     for (const item of row.evidence.split(';').map(i => i.trim())) {
         if (item.startsWith('PMID:')) {
@@ -115,9 +125,21 @@ const parseEvidence = (row) => {
             evidence.push(item);
         } else if (/^NCT\d+$/.exec(item)) {
             evidence.push(item);
-        } else if (!['FDA', 'NCCN', 'ASCO', 'AACR'].some(prefix => item.startsWith(prefix))) {
+        } else if (['AACR', 'ASCO'].some(prefix => item.startsWith(prefix))) {
+            evidence.push(item);
+        } else if (abstractMapping[item] !== undefined) {
+            evidence.push(abstractMapping[item]);
+        } else if (/^\d+$/.exec(item)) {
+            evidence.push(item);
+        } else if (['FDA', 'NCCN'].some(prefix => item.startsWith(prefix))) {
+            skipped.push(item);
+        } else {
             throw new Error(`cannot process non-pubmed/nct/aacr/asco evidence ${item}`);
         }
+    }
+
+    if (skipped.length > 0 && evidence.length === 0) {
+        throw new Error(`Skipped FDA/NCCN evidence but evidence has no other evidence to link (${row.evidence})`);
     }
     return evidence;
 };
@@ -138,10 +160,10 @@ const parseTherapy = (row) => {
  * format each variant like the original row to re-use the processor
  */
 const preprocessVariants = (row) => {
-    const { biomarker, variantClass, protein } = row;
+    const { biomarker = '', variantClass = '', protein = '' } = row;
 
     if (biomarker.split('+').length > 2) {
-        throw new Error('Missing logic to process variant combinations of 3 or more');
+        throw new Error(`Missing logic to process variant combinations of 3 or more (${biomarker})`);
     }
     if (protein.trim()) {
         return [[{
@@ -150,10 +172,11 @@ const preprocessVariants = (row) => {
         }]];
     }
 
-    const combinations = [];
+    const combinations = []; // group OR-ables
+
+    let match;
 
     for (const variant of biomarker.split(/\s*\+\s*/)) {
-        let match;
         const variants = [];
 
         if (match = /^(\w+) \(([A-Z0-9*,;]+)\)$/.exec(variant)) {
@@ -177,8 +200,25 @@ const preprocessVariants = (row) => {
             if (match = /^exon (\d+) (insertion|deletion)s?$/.exec(tail)) {
                 const [, pos, type] = match;
                 variants.push({ exonic: `e.${pos}${type.slice(0, 3)}`, gene });
+            } else if (match = /^mutation in exon (\d+)(-(\d+))?$/.exec(tail)) {
+                const [, start, , end] = match;
+
+                if (end === undefined) {
+                    variants.push({ exonic: `e.${start}mut`, gene });
+                } else {
+                    variants.push({ exonic: `e.(${start}_${end})mut`, gene });
+                }
+            } else if (match = /^mutation in exon (\d+(\s*,\d+)*\s+or\s+\d+)$/.exec(tail)) {
+                const [, exonList] = match;
+
+                for (const exon of exonList.replace(' or ', ',').split(/\s*,\s*/)) {
+                    variants.push({ exonic: `e.${exon}mut`, gene });
+                }
+            } else if (match = /^inframe (deletion|insertion) \(([A-Z]\d+)\)$/.exec(tail)) {
+                const [, type, pos] = match;
+                variants.push({ gene, protein: `${gene}:p.${pos}${type.slice(0, 3)}` });
             } else {
-                variants.push(parseCategoryVariant({ biomarker, gene, isCat: true }));
+                variants.push(parseCategoryVariant({ biomarker, gene, isCat: true }, variant));
             }
         } else if (match = /^([A-Za-z0-9.]+)-([A-Za-z0-9.]+) fusion$/.exec(variant)) {
             const [, gene1, gene2] = match;
@@ -190,6 +230,7 @@ const preprocessVariants = (row) => {
         }
         combinations.push(variants);
     }
+
 
     const result = [];
 
@@ -373,20 +414,27 @@ const processDisease = async (conn, originalDiseaseName) => {
 
 
 const fetchAbstract = async (conn, abstractString) => {
-    const m = /^(ASCO|AACR)\s+(20[0-2][0-9])\s+\((abstr(act)?)?\s*(\w+)\)$/.exec(abstractString);
+    const m = /^(ASCO|AACR)\s*(20[0-2][0-9])\s*\((abstr(act)?)?\s*(\S+)\)$/.exec(abstractString);
 
     if (!m) {
         throw new Error(`unable to parse abstract from ${abstractString}`);
     }
-    const [, source, year,, abstractNumber] = m;
-    const abstract = await conn.getUniqueRecordBy({
-        filters: [
-            { year },
-            { source: { filters: { name: source }, target: 'Source' } },
-            { abstractNumber },
-        ],
-        target: 'Abstract',
-    });
+    const [, source, year,,, abstractNumber] = m;
+    let abstract;
+
+    try {
+        abstract = await conn.getUniqueRecordBy({
+            filters: [
+                { year },
+                { source: { filters: { name: source }, target: 'Source' } },
+                { abstractNumber },
+            ],
+            target: 'Abstract',
+        });
+    } catch (err) {
+        logger.error(`failed to fetch abstract: ${abstractString}`);
+        throw err;
+    }
     return abstract;
 };
 
@@ -477,7 +525,7 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
     await uploadFromJSON({ conn, data: evidenceLevels });
     logger.info('preloading the pubmed cache');
     await _pubmed.preLoadCache(conn);
-    const errorList = [];
+    const errorList = {};
 
     logger.info(`loading ${rows.length} rows`);
 
@@ -503,7 +551,12 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
             row.evidence = parseEvidence(row);
         } catch (err) {
             logger.error(err);
-            errorList.push({
+            const errType = `${err}`.split(' ').slice(0, 3);
+
+            if (errorList[errType] === undefined) {
+                errorList[errType] = [];
+            }
+            errorList[errType].push({
                 error: err,
                 errorMessage: err.toString(),
                 index,
@@ -521,6 +574,17 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
             counts.error += row.disease.split(';').length;
             inputCounts.error++;
             logger.error(err);
+            const errType = `${err}`.split(' ').slice(0, 3);
+
+            if (errorList[errType] === undefined) {
+                errorList[errType] = [];
+            }
+            errorList[errType].push({
+                error: err,
+                errorMessage: err.toString(),
+                index,
+                row,
+            });
             continue;
         }
 
@@ -532,7 +596,12 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
                     await processRow({ conn, row: { ...row, disease, variants: combo }, source });
                     counts.success++;
                 } catch (err) {
-                    errorList.push({
+                    const errType = `${err}`.split(' ').slice(0, 3);
+
+                    if (errorList[errType] === undefined) {
+                        errorList[errType] = [];
+                    }
+                    errorList[errType].push({
                         error: err,
                         errorMessage: err.toString(),
                         index,
@@ -555,8 +624,10 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
     logger.info(`writing errors to: ${errorLogFile}`);
     fs.writeFileSync(errorLogFile, JSON.stringify({ records: errorList }, null, 2));
     logger.info(`statements ${JSON.stringify(counts)}`);
-    logger.info(`inputs ${JSON.stringify(counts)}`);
+    logger.info(`statements rate: ${counts.success / _.sum(Object.values(counts))}`);
+    logger.info(`inputs ${JSON.stringify(inputCounts)}`);
+    logger.info(`inputs rate: ${inputCounts.success / _.sum(Object.values(inputCounts))}`);
 };
 
 
-module.exports = { SOURCE_DEFN, uploadFile };
+module.exports = { SOURCE_DEFN, preprocessVariants, uploadFile };
