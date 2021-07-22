@@ -106,12 +106,7 @@ const parseAnnouncementPage = async (link) => {
 
 const upload = async ({ conn }) => {
     // create the source
-    const source = rid(await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
     // fetch the main page to get links
     const links = await fetchAnnouncementLinks('/drugs/resources-information-approved-drugs/hematologyoncology-cancer-approvals-safety-notifications');
 

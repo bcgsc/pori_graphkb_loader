@@ -19,19 +19,9 @@ const uploadFile = async ({ conn, filename }) => {
     const data = (await loadDelimToJson(filename));
     logger.info(`loading ${data.length} mappings`);
 
-    const fdaSourceRecord = await conn.addRecord({
-        content: fdaSrs,
-        existsOk: true,
-        fetchConditions: { name: fdaSrs.name },
-        target: 'Source',
-    });
+    const fdaSourceRecord = await conn.addSource(fdaSrs);
 
-    const ncitSourceRecord = await conn.addRecord({
-        content: ncit,
-        existsOk: true,
-        fetchConditions: { name: ncit.name },
-        target: 'Source',
-    });
+    const ncitSourceRecord = await conn.addSource(ncit);
 
     const ncitBySourceId = {};
     const fdaBySourceId = {};

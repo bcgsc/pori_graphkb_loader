@@ -60,12 +60,7 @@ const uploadFile = async ({ filename, conn }) => {
     rdf.parse(content, graph, OWL_NAMESPACE, 'application/rdf+xml');
     const nodesByCode = convertOwlGraphToJson(graph, parseId);
 
-    const source = await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    });
+    const source = await conn.addSource(SOURCE_DEFN);
 
     const recordsByCode = {};
     const subclassEdges = [];

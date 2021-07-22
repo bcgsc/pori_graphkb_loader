@@ -465,11 +465,7 @@ const processRow = async ({ row, source, conn }) => {
 const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
     const rows = await loadDelimToJson(filename);
     logger.info('creating the source record');
-    const source = rid(await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
     const counts = { error: 0, skip: 0, success: 0 }; // tracking errors relative to the number of total statements
     const inputCounts = { error: 0, skip: 0, success: 0 }; // tracking errors relative to the input number of records
 

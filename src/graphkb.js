@@ -572,6 +572,16 @@ class ApiConnection {
         }
     }
 
+    async addSource(content) {
+        return this.addRecord({
+            content,
+            existsOk: true,
+            fetchConditions: { name: content.name },
+            fetchFirst: true,
+            target: 'Source',
+        });
+    }
+
     /**
      * @param {object} opt
      * @param {object} opt.content the content of the variant record

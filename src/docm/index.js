@@ -313,12 +313,7 @@ const upload = async (opt) => {
     });
     logger.info(`loaded ${recordsList.length} records`);
     // add the source node
-    const source = rid(await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
 
     const counts = {
         error: 0, existing: 0, highlight: 0, skip: 0, success: 0,

@@ -192,12 +192,7 @@ const upload = async (opt) => {
     const versions = await oncotreeApi.getVersions();
     const records = await oncotreeApi.getAllRecords(versions);
 
-    const source = await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    });
+    const source = await conn.addSource(SOURCE_DEFN);
 
     let ncitSource;
 
