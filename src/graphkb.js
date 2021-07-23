@@ -7,6 +7,8 @@ const jc = require('json-cycle');
 const jwt = require('jsonwebtoken');
 const { schema } = require('@bcgsc-pori/graphkb-schema');
 const _ = require('lodash');
+const sleep = require('sleep-promise');
+const HTTP_STATUS_CODES = require('http-status-codes');
 
 const { graphkb: { name: INTERNAL_SOURCE_NAME } } = require('./sources');
 
@@ -72,6 +74,15 @@ const shouldUpdate = (modelIn, originalContentIn, newContentIn, upsertCheckExclu
         }
         if (!_.isEqual(originalContent[key], formatted[key])) {
             if (nullLike.includes(originalContent[key]) && nullLike.includes(formatted[key])) {
+                continue;
+            }
+            if (
+                key === 'subsets'
+                && Array.isArray(originalContent[key])
+                && Array.isArray(formatted[key])
+                && _.isEqual(originalContent[key].sort(), formatted[key].sort())
+            ) {
+                // is stored as a set but returned from DB in array, order is random
                 continue;
             }
             logger.info(`should update record (${
@@ -230,25 +241,31 @@ class ApiConnection {
      * @param {string} opt.uri the uri target
      * @param {object} opt.body the request body
      * @param {object} opt.qs the query parameters
+     * @param {nuumber} opt.retries number of times to retry the request
+     * @param {number} opt.serverRetryTimeoutMs ms to wait to retry on a server error (could be someone is updating the db etc)
+     * @param {number} opt.retryTimeoutMs ms to wait to retry a request due to a 429 error (too many requests)
      */
     async request(opt) {
         if (this.exp <= epochSeconds()) {
             await this.login();
         }
+        const {
+            method = 'GET', uri, body, qs, retries = 3, serverRetryTimeoutMs = 10000, retryTimeoutMs = 3000,
+        } = opt;
         this.pendingRequests += 1;
         const startTime = new Date().getTime();
         const req = {
             headers: this.headers,
             json: true,
-            method: opt.method || 'GET',
-            uri: `${this.baseUrl}/${opt.uri.replace(/^\//, '')}`,
+            method: method || 'GET',
+            uri: `${this.baseUrl}/${uri.replace(/^\//, '')}`,
         };
 
-        if (opt.body) {
-            req.body = opt.body;
+        if (body) {
+            req.body = body;
         }
-        if (opt.qs) {
-            req.qs = opt.qs;
+        if (qs) {
+            req.qs = qs;
         }
 
         const logResponseTime = (returnCode = 200) => {
@@ -274,12 +291,23 @@ class ApiConnection {
                 const errorContent = err.error;
                 errorMessage = `${errorContent.name}: ${errorContent.message}`;
             } catch (err2) {}
-
-            if (err.statusCode === 400) {
-                logger.error(`bad request ${opt.method || 'GET'} ${opt.uri} ${JSON.stringify(opt.body)}`);
-                logger.error(errorMessage);
-            }
             logResponseTime(err.statusCode);
+
+            if (err.statusCode === HTTP_STATUS_CODES.BAD_REQUEST) {
+                logger.error(`bad request ${method || 'GET'} ${uri} ${JSON.stringify(body)}`);
+                logger.error(errorMessage);
+            } else if (retries > 0) {
+                if (err.statusCode === HTTP_STATUS_CODES.TOO_MANY_REQUESTS) {
+                    logger.warn(`sleeping ${retryTimeoutMs} ms due to ${err.statusCode} error`);
+                    await sleep(retryTimeoutMs);
+                    return this.request({ ...opt, retries: retries - 1 });
+                } if (err.statusCode >= 500) {
+                    logger.warn(`sleeping ${serverRetryTimeoutMs} ms due to ${err.statusCode} error`);
+                    await sleep(serverRetryTimeoutMs);
+                    return this.request({ ...opt, retries: retries - 1 });
+                }
+            }
+
             throw err;
         }
     }
@@ -672,12 +700,28 @@ class ApiConnection {
     }
 }
 
+/**
+ * Given two node/vertex records do they share a common edge?
+ */
+const haveSharedEdge = (src, tgt, edgeType) => {
+    const srcEdgeIds = (src[`out_${edgeType}`] || []).map(rid);
+    const tgtEdgeIds = (tgt[`in_${edgeType}`] || []).map(rid);
+
+    for (const edge of srcEdgeIds) {
+        if (tgtEdgeIds.includes(edge)) {
+            return true;
+        }
+    }
+    return false;
+};
+
 
 module.exports = {
     ApiConnection,
     INTERNAL_SOURCE_NAME,
     convertRecordToQueryFilters,
     generateCacheKey,
+    haveSharedEdge,
     orderPreferredOntologyTerms,
     rid,
     shouldUpdate,
