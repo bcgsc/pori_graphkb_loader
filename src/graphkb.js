@@ -600,13 +600,15 @@ class ApiConnection {
         }
     }
 
-    async addSource(content) {
+    async addSource(content, opt = {}) {
         return this.addRecord({
             content,
             existsOk: true,
             fetchConditions: { name: content.name },
             fetchFirst: true,
             target: 'Source',
+            upsert: true,
+            ...opt,
         });
     }
 
