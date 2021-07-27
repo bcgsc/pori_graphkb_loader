@@ -241,7 +241,7 @@ class ApiConnection {
      * @param {string} opt.uri the uri target
      * @param {object} opt.body the request body
      * @param {object} opt.qs the query parameters
-     * @param {nuumber} opt.retries number of times to retry the request
+     * @param {number} opt.retries number of times to retry the request
      * @param {number} opt.serverRetryTimeoutMs ms to wait to retry on a server error (could be someone is updating the db etc)
      * @param {number} opt.retryTimeoutMs ms to wait to retry a request due to a 429 error (too many requests)
      */
