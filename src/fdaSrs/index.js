@@ -24,12 +24,7 @@ const HEADER = {
 const uploadFile = async (opt) => {
     const { filename, conn: graphkbConn } = opt;
     const jsonList = await loadDelimToJson(filename);
-    const source = await graphkbConn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    });
+    const source = await graphkbConn.addSource(SOURCE_DEFN);
 
     // only load FDA records if we have already loaded NCIT
     try {

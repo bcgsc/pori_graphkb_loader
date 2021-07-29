@@ -145,11 +145,7 @@ const uploadFile = async (opt) => {
 
     const content = await loadDelimToJson(filename);
 
-    const source = rid(await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
 
     const counts = { error: 0, success: 0 };
 

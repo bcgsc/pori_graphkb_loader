@@ -847,12 +847,7 @@ const upload = async (opt) => {
     const proxy = oncokbProxy(opt.url);
 
     // add the source node
-    const source = rid(await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
 
     const variantMap = await getVariantDescriptions(proxy);
     const previousLoad = await conn.getRecords({

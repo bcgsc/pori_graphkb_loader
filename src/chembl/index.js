@@ -57,12 +57,7 @@ const fetchAndLoadById = async (conn, drugId) => {
     checkSpec(recordSpec, chemblRecord);
 
     if (!CACHE.SOURCE) {
-        CACHE.SOURCE = await conn.addRecord({
-            content: SOURCE_DEFN,
-            existsOk: true,
-            fetchConditions: { name: SOURCE_DEFN.name },
-            target: 'Source',
-        });
+        CACHE.SOURCE = await conn.addSource(SOURCE_DEFN);
     }
     const source = rid(CACHE.SOURCE);
 

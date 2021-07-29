@@ -129,12 +129,7 @@ const uploadFile = async ({
     const jsonList = await loadDelimToJson(filename);
     const mapping = await loadClassifications(mappingFilename);
     // get the dbID for the source
-    const source = rid(await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
     const counts = { error: 0, skip: 0, success: 0 };
     logger.info(`Processing ${jsonList.length} records`);
 

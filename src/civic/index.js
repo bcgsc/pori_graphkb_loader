@@ -628,12 +628,7 @@ const downloadEvidenceRecords = async (baseUrl, trustedCurators) => {
 const upload = async (opt) => {
     const { conn, errorLogPrefix, trustedCurators } = opt;
     // add the source node
-    const source = await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    });
+    const source = await conn.addSource(SOURCE_DEFN);
 
     let previouslyEntered = await conn.getRecords({
         filters: { source: rid(source) },

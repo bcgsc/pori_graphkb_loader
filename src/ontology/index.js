@@ -154,13 +154,7 @@ const uploadFromJSON = async ({ data, conn }) => {
 
     try {
         await Promise.all(Object.entries(sources).map(async ([sourceKey, sourceDefn]) => {
-            const sourceRID = rid(await conn.addRecord({
-                content: sourceDefn,
-                existsOk: true,
-                fetchConditions: { name: sourceDefn.name },
-                target: 'Source',
-                upsert: true,
-            }));
+            const sourceRID = rid(await conn.addSource(sourceDefn));
             sourcesRecords[sourceKey] = sourceRID;
         }));
     } catch (err) {

@@ -227,13 +227,7 @@ const fetchAndLoadBySymbol = async ({
     if (CACHE.SOURCE) {
         hgnc = CACHE.SOURCE;
     } else {
-        hgnc = await conn.addRecord({
-            content: SOURCE_DEFN,
-            existsOk: true,
-            fetchConditions: { name: SOURCE_DEFN.name },
-            fetchExisting: true,
-            target: 'Source',
-        });
+        hgnc = await conn.addSource(SOURCE_DEFN);
         CACHE.SOURCE = hgnc;
     }
     let ensembl;
@@ -268,12 +262,7 @@ const uploadFile = async (opt) => {
     logger.info(`loading: ${filename}`);
     const hgncContent = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
     const genes = hgncContent.response.docs;
-    const hgnc = await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    });
+    const hgnc = await conn.addSource(SOURCE_DEFN);
     let ensembl;
 
     try {

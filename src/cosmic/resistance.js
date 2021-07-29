@@ -335,12 +335,7 @@ const uploadFile = async ({
     const mapping = await loadClassifications(mappingFilename);
     logger.info(`loaded ${jsonList.length} records`);
     // get the dbID for the source
-    const source = rid(await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
 
     const relevance = rid(await conn.getVocabularyTerm('resistance'));
     // soft-delete the previous cosmic resistance mutations upload (no stable IDs, can't update)
