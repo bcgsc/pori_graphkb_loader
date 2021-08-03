@@ -141,7 +141,10 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
         }
 
         case 'Functional': {
-            return clinicalSignificance.toLowerCase();
+            if (evidenceDirection === 'Does Not Support') {
+                break;
+            } else if (evidenceDirection === 'Supports') {
+                return clinicalSignificance.toLowerCase();
         }
 
         case 'Diagnostic': {
