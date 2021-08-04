@@ -181,7 +181,6 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
                 break;
             }
         }
-        break;
     }
 
     throw new Error(
