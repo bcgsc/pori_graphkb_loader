@@ -665,7 +665,7 @@ describe('translateRelevance', () => {
     test.each([
         // For EvType-EvDir-ClinSign test cases that should not be loaded
         ['Predictive', 'Does Not Support', 'Resistance'],
-        ['Prognostic', 'Does Not Support', 'Poor outcome'],
+        ['Prognostic', 'Does Not Support', 'Poor Outcome'],
         ['Functional', 'Does Not Support', 'Neomorphic'],
         ['Predisposing', 'Does Not Support', 'Positive'],
         ['Diagnostic', 'Does Not Support', 'Positive'],
