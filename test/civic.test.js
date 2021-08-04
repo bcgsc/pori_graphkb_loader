@@ -676,4 +676,3 @@ describe('translateRelevance', () => {
         },
     );
 });
-v
