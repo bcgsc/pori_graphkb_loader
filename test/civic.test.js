@@ -655,13 +655,23 @@ describe('translateRelevance', () => {
         ['Functional', 'Supports', 'Gain of Function', 'gain of function'],
         ['Predictive', 'Does Not Support', 'Sensitivity', 'no response'],
         ['Predictive', 'Does Not Support', 'Sensitivity/Response', 'no response'],
-        // ['Functional', 'Does Not Support', 'Neomorphic', 'neomorphic'],
         ['Functional', 'Supports', 'Neomorphic', 'neomorphic'],
-        // ['Diagnostic', 'Does Not Support', 'Positive', 'favours diagnosis'],
-        // ['Diagnostic', 'Does Not Support', 'Negative', 'opposes diagnosis'],
     ])(
         '%s|%s|%s returns %s', (evidenceType, evidenceDirection, clinicalSignificance, expected) => {
             expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
+        },
+    );
+    test.each([
+        // For EvType-EvDir-ClinSign test cases that should not be loaded
+        ['Predictive', 'Does Not Support', 'Resistance', 'no resistance'],
+        ['Prognostic', 'Does Not Support', 'Poor outcome', 'worse outcome'],
+        ['Functional', 'Does Not Support', 'Neomorphic', 'neomorphic'],
+        ['Predisposing', 'Does Not Support', 'Positive', 'favours diagnosis'],
+        ['Diagnostic', 'Does Not Support', 'Positive', 'favours diagnosis'],
+        ['Diagnostic', 'Does Not Support', 'Negative', 'opposes diagnosis'],
+    ])(
+        '%s|%s|%s returns %s', (evidenceType, evidenceDirection, clinicalSignificance, expected) => {
+            expect(() => translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toThrow('unable to process relevance');
         },
     );
 });
