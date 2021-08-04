@@ -137,7 +137,6 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
                     }
 
                     case 'Sensitivity/Response': { return 'sensitivity'; }
-                    }
                 }
                 break;
             }
