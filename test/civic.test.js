@@ -664,12 +664,12 @@ describe('translateRelevance', () => {
 
     test.each([
         // For EvType-EvDir-ClinSign test cases that should not be loaded
-        ['Predictive', 'Does Not Support', 'Resistance', 'no resistance'],
-        ['Prognostic', 'Does Not Support', 'Poor outcome', 'worse outcome'],
-        ['Functional', 'Does Not Support', 'Neomorphic', 'neomorphic'],
-        ['Predisposing', 'Does Not Support', 'Positive', 'favours diagnosis'],
-        ['Diagnostic', 'Does Not Support', 'Positive', 'favours diagnosis'],
-        ['Diagnostic', 'Does Not Support', 'Negative', 'opposes diagnosis'],
+        ['Predictive', 'Does Not Support', 'Resistance'],
+        ['Prognostic', 'Does Not Support', 'Poor outcome'],
+        ['Functional', 'Does Not Support', 'Neomorphic'],
+        ['Predisposing', 'Does Not Support', 'Positive'],
+        ['Diagnostic', 'Does Not Support', 'Positive'],
+        ['Diagnostic', 'Does Not Support', 'Negative'],
     ])(
         '%s|%s|%s errors', (evidenceType, evidenceDirection, clinicalSignificance) => {
             expect(() => translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toThrow('unable to process relevance');
