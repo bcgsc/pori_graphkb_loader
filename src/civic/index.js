@@ -142,9 +142,14 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
 
         case 'Functional': {
             if (evidenceDirection === 'Does Not Support') {
-                break;
+
+                throw new Error(
+                    `unable to process relevance (${JSON.stringify({ clinicalSignificance, evidenceDirection, evidenceType })})`,
+                );
             } else if (evidenceDirection === 'Supports') {
                 return clinicalSignificance.toLowerCase();
+            }
+            break;
         }
 
         case 'Diagnostic': {
