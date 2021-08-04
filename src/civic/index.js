@@ -6,6 +6,8 @@ const _ = require('lodash');
 const Ajv = require('ajv');
 const fs = require('fs');
 
+const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
+
 const { checkSpec } = require('../util');
 const {
     orderPreferredOntologyTerms,
@@ -17,6 +19,9 @@ const _pubmed = require('../entrez/pubmed');
 const _entrezGene = require('../entrez/gene');
 const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
 const { downloadVariantRecords, processVariantRecord } = require('./variant');
+
+
+class NotImplementedError extends ErrorMixin {}
 
 const ajv = new Ajv();
 
@@ -181,7 +186,7 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
         }
     }
 
-    throw new Error(
+    throw new NotImplementedError(
         `unable to process relevance (${JSON.stringify({ clinicalSignificance, evidenceDirection, evidenceType })})`,
     );
 };
@@ -525,6 +530,37 @@ const processEvidenceRecord = async (opt) => {
 
 
 /**
+ * Get a list of CIViC Evidence Items which have since been deleted.
+ * Returns the list of evidence item IDs to be purged from GraphKB
+ *
+ * @param {string} baseUrl base url for the CIViC API
+ */
+const fetchDeletedEvidenceItems = async (baseUrl) => {
+    const urlTemplate = `${baseUrl}/evidence_items?count=500&status=rejected`;
+    let expectedPages = 1,
+        currentPage = 1;
+
+    const allRecords = [];
+
+    // get the aproved entries
+    while (currentPage <= expectedPages) {
+        const url = `${urlTemplate}&page=${currentPage}`;
+        logger.info(`loading: ${url}`);
+        const resp = await request({
+            json: true,
+            method: 'GET',
+            uri: url,
+        });
+        expectedPages = resp._meta.total_pages;
+        logger.info(`loaded ${resp.records.length} records`);
+        allRecords.push(...resp.records);
+        currentPage++;
+    }
+    return allRecords.map(ev => ev.id);
+};
+
+
+/**
  * Fetch civic approved evidence entries as well as those submitted by trusted curators
  *
  * @param {string} baseUrl the base url for the request
@@ -626,7 +662,9 @@ const downloadEvidenceRecords = async (baseUrl, trustedCurators) => {
  * @param {string[]} opt.trustedCurators a list of curator IDs to also fetch submitted only evidence items for
  */
 const upload = async (opt) => {
-    const { conn, errorLogPrefix, trustedCurators } = opt;
+    const {
+        conn, errorLogPrefix, trustedCurators, ignoreCache = false,
+    } = opt;
     // add the source node
     const source = await conn.addSource(SOURCE_DEFN);
 
@@ -642,7 +680,8 @@ const upload = async (opt) => {
 
     const varById = await downloadVariantRecords();
     const { records, errorList, counts } = await downloadEvidenceRecords(opt.url || BASE_URL, trustedCurators);
-
+    const purgeableEvidenceItems = new Set(await fetchDeletedEvidenceItems(opt.url || BASE_URL));
+    logger.info(`fetched ${purgeableEvidenceItems.size} deleted entries from CIViC`);
 
     logger.info(`Processing ${records.length} records`);
 
@@ -662,9 +701,13 @@ const upload = async (opt) => {
     }
 
     for (const [sourceId, recordList] of Object.entries(recordsById)) {
-        if (previouslyEntered.has(sourceId) && process.env.IGNORE_CIVIC_CACHE !== '1') {
+        if (previouslyEntered.has(sourceId) && !ignoreCache) {
             counts.exists++;
-            // continue;
+            continue;
+        }
+        if (purgeableEvidenceItems.has(sourceId)) {
+            // this should never happen, but if it does we have made an invalida assumption about how civic uses IDs
+            throw new Error(`Record ID is both deleted and to-be loaded. Violates assumptions: ${sourceId}`);
         }
         const preupload = new Set((await conn.getRecords({
             filters: [
@@ -726,6 +769,10 @@ const upload = async (opt) => {
                         if (err.toString().includes('is not a function') || err.toString().includes('of undefined')) {
                             console.error(err);
                         }
+                        if (err instanceof NotImplementedError) {
+                            // accepted evidence that we do not support loading. Should delete as it may have changed to this from something we did support
+                            purgeableEvidenceItems.add(sourceId);
+                        }
                         errorList.push({ error: err, errorMessage: err.toString(), record });
                         logger.error(`evidence (${record.id}) ${err}`);
                         counts.error += 1;
@@ -739,7 +786,17 @@ const upload = async (opt) => {
             preupload.delete(id);
         });
 
-        if (preupload.size) {
+        if (preupload.size && purgeableEvidenceItems.has(sourceId)) {
+            logger.warn(`Removing ${preupload.size} CIViC Entries (EID:${sourceId}) of unsupported format`);
+
+            try {
+                await Promise.all(Array.from(preupload).map(async outdatedId => conn.deleteRecord(
+                    'Statement', outdatedId,
+                )));
+            } catch (err) {
+                logger.error(err);
+            }
+        } else if (preupload.size) {
             if (postupload.length) {
                 logger.warn(`deleting ${preupload.size} outdated statement records (${Array.from(preupload).join(' ')}) has new/retained statements (${postupload.join(' ')})`);
 
@@ -755,6 +812,27 @@ const upload = async (opt) => {
             }
         }
     }
+
+    // purge any remaining entries that are in GraphKB but have since been rejected/deleted by CIViC
+    const toDelete = await conn.getRecords({
+        filters: {
+            AND: [
+                { sourceId: Array.from(purgeableEvidenceItems) },
+                { source: rid(source) },
+            ],
+        },
+        target: 'Statement',
+    });
+
+    try {
+        logger.warn(`Deleting ${toDelete.length} outdated CIViC statements from GraphKB`);
+        await Promise.all(toDelete.map(async statement => conn.deleteRecord(
+            'Statement', rid(statement),
+        )));
+    } catch (err) {
+        logger.error(err);
+    }
+
     logger.info(JSON.stringify(counts));
     const errorJson = `${errorLogPrefix}-civic.json`;
     logger.info(`writing ${errorJson}`);
