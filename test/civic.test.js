@@ -661,6 +661,7 @@ describe('translateRelevance', () => {
             expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
         },
     );
+
     test.each([
         // For EvType-EvDir-ClinSign test cases that should not be loaded
         ['Predictive', 'Does Not Support', 'Resistance', 'no resistance'],
@@ -670,8 +671,9 @@ describe('translateRelevance', () => {
         ['Diagnostic', 'Does Not Support', 'Positive', 'favours diagnosis'],
         ['Diagnostic', 'Does Not Support', 'Negative', 'opposes diagnosis'],
     ])(
-        '%s|%s|%s returns %s', (evidenceType, evidenceDirection, clinicalSignificance, expected) => {
+        '%s|%s|%s errors', (evidenceType, evidenceDirection, clinicalSignificance) => {
             expect(() => translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toThrow('unable to process relevance');
         },
     );
 });
+v
