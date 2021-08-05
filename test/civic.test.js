@@ -668,6 +668,7 @@ describe('translateRelevance', () => {
         ['Prognostic', 'Does Not Support', 'Poor Outcome'],
         ['Functional', 'Does Not Support', 'Neomorphic'],
         ['Predisposing', 'Does Not Support', 'Positive'],
+        ['Predisposing', 'N/A', 'N/A'],
         ['Diagnostic', 'Does Not Support', 'Positive'],
         ['Diagnostic', 'Does Not Support', 'Negative'],
     ])(
