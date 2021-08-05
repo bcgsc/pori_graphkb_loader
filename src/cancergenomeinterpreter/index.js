@@ -13,6 +13,7 @@ const {
 const { logger } = require('../logging');
 const _trials = require('../clinicaltrialsgov');
 const _pubmed = require('../entrez/pubmed');
+const _asco = require('../asco');
 const _gene = require('../entrez/gene');
 const { uploadFromJSON } = require('../ontology');
 
@@ -379,14 +380,31 @@ const fetchAbstract = async (conn, abstractString) => {
         throw new Error(`unable to parse abstract from ${abstractString}`);
     }
     const [, source, year,, abstractNumber] = m;
-    const abstract = await conn.getUniqueRecordBy({
-        filters: [
-            { year },
-            { source: { filters: { name: source }, target: 'Source' } },
-            { abstractNumber },
-        ],
-        target: 'Abstract',
-    });
+    let abstract;
+
+    try {
+        abstract = await conn.getUniqueRecordBy({
+            filters: [
+                { year },
+                { source: { filters: { name: source }, target: 'Source' } },
+                { abstractNumber },
+            ],
+            target: 'Abstract',
+        });
+    } catch (err) {
+        if (source !== 'ASCO') {
+            throw err;
+        }
+        const absList = (await _asco.fetchAndLoadByIds(conn, [abstractNumber])).filter(a => a.year === year);
+
+        if (absList.length > 1) {
+            throw Error(`Cannot uniquely identify the correct ASCO abstract (${abstractNumber}). Found ${absList.length} abstracts`);
+        }
+        if (absList.length === 0) {
+            throw err;
+        }
+        [abstract] = absList;
+    }
     return abstract;
 };
 
