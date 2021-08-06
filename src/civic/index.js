@@ -114,17 +114,19 @@ const validateEvidenceSpec = ajv.compile({
  * Extract the appropriate GraphKB relevance term from a CIViC evidence record
  */
 const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificance) => {
-    switch (evidenceType) { // eslint-disable-line default-case
-        case 'Predictive': {
-            if (evidenceDirection === 'Does Not Support') {
-                switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'Sensitivity':
+    if (evidenceDirection === 'Does Not Support') {
+        if (evidenceType === 'Predictive') {
+            switch (clinicalSignificance) { // eslint-disable-line default-case
+                case 'Sensitivity':
 
-                    case 'Sensitivity/Response': {
-                        return 'no response';
-                    }
+                case 'Sensitivity/Response': {
+                    return 'no response';
                 }
-            } else if (evidenceDirection === 'Supports') {
+            }
+        }
+    } else if (evidenceDirection === 'Supports') {
+        switch (evidenceType) { // eslint-disable-line default-case
+            case 'Predictive': {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
                     case 'Sensitivity':
                     case 'Adverse Response':
@@ -136,48 +138,48 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
 
                     case 'Sensitivity/Response': { return 'sensitivity'; }
                 }
+                break;
             }
-            break;
-        }
 
-        case 'Functional': {
-            return clinicalSignificance.toLowerCase();
-        }
-
-        case 'Diagnostic': {
-            switch (clinicalSignificance) { // eslint-disable-line default-case
-                case 'Positive': { return 'favours diagnosis'; }
-
-                case 'Negative': { return 'opposes diagnosis'; }
-            }
-            break;
-        }
-
-        case 'Prognostic': {
-            switch (clinicalSignificance) { // eslint-disable-line default-case
-                case 'Negative':
-
-                case 'Poor Outcome': {
-                    return 'unfavourable prognosis';
-                }
-                case 'Positive':
-
-                case 'Better Outcome': {
-                    return 'favourable prognosis';
-                }
-            }
-            break;
-        }
-
-        case 'Predisposing': {
-            if (['Positive', null, 'null'].includes(clinicalSignificance)) {
-                return 'predisposing';
-            } if (clinicalSignificance.includes('Pathogenic')) {
+            case 'Functional': {
                 return clinicalSignificance.toLowerCase();
-            } if (clinicalSignificance === 'Uncertain Significance') {
-                return 'likely predisposing';
             }
-            break;
+
+            case 'Diagnostic': {
+                switch (clinicalSignificance) { // eslint-disable-line default-case
+                    case 'Positive': { return 'favours diagnosis'; }
+
+                    case 'Negative': { return 'opposes diagnosis'; }
+                }
+                break;
+            }
+
+            case 'Prognostic': {
+                switch (clinicalSignificance) { // eslint-disable-line default-case
+                    case 'Negative':
+
+                    case 'Poor Outcome': {
+                        return 'unfavourable prognosis';
+                    }
+                    case 'Positive':
+
+                    case 'Better Outcome': {
+                        return 'favourable prognosis';
+                    }
+                }
+                break;
+            }
+
+            case 'Predisposing': {
+                if (['Positive', null, 'null'].includes(clinicalSignificance)) {
+                    return 'predisposing';
+                } if (clinicalSignificance.includes('Pathogenic')) {
+                    return clinicalSignificance.toLowerCase();
+                } if (clinicalSignificance === 'Uncertain Significance') {
+                    return 'likely predisposing';
+                }
+                break;
+            }
         }
     }
 
