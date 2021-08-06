@@ -14,6 +14,7 @@ const {
 const { logger } = require('../logging');
 const _trials = require('../clinicaltrialsgov');
 const _pubmed = require('../entrez/pubmed');
+const _asco = require('../asco');
 const _gene = require('../entrez/gene');
 const { uploadFromJSON } = require('../ontology');
 const { cgi: SOURCE_DEFN } = require('../sources');
@@ -432,8 +433,18 @@ const fetchAbstract = async (conn, abstractString) => {
             target: 'Abstract',
         });
     } catch (err) {
-        logger.error(`failed to fetch abstract: ${abstractString}`);
-        throw err;
+        if (source !== 'ASCO') {
+            throw err;
+        }
+        const absList = (await _asco.fetchAndLoadByIds(conn, [abstractNumber])).filter(a => a.year === year);
+
+        if (absList.length > 1) {
+            throw Error(`Cannot uniquely identify the correct ASCO abstract (${abstractNumber}). Found ${absList.length} abstracts`);
+        }
+        if (absList.length === 0) {
+            throw err;
+        }
+        [abstract] = absList;
     }
     return abstract;
 };
@@ -513,11 +524,7 @@ const processRow = async ({ row, source, conn }) => {
 const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
     const rows = await loadDelimToJson(filename);
     logger.info('creating the source record');
-    const source = rid(await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
     const counts = { error: 0, skip: 0, success: 0 }; // tracking errors relative to the number of total statements
     const inputCounts = { error: 0, skip: 0, success: 0 }; // tracking errors relative to the input number of records
 

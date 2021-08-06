@@ -242,9 +242,7 @@ const parseKinaseFusions = async ({
 const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
     logger.info('retrieve the publication');
     const publication = rid((await _pubmed.fetchAndLoadByIds(conn, ['25500544']))[0]);
-    const source = rid(await conn.addRecord({
-        content: { ...SOURCE_DEFN }, existsOk: true, fetchConditions: { name: SOURCE_DEFN.name }, target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
     const errorList = [];
     errorList.push(...await parseKinaseFusions({
         conn, filename, publication, source,

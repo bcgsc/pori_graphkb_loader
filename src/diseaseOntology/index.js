@@ -7,7 +7,7 @@
 const Ajv = require('ajv');
 
 const { checkSpec } = require('../util');
-const { rid, generateCacheKey } = require('../graphkb');
+const { rid, orderPreferredOntologyTerms, haveSharedEdge } = require('../graphkb');
 const { logger } = require('../logging');
 const { diseaseOntology: SOURCE_DEFN, ncit: { name: ncitName } } = require('../sources');
 
@@ -134,7 +134,7 @@ const parseNodeRecord = (record) => {
     }
 
     return {
-        aliases,
+        aliases: aliases.filter(a => a !== name),
         deprecated,
         description,
         hasDeprecated,
@@ -157,6 +157,9 @@ const loadEdges = async ({
     DOID, records, conn, source,
 }) => {
     logger.info('adding the subclass relationships');
+    const counts = {
+        error: 0, exists: 0, skip: 0, success: 0,
+    };
 
     for (const edge of DOID.graphs[0].edges) {
         const { sub, pred, obj } = edge;
@@ -170,6 +173,12 @@ const loadEdges = async ({
                 src = parseDoid(sub).toLowerCase();
                 tgt = parseDoid(obj).toLowerCase();
 
+                if (haveSharedEdge(records[src], records[tgt], 'SubClassOf')) {
+                    counts.exists++;
+                    continue;
+                }
+                logger.info(`processing is_a edge from ${src} to ${tgt}`);
+
 
                 if (records[src] && records[tgt]) {
                     await conn.addRecord({
@@ -182,13 +191,19 @@ const loadEdges = async ({
                         fetchExisting: false,
                         target: 'SubclassOf',
                     });
+                    counts.success++;
+                } else {
+                    logger.warn(`skipping edge missing one of node records: ${src} or ${tgt}`);
+                    counts.skip++;
                 }
             } catch (err) {
                 logger.warn(err);
+                counts.error++;
                 continue;
             }
         }
     }
+    logger.info(`edge counts: ${JSON.stringify(counts)}`);
 };
 
 /**
@@ -198,23 +213,15 @@ const loadEdges = async ({
  * @param {string} opt.filename the path to the input JSON file
  * @param {ApiConnection} opt.conn the api connection object
  */
-const uploadFile = async ({ filename, conn }) => {
+const uploadFile = async ({ filename, conn, ignoreCache = false }) => {
     // load the DOID JSON
     logger.info('loading external disease ontology data');
     const DOID = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
 
     // build the disease ontology first
     const nodesByName = {}; // store by name
-    const synonymsByName = {};
 
-    let source = await conn.addRecord({
-        content: {
-            ...SOURCE_DEFN,
-        },
-        existsOk: true,
-        fetchConditions: { AND: [{ name: SOURCE_DEFN.name }] },
-        target: 'Source',
-    });
+    let source = await conn.addSource(SOURCE_DEFN);
     source = rid(source);
     logger.info(`processing ${DOID.graphs[0].nodes.length} nodes`);
     const recordsBySourceId = {};
@@ -235,14 +242,37 @@ const uploadFile = async ({ filename, conn }) => {
         });
         logger.info(`cached ${ncitRecords.length} ncit records`);
 
-        for (const record of ncitRecords) {
-            ncitCache[generateCacheKey(record)] = rid(record);
+        for (const record of ncitRecords.sort(orderPreferredOntologyTerms).reverse()) {
+            ncitCache[record.sourceId] = rid(record);
         }
     } catch (err) {
         logger.error(err);
     }
 
-    const counts = { error: 0, skip: 0, success: 0 };
+    const counts = {
+        error: 0, exists: 0, skip: 0, success: 0,
+    };
+    const doCache = {};
+
+    const doCacheKeyFunction = rec => JSON.stringify([
+        rec.sourceId.toLowerCase(),
+        (rec.sourceIdVersion || '').toLowerCase(),
+        (rec.name || '').toLowerCase(),
+        rec.alias || false,
+        rec.deprecated || false,
+    ]);
+
+    logger.info('fetching previously entered DO records');
+    const previousRecords = await conn.getRecords({
+        filters: { source },
+        neighbors: 0,
+        target: 'Disease',
+    });
+    logger.info(`found ${previousRecords.length} previously entered disease ontology records`);
+
+    for (const previousRecord of previousRecords) {
+        doCache[doCacheKeyFunction(previousRecord)] = previousRecord;
+    }
 
     for (let i = 0; i < DOID.graphs[0].nodes.length; i++) {
         const node = DOID.graphs[0].nodes[i];
@@ -271,29 +301,37 @@ const uploadFile = async ({ filename, conn }) => {
         if (nodesByName[name] !== undefined) {
             throw new Error(`name is not unique ${name}`);
         }
-        synonymsByName[name] = [];
+
         // create the database entry
-        const record = await conn.addRecord({
-            content: {
-                alias: false,
-                deprecated,
-                description,
-                name,
-                source,
-                sourceId,
-                subsets,
-            },
-            existsOk: true,
-            fetchConditions: {
-                AND: [
-                    { sourceId }, { name }, { source },
-                ],
-            },
-            fetchFirst: true,
-            target: 'Disease',
-            upsert: true,
-            upsertCheckExclude: ['sourceIdVersion'],
-        });
+        let record;
+        const mainContent = {
+            alias: false,
+            deprecated,
+            description,
+            name,
+            source,
+            sourceId,
+            subsets,
+        };
+
+        if (!ignoreCache && doCache[doCacheKeyFunction(mainContent)]) {
+            record = doCache[doCacheKeyFunction(mainContent)];
+        } else {
+            record = await conn.addRecord({
+                content: mainContent,
+                existsOk: true,
+                fetchConditions: {
+                    AND: [
+                        { sourceId }, { name }, { source },
+                    ],
+                },
+                fetchFirst: true,
+                target: 'Disease',
+                upsert: true,
+                upsertCheckExclude: ['sourceIdVersion', 'subsets'],
+            });
+        }
+        counts.success++;
 
         if (recordsBySourceId[record.sourceId] !== undefined) {
             throw new Error(`sourceID is not unique: ${record.sourceId}`);
@@ -302,14 +340,20 @@ const uploadFile = async ({ filename, conn }) => {
 
         // create synonyms and links
         for (const alias of aliases) {
+            const content = {
+                alias: true,
+                name: alias,
+                source,
+                sourceId: record.sourceId,
+            };
+
+            if (!ignoreCache && doCache[doCacheKeyFunction(content)]) {
+                continue;
+            }
+
             try {
                 const synonym = await conn.addRecord({
-                    content: {
-                        alias: true,
-                        name: alias,
-                        source,
-                        sourceId: record.sourceId,
-                    },
+                    content,
                     existsOk: true,
                     fetchConditions: {
                         AND: [
@@ -320,6 +364,7 @@ const uploadFile = async ({ filename, conn }) => {
                     },
                     target: 'Disease',
                     upsert: true,
+                    upsertCheckExclude: ['sourceIdVersion', 'subsets'],
                 });
                 await conn.addRecord({
                     content: {
@@ -340,14 +385,20 @@ const uploadFile = async ({ filename, conn }) => {
 
         // create deprecatedBy links for the old sourceIDs
         for (const alternateId of hasDeprecated) {
+            const content = {
+                deprecated: true,
+                name: record.name,
+                source,
+                sourceId: alternateId,
+            };
+
+            if (!ignoreCache && doCache[doCacheKeyFunction(content)]) {
+                continue;
+            }
+
             try {
                 const alternate = await conn.addRecord({
-                    content: {
-                        deprecated: true,
-                        name: record.name,
-                        source,
-                        sourceId: alternateId,
-                    },
+                    content,
                     existsOk: true,
                     fetchConditions: {
                         AND: [
@@ -358,6 +409,7 @@ const uploadFile = async ({ filename, conn }) => {
                     },
                     target: 'Disease',
                     upsert: true,
+                    upsertCheckExclude: ['sourceIdVersion', 'subsets'],
                 });
                 await conn.addRecord({
                     content: { in: rid(record), out: rid(alternate), source },
@@ -372,14 +424,12 @@ const uploadFile = async ({ filename, conn }) => {
         }
 
         // link to existing ncit records
-        for (const ncit of ncitLinks) {
-            const key = generateCacheKey({ sourceId: ncit });
-
-            if (!ncitCache[key]) {
-                logger.warn(`failed to link ${record.sourceId} to ${key}. Missing record`);
+        for (const ncitId of ncitLinks) {
+            if (!ncitCache[ncitId]) {
+                logger.warn(`failed to link ${record.sourceId} to ${ncitId}. Missing record`);
             } else {
                 await conn.addRecord({
-                    content: { in: rid(ncitCache[key]), out: rid(record), source },
+                    content: { in: rid(ncitCache[ncitId]), out: rid(record), source },
                     existsOk: true,
                     fetchExisting: false,
                     target: 'CrossreferenceOf',

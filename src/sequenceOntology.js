@@ -85,12 +85,7 @@ const uploadFile = async ({ filename, conn }) => {
     logger.info(`parsing: ${filename}`);
     rdf.parse(fileContent, graph, OWL_NAMESPACE, 'application/rdf+xml');
 
-    const source = await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    });
+    const source = await conn.addSource(SOURCE_DEFN);
 
     const nodesByCode = convertOwlGraphToJson(graph, parseId);
     logger.info(`loading ${Object.keys(nodesByCode).length} records`);

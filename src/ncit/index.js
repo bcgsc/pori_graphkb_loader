@@ -285,12 +285,7 @@ const uploadFile = async ({ filename, conn, ignoreCache = false }) => {
     }
     logger.warn(`rejected ${rejected.size} rows for unresolveable primary/display name conflicts`);
 
-    const source = rid(await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
 
     const subclassEdges = [];
 

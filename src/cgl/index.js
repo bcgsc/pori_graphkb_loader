@@ -185,12 +185,7 @@ const loadGenomicVariant = async (graphkbConn, chromosome, position, ref, alt) =
 const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     const jsonList = await loadDelimToJson(filename);
     // get the dbID for the source
-    const source = rid(await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
     const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
     logger.info(`Processing ${jsonList.length} records`);

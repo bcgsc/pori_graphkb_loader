@@ -161,13 +161,7 @@ const uploadRecord = async (api, content, opt = {}) => {
     let source = cache.__source;
 
     if (!source) {
-        source = await api.addRecord({
-            content: sourceDefn,
-            existsOk: true,
-            fetchConditions: { name: sourceDefn.name },
-            fetchFirst: true,
-            target: 'Source',
-        });
+        source = await api.addSource(sourceDefn);
 
         if (cache) {
             cache.__source = source;
