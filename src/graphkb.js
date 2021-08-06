@@ -212,6 +212,7 @@ class ApiConnection {
         this.exp = null;
         this.created = {};
         this.updated = {};
+        this.deleted = {};
         this.pendingRequests = 0;
     }
 
@@ -321,6 +322,10 @@ class ApiConnection {
 
         for (const key of Object.keys(this.updated)) {
             created[key] = { ...(created[key] || {}), updated: this.updated[key].length };
+        }
+
+        for (const key of Object.keys(this.deleted)) {
+            created[key] = { ...(created[key] || {}), updated: this.deleted[key].length };
         }
         return created;
     }
@@ -520,6 +525,11 @@ class ApiConnection {
             method: 'DELETE',
             uri: `${model.routeName}/${recordId.replace(/^#/, '')}`,
         }));
+
+        if (this.deleted[target] === undefined) {
+            this.deleted[target] = [];
+        }
+        this.deleted[target].push(recordId);
         return result;
     }
 
