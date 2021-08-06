@@ -1,5 +1,5 @@
 const _asco = require('../asco');
-const _pubmed = require('../asco');
+const _pubmed = require('../entrez/pubmed');
 
 /**
  * Check two strings are the same irrespective of casing, trailing periods and other formatting
