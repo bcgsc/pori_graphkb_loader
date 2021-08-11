@@ -29,20 +29,20 @@ const getPublication = async (conn, rawRecord) => {
             throw Error(`unable to find ASCO abstract (${rawRecord.source.asco_abstract_id})`);
         }
 
-        const yearFitleredAbstracts = abstracts.filter(a => a.year === rawRecord.source.publication_date.year);
+        const yearFilteredAbstracts = abstracts.filter(a => a.year === rawRecord.source.publication_date.year);
 
-        if (yearFitleredAbstracts.length === 0) {
+        if (yearFilteredAbstracts.length === 0) {
             throw Error(`An abstract of matching number (${rawRecord.source.asco_abstract_id}) and year (${rawRecord.source.publication_date.year}) was not found in the ASCO DB`);
         }
 
         // select the abstract that matches our metadata
-        const filteredAbstracts = yearFitleredAbstracts.filter(a => (
+        const filteredAbstracts = yearFilteredAbstracts.filter(a => (
             (!rawRecord.source.url || rawRecord.source.url.includes(a.sourceId))
             && titlesMatch(rawRecord.source.name, a.name)
         ));
 
         if (filteredAbstracts.length === 0) {
-            throw Error(`failed to select the relevant abstract (${rawRecord.source.asco_abstract_id}) from (${yearFitleredAbstracts.length}) abstracts with the same year and abstract ID`);
+            throw Error(`failed to select the relevant abstract (${rawRecord.source.asco_abstract_id}) from (${yearFilteredAbstracts.length}) abstracts with the same year and abstract ID`);
         } else if (filteredAbstracts.length > 1) {
             throw Error(`too many choice for abstract (${rawRecord.source.asco_abstract_id})`);
         }
