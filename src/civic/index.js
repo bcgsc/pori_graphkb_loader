@@ -19,6 +19,7 @@ const _pubmed = require('../entrez/pubmed');
 const _entrezGene = require('../entrez/gene');
 const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
 const { downloadVariantRecords, processVariantRecord } = require('./variant');
+const { getPublication } = require('./publication');
 
 
 class NotImplementedError extends ErrorMixin {}
@@ -105,7 +106,7 @@ const validateEvidenceSpec = ajv.compile({
             properties: {
                 citation_id: { type: 'string' },
                 name: { type: ['string', 'null'] },
-                source_type: { type: 'string' },
+                source_type: { enum: ['ASCO', 'PubMed'] },
             },
         },
         status: { type: 'string' },
@@ -407,14 +408,8 @@ const processEvidenceRecord = async (opt) => {
             throw err;
         }
     }
-    // get the publication by pubmed ID
-    let publication;
 
-    try {
-        [publication] = await _pubmed.fetchAndLoadByIds(conn, [rawRecord.source.citation_id]);
-    } catch (err) {
-        throw err;
-    }
+    const publication = await getPublication(conn, rawRecord);
 
     // common content
     const content = {
@@ -644,9 +639,6 @@ const downloadEvidenceRecords = async (baseUrl, trustedCurators) => {
         ) {
             counts.skip++;
             logger.debug(`skipping uninformative record (${record.id})`);
-        } else if (record.source.source_type.toLowerCase() !== 'pubmed') {
-            logger.info(`Currently only loading pubmed sources. Found ${record.source.source_type} (${record.id})`);
-            counts.skip++;
         } else {
             records.push(record);
         }

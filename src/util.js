@@ -16,6 +16,9 @@ const _ = require('lodash');
 const { logger } = require('./logging');
 
 
+const REQUESTS_CACHE = {};
+
+
 const convertOwlGraphToJson = (graph, idParser = x => x) => {
     const initialRecords = {};
 
@@ -114,9 +117,19 @@ const loadXmlToJson = (filename, opts = {}) => {
 /**
  *  Try again for too many requests errors. Helpful for APIs with a rate limit (ex. pubmed)
  */
-const requestWithRetry = async (requestOpt, { waitSeconds = 2, retries = 1 } = {}) => {
+const requestWithRetry = async (requestOpt, { waitSeconds = 2, retries = 1, useCache = true } = {}) => {
+    const reqId = stableStringify(requestOpt);
+
+    if (useCache && REQUESTS_CACHE[reqId]) {
+        return REQUESTS_CACHE[reqId];
+    }
+
     try {
         const result = await request(requestOpt);
+
+        if (useCache) {
+            REQUESTS_CACHE[reqId] = result;
+        }
         return result;
     } catch (err) {
         if (err.statusCode === HTTP_STATUS_CODES.TOO_MANY_REQUESTS && retries > 0) {
