@@ -655,6 +655,7 @@ describe('translateRelevance', () => {
         ['Functional', 'Supports', 'Gain of Function', 'gain of function'],
         ['Predictive', 'Does Not Support', 'Sensitivity', 'no response'],
         ['Predictive', 'Does Not Support', 'Sensitivity/Response', 'no response'],
+        ['Predictive', 'Does Not Support', 'Resistance', 'no resistance'],
         ['Functional', 'Supports', 'Neomorphic', 'neomorphic'],
     ])(
         '%s|%s|%s returns %s', (evidenceType, evidenceDirection, clinicalSignificance, expected) => {
@@ -664,7 +665,6 @@ describe('translateRelevance', () => {
 
     test.each([
         // For EvType-EvDir-ClinSign test cases that should not be loaded
-        ['Predictive', 'Does Not Support', 'Resistance'],
         ['Prognostic', 'Does Not Support', 'Poor Outcome'],
         ['Functional', 'Does Not Support', 'Neomorphic'],
         ['Predisposing', 'Does Not Support', 'Positive'],

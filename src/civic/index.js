@@ -128,6 +128,8 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
                 case 'Sensitivity/Response': {
                     return 'no response';
                 }
+
+                case 'Resistance': { return 'no resistance'; }
             }
         }
     } else if (evidenceDirection === 'Supports') {
