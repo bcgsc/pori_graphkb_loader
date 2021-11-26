@@ -97,7 +97,7 @@ class OncotreeAPI {
             );
             let records = await this.getRecords(version.apiKey);
             records = Array.from(records, (rec) => {
-                const newRec = Object.assign({}, rec);
+                const newRec = { ...rec };
                 newRec.code = rec.code.toLowerCase();
                 newRec.history = Array.from(rec.history || [], code => code.toLowerCase());
 

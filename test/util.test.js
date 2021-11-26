@@ -3,7 +3,7 @@ const path = require('path');
 const {
     loadDelimToJson,
     loadXmlToJson,
-} = require('./../src/util');
+} = require('../src/util');
 
 const { orderPreferredOntologyTerms } = require('../src/graphkb');
 
