@@ -19,6 +19,7 @@ jobs:
       - run: npm ci
       - run: npm run lint -- --quiet # errors only, no warnings
         name: eslint
+      - run: npm audit --production --audit-level high
       - run: npm run test
       - uses: EnricoMi/publish-unit-test-result-action@v1.6
         with:
