@@ -40,17 +40,16 @@
     "commitizen": "^4.2.4",
     "cz-conventional-changelog": "^3.2.0",
     "eslint": "^8.3.0",
-    "eslint-config-airbnb": "^17.0.0",
-    "eslint-plugin-import": "^2.13.0",
+    "eslint-config-airbnb": "^19.0.1",
+    "eslint-plugin-import": "^2.25.3",
     "eslint-plugin-jest": "^22.20.0",
     "eslint-plugin-jest-formatting": "^1.1.0",
-    "eslint-plugin-jsx-a11y": "^6.1.1",
-    "eslint-plugin-react": "^7.14.3",
+    "eslint-plugin-jsx-a11y": "^6.5.1",
+    "eslint-plugin-react": "^7.27.1",
     "eslint-plugin-sort-keys-fix": "^1.1.1",
     "jest": "^27.3.1",
-    "jest-bamboo-formatter": "^1.0.1",
     "jest-circus": "^27.3.1",
-    "jest-junit": "^6.4.0"
+    "jest-junit": "^13.0.0"
   },
   "scripts": {
     "test": "NODE_ENV=test jest --config config/jest.config.js",
