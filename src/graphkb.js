@@ -715,7 +715,7 @@ class ApiConnection {
 /**
  * Given two node/vertex records do they share a common edge?
  */
-const haveSharedEdge = (src, tgt, edgeType) => {
+const edgeExists = (src, tgt, edgeType) => {
     const srcEdgeIds = (src[`out_${edgeType}`] || []).map(rid);
     const tgtEdgeIds = (tgt[`in_${edgeType}`] || []).map(rid);
 
@@ -733,7 +733,7 @@ module.exports = {
     INTERNAL_SOURCE_NAME,
     convertRecordToQueryFilters,
     generateCacheKey,
-    haveSharedEdge,
+    edgeExists
     orderPreferredOntologyTerms,
     rid,
     shouldUpdate,
