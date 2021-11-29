@@ -732,8 +732,8 @@ module.exports = {
     ApiConnection,
     INTERNAL_SOURCE_NAME,
     convertRecordToQueryFilters,
+    edgeExists,
     generateCacheKey,
-    edgeExists
     orderPreferredOntologyTerms,
     rid,
     shouldUpdate,
