@@ -11,6 +11,12 @@ const sources = {
         name: 'PMC4468049-supp',
         url: 'https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/bin/NIHMS632238-supplement-2.xlsx',
     },
+    asco: {
+        displayName: 'ASCO',
+        longName: 'American Society of Clinical Oncology',
+        name: 'asco',
+        url: 'https://meetinglibrary.asco.org',
+    },
     cancerhotspots: {
         description: 'a resource for statistically significant mutations in cancer',
         displayName: 'cancerhotspots.org',

@@ -256,12 +256,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     logger.info(`loading: ${filename}`);
 
     // get the dbID for the source
-    const source = rid(await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    }));
+    const source = rid(await conn.addSource(SOURCE_DEFN));
     const relevance = rid(await conn.getVocabularyTerm('mutation hotspot'));
     const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];

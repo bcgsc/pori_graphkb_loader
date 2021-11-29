@@ -9,14 +9,16 @@ const pubmed = require('../src/entrez/pubmed');
 const refseq = require('../src/entrez/refseq');
 const chembl = require('../src/chembl');
 
+const addRecordMock = jest.fn().mockImplementation(async ({ content }) => content);
 const api = {
-    addRecord: jest.fn().mockImplementation(async ({ content }) => content),
+    addRecord: addRecordMock,
+    addSource: async content => addRecordMock({ content }),
     getUniqueRecordBy: jest.fn().mockImplementation(async ({ filters }) => filters),
 };
 
 
 jest.mock('../src/util', () => {
-    const original = require.requireActual('../src/util');
+    const original = jest.requireActual('../src/util');
     return { ...original, requestWithRetry: jest.fn() };
 });
 

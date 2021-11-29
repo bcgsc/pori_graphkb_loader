@@ -445,12 +445,7 @@ const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
 
     // get or add the source
     if (!CACHE.source) {
-        CACHE.source = rid(await conn.addRecord({
-            content: SOURCE_DEFN,
-            existsOk: true,
-            fetchConditions: { name: SOURCE_DEFN.name },
-            target: 'Source',
-        }));
+        CACHE.source = rid(await conn.addSource(SOURCE_DEFN));
     }
     const trial = await processRecord({
         conn,
@@ -469,12 +464,7 @@ const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
  * @param {string} opt.filename the path to the XML export
  */
 const uploadFiles = async ({ conn, files }) => {
-    const source = await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    });
+    const source = await conn.addSource(SOURCE_DEFN);
 
     logger.info(`loading ${files.length} records`);
     const counts = {

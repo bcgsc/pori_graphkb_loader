@@ -114,12 +114,7 @@ const fetchAndLoadById = async (conn, { sourceId, sourceIdVersion, biotype }) =>
     }
     // get the source record from the cache
     if (!CACHE._source) {
-        CACHE._source = rid(await conn.addRecord({
-            content: SOURCE_DEFN,
-            existsOk: true,
-            fetchConditions: { name: SOURCE_DEFN.name },
-            target: 'Source',
-        }));
+        CACHE._source = rid(await conn.addSource(SOURCE_DEFN));
     }
 
     // try to fetch from graphkb first
@@ -198,19 +193,9 @@ const uploadFile = async (opt) => {
         [row.transcriptId, row.transcriptIdVersion] = row.transcriptIdVersion.split('.');
     }
 
-    const source = await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    });
+    const source = await conn.addSource(SOURCE_DEFN);
 
-    const refseqSource = await conn.addRecord({
-        content: refseqSourceDefn,
-        existsOk: true,
-        fetchConditions: { name: refseqSourceDefn.name },
-        target: 'Source',
-    });
+    const refseqSource = await conn.addSource(refseqSourceDefn);
 
 
     const visited = {}; // cache genes to speed up adding records

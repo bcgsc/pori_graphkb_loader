@@ -4,15 +4,18 @@ const diseaseOntology = require('../src/diseaseOntology');
 const drugbank = require('../src/drugbank');
 const { rid, convertRecordToQueryFilters } = require('../src/graphkb');
 
+
+const addRecordMock = jest.fn().mockImplementation(async ({ content }) => content);
 const api = {
-    addRecord: jest.fn().mockImplementation(async ({ content }) => content),
+    addRecord: addRecordMock,
+    addSource: async content => addRecordMock({ content }),
     getRecords: jest.fn().mockImplementation(async () => []),
     getUniqueRecordBy: jest.fn().mockImplementation(async ({ where }) => where),
 };
 
 
 jest.mock('../src/util', () => {
-    const original = require.requireActual('../src/util');
+    const original = jest.requireActual('../src/util');
     return { ...original, requestWithRetry: jest.fn() };
 });
 

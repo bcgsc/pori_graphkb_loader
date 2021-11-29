@@ -377,12 +377,7 @@ const processRecord = async ({
 const uploadFile = async ({ filename, conn }) => {
     logger.info('Loading the external drugbank data');
 
-    const source = await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    });
+    const source = await conn.addSource(SOURCE_DEFN);
 
     const ATC = {};
     let fdaSource;

@@ -6,6 +6,8 @@ const _ = require('lodash');
 const Ajv = require('ajv');
 const fs = require('fs');
 
+const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
+
 const { checkSpec } = require('../util');
 const {
     orderPreferredOntologyTerms,
@@ -17,11 +19,12 @@ const _pubmed = require('../entrez/pubmed');
 const _entrezGene = require('../entrez/gene');
 const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
 const { downloadVariantRecords, processVariantRecord } = require('./variant');
+const { getPublication } = require('./publication');
+
+
+class NotImplementedError extends ErrorMixin {}
 
 const ajv = new Ajv();
-
-
-const TRUSTED_CURATOR_ID = 968;
 
 const BASE_URL = 'https://civicdb.org/api';
 
@@ -72,9 +75,11 @@ const validateEvidenceSpec = ajv.compile({
         },
         description: { type: 'string' },
         disease: {
-            doid: { type: 'string' },
-            name: { type: 'string' },
-            type: 'object',
+            oneOf: [{
+                doid: { type: 'string' },
+                name: { type: 'string' },
+                type: 'object',
+            }, { type: 'null' }],
         },
         drug_interaction_type: { enum: ['Combination', 'Substitutes', 'Sequential', null] },
         drugs: {
@@ -101,7 +106,7 @@ const validateEvidenceSpec = ajv.compile({
             properties: {
                 citation_id: { type: 'string' },
                 name: { type: ['string', 'null'] },
-                source_type: { type: 'string' },
+                source_type: { enum: ['ASCO', 'PubMed'] },
             },
         },
         status: { type: 'string' },
@@ -115,17 +120,21 @@ const validateEvidenceSpec = ajv.compile({
  * Extract the appropriate GraphKB relevance term from a CIViC evidence record
  */
 const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificance) => {
-    switch (evidenceType) { // eslint-disable-line default-case
-        case 'Predictive': {
-            if (evidenceDirection === 'Does Not Support') {
-                switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'Sensitivity':
+    if (evidenceDirection === 'Does Not Support') {
+        if (evidenceType === 'Predictive') {
+            switch (clinicalSignificance) { // eslint-disable-line default-case
+                case 'Sensitivity':
 
-                    case 'Sensitivity/Response': {
-                        return 'no response';
-                    }
+                case 'Sensitivity/Response': {
+                    return 'no response';
                 }
-            } else if (evidenceDirection === 'Supports') {
+
+                case 'Resistance': { return 'no resistance'; }
+            }
+        }
+    } else if (evidenceDirection === 'Supports') {
+        switch (evidenceType) { // eslint-disable-line default-case
+            case 'Predictive': {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
                     case 'Sensitivity':
                     case 'Adverse Response':
@@ -137,52 +146,52 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
 
                     case 'Sensitivity/Response': { return 'sensitivity'; }
                 }
+                break;
             }
-            break;
-        }
 
-        case 'Functional': {
-            return clinicalSignificance.toLowerCase();
-        }
-
-        case 'Diagnostic': {
-            switch (clinicalSignificance) { // eslint-disable-line default-case
-                case 'Positive': { return 'favours diagnosis'; }
-
-                case 'Negative': { return 'opposes diagnosis'; }
-            }
-            break;
-        }
-
-        case 'Prognostic': {
-            switch (clinicalSignificance) { // eslint-disable-line default-case
-                case 'Negative':
-
-                case 'Poor Outcome': {
-                    return 'unfavourable prognosis';
-                }
-                case 'Positive':
-
-                case 'Better Outcome': {
-                    return 'favourable prognosis';
-                }
-            }
-            break;
-        }
-
-        case 'Predisposing': {
-            if (['Positive', null, 'null'].includes(clinicalSignificance)) {
-                return 'predisposing';
-            } if (clinicalSignificance.includes('Pathogenic')) {
+            case 'Functional': {
                 return clinicalSignificance.toLowerCase();
-            } if (clinicalSignificance === 'Uncertain Significance') {
-                return 'likely predisposing';
             }
-            break;
+
+            case 'Diagnostic': {
+                switch (clinicalSignificance) { // eslint-disable-line default-case
+                    case 'Positive': { return 'favours diagnosis'; }
+
+                    case 'Negative': { return 'opposes diagnosis'; }
+                }
+                break;
+            }
+
+            case 'Prognostic': {
+                switch (clinicalSignificance) { // eslint-disable-line default-case
+                    case 'Negative':
+
+                    case 'Poor Outcome': {
+                        return 'unfavourable prognosis';
+                    }
+                    case 'Positive':
+
+                    case 'Better Outcome': {
+                        return 'favourable prognosis';
+                    }
+                }
+                break;
+            }
+
+            case 'Predisposing': {
+                if (['Positive', null, 'null'].includes(clinicalSignificance)) {
+                    return 'predisposing';
+                } if (clinicalSignificance.includes('Pathogenic')) {
+                    return clinicalSignificance.toLowerCase();
+                } if (clinicalSignificance === 'Uncertain Significance') {
+                    return 'likely predisposing';
+                }
+                break;
+            }
         }
     }
 
-    throw new Error(
+    throw new NotImplementedError(
         `unable to process relevance (${JSON.stringify({ clinicalSignificance, evidenceDirection, evidenceType })})`,
     );
 };
@@ -357,28 +366,28 @@ const processEvidenceRecord = async (opt) => {
         }
     }
     // get the disease by doid
-    let diseaseQueryFilters = {};
-
-    if (rawRecord.disease.doid) {
-        diseaseQueryFilters = {
-            AND: [
-                { sourceId: `doid:${rawRecord.disease.doid}` },
-                { source: { filters: { name: 'disease ontology' }, target: 'Source' } },
-            ],
-        };
-    } else {
-        diseaseQueryFilters = { name: rawRecord.disease.name };
-    }
     let disease;
 
-    try {
+    // find the disease if it is not null
+    if (rawRecord.disease) {
+        let diseaseQueryFilters = {};
+
+        if (rawRecord.disease.doid) {
+            diseaseQueryFilters = {
+                AND: [
+                    { sourceId: `doid:${rawRecord.disease.doid}` },
+                    { source: { filters: { name: 'disease ontology' }, target: 'Source' } },
+                ],
+            };
+        } else {
+            diseaseQueryFilters = { name: rawRecord.disease.name };
+        }
+
         disease = await conn.getUniqueRecordBy({
             filters: diseaseQueryFilters,
             sort: orderPreferredOntologyTerms,
             target: 'Disease',
         });
-    } catch (err) {
-        throw err;
     }
     // get the drug(s) by name
     let drug;
@@ -397,14 +406,8 @@ const processEvidenceRecord = async (opt) => {
             throw err;
         }
     }
-    // get the publication by pubmed ID
-    let publication;
 
-    try {
-        [publication] = await _pubmed.fetchAndLoadByIds(conn, [rawRecord.source.citation_id]);
-    } catch (err) {
-        throw err;
-    }
+    const publication = await getPublication(conn, rawRecord);
 
     // common content
     const content = {
@@ -413,15 +416,21 @@ const processEvidenceRecord = async (opt) => {
         evidence: [rid(publication)],
         evidenceLevel: [rid(level)],
         relevance: rid(relevance),
-        reviewStatus: 'not required',
+        reviewStatus: (rawRecord.status === 'accepted'
+            ? 'not required'
+            : 'pending'
+        ),
         source: rid(sources.civic),
         sourceId: rawRecord.id,
     };
 
     // create the statement and connecting edges
     if (rawRecord.evidence_type === 'Diagnostic' || rawRecord.evidence_type === 'Predisposing') {
+        if (!disease) {
+            throw new Error('Unable to create a diagnostic or predisposing statement without a corresponding disease');
+        }
         content.subject = rid(disease);
-    } else {
+    } else if (disease) {
         content.conditions.push(rid(disease));
     }
 
@@ -516,11 +525,43 @@ const processEvidenceRecord = async (opt) => {
 
 
 /**
+ * Get a list of CIViC Evidence Items which have since been deleted.
+ * Returns the list of evidence item IDs to be purged from GraphKB
+ *
+ * @param {string} baseUrl base url for the CIViC API
+ */
+const fetchDeletedEvidenceItems = async (baseUrl) => {
+    const urlTemplate = `${baseUrl}/evidence_items?count=500&status=rejected`;
+    let expectedPages = 1,
+        currentPage = 1;
+
+    const allRecords = [];
+
+    // get the aproved entries
+    while (currentPage <= expectedPages) {
+        const url = `${urlTemplate}&page=${currentPage}`;
+        logger.info(`loading: ${url}`);
+        const resp = await request({
+            json: true,
+            method: 'GET',
+            uri: url,
+        });
+        expectedPages = resp._meta.total_pages;
+        logger.info(`loaded ${resp.records.length} records`);
+        allRecords.push(...resp.records);
+        currentPage++;
+    }
+    return allRecords.map(ev => ev.id);
+};
+
+
+/**
  * Fetch civic approved evidence entries as well as those submitted by trusted curators
  *
  * @param {string} baseUrl the base url for the request
+ * @param {string[]} trustedCurators a list of curator IDs to also fetch submitted only evidence items for
  */
-const downloadEvidenceRecords = async (baseUrl) => {
+const downloadEvidenceRecords = async (baseUrl, trustedCurators) => {
     const urlTemplate = `${baseUrl}/evidence_items?count=500&status=accepted`;
     // load directly from their api
     const counts = {
@@ -548,17 +589,24 @@ const downloadEvidenceRecords = async (baseUrl) => {
     }
 
     // now find entries curated by trusted curators
-    const { results: trustedSubmissions } = await request({
-        body: {
-            entity: 'evidence_items',
-            operator: 'AND',
-            queries: [{ condition: { name: 'is_equal_to', parameters: [`${TRUSTED_CURATOR_ID}`] }, field: 'submitter_id' }],
-            save: true,
-        },
-        json: true,
-        method: 'POST',
-        uri: `${baseUrl}/evidence_items/search`,
-    });
+    const trustedSubmissions = [];
+
+    // NOTE: purposefully not async and in a for-loop to avoid spamming their API with requests
+    for (const submitter of Array.from(new Set(trustedCurators))) {
+        const { results } = await request({
+            body: {
+                entity: 'evidence_items',
+                operator: 'AND',
+                queries: [{ condition: { name: 'is_equal_to', parameters: [`${submitter}`] }, field: 'submitter_id' }],
+                save: true,
+            },
+            json: true,
+            method: 'POST',
+            uri: `${baseUrl}/evidence_items/search`,
+        });
+
+        trustedSubmissions.push(...results);
+    }
 
     let submitted = 0;
 
@@ -589,9 +637,6 @@ const downloadEvidenceRecords = async (baseUrl) => {
         ) {
             counts.skip++;
             logger.debug(`skipping uninformative record (${record.id})`);
-        } else if (record.source.source_type.toLowerCase() !== 'pubmed') {
-            logger.info(`Currently only loading pubmed sources. Found ${record.source.source_type} (${record.id})`);
-            counts.skip++;
         } else {
             records.push(record);
         }
@@ -605,17 +650,15 @@ const downloadEvidenceRecords = async (baseUrl) => {
  *
  * @param {object} opt options
  * @param {ApiConnection} opt.conn the api connection object for GraphKB
- * @param {string} [opt.url] url to use as the base for accessing the civic api
+ * @param {string} [opt.url] url to use as the base for accessing the civic ApiConnection
+ * @param {string[]} opt.trustedCurators a list of curator IDs to also fetch submitted only evidence items for
  */
 const upload = async (opt) => {
-    const { conn, errorLogPrefix } = opt;
+    const {
+        conn, errorLogPrefix, trustedCurators, ignoreCache = false,
+    } = opt;
     // add the source node
-    const source = await conn.addRecord({
-        content: SOURCE_DEFN,
-        existsOk: true,
-        fetchConditions: { name: SOURCE_DEFN.name },
-        target: 'Source',
-    });
+    const source = await conn.addSource(SOURCE_DEFN);
 
     let previouslyEntered = await conn.getRecords({
         filters: { source: rid(source) },
@@ -628,8 +671,9 @@ const upload = async (opt) => {
     _pubmed.preLoadCache(conn);
 
     const varById = await downloadVariantRecords();
-    const { records, errorList, counts } = await downloadEvidenceRecords(opt.url || BASE_URL);
-
+    const { records, errorList, counts } = await downloadEvidenceRecords(opt.url || BASE_URL, trustedCurators);
+    const purgeableEvidenceItems = new Set(await fetchDeletedEvidenceItems(opt.url || BASE_URL));
+    logger.info(`fetched ${purgeableEvidenceItems.size} deleted entries from CIViC`);
 
     logger.info(`Processing ${records.length} records`);
 
@@ -649,9 +693,13 @@ const upload = async (opt) => {
     }
 
     for (const [sourceId, recordList] of Object.entries(recordsById)) {
-        if (previouslyEntered.has(sourceId) && process.env.IGNORE_CIVIC_CACHE !== '1') {
+        if (previouslyEntered.has(sourceId) && !ignoreCache) {
             counts.exists++;
-            // continue;
+            continue;
+        }
+        if (purgeableEvidenceItems.has(sourceId)) {
+            // this should never happen, but if it does we have made an invalida assumption about how civic uses IDs
+            throw new Error(`Record ID is both deleted and to-be loaded. Violates assumptions: ${sourceId}`);
         }
         const preupload = new Set((await conn.getRecords({
             filters: [
@@ -713,6 +761,10 @@ const upload = async (opt) => {
                         if (err.toString().includes('is not a function') || err.toString().includes('of undefined')) {
                             console.error(err);
                         }
+                        if (err instanceof NotImplementedError) {
+                            // accepted evidence that we do not support loading. Should delete as it may have changed to this from something we did support
+                            purgeableEvidenceItems.add(sourceId);
+                        }
                         errorList.push({ error: err, errorMessage: err.toString(), record });
                         logger.error(`evidence (${record.id}) ${err}`);
                         counts.error += 1;
@@ -726,7 +778,17 @@ const upload = async (opt) => {
             preupload.delete(id);
         });
 
-        if (preupload.size) {
+        if (preupload.size && purgeableEvidenceItems.has(sourceId)) {
+            logger.warn(`Removing ${preupload.size} CIViC Entries (EID:${sourceId}) of unsupported format`);
+
+            try {
+                await Promise.all(Array.from(preupload).map(async outdatedId => conn.deleteRecord(
+                    'Statement', outdatedId,
+                )));
+            } catch (err) {
+                logger.error(err);
+            }
+        } else if (preupload.size) {
             if (postupload.length) {
                 logger.warn(`deleting ${preupload.size} outdated statement records (${Array.from(preupload).join(' ')}) has new/retained statements (${postupload.join(' ')})`);
 
@@ -742,6 +804,27 @@ const upload = async (opt) => {
             }
         }
     }
+
+    // purge any remaining entries that are in GraphKB but have since been rejected/deleted by CIViC
+    const toDelete = await conn.getRecords({
+        filters: {
+            AND: [
+                { sourceId: Array.from(purgeableEvidenceItems) },
+                { source: rid(source) },
+            ],
+        },
+        target: 'Statement',
+    });
+
+    try {
+        logger.warn(`Deleting ${toDelete.length} outdated CIViC statements from GraphKB`);
+        await Promise.all(toDelete.map(async statement => conn.deleteRecord(
+            'Statement', rid(statement),
+        )));
+    } catch (err) {
+        logger.error(err);
+    }
+
     logger.info(JSON.stringify(counts));
     const errorJson = `${errorLogPrefix}-civic.json`;
     logger.info(`writing ${errorJson}`);
