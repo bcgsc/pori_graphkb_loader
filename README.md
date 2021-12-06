@@ -1,6 +1,6 @@
 # GraphKB Loader
 
-![build](https://github.com/bcgsc/pori_graphkb_loader/workflows/build/badge.svg?branch=master) ![Docker Image Version (latest semver)](https://img.shields.io/docker/v/bcgsc/pori-graphkb-loader?label=docker%20image) ![node versions](https://img.shields.io/badge/node-10%20%7C%2012%20%7C%2014-blue)
+![build](https://github.com/bcgsc/pori_graphkb_loader/workflows/build/badge.svg?branch=master) ![Docker Image Version (latest semver)](https://img.shields.io/docker/v/bcgsc/pori-graphkb-loader?label=docker%20image) ![node versions](https://img.shields.io/badge/node-12%20%7C%2014-blue) [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.5737732.svg)](https://doi.org/10.5281/zenodo.5737732)
 
 This repository is part of the [platform for oncogenomic reporting and interpretation](https://github.com/bcgsc/pori).
 

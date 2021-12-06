@@ -7,7 +7,7 @@
 const Ajv = require('ajv');
 
 const { checkSpec } = require('../util');
-const { rid, orderPreferredOntologyTerms, haveSharedEdge } = require('../graphkb');
+const { rid, orderPreferredOntologyTerms, edgeExists } = require('../graphkb');
 const { logger } = require('../logging');
 const { diseaseOntology: SOURCE_DEFN, ncit: { name: ncitName } } = require('../sources');
 
@@ -173,7 +173,7 @@ const loadEdges = async ({
                 src = parseDoid(sub).toLowerCase();
                 tgt = parseDoid(obj).toLowerCase();
 
-                if (haveSharedEdge(records[src], records[tgt], 'SubClassOf')) {
+                if (edgeExists(records[src], records[tgt], 'SubClassOf')) {
                     counts.exists++;
                     continue;
                 }

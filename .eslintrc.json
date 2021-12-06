@@ -16,6 +16,8 @@
         "sort-keys-fix"
     ],
     "rules": {
+        "arrow-parens": "off",
+        "function-paren-newline": "off",
         "indent": [
             "error",
             4,
@@ -60,6 +62,7 @@
         ],
         "no-fallthrough": "off",
         "no-mixed-spaces-and-tabs": "error",
+        "no-multiple-empty-lines": "off",
         "no-multi-assign": "off",
         "no-param-reassign": "warn",
         "no-plusplus": "off",

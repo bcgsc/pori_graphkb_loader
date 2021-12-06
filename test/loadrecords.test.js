@@ -18,7 +18,7 @@ const api = {
 
 
 jest.mock('../src/util', () => {
-    const original = require.requireActual('../src/util');
+    const original = jest.requireActual('../src/util');
     return { ...original, requestWithRetry: jest.fn() };
 });
 

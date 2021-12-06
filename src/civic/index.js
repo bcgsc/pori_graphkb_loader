@@ -383,15 +383,11 @@ const processEvidenceRecord = async (opt) => {
             diseaseQueryFilters = { name: rawRecord.disease.name };
         }
 
-        try {
-            disease = await conn.getUniqueRecordBy({
-                filters: diseaseQueryFilters,
-                sort: orderPreferredOntologyTerms,
-                target: 'Disease',
-            });
-        } catch (err) {
-            throw err;
-        }
+        disease = await conn.getUniqueRecordBy({
+            filters: diseaseQueryFilters,
+            sort: orderPreferredOntologyTerms,
+            target: 'Disease',
+        });
     }
     // get the drug(s) by name
     let drug;
