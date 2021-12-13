@@ -204,7 +204,7 @@ rule load_local:
     container: CONTAINER
     log: f'{LOGS_DIR}/local-{{local}}.logs.txt'
     output: f'{DATA_DIR}/local-{{local}}.COMPLETE'
-    shell: 'node bin/load.js file ontology {input} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file ontology {input} &> {log}; cp {log} {output}'
 
 
 rule load_ncit:
@@ -213,7 +213,7 @@ rule load_ncit:
     container: CONTAINER
     log: f'{LOGS_DIR}/ncit.logs.txt'
     output: f'{DATA_DIR}/ncit.COMPLETE'
-    shell: 'node bin/load.js file ncit {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file ncit {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_fda_srs:
@@ -222,7 +222,7 @@ rule load_fda_srs:
     container: CONTAINER
     log: f'{LOGS_DIR}/fdaSrs.logs.txt'
     output: f'{DATA_DIR}/fdaSrs.COMPLETE'
-    shell: 'node bin/load.js file fdaSrs {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file fdaSrs {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_ncit_fda:
@@ -232,7 +232,7 @@ rule load_ncit_fda:
     container: CONTAINER
     log: f'{LOGS_DIR}/ncitFdaXref.logs.txt'
     output: f'{DATA_DIR}/ncitFdaXref.COMPLETE'
-    shell: 'node bin/load.js file ncitFdaXref {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file ncitFdaXref {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_refseq:
@@ -241,7 +241,7 @@ rule load_refseq:
     container: CONTAINER
     log: f'{LOGS_DIR}/refseq.logs.txt'
     output: f'{DATA_DIR}/refseq.COMPLETE'
-    shell: 'node bin/load.js file refseq {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file refseq {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_ensembl:
@@ -250,7 +250,7 @@ rule load_ensembl:
     container: CONTAINER
     log: f'{LOGS_DIR}/ensembl.logs.txt'
     output: f'{DATA_DIR}/ensembl.COMPLETE'
-    shell: 'node bin/load.js file ensembl {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file ensembl {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_do:
@@ -259,7 +259,7 @@ rule load_do:
     container: CONTAINER
     log: f'{LOGS_DIR}/do.logs.txt'
     output: f'{DATA_DIR}/do.COMPLETE'
-    shell: 'node bin/load.js file diseaseOntology {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file diseaseOntology {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_uberon:
@@ -268,7 +268,7 @@ rule load_uberon:
     container: CONTAINER
     log: f'{LOGS_DIR}/uberon.logs.txt'
     output: f'{DATA_DIR}/uberon.COMPLETE'
-    shell: 'node bin/load.js file uberon {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file uberon {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_drugbank:
@@ -277,7 +277,7 @@ rule load_drugbank:
     container: CONTAINER
     log: f'{LOGS_DIR}/drugbank.logs.txt'
     output: f'{DATA_DIR}/drugbank.COMPLETE'
-    shell: 'node bin/load.js file drugbank {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file drugbank {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_oncotree:
@@ -285,7 +285,7 @@ rule load_oncotree:
     container: CONTAINER
     log: f'{LOGS_DIR}/oncotree.logs.txt'
     output: f'{DATA_DIR}/oncotree.COMPLETE'
-    shell: 'node bin/load.js api oncotree &> {log}; cp {log} {output}'
+    shell: 'npm start -- api oncotree &> {log}; cp {log} {output}'
 
 
 rule load_dgidb:
@@ -293,7 +293,7 @@ rule load_dgidb:
     container: CONTAINER
     log: f'{LOGS_DIR}/dgidb.logs.txt'
     output: f'{DATA_DIR}/dgidb.COMPLETE'
-    shell: 'node bin/load.js api dgidb &> {log}; cp {log} {output}'
+    shell: 'npm start -- api dgidb &> {log}; cp {log} {output}'
 
 
 def get_drug_inputs(wildcards):
@@ -328,7 +328,7 @@ rule load_cancerhotspots:
     container: CONTAINER
     log: f'{LOGS_DIR}/cancerhotspots.logs.txt'
     output: f'{DATA_DIR}/cancerhotspots.COMPLETE'
-    shell: 'node bin/load.js file cancerhotspots {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file cancerhotspots {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_PMC4232638:
@@ -337,7 +337,7 @@ rule load_PMC4232638:
     container: CONTAINER
     log: f'{LOGS_DIR}/PMC4232638.logs.txt'
     output: f'{DATA_DIR}/PMC4232638.COMPLETE'
-    shell: 'node bin/load.js file PMC4232638 {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file PMC4232638 {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_PMC4468049:
@@ -347,7 +347,7 @@ rule load_PMC4468049:
     container: CONTAINER
     log: f'{LOGS_DIR}/PMC4468049.logs.txt'
     output: f'{DATA_DIR}/PMC4468049.COMPLETE'
-    shell: 'node bin/load.js file PMC4468049 {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file PMC4468049 {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_civic:
@@ -357,7 +357,7 @@ rule load_civic:
     container: CONTAINER
     log: f'{LOGS_DIR}/civic.logs.txt'
     output: f'{DATA_DIR}/civic.COMPLETE'
-    shell: 'node bin/load.js api civic &> {log}; cp {log} {output}'
+    shell: 'npm start -- api civic &> {log}; cp {log} {output}'
 
 
 rule load_cgi:
@@ -368,7 +368,7 @@ rule load_cgi:
     container: CONTAINER
     log: f'{LOGS_DIR}/cgi.logs.txt'
     output: f'{DATA_DIR}/cgi.COMPLETE'
-    shell: 'node bin/load.js file cgi {input.data} &> {log}; cp {log} {output}'
+    shell: 'npm start -- file cgi {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_docm:
@@ -378,14 +378,14 @@ rule load_docm:
     container: CONTAINER
     log: f'{LOGS_DIR}/docm.logs.txt'
     output: f'{DATA_DIR}/docm.COMPLETE'
-    shell: 'node bin/load.js api docm &> {log}; cp {log} {output}'
+    shell: 'npm start -- api docm &> {log}; cp {log} {output}'
 
 
 rule load_approvals:
     container: CONTAINER
     log: f'{LOGS_DIR}/fdaApprovals.logs.txt'
     output: f'{DATA_DIR}/fdaApprovals.COMPLETE'
-    shell: 'node bin/load.js api fdaApprovals &> {log}; cp {log} {output}'
+    shell: 'npm start -- api fdaApprovals &> {log}; cp {log} {output}'
 
 
 rule load_clinicaltrialsgov:
@@ -396,7 +396,7 @@ rule load_clinicaltrialsgov:
     container: CONTAINER
     log: f'{LOGS_DIR}/clinicaltrialsgov.logs.txt'
     output: f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'
-    shell: 'node bin/load.js api clinicaltrialsgov &> {log}; cp {log} {output}'
+    shell: 'npm start -- api clinicaltrialsgov &> {log}; cp {log} {output}'
 
 
 rule load_cosmic_resistance:
@@ -408,7 +408,7 @@ rule load_cosmic_resistance:
     container: CONTAINER
     log: f'{LOGS_DIR}/cosmic_resistance.logs.txt'
     output: f'{DATA_DIR}/cosmic_resistance.COMPLETE'
-    shell: 'node bin/load.js cosmic resistance {input.main} {input.supp} &> {log}; cp {log} {output}'
+    shell: 'npm start -- cosmic resistance {input.main} {input.supp} &> {log}; cp {log} {output}'
 
 
 rule load_cosmic_fusions:
@@ -418,4 +418,4 @@ rule load_cosmic_fusions:
     container: CONTAINER
     log: f'{LOGS_DIR}/cosmic_fusions.logs.txt'
     output: f'{DATA_DIR}/cosmic_fusions.COMPLETE'
-    shell: 'node bin/load.js cosmic fusions {input.main} {input.supp} &> {log}; cp {log} {output}'
+    shell: 'npm start -- cosmic fusions {input.main} {input.supp} &> {log}; cp {log} {output}'
