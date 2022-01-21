@@ -2076,6 +2076,15 @@
                 }
             ]
         },
+	"unaltered function": {
+            "description": "event is not associated with a change in protein function",
+            "links": [
+                {
+                    "class": "AliasOf",
+                    "target": "no functional effect"
+                }
+            ]
+	},
         "underexpression": {
             "deprecated": true,
             "links": [
