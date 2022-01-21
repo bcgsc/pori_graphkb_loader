@@ -153,9 +153,8 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
             case 'Functional': {
                 if (clinicalSignificance === 'Unaltered Function') {
                     return 'no functional effect';
-                } else {
-                    return clinicalSignificance.toLowerCase();
                 }
+                return clinicalSignificance.toLowerCase();
             }
 
             case 'Diagnostic': {
