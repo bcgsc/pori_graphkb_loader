@@ -70,6 +70,7 @@ const validateEvidenceSpec = ajv.compile({
                 'Loss of Function',
                 'Neomorphic',
                 'Dominant Negative',
+                'Unaltered Function',
                 null,
             ],
         },
@@ -150,7 +151,11 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
             }
 
             case 'Functional': {
-                return clinicalSignificance.toLowerCase();
+                if (clinicalSignificance === 'Unaltered Function') {
+                    return 'no functional effect';
+                } else {
+                    return clinicalSignificance.toLowerCase();
+                }
             }
 
             case 'Diagnostic': {
