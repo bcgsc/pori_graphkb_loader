@@ -657,7 +657,7 @@ describe('translateRelevance', () => {
         ['Predictive', 'Does Not Support', 'Sensitivity/Response', 'no response'],
         ['Predictive', 'Does Not Support', 'Resistance', 'no resistance'],
         ['Functional', 'Supports', 'Neomorphic', 'neomorphic'],
-        ['Functional', 'Supports', 'Unaltered Function', 'no functional affect'],
+        ['Functional', 'Supports', 'Unaltered Function', 'no functional effect'],
     ])(
         '%s|%s|%s returns %s', (evidenceType, evidenceDirection, clinicalSignificance, expected) => {
             expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
