@@ -1,4 +1,5 @@
-const { runLoader } = require('../src');
+import { runLoader } from '../src';
+
 const { fileExists, createOptionsMenu } = require('../src/cli');
 const { loadDelimToJson } = require('../src/util');
 const { logger } = require('../src/logging');
