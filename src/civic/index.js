@@ -588,10 +588,9 @@ const downloadEvidenceRecords = async (baseUrl, trustedCurators) => {
  * @param {string} [opt.url] url to use as the base for accessing the civic ApiConnection
  * @param {string[]} opt.trustedCurators a list of curator IDs to also fetch submitted only evidence items for
  */
-const upload = async (opt) => {
-    const {
-        conn, errorLogPrefix, trustedCurators, ignoreCache = false,
-    } = opt;
+const upload = async ({
+    conn, errorLogPrefix, trustedCurators, ignoreCache = false, maxRecords,
+}) => {
     // add the source node
     const source = await conn.addSource(SOURCE_DEFN);
 
@@ -625,6 +624,11 @@ const upload = async (opt) => {
             recordsById[record.id] = [];
         }
         recordsById[record.id].push(record);
+
+        if (maxRecords && Object.values(recordsById).length >= maxRecords) {
+            logger.warn(`truncating input to maximum record allowance (${maxRecords})`);
+            break;
+        }
     }
 
     for (const [sourceId, recordList] of Object.entries(recordsById)) {

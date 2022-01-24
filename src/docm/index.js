@@ -257,7 +257,7 @@ const upload = async ({
     logger.info(`loaded ${recordsList.length} records`);
 
     if (maxRecords) {
-        logger.warning(`truncating records input, maxRecords=${maxRecords}`);
+        logger.warn(`truncating records input, maxRecords=${maxRecords}`);
         recordsList = recordsList.slice(0, maxRecords);
     }
     // add the source node
