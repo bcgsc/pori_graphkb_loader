@@ -199,15 +199,6 @@ rule download_cosmic_fusions:
         ''')
 
 
-rule download_moa:
-    output: ''
-    shell: f'''\
-        cd {DATA_DIR}/moa
-        wget https://github.com/vanallenlab/moalmanac-db/archive/refs/tags/v.2021-11-04.zip
-        unzip v.2021-11-04.zip
-        ''''
-
-
 rule load_local:
     input: f'{DATA_DIR}/local/{{local}}.json'
     container: CONTAINER
@@ -431,8 +422,8 @@ rule load_cosmic_fusions:
 
 
 rule load_moa:
-    input: rules.download_moa.output
+    input: rules.load_oncotree.output
     container: CONTAINER
     log: f'{LOGS_DIR}/load_moa.logs.txt'
     output: f'{DATA_DIR}/moa.COMPLETE'
-    shell: 'node bin/load.js file moa {input} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js api moa  &> {log}; cp {log} {output}'
