@@ -589,7 +589,7 @@ const downloadEvidenceRecords = async (baseUrl, trustedCurators) => {
  * @param {string[]} opt.trustedCurators a list of curator IDs to also fetch submitted only evidence items for
  */
 const upload = async ({
-    conn, errorLogPrefix, trustedCurators, ignoreCache = false, maxRecords,
+    conn, errorLogPrefix, trustedCurators, ignoreCache = false, maxRecords, url = BASE_URL,
 }) => {
     // add the source node
     const source = await conn.addSource(SOURCE_DEFN);
@@ -605,8 +605,8 @@ const upload = async ({
     _pubmed.preLoadCache(conn);
 
     const varById = await downloadVariantRecords();
-    const { records, errorList, counts } = await downloadEvidenceRecords(opt.url || BASE_URL, trustedCurators);
-    const purgeableEvidenceItems = new Set(await fetchDeletedEvidenceItems(opt.url || BASE_URL));
+    const { records, errorList, counts } = await downloadEvidenceRecords(url, trustedCurators);
+    const purgeableEvidenceItems = new Set(await fetchDeletedEvidenceItems(url));
     logger.info(`fetched ${purgeableEvidenceItems.size} deleted entries from CIViC`);
 
     logger.info(`Processing ${records.length} records`);
