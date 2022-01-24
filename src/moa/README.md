@@ -35,6 +35,7 @@ We have linked the `predictive_implication` from MOA to specific evidence levels
 | Clinical trial    | Level B (Tier II) | B     | B   |
 | FDA-Approved      | Level A (Tier I)  | A     | A   |
 | Guideline         | Level A (Tier I)  | A     | A   |
+| Preclinical       | Level D (Tier II) | D     | D   |
 | Inferential       |                   | E     | E   |
 
 ### Category Variant Mapping
