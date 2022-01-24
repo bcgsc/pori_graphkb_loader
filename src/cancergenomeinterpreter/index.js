@@ -499,7 +499,7 @@ const uploadFile = async ({
 
     for (let index = 0; index < rows.length; index++) {
         if (maxRecords && index > maxRecords) {
-            logger.warn(`Stopping, maximun records to be processed reached (${maxRecords})`);
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
             break;
         }
         const rawRow = rows[index];

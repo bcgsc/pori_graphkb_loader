@@ -42,7 +42,7 @@ const uploadFile = async ({ filename, conn: graphkbConn, maxRecords }) => {
 
     for (let i = 0; i < jsonList.length; i++) {
         if (maxRecords && i > maxRecords) {
-            logger.warn(`Stopping due to max records limit (${maxRecords})`);
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
             break;
         }
         const {

@@ -216,7 +216,7 @@ const uploadFile = async ({
 
     for (let i = 0; i < DOID.graphs[0].nodes.length; i++) {
         if (maxRecords && i > maxRecords) {
-            logger.warn(`Stopping due to max records limit (${maxRecords})`);
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
             break;
         }
         const node = DOID.graphs[0].nodes[i];

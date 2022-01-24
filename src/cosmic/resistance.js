@@ -328,7 +328,7 @@ const loadClassifications = async (filename) => {
  * @param {ApiConnection} opt.conn the API connection object
  */
 const uploadFile = async ({
-    filename, mappingFilename, conn, errorLogPrefix,
+    filename, classification, conn, errorLogPrefix, maxRecords,
 }) => {
     const jsonList = await loadDelimToJson(filename);
 
@@ -359,6 +359,10 @@ const uploadFile = async ({
     await _pubmed.fetchAndLoadByIds(conn, jsonList.map(rec => rec[HEADER.pubmed]), { upsert: true });
 
     for (let index = 0; index < jsonList.length; index++) {
+        if (maxRecords && index > maxRecords) {
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
+            break;
+        }
         const sourceId = hashRecordToId(jsonList[index]);
         const record = { sourceId, ...convertRowFields(HEADER, jsonList[index]) };
         logger.info(`processing (${index} / ${jsonList.length}) ${sourceId}`);

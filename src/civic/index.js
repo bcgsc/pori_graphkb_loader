@@ -626,7 +626,7 @@ const upload = async ({
         recordsById[record.id].push(record);
 
         if (maxRecords && Object.values(recordsById).length >= maxRecords) {
-            logger.warn(`truncating input to maximum record allowance (${maxRecords})`);
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
             break;
         }
     }

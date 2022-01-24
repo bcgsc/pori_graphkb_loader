@@ -300,7 +300,7 @@ const uploadFile = async ({ filename, conn, maxRecords }) => {
                 counts.success++;
 
                 if (maxRecords && (counts.success + counts.error + counts.skipped) >= maxRecords) {
-                    logger.warn(`Stopping due to max records limit (${maxRecords})`);
+                    logger.warn(`not loading all content due to max records limit (${maxRecords})`);
                     logger.info('Parsing stream complete');
                     stream.close();
                     resolve();

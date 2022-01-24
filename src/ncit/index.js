@@ -237,7 +237,7 @@ const uploadFile = async ({
 
     for (const raw of rawRows) {
         if (maxRecords && rows.length > maxRecords) {
-            logger.warn(`Truncting inputs due to max records limit (${maxRecords})`);
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
             break;
         }
 

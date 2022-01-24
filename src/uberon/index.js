@@ -99,7 +99,7 @@ const uploadFile = async ({ filename, conn, maxRecords }) => {
             continue;
         }
         if (maxRecords && count > maxRecords) {
-            logger.warn(`Stopping due to max records limit (${maxRecords})`);
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
             break;
         }
         const body = {
