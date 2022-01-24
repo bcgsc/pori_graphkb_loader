@@ -1,11 +1,10 @@
-const request = require('request-promise');
 const parse5 = require('parse5');
 const htmlToText = require('html-to-text');
 
 const { rid } = require('../graphkb');
 const { logger } = require('../logging');
 const { fdaApprovals: SOURCE_DEFN } = require('../sources');
-
+const { request } = require('../util');
 
 const BASE_URL = 'https://www.fda.gov';
 
@@ -36,7 +35,8 @@ const findElements = (document, filter, firstOnly = false) => {
 };
 
 const fetchAnnouncementLinks = async (indexPageLink) => {
-    const document = parse5.parse(await request(BASE_URL + indexPageLink));
+    logger.info(`GET ${BASE_URL + indexPageLink}`);
+    const document = parse5.parse(await request({ uri: BASE_URL + indexPageLink }));
     const blacklist = [
         '/drugs',
         '/drugs/development-approval-process-drugs',
@@ -61,7 +61,8 @@ const fetchAnnouncementLinks = async (indexPageLink) => {
 
 const parseAnnouncementPage = async (link) => {
     const url = BASE_URL + link;
-    const html = await request(url);
+    logger.info(`GET ${url}`);
+    const html = await request({ uri: url });
 
     const title = htmlToText.fromString(html, {
         baseElement: 'h1.content-title',

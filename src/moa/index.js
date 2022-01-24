@@ -401,6 +401,8 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
         variants.push(varRecord);
     }
 
+    const result = [];
+
     for (const termName of relevanceTerms) {
         const term = await conn.getVocabularyTerm(termName);
         const conditions = [...variants, disease];
@@ -418,11 +420,11 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
             throw Error(`Unable to determine subject for relevance (${termName})`);
         }
 
-        await conn.addRecord({
+        const statement = await conn.addRecord({
             content: {
                 conditions: conditions.map(rid),
                 evidence: articles.map(rid),
-                evidenceLevel,
+                evidenceLevel: [evidenceLevel],
                 relevance: rid(term),
                 source: rid(moaSource),
                 sourceId: moaRecord.assertion_id,
@@ -437,11 +439,13 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
                     { relevance: rid(term) },
                 ],
             },
-            fetchExisting: false,
+            fetchExisting: true,
             target: 'Statement',
             upsert: true,
         });
+        result.push(statement);
     }
+    return result;
 };
 
 
@@ -559,10 +563,13 @@ const upload = async ({ conn, url = 'https://moalmanac.org/api/assertions' }) =>
 
             if (existing[key]) {
                 const toRemove = existing[key].map(r => r['@rid']).filter(r => !updatedRecords.includes(r));
-                logger.warn(`Removing ${toRemove.length} records that are out of date`);
 
-                for (const recordId of toRemove) {
-                    await conn.deleteRecord('Statement', recordId);
+                if (toRemove.length) {
+                    logger.warn(`Removing ${toRemove.length} records that are out of date`);
+
+                    for (const recordId of toRemove) {
+                        await conn.deleteRecord('Statement', recordId);
+                    }
                 }
             }
             counts.success++;
