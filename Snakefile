@@ -1,7 +1,6 @@
 import os
 from textwrap import dedent
 
-
 DATA_DIR = 'snakemake_data'
 LOGS_DIR = 'snakemake_logs'
 
@@ -18,6 +17,7 @@ COSMIC_EMAIL = config.get('cosmic_email')
 COSMIC_PASSWORD = config.get('cosmic_password')
 USE_COSMIC = COSMIC_EMAIL or COSMIC_PASSWORD
 BACKFILL_TRIALS = config.get('trials')
+USE_FDA_UNII = config.get('fda')  # due to the non-scriptable download, making FDA optional
 GITHUB_DATA = 'https://raw.githubusercontent.com/bcgsc/pori_graphkb_loader/develop/data'
 CONTAINER = 'docker://bcgsc/pori-graphkb-loader:latest'
 
@@ -28,10 +28,10 @@ rule all:
         f'{DATA_DIR}/PMC4468049.COMPLETE',
         f'{DATA_DIR}/PMC4232638.COMPLETE',
         f'{DATA_DIR}/uberon.COMPLETE',
-        f'{DATA_DIR}/ncitFdaXref.COMPLETE',
         f'{DATA_DIR}/fdaApprovals.COMPLETE',
         f'{DATA_DIR}/cancerhotspots.COMPLETE',
         f'{DATA_DIR}/moa.COMPLETE',
+        *([f'{DATA_DIR}/ncitFdaXref.COMPLETE'] if USE_FDA_UNII else []),
         *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []),
         *([f'{DATA_DIR}/cosmic_resistance.COMPLETE', f'{DATA_DIR}/cosmic_fusions.COMPLETE'] if USE_COSMIC else [])
 
@@ -46,11 +46,12 @@ rule download_ncit:
         rm -rf __MACOSX''')
 
 
-rule download_ncit_fda:
-    output: f'{DATA_DIR}/ncit/FDA-UNII_NCIt_Subsets.txt'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/ncit
-        wget https://evs.nci.nih.gov/ftp1/FDA/UNII/FDA-UNII_NCIt_Subsets.txt''')
+if USE_FDA_UNII:
+    rule download_ncit_fda:
+        output: f'{DATA_DIR}/ncit/FDA-UNII_NCIt_Subsets.txt'
+        shell: dedent(f'''\
+            cd {DATA_DIR}/ncit
+            wget https://evs.nci.nih.gov/ftp1/FDA/UNII/FDA-UNII_NCIt_Subsets.txt''')
 
 
 rule download_ensembl:
@@ -62,16 +63,17 @@ rule download_ensembl:
         ''')
 
 
-rule download_fda_srs:
-    output: f'{DATA_DIR}/fda/UNII_Records.txt'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/fda
-        wget https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip
-        unzip UNII_Data.zip
-        rm UNII_Data.zip
+if USE_FDA_UNII:
+    rule download_fda_srs:
+        output: f'{DATA_DIR}/fda/UNII_Records.txt'
+        shell: dedent(f'''\
+            cd {DATA_DIR}/fda
+            wget https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip
+            unzip UNII_Data.zip
+            rm UNII_Data.zip
 
-        mv UNII*.txt UNII_Records.txt
-        ''')
+            mv UNII*.txt UNII_Records.txt
+            ''')
 
 
 rule download_refseq:
@@ -135,8 +137,8 @@ rule download_cgi:
     output: f'{DATA_DIR}/cgi/cgi_biomarkers_per_variant.tsv'
     shell: dedent(f'''\
         cd {DATA_DIR}/cgi
-        wget https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_latest.zip
-        unzip cgi_biomarkers_latest.zip
+        wget https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_20180117.zip
+        unzip cgi_biomarkers_20180117.zip
         ''')
 
 
@@ -217,23 +219,24 @@ rule load_ncit:
     shell: 'node bin/load.js file ncit {input.data} &> {log}; cp {log} {output}'
 
 
-rule load_fda_srs:
-    input: expand(rules.load_local.output, local=['vocab']),
-        data=rules.download_fda_srs.output
-    container: CONTAINER
-    log: f'{LOGS_DIR}/fdaSrs.logs.txt'
-    output: f'{DATA_DIR}/fdaSrs.COMPLETE'
-    shell: 'node bin/load.js file fdaSrs {input.data} &> {log}; cp {log} {output}'
+if USE_FDA_UNII:
+    rule load_fda_srs:
+        input: expand(rules.load_local.output, local=['vocab']),
+            data=f'{DATA_DIR}/fda/UNII_Records.txt'
+        container: CONTAINER
+        log: f'{LOGS_DIR}/fdaSrs.logs.txt'
+        output: f'{DATA_DIR}/fdaSrs.COMPLETE'
+        shell: 'node bin/load.js file fdaSrs {input.data} &> {log}; cp {log} {output}'
 
 
-rule load_ncit_fda:
-    input: rules.load_ncit.output,
-        rules.load_fda_srs.output,
-        data=rules.download_ncit_fda.output
-    container: CONTAINER
-    log: f'{LOGS_DIR}/ncitFdaXref.logs.txt'
-    output: f'{DATA_DIR}/ncitFdaXref.COMPLETE'
-    shell: 'node bin/load.js file ncitFdaXref {input.data} &> {log}; cp {log} {output}'
+    rule load_ncit_fda:
+        input: rules.load_ncit.output,
+            rules.load_fda_srs.output,
+            data=rules.download_ncit_fda.output
+        container: CONTAINER
+        log: f'{LOGS_DIR}/ncitFdaXref.logs.txt'
+        output: f'{DATA_DIR}/ncitFdaXref.COMPLETE'
+        shell: 'node bin/load.js file ncitFdaXref {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_refseq:
@@ -273,7 +276,7 @@ rule load_uberon:
 
 
 rule load_drugbank:
-    input: rules.load_fda_srs.output,
+    input: rules.load_fda_srs.output if USE_FDA_UNII else [],
         data=rules.download_drugbank.output
     container: CONTAINER
     log: f'{LOGS_DIR}/drugbank.logs.txt'
@@ -298,7 +301,9 @@ rule load_dgidb:
 
 
 def get_drug_inputs(wildcards):
-    inputs = [*rules.load_fda_srs.output, *rules.load_ncit.output]
+    inputs = [*rules.load_ncit.output]
+    if USE_FDA_UNII:
+        inputs.extend(rules.load_fda_srs.output)
     container: CONTAINER
     if USE_DRUGBANK:
         inputs.append(*rules.load_drugbank.output)
@@ -423,7 +428,8 @@ rule load_cosmic_fusions:
 
 
 rule load_moa:
-    input: rules.load_oncotree.output
+    input: rules.load_oncotree.output,
+        expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes', 'evidenceLevels', 'aacr', 'asco'])
     container: CONTAINER
     log: f'{LOGS_DIR}/load_moa.logs.txt'
     output: f'{DATA_DIR}/moa.COMPLETE'
