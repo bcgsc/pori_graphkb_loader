@@ -9,7 +9,7 @@ node bin/load.js api moa
 ## Loading Assumptions
 
 - A specific drug ontology is not used/given and therefore drugs are matched by name
-- A specific gene ontology is not specified and therefore we default to using Entrez genes as they are popular amongst other knowlege bases
+- A specific gene ontology is not specified and therefore we default to using Entrez genes as they are popular amongst other knowledge bases
 - When given, diseases are preferentially matched to their OncoTree term by both name and code. This falls back to matching by name when the oncotree term/code is not given
 
 ### Relevance Mapping
@@ -35,6 +35,7 @@ We have linked the `predictive_implication` from MOA to specific evidence levels
 | Clinical trial    | Level B (Tier II) | B     | B   |
 | FDA-Approved      | Level A (Tier I)  | A     | A   |
 | Guideline         | Level A (Tier I)  | A     | A   |
+| Preclinical       | Level D (Tier II) | D     | D   |
 | Inferential       |                   | E     | E   |
 
 ### Category Variant Mapping
