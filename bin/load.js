@@ -27,6 +27,7 @@ const PMC4232638 = require('../src/PMC4232638');
 const uberon = require('../src/uberon');
 const variants = require('../src/variants');
 const asco = require('../src/asco');
+const moa = require('../src/moa');
 
 const clinicaltrialsgov = require('../src/clinicaltrialsgov');
 
@@ -34,7 +35,7 @@ const cosmicResistance = require('../src/cosmic/resistance');
 const cosmicFusions = require('../src/cosmic/fusions');
 
 const API_MODULES = {
-    asco, clinicaltrialsgov, dgidb, docm, fdaApprovals, oncotree,
+    asco, clinicaltrialsgov, dgidb, docm, fdaApprovals, moa, oncotree,
 };
 
 const FILE_MODULES = {
