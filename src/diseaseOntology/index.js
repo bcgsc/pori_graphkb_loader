@@ -5,6 +5,7 @@
  * @module importer/disease_ontology
  */
 const Ajv = require('ajv');
+const fs = require('fs');
 
 const { checkSpec } = require('../util');
 const { rid, orderPreferredOntologyTerms, edgeExists } = require('../graphkb');
@@ -155,7 +156,7 @@ const uploadFile = async ({
 }) => {
     // load the DOID JSON
     logger.info('loading external disease ontology data');
-    const DOID = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
+    const DOID = JSON.parse(fs.readFileSync(filename));
 
     // build the disease ontology first
     const nodesByName = {}; // store by name
