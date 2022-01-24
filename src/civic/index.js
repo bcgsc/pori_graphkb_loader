@@ -1,14 +1,13 @@
 /**
  * @module importer/civic
  */
-const request = require('request-promise');
 const _ = require('lodash');
 const Ajv = require('ajv');
 const fs = require('fs');
 
 const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
 
-const { checkSpec } = require('../util');
+const { checkSpec, request } = require('../util');
 const {
     orderPreferredOntologyTerms,
     rid,

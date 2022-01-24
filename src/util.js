@@ -2,7 +2,7 @@
  * @module
  * @ignore
  */
-const request = require('request-promise');
+const fetch = require('node-fetch');
 const fs = require('fs');
 const parse = require('csv-parse/lib/sync');
 const xml2js = require('xml2js');
@@ -114,6 +114,46 @@ const loadXmlToJson = (filename, opts = {}) => {
 };
 
 
+class HTTPResponseError extends Error {
+    constructor(response, ...args) {
+        super(`HTTP Error Response: ${response.status} ${response.statusText}`, ...args);
+        this.response = response;
+        this.statusCode = response.status;
+    }
+}
+
+
+
+const request = async ({
+    body, uri, qs = {}, json = false, headers = {}, method = 'GET',
+} = {}) => {
+    const url = new URL(uri);
+    Object.keys(qs).forEach(key => url.searchParams.append(key, qs[key]));
+
+    let defaultHeaders = {};
+
+    if (json) {
+        defaultHeaders = { Accept: 'application/json', 'Content-Type': 'application/json' };
+    }
+    const resp = await fetch(url, {
+        body: JSON.stringify(body),
+        headers: { ...defaultHeaders, ...headers },
+        method,
+    });
+
+    if (resp.ok) {
+        if (json) {
+            const result = await resp.json();
+            return result;
+        }
+        const result = await resp.text();
+        return result;
+    }
+    const errorMessage = await resp.text();
+    throw new HTTPResponseError(resp, `${resp.status} - ${resp.statusText} - ${errorMessage}`);
+};
+
+
 /**
  *  Try again for too many requests errors. Helpful for APIs with a rate limit (ex. pubmed)
  */
@@ -194,5 +234,6 @@ module.exports = {
     loadDelimToJson,
     loadXmlToJson,
     parseXmlToJson,
+    request,
     requestWithRetry,
 };

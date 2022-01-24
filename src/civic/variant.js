@@ -1,10 +1,9 @@
-const request = require('request-promise');
 const Ajv = require('ajv');
 
 const kbParser = require('@bcgsc-pori/graphkb-parser');
 
 const { error: { ParsingError } } = kbParser;
-const { checkSpec } = require('../util');
+const { checkSpec, request } = require('../util');
 const {
     rid,
 } = require('../graphkb');

@@ -31,6 +31,7 @@ rule all:
         f'{DATA_DIR}/ncitFdaXref.COMPLETE',
         f'{DATA_DIR}/fdaApprovals.COMPLETE',
         f'{DATA_DIR}/cancerhotspots.COMPLETE',
+        f'{DATA_DIR}/moa.COMPLETE',
         *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []),
         *([f'{DATA_DIR}/cosmic_resistance.COMPLETE', f'{DATA_DIR}/cosmic_fusions.COMPLETE'] if USE_COSMIC else [])
 
@@ -419,3 +420,11 @@ rule load_cosmic_fusions:
     log: f'{LOGS_DIR}/cosmic_fusions.logs.txt'
     output: f'{DATA_DIR}/cosmic_fusions.COMPLETE'
     shell: 'node bin/load.js cosmic fusions {input.main} {input.supp} &> {log}; cp {log} {output}'
+
+
+rule load_moa:
+    input: rules.load_oncotree.output
+    container: CONTAINER
+    log: f'{LOGS_DIR}/load_moa.logs.txt'
+    output: f'{DATA_DIR}/moa.COMPLETE'
+    shell: 'node bin/load.js api moa  &> {log}; cp {log} {output}'

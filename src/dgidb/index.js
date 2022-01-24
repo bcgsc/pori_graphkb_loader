@@ -1,11 +1,10 @@
 const Ajv = require('ajv');
 
-const request = require('request-promise');
 
 const _entrezGene = require('../entrez/gene');
 const _chembl = require('../chembl');
 const { logger } = require('../logging');
-const { checkSpec } = require('../util');
+const { checkSpec, request } = require('../util');
 const { rid } = require('../graphkb');
 
 const { dgidb: SOURCE_DEFN } = require('../sources');

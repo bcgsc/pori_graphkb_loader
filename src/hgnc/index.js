@@ -1,11 +1,10 @@
 /**
  * @module importer/hgnc
  */
-const request = require('request-promise');
 const Ajv = require('ajv');
 const _ = require('lodash');
 
-const { checkSpec } = require('../util');
+const { checkSpec, request } = require('../util');
 const {
     rid, orderPreferredOntologyTerms, convertRecordToQueryFilters,
 } = require('../graphkb');
@@ -211,10 +210,11 @@ const fetchAndLoadBySymbol = async ({
             : symbol
     }`;
     logger.info(`loading: ${uri}`);
-    const { response: { docs } } = await request(`${uri}`, {
+    const { response: { docs } } = await request({
         headers: { Accept: 'application/json' },
         json: true,
         method: 'GET',
+        uri,
     });
 
     for (const record of docs) {
