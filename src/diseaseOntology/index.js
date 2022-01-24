@@ -10,75 +10,12 @@ const { checkSpec } = require('../util');
 const { rid, orderPreferredOntologyTerms, edgeExists } = require('../graphkb');
 const { logger } = require('../logging');
 const { diseaseOntology: SOURCE_DEFN, ncit: { name: ncitName } } = require('../sources');
-
-const ajv = new Ajv();
+const { node: nodeSpecDefn, edge: edgeSpecDefn } = require('./specs.json');
 
 const PREFIX_TO_STRIP = 'http://purl.obolibrary.org/obo/';
-const DOID_PATTERN = `^${PREFIX_TO_STRIP}DOID_\\d+$`;
-
-const nodeSpec = ajv.compile({
-    properties: {
-        id: { pattern: DOID_PATTERN, type: 'string' },
-        lbl: { type: 'string' },
-        meta: {
-            properties: {
-                basicPropertyValues: {
-                    items: {
-                        properties: {
-                            pred: { type: 'string' },
-                            val: { type: 'string' },
-                        },
-                        required: ['val', 'pred'],
-                        type: 'object',
-                    },
-                    type: 'array',
-                },
-                definition: {
-                    properties: { val: { type: 'string' } },
-                    required: ['val'],
-                    type: 'object',
-                },
-                deprecated: { type: 'boolean' },
-                subsets: {
-                    items: {
-                        type: 'string',
-                    },
-                    type: 'array',
-                },
-                synonyms: {
-                    items: {
-                        properties: { val: { type: 'string' } },
-                        required: ['val'],
-                        type: 'object',
-                    },
-                    type: 'array',
-                },
-                xrefs: {
-                    items: {
-                        properties: { val: { type: 'string' } },
-                        required: ['val'],
-                        type: 'object',
-                    },
-                    type: 'array',
-                },
-            },
-            type: 'object',
-        },
-    },
-    required: ['id', 'lbl'],
-    type: 'object',
-});
-
-
-const edgeSpec = ajv.compile({
-    properties: {
-        obj: { pattern: DOID_PATTERN, type: 'string' },
-        pred: { type: 'string' },
-        sub: { pattern: DOID_PATTERN, type: 'string' },
-    },
-    required: ['sub', 'pred', 'obj'],
-    type: 'object',
-});
+const ajv = new Ajv();
+const nodeSpec = ajv.compile(nodeSpecDefn);
+const edgeSpec = ajv.compile(edgeSpecDefn);
 
 
 const parseDoid = (ident) => {

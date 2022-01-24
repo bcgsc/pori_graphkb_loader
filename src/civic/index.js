@@ -19,7 +19,7 @@ const _entrezGene = require('../entrez/gene');
 const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
 const { downloadVariantRecords, processVariantRecord } = require('./variant');
 const { getPublication } = require('./publication');
-
+const { evidence: evidenceSpec } = require('./specs.json');
 
 class NotImplementedError extends ErrorMixin {}
 
@@ -48,71 +48,7 @@ const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evi
 const RELEVANCE_CACHE = {};
 
 
-const validateEvidenceSpec = ajv.compile({
-    properties: {
-        clinical_significance: {
-            enum: [
-                'Sensitivity',
-                'Adverse Response',
-                'Resistance',
-                'Sensitivity/Response',
-                'Reduced Sensitivity',
-                'Positive',
-                'Negative',
-                'Poor Outcome',
-                'Better Outcome',
-                'Uncertain Significance',
-                'Pathogenic',
-                'Likely Pathogenic',
-                'N/A',
-                'Gain of Function',
-                'Loss of Function',
-                'Neomorphic',
-                'Dominant Negative',
-                null,
-            ],
-        },
-        description: { type: 'string' },
-        disease: {
-            oneOf: [{
-                doid: { type: 'string' },
-                name: { type: 'string' },
-                type: 'object',
-            }, { type: 'null' }],
-        },
-        drug_interaction_type: { enum: ['Combination', 'Substitutes', 'Sequential', null] },
-        drugs: {
-            items: {
-                properties: {
-                    id: { type: 'number' },
-                    name: { type: 'string' },
-                    ncit_id: { type: ['string', 'null'] },
-                    pubchem_id: { type: ['string', 'null'] },
-                },
-                required: ['name', 'ncit_id'],
-                type: 'object',
-            },
-            type: 'array',
-        },
-        evidence_direction: { enum: ['Supports', 'N/A', 'Does Not Support', null] },
-        evidence_level: { type: 'string' },
-        evidence_type: {
-            enum: ['Predictive', 'Diagnostic', 'Prognostic', 'Predisposing', 'Functional'],
-        },
-        id: { type: 'number' },
-        rating: { type: ['number', 'null'] },
-        source: {
-            properties: {
-                citation_id: { type: 'string' },
-                name: { type: ['string', 'null'] },
-                source_type: { enum: ['ASCO', 'PubMed'] },
-            },
-        },
-        status: { type: 'string' },
-        variant_id: { type: 'number' },
-    },
-    type: 'object',
-});
+const validateEvidenceSpec = ajv.compile(evidenceSpec);
 
 
 /**

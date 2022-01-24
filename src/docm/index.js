@@ -16,72 +16,15 @@ const _pubmed = require('../entrez/pubmed');
 const { logger } = require('../logging');
 const _gene = require('../entrez/gene');
 const { docm: SOURCE_DEFN } = require('../sources');
+const { variant: variantSpec, record: recordSpecDefn } = require('./specs.json');
 
-const ajv = new Ajv();
 
 
 const BASE_URL = 'http://docm.info/api/v1/variants';
 
-
-const variantSummarySpec = ajv.compile({
-    properties: {
-        hgvs: { type: 'string' },
-    },
-    required: ['hgvs'],
-    type: 'object',
-});
-
-
-const recordSpec = ajv.compile({
-    properties: {
-        amino_acid: { pattern: '^p\\..*', type: 'string' },
-        chromosome: { type: 'string' },
-        gene: { type: 'string' },
-        hgvs: { type: 'string' },
-        // TODO: process drug interactions (large amount of free text currently)
-        meta: {
-            items: {
-                properties: {
-                    'Drug Interaction Data': {
-                        properties: {
-                            fields: {
-                                items: [
-                                    { enum: ['Therapeutic Context'], type: 'string' },
-                                    { enum: ['Pathway'], type: 'string' },
-                                    { enum: ['Effect'], type: 'string' },
-                                    { enum: ['Association'], type: 'string' },
-                                    { enum: ['Status'], type: 'string' },
-                                    { enum: ['Evidence'], type: 'string' },
-                                    { enum: ['Source'], type: 'string' },
-                                ],
-                                type: 'array',
-                            },
-                            rows: {
-                                items: {
-                                    items: { type: ['string', 'null'] }, maxItems: 7, minItems: 7, type: 'array',
-                                },
-                                type: 'array',
-                            },
-                        },
-                        required: ['fields', 'rows'],
-                        type: 'object',
-                    },
-                },
-                required: ['Drug Interaction Data'],
-                type: 'object',
-            },
-            type: 'array',
-        },
-        reference: { pattern: '^([ATGC]*|-)$', type: 'string' },
-        reference_version: { type: 'string' },
-        start: { min: 1, type: 'number' },
-        stop: { min: 1, type: 'number' },
-        variant: { pattern: '^([ATGC]*|-)$', type: 'string' },
-        variant_type: { enum: ['SNV', 'DEL', 'INS', 'DNV'], type: 'string' },
-    },
-    required: ['reference_version', 'hgvs', 'gene', 'reference', 'variant', 'start', 'stop', 'variant_type'],
-    type: 'object',
-});
+const ajv = new Ajv();
+const variantSummarySpec = ajv.compile(variantSpec);
+const recordSpec = ajv.compile(recordSpecDefn);
 
 
 /**
