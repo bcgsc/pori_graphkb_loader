@@ -244,16 +244,22 @@ const processRecord = async (opt) => {
  * @param {ApiConnection} opt.conn the api connection object for GraphKB
  * @param {string} [opt.url] the base url for the DOCM api
  */
-const upload = async (opt) => {
-    const { conn, errorLogPrefix } = opt;
+const upload = async ({
+    conn, errorLogPrefix, url = BASE_URL, maxRecords,
+}) => {
     // load directly from their api:
-    logger.info(`loading: ${opt.url || BASE_URL}.json`);
-    const recordsList = await request({
+    logger.info(`loading: ${url}.json`);
+    let recordsList = await request({
         json: true,
         method: 'GET',
-        uri: `${BASE_URL}.json`,
+        uri: `${url}.json`,
     });
     logger.info(`loaded ${recordsList.length} records`);
+
+    if (maxRecords) {
+        logger.warning(`truncating records input, maxRecords=${maxRecords}`);
+        recordsList = recordsList.slice(0, maxRecords);
+    }
     // add the source node
     const source = rid(await conn.addSource(SOURCE_DEFN));
 

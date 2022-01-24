@@ -19,8 +19,7 @@ const { refseq: SOURCE_DEFN } = require('../sources');
  * @param {string} opt.filename path to the tab delimited file
  * @param {ApiConnection} opt.conn the api connection object
  */
-const uploadFile = async (opt) => {
-    const { filename, conn } = opt;
+const uploadFile = async ({ filename, conn, maxRecords }) => {
     const json = await loadDelimToJson(filename);
 
     const source = await conn.addRecord({
@@ -36,6 +35,11 @@ const uploadFile = async (opt) => {
     await _entrez.fetchAndLoadByIds(conn, json.map(rec => rec.GeneID));
 
     for (let i = 0; i < json.length; i++) {
+        if (maxRecords && i > maxRecords) {
+            logger.warn(`Stopping due to max records limit (${maxRecords})`);
+            break;
+        }
+
         try {
             const { RNA, GeneID, Protein } = json[i];
             logger.info(`processing (${i} / ${json.length}) ${RNA}`);

@@ -150,7 +150,9 @@ const loadEdges = async ({
  * @param {string} opt.filename the path to the input JSON file
  * @param {ApiConnection} opt.conn the api connection object
  */
-const uploadFile = async ({ filename, conn, ignoreCache = false }) => {
+const uploadFile = async ({
+    filename, conn, ignoreCache = false, maxRecords,
+}) => {
     // load the DOID JSON
     logger.info('loading external disease ontology data');
     const DOID = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
@@ -212,6 +214,10 @@ const uploadFile = async ({ filename, conn, ignoreCache = false }) => {
     }
 
     for (let i = 0; i < DOID.graphs[0].nodes.length; i++) {
+        if (maxRecords && i > maxRecords) {
+            logger.warn(`Stopping due to max records limit (${maxRecords})`);
+            break;
+        }
         const node = DOID.graphs[0].nodes[i];
         logger.info(`processing ${node.id} (${i} / ${DOID.graphs[0].nodes.length})`);
         let row;

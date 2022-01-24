@@ -256,7 +256,7 @@ const processRecord = async ({
  * @param {string} opt.filename the path to the input XML file
  * @param {ApiConnection} opt.conn the api connection object
  */
-const uploadFile = async ({ filename, conn }) => {
+const uploadFile = async ({ filename, conn, maxRecords }) => {
     logger.info('Loading the external drugbank data');
 
     const source = await conn.addSource(SOURCE_DEFN);
@@ -298,6 +298,14 @@ const uploadFile = async ({ filename, conn }) => {
                 ATC, conn, drug: item, sources: { current: source, fda: fdaSource },
             }).then(() => {
                 counts.success++;
+
+                if (maxRecords && (counts.success + counts.error + counts.skipped) >= maxRecords) {
+                    logger.warn(`Stopping due to max records limit (${maxRecords})`);
+                    logger.info('Parsing stream complete');
+                    stream.close();
+                    resolve();
+                }
+
                 xml.resume();
             }).catch((err) => {
                 let label;
