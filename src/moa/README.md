@@ -1,6 +1,6 @@
-# MOAlmonac
+# MOAlmanac
 
-Load variant assestions from the [Molecular Oncology Almonac](https://moalmanac.org)[^1].
+Load variant assestions from the [Molecular Oncology Almanac](https://moalmanac.org)[^1].
 
 ```bash
 node bin/load.js api moa
