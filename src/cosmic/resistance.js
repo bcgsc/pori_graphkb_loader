@@ -77,9 +77,7 @@ const processVariants = async ({ conn, record, source }) => {
 
     try {
         // add the protein variant with its protein translation
-        const {
-            noFeatures, multiFeature, prefix, ...variant
-        } = variantParser(record.protein, false);
+        const variant = variantParser(record.protein, false).toJSON();
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
 
         const reference1 = rid(await _ensembl.fetchAndLoadById(
@@ -115,9 +113,7 @@ const processVariants = async ({ conn, record, source }) => {
     // create the cds variant
     if (record.cds && record.cds.trim()) {
         try {
-            const {
-                noFeatures, multiFeature, prefix, ...variant
-            } = variantParser(record.cds, false);
+            const variant = variantParser(record.cds, false).toJSON();
             // get the ensembl transcript
             const reference1 = rid(await _ensembl.fetchAndLoadById(
                 conn,
@@ -147,9 +143,7 @@ const processVariants = async ({ conn, record, source }) => {
     // add the genomic representation
     if (record.genomic) {
         try {
-            const {
-                noFeatures, multiFeature, prefix, ...variant
-            } = variantParser(record.genomic, false);
+            const variant = variantParser(record.genomic, false).toJSON();
             // get the chromosome
             const reference1 = rid(await conn.getUniqueRecordBy({
                 filters: {
