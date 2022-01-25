@@ -84,9 +84,6 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
             }
 
             case 'Functional': {
-                if (clinicalSignificance === 'Unaltered Function') {
-                    return 'no functional effect';
-                }
                 return clinicalSignificance.toLowerCase();
             }
 
