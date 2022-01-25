@@ -9,34 +9,14 @@ const { requestWithRetry, checkSpec } = require('../util');
 const { asco: SOURCE_DEFN } = require('../sources');
 const { logger } = require('../logging');
 const { rid } = require('../graphkb');
+const { main: mainSpec, details: detailsSpec } = require('./specs.json');
 
 const CACHE = {};
 
 
 const ajv = new Ajv();
-
-const validateMainSpec = ajv.compile({
-    properties: {
-        AbstID: { type: 'string' },
-        AuthorString: { type: 'string' },
-        Meeting: { type: 'string' },
-        Title: { type: 'string' },
-        Year: { pattern: '\\d+', type: 'string' },
-        id: { type: 'string' },
-        url: { format: 'url', type: 'string' },
-    },
-    required: ['AbstID', 'Title', 'Meeting', 'url', 'id'],
-    type: 'object',
-});
-
-
-const validateDetailsSpec = ajv.compile({
-    properties: {
-        DOI: { type: 'string' },
-        SiteCitation: { type: 'string' },
-    },
-    type: 'object',
-});
+const validateMainSpec = ajv.compile(mainSpec);
+const validateDetailsSpec = ajv.compile(detailsSpec);
 
 
 /**

@@ -10,6 +10,7 @@ const {
 const { logger } = require('../logging');
 const _entrezGene = require('../entrez/gene');
 const _snp = require('../entrez/snp');
+const { variant: variantSpec } = require('./specs.json');
 
 const ajv = new Ajv();
 
@@ -23,42 +24,7 @@ const BASE_URL = 'https://civicdb.org/api';
 /**
  * This is the expected format of the JSON body of a response to a variant request to the CIVIC API
  */
-const validateVariantSpec = ajv.compile({
-    properties: {
-        civic_actionability_score: { type: 'number' },
-        coordinates: {
-            properties: {
-                chromosome: { type: ['string', 'null'] },
-                chromosome2: { type: ['string', 'null'] },
-                ensembl_version: { type: ['number', 'null'] },
-                reference_bases: { type: ['string', 'null'] },
-                reference_build: { type: ['string', 'null'] },
-                representative_transcript: { type: ['string', 'null'] },
-                representative_transcript2: { type: ['string', 'null'] },
-                start: { type: ['number', 'null'] },
-                start2: { type: ['number', 'null'] },
-                stop: { type: ['number', 'null'] },
-                stop2: { type: ['number', 'null'] },
-                variant_bases: { type: ['string', 'null'] },
-            },
-            type: 'object',
-        },
-        description: { type: 'string' },
-        entrez_id: { type: 'number' },
-        entrez_name: { type: 'string' },
-        id: { type: 'number' },
-        name: { type: 'string' },
-        variant_types: {
-            items: {
-                name: { type: 'string' },
-                so_id: { type: 'string' },
-                type: 'object',
-            },
-            type: 'array',
-        },
-    },
-    type: 'object',
-});
+const validateVariantSpec = ajv.compile(variantSpec);
 
 
 // based on discussion with cam here: https://www.bcgsc.ca/jira/browse/KBDEV-844

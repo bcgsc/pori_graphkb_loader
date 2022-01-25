@@ -77,9 +77,7 @@ const processVariants = async ({ conn, record, source }) => {
 
     try {
         // add the protein variant with its protein translation
-        const {
-            noFeatures, multiFeature, prefix, ...variant
-        } = variantParser(record.protein, false);
+        const variant = variantParser(record.protein, false).toJSON();
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
 
         const reference1 = rid(await _ensembl.fetchAndLoadById(
@@ -115,9 +113,7 @@ const processVariants = async ({ conn, record, source }) => {
     // create the cds variant
     if (record.cds && record.cds.trim()) {
         try {
-            const {
-                noFeatures, multiFeature, prefix, ...variant
-            } = variantParser(record.cds, false);
+            const variant = variantParser(record.cds, false).toJSON();
             // get the ensembl transcript
             const reference1 = rid(await _ensembl.fetchAndLoadById(
                 conn,
@@ -147,9 +143,7 @@ const processVariants = async ({ conn, record, source }) => {
     // add the genomic representation
     if (record.genomic) {
         try {
-            const {
-                noFeatures, multiFeature, prefix, ...variant
-            } = variantParser(record.genomic, false);
+            const variant = variantParser(record.genomic, false).toJSON();
             // get the chromosome
             const reference1 = rid(await conn.getUniqueRecordBy({
                 filters: {
@@ -328,11 +322,11 @@ const loadClassifications = async (filename) => {
  * @param {ApiConnection} opt.conn the API connection object
  */
 const uploadFile = async ({
-    filename, mappingFilename, conn, errorLogPrefix,
+    filename, classification, conn, errorLogPrefix, maxRecords,
 }) => {
     const jsonList = await loadDelimToJson(filename);
 
-    const mapping = await loadClassifications(mappingFilename);
+    const mapping = await loadClassifications(classification);
     logger.info(`loaded ${jsonList.length} records`);
     // get the dbID for the source
     const source = rid(await conn.addSource(SOURCE_DEFN));
@@ -359,6 +353,10 @@ const uploadFile = async ({
     await _pubmed.fetchAndLoadByIds(conn, jsonList.map(rec => rec[HEADER.pubmed]), { upsert: true });
 
     for (let index = 0; index < jsonList.length; index++) {
+        if (maxRecords && index > maxRecords) {
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
+            break;
+        }
         const sourceId = hashRecordToId(jsonList[index]);
         const record = { sourceId, ...convertRowFields(HEADER, jsonList[index]) };
         logger.info(`processing (${index} / ${jsonList.length}) ${sourceId}`);

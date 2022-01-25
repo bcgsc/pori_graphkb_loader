@@ -13,9 +13,7 @@ const _hgnc = require('../hgnc');
 const { logger } = require('../logging');
 const _chembl = require('../chembl');
 const { drugbank: SOURCE_DEFN, fdaSrs: { name: fdaName } } = require('../sources');
-
-
-const ajv = new Ajv();
+const spec = require('./spec.json');
 
 
 // Lists most of the commonly required 'Tags' and Attributes
@@ -27,127 +25,11 @@ const HEADER = {
     unii: 'unii',
 };
 
-const singleReqProp = (name, spec = {}) => ({
-    oneOf: [{ maxLength: 0, type: 'string' }, { properties: { [name]: spec }, required: [name], type: ['object', 'null'] }],
-});
-
 /**
  * This defines the expected format of the JSON post transform from xml
  */
-const validateDrugbankSpec = ajv.compile({
-    properties: {
-        $: {
-            properties: {
-                updated: { type: 'string' },
-            },
-            required: ['updated'],
-            type: 'object',
-        },
-        'atc-codes': singleReqProp(
-            'atc-code', singleReqProp(
-                'level', {
-                    items: {
-                        properties: {
-                            $: {
-                                properties: { code: { type: 'string' } },
-                                required: ['code'],
-                                type: 'object',
-                            },
-                            $text: { type: 'string' },
-                        },
-                        required: ['$text', '$'],
-                        type: 'object',
-                    },
-                    type: 'array',
-                },
-            ),
-        ),
-        'calculated-properties': singleReqProp('property', {
-            items: {
-                properties: {
-                    kind: { type: 'string' },
-                    type: { type: 'string' },
-                },
-                required: ['kind', 'value'],
-                type: 'object',
-            },
-            type: 'array',
-        }),
-        categories: singleReqProp(
-            'category', {
-                items: { properties: { category: { type: 'string' } }, required: ['category'], type: 'object' },
-                type: 'array',
-            },
-        ),
-        description: { type: ['string', 'null'] },
-        'drugbank-id': {
-            items: [{
-                properties: {
-                    $text: { pattern: '^DB\\d+$', type: 'string' },
-                },
-                type: 'object',
-            }],
-            minItems: 1,
-            type: 'array',
-        },
-        'external-identifiers': singleReqProp(
-            'external-identifier', {
-                items: {
-                    properties: {
-                        identifier: { type: 'string' },
-                        resource: { type: 'string' },
-                    },
-                    required: ['resource', 'identifier'],
-                    type: 'object',
-                },
-                type: 'array',
-            },
-        ),
-        'mechanism-of-action': { type: ['string', 'null'] },
-        name: { type: 'string' },
-        products: singleReqProp('product', {
-            items: {
-                properties: { name: { type: 'string' } },
-                required: ['name'],
-                type: 'object',
-            },
-            type: 'array',
-        }),
-        targets: singleReqProp(
-            'target', {
-                properties: {
-                    actions: singleReqProp('action', { items: { type: 'string' }, type: 'array' }),
-                    polypeptide: {
-                        items: {
-                            properties: {
-                                'external-identifiers': singleReqProp(
-                                    'external-identifier', {
-                                        items: {
-                                            properties: {
-                                                identifier: { type: 'string' },
-                                                resource: { type: 'string' },
-                                            },
-                                            required: ['resource', 'identifier'],
-                                            type: 'object',
-                                        },
-                                        type: 'array',
-                                    },
-                                ),
-                            },
-                            type: 'object',
-                        },
-                        type: 'array',
-                    },
-                },
-                required: ['actions'],
-                type: 'object',
-            },
-        ),
-        unii: { type: ['string', 'null'] },
-    },
-    required: ['drugbank-id', 'name', '$'],
-    type: 'object',
-});
+const ajv = new Ajv();
+const validateDrugbankSpec = ajv.compile(spec);
 
 
 const getDrugBankId = record => record['drugbank-id'][0].$text;
@@ -374,7 +256,7 @@ const processRecord = async ({
  * @param {string} opt.filename the path to the input XML file
  * @param {ApiConnection} opt.conn the api connection object
  */
-const uploadFile = async ({ filename, conn }) => {
+const uploadFile = async ({ filename, conn, maxRecords }) => {
     logger.info('Loading the external drugbank data');
 
     const source = await conn.addSource(SOURCE_DEFN);
@@ -416,6 +298,14 @@ const uploadFile = async ({ filename, conn }) => {
                 ATC, conn, drug: item, sources: { current: source, fda: fdaSource },
             }).then(() => {
                 counts.success++;
+
+                if (maxRecords && (counts.success + counts.error + counts.skipped) >= maxRecords) {
+                    logger.warn(`not loading all content due to max records limit (${maxRecords})`);
+                    logger.info('Parsing stream complete');
+                    stream.close();
+                    resolve();
+                }
+
                 xml.resume();
             }).catch((err) => {
                 let label;

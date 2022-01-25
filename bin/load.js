@@ -141,7 +141,7 @@ if (input) {
         loaderOptions.filename = input;
 
         if (options.module === 'cosmic') {
-            loaderOptions.mappingFilename = options.mappingFilename;
+            loaderOptions.classification = options.classification;
         }
     }
 }

@@ -195,7 +195,9 @@ const cleanRawRow = (rawRow) => {
  * @param {string} opt.filename the path to the input OWL file
  * @param {ApiRequst} opt.conn the API connection object
  */
-const uploadFile = async ({ filename, conn, ignoreCache = false }) => {
+const uploadFile = async ({
+    filename, conn, ignoreCache = false, maxRecords,
+}) => {
     logger.info('Loading external NCIT data');
     logger.info(`loading: ${filename}`);
     const rawRows = await loadDelimToJson(filename, {
@@ -234,6 +236,11 @@ const uploadFile = async ({ filename, conn, ignoreCache = false }) => {
     const erroredSourceIds = new Set();
 
     for (const raw of rawRows) {
+        if (maxRecords && rows.length > maxRecords) {
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
+            break;
+        }
+
         try {
             const row = cleanRawRow(raw);
 

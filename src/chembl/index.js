@@ -11,26 +11,11 @@ const {
 } = require('../graphkb');
 const { logger } = require('../logging');
 const { chembl: SOURCE_DEFN } = require('../sources');
+const spec = require('./spec.json');
 
 const ajv = new Ajv();
 
-const recordSpec = ajv.compile({
-    properties: {
-        molecule_chembl_id: { pattern: '^CHEMBL\\d+$', type: 'string' },
-        molecule_properties: {
-            oneOf: [{
-                properties: {
-                    full_molformula: { type: 'string' },
-                },
-                type: 'object',
-            }, { type: 'null' }],
-        },
-        pref_name: { type: ['string', 'null'] },
-        usan_stem_definition: { type: ['string', 'null'] },
-    },
-    required: ['molecule_chembl_id'],
-    type: 'object',
-});
+const recordSpec = ajv.compile(spec);
 
 
 const API = 'https://www.ebi.ac.uk/chembl/api/data/molecule';
