@@ -21,8 +21,7 @@ const HEADER = {
  * @param {string} opt.filename the path to the input file
  * @param {ApiConnection} opt.conn the api connection object
  */
-const uploadFile = async (opt) => {
-    const { filename, conn: graphkbConn } = opt;
+const uploadFile = async ({ filename, conn: graphkbConn, maxRecords }) => {
     const jsonList = await loadDelimToJson(filename);
     const source = await graphkbConn.addSource(SOURCE_DEFN);
 
@@ -42,6 +41,10 @@ const uploadFile = async (opt) => {
     const intervalSize = 1000;
 
     for (let i = 0; i < jsonList.length; i++) {
+        if (maxRecords && i > maxRecords) {
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
+            break;
+        }
         const {
             id, ncit, name,
         } = convertRowFields(HEADER, jsonList[i]);

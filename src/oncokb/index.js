@@ -1,7 +1,6 @@
 /**
  * @module importer/oncokb
  */
-// const request = require('request-promise');
 const Ajv = require('ajv');
 const fs = require('fs');
 const path = require('path');
