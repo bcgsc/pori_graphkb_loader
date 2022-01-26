@@ -480,7 +480,9 @@ const processRow = async ({ row, source, conn }) => {
 };
 
 
-const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
+const uploadFile = async ({
+    conn, filename, errorLogPrefix, maxRecords,
+}) => {
     const rows = await loadDelimToJson(filename);
     logger.info('creating the source record');
     const source = rid(await conn.addSource(SOURCE_DEFN));
@@ -496,6 +498,10 @@ const uploadFile = async ({ conn, filename, errorLogPrefix }) => {
     logger.info(`loading ${rows.length} rows`);
 
     for (let index = 0; index < rows.length; index++) {
+        if (maxRecords && index > maxRecords) {
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
+            break;
+        }
         const rawRow = rows[index];
         const sourceId = hashRecordToId(rawRow);
         logger.info(`processing: ${sourceId} (${index} / ${rows.length})`);
