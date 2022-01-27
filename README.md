@@ -99,7 +99,7 @@ npm start -- -h # (1)
 
 1. the `--` must be used so that arguments following it are passed to the script being called by the start command and not node itself. You can also run the script directory with `node bin/load.js`
 
-Now you are ready to test running your first loader against the dev API and keycloak instance you set up earlier. It is simplest to run a loader which does not require and pre-loaded data such as one of the JSON ontology files included in the data directory.
+Now you are ready to test running your first loader against the dev API and keycloak instance you set up earlier. It is simplest to run a loader which does not require any preloaded data such as one of the JSON ontology files included in the data directory.
 
 ```bash
 npm start -- file ontology data/vocab.json -g http://localhost:8080/api -u graphkb_importer -p password # (1)
