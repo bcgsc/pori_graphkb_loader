@@ -67,25 +67,46 @@ docker run bcgsc/pori-graphkb-loader --help
 
 ### Getting Started
 
-Clone the repository
+To write and test the GraphKB loaders you will need the following
+
+- NodeJS version 12 or higher
+- An instance of the GraphKB API and its required OrientDB instance
+- An instance of keycloak for testing authentication
+
+If you do not already have access to a development server of the GraphKB API, the easiest way to set this up is with docker. Follow the [developers install instructions](https://bcgsc.github.io/pori/developer_reference/getting_started) from the PORI user guide.
+
+Once you have the GraphKB API and keycloak server running you are ready to start writing and testing loaders.
+
+clone this repository and install via npm
 
 ```bash
 git clone https://github.com/bcgsc/pori_graphkb_loader.git
-cd pori_graphkb_loader
-git checkout develop
-```
-
-Install the dependencies
-
-```bash
+cd por_graphkb_laoder
 npm install
 ```
 
-run the tests
+The tests can be run with the following command
 
 ```bash
 npm run test
 ```
+
+Run the loader with the `-h` flag to see the user help menu
+
+```bash
+npm start -- -h # (1)
+```
+
+1. the `--` must be used so that arguments following it are passed to the script being called by the start command and not node itself. You can also run the script directory with `node bin/load.js`
+
+Now you are ready to test running your first loader against the dev API and keycloak instance you set up earlier. It is simplest to run a loader which does not require any preloaded data such as one of the JSON ontology files included in the data directory.
+
+```bash
+npm start -- file ontology data/vocab.json -g http://localhost:8080/api -u graphkb_importer -p password # (1)
+```
+
+1. "password" is the default password, and "graphkb_importer" is one of the default users used when setting up the development environment with docker-compose. Things should be changed to match the keycloak user in whatever instance you are running the loader against.
+
 
 ### Creating a new Loader
 
