@@ -736,4 +736,5 @@ module.exports = {
     orderPreferredOntologyTerms,
     rid,
     shouldUpdate,
+    simplifyRecordsLinks,
 };
