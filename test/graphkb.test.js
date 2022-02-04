@@ -1,7 +1,7 @@
 const { simplifyRecordsLinks, shouldUpdate } = require('../src/graphkb');
 
 describe('shouldUpdate', () => {
-    test('test for disease object', () => {
+    describe('disease', () => {
         const model = 'disease';
         const originalContent = {
             '@class': 'Disease',
@@ -28,52 +28,48 @@ describe('shouldUpdate', () => {
             url: 'http://ncicb.nci.nih.gov/xml/owl/evs/thesaurus.owl#c101220',
             uuid: '709eb34b-27ff-42f5-be0c-9051c639deb0',
         };
-        originalContent.source = {
-            '@class': 'Source',
-            '@rid': '#40:3',
-            createdAt: 1565314457745,
-            createdBy: '#29:0',
-            description: 'nci thesaurus (ncit) provides reference terminology for many nci and other systems. it covers vocabulary for clinical care, translational and basic research, and public information and administrative activities.',
-            displayName: 'NCIt',
-            longName: 'nci thesaurus',
-            name: 'ncit',
-            sort: 2,
-            updatedAt: 1565314457745,
-            updatedBy: '#29:0',
-            url: 'https://ncit.nci.nih.gov/ncitbrowser',
-            usage: 'https://creativecommons.org/licenses/by/4.0',
-            uuid: 'dad84739-b1e3-4686-b055-6bc3c3de9bc3',
-        };
-        const newContent = { ...originalContent };
-        newContent.name = 'a new name';
-        newContent.displayName = 'a new display name';
-        const excludedFieldsExhaustive = ['name', 'displayName'];
-        const excludedFieldsNonExhaustive = ['name'];
+        const excludedFields = ['displayName'];
 
-        expect(shouldUpdate(
-            model,
-            originalContent,
-            newContent,
-            excludedFieldsNonExhaustive,
-        )).toBe(true);
+        test('true when non-excluded field changes', () => {
+            const newContent = { ...originalContent };
+            newContent.name = 'a new name';
+            expect(shouldUpdate(model, originalContent, newContent, excludedFields)).toBe(true);
+        });
 
-        expect(shouldUpdate(
-            model,
-            originalContent,
-            newContent,
-            excludedFieldsExhaustive,
-        )).toBe(false);
+        test('false when changed field is excluded', () => {
+            const newContent = { ...originalContent };
+            newContent.displayName = 'a new display name';
+            expect(shouldUpdate(model, originalContent, newContent, excludedFields)).toBe(false);
+        });
 
-        newContent.source.name = 'a new source name';
-        expect(shouldUpdate(
-            model,
-            originalContent,
-            newContent,
-            excludedFieldsExhaustive,
-        )).toBe(false);
+        test('false when same object passed and no fields excluded', () => {
+            expect(shouldUpdate(model, originalContent, originalContent)).toBe(false);
+        });
+
+        test('false when a linked record change', () => {
+            originalContent.source = {
+                '@class': 'Source',
+                '@rid': '#40:3',
+                createdAt: 1565314457745,
+                createdBy: '#29:0',
+                description: 'nci thesaurus (ncit) provides reference terminology for many nci and other systems. it covers vocabulary for clinical care, translational and basic research, and public information and administrative activities.',
+                displayName: 'NCIt',
+                longName: 'nci thesaurus',
+                name: 'ncit',
+                sort: 2,
+                updatedAt: 1565314457745,
+                updatedBy: '#29:0',
+                url: 'https://ncit.nci.nih.gov/ncitbrowser',
+                usage: 'https://creativecommons.org/licenses/by/4.0',
+                uuid: 'dad84739-b1e3-4686-b055-6bc3c3de9bc3',
+            };
+            const newContent = { ...originalContent };
+            newContent.source.name = 'a new source name';
+            expect(shouldUpdate(model, originalContent, newContent)).toBe(false);
+        });
     });
 
-    test('test for statement object', () => {
+    describe('statement', () => {
         const model = 'statement';
         const originalContent = {
             '@class': 'Statement',
@@ -102,48 +98,44 @@ describe('shouldUpdate', () => {
             updatedBy: '#29:0',
             uuid: '543616c6-c259-4c4e-ab4e-31434221f259',
         };
-        originalContent.source = {
-            '@class': 'Source',
-            '@rid': '#38:1',
-            createdAt: 1565629077198,
-            createdBy: '#29:0',
-            description: 'civic is an open access, open source, community-driven web resource for clinical interpretation of variants in cancer',
-            displayName: 'CIViC',
-            name: 'civic',
-            sort: 99999,
-            updatedAt: 1565629077198,
-            updatedBy: '#29:0',
-            url: 'https://civicdb.org',
-            usage: 'https://creativecommons.org/publicdomain/zero/1.0',
-            uuid: '26a9c986-cede-4595-9c53-c62e707ea205',
-        };
-        const newContent = { ...originalContent };
-        newContent.description = 'a new description';
-        newContent.reviewStatus = 'pending';
-        const excludedFieldsExhaustive = ['description', 'reviewStatus'];
-        const excludedFieldsNonExhaustive = ['description'];
+        const excludedFields = ['reviewStatus'];
 
-        expect(shouldUpdate(
-            model,
-            originalContent,
-            newContent,
-            excludedFieldsNonExhaustive,
-        )).toBe(true);
+        test('true when non-excluded field changes', () => {
+            const newContent = { ...originalContent };
+            newContent.description = 'a new description';
+            expect(shouldUpdate(model, originalContent, newContent, excludedFields)).toBe(true);
+        });
 
-        expect(shouldUpdate(
-            model,
-            originalContent,
-            newContent,
-            excludedFieldsExhaustive,
-        )).toBe(false);
+        test('false when changed field is excluded', () => {
+            const newContent = { ...originalContent };
+            newContent.reviewStatus = 'pending';
+            expect(shouldUpdate(model, originalContent, newContent, excludedFields)).toBe(false);
+        });
 
-        newContent.source.name = 'a new source name';
-        expect(shouldUpdate(
-            model,
-            originalContent,
-            newContent,
-            excludedFieldsExhaustive,
-        )).toBe(false);
+        test('false when same object passed and no fields excluded', () => {
+            expect(shouldUpdate(model, originalContent, originalContent)).toBe(false);
+        });
+
+        test('false when a linked record change', () => {
+            originalContent.source = {
+                '@class': 'Source',
+                '@rid': '#38:1',
+                createdAt: 1565629077198,
+                createdBy: '#29:0',
+                description: 'civic is an open access, open source, community-driven web resource for clinical interpretation of variants in cancer',
+                displayName: 'CIViC',
+                name: 'civic',
+                sort: 99999,
+                updatedAt: 1565629077198,
+                updatedBy: '#29:0',
+                url: 'https://civicdb.org',
+                usage: 'https://creativecommons.org/publicdomain/zero/1.0',
+                uuid: '26a9c986-cede-4595-9c53-c62e707ea205',
+            };
+            const newContent = { ...originalContent };
+            newContent.source.name = 'a new source name';
+            expect(shouldUpdate(model, originalContent, newContent)).toBe(false);
+        });
     });
 });
 
