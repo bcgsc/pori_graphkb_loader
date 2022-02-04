@@ -1,4 +1,37 @@
-const { simplifyRecordsLinks, shouldUpdate } = require('../src/graphkb');
+const {
+    simplifyRecordsLinks,
+    shouldUpdate,
+    orderPreferredOntologyTerms,
+} = require('../src/graphkb');
+
+describe('orderPreferredOntologyTerms', () => {
+    test('prefer non-deprecated', () => {
+        expect(orderPreferredOntologyTerms(
+            { deprecated: true }, {},
+        )).toBe(1);
+        expect(orderPreferredOntologyTerms(
+            { deprecated: false }, { deprecated: true },
+        )).toBe(-1);
+    });
+
+    test('prefer newer version of same record', () => {
+        expect(orderPreferredOntologyTerms(
+            { sourceIdVersion: '2019-10-08' }, { sourceIdVersion: '2019-09-08' },
+        )).toBe(1);
+        expect(orderPreferredOntologyTerms(
+            { sourceIdVersion: '2019-10-08' }, { sourceIdVersion: '2019-11-08' },
+        )).toBe(-1);
+    });
+
+    test('prefer records without dependencies', () => {
+        expect(orderPreferredOntologyTerms(
+            { dependency: true }, {},
+        )).toBe(1);
+        expect(orderPreferredOntologyTerms(
+            { dependency: null }, { dependency: true },
+        )).toBe(-1);
+    });
+});
 
 describe('shouldUpdate', () => {
     describe('disease', () => {
