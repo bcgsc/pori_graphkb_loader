@@ -15,6 +15,7 @@ id_rsa*
 out
 external_data
 jsdoc/
+junit.xml
 xunit.xml
 .audit.json
 TODO.txt
