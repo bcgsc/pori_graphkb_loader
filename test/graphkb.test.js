@@ -1,35 +1,106 @@
 const {
-    simplifyRecordsLinks,
-    shouldUpdate,
     orderPreferredOntologyTerms,
+    shouldUpdate,
+    simplifyRecordsLinks,
 } = require('../src/graphkb');
 
 describe('orderPreferredOntologyTerms', () => {
     test('prefer non-deprecated', () => {
         expect(orderPreferredOntologyTerms(
-            { deprecated: true }, {},
+            { deprecated: true }, { deprecated: false },
         )).toBe(1);
         expect(orderPreferredOntologyTerms(
             { deprecated: false }, { deprecated: true },
         )).toBe(-1);
     });
 
-    test('prefer newer version of same record', () => {
+    test('prefer terms with independent sourceId', () => {
         expect(orderPreferredOntologyTerms(
-            { sourceIdVersion: '2019-10-08' }, { sourceIdVersion: '2019-09-08' },
+            { alias: false }, { alias: true },
+        )).toBe(-1);
+        expect(orderPreferredOntologyTerms(
+            { alias: true }, { alias: false },
         )).toBe(1);
         expect(orderPreferredOntologyTerms(
-            { sourceIdVersion: '2019-10-08' }, { sourceIdVersion: '2019-11-08' },
+            { }, { dependency: true },
         )).toBe(-1);
+        expect(orderPreferredOntologyTerms(
+            { dependency: true }, { },
+        )).toBe(1);
     });
 
-    test('prefer records without dependencies', () => {
+    test('prefer generic to versioned terms', () => {
         expect(orderPreferredOntologyTerms(
-            { dependency: true }, {},
+            { }, { sourceIdVersion: '' },
+        )).toBe(-1);
+        expect(orderPreferredOntologyTerms(
+            { sourceIdVersion: '' }, { },
+        )).toBe(1);
+    });
+
+    test('prefer newer version of same record', () => {
+        expect(orderPreferredOntologyTerms(
+            { sourceIdVersion: '2019-10-08' }, { sourceIdVersion: '2020-10-08' },
+        )).toBe(-1);
+        expect(orderPreferredOntologyTerms(
+            { sourceIdVersion: '2020-10-08' }, { sourceIdVersion: '2019-10-08' },
+        )).toBe(1);
+    });
+
+    test('prefer newer source version of same record', () => {
+        expect(orderPreferredOntologyTerms(
+            { source: { version: 1 }, sourceIdVersion: '2019-10-08' },
+            { source: { version: 2 }, sourceIdVersion: '2019-10-08' },
+        )).toBe(-1);
+        expect(orderPreferredOntologyTerms(
+            { source: { version: 2 }, sourceIdVersion: '2019-10-08' },
+            { source: { version: 1 }, sourceIdVersion: '2019-10-08' },
+        )).toBe(1);
+    });
+
+    test('prefer terms with descriptions', () => {
+        expect(orderPreferredOntologyTerms(
+            { description: 'a description', sourceIdVersion: '2019-10-08' },
+            { description: '', sourceIdVersion: '2019-10-08' },
+        )).toBe(-1);
+        expect(orderPreferredOntologyTerms(
+            { description: '', sourceIdVersion: '2019-10-08' },
+            { description: 'a description', sourceIdVersion: '2019-10-08' },
+        )).toBe(1);
+    });
+
+    test('use source rank to sort results', () => {
+        expect(orderPreferredOntologyTerms(
+            { source: { sort: 1 }, sourceId: 1 },
+            { source: { sort: 2 }, sourceId: 2 },
+        )).toBe(-1);
+        expect(orderPreferredOntologyTerms(
+            { source: { sort: 2 }, sourceId: 1 },
+            { source: { sort: 1 }, sourceId: 2 },
         )).toBe(1);
         expect(orderPreferredOntologyTerms(
-            { dependency: null }, { dependency: true },
+            { source: { version: 1 }, sourceId: 1 },
+            { source: { version: 2 }, sourceId: 2 },
         )).toBe(-1);
+        expect(orderPreferredOntologyTerms(
+            { source: { version: 2 }, sourceId: 1 },
+            { source: { version: 1 }, sourceId: 2 },
+        )).toBe(1);
+        expect(orderPreferredOntologyTerms(
+            { description: 'a description', source: {}, sourceId: 1 },
+            { description: '', source: {}, sourceId: 2 },
+        )).toBe(-1);
+        expect(orderPreferredOntologyTerms(
+            { description: '', source: {}, sourceId: 1 },
+            { description: 'a description', source: {}, sourceId: 2 },
+        )).toBe(1);
+    });
+
+    test('fallback to 0 if there is no prefered one', () => {
+        expect(orderPreferredOntologyTerms(
+            { source: { }, sourceId: 1 },
+            { source: { }, sourceId: 2 },
+        )).toBe(0);
     });
 });
 
@@ -85,7 +156,7 @@ describe('shouldUpdate', () => {
                 '@rid': '#40:3',
                 createdAt: 1565314457745,
                 createdBy: '#29:0',
-                description: 'nci thesaurus (ncit) provides reference terminology for many nci and other systems. it covers vocabulary for clinical care, translational and basic research, and public information and administrative activities.',
+                description: 'nci thesaurus (ncit) provides reference terminology for many...',
                 displayName: 'NCIt',
                 longName: 'nci thesaurus',
                 name: 'ncit',
@@ -155,7 +226,7 @@ describe('shouldUpdate', () => {
                 '@rid': '#38:1',
                 createdAt: 1565629077198,
                 createdBy: '#29:0',
-                description: 'civic is an open access, open source, community-driven web resource for clinical interpretation of variants in cancer',
+                description: 'civic is an open access, open source, community-driven...',
                 displayName: 'CIViC',
                 name: 'civic',
                 sort: 99999,
