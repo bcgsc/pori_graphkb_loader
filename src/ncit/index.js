@@ -451,4 +451,8 @@ const uploadFile = async ({
 };
 
 
-module.exports = { SOURCE_DEFN, uploadFile };
+module.exports = {
+    SOURCE_DEFN,
+    pickEndpoint,
+    uploadFile,
+};
