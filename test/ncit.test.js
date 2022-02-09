@@ -22,7 +22,7 @@ describe('pickEndpoint', () => {
             .toThrow('Concept not implemented (A whale)');
     });
 
-    test('Concept do not correspond to any endpoin and there is no parent', () => {
+    test('Concept do not correspond to any endpoint and there is no parent', () => {
         expect(() => pickEndpoint('A demogorgon', ''))
             .toThrow('Concept not implemented (A demogorgon)');
     });
