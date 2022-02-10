@@ -56,7 +56,13 @@ describe('cleanRawRow', () => {
         expect(cleanRawRow(row)).toHaveProperty('parents', expected);
     });
 
-    // species
+    // endpoint property's value
+    test('Has expected endpoint value', () => {
+        const expected = pickEndpoint(rawRow.semanticType, rawRow.parentConcepts);
+        expect(cleanRawRow(rawRow)).toHaveProperty('endpoint', expected);
+    });
+
+    // species property's value
     test.each([
         ['murine as name', 'A murine', '', '', 'murine'],
         ['mouse as name', 'A mouse', '', '', 'mouse'],
@@ -82,7 +88,7 @@ describe('cleanRawRow', () => {
     });
 
     // url property's value
-    test('RemoveXML tags around URLs', () => {
+    test('Remove XML tags around URLs', () => {
         expect(cleanRawRow({ ...rawRow, xmlTag: '<https://bcgsc.ca>' }))
             .toHaveProperty('url', 'https://bcgsc.ca');
     });
@@ -98,8 +104,10 @@ describe('cleanRawRow', () => {
 
     // name property's value
     test.each([
-        ['no name except id', 'C10000', '', 'c10000'],
         ['to lowercase', '', 'C10000', 'c10000'],
+        ['no name but id', 'C10000', '', 'c10000'],
+        ['keep first of multiple names', '', 'C10000|C20000', 'c10000'],
+        ['extra separators', '', '||C10000', 'c10000'],
     ])('Has expected name value: %s', (_, id, name, expected) => {
         const row = { ...rawRow, id, name };
         expect(cleanRawRow(row)).toHaveProperty('name', expected);
@@ -112,6 +120,7 @@ describe('cleanRawRow', () => {
         ['filter by name', 'C', 'a|b|c', ['a', 'b']],
         ['remove duplicate', '', 'a|a', ['a']],
         ['extra separators', '', '||a|b', ['a', 'b']],
+        ['add extra names to synonyms', 'a|b', 'c|d', ['c', 'd', 'b']],
     ])('Has expected synonyms value: %s', (_, name, synonyms, expected) => {
         const row = { ...rawRow, name, synonyms };
         expect(cleanRawRow(row)).toHaveProperty('synonyms', expected);
