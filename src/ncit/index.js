@@ -453,6 +453,7 @@ const uploadFile = async ({
 
 module.exports = {
     SOURCE_DEFN,
+    cleanRawRow,
     pickEndpoint,
     uploadFile,
 };
