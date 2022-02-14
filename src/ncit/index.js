@@ -152,7 +152,7 @@ const cleanRawRow = (rawRow) => {
         for (const synonym of row.synonyms) {
             if (speciesMatch(synonym)) {
                 row.name = synonym;
-                [, row.species] = speciesMatch(synonym);
+                row.species = speciesMatch(synonym);
                 break;
             }
         }
@@ -453,6 +453,7 @@ const uploadFile = async ({
 
 module.exports = {
     SOURCE_DEFN,
+    cleanRawRow,
     pickEndpoint,
     uploadFile,
 };
