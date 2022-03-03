@@ -107,7 +107,6 @@ npm start -- file ontology data/vocab.json -g http://localhost:8080/api -u graph
 
 1. "password" is the default password, and "graphkb_importer" is one of the default users used when setting up the development environment with docker-compose. Things should be changed to match the keycloak user in whatever instance you are running the loader against.
 
-
 ### Creating a new Loader
 
 Loaders should be created with a directory directly under src name after the source of the content
@@ -155,7 +154,7 @@ up snakemake in a virtual environment run the following
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -U pip setuptools
+pip install -U pip setuptools wheel
 pip install snakemake
 ```
 
@@ -167,6 +166,15 @@ snakemake -j 1
 ```
 
 ![default workflow](./docs/basic_workflow.png)
+
+You will want to pass snakemake the specific GraphKB instance you are working with as well as the credentials of the user that will be uploading. If you have followed the docker install demo instructions this might looks something like this
+
+```bash
+snakemake -j 1 \
+  --config gkb_user='graphkb_importer' \
+  gkb_pass='secret' \
+  gkb_url='http://localhost:8080/api'
+```
 
 The COSMIC and DrugBank options require licensing and are therefore not run by default. If you have
 a license to use them then you can include one or both of them by providing email and password
