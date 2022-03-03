@@ -1,4 +1,4 @@
-# NCI Thesuarus
+# NCI Thesaurus
 
 First download the latest version of the plain text tab delimited files. This should include both
 the main thesaurus file and the cross mapping file

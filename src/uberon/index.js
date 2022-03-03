@@ -64,7 +64,7 @@ const parseSubsetName = (url) => {
  * @param {string} opt.filename the path to the input OWL file
  * @param {ApiConnection} opt.conn the API connection object
  */
-const uploadFile = async ({ filename, conn }) => {
+const uploadFile = async ({ filename, conn, maxRecords }) => {
     logger.info('Loading the external uberon data');
     logger.info(`reading: ${filename}`);
     const content = fs.readFileSync(filename).toString();
@@ -92,9 +92,15 @@ const uploadFile = async ({ filename, conn }) => {
     const ncitMissingRecords = new Set();
     logger.info(`Adding the uberon ${Object.keys(nodesByCode).length} entity nodes`);
 
+    let count = 0;
+
     for (const node of Object.values(nodesByCode)) {
         if (!node[PREDICATES.LABEL] || !node.code) {
             continue;
+        }
+        if (maxRecords && count > maxRecords) {
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
+            break;
         }
         const body = {
             name: node[PREDICATES.LABEL][0],
@@ -136,6 +142,7 @@ const uploadFile = async ({ filename, conn }) => {
             target: 'AnatomicalEntity',
         });
         records[dbEntry.sourceId] = dbEntry;
+        count++;
     }
     logger.info(`Adding the ${subclassEdges.length} subclassof relationships`);
 

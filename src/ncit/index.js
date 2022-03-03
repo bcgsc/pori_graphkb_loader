@@ -152,7 +152,7 @@ const cleanRawRow = (rawRow) => {
         for (const synonym of row.synonyms) {
             if (speciesMatch(synonym)) {
                 row.name = synonym;
-                [, row.species] = speciesMatch(synonym);
+                row.species = speciesMatch(synonym);
                 break;
             }
         }
@@ -195,7 +195,9 @@ const cleanRawRow = (rawRow) => {
  * @param {string} opt.filename the path to the input OWL file
  * @param {ApiRequst} opt.conn the API connection object
  */
-const uploadFile = async ({ filename, conn, ignoreCache = false }) => {
+const uploadFile = async ({
+    filename, conn, ignoreCache = false, maxRecords,
+}) => {
     logger.info('Loading external NCIT data');
     logger.info(`loading: ${filename}`);
     const rawRows = await loadDelimToJson(filename, {
@@ -234,6 +236,11 @@ const uploadFile = async ({ filename, conn, ignoreCache = false }) => {
     const erroredSourceIds = new Set();
 
     for (const raw of rawRows) {
+        if (maxRecords && rows.length > maxRecords) {
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
+            break;
+        }
+
         try {
             const row = cleanRawRow(raw);
 
@@ -444,4 +451,9 @@ const uploadFile = async ({ filename, conn, ignoreCache = false }) => {
 };
 
 
-module.exports = { SOURCE_DEFN, uploadFile };
+module.exports = {
+    SOURCE_DEFN,
+    cleanRawRow,
+    pickEndpoint,
+    uploadFile,
+};

@@ -657,6 +657,7 @@ describe('translateRelevance', () => {
         ['Predictive', 'Does Not Support', 'Sensitivity/Response', 'no response'],
         ['Predictive', 'Does Not Support', 'Resistance', 'no resistance'],
         ['Functional', 'Supports', 'Neomorphic', 'neomorphic'],
+        ['Functional', 'Supports', 'Unaltered Function', 'unaltered function'],
     ])(
         '%s|%s|%s returns %s', (evidenceType, evidenceDirection, clinicalSignificance, expected) => {
             expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
@@ -671,6 +672,7 @@ describe('translateRelevance', () => {
         ['Predisposing', 'N/A', 'N/A'],
         ['Diagnostic', 'Does Not Support', 'Positive'],
         ['Diagnostic', 'Does Not Support', 'Negative'],
+        ['Functional', 'Does Not Support', 'Unaltered Function'],
     ])(
         '%s|%s|%s errors', (evidenceType, evidenceDirection, clinicalSignificance) => {
             expect(() => translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toThrow('unable to process relevance');

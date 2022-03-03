@@ -1,7 +1,6 @@
 import os
 from textwrap import dedent
 
-
 DATA_DIR = 'snakemake_data'
 LOGS_DIR = 'snakemake_logs'
 
@@ -18,6 +17,7 @@ COSMIC_EMAIL = config.get('cosmic_email')
 COSMIC_PASSWORD = config.get('cosmic_password')
 USE_COSMIC = COSMIC_EMAIL or COSMIC_PASSWORD
 BACKFILL_TRIALS = config.get('trials')
+USE_FDA_UNII = config.get('fda')  # due to the non-scriptable download, making FDA optional
 GITHUB_DATA = 'https://raw.githubusercontent.com/bcgsc/pori_graphkb_loader/develop/data'
 CONTAINER = 'docker://bcgsc/pori-graphkb-loader:latest'
 
@@ -28,9 +28,10 @@ rule all:
         f'{DATA_DIR}/PMC4468049.COMPLETE',
         f'{DATA_DIR}/PMC4232638.COMPLETE',
         f'{DATA_DIR}/uberon.COMPLETE',
-        f'{DATA_DIR}/ncitFdaXref.COMPLETE',
         f'{DATA_DIR}/fdaApprovals.COMPLETE',
         f'{DATA_DIR}/cancerhotspots.COMPLETE',
+        f'{DATA_DIR}/moa.COMPLETE',
+        *([f'{DATA_DIR}/ncitFdaXref.COMPLETE'] if USE_FDA_UNII else []),
         *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []),
         *([f'{DATA_DIR}/cosmic_resistance.COMPLETE', f'{DATA_DIR}/cosmic_fusions.COMPLETE'] if USE_COSMIC else [])
 
@@ -45,11 +46,12 @@ rule download_ncit:
         rm -rf __MACOSX''')
 
 
-rule download_ncit_fda:
-    output: f'{DATA_DIR}/ncit/FDA-UNII_NCIt_Subsets.txt'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/ncit
-        wget https://evs.nci.nih.gov/ftp1/FDA/UNII/FDA-UNII_NCIt_Subsets.txt''')
+if USE_FDA_UNII:
+    rule download_ncit_fda:
+        output: f'{DATA_DIR}/ncit/FDA-UNII_NCIt_Subsets.txt'
+        shell: dedent(f'''\
+            cd {DATA_DIR}/ncit
+            wget https://evs.nci.nih.gov/ftp1/FDA/UNII/FDA-UNII_NCIt_Subsets.txt''')
 
 
 rule download_ensembl:
@@ -61,16 +63,17 @@ rule download_ensembl:
         ''')
 
 
-rule download_fda_srs:
-    output: f'{DATA_DIR}/fda/UNII_Records.txt'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/fda
-        wget https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip
-        unzip UNII_Data.zip
-        rm UNII_Data.zip
+if USE_FDA_UNII:
+    rule download_fda_srs:
+        output: f'{DATA_DIR}/fda/UNII_Records.txt'
+        shell: dedent(f'''\
+            cd {DATA_DIR}/fda
+            wget https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip
+            unzip UNII_Data.zip
+            rm UNII_Data.zip
 
-        mv UNII*.txt UNII_Records.txt
-        ''')
+            mv UNII*.txt UNII_Records.txt
+            ''')
 
 
 rule download_refseq:
@@ -134,8 +137,8 @@ rule download_cgi:
     output: f'{DATA_DIR}/cgi/cgi_biomarkers_per_variant.tsv'
     shell: dedent(f'''\
         cd {DATA_DIR}/cgi
-        wget https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_latest.zip
-        unzip cgi_biomarkers_latest.zip
+        wget https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_20180117.zip
+        unzip cgi_biomarkers_20180117.zip
         ''')
 
 
@@ -204,7 +207,7 @@ rule load_local:
     container: CONTAINER
     log: f'{LOGS_DIR}/local-{{local}}.logs.txt'
     output: f'{DATA_DIR}/local-{{local}}.COMPLETE'
-    shell: 'npm start -- file ontology {input} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js file ontology {input} &> {log}; cp {log} {output}'
 
 
 rule load_ncit:
@@ -213,26 +216,27 @@ rule load_ncit:
     container: CONTAINER
     log: f'{LOGS_DIR}/ncit.logs.txt'
     output: f'{DATA_DIR}/ncit.COMPLETE'
-    shell: 'npm start -- file ncit {input.data} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js file ncit {input.data} &> {log}; cp {log} {output}'
 
 
-rule load_fda_srs:
-    input: expand(rules.load_local.output, local=['vocab']),
-        data=rules.download_fda_srs.output
-    container: CONTAINER
-    log: f'{LOGS_DIR}/fdaSrs.logs.txt'
-    output: f'{DATA_DIR}/fdaSrs.COMPLETE'
-    shell: 'npm start -- file fdaSrs {input.data} &> {log}; cp {log} {output}'
+if USE_FDA_UNII:
+    rule load_fda_srs:
+        input: expand(rules.load_local.output, local=['vocab']),
+            data=f'{DATA_DIR}/fda/UNII_Records.txt'
+        container: CONTAINER
+        log: f'{LOGS_DIR}/fdaSrs.logs.txt'
+        output: f'{DATA_DIR}/fdaSrs.COMPLETE'
+        shell: 'node bin/load.js file fdaSrs {input.data} &> {log}; cp {log} {output}'
 
 
-rule load_ncit_fda:
-    input: rules.load_ncit.output,
-        rules.load_fda_srs.output,
-        data=rules.download_ncit_fda.output
-    container: CONTAINER
-    log: f'{LOGS_DIR}/ncitFdaXref.logs.txt'
-    output: f'{DATA_DIR}/ncitFdaXref.COMPLETE'
-    shell: 'npm start -- file ncitFdaXref {input.data} &> {log}; cp {log} {output}'
+    rule load_ncit_fda:
+        input: rules.load_ncit.output,
+            rules.load_fda_srs.output,
+            data=rules.download_ncit_fda.output
+        container: CONTAINER
+        log: f'{LOGS_DIR}/ncitFdaXref.logs.txt'
+        output: f'{DATA_DIR}/ncitFdaXref.COMPLETE'
+        shell: 'node bin/load.js file ncitFdaXref {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_refseq:
@@ -241,7 +245,7 @@ rule load_refseq:
     container: CONTAINER
     log: f'{LOGS_DIR}/refseq.logs.txt'
     output: f'{DATA_DIR}/refseq.COMPLETE'
-    shell: 'npm start -- file refseq {input.data} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js file refseq {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_ensembl:
@@ -250,7 +254,7 @@ rule load_ensembl:
     container: CONTAINER
     log: f'{LOGS_DIR}/ensembl.logs.txt'
     output: f'{DATA_DIR}/ensembl.COMPLETE'
-    shell: 'npm start -- file ensembl {input.data} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js file ensembl {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_do:
@@ -259,7 +263,7 @@ rule load_do:
     container: CONTAINER
     log: f'{LOGS_DIR}/do.logs.txt'
     output: f'{DATA_DIR}/do.COMPLETE'
-    shell: 'npm start -- file diseaseOntology {input.data} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js file diseaseOntology {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_uberon:
@@ -268,16 +272,16 @@ rule load_uberon:
     container: CONTAINER
     log: f'{LOGS_DIR}/uberon.logs.txt'
     output: f'{DATA_DIR}/uberon.COMPLETE'
-    shell: 'npm start -- file uberon {input.data} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js file uberon {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_drugbank:
-    input: rules.load_fda_srs.output,
+    input: rules.load_fda_srs.output if USE_FDA_UNII else [],
         data=rules.download_drugbank.output
     container: CONTAINER
     log: f'{LOGS_DIR}/drugbank.logs.txt'
     output: f'{DATA_DIR}/drugbank.COMPLETE'
-    shell: 'npm start -- file drugbank {input.data} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js file drugbank {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_oncotree:
@@ -285,7 +289,7 @@ rule load_oncotree:
     container: CONTAINER
     log: f'{LOGS_DIR}/oncotree.logs.txt'
     output: f'{DATA_DIR}/oncotree.COMPLETE'
-    shell: 'npm start -- api oncotree &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js api oncotree &> {log}; cp {log} {output}'
 
 
 rule load_dgidb:
@@ -293,11 +297,13 @@ rule load_dgidb:
     container: CONTAINER
     log: f'{LOGS_DIR}/dgidb.logs.txt'
     output: f'{DATA_DIR}/dgidb.COMPLETE'
-    shell: 'npm start -- api dgidb &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js api dgidb &> {log}; cp {log} {output}'
 
 
 def get_drug_inputs(wildcards):
-    inputs = [*rules.load_fda_srs.output, *rules.load_ncit.output]
+    inputs = [*rules.load_ncit.output]
+    if USE_FDA_UNII:
+        inputs.extend(rules.load_fda_srs.output)
     container: CONTAINER
     if USE_DRUGBANK:
         inputs.append(*rules.load_drugbank.output)
@@ -328,7 +334,7 @@ rule load_cancerhotspots:
     container: CONTAINER
     log: f'{LOGS_DIR}/cancerhotspots.logs.txt'
     output: f'{DATA_DIR}/cancerhotspots.COMPLETE'
-    shell: 'npm start -- file cancerhotspots {input.data} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js file cancerhotspots {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_PMC4232638:
@@ -337,7 +343,7 @@ rule load_PMC4232638:
     container: CONTAINER
     log: f'{LOGS_DIR}/PMC4232638.logs.txt'
     output: f'{DATA_DIR}/PMC4232638.COMPLETE'
-    shell: 'npm start -- file PMC4232638 {input.data} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js file PMC4232638 {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_PMC4468049:
@@ -347,7 +353,7 @@ rule load_PMC4468049:
     container: CONTAINER
     log: f'{LOGS_DIR}/PMC4468049.logs.txt'
     output: f'{DATA_DIR}/PMC4468049.COMPLETE'
-    shell: 'npm start -- file PMC4468049 {input.data} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js file PMC4468049 {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_civic:
@@ -357,7 +363,7 @@ rule load_civic:
     container: CONTAINER
     log: f'{LOGS_DIR}/civic.logs.txt'
     output: f'{DATA_DIR}/civic.COMPLETE'
-    shell: 'npm start -- api civic &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js api civic &> {log}; cp {log} {output}'
 
 
 rule load_cgi:
@@ -368,7 +374,7 @@ rule load_cgi:
     container: CONTAINER
     log: f'{LOGS_DIR}/cgi.logs.txt'
     output: f'{DATA_DIR}/cgi.COMPLETE'
-    shell: 'npm start -- file cgi {input.data} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js file cgi {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_docm:
@@ -378,14 +384,14 @@ rule load_docm:
     container: CONTAINER
     log: f'{LOGS_DIR}/docm.logs.txt'
     output: f'{DATA_DIR}/docm.COMPLETE'
-    shell: 'npm start -- api docm &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js api docm &> {log}; cp {log} {output}'
 
 
 rule load_approvals:
     container: CONTAINER
     log: f'{LOGS_DIR}/fdaApprovals.logs.txt'
     output: f'{DATA_DIR}/fdaApprovals.COMPLETE'
-    shell: 'npm start -- api fdaApprovals &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js api fdaApprovals &> {log}; cp {log} {output}'
 
 
 rule load_clinicaltrialsgov:
@@ -396,7 +402,7 @@ rule load_clinicaltrialsgov:
     container: CONTAINER
     log: f'{LOGS_DIR}/clinicaltrialsgov.logs.txt'
     output: f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'
-    shell: 'npm start -- api clinicaltrialsgov &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js api clinicaltrialsgov &> {log}; cp {log} {output}'
 
 
 rule load_cosmic_resistance:
@@ -408,7 +414,7 @@ rule load_cosmic_resistance:
     container: CONTAINER
     log: f'{LOGS_DIR}/cosmic_resistance.logs.txt'
     output: f'{DATA_DIR}/cosmic_resistance.COMPLETE'
-    shell: 'npm start -- cosmic resistance {input.main} {input.supp} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js cosmic resistance {input.main} {input.supp} &> {log}; cp {log} {output}'
 
 
 rule load_cosmic_fusions:
@@ -418,4 +424,13 @@ rule load_cosmic_fusions:
     container: CONTAINER
     log: f'{LOGS_DIR}/cosmic_fusions.logs.txt'
     output: f'{DATA_DIR}/cosmic_fusions.COMPLETE'
-    shell: 'npm start -- cosmic fusions {input.main} {input.supp} &> {log}; cp {log} {output}'
+    shell: 'node bin/load.js cosmic fusions {input.main} {input.supp} &> {log}; cp {log} {output}'
+
+
+rule load_moa:
+    input: rules.load_oncotree.output,
+        expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes', 'evidenceLevels', 'aacr', 'asco'])
+    container: CONTAINER
+    log: f'{LOGS_DIR}/load_moa.logs.txt'
+    output: f'{DATA_DIR}/moa.COMPLETE'
+    shell: 'node bin/load.js api moa  &> {log}; cp {log} {output}'

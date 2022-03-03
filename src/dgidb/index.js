@@ -1,30 +1,18 @@
 const Ajv = require('ajv');
 
-const request = require('request-promise');
 
 const _entrezGene = require('../entrez/gene');
 const _chembl = require('../chembl');
 const { logger } = require('../logging');
-const { checkSpec } = require('../util');
+const { checkSpec, request } = require('../util');
 const { rid } = require('../graphkb');
 
 const { dgidb: SOURCE_DEFN } = require('../sources');
+const spec = require('./spec.json');
 
 const ajv = new Ajv();
 
-const recordSpec = ajv.compile({
-    properties: {
-        concept_id: { pattern: '^chembl:CHEMBL\\d+$', type: 'string' },
-        entrez_id: { min: 1, type: 'number' },
-        id: { format: 'uuid', type: 'string' },
-        interaction_direction: { items: { type: ['string', 'null'] }, type: 'array' },
-        interaction_types: { items: { type: 'string' }, type: 'array' },
-        score: { type: 'number' },
-        sources: { items: { type: 'string' }, type: 'array' },
-    },
-    required: ['entrez_id', 'concept_id', 'interaction_types', 'id'],
-    type: 'object',
-});
+const recordSpec = ajv.compile(spec);
 
 const BASE_URL = 'https://dgidb.org/api/v2';
 

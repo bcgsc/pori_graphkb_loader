@@ -9,7 +9,7 @@ const fs = require('fs');
 const jsonpath = require('jsonpath');
 
 const { schema, schema: { schema: kbSchema } } = require('@bcgsc-pori/graphkb-schema');
-
+const SOURCE_DEFAULTS = require('../sources');
 
 const { logger } = require('../logging');
 const { rid, convertRecordToQueryFilters } = require('../graphkb');
@@ -88,6 +88,16 @@ const validateSpec = ajv.compile({
 });
 
 
+const fetchSourceByName = (name) => {
+    const matches = Object.values(SOURCE_DEFAULTS).filter(s => s.name === name);
+
+    if (matches.length !== 1) {
+        return {};
+    }
+    return matches[0];
+};
+
+
 /**
  * Upload the JSON ontology file
  *
@@ -154,7 +164,8 @@ const uploadFromJSON = async ({ data, conn }) => {
 
     try {
         await Promise.all(Object.entries(sources).map(async ([sourceKey, sourceDefn]) => {
-            const sourceRID = rid(await conn.addSource(sourceDefn));
+            const content = { ...fetchSourceByName(sourceDefn.name), ...sourceDefn };
+            const sourceRID = rid(await conn.addSource(content));
             sourcesRecords[sourceKey] = sourceRID;
         }));
     } catch (err) {

@@ -3,7 +3,7 @@
  * @module importer/oncotree
  */
 
-const request = require('request-promise');
+const { request } = require('../util');
 
 const { rid, orderPreferredOntologyTerms } = require('../graphkb');
 const { logger } = require('../logging');
