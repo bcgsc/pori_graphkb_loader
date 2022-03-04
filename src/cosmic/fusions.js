@@ -124,10 +124,10 @@ const processRecordGroup = async ({
  * @param {ApiConnection} opt.conn the API connection object
  */
 const uploadFile = async ({
-    filename, conn, mappingFilename,
+    filename, conn, classification,
 }) => {
     const jsonList = await loadDelimToJson(filename);
-    const mapping = await loadClassifications(mappingFilename);
+    const mapping = await loadClassifications(classification);
     // get the dbID for the source
     const source = rid(await conn.addSource(SOURCE_DEFN));
     const counts = { error: 0, skip: 0, success: 0 };

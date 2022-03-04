@@ -17,14 +17,17 @@
             "links": [
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "oncokb-1"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "oncokb-r1"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "oncokb-2a"
                 },
                 {
@@ -34,22 +37,27 @@
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-a1"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-a2"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-a3"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-a4"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-a5"
                 },
                 {
@@ -59,23 +67,36 @@
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "cgi-cpic guidelines"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "cgi-european leukemianet guidelines"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "cgi-fda guidelines"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "cgi-nccn guidelines"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "cgi-nccn/cap guidelines"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "moa-fda-approved"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "moa-guideline"
                 }
             ],
             "source": "amp",
@@ -92,26 +113,32 @@
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "oncokb-3a"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-b1"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-b2"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-b3"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-b4"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-b5"
                 },
                 {
@@ -121,7 +148,16 @@
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "cgi-late trials"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "moa-clinical evidence"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "moa-clinical trial"
                 }
             ],
             "source": "amp",
@@ -133,10 +169,12 @@
             "links": [
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "oncokb-2b"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "oncokb-3b"
                 },
                 {
@@ -151,10 +189,12 @@
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "cgi-early trials"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "cgi-case report"
                 }
             ],
@@ -167,6 +207,7 @@
             "links": [
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "oncokb-4"
                 },
                 {
@@ -181,27 +222,37 @@
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "cgi-pre-clinical"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-d1"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-d2"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-d3"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-d4"
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "source": "vicc",
                     "target": "civic-d5"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "moa-preclinical"
                 }
             ],
             "source": "amp",
@@ -550,6 +601,72 @@
             "source": "ipr",
             "sourceId": "e"
         },
+        "moa-clinical evidence": {
+            "displayName": "Clinical evidence (MOA)",
+            "name": "Clinical evidence",
+            "source": "moa",
+            "sourceId": "Clinical evidence"
+        },
+        "moa-clinical trial": {
+            "displayName": "MOAlmanac Clinical trial",
+            "name": "Clinical trial",
+            "source": "moa",
+            "sourceId": "Clinical trial"
+        },
+        "moa-fda-approved": {
+            "displayName": "MOAlmanac FDA-Approved",
+            "name": "FDA-Approved",
+            "source": "moa",
+            "sourceId": "FDA-Approved"
+        },
+        "moa-guideline": {
+            "displayName": "MOAlmanac Guideline",
+            "name": "Guideline",
+            "source": "moa",
+            "sourceId": "Guideline"
+        },
+        "moa-inferential": {
+            "displayName": "MOAlmanac Inferential",
+            "links": [
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "civic-e1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "civic-e2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "civic-e3"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "civic-e4"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "civic-e5"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t5"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "ipr-e"
+                }
+            ],
+            "name": "Inferential",
+            "source": "moa",
+            "sourceId": "Inferential"
+        },
+        "moa-preclinical": {
+            "displayName": "MOAlmanac Preclinical",
+            "name": "Preclinical",
+            "source": "moa",
+            "sourceId": "Preclinical"
+        },
         "oncokb-1": {
             "description": "FDA-recognized biomarker predictive of response to an FDA-approved drug in this indication",
             "displayName": "OncoKB 1",
@@ -616,78 +733,91 @@
         },
         "profyle-d1": {
             "description": "Biomarkers included in professional guidelines as diagnostic for a specific type of tumor",
+            "displayName": "PROFYLE D1",
             "name": "PROFYLE Diagnostic Level 1",
             "source": "profyle",
             "sourceId": "D1"
         },
         "profyle-d2": {
             "description": "Biomarkers of diagnostic significance for a specific type of tumor based on well-powered studies with consensus from experts in the field",
+            "displayName": "PROFYLE D2",
             "name": "PROFYLE Diagnostic Level 2",
             "source": "profyle",
             "sourceId": "D2"
         },
         "profyle-d3": {
             "description": "Biomarkers of diagnostic significance based on the results of multiple small studies",
+            "displayName": "PROFYLE D3",
             "name": "PROFYLE Diagnostic Level 3",
             "source": "profyle",
             "sourceId": "D3"
         },
         "profyle-d4": {
             "description": "Biomarkers that may assist in disease diagnosis themselves or along with other biomarkers based on small studies or a few case reports",
+            "displayName": "PROFYLE D4",
             "name": "PROFYLE Diagnostic Level 4",
             "source": "profyle",
             "sourceId": "D4"
         },
         "profyle-p1": {
             "description": "Biomarkers included in professional guidelines as prognostic for a specific type of tumor",
+            "displayName": "PROFYLE P1",
             "name": "PROFYLE Prognostic Level 1",
             "source": "profyle",
             "sourceId": "P1"
         },
         "profyle-p2": {
             "description": "Biomarkers of prognostic significance for a specific type of tumor based on well-powered studies with consensus from experts in the field",
+            "displayName": "PROFYLE P2",
             "name": "PROFYLE Prognostic Level 2",
             "source": "profyle",
             "sourceId": "P2"
         },
         "profyle-p3": {
             "description": "Biomarkers of prognostic significance based on the results of multiple small studies",
+            "displayName": "PROFYLE P3",
             "name": "PROFYLE Prognostic Level 3",
             "source": "profyle",
             "sourceId": "P3"
         },
         "profyle-p4": {
             "description": "Biomarkers that may assist in disease prognosis themselves or along with other biomarkers based on small studies or a few case reports",
+            "displayName": "PROFYLE P4",
             "name": "PROFYLE Prognostic Level 4",
             "source": "profyle",
             "sourceId": "P4"
         },
         "profyle-t1": {
             "description": "Biomarkers that predict response or resistance to FDA/HC-approved therapies",
+            "displayName": "PROFYLE T1",
             "name": "PROFYLE Therapeutic Level 1",
             "source": "profyle",
             "sourceId": "T1"
         },
         "profyle-t2": {
             "description": "Biomarkers that predict response or resistance to therapies based on well-powered clinical trials",
+            "displayName": "PROFYLE T2",
             "name": "PROFYLE Therapeutic Level 2",
             "source": "profyle",
             "sourceId": "T2"
         },
         "profyle-t3": {
             "description": "Biomarkers that predict response or resistance to therapies based on small series, case-reports, or that serve as inclusion criteria for a clinical trial",
+            "displayName": "PROFYLE T3",
             "name": "PROFYLE Therapeutic Level 3",
             "source": "profyle",
             "sourceId": "T3"
         },
         "profyle-t4": {
             "description": "Biomarkers that show plausible therapeutic significance based on preclinical studies",
+            "displayName": "PROFYLE T4",
             "name": "PROFYLE Therapeutic Level 4",
             "source": "profyle",
             "sourceId": "T4"
         },
         "profyle-t5": {
             "description": "Novel biomarkers predicted to be oncogenic in therapeutically actionable genes, or evidence of activation of a therapeutically actionable pathway",
+            "displayName": "PROFYLE T5",
             "name": "PROFYLE Therapeutic Level 5",
             "source": "profyle",
             "sourceId": "T5"
@@ -695,64 +825,35 @@
     },
     "sources": {
         "amp": {
-            "displayName": "AMP",
-            "longName": "association for molecular pathology",
-            "name": "amp",
-            "url": "https://www.amp.org"
+            "name": "amp"
         },
         "cgi": {
-            "citation": "https://doi.org/10.1101/140475",
-            "description": "The Cancer Biomarkers database is curated and maintained by several clinical and scientific experts in the field of precision oncology supported by the European Union’s Horizon 2020 funded project. This database is currently being integrated with knowledge databases of other institutions in a collaborative effort of the Global Alliance for Genomics and Health. The contribution of the community is encouraged and proposals of edition or comments about the information contained in this database can be given by contacting us here or by using the feedback icon located at the left of each entry of the table. The database follows the data model originally described by Dienstmann et al. This table provides a summary of the content of the database that can be interactively browsed. Additional information, including the genomic coordinates of the variants, can be accessed via the download feature. This database is licensed under a Creative Commons Public Domain Dedication (CC0 1.0 Universal). When referring to this database, please cite: Cancer Genome Interpreter Annotates The Biological And Clinical Relevance Of Tumor Alterations; doi: https://doi.org/10.1101/140475.",
-            "displayName": "CGI",
-            "license": "https://creativecommons.org/publicdomain/zero/1.0",
-            "longName": "cancer genome interpreter - Cancer Biomarkers database",
-            "name": "cancer genome interpreter",
-            "url": "https://www.cancergenomeinterpreter.org/biomarkers"
+            "name": "cancer genome interpreter"
         },
         "civic": {
-            "description": "CIViC is an open access, open source, community-driven web resource for Clinical Interpretation of Variants in Cancer",
-            "displayName": "CIViC",
-            "name": "civic",
-            "url": "https://civicdb.org",
-            "usage": "https://creativecommons.org/publicdomain/zero/1.0"
+            "name": "civic"
         },
         "cosmic": {
-            "description": "COSMIC, the Catalogue Of Somatic Mutations In Cancer, is the world's largest and most comprehensive resource for exploring the impact of somatic mutations in human cancer.",
-            "displayName": "COSMIC",
-            "name": "cosmic",
-            "url": "https://cancer.sanger.ac.uk/cosmic",
-            "usage": "https://cancer.sanger.ac.uk/cosmic/license"
+
+            "name": "cosmic"
         },
         "cpic": {
-            "citation": "https://cpicpgx.org/publications",
-            "description": "the clinical pharmacogenetics implementation consortium (cpic®) is an international consortium of individual volunteers and a small dedicated staff who are interested in facilitating use of pharmacogenetic tests for patient care.​ cpic guidelines are indexed in pubmed as clinical guidelines, endorsed by ashp and ascpt, and referenced in clingen and pharmgkb",
-            "displayName": "CPIC",
-            "licenseType": "cc0 1.0 universal (cc0 1.0) public domain dedication",
-            "longName": "clinical pharmacogenetics implementation consortium",
-            "name": "cpic",
-            "url": "https://cpicpgx.org",
-            "usage": "https://cpicpgx.org/license"
+            "name": "cpic"
+        },
+        "vicc": {
+            "name": "Variant Interpretation for Cancer Consortium"
         },
         "default": {
-            "description": "The Variant Interpretation for Cancer Consortium (VICC) is a Driver Project of the Global Alliance for Genomics and Health. Our mission is to standardize the curation, representation, and interpretation of clinically-relevant evidence associated with genomic variation in cancers.",
-            "displayName": "VICC",
-            "name": "Variant Interpretation for Cancer Consortium",
-            "url": "https://cancervariants.org"
+            "name": "graphkb"
         },
         "ipr": {
-            "description": "IPR (Integrated Pipeline Reports) is the reporting module used in the Platform for Oncogenomic Reporting and Interpretation (PORI)",
-            "displayName": "IPR",
-            "longName": "Integrated Pipeline Reports (IPR) Aggregated Evidence Levels",
-            "name": "ipr",
-            "url": "https://ipr.bcgsc.ca"
+            "name": "ipr"
+        },
+        "moa": {
+            "name": "moa"
         },
         "oncokb": {
-            "description": "OncoKB is a precision oncology knowledge base and contains information about the effects and treatment implications of specific cancer gene alterations. It is developed and maintained by the Knowledge Systems group in the Marie Josée and Henry R. Kravis Center for Molecular Oncology at Memorial Sloan Kettering Cancer Center (MSK), in partnership with Quest Diagnostics and Watson for Genomics, IBM.",
-            "displayName": "OncoKB",
-            "name": "oncokb",
-            "sort": 4,
-            "url": "https://oncokb.org",
-            "usage": "https://oncokb.org/terms"
+            "name": "oncokb"
         },
         "profyle": {
             "name": "profyle"

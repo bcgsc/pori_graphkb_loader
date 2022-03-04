@@ -43,6 +43,11 @@ const createOptionsMenu = (opt = {}) => {
         default: `${process.cwd()}/errorLog-${new Date().valueOf()}`,
         help: 'prefix to use for any module specific log files that are written',
     });
+    parser.add_argument('--maxRecords', {
+        default: process.env.GKB_MAX_RECORDS || null,
+        help: 'maximum number of records to load per loader, this is generally only used for testing the snakemake workflow and should not be used in production',
+        type: Number,
+    });
     return parser;
 };
 

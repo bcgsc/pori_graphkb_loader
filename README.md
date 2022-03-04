@@ -58,6 +58,7 @@ docker run bcgsc/pori-graphkb-loader --help
 - [COSMIC](./src/cosmic)
 - [DGIdb](./src/dgidb)
 - [DoCM](./src/docm)
+- [MOAlmanac](./src/moa)
 - [OncoKB](./src/oncokb)
 - [PMC4468049](./src/PMC4468049)
 - [PMC4232638](./src/PMC4232638)
@@ -66,25 +67,45 @@ docker run bcgsc/pori-graphkb-loader --help
 
 ### Getting Started
 
-Clone the repository
+To write and test the GraphKB loaders you will need the following
+
+- NodeJS version 12 or higher
+- An instance of the GraphKB API and its required OrientDB instance
+- An instance of keycloak for testing authentication
+
+If you do not already have access to a development server of the GraphKB API, the easiest way to set this up is with docker. Follow the [developers install instructions](https://bcgsc.github.io/pori/developer_reference/getting_started) from the PORI user guide.
+
+Once you have the GraphKB API and keycloak server running you are ready to start writing and testing loaders.
+
+clone this repository and install via npm
 
 ```bash
 git clone https://github.com/bcgsc/pori_graphkb_loader.git
-cd pori_graphkb_loader
-git checkout develop
-```
-
-Install the dependencies
-
-```bash
+cd por_graphkb_laoder
 npm install
 ```
 
-run the tests
+The tests can be run with the following command
 
 ```bash
 npm run test
 ```
+
+Run the loader with the `-h` flag to see the user help menu
+
+```bash
+npm start -- -h # (1)
+```
+
+1. the `--` must be used so that arguments following it are passed to the script being called by the start command and not node itself. You can also run the script directory with `node bin/load.js`
+
+Now you are ready to test running your first loader against the dev API and keycloak instance you set up earlier. It is simplest to run a loader which does not require any preloaded data such as one of the JSON ontology files included in the data directory.
+
+```bash
+npm start -- file ontology data/vocab.json -g http://localhost:8080/api -u graphkb_importer -p password # (1)
+```
+
+1. "password" is the default password, and "graphkb_importer" is one of the default users used when setting up the development environment with docker-compose. Things should be changed to match the keycloak user in whatever instance you are running the loader against.
 
 ### Creating a new Loader
 
@@ -133,7 +154,7 @@ up snakemake in a virtual environment run the following
 ```bash
 python3 -m venv venv
 source venv/bin/activate
-pip install -U pip setuptools
+pip install -U pip setuptools wheel
 pip install snakemake
 ```
 
@@ -145,6 +166,15 @@ snakemake -j 1
 ```
 
 ![default workflow](./docs/basic_workflow.png)
+
+You will want to pass snakemake the specific GraphKB instance you are working with as well as the credentials of the user that will be uploading. If you have followed the docker install demo instructions this might looks something like this
+
+```bash
+snakemake -j 1 \
+  --config gkb_user='graphkb_importer' \
+  gkb_pass='secret' \
+  gkb_url='http://localhost:8080/api'
+```
 
 The COSMIC and DrugBank options require licensing and are therefore not run by default. If you have
 a license to use them then you can include one or both of them by providing email and password

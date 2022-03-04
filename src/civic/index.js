@@ -1,14 +1,13 @@
 /**
  * @module importer/civic
  */
-const request = require('request-promise');
 const _ = require('lodash');
 const Ajv = require('ajv');
 const fs = require('fs');
 
 const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
 
-const { checkSpec } = require('../util');
+const { checkSpec, request } = require('../util');
 const {
     orderPreferredOntologyTerms,
     rid,
@@ -20,7 +19,7 @@ const _entrezGene = require('../entrez/gene');
 const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
 const { downloadVariantRecords, processVariantRecord } = require('./variant');
 const { getPublication } = require('./publication');
-
+const { evidence: evidenceSpec } = require('./specs.json');
 
 class NotImplementedError extends ErrorMixin {}
 
@@ -48,72 +47,7 @@ const VOCAB = {
 const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evidence levels
 const RELEVANCE_CACHE = {};
 
-
-const validateEvidenceSpec = ajv.compile({
-    properties: {
-        clinical_significance: {
-            enum: [
-                'Sensitivity',
-                'Adverse Response',
-                'Resistance',
-                'Sensitivity/Response',
-                'Reduced Sensitivity',
-                'Positive',
-                'Negative',
-                'Poor Outcome',
-                'Better Outcome',
-                'Uncertain Significance',
-                'Pathogenic',
-                'Likely Pathogenic',
-                'N/A',
-                'Gain of Function',
-                'Loss of Function',
-                'Neomorphic',
-                'Dominant Negative',
-                null,
-            ],
-        },
-        description: { type: 'string' },
-        disease: {
-            oneOf: [{
-                doid: { type: 'string' },
-                name: { type: 'string' },
-                type: 'object',
-            }, { type: 'null' }],
-        },
-        drug_interaction_type: { enum: ['Combination', 'Substitutes', 'Sequential', null] },
-        drugs: {
-            items: {
-                properties: {
-                    id: { type: 'number' },
-                    name: { type: 'string' },
-                    ncit_id: { type: ['string', 'null'] },
-                    pubchem_id: { type: ['string', 'null'] },
-                },
-                required: ['name', 'ncit_id'],
-                type: 'object',
-            },
-            type: 'array',
-        },
-        evidence_direction: { enum: ['Supports', 'N/A', 'Does Not Support', null] },
-        evidence_level: { type: 'string' },
-        evidence_type: {
-            enum: ['Predictive', 'Diagnostic', 'Prognostic', 'Predisposing', 'Functional'],
-        },
-        id: { type: 'number' },
-        rating: { type: ['number', 'null'] },
-        source: {
-            properties: {
-                citation_id: { type: 'string' },
-                name: { type: ['string', 'null'] },
-                source_type: { enum: ['ASCO', 'PubMed'] },
-            },
-        },
-        status: { type: 'string' },
-        variant_id: { type: 'number' },
-    },
-    type: 'object',
-});
+const validateEvidenceSpec = ajv.compile(evidenceSpec);
 
 
 /**
@@ -653,10 +587,9 @@ const downloadEvidenceRecords = async (baseUrl, trustedCurators) => {
  * @param {string} [opt.url] url to use as the base for accessing the civic ApiConnection
  * @param {string[]} opt.trustedCurators a list of curator IDs to also fetch submitted only evidence items for
  */
-const upload = async (opt) => {
-    const {
-        conn, errorLogPrefix, trustedCurators, ignoreCache = false,
-    } = opt;
+const upload = async ({
+    conn, errorLogPrefix, trustedCurators, ignoreCache = false, maxRecords, url = BASE_URL,
+}) => {
     // add the source node
     const source = await conn.addSource(SOURCE_DEFN);
 
@@ -671,8 +604,8 @@ const upload = async (opt) => {
     _pubmed.preLoadCache(conn);
 
     const varById = await downloadVariantRecords();
-    const { records, errorList, counts } = await downloadEvidenceRecords(opt.url || BASE_URL, trustedCurators);
-    const purgeableEvidenceItems = new Set(await fetchDeletedEvidenceItems(opt.url || BASE_URL));
+    const { records, errorList, counts } = await downloadEvidenceRecords(url, trustedCurators);
+    const purgeableEvidenceItems = new Set(await fetchDeletedEvidenceItems(url));
     logger.info(`fetched ${purgeableEvidenceItems.size} deleted entries from CIViC`);
 
     logger.info(`Processing ${records.length} records`);
@@ -690,6 +623,11 @@ const upload = async (opt) => {
             recordsById[record.id] = [];
         }
         recordsById[record.id].push(record);
+
+        if (maxRecords && Object.values(recordsById).length >= maxRecords) {
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
+            break;
+        }
     }
 
     for (const [sourceId, recordList] of Object.entries(recordsById)) {

@@ -1,11 +1,11 @@
 /**
  * @module importer/hgnc
  */
-const request = require('request-promise');
 const Ajv = require('ajv');
 const _ = require('lodash');
 
-const { checkSpec } = require('../util');
+const fs = require('fs');
+const { checkSpec, request } = require('../util');
 const {
     rid, orderPreferredOntologyTerms, convertRecordToQueryFilters,
 } = require('../graphkb');
@@ -211,10 +211,11 @@ const fetchAndLoadBySymbol = async ({
             : symbol
     }`;
     logger.info(`loading: ${uri}`);
-    const { response: { docs } } = await request(`${uri}`, {
+    const { response: { docs } } = await request({
         headers: { Accept: 'application/json' },
         json: true,
         method: 'GET',
+        uri,
     });
 
     for (const record of docs) {
@@ -260,7 +261,7 @@ const uploadFile = async (opt) => {
     logger.info('loading the external HGNC data');
     const { filename, conn } = opt;
     logger.info(`loading: ${filename}`);
-    const hgncContent = require(filename); // eslint-disable-line import/no-dynamic-require,global-require
+    const hgncContent = JSON.parse(fs.readFileSync(filename));
     const genes = hgncContent.response.docs;
     const hgnc = await conn.addSource(SOURCE_DEFN);
     let ensembl;
