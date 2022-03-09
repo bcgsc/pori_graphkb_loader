@@ -1,0 +1,2424 @@
+[
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/token",
+      "body": {
+        "password": "",
+        "username": ""
+      }
+    },
+    "response": {
+      "kbToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NDY3OTk1NDEsInVzZXIiOnsiY3JlYXRlZEF0IjoxNjQ2NzYyOTU2MTcyLCJuYW1lIjoibWxlbWlldXgiLCJncm91cHMiOlt7ImNyZWF0ZWRBdCI6MTY0Njc2Mjk1NjA5MywicGVybWlzc2lvbnMiOnsiTGljZW5zZUFncmVlbWVudCI6MTUsIlRoZXJhcHkiOjE1LCJWb2NhYnVsYXJ5IjoxNSwiQmlvbWFya2VyIjo0LCJDYXRlZ29yeVZhcmlhbnQiOjE1LCJVc2VyIjoxNSwiT250b2xvZ3kiOjQsIkRpc2Vhc2UiOjE1LCJFIjo0LCJQYXRod2F5IjoxNSwiSW5mZXJzIjoxMywiQW5hdG9taWNhbEVudGl0eSI6MTUsIlN1YkNsYXNzT2YiOjEzLCJGZWF0dXJlIjoxNSwiU291cmNlIjoxNSwiVXNlckdyb3VwIjoxNSwiQWxpYXNPZiI6MTMsIk9wcG9zaXRlT2YiOjEzLCJWIjo0LCJFdmlkZW5jZSI6NCwiRWxlbWVudE9mIjoxMywiR2VuZXJhbGl6YXRpb25PZiI6MTMsIlBvc2l0aW9uYWxWYXJpYW50IjoxNSwiU3RhdGVtZW50IjoxNSwiQWJzdHJhY3QiOjE1LCJQdWJsaWNhdGlvbiI6MTUsIkNyb3NzUmVmZXJlbmNlT2YiOjEzLCJUYXJnZXRPZiI6MTMsIkNhdGFsb2d1ZVZhcmlhbnQiOjE1LCJWYXJpYW50Ijo0LCJEZXByZWNhdGVkQnkiOjEzLCJTaWduYXR1cmUiOjE1LCJDbGluaWNhbFRyaWFsIjoxNSwiQ3VyYXRlZENvbnRlbnQiOjE1LCJDaXRlcyI6MTMsIkV2aWRlbmNlTGV2ZWwiOjE1LCJAY2xhc3MiOiJQZXJtaXNzaW9ucyJ9LCJuYW1lIjoiYWRtaW4iLCJ1dWlkIjoiZjc1ZWRiYWItN2Y5Ny00YjlkLTkxZmYtMjA3YjhiMDM4MGY5IiwiQHJpZCI6IiMyNTowIiwiQGNsYXNzIjoiVXNlckdyb3VwIn1dLCJzaWduZWRMaWNlbnNlQXQiOjE2NDY3NjI5NTYxNjgsInV1aWQiOiIyZjEzMjNlOC1kMzNlLTQwMzctOTFmZC1kYjEzMzUxMzM5NWUiLCJAcmlkIjoiIzMyOjAiLCJAdmVyc2lvbiI6MSwiQGNsYXNzIjoiVXNlciJ9LCJpYXQiOjE2NDY3NjM1NDF9.uoYBYFTytsbhXjUmmDxq74kvNr2uwQqUGBcBQs4v8nc",
+      "keyCloakToken": "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJqY2tZRWVpYVVLTTFKbHJ2bzVsY2NWbzNYTzVNU0tha09UbjY2OE5icjE4In0.eyJqdGkiOiIxNDcyOGQ2Mi1jODhjLTQ4N2YtYWY5Yi1lYWUzOTM3ZTgzNDgiLCJleHAiOjE2NDY3OTk1NDEsIm5iZiI6MCwiaWF0IjoxNjQ2NzYzNTQxLCJpc3MiOiJodHRwOi8va2V5Y2xvYWtkZXYuYmNnc2MuY2EvYXV0aC9yZWFsbXMvR1NDIiwiYXVkIjpbImxpbXMiLCJhY2NvdW50Il0sInN1YiI6IjAwZjQ0NjE2LWE2MTQtNGJmOS04NWZlLTdiNjNlOTE0ODQ0NCIsInR5cCI6IkJlYXJlciIsImF6cCI6IkdyYXBoS0IiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiJhYWVjYjdkNC1kMzFlLTRiMDgtOWJlMi1hOTM2YTliYTRlMmYiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHA6Ly9jcmVpc2xlMDQucGhhZ2UuYmNnc2MuY2E6MzAwMCIsImh0dHA6Ly9lbGV3aXMwMi5waGFnZS5iY2dzYy5jYTozMDAwIiwiaHR0cDovL2xvY2FsaG9zdDo1MDAwIiwiaHR0cDovLzAuMC4wLjA6MzAwMCIsImh0dHA6Ly9sb2NhbGhvc3Q6MzAwMSIsImh0dHA6Ly9sb2NhbGhvc3Q6ODAwMCIsImh0dHA6Ly9sb2NhbGhvc3Q6MzAwMCIsImh0dHA6Ly9ncmFwaGtiZGV2LmJjZ3NjLmNhOjUwMDAiLCJodHRwOi8vYXJlaXNsZTAzLnBoYWdlLmJjZ3NjLmNhOjMwMDAiLCJodHRwczovL2dyYXBoa2JzdGFnaW5nLmJjZ3NjLmNhIiwiaHR0cDovL2phY2xpMDEucGhhZ2UuYmNnc2MuY2E6MzAwMCIsImh0dHA6Ly9sb2NhbGhvc3Q6ODA4MCIsImh0dHBzOi8vZ3JhcGhrYmRldi5iY2dzYy5jYSIsImh0dHA6Ly9hZGF2aWVzMDIucGhhZ2UuYmNnc2MuY2E6MzAwMCIsImh0dHA6Ly9tbGVtaWV1eDAxLnBoYWdlLmJjZ3NjLmNhOjMwMDAiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbInBvZ19wb3NpeCIsInB5bGltcyIsIm9mZmxpbmVfYWNjZXNzIiwiSVBSIiwidW1hX2F1dGhvcml6YXRpb24iLCJHcmFwaEtCIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsibGltcyI6eyJyb2xlcyI6WyJpbnRlcm5hbF9sZGFwIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJNYXRoaWV1IExlbWlldXggTGVtaWV1eCIsInByZWZlcnJlZF91c2VybmFtZSI6Im1sZW1pZXV4IiwiZ2l2ZW5fbmFtZSI6Ik1hdGhpZXUgTGVtaWV1eCIsImZhbWlseV9uYW1lIjoiTGVtaWV1eCIsImVtYWlsIjoibWxlbWlldXhAYmNnc2MuY2EifQ.i5SOexJ5OiPaQVS95GvJAvrfxwLkHGi30Kn31T-dBongXpFvmpngUfoDI1evHV4i2fBfNQL7B1t4P8iewBVNJ2SrBqWLqJLj3xGTZcRvErb_JL_-Dysx6h3sHv3cPa4al3hSjrlCFSQ7jbqLwRGoXWGGJ_bknUzZCNoayGuXbFDjxtTktNpzKJoR4_YIs6srFKXExtZbmHNqjm4ntwKrzzjunUL5ub94TZtbz5fpB2gzuLaRwIKt1MnGjZ-ETzWPcpavsz2B6t0-3YIWDwLcK5qwhzz0q2uTKeo7avbJW0jFFB3l-iBGFOVhs0QbeKSC8WHy_yyOSfgAvZfnCrpc-A"
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "name": "ensembl"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/sources",
+      "body": {
+        "description": "Ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. Ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. Ensembl tools include BLAST, BLAT, BioMart and the Variant Effect Predictor (VEP) for all supported species.",
+        "displayName": "Ensembl",
+        "name": "ensembl",
+        "sort": 3,
+        "url": "https://uswest.ensembl.org",
+        "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Source",
+        "sort": 3,
+        "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
+        "displayName": "Ensembl",
+        "name": "ensembl",
+        "url": "https://uswest.ensembl.org",
+        "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "1ca15b77-f1f0-4ec9-aaa7-649ffeb7eb19",
+        "createdAt": 1646763541515,
+        "updatedAt": 1646763541515,
+        "@rid": "#41:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "name": "refseq"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/sources",
+      "body": {
+        "description": "A comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.",
+        "displayName": "RefSeq",
+        "longName": "RefSeq: NCBI Reference Sequence Database",
+        "name": "refseq",
+        "url": "https://www.ncbi.nlm.nih.gov/refseq",
+        "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Source",
+        "sort": 99999,
+        "description": "a comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.",
+        "displayName": "RefSeq",
+        "longName": "refseq: ncbi reference sequence database",
+        "name": "refseq",
+        "url": "https://www.ncbi.nlm.nih.gov/refseq",
+        "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "24780299-f0ef-4b4d-aef3-2d14107c72b6",
+        "createdAt": 1646763541546,
+        "updatedAt": 1646763541546,
+        "@rid": "#42:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": {
+                "filters": {
+                  "name": "entrez gene"
+                },
+                "target": "Source"
+              }
+            },
+            {
+              "dependency": null
+            },
+            {
+              "deprecated": false
+            }
+          ]
+        },
+        "limit": 1000,
+        "neighbors": 0,
+        "returnProperties": null,
+        "skip": 0,
+        "target": "Feature"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": "#41:0"
+            },
+            {
+              "biotype": "gene"
+            },
+            {
+              "dependency": null
+            }
+          ]
+        },
+        "limit": 1000,
+        "neighbors": 0,
+        "returnProperties": null,
+        "skip": 0,
+        "target": "Feature"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": {
+                "filters": {
+                  "name": "refseq"
+                },
+                "target": "Source"
+              }
+            },
+            {
+              "dependency": null
+            },
+            {
+              "deprecated": false
+            }
+          ]
+        },
+        "limit": 1000,
+        "neighbors": 0,
+        "returnProperties": null,
+        "skip": 0,
+        "target": "Feature"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "request": {
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?retmode=json&rettype=docsum&db=nucleotide&id=nm_000059"
+    },
+    "response": {
+      "header": {
+        "type": "esummary",
+        "version": "0.3"
+      },
+      "result": {
+        "1813836564": {
+          "uid": "1813836564",
+          "term": "1813836564",
+          "caption": "NM_000059",
+          "title": "Homo sapiens BRCA2 DNA repair associated (BRCA2), mRNA",
+          "extra": "gi|1813836564|ref|NM_000059.4|",
+          "gi": 1813836564,
+          "createdate": "1999/03/19",
+          "updatedate": "2022/02/27",
+          "flags": 512,
+          "taxid": 9606,
+          "slen": 11954,
+          "biomol": "mRNA",
+          "moltype": "rna",
+          "topology": "linear",
+          "sourcedb": "refseq",
+          "segsetsize": "",
+          "projectid": "0",
+          "genome": "genomic",
+          "subtype": "chromosome|map",
+          "subname": "13|13q13.1",
+          "assemblygi": "",
+          "assemblyacc": "AL137247.14",
+          "tech": "",
+          "completeness": "",
+          "geneticcode": "1",
+          "strand": "",
+          "organism": "human",
+          "strain": "",
+          "biosample": "",
+          "statistics": [
+            {
+              "type": "Length",
+              "count": 11954
+            },
+            {
+              "type": "Length",
+              "subtype": "literal",
+              "count": 11954
+            },
+            {
+              "type": "all",
+              "count": 4
+            },
+            {
+              "type": "blob_size",
+              "count": 33923
+            },
+            {
+              "type": "cdregion",
+              "count": 1
+            },
+            {
+              "type": "cdregion",
+              "subtype": "CDS",
+              "count": 1
+            },
+            {
+              "type": "gene",
+              "count": 1
+            },
+            {
+              "type": "gene",
+              "subtype": "Gene",
+              "count": 1
+            },
+            {
+              "type": "imp",
+              "count": 1
+            },
+            {
+              "type": "imp",
+              "subtype": "misc_feature",
+              "count": 1
+            },
+            {
+              "type": "org",
+              "count": 1
+            },
+            {
+              "type": "pub",
+              "count": 10
+            },
+            {
+              "type": "pub",
+              "subtype": "PubMed",
+              "count": 6
+            },
+            {
+              "type": "pub",
+              "subtype": "PubMed/Gene-rif",
+              "count": 4
+            },
+            {
+              "source": "CDS",
+              "type": "all",
+              "count": 26
+            },
+            {
+              "source": "CDS",
+              "type": "prot",
+              "count": 1
+            },
+            {
+              "source": "CDS",
+              "type": "prot",
+              "subtype": "Prot",
+              "count": 1
+            },
+            {
+              "source": "CDS",
+              "type": "region",
+              "count": 15
+            },
+            {
+              "source": "CDS",
+              "type": "region",
+              "subtype": "Region",
+              "count": 15
+            },
+            {
+              "source": "CDS",
+              "type": "site",
+              "count": 10
+            },
+            {
+              "source": "CDS",
+              "type": "site",
+              "subtype": "Site",
+              "count": 10
+            },
+            {
+              "source": "SNP",
+              "type": "VDB",
+              "count": 1
+            },
+            {
+              "source": "SNP",
+              "type": "VDB",
+              "subtype": "NA000146873.18#17",
+              "count": 1
+            },
+            {
+              "source": "SNP",
+              "type": "all",
+              "count": 1
+            },
+            {
+              "source": "all",
+              "type": "Length",
+              "count": 11954
+            },
+            {
+              "source": "all",
+              "type": "VDB",
+              "count": 1
+            },
+            {
+              "source": "all",
+              "type": "all",
+              "count": 60
+            },
+            {
+              "source": "all",
+              "type": "blob_size",
+              "count": 33923
+            },
+            {
+              "source": "all",
+              "type": "cdregion",
+              "count": 1
+            },
+            {
+              "source": "all",
+              "type": "evidence",
+              "count": 27
+            },
+            {
+              "source": "all",
+              "type": "gene",
+              "count": 1
+            },
+            {
+              "source": "all",
+              "type": "imp",
+              "count": 30
+            },
+            {
+              "source": "all",
+              "type": "org",
+              "count": 1
+            },
+            {
+              "source": "all",
+              "type": "prot",
+              "count": 1
+            },
+            {
+              "source": "all",
+              "type": "pub",
+              "count": 10
+            },
+            {
+              "source": "all",
+              "type": "region",
+              "count": 15
+            },
+            {
+              "source": "all",
+              "type": "site",
+              "count": 10
+            },
+            {
+              "source": "exons",
+              "type": "all",
+              "count": 27
+            },
+            {
+              "source": "exons",
+              "type": "evidence",
+              "count": 27
+            },
+            {
+              "source": "exons",
+              "type": "imp",
+              "count": 27
+            },
+            {
+              "source": "exons",
+              "type": "imp",
+              "subtype": "exon",
+              "count": 27
+            },
+            {
+              "source": "polyA sites",
+              "type": "all",
+              "count": 2
+            },
+            {
+              "source": "polyA sites",
+              "type": "imp",
+              "count": 2
+            },
+            {
+              "source": "polyA sites",
+              "type": "imp",
+              "subtype": "polyA_site",
+              "count": 1
+            },
+            {
+              "source": "polyA sites",
+              "type": "imp",
+              "subtype": "regulatory",
+              "count": 1
+            }
+          ],
+          "properties": {
+            "na": "1",
+            "value": "1"
+          },
+          "oslt": {
+            "indexed": true,
+            "value": "NM_000059.4"
+          },
+          "accessionversion": "NM_000059.4"
+        },
+        "uids": [
+          "1813836564"
+        ]
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "name": "refseq"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 1
+      },
+      "result": [
+        {
+          "createdAt": 1646763541546,
+          "updatedBy": {
+            "createdAt": 1646762956172,
+            "lastLoginAt": 1646763541478,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1646762956168,
+            "firstLoginAt": 1646763541478,
+            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "createdBy": {
+            "createdAt": 1646762956172,
+            "lastLoginAt": 1646763541478,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1646762956168,
+            "firstLoginAt": 1646763541478,
+            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "displayName": "RefSeq",
+          "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies",
+          "name": "refseq",
+          "description": "a comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.",
+          "sort": 99999,
+          "uuid": "24780299-f0ef-4b4d-aef3-2d14107c72b6",
+          "url": "https://www.ncbi.nlm.nih.gov/refseq",
+          "longName": "refseq: ncbi reference sequence database",
+          "updatedAt": 1646763541546,
+          "@rid": "#42:0",
+          "@class": "Source"
+        }
+      ]
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "sourceId": "NM_000059"
+            },
+            {
+              "source": "#42:0"
+            },
+            {
+              "sourceIdVersion": null
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "transcript",
+        "displayName": "NM_000059",
+        "sourceId": "NM_000059",
+        "sourceIdVersion": null,
+        "source": "#42:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "displayName": "NM_000059",
+        "sourceId": "nm_000059",
+        "sourceIdVersion": null,
+        "source": "#42:0",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "1a7d450b-c922-4722-994a-0b70d431e117",
+        "createdAt": 1646763542168,
+        "updatedAt": 1646763542168,
+        "name": "nm_000059",
+        "@rid": "#137:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "gene",
+        "source": "#41:0",
+        "sourceId": "ENSG00000139618",
+        "sourceIdVersion": "17"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "source": "#41:0",
+        "sourceId": "ensg00000139618",
+        "sourceIdVersion": "17",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "67908828-1b5d-43e6-a261-b3af1be35880",
+        "createdAt": 1646763542208,
+        "updatedAt": 1646763542208,
+        "name": "ensg00000139618",
+        "displayName": "ensg00000139618",
+        "@rid": "#138:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "gene",
+        "source": "#41:0",
+        "sourceId": "ENSG00000139618",
+        "sourceIdVersion": null
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "source": "#41:0",
+        "sourceId": "ensg00000139618",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "1373e4f7-e952-4a44-8602-615e77115623",
+        "createdAt": 1646763542306,
+        "updatedAt": 1646763542306,
+        "name": "ensg00000139618",
+        "displayName": "ensg00000139618",
+        "@rid": "#139:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/generalizationof",
+      "body": {
+        "in": "#138:0",
+        "out": "#139:0",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#139:0",
+        "in": "#138:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "00041b46-d8c4-467d-984c-ba0bb8d3c44e",
+        "createdAt": 1646763542331,
+        "@rid": "#97:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000544455",
+        "sourceIdVersion": "6"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000544455",
+        "sourceIdVersion": "6",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "091df755-97ad-4395-9ed0-f897a89ac858",
+        "createdAt": 1646763542357,
+        "updatedAt": 1646763542357,
+        "name": "enst00000544455",
+        "displayName": "enst00000544455",
+        "@rid": "#140:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000544455",
+        "sourceIdVersion": null
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000544455",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "59c1e5ca-db21-405d-b604-f5f03c5a224f",
+        "createdAt": 1646763542381,
+        "updatedAt": 1646763542381,
+        "name": "enst00000544455",
+        "displayName": "enst00000544455",
+        "@rid": "#137:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/generalizationof",
+      "body": {
+        "in": "#140:0",
+        "out": "#137:1",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#137:1",
+        "in": "#140:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "998c9c0e-3658-4793-8cf6-8860095eb287",
+        "createdAt": 1646763542403,
+        "@rid": "#98:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/elementof",
+      "body": {
+        "in": "#139:0",
+        "out": "#137:1",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#137:1",
+        "in": "#139:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "7204d8b7-2893-4819-9dba-8ec832893114",
+        "createdAt": 1646763542429,
+        "@rid": "#93:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/elementof",
+      "body": {
+        "in": "#138:0",
+        "out": "#140:0",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#140:0",
+        "in": "#138:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "5bf2b528-6d40-4bb2-a604-60abfa6d75a4",
+        "createdAt": 1646763542451,
+        "@rid": "#94:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": {
+                "filters": {
+                  "name": "hgnc"
+                },
+                "target": "Source"
+              }
+            },
+            {
+              "sourceId": "hgnc:1101"
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "request": {
+      "url": "http://rest.genenames.org/fetch/hgnc_id/1101"
+    },
+    "response": {
+      "responseHeader": {
+        "status": 0,
+        "QTime": 0
+      },
+      "response": {
+        "numFound": 1,
+        "start": 0,
+        "docs": [
+          {
+            "hgnc_id": "HGNC:1101",
+            "symbol": "BRCA2",
+            "name": "BRCA2 DNA repair associated",
+            "status": "Approved",
+            "locus_type": "gene with protein product",
+            "prev_symbol": [
+              "FANCD1",
+              "FACD",
+              "FANCD"
+            ],
+            "prev_name": [
+              "Fanconi anemia, complementation group D1",
+              "breast cancer 2, early onset",
+              "breast cancer 2"
+            ],
+            "alias_symbol": [
+              "FAD",
+              "FAD1",
+              "BRCC2",
+              "XRCC11"
+            ],
+            "alias_name": [
+              "BRCA1/BRCA2-containing complex, subunit 2"
+            ],
+            "location": "13q13.1",
+            "date_approved_reserved": "1994-10-17T00:00:00Z",
+            "date_modified": "2021-05-26T00:00:00Z",
+            "date_name_changed": "2019-01-22T00:00:00Z",
+            "ena": [
+              "U43746"
+            ],
+            "entrez_id": "675",
+            "mgd_id": [
+              "MGI:109337"
+            ],
+            "cosmic": "BRCA2",
+            "orphanet": 119072,
+            "pubmed_id": [
+              8091231,
+              7581463,
+              15057823
+            ],
+            "refseq_accession": [
+              "NM_000059"
+            ],
+            "gene_group": [
+              "FA complementation groups"
+            ],
+            "vega_id": "OTTHUMG00000017411",
+            "lsdb": [
+              "Breast Cancer|http://research.nhgri.nih.gov/bic/",
+              "Fanconi Anaemia Mutation Database|http://www2.rockefeller.edu/fanconi/",
+              "BRCA1 database at LOVD-China|http://genomed.org/LOVD/BC/home.php?select_db=BRCA2",
+              "Global Variome shared LOVD|https://databases.lovd.nl/shared/genes/BRCA2",
+              "LOVD - Leiden Open Variation Database|http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA2",
+              "Global Variome shared LOVD|https://databases.lovd.nl/shared/genes/FANCD1",
+              "LRG_293|http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_293.xml"
+            ],
+            "ensembl_gene_id": "ENSG00000139618",
+            "ccds_id": [
+              "CCDS9344"
+            ],
+            "locus_group": "protein-coding gene",
+            "omim_id": [
+              "600185"
+            ],
+            "uniprot_ids": [
+              "P51587"
+            ],
+            "ucsc_id": "uc001uub.2",
+            "rgd_id": [
+              "RGD:2219"
+            ],
+            "gene_group_id": [
+              548
+            ],
+            "location_sortable": "13q13.1",
+            "agr": "HGNC:1101",
+            "symbol_report_tag": [
+              "Stable symbol"
+            ],
+            "mane_select": [
+              "ENST00000380152.8",
+              "NM_000059.4"
+            ],
+            "gencc": "HGNC:1101",
+            "uuid": "fc605c0a-7495-429d-b419-24e4b52f26df",
+            "_version_": 1726716858346766300
+          }
+        ]
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "name": "hgnc"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/sources",
+      "body": {
+        "description": "The HGNC is responsible for approving unique symbols and names for human loci, including protein coding genes, ncRNA genes and pseudogenes, to allow unambiguous scientific communication.",
+        "displayName": "HGNC",
+        "longName": "HUGO Gene Nomenclature Committee",
+        "name": "hgnc",
+        "sort": 2,
+        "url": "https://www.genenames.org/about",
+        "usage": "https://www.ebi.ac.uk/about/terms-of-use"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Source",
+        "sort": 2,
+        "description": "the hgnc is responsible for approving unique symbols and names for human loci, including protein coding genes, ncrna genes and pseudogenes, to allow unambiguous scientific communication.",
+        "displayName": "HGNC",
+        "longName": "hugo gene nomenclature committee",
+        "name": "hgnc",
+        "url": "https://www.genenames.org/about",
+        "usage": "https://www.ebi.ac.uk/about/terms-of-use",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "7c59fbc7-022d-42aa-9dbc-981bff8085a3",
+        "createdAt": 1646763548225,
+        "updatedAt": 1646763548225,
+        "@rid": "#43:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "name": "ensembl"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 1
+      },
+      "result": [
+        {
+          "createdAt": 1646763541515,
+          "updatedBy": {
+            "createdAt": 1646762956172,
+            "lastLoginAt": 1646763541478,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1646762956168,
+            "firstLoginAt": 1646763541478,
+            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "createdBy": {
+            "createdAt": 1646762956172,
+            "lastLoginAt": 1646763541478,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1646762956168,
+            "firstLoginAt": 1646763541478,
+            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "displayName": "Ensembl",
+          "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html",
+          "name": "ensembl",
+          "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
+          "sort": 3,
+          "uuid": "1ca15b77-f1f0-4ec9-aaa7-649ffeb7eb19",
+          "url": "https://uswest.ensembl.org",
+          "updatedAt": 1646763541515,
+          "@rid": "#41:0",
+          "@class": "Source"
+        }
+      ]
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "biotype": "gene"
+            },
+            {
+              "deprecated": false
+            },
+            {
+              "name": "BRCA2"
+            },
+            {
+              "source": "#43:0"
+            },
+            {
+              "sourceId": "HGNC:1101"
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "gene",
+        "deprecated": false,
+        "displayName": "BRCA2",
+        "longName": "BRCA2 DNA repair associated",
+        "name": "BRCA2",
+        "source": "#43:0",
+        "sourceId": "HGNC:1101",
+        "sourceIdVersion": "2021-05-26T00:00:00Z"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "displayName": "BRCA2",
+        "longName": "BRCA2 DNA repair associated",
+        "name": "brca2",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "sourceIdVersion": "2021-05-26t00:00:00z",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "f8054cdc-3174-46f8-9921-8ce3a50058da",
+        "createdAt": 1646763548299,
+        "updatedAt": 1646763548299,
+        "@rid": "#138:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": "#41:0"
+            },
+            {
+              "biotype": "gene"
+            },
+            {
+              "sourceId": "ENSG00000139618"
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 2
+      },
+      "result": [
+        {
+          "biotype": "gene",
+          "sourceId": "ensg00000139618",
+          "updatedBy": {
+            "createdAt": 1646762956172,
+            "lastLoginAt": 1646763541478,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1646762956168,
+            "firstLoginAt": 1646763541478,
+            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "displayName": "ensg00000139618",
+          "deprecated": false,
+          "sourceIdVersion": null,
+          "source": {
+            "createdAt": 1646763541515,
+            "updatedBy": "#32:0",
+            "createdBy": "#32:0",
+            "displayName": "Ensembl",
+            "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html",
+            "name": "ensembl",
+            "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
+            "sort": 3,
+            "uuid": "1ca15b77-f1f0-4ec9-aaa7-649ffeb7eb19",
+            "url": "https://uswest.ensembl.org",
+            "updatedAt": 1646763541515,
+            "@rid": "#41:0",
+            "@class": "Source"
+          },
+          "uuid": "1373e4f7-e952-4a44-8602-615e77115623",
+          "createdAt": 1646763542306,
+          "createdBy": {
+            "createdAt": 1646762956172,
+            "lastLoginAt": 1646763541478,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1646762956168,
+            "firstLoginAt": 1646763541478,
+            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "in_ElementOf": [
+            {
+              "createdAt": 1646763542429,
+              "in": "#139:0",
+              "createdBy": "#32:0",
+              "source": "#41:0",
+              "uuid": "7204d8b7-2893-4819-9dba-8ec832893114",
+              "out": "#137:1",
+              "@rid": "#93:0",
+              "@class": "ElementOf"
+            }
+          ],
+          "name": "ensg00000139618",
+          "out_GeneralizationOf": [
+            {
+              "createdAt": 1646763542331,
+              "in": "#138:0",
+              "createdBy": "#32:0",
+              "source": "#41:0",
+              "uuid": "00041b46-d8c4-467d-984c-ba0bb8d3c44e",
+              "out": "#139:0",
+              "@rid": "#97:0",
+              "@class": "GeneralizationOf"
+            }
+          ],
+          "alias": false,
+          "updatedAt": 1646763542306,
+          "@rid": "#139:0",
+          "@class": "Feature"
+        },
+        {
+          "biotype": "gene",
+          "sourceId": "ensg00000139618",
+          "updatedBy": {
+            "createdAt": 1646762956172,
+            "lastLoginAt": 1646763541478,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1646762956168,
+            "firstLoginAt": 1646763541478,
+            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "in_GeneralizationOf": [
+            {
+              "createdAt": 1646763542331,
+              "in": "#138:0",
+              "createdBy": "#32:0",
+              "source": "#41:0",
+              "uuid": "00041b46-d8c4-467d-984c-ba0bb8d3c44e",
+              "out": "#139:0",
+              "@rid": "#97:0",
+              "@class": "GeneralizationOf"
+            }
+          ],
+          "displayName": "ensg00000139618",
+          "deprecated": false,
+          "sourceIdVersion": "17",
+          "source": {
+            "createdAt": 1646763541515,
+            "updatedBy": "#32:0",
+            "createdBy": "#32:0",
+            "displayName": "Ensembl",
+            "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html",
+            "name": "ensembl",
+            "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
+            "sort": 3,
+            "uuid": "1ca15b77-f1f0-4ec9-aaa7-649ffeb7eb19",
+            "url": "https://uswest.ensembl.org",
+            "updatedAt": 1646763541515,
+            "@rid": "#41:0",
+            "@class": "Source"
+          },
+          "uuid": "67908828-1b5d-43e6-a261-b3af1be35880",
+          "createdAt": 1646763542208,
+          "createdBy": {
+            "createdAt": 1646762956172,
+            "lastLoginAt": 1646763541478,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1646762956168,
+            "firstLoginAt": 1646763541478,
+            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "in_ElementOf": [
+            {
+              "createdAt": 1646763542451,
+              "in": "#138:0",
+              "createdBy": "#32:0",
+              "source": "#41:0",
+              "uuid": "5bf2b528-6d40-4bb2-a604-60abfa6d75a4",
+              "out": "#140:0",
+              "@rid": "#94:0",
+              "@class": "ElementOf"
+            }
+          ],
+          "name": "ensg00000139618",
+          "alias": false,
+          "updatedAt": 1646763542208,
+          "@rid": "#138:0",
+          "@class": "Feature"
+        }
+      ]
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "deprecated": true,
+        "displayName": "FANCD1",
+        "name": "FANCD1",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": true,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FANCD1",
+        "name": "fancd1",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "57cffbd1-7146-42a6-b6d5-0ae1b37e7ba1",
+        "createdAt": 1646763548355,
+        "updatedAt": 1646763548356,
+        "@rid": "#139:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/deprecatedby",
+      "body": {
+        "in": "#138:1",
+        "out": "#139:1",
+        "source": "#43:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "DeprecatedBy",
+        "out": "#139:1",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "db617c57-d83c-4acb-bf76-e089f9efc64f",
+        "createdAt": 1646763548378,
+        "@rid": "#81:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "deprecated": true,
+        "displayName": "FACD",
+        "name": "FACD",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": true,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FACD",
+        "name": "facd",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "b12de67b-abbc-4302-bc1e-1a0d92c38ec3",
+        "createdAt": 1646763548408,
+        "updatedAt": 1646763548408,
+        "@rid": "#140:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/deprecatedby",
+      "body": {
+        "in": "#138:1",
+        "out": "#140:1",
+        "source": "#43:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "DeprecatedBy",
+        "out": "#140:1",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "2d3b52c1-72a6-40de-a69a-08dcb8a5178c",
+        "createdAt": 1646763548432,
+        "@rid": "#82:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "deprecated": true,
+        "displayName": "FANCD",
+        "name": "FANCD",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": true,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FANCD",
+        "name": "fancd",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "1ad3c1e8-661b-47f8-8169-b117f457eec1",
+        "createdAt": 1646763548458,
+        "updatedAt": 1646763548458,
+        "@rid": "#137:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/deprecatedby",
+      "body": {
+        "in": "#138:1",
+        "out": "#137:2",
+        "source": "#43:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "DeprecatedBy",
+        "out": "#137:2",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "5caafe77-dd20-40c1-8112-867619961328",
+        "createdAt": 1646763548479,
+        "@rid": "#83:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?retmode=json&rettype=docsum&db=gene&id=675"
+    },
+    "response": {
+      "header": {
+        "type": "esummary",
+        "version": "0.3"
+      },
+      "result": {
+        "675": {
+          "uid": "675",
+          "name": "BRCA2",
+          "description": "BRCA2 DNA repair associated",
+          "status": "",
+          "currentid": "",
+          "chromosome": "13",
+          "geneticsource": "genomic",
+          "maplocation": "13q13.1",
+          "otheraliases": "BRCC2, BROVCA2, FACD, FAD, FAD1, FANCD, FANCD1, GLM3, PNCA2, XRCC11",
+          "otherdesignations": "breast cancer type 2 susceptibility protein|BRCA1/BRCA2-containing complex, subunit 2|Fanconi anemia group D1 protein|breast and ovarian cancer susceptibility gene, early onset|breast and ovarian cancer susceptibility protein 2|breast cancer 2 tumor suppressor|breast cancer 2, early onset|mutant BRCA2|mutant DNA repair-associated protein 2|truncated BRCA2 DNA repair associated|truncated BRCA2 DNA repair-associated protein|truncated DNA repair-associated BRCA2|truncated DNA repair-associated protein|truncated breast cancer 2",
+          "nomenclaturesymbol": "BRCA2",
+          "nomenclaturename": "BRCA2 DNA repair associated",
+          "nomenclaturestatus": "Official",
+          "mim": [
+            "600185"
+          ],
+          "genomicinfo": [
+            {
+              "chrloc": "13",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315507,
+              "chrstop": 32400267,
+              "exoncount": 27
+            }
+          ],
+          "geneweight": 170786,
+          "summary": "Inherited mutations in BRCA1 and this gene, BRCA2, confer increased lifetime risk of developing breast or ovarian cancer. Both BRCA1 and BRCA2 are involved in maintenance of genome stability, specifically the homologous recombination pathway for double-strand DNA repair. The largest exon in both genes is exon 11, which harbors the most important and frequent mutations in breast cancer patients. The BRCA2 gene was found on chromosome 13q12.3 in human. The BRCA2 protein contains several copies of a 70 aa motif called the BRC motif, and these motifs mediate binding to the RAD51 recombinase which functions in DNA repair. BRCA2 is considered a tumor suppressor gene, as tumors with BRCA2 mutations generally exhibit loss of heterozygosity (LOH) of the wild-type allele. [provided by RefSeq, May 2020]",
+          "chrsort": "13",
+          "chrstart": 32315507,
+          "organism": {
+            "scientificname": "Homo sapiens",
+            "commonname": "human",
+            "taxid": 9606
+          },
+          "locationhist": [
+            {
+              "annotationrelease": "109.20211119",
+              "assemblyaccver": "GCF_000001405.39",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315507,
+              "chrstop": 32400267
+            },
+            {
+              "annotationrelease": "109.20210514",
+              "assemblyaccver": "GCF_000001405.39",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315507,
+              "chrstop": 32400267
+            },
+            {
+              "annotationrelease": "109.20210226",
+              "assemblyaccver": "GCF_000001405.39",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315507,
+              "chrstop": 32400267
+            },
+            {
+              "annotationrelease": "109.20201120",
+              "assemblyaccver": "GCF_000001405.39",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315507,
+              "chrstop": 32400267
+            },
+            {
+              "annotationrelease": "109.20200815",
+              "assemblyaccver": "GCF_000001405.39",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315507,
+              "chrstop": 32400267
+            },
+            {
+              "annotationrelease": "109.20200522",
+              "assemblyaccver": "GCF_000001405.39",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315507,
+              "chrstop": 32400267
+            },
+            {
+              "annotationrelease": "109.20200228",
+              "assemblyaccver": "GCF_000001405.39",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315507,
+              "chrstop": 32400267
+            },
+            {
+              "annotationrelease": "109.20191205",
+              "assemblyaccver": "GCF_000001405.39",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315479,
+              "chrstop": 32399671
+            },
+            {
+              "annotationrelease": "109.20190905",
+              "assemblyaccver": "GCF_000001405.39",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315479,
+              "chrstop": 32399671
+            },
+            {
+              "annotationrelease": "109.20190607",
+              "assemblyaccver": "GCF_000001405.39",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315479,
+              "chrstop": 32399671
+            },
+            {
+              "annotationrelease": "109",
+              "assemblyaccver": "GCF_000001405.38",
+              "chraccver": "NC_000013.11",
+              "chrstart": 32315479,
+              "chrstop": 32399671
+            },
+            {
+              "annotationrelease": "105.20201022",
+              "assemblyaccver": "GCF_000001405.25",
+              "chraccver": "NC_000013.10",
+              "chrstart": 32889644,
+              "chrstop": 32974404
+            },
+            {
+              "annotationrelease": "105",
+              "assemblyaccver": "GCF_000001405.25",
+              "chraccver": "NC_000013.10",
+              "chrstart": 32889616,
+              "chrstop": 32973808
+            },
+            {
+              "annotationrelease": "105",
+              "assemblyaccver": "GCF_000002125.1",
+              "chraccver": "AC_000145.1",
+              "chrstart": 13701251,
+              "chrstop": 13785591
+            },
+            {
+              "annotationrelease": "105",
+              "assemblyaccver": "GCF_000306695.2",
+              "chraccver": "NC_018924.2",
+              "chrstart": 32857163,
+              "chrstop": 32941321
+            }
+          ]
+        },
+        "uids": [
+          "675"
+        ]
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "name": "entrez gene"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/sources",
+      "body": {
+        "description": "Gene integrates information from a wide range of species. A record may include nomenclature, Reference Sequences (RefSeqs), maps, pathways, variations, phenotypes, and links to genome-, phenotype-, and locus-specific resources worldwide.",
+        "name": "entrez gene",
+        "sort": 1,
+        "url": "https://www.ncbi.nlm.nih.gov/gene",
+        "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Source",
+        "sort": 1,
+        "description": "gene integrates information from a wide range of species. a record may include nomenclature, reference sequences (refseqs), maps, pathways, variations, phenotypes, and links to genome-, phenotype-, and locus-specific resources worldwide.",
+        "name": "entrez gene",
+        "url": "https://www.ncbi.nlm.nih.gov/gene",
+        "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "77e4a8f0-8243-4cb6-bd62-f3af85d73cbe",
+        "createdAt": 1646763548904,
+        "updatedAt": 1646763548904,
+        "displayName": "entrez gene",
+        "@rid": "#44:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "sourceId": "675"
+            },
+            {
+              "source": "#44:0"
+            },
+            {
+              "sourceIdVersion": null
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "gene",
+        "description": "Inherited mutations in BRCA1 and this gene, BRCA2, confer increased lifetime risk of developing breast or ovarian cancer. Both BRCA1 and BRCA2 are involved in maintenance of genome stability, specifically the homologous recombination pathway for double-strand DNA repair. The largest exon in both genes is exon 11, which harbors the most important and frequent mutations in breast cancer patients. The BRCA2 gene was found on chromosome 13q12.3 in human. The BRCA2 protein contains several copies of a 70 aa motif called the BRC motif, and these motifs mediate binding to the RAD51 recombinase which functions in DNA repair. BRCA2 is considered a tumor suppressor gene, as tumors with BRCA2 mutations generally exhibit loss of heterozygosity (LOH) of the wild-type allele. [provided by RefSeq, May 2020]",
+        "displayName": "BRCA2",
+        "longName": "BRCA2 DNA repair associated",
+        "name": "BRCA2",
+        "sourceId": "675",
+        "url": "https://www.ncbi.nlm.nih.gov/gene/675",
+        "source": "#44:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "description": "Inherited mutations in BRCA1 and this gene, BRCA2, confer increased lifetime risk of developing breast or ovarian cancer. Both BRCA1 and BRCA2 are involved in maintenance of genome stability, specifically the homologous recombination pathway for double-strand DNA repair. The largest exon in both genes is exon 11, which harbors the most important and frequent mutations in breast cancer patients. The BRCA2 gene was found on chromosome 13q12.3 in human. The BRCA2 protein contains several copies of a 70 aa motif called the BRC motif, and these motifs mediate binding to the RAD51 recombinase which functions in DNA repair. BRCA2 is considered a tumor suppressor gene, as tumors with BRCA2 mutations generally exhibit loss of heterozygosity (LOH) of the wild-type allele. [provided by RefSeq, May 2020]",
+        "displayName": "BRCA2",
+        "longName": "BRCA2 DNA repair associated",
+        "name": "brca2",
+        "sourceId": "675",
+        "url": "https://www.ncbi.nlm.nih.gov/gene/675",
+        "source": "#44:0",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "2077140c-934a-4823-b5cb-89e59c3704fe",
+        "createdAt": 1646763548942,
+        "updatedAt": 1646763548942,
+        "@rid": "#138:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/crossreferenceof",
+      "body": {
+        "in": "#138:2",
+        "out": "#138:1",
+        "source": "#43:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "CrossReferenceOf",
+        "out": "#138:1",
+        "in": "#138:2",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "0feb4227-616f-4533-a690-e20d0231f509",
+        "createdAt": 1646763548955,
+        "@rid": "#85:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/crossreferenceof",
+      "body": {
+        "in": "#138:1",
+        "out": "#139:0",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "CrossReferenceOf",
+        "out": "#139:0",
+        "in": "#138:1",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "f6df0668-6322-4b13-a6ac-de02aa39ad06",
+        "createdAt": 1646763548968,
+        "@rid": "#86:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/generalizationof",
+      "body": {
+        "in": "#138:0",
+        "out": "#139:0",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "name": "RecordConflictError",
+      "data": {},
+      "previous": [],
+      "code": 5,
+      "identifier": 0,
+      "id": 1,
+      "type": "com.orientechnologies.orient.core.storage.ORecordDuplicatedException",
+      "hasMore": 0,
+      "message": "Cannot index record #99:0: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0\r\n\tDB name=\"test_mlemieux_07_03_2022\"",
+      "stacktrace": [
+        "RecordConflictError: Cannot index record #99:0: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0",
+        "DB name=\"test_mlemieux_07_03_2022\"",
+        "at new ErrorMixin (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/node_modules/@bcgsc-pori/graphkb-parser/src/error.js:32:19)",
+        "at new RecordConflictError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/error.js:16:1)",
+        "at wrapIfTypeError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/util.js:22:24)",
+        "at createEdge (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/create.js:84:15)"
+      ]
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000530893",
+        "sourceIdVersion": "6"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000530893",
+        "sourceIdVersion": "6",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "1ff0d91b-d8ed-4b88-9a2f-d6d6587ed5ed",
+        "createdAt": 1646763549000,
+        "updatedAt": 1646763549000,
+        "name": "enst00000530893",
+        "displayName": "enst00000530893",
+        "@rid": "#139:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000530893",
+        "sourceIdVersion": null
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000530893",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "74163799-ac45-45a8-b9ab-b920c2f48be6",
+        "createdAt": 1646763549013,
+        "updatedAt": 1646763549013,
+        "name": "enst00000530893",
+        "displayName": "enst00000530893",
+        "@rid": "#140:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/generalizationof",
+      "body": {
+        "in": "#139:2",
+        "out": "#140:2",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#140:2",
+        "in": "#139:2",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "e15efbeb-b962-4f65-a267-1f37b5c7d318",
+        "createdAt": 1646763549025,
+        "@rid": "#100:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/elementof",
+      "body": {
+        "in": "#139:0",
+        "out": "#140:2",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#140:2",
+        "in": "#139:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "2a8082e4-5e3e-43a9-ae9f-3c15c336e9cd",
+        "createdAt": 1646763549038,
+        "@rid": "#95:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/elementof",
+      "body": {
+        "in": "#138:0",
+        "out": "#139:2",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#139:2",
+        "in": "#138:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "c43c8ed8-1541-4822-8672-9fa0b8088742",
+        "createdAt": 1646763549050,
+        "@rid": "#96:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/generalizationof",
+      "body": {
+        "in": "#138:0",
+        "out": "#139:0",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "name": "RecordConflictError",
+      "data": {},
+      "previous": [],
+      "code": 5,
+      "identifier": 0,
+      "id": 1,
+      "type": "com.orientechnologies.orient.core.storage.ORecordDuplicatedException",
+      "hasMore": 0,
+      "message": "Cannot index record #97:1: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0\r\n\tDB name=\"test_mlemieux_07_03_2022\"",
+      "stacktrace": [
+        "RecordConflictError: Cannot index record #97:1: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0",
+        "DB name=\"test_mlemieux_07_03_2022\"",
+        "at new ErrorMixin (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/node_modules/@bcgsc-pori/graphkb-parser/src/error.js:32:19)",
+        "at new RecordConflictError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/error.js:16:1)",
+        "at wrapIfTypeError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/util.js:22:24)",
+        "at createEdge (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/create.js:84:15)"
+      ]
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000380152",
+        "sourceIdVersion": "8"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000380152",
+        "sourceIdVersion": "8",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "27db66a2-7b50-40cb-b31b-78422452ca80",
+        "createdAt": 1646763549091,
+        "updatedAt": 1646763549091,
+        "name": "enst00000380152",
+        "displayName": "enst00000380152",
+        "@rid": "#137:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000380152",
+        "sourceIdVersion": null
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000380152",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "7f0ebe9b-cd9a-4346-bf85-cf3ebbd3dc7d",
+        "createdAt": 1646763549114,
+        "updatedAt": 1646763549114,
+        "name": "enst00000380152",
+        "displayName": "enst00000380152",
+        "@rid": "#138:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/generalizationof",
+      "body": {
+        "in": "#137:3",
+        "out": "#138:3",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#138:3",
+        "in": "#137:3",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "fceeccdc-6ffb-4a5a-badb-d80997fbf78d",
+        "createdAt": 1646763549138,
+        "@rid": "#98:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/elementof",
+      "body": {
+        "in": "#139:0",
+        "out": "#138:3",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#138:3",
+        "in": "#139:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "71fc0bb1-2ed4-4e08-a7e3-b7b375300706",
+        "createdAt": 1646763549158,
+        "@rid": "#93:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/elementof",
+      "body": {
+        "in": "#138:0",
+        "out": "#137:3",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#137:3",
+        "in": "#138:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "8304a439-8e4e-43aa-baaf-67181e932d54",
+        "createdAt": 1646763549176,
+        "@rid": "#94:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/query",
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": "#42:0"
+            },
+            {
+              "sourceId": "NM_000059"
+            },
+            {
+              "sourceIdVersion": null
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      }
+    },
+    "response": {
+      "metadata": {
+        "records": 1
+      },
+      "result": [
+        {
+          "biotype": "transcript",
+          "sourceId": "nm_000059",
+          "updatedBy": {
+            "createdAt": 1646762956172,
+            "lastLoginAt": 1646763541478,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1646762956168,
+            "firstLoginAt": 1646763541478,
+            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "displayName": "NM_000059",
+          "deprecated": false,
+          "sourceIdVersion": null,
+          "source": {
+            "createdAt": 1646763541546,
+            "updatedBy": "#32:0",
+            "createdBy": "#32:0",
+            "displayName": "RefSeq",
+            "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies",
+            "name": "refseq",
+            "description": "a comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.",
+            "sort": 99999,
+            "uuid": "24780299-f0ef-4b4d-aef3-2d14107c72b6",
+            "url": "https://www.ncbi.nlm.nih.gov/refseq",
+            "longName": "refseq: ncbi reference sequence database",
+            "updatedAt": 1646763541546,
+            "@rid": "#42:0",
+            "@class": "Source"
+          },
+          "uuid": "1a7d450b-c922-4722-994a-0b70d431e117",
+          "createdAt": 1646763542168,
+          "createdBy": {
+            "createdAt": 1646762956172,
+            "lastLoginAt": 1646763541478,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1646762956168,
+            "firstLoginAt": 1646763541478,
+            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "name": "nm_000059",
+          "alias": false,
+          "updatedAt": 1646763542168,
+          "@rid": "#137:0",
+          "@class": "Feature"
+        }
+      ]
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/crossreferenceof",
+      "body": {
+        "in": "#137:0",
+        "out": "#138:3",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "CrossReferenceOf",
+        "out": "#138:3",
+        "in": "#137:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "f220842f-c83e-45c0-acd4-7ff9ce05c771",
+        "createdAt": 1646763549221,
+        "@rid": "#87:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/generalizationof",
+      "body": {
+        "in": "#138:0",
+        "out": "#139:0",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "name": "RecordConflictError",
+      "data": {},
+      "previous": [],
+      "code": 5,
+      "identifier": 0,
+      "id": 1,
+      "type": "com.orientechnologies.orient.core.storage.ORecordDuplicatedException",
+      "hasMore": 0,
+      "message": "Cannot index record #99:0: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0\r\n\tDB name=\"test_mlemieux_07_03_2022\"",
+      "stacktrace": [
+        "RecordConflictError: Cannot index record #99:0: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0",
+        "DB name=\"test_mlemieux_07_03_2022\"",
+        "at new ErrorMixin (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/node_modules/@bcgsc-pori/graphkb-parser/src/error.js:32:19)",
+        "at new RecordConflictError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/error.js:16:1)",
+        "at wrapIfTypeError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/util.js:22:24)",
+        "at createEdge (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/create.js:84:15)"
+      ]
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000680887",
+        "sourceIdVersion": "1"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000680887",
+        "sourceIdVersion": "1",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "adf9449f-d235-4894-bfa3-5172261fb48e",
+        "createdAt": 1646763549264,
+        "updatedAt": 1646763549264,
+        "name": "enst00000680887",
+        "displayName": "enst00000680887",
+        "@rid": "#139:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000680887",
+        "sourceIdVersion": null
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000680887",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "7d4a79ec-4aa0-40ff-8a87-1ad4ec768f06",
+        "createdAt": 1646763549282,
+        "updatedAt": 1646763549282,
+        "name": "enst00000680887",
+        "displayName": "enst00000680887",
+        "@rid": "#140:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/generalizationof",
+      "body": {
+        "in": "#139:3",
+        "out": "#140:3",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#140:3",
+        "in": "#139:3",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "036c67fc-fc1d-4193-8265-9767d694001b",
+        "createdAt": 1646763549299,
+        "@rid": "#100:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/elementof",
+      "body": {
+        "in": "#139:0",
+        "out": "#140:3",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#140:3",
+        "in": "#139:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "739813e7-224b-4db5-9522-7f70dea6166a",
+        "createdAt": 1646763549323,
+        "@rid": "#95:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/elementof",
+      "body": {
+        "in": "#138:0",
+        "out": "#139:3",
+        "source": "#41:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#139:3",
+        "in": "#138:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "99f52fc3-d10e-45ed-aed3-c3e2f276c671",
+        "createdAt": 1646763549346,
+        "@rid": "#96:1",
+        "@version": 1
+      }
+    }
+  }
+]
