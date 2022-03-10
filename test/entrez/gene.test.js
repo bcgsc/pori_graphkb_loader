@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 
 // mokeypatch node-fetch
-jest.mock('node-fetch', () => require('fetch-mock-jest').sandbox());
+jest.mock('node-fetch', () => require('fetch-mock-jest').sandbox()); // eslint-disable-line global-require
 const fetchMock = require('node-fetch');
 
 const { fetchAndLoadBySearchTerm } = require('../../src/entrez/gene');
