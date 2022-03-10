@@ -2,7 +2,8 @@ const fs = require('fs');
 const _ = require('lodash');
 
 // Module where function we want to test (ApiConnection is passed as a parameter to uploadFile)
-const ensembl = require('../src/ensembl');
+const { uploadFile } = require('../src/ensembl');
+const { request } = require('../src/util');
 const { ApiConnection } = require('../src/graphkb');
 // Same hostname as mock data required
 const HOSTNAME = 'bcgsc.ca';
@@ -27,8 +28,7 @@ describe('Ensembl loader testing (mock request function in ./src/util.js)', () =
     const opt = { conn, filename: testFilename };
 
     test('Testing ensembl uploadFile', async () => {
-        const spyUpload = jest.spyOn(ensembl, 'uploadFile');
-        await ensembl.uploadFile(opt);
-        expect(spyUpload).toHaveBeenCalled();
+        await uploadFile(opt);
+        expect(request).toHaveBeenCalledTimes(61);
     });
 });

@@ -11,6 +11,7 @@ const jsonpath = require('jsonpath');
 const crypto = require('crypto');
 const stableStringify = require('json-stable-stringify');
 const _ = require('lodash');
+const jwt = require('jsonwebtoken');
 
 const { logger } = require('../logging');
 
@@ -123,11 +124,19 @@ class HTTPResponseError extends Error {
 
 
 // Mock function
-const request = async ({
+const request = jest.fn(({
     body, uri, qs = {}, json = false, headers = {}, method = 'GET',
 } = {}) => {
     const filepath = `${process.cwd()}/test/data/ensembl_ENSG00000139618_mockDataset.json`;
     const mockDataset = JSON.parse(fs.readFileSync(filepath, { encoding: 'utf-8', flag: 'r' }));
+
+    // Update expired token
+    const epochSeconds = () => Math.floor(new Date().getTime() / 1000);
+
+    if (jwt.decode(mockDataset[0].response.kbToken).exp <= epochSeconds()) {
+        mockDataset[0].response.kbToken = jwt.sign({ foo: 'bar' }, 'shhhhh');
+        fs.writeFileSync(filepath, JSON.stringify(mockDataset));
+    }
 
     const url = new URL(uri);
     Object.keys(qs).forEach(key => url.searchParams.append(key, qs[key]));
@@ -157,7 +166,7 @@ const request = async ({
         return res;
     }
     throw new Error('');
-};
+});
 
 
 /**
