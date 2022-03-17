@@ -263,28 +263,16 @@ describe('uploadFile in Ensembl loader', () => {
             (record.request.url === `http://${HOSTNAME}:8080/api/features`)
             && (record.request.body.biotype === outbound.biotype)
             && (record.request.body.sourceId === outbound.sourceId)
-            && (
-                (('sourceIdVersion' in record.request.body) && (record.request.body.sourceIdVersion === outbound.sourceIdVersion))
-                || !('sourceIdVersion' in record.request.body)
-            )
-            && (
-                (('name' in record.request.body) && (record.request.body.name === outbound.name))
-                || !('name' in record.request.body)
-            )
+            && (record.request.body.sourceIdVersion === outbound.sourceIdVersion)
+            && (record.request.body.name === outbound.name)
         ))[0].response.result['@rid'];
         // Get inbound feature @rid
         const inRid = mockDataset.filter((record) => (
             (record.request.url === `http://${HOSTNAME}:8080/api/features`)
             && (record.request.body.biotype === inbound.biotype)
             && (record.request.body.sourceId === inbound.sourceId)
-            && (
-                (('sourceIdVersion' in record.request.body) && (record.request.body.sourceIdVersion === inbound.sourceIdVersion))
-                || !('sourceIdVersion' in record.request.body)
-            )
-            && (
-                (('name' in record.request.body) && (record.request.body.name === inbound.name))
-                || !('name' in record.request.body)
-            )
+            && (record.request.body.sourceIdVersion === inbound.sourceIdVersion)
+            && (record.request.body.name === inbound.name)
         ))[0].response.result['@rid'];
         // Filter request() calls by edge object infos
         const calls = request.mock.calls.filter((record) => (
