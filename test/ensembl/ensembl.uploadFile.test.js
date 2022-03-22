@@ -1,26 +1,33 @@
 const fs = require('fs');
 
-const { uploadFile } = require('../src/ensembl');
-const { ApiConnection } = require('../src/graphkb');
-const { request } = require('../src/util');
+const { uploadFile } = require('../../src/ensembl');
+const { ApiConnection } = require('../../src/graphkb');
+const { request } = require('../../src/util');
 
-// Module we want to mock (corresponding file needed in '../src/__mock__' folder)
-// to avoid real http request on any REST API
-jest.mock('../src/util');
+// Mock the request function from utility module in order to avoid real http requests
+jest.mock('../../src/util.js', () => {
+    const { request: mockFunction } = require('../../src/__mocks__/util.request');
+    const originalModule = jest.requireActual('../../src/util.js');
+    return {
+        ...originalModule,
+        request: mockFunction,
+    };
+});
 
-// LOADING MOCKING DATASET
-// Json file containing all expected http request and responses to request() in ./src/util.js.
-// (The mock data need to be created first by spying on the method in a real environment
-// using ./src/__mock__/util_request_createMockDataset_ensembl.js)
-const mockFilename = `${process.cwd()}/test/data/ensembl_ENSG00000139618_mockDataset.json`;
-const mockDataset = JSON.parse(fs.readFileSync(mockFilename, { encoding: 'utf-8', flag: 'r' }));
-const HOSTNAME = 'bcgsc.ca'; // Must be the same hostname as in mock dataset
+// Mock dataset filepath will be passed to mock function via a global variable
+global.mockFile = '';
 
 describe('uploadFile in Ensembl loader', () => {
+    // LOAD MOCK DATASET
+    // Json file containing all expected http request and responses to utility request function
+    // (The mock data need to be created first by spying on the function in a real environment)
+    global.mockFile = `${process.cwd()}/test/data/ensembl_ENSG00000139618_mockDataset.json`;
+    const mockDataset = JSON.parse(fs.readFileSync(global.mockFile, { encoding: 'utf-8', flag: 'r' }));
+    const HOSTNAME = 'bcgsc.ca'; // Must be the same hostname as in mock dataset
+
     // TEST COUNTING NB OF EACH QUERY TYPE TO GRAPHKB API
     test('querying the graphKb Api', async () => {
-        // Main uploadFile() call for all tests
-        // Needs to be inside an async function
+        // Main uploadFile() call for all tests (needs to be inside an async function)
         const conn = new ApiConnection(`http://${HOSTNAME}:8080/api`);
         const filename = `${process.cwd()}/test/data/ensembl_biomart_export_ENSG00000139618.tsv`;
         const opt = { conn, filename };
@@ -104,7 +111,7 @@ describe('uploadFile in Ensembl loader', () => {
             (record.request.url === `http://${HOSTNAME}:8080/api/sources`)
             && (record.request.body.name === source)
         ))[0].response.result['@rid'];
-        // Filter request() calls by gene infos
+        // Filter request() calls by gene feature infos
         const calls = request.mock.calls.filter((record) => (
             (record[0].uri === `http://${HOSTNAME}:8080/api/features`)
             && (record[0].body.biotype === 'gene')
@@ -134,7 +141,7 @@ describe('uploadFile in Ensembl loader', () => {
             (record.request.url === `http://${HOSTNAME}:8080/api/sources`)
             && (record.request.body.name === source)
         ))[0].response.result['@rid'];
-        // Filter request() calls by transcript infos
+        // Filter request() calls by transcript feature infos
         const calls = request.mock.calls.filter((record) => (
             (record[0].uri === `http://${HOSTNAME}:8080/api/features`)
             && (record[0].body.biotype === 'transcript')
