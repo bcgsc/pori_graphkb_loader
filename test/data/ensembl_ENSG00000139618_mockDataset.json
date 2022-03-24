@@ -8,8 +8,8 @@
       }
     },
     "response": {
-      "kbToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NDY3OTk1NDEsInVzZXIiOnsiY3JlYXRlZEF0IjoxNjQ2NzYyOTU2MTcyLCJuYW1lIjoibWxlbWlldXgiLCJncm91cHMiOlt7ImNyZWF0ZWRBdCI6MTY0Njc2Mjk1NjA5MywicGVybWlzc2lvbnMiOnsiTGljZW5zZUFncmVlbWVudCI6MTUsIlRoZXJhcHkiOjE1LCJWb2NhYnVsYXJ5IjoxNSwiQmlvbWFya2VyIjo0LCJDYXRlZ29yeVZhcmlhbnQiOjE1LCJVc2VyIjoxNSwiT250b2xvZ3kiOjQsIkRpc2Vhc2UiOjE1LCJFIjo0LCJQYXRod2F5IjoxNSwiSW5mZXJzIjoxMywiQW5hdG9taWNhbEVudGl0eSI6MTUsIlN1YkNsYXNzT2YiOjEzLCJGZWF0dXJlIjoxNSwiU291cmNlIjoxNSwiVXNlckdyb3VwIjoxNSwiQWxpYXNPZiI6MTMsIk9wcG9zaXRlT2YiOjEzLCJWIjo0LCJFdmlkZW5jZSI6NCwiRWxlbWVudE9mIjoxMywiR2VuZXJhbGl6YXRpb25PZiI6MTMsIlBvc2l0aW9uYWxWYXJpYW50IjoxNSwiU3RhdGVtZW50IjoxNSwiQWJzdHJhY3QiOjE1LCJQdWJsaWNhdGlvbiI6MTUsIkNyb3NzUmVmZXJlbmNlT2YiOjEzLCJUYXJnZXRPZiI6MTMsIkNhdGFsb2d1ZVZhcmlhbnQiOjE1LCJWYXJpYW50Ijo0LCJEZXByZWNhdGVkQnkiOjEzLCJTaWduYXR1cmUiOjE1LCJDbGluaWNhbFRyaWFsIjoxNSwiQ3VyYXRlZENvbnRlbnQiOjE1LCJDaXRlcyI6MTMsIkV2aWRlbmNlTGV2ZWwiOjE1LCJAY2xhc3MiOiJQZXJtaXNzaW9ucyJ9LCJuYW1lIjoiYWRtaW4iLCJ1dWlkIjoiZjc1ZWRiYWItN2Y5Ny00YjlkLTkxZmYtMjA3YjhiMDM4MGY5IiwiQHJpZCI6IiMyNTowIiwiQGNsYXNzIjoiVXNlckdyb3VwIn1dLCJzaWduZWRMaWNlbnNlQXQiOjE2NDY3NjI5NTYxNjgsInV1aWQiOiIyZjEzMjNlOC1kMzNlLTQwMzctOTFmZC1kYjEzMzUxMzM5NWUiLCJAcmlkIjoiIzMyOjAiLCJAdmVyc2lvbiI6MSwiQGNsYXNzIjoiVXNlciJ9LCJpYXQiOjE2NDY3NjM1NDF9.uoYBYFTytsbhXjUmmDxq74kvNr2uwQqUGBcBQs4v8nc",
-      "keyCloakToken": "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJqY2tZRWVpYVVLTTFKbHJ2bzVsY2NWbzNYTzVNU0tha09UbjY2OE5icjE4In0.eyJqdGkiOiIxNDcyOGQ2Mi1jODhjLTQ4N2YtYWY5Yi1lYWUzOTM3ZTgzNDgiLCJleHAiOjE2NDY3OTk1NDEsIm5iZiI6MCwiaWF0IjoxNjQ2NzYzNTQxLCJpc3MiOiJodHRwOi8va2V5Y2xvYWtkZXYuYmNnc2MuY2EvYXV0aC9yZWFsbXMvR1NDIiwiYXVkIjpbImxpbXMiLCJhY2NvdW50Il0sInN1YiI6IjAwZjQ0NjE2LWE2MTQtNGJmOS04NWZlLTdiNjNlOTE0ODQ0NCIsInR5cCI6IkJlYXJlciIsImF6cCI6IkdyYXBoS0IiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiJhYWVjYjdkNC1kMzFlLTRiMDgtOWJlMi1hOTM2YTliYTRlMmYiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHA6Ly9jcmVpc2xlMDQucGhhZ2UuYmNnc2MuY2E6MzAwMCIsImh0dHA6Ly9lbGV3aXMwMi5waGFnZS5iY2dzYy5jYTozMDAwIiwiaHR0cDovL2xvY2FsaG9zdDo1MDAwIiwiaHR0cDovLzAuMC4wLjA6MzAwMCIsImh0dHA6Ly9sb2NhbGhvc3Q6MzAwMSIsImh0dHA6Ly9sb2NhbGhvc3Q6ODAwMCIsImh0dHA6Ly9sb2NhbGhvc3Q6MzAwMCIsImh0dHA6Ly9ncmFwaGtiZGV2LmJjZ3NjLmNhOjUwMDAiLCJodHRwOi8vYXJlaXNsZTAzLnBoYWdlLmJjZ3NjLmNhOjMwMDAiLCJodHRwczovL2dyYXBoa2JzdGFnaW5nLmJjZ3NjLmNhIiwiaHR0cDovL2phY2xpMDEucGhhZ2UuYmNnc2MuY2E6MzAwMCIsImh0dHA6Ly9sb2NhbGhvc3Q6ODA4MCIsImh0dHBzOi8vZ3JhcGhrYmRldi5iY2dzYy5jYSIsImh0dHA6Ly9hZGF2aWVzMDIucGhhZ2UuYmNnc2MuY2E6MzAwMCIsImh0dHA6Ly9tbGVtaWV1eDAxLnBoYWdlLmJjZ3NjLmNhOjMwMDAiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbInBvZ19wb3NpeCIsInB5bGltcyIsIm9mZmxpbmVfYWNjZXNzIiwiSVBSIiwidW1hX2F1dGhvcml6YXRpb24iLCJHcmFwaEtCIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsibGltcyI6eyJyb2xlcyI6WyJpbnRlcm5hbF9sZGFwIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJNYXRoaWV1IExlbWlldXggTGVtaWV1eCIsInByZWZlcnJlZF91c2VybmFtZSI6Im1sZW1pZXV4IiwiZ2l2ZW5fbmFtZSI6Ik1hdGhpZXUgTGVtaWV1eCIsImZhbWlseV9uYW1lIjoiTGVtaWV1eCIsImVtYWlsIjoibWxlbWlldXhAYmNnc2MuY2EifQ.i5SOexJ5OiPaQVS95GvJAvrfxwLkHGi30Kn31T-dBongXpFvmpngUfoDI1evHV4i2fBfNQL7B1t4P8iewBVNJ2SrBqWLqJLj3xGTZcRvErb_JL_-Dysx6h3sHv3cPa4al3hSjrlCFSQ7jbqLwRGoXWGGJ_bknUzZCNoayGuXbFDjxtTktNpzKJoR4_YIs6srFKXExtZbmHNqjm4ntwKrzzjunUL5ub94TZtbz5fpB2gzuLaRwIKt1MnGjZ-ETzWPcpavsz2B6t0-3YIWDwLcK5qwhzz0q2uTKeo7avbJW0jFFB3l-iBGFOVhs0QbeKSC8WHy_yyOSfgAvZfnCrpc-A"
+      "kbToken": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJleHAiOjE2NDgxNzQ1MDcsInVzZXIiOnsiY3JlYXRlZEF0IjoxNjQ4MTM4NDg2ODE1LCJuYW1lIjoibWxlbWlldXgiLCJncm91cHMiOlt7ImNyZWF0ZWRBdCI6MTY0ODEzODQ4Njc0NCwicGVybWlzc2lvbnMiOnsiTGljZW5zZUFncmVlbWVudCI6MTUsIlRoZXJhcHkiOjE1LCJWb2NhYnVsYXJ5IjoxNSwiQmlvbWFya2VyIjo0LCJDYXRlZ29yeVZhcmlhbnQiOjE1LCJVc2VyIjoxNSwiT250b2xvZ3kiOjQsIkRpc2Vhc2UiOjE1LCJFIjo0LCJQYXRod2F5IjoxNSwiSW5mZXJzIjoxMywiQW5hdG9taWNhbEVudGl0eSI6MTUsIlN1YkNsYXNzT2YiOjEzLCJGZWF0dXJlIjoxNSwiU291cmNlIjoxNSwiVXNlckdyb3VwIjoxNSwiQWxpYXNPZiI6MTMsIk9wcG9zaXRlT2YiOjEzLCJWIjo0LCJFdmlkZW5jZSI6NCwiRWxlbWVudE9mIjoxMywiR2VuZXJhbGl6YXRpb25PZiI6MTMsIlBvc2l0aW9uYWxWYXJpYW50IjoxNSwiU3RhdGVtZW50IjoxNSwiQWJzdHJhY3QiOjE1LCJQdWJsaWNhdGlvbiI6MTUsIkNyb3NzUmVmZXJlbmNlT2YiOjEzLCJUYXJnZXRPZiI6MTMsIkNhdGFsb2d1ZVZhcmlhbnQiOjE1LCJWYXJpYW50Ijo0LCJEZXByZWNhdGVkQnkiOjEzLCJTaWduYXR1cmUiOjE1LCJDbGluaWNhbFRyaWFsIjoxNSwiQ3VyYXRlZENvbnRlbnQiOjE1LCJDaXRlcyI6MTMsIkV2aWRlbmNlTGV2ZWwiOjE1LCJAY2xhc3MiOiJQZXJtaXNzaW9ucyJ9LCJuYW1lIjoiYWRtaW4iLCJ1dWlkIjoiMDUxY2UzOWQtZDBlNi00MzQ4LWI2ZmYtOTBjMTg1MjdjOTVkIiwiQHJpZCI6IiMyNTowIiwiQGNsYXNzIjoiVXNlckdyb3VwIn1dLCJzaWduZWRMaWNlbnNlQXQiOjE2NDgxMzg0ODY4MTIsInV1aWQiOiIwNTNjZTBlYy00ZjBjLTQxYmEtYmY0Mi0xNGRkNWE5NjE3ZTYiLCJAcmlkIjoiIzMyOjAiLCJAdmVyc2lvbiI6MSwiQGNsYXNzIjoiVXNlciJ9LCJpYXQiOjE2NDgxMzg1MDd9.eY_0Dte268QhBEmK9ySQGfr7akTIpi3f0oRLaXtKAUU",
+      "keyCloakToken": "eyJhbGciOiJSUzI1NiIsInR5cCIgOiAiSldUIiwia2lkIiA6ICJqY2tZRWVpYVVLTTFKbHJ2bzVsY2NWbzNYTzVNU0tha09UbjY2OE5icjE4In0.eyJqdGkiOiJmMGFiYjQzOS01Y2ExLTQwODEtYjVjYi1lMjY0ODQzNjJlNTUiLCJleHAiOjE2NDgxNzQ1MDcsIm5iZiI6MCwiaWF0IjoxNjQ4MTM4NTA3LCJpc3MiOiJodHRwOi8va2V5Y2xvYWtkZXYuYmNnc2MuY2EvYXV0aC9yZWFsbXMvR1NDIiwiYXVkIjpbImxpbXMiLCJhY2NvdW50Il0sInN1YiI6IjAwZjQ0NjE2LWE2MTQtNGJmOS04NWZlLTdiNjNlOTE0ODQ0NCIsInR5cCI6IkJlYXJlciIsImF6cCI6IkdyYXBoS0IiLCJhdXRoX3RpbWUiOjAsInNlc3Npb25fc3RhdGUiOiIzMTMyNTIwYy03M2EyLTQ2MDYtODBlNy0xZGQ4YjE0ZjYzODQiLCJhY3IiOiIxIiwiYWxsb3dlZC1vcmlnaW5zIjpbImh0dHA6Ly9jcmVpc2xlMDQucGhhZ2UuYmNnc2MuY2E6MzAwMCIsImh0dHA6Ly9lbGV3aXMwMi5waGFnZS5iY2dzYy5jYTozMDAwIiwiaHR0cDovL2xvY2FsaG9zdDo1MDAwIiwiaHR0cDovLzAuMC4wLjA6MzAwMCIsImh0dHA6Ly9sb2NhbGhvc3Q6MzAwMSIsImh0dHA6Ly9sb2NhbGhvc3Q6ODAwMCIsImh0dHA6Ly9sb2NhbGhvc3Q6MzAwMCIsImh0dHA6Ly9ncmFwaGtiZGV2LmJjZ3NjLmNhOjUwMDAiLCJodHRwOi8vYXJlaXNsZTAzLnBoYWdlLmJjZ3NjLmNhOjMwMDAiLCJodHRwczovL2dyYXBoa2JzdGFnaW5nLmJjZ3NjLmNhIiwiaHR0cDovL2phY2xpMDEucGhhZ2UuYmNnc2MuY2E6MzAwMCIsImh0dHA6Ly9sb2NhbGhvc3Q6ODA4MCIsImh0dHBzOi8vZ3JhcGhrYmRldi5iY2dzYy5jYSIsImh0dHA6Ly9hZGF2aWVzMDIucGhhZ2UuYmNnc2MuY2E6MzAwMCIsImh0dHA6Ly9tbGVtaWV1eDAxLnBoYWdlLmJjZ3NjLmNhOjMwMDAiXSwicmVhbG1fYWNjZXNzIjp7InJvbGVzIjpbInBvZ19wb3NpeCIsInB5bGltcyIsIm9mZmxpbmVfYWNjZXNzIiwiSVBSIiwidW1hX2F1dGhvcml6YXRpb24iLCJHcmFwaEtCIl19LCJyZXNvdXJjZV9hY2Nlc3MiOnsibGltcyI6eyJyb2xlcyI6WyJpbnRlcm5hbF9sZGFwIl19LCJhY2NvdW50Ijp7InJvbGVzIjpbIm1hbmFnZS1hY2NvdW50IiwibWFuYWdlLWFjY291bnQtbGlua3MiLCJ2aWV3LXByb2ZpbGUiXX19LCJzY29wZSI6ImVtYWlsIHByb2ZpbGUiLCJlbWFpbF92ZXJpZmllZCI6ZmFsc2UsIm5hbWUiOiJNYXRoaWV1IExlbWlldXggTGVtaWV1eCIsInByZWZlcnJlZF91c2VybmFtZSI6Im1sZW1pZXV4IiwiZ2l2ZW5fbmFtZSI6Ik1hdGhpZXUgTGVtaWV1eCIsImZhbWlseV9uYW1lIjoiTGVtaWV1eCIsImVtYWlsIjoibWxlbWlldXhAYmNnc2MuY2EifQ.vennqLRl_-j8ClAk7dC-lMWMD9zg9nAOHf2fcpmMCAO0T5tcur0Ene5qfHPpLjeM9eme7-XGamFKObQ9UFJj_fDg7ExMhxyZakpzIAiiNSMKOXfpCLRU7i2OzlKrVsze5xRDKvyxRNyOoZ-2tPJHWcLla8fQZbCiH1zo70cva0Vd34nJd8urmlQoxOtKf8km3v7tzAOsuzKhghZtPwp0IbEpMVepjScpXMuzozjXPkVG7xmLwbwVMcxHaVLjUVRImQRQIG0uHxEc2PIATFk2CZWsaxBoHKLNIWqzMx9rqJwl5JOHJVKsvYGu7Ciil_rMrbWqCfmzxEyLpLVYHgBWzw"
     }
   },
   {
@@ -53,9 +53,9 @@
         "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "1ca15b77-f1f0-4ec9-aaa7-649ffeb7eb19",
-        "createdAt": 1646763541515,
-        "updatedAt": 1646763541515,
+        "uuid": "937692e1-ca69-4bdf-af81-a8d4cb96c0c3",
+        "createdAt": 1648138507754,
+        "updatedAt": 1648138507755,
         "@rid": "#41:0",
         "@version": 1
       }
@@ -103,9 +103,9 @@
         "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "24780299-f0ef-4b4d-aef3-2d14107c72b6",
-        "createdAt": 1646763541546,
-        "updatedAt": 1646763541546,
+        "uuid": "17e96680-52ce-456d-93a0-7eabe31b31f1",
+        "createdAt": 1648138507780,
+        "updatedAt": 1648138507780,
         "@rid": "#42:0",
         "@version": 1
       }
@@ -513,31 +513,31 @@
       },
       "result": [
         {
-          "createdAt": 1646763541546,
+          "createdAt": 1648138507780,
           "updatedBy": {
-            "createdAt": 1646762956172,
-            "lastLoginAt": 1646763541478,
+            "createdAt": 1648138486815,
+            "lastLoginAt": 1648138507725,
             "name": "mlemieux",
             "groups": [
               "#25:0"
             ],
-            "signedLicenseAt": 1646762956168,
-            "firstLoginAt": 1646763541478,
-            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "signedLicenseAt": 1648138486812,
+            "firstLoginAt": 1648138507725,
+            "uuid": "053ce0ec-4f0c-41ba-bf42-14dd5a9617e6",
             "loginCount": 1,
             "@rid": "#32:0",
             "@class": "User"
           },
           "createdBy": {
-            "createdAt": 1646762956172,
-            "lastLoginAt": 1646763541478,
+            "createdAt": 1648138486815,
+            "lastLoginAt": 1648138507725,
             "name": "mlemieux",
             "groups": [
               "#25:0"
             ],
-            "signedLicenseAt": 1646762956168,
-            "firstLoginAt": 1646763541478,
-            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "signedLicenseAt": 1648138486812,
+            "firstLoginAt": 1648138507725,
+            "uuid": "053ce0ec-4f0c-41ba-bf42-14dd5a9617e6",
             "loginCount": 1,
             "@rid": "#32:0",
             "@class": "User"
@@ -547,10 +547,10 @@
           "name": "refseq",
           "description": "a comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.",
           "sort": 99999,
-          "uuid": "24780299-f0ef-4b4d-aef3-2d14107c72b6",
+          "uuid": "17e96680-52ce-456d-93a0-7eabe31b31f1",
           "url": "https://www.ncbi.nlm.nih.gov/refseq",
           "longName": "refseq: ncbi reference sequence database",
-          "updatedAt": 1646763541546,
+          "updatedAt": 1648138507780,
           "@rid": "#42:0",
           "@class": "Source"
         }
@@ -608,9 +608,9 @@
         "source": "#42:0",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "1a7d450b-c922-4722-994a-0b70d431e117",
-        "createdAt": 1646763542168,
-        "updatedAt": 1646763542168,
+        "uuid": "88e92eb0-2926-4612-bc81-6a0e2ee6b227",
+        "createdAt": 1648138508396,
+        "updatedAt": 1648138508396,
         "name": "nm_000059",
         "@rid": "#137:0",
         "@version": 1
@@ -638,9 +638,9 @@
         "sourceIdVersion": "17",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "67908828-1b5d-43e6-a261-b3af1be35880",
-        "createdAt": 1646763542208,
-        "updatedAt": 1646763542208,
+        "uuid": "0c770c17-dd27-4693-a963-3749ecc2287e",
+        "createdAt": 1648138508429,
+        "updatedAt": 1648138508429,
         "name": "ensg00000139618",
         "displayName": "ensg00000139618",
         "@rid": "#138:0",
@@ -669,9 +669,9 @@
         "sourceIdVersion": null,
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "1373e4f7-e952-4a44-8602-615e77115623",
-        "createdAt": 1646763542306,
-        "updatedAt": 1646763542306,
+        "uuid": "cf741a01-173d-4c9f-9abb-8aa8401d7d97",
+        "createdAt": 1648138508449,
+        "updatedAt": 1648138508450,
         "name": "ensg00000139618",
         "displayName": "ensg00000139618",
         "@rid": "#139:0",
@@ -695,8 +695,8 @@
         "in": "#138:0",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "00041b46-d8c4-467d-984c-ba0bb8d3c44e",
-        "createdAt": 1646763542331,
+        "uuid": "10d19e31-6e8a-425d-8b7f-1d7a303ff332",
+        "createdAt": 1648138508469,
         "@rid": "#97:0",
         "@version": 1
       }
@@ -723,9 +723,9 @@
         "sourceIdVersion": "6",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "091df755-97ad-4395-9ed0-f897a89ac858",
-        "createdAt": 1646763542357,
-        "updatedAt": 1646763542357,
+        "uuid": "b3f3f075-f23c-4687-a3c0-45324aab5a00",
+        "createdAt": 1648138508491,
+        "updatedAt": 1648138508491,
         "name": "enst00000544455",
         "displayName": "enst00000544455",
         "@rid": "#140:0",
@@ -754,9 +754,9 @@
         "sourceIdVersion": null,
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "59c1e5ca-db21-405d-b604-f5f03c5a224f",
-        "createdAt": 1646763542381,
-        "updatedAt": 1646763542381,
+        "uuid": "d4d729cb-7018-4467-8421-5c6517420456",
+        "createdAt": 1648138508510,
+        "updatedAt": 1648138508510,
         "name": "enst00000544455",
         "displayName": "enst00000544455",
         "@rid": "#137:1",
@@ -780,8 +780,8 @@
         "in": "#140:0",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "998c9c0e-3658-4793-8cf6-8860095eb287",
-        "createdAt": 1646763542403,
+        "uuid": "a9251cd0-5136-4802-bf00-6cea63c54102",
+        "createdAt": 1648138508530,
         "@rid": "#98:0",
         "@version": 1
       }
@@ -803,8 +803,8 @@
         "in": "#139:0",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "7204d8b7-2893-4819-9dba-8ec832893114",
-        "createdAt": 1646763542429,
+        "uuid": "fc6d598e-8a68-4a73-8d4b-ccf4af88ebc4",
+        "createdAt": 1648138508551,
         "@rid": "#93:0",
         "@version": 1
       }
@@ -826,8 +826,8 @@
         "in": "#138:0",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "5bf2b528-6d40-4bb2-a604-60abfa6d75a4",
-        "createdAt": 1646763542451,
+        "uuid": "0a09753d-f3bf-4188-b97b-bd8990ef28e1",
+        "createdAt": 1648138508572,
         "@rid": "#94:0",
         "@version": 1
       }
@@ -963,8 +963,8 @@
               "NM_000059.4"
             ],
             "gencc": "HGNC:1101",
-            "uuid": "fc605c0a-7495-429d-b419-24e4b52f26df",
-            "_version_": 1726716858346766300
+            "uuid": "b5033c5d-9944-4a1d-9502-328342977b37",
+            "_version_": 1726893843779944400
           }
         ]
       }
@@ -1013,9 +1013,9 @@
         "usage": "https://www.ebi.ac.uk/about/terms-of-use",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "7c59fbc7-022d-42aa-9dbc-981bff8085a3",
-        "createdAt": 1646763548225,
-        "updatedAt": 1646763548225,
+        "uuid": "a98ecedd-5339-41e5-8512-68267d66dd7f",
+        "createdAt": 1648138514394,
+        "updatedAt": 1648138514394,
         "@rid": "#43:0",
         "@version": 1
       }
@@ -1038,31 +1038,31 @@
       },
       "result": [
         {
-          "createdAt": 1646763541515,
+          "createdAt": 1648138507754,
           "updatedBy": {
-            "createdAt": 1646762956172,
-            "lastLoginAt": 1646763541478,
+            "createdAt": 1648138486815,
+            "lastLoginAt": 1648138507725,
             "name": "mlemieux",
             "groups": [
               "#25:0"
             ],
-            "signedLicenseAt": 1646762956168,
-            "firstLoginAt": 1646763541478,
-            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "signedLicenseAt": 1648138486812,
+            "firstLoginAt": 1648138507725,
+            "uuid": "053ce0ec-4f0c-41ba-bf42-14dd5a9617e6",
             "loginCount": 1,
             "@rid": "#32:0",
             "@class": "User"
           },
           "createdBy": {
-            "createdAt": 1646762956172,
-            "lastLoginAt": 1646763541478,
+            "createdAt": 1648138486815,
+            "lastLoginAt": 1648138507725,
             "name": "mlemieux",
             "groups": [
               "#25:0"
             ],
-            "signedLicenseAt": 1646762956168,
-            "firstLoginAt": 1646763541478,
-            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "signedLicenseAt": 1648138486812,
+            "firstLoginAt": 1648138507725,
+            "uuid": "053ce0ec-4f0c-41ba-bf42-14dd5a9617e6",
             "loginCount": 1,
             "@rid": "#32:0",
             "@class": "User"
@@ -1072,9 +1072,9 @@
           "name": "ensembl",
           "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
           "sort": 3,
-          "uuid": "1ca15b77-f1f0-4ec9-aaa7-649ffeb7eb19",
+          "uuid": "937692e1-ca69-4bdf-af81-a8d4cb96c0c3",
           "url": "https://uswest.ensembl.org",
-          "updatedAt": 1646763541515,
+          "updatedAt": 1648138507755,
           "@rid": "#41:0",
           "@class": "Source"
         }
@@ -1143,9 +1143,9 @@
         "sourceIdVersion": "2021-05-26t00:00:00z",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "f8054cdc-3174-46f8-9921-8ce3a50058da",
-        "createdAt": 1646763548299,
-        "updatedAt": 1646763548299,
+        "uuid": "2a975ca8-a5e8-4161-8d90-450b03181b8b",
+        "createdAt": 1648138514458,
+        "updatedAt": 1648138514458,
         "@rid": "#138:1",
         "@version": 1
       }
@@ -1181,15 +1181,15 @@
           "biotype": "gene",
           "sourceId": "ensg00000139618",
           "updatedBy": {
-            "createdAt": 1646762956172,
-            "lastLoginAt": 1646763541478,
+            "createdAt": 1648138486815,
+            "lastLoginAt": 1648138507725,
             "name": "mlemieux",
             "groups": [
               "#25:0"
             ],
-            "signedLicenseAt": 1646762956168,
-            "firstLoginAt": 1646763541478,
-            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "signedLicenseAt": 1648138486812,
+            "firstLoginAt": 1648138507725,
+            "uuid": "053ce0ec-4f0c-41ba-bf42-14dd5a9617e6",
             "loginCount": 1,
             "@rid": "#32:0",
             "@class": "User"
@@ -1198,7 +1198,7 @@
           "deprecated": false,
           "sourceIdVersion": null,
           "source": {
-            "createdAt": 1646763541515,
+            "createdAt": 1648138507754,
             "updatedBy": "#32:0",
             "createdBy": "#32:0",
             "displayName": "Ensembl",
@@ -1206,35 +1206,35 @@
             "name": "ensembl",
             "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
             "sort": 3,
-            "uuid": "1ca15b77-f1f0-4ec9-aaa7-649ffeb7eb19",
+            "uuid": "937692e1-ca69-4bdf-af81-a8d4cb96c0c3",
             "url": "https://uswest.ensembl.org",
-            "updatedAt": 1646763541515,
+            "updatedAt": 1648138507755,
             "@rid": "#41:0",
             "@class": "Source"
           },
-          "uuid": "1373e4f7-e952-4a44-8602-615e77115623",
-          "createdAt": 1646763542306,
+          "uuid": "cf741a01-173d-4c9f-9abb-8aa8401d7d97",
+          "createdAt": 1648138508449,
           "createdBy": {
-            "createdAt": 1646762956172,
-            "lastLoginAt": 1646763541478,
+            "createdAt": 1648138486815,
+            "lastLoginAt": 1648138507725,
             "name": "mlemieux",
             "groups": [
               "#25:0"
             ],
-            "signedLicenseAt": 1646762956168,
-            "firstLoginAt": 1646763541478,
-            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "signedLicenseAt": 1648138486812,
+            "firstLoginAt": 1648138507725,
+            "uuid": "053ce0ec-4f0c-41ba-bf42-14dd5a9617e6",
             "loginCount": 1,
             "@rid": "#32:0",
             "@class": "User"
           },
           "in_ElementOf": [
             {
-              "createdAt": 1646763542429,
+              "createdAt": 1648138508551,
               "in": "#139:0",
               "createdBy": "#32:0",
               "source": "#41:0",
-              "uuid": "7204d8b7-2893-4819-9dba-8ec832893114",
+              "uuid": "fc6d598e-8a68-4a73-8d4b-ccf4af88ebc4",
               "out": "#137:1",
               "@rid": "#93:0",
               "@class": "ElementOf"
@@ -1243,18 +1243,18 @@
           "name": "ensg00000139618",
           "out_GeneralizationOf": [
             {
-              "createdAt": 1646763542331,
+              "createdAt": 1648138508469,
               "in": "#138:0",
               "createdBy": "#32:0",
               "source": "#41:0",
-              "uuid": "00041b46-d8c4-467d-984c-ba0bb8d3c44e",
+              "uuid": "10d19e31-6e8a-425d-8b7f-1d7a303ff332",
               "out": "#139:0",
               "@rid": "#97:0",
               "@class": "GeneralizationOf"
             }
           ],
           "alias": false,
-          "updatedAt": 1646763542306,
+          "updatedAt": 1648138508450,
           "@rid": "#139:0",
           "@class": "Feature"
         },
@@ -1262,26 +1262,26 @@
           "biotype": "gene",
           "sourceId": "ensg00000139618",
           "updatedBy": {
-            "createdAt": 1646762956172,
-            "lastLoginAt": 1646763541478,
+            "createdAt": 1648138486815,
+            "lastLoginAt": 1648138507725,
             "name": "mlemieux",
             "groups": [
               "#25:0"
             ],
-            "signedLicenseAt": 1646762956168,
-            "firstLoginAt": 1646763541478,
-            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "signedLicenseAt": 1648138486812,
+            "firstLoginAt": 1648138507725,
+            "uuid": "053ce0ec-4f0c-41ba-bf42-14dd5a9617e6",
             "loginCount": 1,
             "@rid": "#32:0",
             "@class": "User"
           },
           "in_GeneralizationOf": [
             {
-              "createdAt": 1646763542331,
+              "createdAt": 1648138508469,
               "in": "#138:0",
               "createdBy": "#32:0",
               "source": "#41:0",
-              "uuid": "00041b46-d8c4-467d-984c-ba0bb8d3c44e",
+              "uuid": "10d19e31-6e8a-425d-8b7f-1d7a303ff332",
               "out": "#139:0",
               "@rid": "#97:0",
               "@class": "GeneralizationOf"
@@ -1291,7 +1291,7 @@
           "deprecated": false,
           "sourceIdVersion": "17",
           "source": {
-            "createdAt": 1646763541515,
+            "createdAt": 1648138507754,
             "updatedBy": "#32:0",
             "createdBy": "#32:0",
             "displayName": "Ensembl",
@@ -1299,35 +1299,35 @@
             "name": "ensembl",
             "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
             "sort": 3,
-            "uuid": "1ca15b77-f1f0-4ec9-aaa7-649ffeb7eb19",
+            "uuid": "937692e1-ca69-4bdf-af81-a8d4cb96c0c3",
             "url": "https://uswest.ensembl.org",
-            "updatedAt": 1646763541515,
+            "updatedAt": 1648138507755,
             "@rid": "#41:0",
             "@class": "Source"
           },
-          "uuid": "67908828-1b5d-43e6-a261-b3af1be35880",
-          "createdAt": 1646763542208,
+          "uuid": "0c770c17-dd27-4693-a963-3749ecc2287e",
+          "createdAt": 1648138508429,
           "createdBy": {
-            "createdAt": 1646762956172,
-            "lastLoginAt": 1646763541478,
+            "createdAt": 1648138486815,
+            "lastLoginAt": 1648138507725,
             "name": "mlemieux",
             "groups": [
               "#25:0"
             ],
-            "signedLicenseAt": 1646762956168,
-            "firstLoginAt": 1646763541478,
-            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "signedLicenseAt": 1648138486812,
+            "firstLoginAt": 1648138507725,
+            "uuid": "053ce0ec-4f0c-41ba-bf42-14dd5a9617e6",
             "loginCount": 1,
             "@rid": "#32:0",
             "@class": "User"
           },
           "in_ElementOf": [
             {
-              "createdAt": 1646763542451,
+              "createdAt": 1648138508572,
               "in": "#138:0",
               "createdBy": "#32:0",
               "source": "#41:0",
-              "uuid": "5bf2b528-6d40-4bb2-a604-60abfa6d75a4",
+              "uuid": "0a09753d-f3bf-4188-b97b-bd8990ef28e1",
               "out": "#140:0",
               "@rid": "#94:0",
               "@class": "ElementOf"
@@ -1335,7 +1335,7 @@
           ],
           "name": "ensg00000139618",
           "alias": false,
-          "updatedAt": 1646763542208,
+          "updatedAt": 1648138508429,
           "@rid": "#138:0",
           "@class": "Feature"
         }
@@ -1352,7 +1352,7 @@
         "displayName": "FANCD1",
         "name": "FANCD1",
         "source": "#43:0",
-        "sourceId": "hgnc:1101"
+        "sourceId": "HGNC:1101"
       }
     },
     "response": {
@@ -1368,9 +1368,9 @@
         "sourceId": "hgnc:1101",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "57cffbd1-7146-42a6-b6d5-0ae1b37e7ba1",
-        "createdAt": 1646763548355,
-        "updatedAt": 1646763548356,
+        "uuid": "d0a0bd17-3920-4e21-bbe7-3ea4c4b984ec",
+        "createdAt": 1648138514509,
+        "updatedAt": 1648138514509,
         "@rid": "#139:1",
         "@version": 1
       }
@@ -1392,9 +1392,9 @@
         "in": "#138:1",
         "source": "#43:0",
         "createdBy": "#32:0",
-        "uuid": "db617c57-d83c-4acb-bf76-e089f9efc64f",
-        "createdAt": 1646763548378,
-        "@rid": "#81:0",
+        "uuid": "c5c95e20-5666-4461-bf40-9ed0b5cea4ce",
+        "createdAt": 1648138514534,
+        "@rid": "#89:0",
         "@version": 1
       }
     }
@@ -1409,7 +1409,7 @@
         "displayName": "FACD",
         "name": "FACD",
         "source": "#43:0",
-        "sourceId": "hgnc:1101"
+        "sourceId": "HGNC:1101"
       }
     },
     "response": {
@@ -1425,9 +1425,9 @@
         "sourceId": "hgnc:1101",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "b12de67b-abbc-4302-bc1e-1a0d92c38ec3",
-        "createdAt": 1646763548408,
-        "updatedAt": 1646763548408,
+        "uuid": "b98bec51-8f32-4a20-9416-7e3ea838fb42",
+        "createdAt": 1648138514558,
+        "updatedAt": 1648138514559,
         "@rid": "#140:1",
         "@version": 1
       }
@@ -1449,9 +1449,9 @@
         "in": "#138:1",
         "source": "#43:0",
         "createdBy": "#32:0",
-        "uuid": "2d3b52c1-72a6-40de-a69a-08dcb8a5178c",
-        "createdAt": 1646763548432,
-        "@rid": "#82:0",
+        "uuid": "7bf879bd-d48e-4441-af49-943262f044b9",
+        "createdAt": 1648138514580,
+        "@rid": "#90:0",
         "@version": 1
       }
     }
@@ -1466,7 +1466,7 @@
         "displayName": "FANCD",
         "name": "FANCD",
         "source": "#43:0",
-        "sourceId": "hgnc:1101"
+        "sourceId": "HGNC:1101"
       }
     },
     "response": {
@@ -1482,9 +1482,9 @@
         "sourceId": "hgnc:1101",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "1ad3c1e8-661b-47f8-8169-b117f457eec1",
-        "createdAt": 1646763548458,
-        "updatedAt": 1646763548458,
+        "uuid": "7a8b743c-c721-4ed3-97a4-cedc5b8c15fb",
+        "createdAt": 1648138514599,
+        "updatedAt": 1648138514599,
         "@rid": "#137:2",
         "@version": 1
       }
@@ -1506,9 +1506,233 @@
         "in": "#138:1",
         "source": "#43:0",
         "createdBy": "#32:0",
-        "uuid": "5caafe77-dd20-40c1-8112-867619961328",
-        "createdAt": 1646763548479,
-        "@rid": "#83:0",
+        "uuid": "d2d4954c-496f-46cc-9bb2-2df3270916fb",
+        "createdAt": 1648138514617,
+        "@rid": "#91:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FAD",
+        "name": "FAD",
+        "source": "#43:0",
+        "sourceId": "HGNC:1101"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FAD",
+        "name": "fad",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "faa47927-ae7c-49f8-bed2-6e1042dcc6cc",
+        "createdAt": 1648138514635,
+        "updatedAt": 1648138514635,
+        "@rid": "#138:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/aliasof",
+      "body": {
+        "in": "#138:1",
+        "out": "#138:2",
+        "source": "#43:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "AliasOf",
+        "out": "#138:2",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "86e591c1-9014-4f46-b4b8-a6566293cce9",
+        "createdAt": 1648138514653,
+        "@rid": "#77:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FAD1",
+        "name": "FAD1",
+        "source": "#43:0",
+        "sourceId": "HGNC:1101"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FAD1",
+        "name": "fad1",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "87a1b097-131c-490b-bb8b-d8f211d65970",
+        "createdAt": 1648138514671,
+        "updatedAt": 1648138514671,
+        "@rid": "#139:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/aliasof",
+      "body": {
+        "in": "#138:1",
+        "out": "#139:2",
+        "source": "#43:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "AliasOf",
+        "out": "#139:2",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "4f3a4af4-49f6-48f6-b9c4-3aeca6d7b88c",
+        "createdAt": 1648138514692,
+        "@rid": "#78:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "BRCC2",
+        "name": "BRCC2",
+        "source": "#43:0",
+        "sourceId": "HGNC:1101"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "BRCC2",
+        "name": "brcc2",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "a207903a-588a-40f6-9447-154838e73d91",
+        "createdAt": 1648138514705,
+        "updatedAt": 1648138514705,
+        "@rid": "#140:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/aliasof",
+      "body": {
+        "in": "#138:1",
+        "out": "#140:2",
+        "source": "#43:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "AliasOf",
+        "out": "#140:2",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "89dacd99-7407-4b36-b00f-deedb3998c12",
+        "createdAt": 1648138514719,
+        "@rid": "#79:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/features",
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "XRCC11",
+        "name": "XRCC11",
+        "source": "#43:0",
+        "sourceId": "HGNC:1101"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "XRCC11",
+        "name": "xrcc11",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "2f96a1d6-adfd-4220-b7f3-572cc73547dc",
+        "createdAt": 1648138514731,
+        "updatedAt": 1648138514731,
+        "@rid": "#137:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "request": {
+      "url": "http://bcgsc.ca:8080/api/aliasof",
+      "body": {
+        "in": "#138:1",
+        "out": "#137:3",
+        "source": "#43:0"
+      }
+    },
+    "response": {
+      "result": {
+        "@class": "AliasOf",
+        "out": "#137:3",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "b5ae9f3b-fd9f-44ec-af2c-b2a9c04b5434",
+        "createdAt": 1648138514741,
+        "@rid": "#80:0",
         "@version": 1
       }
     }
@@ -1549,7 +1773,7 @@
               "exoncount": 27
             }
           ],
-          "geneweight": 170786,
+          "geneweight": 171053,
           "summary": "Inherited mutations in BRCA1 and this gene, BRCA2, confer increased lifetime risk of developing breast or ovarian cancer. Both BRCA1 and BRCA2 are involved in maintenance of genome stability, specifically the homologous recombination pathway for double-strand DNA repair. The largest exon in both genes is exon 11, which harbors the most important and frequent mutations in breast cancer patients. The BRCA2 gene was found on chromosome 13q12.3 in human. The BRCA2 protein contains several copies of a 70 aa motif called the BRC motif, and these motifs mediate binding to the RAD51 recombinase which functions in DNA repair. BRCA2 is considered a tumor suppressor gene, as tumors with BRCA2 mutations generally exhibit loss of heterozygosity (LOH) of the wild-type allele. [provided by RefSeq, May 2020]",
           "chrsort": "13",
           "chrstart": 32315507,
@@ -1711,9 +1935,9 @@
         "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "77e4a8f0-8243-4cb6-bd62-f3af85d73cbe",
-        "createdAt": 1646763548904,
-        "updatedAt": 1646763548904,
+        "uuid": "1fb5bb85-50d8-41cb-9e2f-21534c14d734",
+        "createdAt": 1648138515201,
+        "updatedAt": 1648138515201,
         "displayName": "entrez gene",
         "@rid": "#44:0",
         "@version": 1
@@ -1777,10 +2001,10 @@
         "source": "#44:0",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "2077140c-934a-4823-b5cb-89e59c3704fe",
-        "createdAt": 1646763548942,
-        "updatedAt": 1646763548942,
-        "@rid": "#138:2",
+        "uuid": "3fa2c397-fc0f-4f72-a2bb-fbd5be754932",
+        "createdAt": 1648138515247,
+        "updatedAt": 1648138515248,
+        "@rid": "#138:3",
         "@version": 1
       }
     }
@@ -1789,7 +2013,7 @@
     "request": {
       "url": "http://bcgsc.ca:8080/api/crossreferenceof",
       "body": {
-        "in": "#138:2",
+        "in": "#138:3",
         "out": "#138:1",
         "source": "#43:0"
       }
@@ -1798,11 +2022,11 @@
       "result": {
         "@class": "CrossReferenceOf",
         "out": "#138:1",
-        "in": "#138:2",
+        "in": "#138:3",
         "source": "#43:0",
         "createdBy": "#32:0",
-        "uuid": "0feb4227-616f-4533-a690-e20d0231f509",
-        "createdAt": 1646763548955,
+        "uuid": "c8b8b099-f606-4de4-a66d-09d87eea3720",
+        "createdAt": 1648138515271,
         "@rid": "#85:0",
         "@version": 1
       }
@@ -1824,40 +2048,11 @@
         "in": "#138:1",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "f6df0668-6322-4b13-a6ac-de02aa39ad06",
-        "createdAt": 1646763548968,
+        "uuid": "149d65c2-9a7e-417c-ab99-005a37f66104",
+        "createdAt": 1648138515292,
         "@rid": "#86:0",
         "@version": 1
       }
-    }
-  },
-  {
-    "request": {
-      "url": "http://bcgsc.ca:8080/api/generalizationof",
-      "body": {
-        "in": "#138:0",
-        "out": "#139:0",
-        "source": "#41:0"
-      }
-    },
-    "response": {
-      "name": "RecordConflictError",
-      "data": {},
-      "previous": [],
-      "code": 5,
-      "identifier": 0,
-      "id": 1,
-      "type": "com.orientechnologies.orient.core.storage.ORecordDuplicatedException",
-      "hasMore": 0,
-      "message": "Cannot index record #99:0: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0\r\n\tDB name=\"test_mlemieux_07_03_2022\"",
-      "stacktrace": [
-        "RecordConflictError: Cannot index record #99:0: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0",
-        "DB name=\"test_mlemieux_07_03_2022\"",
-        "at new ErrorMixin (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/node_modules/@bcgsc-pori/graphkb-parser/src/error.js:32:19)",
-        "at new RecordConflictError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/error.js:16:1)",
-        "at wrapIfTypeError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/util.js:22:24)",
-        "at createEdge (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/create.js:84:15)"
-      ]
     }
   },
   {
@@ -1881,12 +2076,12 @@
         "sourceIdVersion": "6",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "1ff0d91b-d8ed-4b88-9a2f-d6d6587ed5ed",
-        "createdAt": 1646763549000,
-        "updatedAt": 1646763549000,
+        "uuid": "cd6570fb-3fb9-4b75-81da-46ed56f1a3c3",
+        "createdAt": 1648138515312,
+        "updatedAt": 1648138515312,
         "name": "enst00000530893",
         "displayName": "enst00000530893",
-        "@rid": "#139:2",
+        "@rid": "#139:3",
         "@version": 1
       }
     }
@@ -1912,12 +2107,12 @@
         "sourceIdVersion": null,
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "74163799-ac45-45a8-b9ab-b920c2f48be6",
-        "createdAt": 1646763549013,
-        "updatedAt": 1646763549013,
+        "uuid": "331128ef-09fb-4234-9a63-f2bd9e406aed",
+        "createdAt": 1648138515334,
+        "updatedAt": 1648138515334,
         "name": "enst00000530893",
         "displayName": "enst00000530893",
-        "@rid": "#140:2",
+        "@rid": "#140:3",
         "@version": 1
       }
     }
@@ -1926,21 +2121,21 @@
     "request": {
       "url": "http://bcgsc.ca:8080/api/generalizationof",
       "body": {
-        "in": "#139:2",
-        "out": "#140:2",
+        "in": "#139:3",
+        "out": "#140:3",
         "source": "#41:0"
       }
     },
     "response": {
       "result": {
         "@class": "GeneralizationOf",
-        "out": "#140:2",
-        "in": "#139:2",
+        "out": "#140:3",
+        "in": "#139:3",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "e15efbeb-b962-4f65-a267-1f37b5c7d318",
-        "createdAt": 1646763549025,
-        "@rid": "#100:0",
+        "uuid": "17f72e88-18cb-4600-a74f-427e9691d280",
+        "createdAt": 1648138515356,
+        "@rid": "#99:0",
         "@version": 1
       }
     }
@@ -1950,19 +2145,19 @@
       "url": "http://bcgsc.ca:8080/api/elementof",
       "body": {
         "in": "#139:0",
-        "out": "#140:2",
+        "out": "#140:3",
         "source": "#41:0"
       }
     },
     "response": {
       "result": {
         "@class": "ElementOf",
-        "out": "#140:2",
+        "out": "#140:3",
         "in": "#139:0",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "2a8082e4-5e3e-43a9-ae9f-3c15c336e9cd",
-        "createdAt": 1646763549038,
+        "uuid": "368aec13-2efe-44e2-a429-92c9e0015e1c",
+        "createdAt": 1648138515381,
         "@rid": "#95:0",
         "@version": 1
       }
@@ -1973,51 +2168,22 @@
       "url": "http://bcgsc.ca:8080/api/elementof",
       "body": {
         "in": "#138:0",
-        "out": "#139:2",
+        "out": "#139:3",
         "source": "#41:0"
       }
     },
     "response": {
       "result": {
         "@class": "ElementOf",
-        "out": "#139:2",
+        "out": "#139:3",
         "in": "#138:0",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "c43c8ed8-1541-4822-8672-9fa0b8088742",
-        "createdAt": 1646763549050,
+        "uuid": "b3c46b2a-0eae-4e85-873d-3984859f3e4a",
+        "createdAt": 1648138515404,
         "@rid": "#96:0",
         "@version": 1
       }
-    }
-  },
-  {
-    "request": {
-      "url": "http://bcgsc.ca:8080/api/generalizationof",
-      "body": {
-        "in": "#138:0",
-        "out": "#139:0",
-        "source": "#41:0"
-      }
-    },
-    "response": {
-      "name": "RecordConflictError",
-      "data": {},
-      "previous": [],
-      "code": 5,
-      "identifier": 0,
-      "id": 1,
-      "type": "com.orientechnologies.orient.core.storage.ORecordDuplicatedException",
-      "hasMore": 0,
-      "message": "Cannot index record #97:1: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0\r\n\tDB name=\"test_mlemieux_07_03_2022\"",
-      "stacktrace": [
-        "RecordConflictError: Cannot index record #97:1: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0",
-        "DB name=\"test_mlemieux_07_03_2022\"",
-        "at new ErrorMixin (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/node_modules/@bcgsc-pori/graphkb-parser/src/error.js:32:19)",
-        "at new RecordConflictError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/error.js:16:1)",
-        "at wrapIfTypeError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/util.js:22:24)",
-        "at createEdge (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/create.js:84:15)"
-      ]
     }
   },
   {
@@ -2041,12 +2207,12 @@
         "sourceIdVersion": "8",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "27db66a2-7b50-40cb-b31b-78422452ca80",
-        "createdAt": 1646763549091,
-        "updatedAt": 1646763549091,
+        "uuid": "9995a3b5-b395-4196-870e-68b4e7f78a18",
+        "createdAt": 1648138515425,
+        "updatedAt": 1648138515425,
         "name": "enst00000380152",
         "displayName": "enst00000380152",
-        "@rid": "#137:3",
+        "@rid": "#137:4",
         "@version": 1
       }
     }
@@ -2072,12 +2238,12 @@
         "sourceIdVersion": null,
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "7f0ebe9b-cd9a-4346-bf85-cf3ebbd3dc7d",
-        "createdAt": 1646763549114,
-        "updatedAt": 1646763549114,
+        "uuid": "63b2cef9-0d65-416f-82cf-0e342a38a4bb",
+        "createdAt": 1648138515468,
+        "updatedAt": 1648138515468,
         "name": "enst00000380152",
         "displayName": "enst00000380152",
-        "@rid": "#138:3",
+        "@rid": "#138:4",
         "@version": 1
       }
     }
@@ -2086,21 +2252,21 @@
     "request": {
       "url": "http://bcgsc.ca:8080/api/generalizationof",
       "body": {
-        "in": "#137:3",
-        "out": "#138:3",
+        "in": "#137:4",
+        "out": "#138:4",
         "source": "#41:0"
       }
     },
     "response": {
       "result": {
         "@class": "GeneralizationOf",
-        "out": "#138:3",
-        "in": "#137:3",
+        "out": "#138:4",
+        "in": "#137:4",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "fceeccdc-6ffb-4a5a-badb-d80997fbf78d",
-        "createdAt": 1646763549138,
-        "@rid": "#98:1",
+        "uuid": "435440f4-e9b8-4b1a-92e0-4ec59ecd490c",
+        "createdAt": 1648138515490,
+        "@rid": "#100:0",
         "@version": 1
       }
     }
@@ -2110,19 +2276,19 @@
       "url": "http://bcgsc.ca:8080/api/elementof",
       "body": {
         "in": "#139:0",
-        "out": "#138:3",
+        "out": "#138:4",
         "source": "#41:0"
       }
     },
     "response": {
       "result": {
         "@class": "ElementOf",
-        "out": "#138:3",
+        "out": "#138:4",
         "in": "#139:0",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "71fc0bb1-2ed4-4e08-a7e3-b7b375300706",
-        "createdAt": 1646763549158,
+        "uuid": "9d3e7a0c-fe16-4d13-8ecf-9e0de960cedb",
+        "createdAt": 1648138515513,
         "@rid": "#93:1",
         "@version": 1
       }
@@ -2133,19 +2299,19 @@
       "url": "http://bcgsc.ca:8080/api/elementof",
       "body": {
         "in": "#138:0",
-        "out": "#137:3",
+        "out": "#137:4",
         "source": "#41:0"
       }
     },
     "response": {
       "result": {
         "@class": "ElementOf",
-        "out": "#137:3",
+        "out": "#137:4",
         "in": "#138:0",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "8304a439-8e4e-43aa-baaf-67181e932d54",
-        "createdAt": 1646763549176,
+        "uuid": "aa2a5b1e-f983-47e1-a400-413b5dee2976",
+        "createdAt": 1648138515529,
         "@rid": "#94:1",
         "@version": 1
       }
@@ -2181,15 +2347,15 @@
           "biotype": "transcript",
           "sourceId": "nm_000059",
           "updatedBy": {
-            "createdAt": 1646762956172,
-            "lastLoginAt": 1646763541478,
+            "createdAt": 1648138486815,
+            "lastLoginAt": 1648138507725,
             "name": "mlemieux",
             "groups": [
               "#25:0"
             ],
-            "signedLicenseAt": 1646762956168,
-            "firstLoginAt": 1646763541478,
-            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "signedLicenseAt": 1648138486812,
+            "firstLoginAt": 1648138507725,
+            "uuid": "053ce0ec-4f0c-41ba-bf42-14dd5a9617e6",
             "loginCount": 1,
             "@rid": "#32:0",
             "@class": "User"
@@ -2198,7 +2364,7 @@
           "deprecated": false,
           "sourceIdVersion": null,
           "source": {
-            "createdAt": 1646763541546,
+            "createdAt": 1648138507780,
             "updatedBy": "#32:0",
             "createdBy": "#32:0",
             "displayName": "RefSeq",
@@ -2206,32 +2372,32 @@
             "name": "refseq",
             "description": "a comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.",
             "sort": 99999,
-            "uuid": "24780299-f0ef-4b4d-aef3-2d14107c72b6",
+            "uuid": "17e96680-52ce-456d-93a0-7eabe31b31f1",
             "url": "https://www.ncbi.nlm.nih.gov/refseq",
             "longName": "refseq: ncbi reference sequence database",
-            "updatedAt": 1646763541546,
+            "updatedAt": 1648138507780,
             "@rid": "#42:0",
             "@class": "Source"
           },
-          "uuid": "1a7d450b-c922-4722-994a-0b70d431e117",
-          "createdAt": 1646763542168,
+          "uuid": "88e92eb0-2926-4612-bc81-6a0e2ee6b227",
+          "createdAt": 1648138508396,
           "createdBy": {
-            "createdAt": 1646762956172,
-            "lastLoginAt": 1646763541478,
+            "createdAt": 1648138486815,
+            "lastLoginAt": 1648138507725,
             "name": "mlemieux",
             "groups": [
               "#25:0"
             ],
-            "signedLicenseAt": 1646762956168,
-            "firstLoginAt": 1646763541478,
-            "uuid": "2f1323e8-d33e-4037-91fd-db133513395e",
+            "signedLicenseAt": 1648138486812,
+            "firstLoginAt": 1648138507725,
+            "uuid": "053ce0ec-4f0c-41ba-bf42-14dd5a9617e6",
             "loginCount": 1,
             "@rid": "#32:0",
             "@class": "User"
           },
           "name": "nm_000059",
           "alias": false,
-          "updatedAt": 1646763542168,
+          "updatedAt": 1648138508396,
           "@rid": "#137:0",
           "@class": "Feature"
         }
@@ -2243,51 +2409,22 @@
       "url": "http://bcgsc.ca:8080/api/crossreferenceof",
       "body": {
         "in": "#137:0",
-        "out": "#138:3",
+        "out": "#138:4",
         "source": "#41:0"
       }
     },
     "response": {
       "result": {
         "@class": "CrossReferenceOf",
-        "out": "#138:3",
+        "out": "#138:4",
         "in": "#137:0",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "f220842f-c83e-45c0-acd4-7ff9ce05c771",
-        "createdAt": 1646763549221,
+        "uuid": "94a7509e-db8d-4f69-ace5-e498779fa8bc",
+        "createdAt": 1648138515556,
         "@rid": "#87:0",
         "@version": 1
       }
-    }
-  },
-  {
-    "request": {
-      "url": "http://bcgsc.ca:8080/api/generalizationof",
-      "body": {
-        "in": "#138:0",
-        "out": "#139:0",
-        "source": "#41:0"
-      }
-    },
-    "response": {
-      "name": "RecordConflictError",
-      "data": {},
-      "previous": [],
-      "code": 5,
-      "identifier": 0,
-      "id": 1,
-      "type": "com.orientechnologies.orient.core.storage.ORecordDuplicatedException",
-      "hasMore": 0,
-      "message": "Cannot index record #99:0: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0\r\n\tDB name=\"test_mlemieux_07_03_2022\"",
-      "stacktrace": [
-        "RecordConflictError: Cannot index record #99:0: found duplicated key 'OCompositeKey{keys=[null, #138:0, #139:0, #41:0]}' in index 'GeneralizationOf.restrictMultiplicity' previously assigned to the record #97:0",
-        "DB name=\"test_mlemieux_07_03_2022\"",
-        "at new ErrorMixin (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/node_modules/@bcgsc-pori/graphkb-parser/src/error.js:32:19)",
-        "at new RecordConflictError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/error.js:16:1)",
-        "at wrapIfTypeError (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/util.js:22:24)",
-        "at createEdge (/projects/dat/workspace/mlemieux/pori_graphkb/pori_graphkb_api/src/repo/commands/create.js:84:15)"
-      ]
     }
   },
   {
@@ -2311,12 +2448,12 @@
         "sourceIdVersion": "1",
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "adf9449f-d235-4894-bfa3-5172261fb48e",
-        "createdAt": 1646763549264,
-        "updatedAt": 1646763549264,
+        "uuid": "d91273af-90b4-4e1a-b059-5be7854c7f19",
+        "createdAt": 1648138515569,
+        "updatedAt": 1648138515569,
         "name": "enst00000680887",
         "displayName": "enst00000680887",
-        "@rid": "#139:3",
+        "@rid": "#139:4",
         "@version": 1
       }
     }
@@ -2342,12 +2479,12 @@
         "sourceIdVersion": null,
         "createdBy": "#32:0",
         "updatedBy": "#32:0",
-        "uuid": "7d4a79ec-4aa0-40ff-8a87-1ad4ec768f06",
-        "createdAt": 1646763549282,
-        "updatedAt": 1646763549282,
+        "uuid": "da310f82-bf43-457c-8396-31e93c290c58",
+        "createdAt": 1648138515582,
+        "updatedAt": 1648138515582,
         "name": "enst00000680887",
         "displayName": "enst00000680887",
-        "@rid": "#140:3",
+        "@rid": "#140:4",
         "@version": 1
       }
     }
@@ -2356,21 +2493,21 @@
     "request": {
       "url": "http://bcgsc.ca:8080/api/generalizationof",
       "body": {
-        "in": "#139:3",
-        "out": "#140:3",
+        "in": "#139:4",
+        "out": "#140:4",
         "source": "#41:0"
       }
     },
     "response": {
       "result": {
         "@class": "GeneralizationOf",
-        "out": "#140:3",
-        "in": "#139:3",
+        "out": "#140:4",
+        "in": "#139:4",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "036c67fc-fc1d-4193-8265-9767d694001b",
-        "createdAt": 1646763549299,
-        "@rid": "#100:1",
+        "uuid": "e5defc3a-b998-4ff8-8dc0-946a548b9bc1",
+        "createdAt": 1648138515595,
+        "@rid": "#97:1",
         "@version": 1
       }
     }
@@ -2380,19 +2517,19 @@
       "url": "http://bcgsc.ca:8080/api/elementof",
       "body": {
         "in": "#139:0",
-        "out": "#140:3",
+        "out": "#140:4",
         "source": "#41:0"
       }
     },
     "response": {
       "result": {
         "@class": "ElementOf",
-        "out": "#140:3",
+        "out": "#140:4",
         "in": "#139:0",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "739813e7-224b-4db5-9522-7f70dea6166a",
-        "createdAt": 1646763549323,
+        "uuid": "0982638d-b210-4d21-9ae7-bfaf788f89bc",
+        "createdAt": 1648138515610,
         "@rid": "#95:1",
         "@version": 1
       }
@@ -2403,19 +2540,19 @@
       "url": "http://bcgsc.ca:8080/api/elementof",
       "body": {
         "in": "#138:0",
-        "out": "#139:3",
+        "out": "#139:4",
         "source": "#41:0"
       }
     },
     "response": {
       "result": {
         "@class": "ElementOf",
-        "out": "#139:3",
+        "out": "#139:4",
         "in": "#138:0",
         "source": "#41:0",
         "createdBy": "#32:0",
-        "uuid": "99f52fc3-d10e-45ed-aed3-c3e2f276c671",
-        "createdAt": 1646763549346,
+        "uuid": "f5cf44d9-2211-4b2b-bfd6-8ea1b47ca1bf",
+        "createdAt": 1648138515624,
         "@rid": "#96:1",
         "@version": 1
       }

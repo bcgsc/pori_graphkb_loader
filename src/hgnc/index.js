@@ -93,7 +93,7 @@ const uploadRecord = async ({
     }
 
     for (const symbol of gene.prev_symbol || []) {
-        const { sourceId, biotype } = currentRecord;
+        const { sourceId, biotype } = body;
 
         // link to the current record
         try {
@@ -124,7 +124,7 @@ const uploadRecord = async ({
     }
 
     for (const symbol of gene.alias_symbol || []) {
-        const { sourceId, biotype } = currentRecord;
+        const { sourceId, biotype } = body;
 
         try {
             const aliasRecord = await this.addRecord({

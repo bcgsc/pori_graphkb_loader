@@ -251,9 +251,11 @@ const uploadFile = async (opt) => {
             continue;
         }
         logger.info(`processing ${geneId}.${geneIdVersion || ''} (${index} / ${rows.length})`);
-        let newGene = false;
+        let newGene = false,
+            newGeneVersion = false;
 
         if (visited[key] === undefined) {
+            newGeneVersion = true;
             visited[key] = await conn.addRecord({
                 content: {
                     biotype: 'gene',
@@ -282,14 +284,16 @@ const uploadFile = async (opt) => {
         const gene = visited[geneId];
         const versionedGene = visited[key];
 
-        await conn.addRecord({
-            content: {
-                in: rid(versionedGene), out: rid(gene), source: rid(source),
-            },
-            existsOk: true,
-            fetchExisting: false,
-            target: 'generalizationof',
-        });
+        if (newGene || newGeneVersion) {
+            await conn.addRecord({
+                content: {
+                    in: rid(versionedGene), out: rid(gene), source: rid(source),
+                },
+                existsOk: true,
+                fetchExisting: false,
+                target: 'generalizationof',
+            });
+        }
 
         // transcript
         const versionedTranscript = await conn.addRecord({
