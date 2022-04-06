@@ -27,7 +27,6 @@
     "lodash": "^4.17.21",
     "node-expat": "^2.3.18",
     "node-fetch": "^2.6.7",
-    "orientjs": "^3.0.11",
     "p-limit": "^3.1.0",
     "parse5": "^5.1.1",
     "rdflib": "^2.2.15",
