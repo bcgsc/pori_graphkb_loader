@@ -8,7 +8,7 @@
     "phc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -19,7 +19,7 @@
     "chol": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -30,7 +30,7 @@
     "blca": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -41,7 +41,7 @@
     "srcbc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -52,7 +52,7 @@
     "urca": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -63,7 +63,7 @@
     "chbl": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -74,7 +74,7 @@
     "gctb": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -85,7 +85,7 @@
     "armm": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -96,7 +96,7 @@
     "c42598": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -107,7 +107,7 @@
     "tac": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -118,7 +118,7 @@
     "lcis": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -129,7 +129,7 @@
     "brca": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -140,7 +140,7 @@
     "difg": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -151,7 +151,7 @@
     "bgct": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -162,7 +162,7 @@
     "pint": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -173,7 +173,7 @@
     "ceais": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -184,7 +184,7 @@
     "celi": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -195,7 +195,7 @@
     "cegcc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -206,7 +206,7 @@
     "epdca": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -217,7 +217,7 @@
     "esmm": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -228,7 +228,7 @@
     "rbl": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -239,7 +239,7 @@
     "npc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -250,7 +250,7 @@
     "ccsk": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -261,7 +261,7 @@
     "wt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -272,7 +272,7 @@
     "hcc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -283,7 +283,7 @@
     "mrtl": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -294,7 +294,7 @@
     "lais": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -305,7 +305,7 @@
     "ppb": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -316,7 +316,7 @@
     "cup": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -327,7 +327,7 @@
     "ogct": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -338,7 +338,7 @@
     "pact": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -349,7 +349,7 @@
     "spn": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -360,7 +360,7 @@
     "gn": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -371,7 +371,7 @@
     "psec": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -382,7 +382,7 @@
     "prscc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -393,7 +393,7 @@
     "an": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -404,7 +404,7 @@
     "dfsp": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -415,7 +415,7 @@
     "mel": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -426,7 +426,7 @@
     "poro": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -437,7 +437,7 @@
     "skac": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -448,7 +448,7 @@
     "aa": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -459,7 +459,7 @@
     "alt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -470,7 +470,7 @@
     "dsrct": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -481,7 +481,7 @@
     "fibs": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -492,7 +492,7 @@
     "ifs": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -503,7 +503,7 @@
     "lms": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -514,7 +514,7 @@
     "mf": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -525,7 +525,7 @@
     "myxo": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -536,7 +536,7 @@
     "ras": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -547,7 +547,7 @@
     "sft": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -558,7 +558,7 @@
     "nsgct": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -569,7 +569,7 @@
     "tmeso": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -580,7 +580,7 @@
     "thhc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -591,7 +591,7 @@
     "thpd": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -602,7 +602,7 @@
     "outt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -613,7 +613,7 @@
     "vmm": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -624,7 +624,7 @@
     "acc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -635,7 +635,7 @@
     "gbc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -646,7 +646,7 @@
     "imtb": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -657,7 +657,7 @@
     "scb": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -668,7 +668,7 @@
     "uca": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -679,7 +679,7 @@
     "chs": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -690,7 +690,7 @@
     "os": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -701,7 +701,7 @@
     "apad": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -712,7 +712,7 @@
     "cmc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -723,7 +723,7 @@
     "brame": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -734,7 +734,7 @@
     "bnnos": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -745,7 +745,7 @@
     "jscb": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -756,7 +756,7 @@
     "embt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -767,7 +767,7 @@
     "mngt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -778,7 +778,7 @@
     "pcnsmt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -789,7 +789,7 @@
     "cabc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -800,7 +800,7 @@
     "cene": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -811,7 +811,7 @@
     "mcce": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -822,7 +822,7 @@
     "escc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -833,7 +833,7 @@
     "smn": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -844,7 +844,7 @@
     "ohnca": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -855,7 +855,7 @@
     "pth": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -866,7 +866,7 @@
     "rcc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -877,7 +877,7 @@
     "flc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -888,7 +888,7 @@
     "hccihch": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -899,7 +899,7 @@
     "uesl": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -910,7 +910,7 @@
     "lnet": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -921,7 +921,7 @@
     "lam": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -932,7 +932,7 @@
     "egct": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -943,7 +943,7 @@
     "scst": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -954,7 +954,7 @@
     "paad": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -965,7 +965,7 @@
     "ucp": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -976,7 +976,7 @@
     "nst": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -987,7 +987,7 @@
     "plmeso": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -998,7 +998,7 @@
     "prsc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1009,7 +1009,7 @@
     "bcc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1020,7 +1020,7 @@
     "dte": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1031,7 +1031,7 @@
     "mcc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1042,7 +1042,7 @@
     "pct": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1053,7 +1053,7 @@
     "spir": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1064,7 +1064,7 @@
     "asps": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1075,7 +1075,7 @@
     "ccs": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1086,7 +1086,7 @@
     "ehae": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1097,7 +1097,7 @@
     "gist": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1108,7 +1108,7 @@
     "imt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1119,7 +1119,7 @@
     "lipo": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1130,7 +1130,7 @@
     "ims": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1141,7 +1141,7 @@
     "pgng": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1152,7 +1152,7 @@
     "rms": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1163,7 +1163,7 @@
     "syns": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1174,7 +1174,7 @@
     "sem": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1185,7 +1185,7 @@
     "tet": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1196,7 +1196,7 @@
     "htat": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1207,7 +1207,7 @@
     "wdtc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1218,7 +1218,7 @@
     "usarc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1229,7 +1229,7 @@
     "vpdc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1240,7 +1240,7 @@
     "aca": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1251,7 +1251,7 @@
     "blad": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1262,7 +1262,7 @@
     "iup": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1273,7 +1273,7 @@
     "scbc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1284,7 +1284,7 @@
     "upa": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1295,7 +1295,7 @@
     "chdm": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1306,7 +1306,7 @@
     "aga": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1317,7 +1317,7 @@
     "coadread": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1328,7 +1328,7 @@
     "sbc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1339,7 +1339,7 @@
     "dcis": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1350,7 +1350,7 @@
     "pbs": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1361,7 +1361,7 @@
     "mbc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1372,7 +1372,7 @@
     "encg": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1383,7 +1383,7 @@
     "mbt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1394,7 +1394,7 @@
     "selt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1405,7 +1405,7 @@
     "cacc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1416,7 +1416,7 @@
     "cerms": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1427,7 +1427,7 @@
     "scce": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1438,7 +1438,7 @@
     "egc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1449,7 +1449,7 @@
     "lgt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1460,7 +1460,7 @@
     "hnmucm": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1471,7 +1471,7 @@
     "saca": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1482,7 +1482,7 @@
     "rnet": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1493,7 +1493,7 @@
     "lihb": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1504,7 +1504,7 @@
     "lias": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1515,7 +1515,7 @@
     "csclc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1526,7 +1526,7 @@
     "nsclc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1537,7 +1537,7 @@
     "sarcl": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1548,7 +1548,7 @@
     "oovc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1559,7 +1559,7 @@
     "paac": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1570,7 +1570,7 @@
     "panet": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1581,7 +1581,7 @@
     "pscc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1592,7 +1592,7 @@
     "nbl": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1603,7 +1603,7 @@
     "prad": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1614,7 +1614,7 @@
     "adpa": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1625,7 +1625,7 @@
     "cscc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1636,7 +1636,7 @@
     "empsgc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1647,7 +1647,7 @@
     "mac": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1658,7 +1658,7 @@
     "ppct": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1669,7 +1669,7 @@
     "sgad": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1680,7 +1680,7 @@
     "afh": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1691,7 +1691,7 @@
     "dcs": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1702,7 +1702,7 @@
     "epis": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1713,7 +1713,7 @@
     "gs": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1724,7 +1724,7 @@
     "ints": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1735,7 +1735,7 @@
     "lgfms": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1746,7 +1746,7 @@
     "mpc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1757,7 +1757,7 @@
     "pecoma": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1768,7 +1768,7 @@
     "rcsnos": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1779,7 +1779,7 @@
     "tgct": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1790,7 +1790,7 @@
     "tscst": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1801,7 +1801,7 @@
     "tnet": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1812,7 +1812,7 @@
     "thme": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1823,7 +1823,7 @@
     "ucec": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1834,7 +1834,7 @@
     "vgct": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1845,7 +1845,7 @@
     "vsc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1856,7 +1856,7 @@
     "ampca": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1867,7 +1867,7 @@
     "blsc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1878,7 +1878,7 @@
     "urmm": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1889,7 +1889,7 @@
     "utuc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1900,7 +1900,7 @@
     "adma": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1911,7 +1911,7 @@
     "es": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1922,7 +1922,7 @@
     "ansc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1933,7 +1933,7 @@
     "ginet": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1944,7 +1944,7 @@
     "sic": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1955,7 +1955,7 @@
     "bfn": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1966,7 +1966,7 @@
     "c4001": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1977,7 +1977,7 @@
     "cpt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1988,7 +1988,7 @@
     "epmt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -1999,7 +1999,7 @@
     "mnet": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2010,7 +2010,7 @@
     "cead": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2021,7 +2021,7 @@
     "ceas": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2032,7 +2032,7 @@
     "cesc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2043,7 +2043,7 @@
     "vgce": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2054,7 +2054,7 @@
     "ginetes": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2065,7 +2065,7 @@
     "om": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2076,7 +2076,7 @@
     "hnsc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2087,7 +2087,7 @@
     "sbl": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2098,7 +2098,7 @@
     "mrt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2109,7 +2109,7 @@
     "liad": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2120,7 +2120,7 @@
     "limnet": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2131,7 +2131,7 @@
     "imtl": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2142,7 +2142,7 @@
     "ais": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2153,7 +2153,7 @@
     "ovt": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2164,7 +2164,7 @@
     "paasc": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2175,7 +2175,7 @@
     "pb": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2186,7 +2186,7 @@
     "gnbl": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2197,7 +2197,7 @@
     "pemeso": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2208,7 +2208,7 @@
     "prne": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2219,7 +2219,7 @@
     "afx": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2230,7 +2230,7 @@
     "df": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2241,7 +2241,7 @@
     "empd": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2252,7 +2252,7 @@
     "poca": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2263,7 +2263,7 @@
     "seba": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2274,7 +2274,7 @@
     "aeca": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2285,7 +2285,7 @@
     "angs": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2296,7 +2296,7 @@
     "des": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2307,7 +2307,7 @@
     "esst": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2318,7 +2318,7 @@
     "hema": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2329,7 +2329,7 @@
     "lm": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2340,7 +2340,7 @@
     "mgst": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2351,7 +2351,7 @@
     "mfs": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2362,7 +2362,7 @@
     "pmhe": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2373,7 +2373,7 @@
     "stmyec": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2384,7 +2384,7 @@
     "mfh": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2395,7 +2395,7 @@
     "tlym": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2406,7 +2406,7 @@
     "thap": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2417,7 +2417,7 @@
     "oat": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2428,7 +2428,7 @@
     "gtd": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2439,7 +2439,7 @@
     "vma": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
@@ -2450,7 +2450,7 @@
     "va": {
       "links": [
         {
-          "class": "ElementOf",
+          "class": "SubClassOf",
           "target": "all solid tumors"
         }
       ],
