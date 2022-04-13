@@ -1,0 +1,228 @@
+[
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "name": "ensembl"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "description": "Ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. Ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. Ensembl tools include BLAST, BLAT, BioMart and the Variant Effect Predictor (VEP) for all supported species.",
+        "displayName": "Ensembl",
+        "name": "ensembl",
+        "sort": 3,
+        "url": "https://uswest.ensembl.org",
+        "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html"
+      },
+      "method": "POST",
+      "uri": "/sources"
+    },
+    "result": {
+      "result": {
+        "@class": "Source",
+        "sort": 3,
+        "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
+        "displayName": "Ensembl",
+        "name": "ensembl",
+        "url": "https://uswest.ensembl.org",
+        "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "1158f6c7-ad06-4a4f-ad95-f40cd2342af6",
+        "createdAt": 1649431158242,
+        "updatedAt": 1649431158242,
+        "@rid": "#41:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": [
+          {
+            "sourceId": "ENST00000544455"
+          },
+          {
+            "sourceIdVersion": "6"
+          },
+          {
+            "biotype": "transcript"
+          },
+          {
+            "source": "#41:0"
+          }
+        ],
+        "neighbors": 1,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000544455",
+        "sourceIdVersion": "6"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000544455",
+        "sourceIdVersion": "6",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "be331d30-242b-4860-9613-129f41bf9695",
+        "createdAt": 1649431158271,
+        "updatedAt": 1649431158271,
+        "name": "enst00000544455",
+        "displayName": "enst00000544455",
+        "@rid": "#137:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "transcript",
+        "name": "enst00000544455",
+        "source": "#41:0",
+        "sourceId": "enst00000544455",
+        "sourceIdVersion": null
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "name": "enst00000544455",
+        "source": "#41:0",
+        "sourceId": "enst00000544455",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "099d39ec-42f5-493c-af9c-771b6ee6bbb7",
+        "createdAt": 1649431158291,
+        "updatedAt": 1649431158291,
+        "displayName": "enst00000544455",
+        "@rid": "#138:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#137:0",
+        "out": "#138:0",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#138:0",
+        "in": "#137:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "20642455-0320-4043-8e8d-4ec9d975dcfc",
+        "createdAt": 1649431158300,
+        "@rid": "#81:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "source": "#41:0",
+        "sourceId": "ENSG00000139618",
+        "sourceIdVersion": null
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "source": "#41:0",
+        "sourceId": "ensg00000139618",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "30c0fc65-224e-4676-9485-b8a1a51fb384",
+        "createdAt": 1649431158704,
+        "updatedAt": 1649431158704,
+        "name": "ensg00000139618",
+        "displayName": "ensg00000139618",
+        "@rid": "#139:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#139:0",
+        "out": "#138:0",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#138:0",
+        "in": "#139:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "2f583544-db35-4efb-a798-5361b9cca415",
+        "createdAt": 1649431158722,
+        "@rid": "#93:0",
+        "@version": 1
+      }
+    }
+  }
+]
