@@ -1,0 +1,98 @@
+query evidenceItems(
+  $after: String
+  $assertionId: Int
+  $before: String
+  $clinicalSignificance: EvidenceClinicalSignificance
+  $clinicalTrialId: Int
+  $description: String
+  $diseaseId: Int
+  $diseaseName: String
+  $drugId: Int
+  $drugName: String
+  $evidenceDirection: EvidenceDirection
+  $evidenceLevel: EvidenceLevel
+  $evidenceRating: Int
+  $evidenceType: EvidenceType
+  $first: Int
+  $geneSymbol: String
+  $id: Int
+  $last: Int
+  $organizationId: Int
+  $phenotypeId: Int
+  $sortBy: EvidenceSort
+  $sourceId: Int
+  $status: EvidenceStatus
+  $userId: Int
+  $variantId: Int
+  $variantName: String
+  $variantOrigin: VariantOrigin
+) {
+  evidenceItems(
+    after: $after
+    assertionId: $assertionId
+    before: $before
+    clinicalSignificance: $clinicalSignificance
+    clinicalTrialId: $clinicalTrialId
+    description: $description
+    diseaseId: $diseaseId
+    diseaseName: $diseaseName
+    drugId: $drugId
+    drugName: $drugName
+    evidenceDirection: $evidenceDirection
+    evidenceLevel: $evidenceLevel
+    evidenceRating: $evidenceRating
+    evidenceType: $evidenceType
+    first: $first
+    geneSymbol: $geneSymbol
+    id: $id
+    last: $last
+    organizationId: $organizationId
+    phenotypeId: $phenotypeId
+    sortBy: $sortBy
+    sourceId: $sourceId
+    status: $status
+    userId: $userId
+    variantId: $variantId
+    variantName: $variantName
+    variantOrigin: $variantOrigin
+  ) {
+    nodes {
+      id
+      status
+      variant {
+        name
+        id
+      }
+      gene {
+        name
+        id
+      }
+      evidenceType
+      evidenceLevel
+      evidenceRating
+      evidenceDirection
+      phenotypes {
+        id
+        hpoId
+      }
+      description
+      disease {
+        id
+        doid
+        name
+      }
+      drugs {
+        id
+        ncitId
+        name
+      }
+      drugInteractionType
+    }
+    pageCount
+    pageInfo {
+      endCursor
+      hasNextPage
+    }
+    totalCount
+  }
+}
