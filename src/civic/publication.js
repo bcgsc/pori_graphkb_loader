@@ -18,37 +18,39 @@ const titlesMatch = (title1, title2) => {
  * @param {object} rawRecord CIViC Evidence Item JSON record
  */
 const getPublication = async (conn, rawRecord) => {
-    if (rawRecord.source.source_type === 'PubMed') {
-        const [publication] = await _pubmed.fetchAndLoadByIds(conn, [rawRecord.source.citation_id]);
+    if (rawRecord.source.sourceType === 'PUBMED') {
+        const [publication] = await _pubmed.fetchAndLoadByIds(conn, [rawRecord.source.citationId]);
         return publication;
     }
-    if (rawRecord.source.source_type === 'ASCO') {
-        const abstracts = await _asco.fetchAndLoadByIds(conn, [rawRecord.source.asco_abstract_id]);
+    if (rawRecord.source.sourceType === 'ASCO') {
+        const abstracts = await _asco.fetchAndLoadByIds(conn, [rawRecord.source.ascoAbstractId]);
 
         if (abstracts.length === 0) {
-            throw Error(`unable to find ASCO abstract (${rawRecord.source.asco_abstract_id})`);
+            throw Error(`unable to find ASCO abstract (${rawRecord.source.ascoAbstractId})`);
         }
 
-        const yearFilteredAbstracts = abstracts.filter(a => a.year === rawRecord.source.publication_date.year);
+        const yearFilteredAbstracts = abstracts.filter(
+            a => a.year === rawRecord.source.publicationYear,
+        );
 
         if (yearFilteredAbstracts.length === 0) {
-            throw Error(`An abstract of matching number (${rawRecord.source.asco_abstract_id}) and year (${rawRecord.source.publication_date.year}) was not found in the ASCO DB`);
+            throw Error(`An abstract of matching number (${rawRecord.source.ascoAbstractId}) and year (${rawRecord.source.publicationYear}) was not found in the ASCO DB`);
         }
 
         // select the abstract that matches our metadata
         const filteredAbstracts = yearFilteredAbstracts.filter(a => (
-            (!rawRecord.source.url || rawRecord.source.url.includes(a.sourceId))
+            (!rawRecord.source.sourceUrl || rawRecord.source.sourceUrl.includes(a.sourceId))
             && titlesMatch(rawRecord.source.name, a.name)
         ));
 
         if (filteredAbstracts.length === 0) {
-            throw Error(`failed to select the relevant abstract (${rawRecord.source.asco_abstract_id}) from (${yearFilteredAbstracts.length}) abstracts with the same year and abstract ID`);
+            throw Error(`failed to select the relevant abstract (${rawRecord.source.ascoAbstractId}) from (${yearFilteredAbstracts.length}) abstracts with the same year and abstract ID`);
         } else if (filteredAbstracts.length > 1) {
-            throw Error(`too many choice for abstract (${rawRecord.source.asco_abstract_id})`);
+            throw Error(`too many choice for abstract (${rawRecord.source.ascoAbstractId})`);
         }
         return abstracts[0];
     }
-    throw Error(`unable to process non-pubmed/non-asco evidence type (${rawRecord.source.source_type}) for evidence item (${rawRecord.id})`);
+    throw Error(`unable to process non-pubmed/non-asco evidence type (${rawRecord.source.sourceType}) for evidence item (${rawRecord.id})`);
 };
 
 
