@@ -3,11 +3,9 @@ const Ajv = require('ajv');
 const kbParser = require('@bcgsc-pori/graphkb-parser');
 
 const { error: { ParsingError } } = kbParser;
-const { checkSpec, request } = require('../util');
 const {
     rid,
 } = require('../graphkb');
-const { logger } = require('../logging');
 const _entrezGene = require('../entrez/gene');
 const _snp = require('../entrez/snp');
 const { variant: variantSpec } = require('./specs.json');
@@ -17,14 +15,6 @@ const ajv = new Ajv();
 const {
     civic: SOURCE_DEFN,
 } = require('../sources');
-
-
-const BASE_URL = 'https://civicdb.org/api';
-
-/**
- * This is the expected format of the JSON body of a response to a variant request to the CIVIC API
- */
-const validateVariantSpec = ajv.compile(variantSpec);
 
 
 // based on discussion with cam here: https://www.bcgsc.ca/jira/browse/KBDEV-844
@@ -341,8 +331,8 @@ const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
  */
 const processVariantRecord = async (conn, civicVariantRecord, feature) => {
     const variants = normalizeVariantRecord({
-        entrezId: civicVariantRecord.entrez_id,
-        entrezName: civicVariantRecord.entrez_name,
+        entrezId: civicVariantRecord.gene.entrezId,
+        entrezName: civicVariantRecord.gene.name,
         name: civicVariantRecord.name,
     });
 
@@ -355,44 +345,7 @@ const processVariantRecord = async (conn, civicVariantRecord, feature) => {
 };
 
 
-/**
- * Dowmloads the variant records that are referenced by the evidence records
- */
-const downloadVariantRecords = async () => {
-    const varById = {};
-    let expectedPages = 1,
-        currentPage = 1;
-    const urlTemplate = `${BASE_URL}/variants?count=500`;
-
-    while (currentPage <= expectedPages) {
-        const url = `${urlTemplate}&page=${currentPage}`;
-        logger.info(`loading: ${url}`);
-        const resp = await request({
-            json: true,
-            method: 'GET',
-            uri: url,
-        });
-        expectedPages = resp._meta.total_pages;
-        logger.info(`loaded ${resp.records.length} records`);
-
-        for (const record of resp.records) {
-            if (varById[record.id] !== undefined) {
-                throw new Error('variant record ID is not unique', record);
-            }
-
-            try {
-                checkSpec(validateVariantSpec, record);
-                varById[record.id] = record;
-            } catch (err) {
-                logger.error(err);
-            }
-        }
-        currentPage++;
-    }
-    return varById;
-};
-
-
 module.exports = {
-    downloadVariantRecords, normalizeVariantRecord, processVariantRecord, validateVariantSpec,
+    normalizeVariantRecord,
+    processVariantRecord,
 };
