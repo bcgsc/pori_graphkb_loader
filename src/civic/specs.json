@@ -1,53 +1,62 @@
 {
-    "evidence": {
+    "EvidenceItem": {
         "properties": {
-            "clinical_significance": {
+            "clinicalSignificance": {
                 "enum": [
-                    "Sensitivity",
-                    "Adverse Response",
-                    "Resistance",
-                    "Sensitivity/Response",
-                    "Reduced Sensitivity",
-                    "Positive",
-                    "Negative",
-                    "Poor Outcome",
-                    "Better Outcome",
-                    "Uncertain Significance",
-                    "Pathogenic",
-                    "Likely Pathogenic",
-                    "N/A",
-                    "Gain of Function",
-                    "Loss of Function",
-                    "Neomorphic",
-                    "Dominant Negative",
-                    "Unaltered Function",
+                    "ADVERSE_RESPONSE",
+                    "BENIGN",
+                    "BETTER_OUTCOME",
+                    "DOMINANT_NEGATIVE",
+                    "GAIN_OF_FUNCTION",
+                    "LIKELY_BENIGN",
+                    "LIKELY_PATHOGENIC",
+                    "LOSS_OF_FUNCTION",
+                    "NA",
+                    "NEGATIVE",
+                    "NEOMORPHIC",
+                    "PATHOGENIC",
+                    "POOR_OUTCOME",
+                    "POSITIVE",
+                    "REDUCED_SENSITIVITY",
+                    "RESISTANCE",
+                    "SENSITIVITYRESPONSE",
+                    "UNALTERED_FUNCTION",
+                    "UNCERTAIN_SIGNIFICANCE",
+                    "UNKNOWN",
                     null
                 ]
             },
             "description": {
-                "type": "string"
-            },
-            "disease": {
-                "oneOf": [
-                    {
-                        "doid": {
-                            "type": "string"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "type": "object"
-                    },
-                    {
-                        "type": "null"
-                    }
+                "type": [
+                    "null",
+                    "string"
                 ]
             },
-            "drug_interaction_type": {
+            "disease": {
+                "properties": {
+                    "doid": {
+                        "type": [
+                            "null",
+                            "number"
+                        ]
+                    },
+                    "name": {
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    }
+                },
+                "type": [
+                    "null",
+                    "object"
+                ]
+            },
+            "drugInteractionType": {
                 "enum": [
-                    "Combination",
-                    "Substitutes",
-                    "Sequential",
+                    "COMBINATION",
+                    "SEQUENTIAL",
+                    "SUBSTITUTES",
                     null
                 ]
             },
@@ -55,199 +64,215 @@
                 "items": {
                     "properties": {
                         "id": {
-                            "type": "number"
-                        },
-                        "name": {
-                            "type": "string"
-                        },
-                        "ncit_id": {
                             "type": [
-                                "string",
-                                "null"
+                                "null",
+                                "number"
                             ]
                         },
-                        "pubchem_id": {
+                        "name": {
                             "type": [
-                                "string",
-                                "null"
+                                "null",
+                                "string"
+                            ]
+                        },
+                        "ncitId": {
+                            "type": [
+                                "null",
+                                "string"
                             ]
                         }
                     },
-                    "required": [
-                        "name",
-                        "ncit_id"
-                    ],
-                    "type": "object"
+                    "type": [
+                        "null",
+                        "object"
+                    ]
                 },
-                "type": "array"
+                "type": [
+                    "array",
+                    "null"
+                ]
             },
-            "evidence_direction": {
+            "evidenceDirection": {
                 "enum": [
-                    "Supports",
-                    "N/A",
-                    "Does Not Support",
+                    "DOES_NOT_SUPPORT",
+                    "NA",
+                    "SUPPORTS",
                     null
                 ]
             },
-            "evidence_level": {
-                "type": "string"
-            },
-            "evidence_type": {
+            "evidenceLevel": {
                 "enum": [
-                    "Predictive",
-                    "Diagnostic",
-                    "Prognostic",
-                    "Predisposing",
-                    "Functional"
+                    "A",
+                    "B",
+                    "C",
+                    "D",
+                    "E",
+                    null
+                ]
+            },
+            "evidenceRating": {
+                "type": [
+                    "null",
+                    "number"
+                ]
+            },
+            "evidenceType": {
+                "enum": [
+                    "DIAGNOSTIC",
+                    "FUNCTIONAL",
+                    "ONCOGENIC",
+                    "PREDICTIVE",
+                    "PREDISPOSING",
+                    "PROGNOSTIC",
+                    null
+                ]
+            },
+            "gene": {
+                "properties": {
+                    "id": {
+                        "type": [
+                            "null",
+                            "number"
+                        ]
+                    },
+                    "name": {
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    }
+                },
+                "type": [
+                    "null",
+                    "object"
                 ]
             },
             "id": {
-                "type": "number"
-            },
-            "rating": {
                 "type": [
-                    "number",
+                    "null",
+                    "number"
+                ]
+            },
+            "phenotypes": {
+                "items": {
+                    "properties": {
+                        "hpoId": {
+                            "type": [
+                                "null",
+                                "string"
+                            ]
+                        },
+                        "id": {
+                            "type": [
+                                "null",
+                                "number"
+                            ]
+                        }
+                    },
+                    "type": [
+                        "null",
+                        "object"
+                    ]
+                },
+                "type": [
+                    "array",
                     "null"
                 ]
             },
             "source": {
                 "properties": {
-                    "citation_id": {
-                        "type": "string"
+                    "ascoAbstractId": {
+                        "type": [
+                            "null",
+                            "number"
+                        ]
+                    },
+                    "citationId": {
+                        "type": [
+                            "null",
+                            "number"
+                        ]
                     },
                     "name": {
                         "type": [
-                            "string",
-                            "null"
+                            "null",
+                            "string"
                         ]
                     },
-                    "source_type": {
+                    "publicationYear": {
+                        "type": [
+                            "null",
+                            "number"
+                        ]
+                    },
+                    "sourceType": {
                         "enum": [
                             "ASCO",
-                            "PubMed"
+                            "PUBMED",
+                            null
                         ]
+                    },
+                    "sourceUrl ": {
+                        "type": "string"
                     }
-                }
+                },
+                "type": [
+                    "null",
+                    "object"
+                ]
             },
             "status": {
-                "type": "string"
+                "enum": [
+                    "ACCEPTED",
+                    "REJECTED",
+                    "SUBMITTED",
+                    null
+                ]
             },
-            "variant_id": {
-                "type": "number"
-            }
-        },
-        "type": "object"
-    },
-    "variant": {
-        "properties": {
-            "civic_actionability_score": {
-                "type": "number"
-            },
-            "coordinates": {
+            "variant": {
                 "properties": {
-                    "chromosome": {
+                    "gene": {
+                        "properties": {
+                            "entrezId": {
+                                "type": [
+                                    "null",
+                                    "number"
+                                ]
+                            },
+                            "name": {
+                                "type": [
+                                    "null",
+                                    "string"
+                                ]
+                            }
+                        },
                         "type": [
-                            "string",
-                            "null"
+                            "null",
+                            "object"
                         ]
                     },
-                    "chromosome2": {
+                    "id": {
                         "type": [
-                            "string",
-                            "null"
+                            "null",
+                            "number"
                         ]
                     },
-                    "ensembl_version": {
+                    "name": {
                         "type": [
-                            "number",
-                            "null"
-                        ]
-                    },
-                    "reference_bases": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "reference_build": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "representative_transcript": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "representative_transcript2": {
-                        "type": [
-                            "string",
-                            "null"
-                        ]
-                    },
-                    "start": {
-                        "type": [
-                            "number",
-                            "null"
-                        ]
-                    },
-                    "start2": {
-                        "type": [
-                            "number",
-                            "null"
-                        ]
-                    },
-                    "stop": {
-                        "type": [
-                            "number",
-                            "null"
-                        ]
-                    },
-                    "stop2": {
-                        "type": [
-                            "number",
-                            "null"
-                        ]
-                    },
-                    "variant_bases": {
-                        "type": [
-                            "string",
-                            "null"
+                            "null",
+                            "string"
                         ]
                     }
                 },
-                "type": "object"
-            },
-            "description": {
-                "type": "string"
-            },
-            "entrez_id": {
-                "type": "number"
-            },
-            "entrez_name": {
-                "type": "string"
-            },
-            "id": {
-                "type": "number"
-            },
-            "name": {
-                "type": "string"
-            },
-            "variant_types": {
-                "items": {
-                    "name": {
-                        "type": "string"
-                    },
-                    "so_id": {
-                        "type": "string"
-                    },
-                    "type": "object"
-                },
-                "type": "array"
+                "type": [
+                    "null",
+                    "object"
+                ]
             }
         },
-        "type": "object"
+        "type": [
+            "null",
+            "object"
+        ]
     }
 }
