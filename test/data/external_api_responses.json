@@ -329,5 +329,8 @@
         "3845"
       ]
     }
+  },
+  "http://rest.ensembl.org/lookup/id/enst00000544455": {
+    "Parent": "ENSG00000139618"
   }
 }
