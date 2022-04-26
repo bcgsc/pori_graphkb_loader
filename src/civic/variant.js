@@ -1,5 +1,3 @@
-const Ajv = require('ajv');
-
 const kbParser = require('@bcgsc-pori/graphkb-parser');
 
 const { error: { ParsingError } } = kbParser;
