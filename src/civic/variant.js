@@ -282,10 +282,10 @@ const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
                 [reference2] = await _entrezGene.fetchAndLoadBySymbol(conn, normalizedVariant.reference2.name);
             }
         }
-        content.reference1 = rid(reference1, true);
+        content.reference1 = rid(reference1);
 
         if (reference2) {
-            content.reference2 = rid(reference2, true);
+            content.reference2 = rid(reference2);
         }
         result = await conn.addVariant({
             content,

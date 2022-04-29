@@ -29,11 +29,12 @@ const ajv = new Ajv();
 const BASE_URL = 'https://civicdb.org/api/graphql';
 
 /**
- * https://docs.civicdb.org/en/latest/model/evidence/level.html
+ * 1-5 : https://docs.civicdb.org/en/latest/model/evidence/evidence_rating.html
+ * A-E : https://docs.civicdb.org/en/latest/model/evidence/level.html
  */
 const VOCAB = {
-    1: 'Strong, well supported evidence from a lab or journal with respected academic standing. Experiments are well controlled, and results are clean and reproducible across multiple replicates. Evidence confirmed using independent methods. The study is statistically well powered.',
-    2: 'Strong, well supported evidence. Experiments are well controlled, and results are convincing. Any discrepancies from expected results are well-explained and not concerning.',
+    1: 'Claim is not supported well by experimental evidence. Results are not reproducible, or have very small sample size. No follow-up is done to validate novel claims.',
+    2: 'Evidence is not well supported by experimental data, and little follow-up data is available. Publication is from a journal with low academic impact. Experiments may lack proper controls, have small sample size, or are not statistically convincing.',
     3: 'Evidence is convincing, but not supported by a breadth of experiments. May be smaller scale projects, or novel results without many follow-up experiments. Discrepancies from expected results are explained and not concerning.',
     4: 'Strong, well supported evidence. Experiments are well controlled, and results are convincing. Any discrepancies from expected results are well-explained and not concerning.',
     5: 'Strong, well supported evidence from a lab or journal with respected academic standing. Experiments are well controlled, and results are clean and reproducible across multiple replicates. Evidence confirmed using independent methods. The study is statistically well powered.',
@@ -42,7 +43,7 @@ const VOCAB = {
     C: 'Individual case reports from clinical journals.',
     D: 'In vivo or in vitro models support association.',
     E: 'Indirect evidence.',
-    url: 'https://docs.civicdb.org/en/latest/model/evidence/level.html',
+    url: 'https://docs.civicdb.org/en/latest/model/evidence.html',
 };
 
 const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evidence levels
@@ -52,7 +53,7 @@ const validateEvidenceSpec = ajv.compile(evidenceSpec);
 
 
 /**
- * Request the CIViC GraphQL API
+ * Requests evidence items from CIViC using their graphql API
  */
 const requestEvidenceItems = async (url, opt) => {
     const allRecords = [];
@@ -96,7 +97,6 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
         switch (evidenceType) { // eslint-disable-line default-case
             case 'PREDICTIVE': {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
-                    // case 'Sensitivity':   <-- Deprecated ?
                     case 'ADVERSE_RESPONSE':
                     case 'REDUCED_SENSITIVITY':
 
@@ -301,7 +301,7 @@ const getEvidenceLevel = async ({
  * @param {object} opt.rawRecord the unparsed record from CIViC
  * @param {object} opt.sources the sources by name
  * @param {boolean} opt.oneToOne civic statements to graphkb statements is a 1 to 1 mapping
- * @param {object} opt.variantsCache tracks errors and result processing variants to avoid repeating
+ * @param {object} opt.variantsCache used to avoid repeat processing of civic variants. stores the graphkb variant(s) if success or the error if not
  * @param
  */
 const processEvidenceRecord = async (opt) => {
@@ -381,7 +381,7 @@ const processEvidenceRecord = async (opt) => {
     const content = {
         conditions: [...variants.map(v => rid(v))],
         description: rawRecord.description,
-        evidence: [rid(publication, true)],
+        evidence: [rid(publication)],
         evidenceLevel: [rid(level)],
         relevance: rid(relevance),
         reviewStatus: (rawRecord.status === 'ACCEPTED'
@@ -563,8 +563,8 @@ const downloadEvidenceRecords = async (url, trustedCurators) => {
             evidenceItems.push(...submittedByATrustedCurator);
         }
     }
-    const nbUnaccepted = evidenceItems.length - accepted.length;
-    logger.info(`loaded ${nbUnaccepted} unaccepted entries by trusted submitters from CIViC`);
+    const submittedCount = evidenceItems.length - accepted.length;
+    logger.info(`loaded ${submittedCount} unaccepted entries by trusted submitters from CIViC`);
 
     // Validation
     for (const record of evidenceItems) {
@@ -602,10 +602,8 @@ const downloadEvidenceRecords = async (url, trustedCurators) => {
 const upload = async ({
     conn, errorLogPrefix, trustedCurators, ignoreCache = false, maxRecords, url = BASE_URL,
 }) => {
-    // 1. ADDING CIVIC SOURCE TO GRAPHKB
     const source = await conn.addSource(SOURCE_DEFN);
 
-    // 2. FETCHING PREVIOUS RECORDS FROM GRAPHKB
     // Get list of all previous statements from CIVIC in GraphKB
     let previouslyEntered = await conn.getRecords({
         filters: { source: rid(source) },
@@ -618,22 +616,21 @@ const upload = async ({
     logger.info('caching publication records');
     _pubmed.preLoadCache(conn);
 
-    // 3. FETCHING RECORDS FROM CIVIC
     // Get evidence records from CIVIC (Accepted, or Submitted from a trusted curator)
     const { counts, errorList, records } = await downloadEvidenceRecords(url, trustedCurators);
     // Get rejected evidence records ids from CIVIC
     const purgeableEvidenceItems = await fetchDeletedEvidenceItems(url);
 
-    // 4. PROCESSING RECORDS
     logger.info(`Processing ${records.length} records`);
     // keep track of errors and already processed variants by their CIViC ID to avoid repeat logging
     const variantsCache = {
         errors: {},
         records: {},
     };
-    const recordsById = {};
 
-    // Refactor records into recordsById
+    // Refactor records into recordsById and varById
+    const recordsById = {};
+    const varById = {}
     for (const record of records) {
         if (!recordsById[record.id]) {
             recordsById[record.id] = [];
@@ -644,17 +641,21 @@ const upload = async ({
             logger.warn(`not loading all content due to max records limit (${maxRecords})`);
             break;
         }
+
+        if (record.variant && record.variant.id) {
+            varById[record.variant.id.toString()] = record.variant;
+        }
     }
 
     // Main loop on recordsById
     for (const [sourceId, recordList] of Object.entries(recordsById)) {
+
         if (previouslyEntered.has(sourceId) && !ignoreCache) {
             counts.exists++;
             continue;
         }
         if (purgeableEvidenceItems.has(sourceId)) {
-            // this should never happen.
-            // If it does we have made an invalid assumption about how civic uses IDs.
+            // this should never happen. If it does we have made an invalid assumption about how civic uses IDs.
             throw new Error(`Record ID is both deleted and to-be loaded. Violates assumptions: ${sourceId}`);
         }
         const preupload = new Set((await conn.getRecords({
@@ -667,8 +668,10 @@ const upload = async ({
         let mappedCount = 0;
         const postupload = [];
 
-        // Nested loop on recordList. Resolve combinations
+        // Resolve combinations
         for (const record of recordList) {
+            
+            // Splits civic evidence items drugs into separate evidence items based on their combination type.
             if (record.drugs === null || record.drugs.length === 0) {
                 record.drugs = [null];
             } else if (
@@ -684,50 +687,52 @@ const upload = async ({
                 counts.skip++;
                 continue;
             }
-
+            
+            // Splits variants into a list to indicate separate evidence items when variants have been linked as "or"
+            record.variants = [varById[record.variant.id.toString()]]; // OR-ing of variants
             let orCombination;
-
-            if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variant.name)) {
+            if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variants[0].name)) {
                 const [, prefix, tail1, tail2] = orCombination;
-                record.variant = [
-                    { ...record.variant, name: `${prefix}${tail1}` },
-                    { ...record.variant, name: `${prefix}${tail2}` },
+                record.variants = [
+                    { ...record.variants[0], name: `${prefix}${tail1}` },
+                    { ...record.variants[0], name: `${prefix}${tail2}` },
                 ];
             }
-            mappedCount += record.variant.length * record.drugs.length;
+            mappedCount += record.variants.length * record.drugs.length;
         }
 
         const oneToOne = mappedCount === 1 && preupload.size === 1;
 
-        // Nested loop on recordList. Upload all GraphKB statements for this CIViC Evidence Item
+        // Upload all GraphKB statements for this CIViC Evidence Item
         for (const record of recordList) {
-            for (const drugs of record.drugs) {
-                try {
-                    logger.debug(`processing ${record.id}`);
-                    const result = await processEvidenceRecord({
-                        conn,
-                        oneToOne,
-                        rawRecord: { ..._.omit(record, ['drugs']), drugs },
-                        sources: { civic: source },
-                        variantsCache,
-                    });
-                    postupload.push(rid(result));
-                    counts.success += 1;
-                } catch (err) {
-                    if (
-                        err.toString().includes('is not a function')
-                            || err.toString().includes('of undefined')
-                    ) {
-                        console.error(err);
+            for (const variant of record.variants) {
+                for (const drugs of record.drugs) {
+                    try {
+                        logger.debug(`processing ${record.id}`);
+                        const result = await processEvidenceRecord({
+                            conn,
+                            oneToOne,
+                            rawRecord: { ..._.omit(record, ['drugs', 'variants']), drugs, variant },
+                            sources: { civic: source },
+                            variantsCache,
+                        });
+                        postupload.push(rid(result));
+                        counts.success += 1;
+                    } catch (err) {
+                        if (
+                            err.toString().includes('is not a function')
+                                || err.toString().includes('of undefined')
+                        ) {
+                            console.error(err);
+                        }
+                        if (err instanceof NotImplementedError) {
+                            // accepted evidence that we do not support loading. Should delete as it may have changed from something we did support
+                            purgeableEvidenceItems.add(sourceId);
+                        }
+                        errorList.push({ error: err, errorMessage: err.toString(), record });
+                        logger.error(`evidence (${record.id}) ${err}`);
+                        counts.error += 1;
                     }
-                    if (err instanceof NotImplementedError) {
-                        // accepted evidence that we do not support loading.
-                        // Should delete as it may have changed from something we did support
-                        purgeableEvidenceItems.add(sourceId);
-                    }
-                    errorList.push({ error: err, errorMessage: err.toString(), record });
-                    logger.error(`evidence (${record.id}) ${err}`);
-                    counts.error += 1;
                 }
             }
         }
