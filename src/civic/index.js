@@ -630,7 +630,8 @@ const upload = async ({
 
     // Refactor records into recordsById and varById
     const recordsById = {};
-    const varById = {}
+    const varById = {};
+
     for (const record of records) {
         if (!recordsById[record.id]) {
             recordsById[record.id] = [];
@@ -649,7 +650,6 @@ const upload = async ({
 
     // Main loop on recordsById
     for (const [sourceId, recordList] of Object.entries(recordsById)) {
-
         if (previouslyEntered.has(sourceId) && !ignoreCache) {
             counts.exists++;
             continue;
@@ -670,7 +670,6 @@ const upload = async ({
 
         // Resolve combinations
         for (const record of recordList) {
-            
             // Splits civic evidence items drugs into separate evidence items based on their combination type.
             if (record.drugs === null || record.drugs.length === 0) {
                 record.drugs = [null];
@@ -687,10 +686,11 @@ const upload = async ({
                 counts.skip++;
                 continue;
             }
-            
+
             // Splits variants into a list to indicate separate evidence items when variants have been linked as "or"
             record.variants = [varById[record.variant.id.toString()]]; // OR-ing of variants
             let orCombination;
+
             if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variants[0].name)) {
                 const [, prefix, tail1, tail2] = orCombination;
                 record.variants = [
