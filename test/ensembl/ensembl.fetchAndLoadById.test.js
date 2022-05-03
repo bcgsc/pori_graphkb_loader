@@ -15,6 +15,7 @@ Object.entries(extApiData).forEach(([url, respBody]) => {
 class MockApiConnection extends ApiConnection {
     constructor() {
         super();
+        // Data in mockfile are ordered to match actual request order
         this.mockFile = path.join(__dirname, '../data/ensembl_fetchAndLoadById_requests.json');
         this.mockDataset = JSON.parse(fs.readFileSync(this.mockFile));
         this.ridSource = this.mockDataset[1].result.result['@rid'];
