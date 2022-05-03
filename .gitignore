@@ -38,6 +38,7 @@ errorLog-*
 data/ligand_actions.json
 *.log
 tmp
+/build_env.sh
 
 # snakemake stuff
 .snakemake
