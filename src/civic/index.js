@@ -4,6 +4,7 @@
 const _ = require('lodash');
 const Ajv = require('ajv');
 const fs = require('fs');
+const path = require('path');
 
 const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
 
@@ -17,31 +18,32 @@ const { logger } = require('../logging');
 const _pubmed = require('../entrez/pubmed');
 const _entrezGene = require('../entrez/gene');
 const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
-const { downloadVariantRecords, processVariantRecord } = require('./variant');
+const { processVariantRecord } = require('./variant');
 const { getPublication } = require('./publication');
-const { evidence: evidenceSpec } = require('./specs.json');
+const { EvidenceItem: evidenceSpec } = require('./specs.json');
 
 class NotImplementedError extends ErrorMixin {}
 
 const ajv = new Ajv();
 
-const BASE_URL = 'https://civicdb.org/api';
+const BASE_URL = 'https://civicdb.org/api/graphql';
 
 /**
- * https://civicdb.org/glossary
+ * 1-5 : https://docs.civicdb.org/en/latest/model/evidence/evidence_rating.html
+ * A-E : https://docs.civicdb.org/en/latest/model/evidence/level.html
  */
 const VOCAB = {
-    1: 'Evidence likely does not belong in CIViC. Claim is not supported well by experimental evidence. Results are not reproducible, or have very small sample size. No follow-up is done to validate novel claims.',
+    1: 'Claim is not supported well by experimental evidence. Results are not reproducible, or have very small sample size. No follow-up is done to validate novel claims.',
     2: 'Evidence is not well supported by experimental data, and little follow-up data is available. Publication is from a journal with low academic impact. Experiments may lack proper controls, have small sample size, or are not statistically convincing.',
     3: 'Evidence is convincing, but not supported by a breadth of experiments. May be smaller scale projects, or novel results without many follow-up experiments. Discrepancies from expected results are explained and not concerning.',
     4: 'Strong, well supported evidence. Experiments are well controlled, and results are convincing. Any discrepancies from expected results are well-explained and not concerning.',
-    5: 'Strong, well supported evidence from a lab or journal with respected academic standing. Experiments are well controlled, and results are clean and reproducible across multiple replicates. Evidence confirmed using separate methods.',
-    A: 'Trusted association in clinical medicine that routinely informs treatment, including large scale metaanalyses, standard of care associations, and organizational recommendations.',
-    B: 'Clinical evidence from clinical trials and other primary tumor data.',
-    C: 'Case study evidence from individual case reports in peer reviewed journals.',
-    D: 'Preclinical evidence from cell line studies, mouse models, and other in vitro or in vivo models.',
-    E: 'Inferential association made from experimental data.',
-    url: 'https://civicdb.org/glossary',
+    5: 'Strong, well supported evidence from a lab or journal with respected academic standing. Experiments are well controlled, and results are clean and reproducible across multiple replicates. Evidence confirmed using independent methods. The study is statistically well powered.',
+    A: 'Proven/consensus association in human medicine.',
+    B: 'Clinical trial or other primary patient data supports association.',
+    C: 'Individual case reports from clinical journals.',
+    D: 'In vivo or in vitro models support association.',
+    E: 'Indirect evidence.',
+    url: 'https://docs.civicdb.org/en/latest/model/evidence.html',
 };
 
 const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evidence levels
@@ -51,73 +53,97 @@ const validateEvidenceSpec = ajv.compile(evidenceSpec);
 
 
 /**
+ * Requests evidence items from CIViC using their graphql API
+ */
+const requestEvidenceItems = async (url, opt) => {
+    const allRecords = [];
+    let hasNextPage = true;
+
+    while (hasNextPage) {
+        try {
+            const page = await request({
+                body: { ...opt },
+                json: true,
+                method: 'POST',
+                uri: url,
+            });
+            allRecords.push(...page.data.evidenceItems.nodes);
+            opt.variables = { ...opt.variables, after: page.data.evidenceItems.pageInfo.endCursor };
+            hasNextPage = page.data.evidenceItems.pageInfo.hasNextPage;
+        } catch (err) {
+            logger.error(err);
+            throw (err);
+        }
+    }
+    return allRecords;
+};
+
+
+/**
  * Extract the appropriate GraphKB relevance term from a CIViC evidence record
  */
 const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificance) => {
-    if (evidenceDirection === 'Does Not Support') {
-        if (evidenceType === 'Predictive') {
+    if (evidenceDirection === 'DOES_NOT_SUPPORT') {
+        if (evidenceType === 'PREDICTIVE') {
             switch (clinicalSignificance) { // eslint-disable-line default-case
-                case 'Sensitivity':
-
-                case 'Sensitivity/Response': {
+                case 'SENSITIVITYRESPONSE': {
                     return 'no response';
                 }
 
-                case 'Resistance': { return 'no resistance'; }
+                case 'RESISTANCE': { return 'no resistance'; }
             }
         }
-    } else if (evidenceDirection === 'Supports') {
+    } else if (evidenceDirection === 'SUPPORTS') {
         switch (evidenceType) { // eslint-disable-line default-case
-            case 'Predictive': {
+            case 'PREDICTIVE': {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'Sensitivity':
-                    case 'Adverse Response':
-                    case 'Reduced Sensitivity':
+                    case 'ADVERSE_RESPONSE':
+                    case 'REDUCED_SENSITIVITY':
 
-                    case 'Resistance': {
-                        return clinicalSignificance.toLowerCase();
+                    case 'RESISTANCE': {
+                        return clinicalSignificance.replace(/_/g, ' ').toLowerCase();
                     }
 
-                    case 'Sensitivity/Response': { return 'sensitivity'; }
+                    case 'SENSITIVITYRESPONSE': { return 'sensitivity'; }
                 }
                 break;
             }
 
-            case 'Functional': {
-                return clinicalSignificance.toLowerCase();
+            case 'FUNCTIONAL': {
+                return clinicalSignificance.replace(/_/g, ' ').toLowerCase();
             }
 
-            case 'Diagnostic': {
+            case 'DIAGNOSTIC': {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'Positive': { return 'favours diagnosis'; }
+                    case 'POSITIVE': { return 'favours diagnosis'; }
 
-                    case 'Negative': { return 'opposes diagnosis'; }
+                    case 'NEGATIVE': { return 'opposes diagnosis'; }
                 }
                 break;
             }
 
-            case 'Prognostic': {
+            case 'PROGNOSTIC': {
                 switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'Negative':
+                    case 'NEGATIVE':
 
-                    case 'Poor Outcome': {
+                    case 'POOR_OUTCOME': {
                         return 'unfavourable prognosis';
                     }
-                    case 'Positive':
+                    case 'POSITIVE':
 
-                    case 'Better Outcome': {
+                    case 'BETTER_OUTCOME': {
                         return 'favourable prognosis';
                     }
                 }
                 break;
             }
 
-            case 'Predisposing': {
-                if (['Positive', null, 'null'].includes(clinicalSignificance)) {
+            case 'PREDISPOSING': {
+                if (['POSITIVE', null].includes(clinicalSignificance)) {
                     return 'predisposing';
-                } if (clinicalSignificance.includes('Pathogenic')) {
-                    return clinicalSignificance.toLowerCase();
-                } if (clinicalSignificance === 'Uncertain Significance') {
+                } if (clinicalSignificance.includes('PATHOGENIC')) {
+                    return clinicalSignificance.replace(/_/g, ' ').toLowerCase();
+                } if (clinicalSignificance === 'UNCERTAIN_SIGNIFICANCE') {
                     return 'likely predisposing';
                 }
                 break;
@@ -126,9 +152,12 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
     }
 
     throw new NotImplementedError(
-        `unable to process relevance (${JSON.stringify({ clinicalSignificance, evidenceDirection, evidenceType })})`,
+        `unable to process relevance (${JSON.stringify(
+            { clinicalSignificance, evidenceDirection, evidenceType },
+        )})`,
     );
 };
+
 
 /**
  * Convert the CIViC relevance types to GraphKB terms
@@ -136,9 +165,9 @@ const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificanc
 const getRelevance = async ({ rawRecord, conn }) => {
     // translate the type to a GraphKB vocabulary term
     let relevance = translateRelevance(
-        rawRecord.evidence_type,
-        rawRecord.evidence_direction,
-        rawRecord.clinical_significance,
+        rawRecord.evidenceType,
+        rawRecord.evidenceDirection,
+        rawRecord.clinicalSignificance,
     ).toLowerCase();
 
     if (RELEVANCE_CACHE[relevance] === undefined) {
@@ -160,12 +189,12 @@ const getDrug = async (conn, drugRecord) => {
     // then use the name as a fallback
     const name = drugRecord.name.toLowerCase().trim();
 
-    if (drugRecord.ncit_id) {
+    if (drugRecord.ncitId) {
         try {
             const drug = await conn.getUniqueRecordBy({
                 filters: [
                     { source: { filters: { name: NCIT_SOURCE_DEFN.name }, target: 'Source' } },
-                    { sourceId: drugRecord.ncit_id },
+                    { sourceId: drugRecord.ncitId },
                     { name: drugRecord.name },
                 ],
                 sort: orderPreferredOntologyTerms,
@@ -173,7 +202,7 @@ const getDrug = async (conn, drugRecord) => {
             });
             return drug;
         } catch (err) {
-            logger.error(`had NCIt drug mapping (${drugRecord.ncit_id}) named (${drugRecord.name}) but failed to fetch from graphkb: ${err}`);
+            logger.error(`had NCIt drug mapping (${drugRecord.ncitId}) named (${drugRecord.name}) but failed to fetch from graphkb: ${err}`);
             throw err;
         }
     }
@@ -236,12 +265,12 @@ const getEvidenceLevel = async ({
     conn, rawRecord, sources,
 }) => {
     // get the evidenceLevel
-    let level = `${rawRecord.evidence_level}${rawRecord.rating || ''}`.toLowerCase();
+    let level = `${rawRecord.evidenceLevel}${rawRecord.evidenceRating || ''}`.toLowerCase();
 
     if (EVIDENCE_LEVEL_CACHE[level] === undefined) {
         level = await conn.addRecord({
             content: {
-                description: `${VOCAB[rawRecord.evidence_level]} ${VOCAB[rawRecord.rating] || ''}`,
+                description: `${VOCAB[rawRecord.evidenceLevel]} ${VOCAB[rawRecord.evidenceRating] || ''}`,
                 displayName: `${SOURCE_DEFN.displayName} ${level.toUpperCase()}`,
                 name: level,
                 source: rid(sources.civic),
@@ -249,7 +278,10 @@ const getEvidenceLevel = async ({
                 url: VOCAB.url,
             },
             existsOk: true,
-            fetchConditions: { AND: [{ sourceId: level }, { name: level }, { source: rid(sources.civic) }] },
+            fetchConditions: {
+                AND:
+                    [{ sourceId: level }, { name: level }, { source: rid(sources.civic) }],
+            },
             target: 'EvidenceLevel',
 
         });
@@ -269,7 +301,7 @@ const getEvidenceLevel = async ({
  * @param {object} opt.rawRecord the unparsed record from CIViC
  * @param {object} opt.sources the sources by name
  * @param {boolean} opt.oneToOne civic statements to graphkb statements is a 1 to 1 mapping
- * @param {object} opt.variantsCache keeps track of errors and results processing variants to avoid repeating
+ * @param {object} opt.variantsCache used to avoid repeat processing of civic variants. stores the graphkb variant(s) if success or the error if not
  * @param
  */
 const processEvidenceRecord = async (opt) => {
@@ -280,7 +312,7 @@ const processEvidenceRecord = async (opt) => {
     const [level, relevance, [feature]] = await Promise.all([
         getEvidenceLevel(opt),
         getRelevance(opt),
-        _entrezGene.fetchAndLoadByIds(conn, [rawRecord.variant.entrez_id]),
+        _entrezGene.fetchAndLoadByIds(conn, [rawRecord.variant.gene.entrezId]),
     ]);
     let variants;
 
@@ -299,6 +331,8 @@ const processEvidenceRecord = async (opt) => {
             throw err;
         }
     }
+
+
     // get the disease by doid
     let disease;
 
@@ -332,7 +366,7 @@ const processEvidenceRecord = async (opt) => {
                 conn,
                 rid(sources.civic),
                 rawRecord.drugs,
-                (rawRecord.drug_interaction_type || '').toLowerCase(),
+                (rawRecord.drugInteractionType || '').toLowerCase(),
             );
         } catch (err) {
             logger.error(err);
@@ -350,7 +384,7 @@ const processEvidenceRecord = async (opt) => {
         evidence: [rid(publication)],
         evidenceLevel: [rid(level)],
         relevance: rid(relevance),
-        reviewStatus: (rawRecord.status === 'accepted'
+        reviewStatus: (rawRecord.status === 'ACCEPTED'
             ? 'not required'
             : 'pending'
         ),
@@ -359,7 +393,7 @@ const processEvidenceRecord = async (opt) => {
     };
 
     // create the statement and connecting edges
-    if (rawRecord.evidence_type === 'Diagnostic' || rawRecord.evidence_type === 'Predisposing') {
+    if (rawRecord.evidenceType === 'DIAGNOSTIC' || rawRecord.evidenceType === 'PREDISPOSING') {
         if (!disease) {
             throw new Error('Unable to create a diagnostic or predisposing statement without a corresponding disease');
         }
@@ -368,12 +402,12 @@ const processEvidenceRecord = async (opt) => {
         content.conditions.push(rid(disease));
     }
 
-    if (rawRecord.evidence_type === 'Predictive' && drug) {
+    if (rawRecord.evidenceType === 'PREDICTIVE' && drug) {
         content.subject = rid(drug);
-    } if (rawRecord.evidence_type === 'Prognostic') {
+    } if (rawRecord.evidenceType === 'PROGNOSTIC') {
         // get the patient vocabulary object
         content.subject = rid(await conn.getVocabularyTerm('patient'));
-    } if (rawRecord.evidence_type === 'Functional') {
+    } if (rawRecord.evidenceType === 'FUNCTIONAL') {
         content.subject = rid(feature);
     }
 
@@ -462,100 +496,78 @@ const processEvidenceRecord = async (opt) => {
  * Get a list of CIViC Evidence Items which have since been deleted.
  * Returns the list of evidence item IDs to be purged from GraphKB
  *
- * @param {string} baseUrl base url for the CIViC API
+ * @param {string} url endpoint for the CIViC API
  */
-const fetchDeletedEvidenceItems = async (baseUrl) => {
-    const urlTemplate = `${baseUrl}/evidence_items?count=500&status=rejected`;
-    let expectedPages = 1,
-        currentPage = 1;
+const fetchDeletedEvidenceItems = async (url) => {
+    const ids = new Set();
 
-    const allRecords = [];
-
-    // get the aproved entries
-    while (currentPage <= expectedPages) {
-        const url = `${urlTemplate}&page=${currentPage}`;
-        logger.info(`loading: ${url}`);
-        const resp = await request({
-            json: true,
-            method: 'GET',
-            uri: url,
-        });
-        expectedPages = resp._meta.total_pages;
-        logger.info(`loaded ${resp.records.length} records`);
-        allRecords.push(...resp.records);
-        currentPage++;
-    }
-    return allRecords.map(ev => ev.id);
+    // Get rejected evidenceItems
+    logger.info(`loading rejected evidenceItems from ${url}`);
+    const rejected = await requestEvidenceItems(url, {
+        query: `query evidenceItems($after: String, $status: EvidenceStatus) {
+                    evidenceItems(after: $after, status: $status) {
+                        nodes {id}
+                        pageCount
+                        pageInfo {endCursor, hasNextPage}
+                        totalCount
+                    }
+                }`,
+        variables: {
+            status: 'REJECTED',
+        },
+    });
+    rejected.forEach(node => ids.add(node.id));
+    logger.info(`fetched ${ids.size} rejected entries from CIViC`);
+    return ids;
 };
 
 
 /**
  * Fetch civic approved evidence entries as well as those submitted by trusted curators
  *
- * @param {string} baseUrl the base url for the request
+ * @param {string} url the endpoint for the request
  * @param {string[]} trustedCurators a list of curator IDs to also fetch submitted only evidence items for
  */
-const downloadEvidenceRecords = async (baseUrl, trustedCurators) => {
-    const urlTemplate = `${baseUrl}/evidence_items?count=500&status=accepted`;
-    // load directly from their api
+const downloadEvidenceRecords = async (url, trustedCurators) => {
+    const records = [];
+    const errorList = [];
     const counts = {
         error: 0, exists: 0, skip: 0, success: 0,
     };
-    let expectedPages = 1,
-        currentPage = 1;
 
-    const allRecords = [];
-    const errorList = [];
+    const evidenceItems = [];
+    const query = fs.readFileSync(path.join(__dirname, 'evidenceItems.graphql')).toString();
 
-    // get the aproved entries
-    while (currentPage <= expectedPages) {
-        const url = `${urlTemplate}&page=${currentPage}`;
-        logger.info(`loading: ${url}`);
-        const resp = await request({
-            json: true,
-            method: 'GET',
-            uri: url,
-        });
-        expectedPages = resp._meta.total_pages;
-        logger.info(`loaded ${resp.records.length} records`);
-        allRecords.push(...resp.records);
-        currentPage++;
-    }
+    // Get accepted evidenceItems
+    logger.info(`loading accepted evidenceItems from ${url}`);
+    const accepted = await requestEvidenceItems(url, {
+        query,
+        variables: {
+            status: 'ACCEPTED',
+        },
+    });
+    logger.info(`fetched ${accepted.length} accepted entries from CIViC`);
+    evidenceItems.push(...accepted);
 
-    // now find entries curated by trusted curators
-    const trustedSubmissions = [];
-
-    // NOTE: purposefully not async and in a for-loop to avoid spamming their API with requests
-    for (const submitter of Array.from(new Set(trustedCurators))) {
-        const { results } = await request({
-            body: {
-                entity: 'evidence_items',
-                operator: 'AND',
-                queries: [{ condition: { name: 'is_equal_to', parameters: [`${submitter}`] }, field: 'submitter_id' }],
-                save: true,
-            },
-            json: true,
-            method: 'POST',
-            uri: `${baseUrl}/evidence_items/search`,
-        });
-
-        trustedSubmissions.push(...results);
-    }
-
-    let submitted = 0;
-
-    for (const record of trustedSubmissions) {
-        if (record.status === 'submitted') {
-            submitted += 1;
-            allRecords.push(record);
+    // Get submitted evidenceItems from trusted curators
+    for (const curator of Array.from(new Set(trustedCurators))) {
+        if (!Number.isNaN(curator)) {
+            logger.info(`loading submitted evidenceItems by trusted curator ${curator} from ${url}`);
+            const submittedByATrustedCurator = await requestEvidenceItems(url, {
+                query,
+                variables: {
+                    status: 'SUBMITTED',
+                    userId: parseInt(curator, 10),
+                },
+            });
+            evidenceItems.push(...submittedByATrustedCurator);
         }
     }
-    logger.info(`loaded ${submitted} unaccepted entries from trusted submitters`);
+    const submittedCount = evidenceItems.length - accepted.length;
+    logger.info(`loaded ${submittedCount} unaccepted entries by trusted submitters from CIViC`);
 
-    // validate the records using the spec
-    const records = [];
-
-    for (const record of allRecords) {
+    // Validation
+    for (const record of evidenceItems) {
         try {
             checkSpec(validateEvidenceSpec, record);
         } catch (err) {
@@ -566,8 +578,8 @@ const downloadEvidenceRecords = async (baseUrl, trustedCurators) => {
         }
 
         if (
-            record.clinical_significance === 'N/A'
-            || (record.clinical_significance === null && record.evidence_type === 'Predictive')
+            record.clinicalSignificance === 'NA'
+            || (record.clinicalSignificance === null && record.evidenceType === 'PREDICTIVE')
         ) {
             counts.skip++;
             logger.debug(`skipping uninformative record (${record.id})`);
@@ -590,9 +602,9 @@ const downloadEvidenceRecords = async (baseUrl, trustedCurators) => {
 const upload = async ({
     conn, errorLogPrefix, trustedCurators, ignoreCache = false, maxRecords, url = BASE_URL,
 }) => {
-    // add the source node
     const source = await conn.addSource(SOURCE_DEFN);
 
+    // Get list of all previous statements from CIVIC in GraphKB
     let previouslyEntered = await conn.getRecords({
         filters: { source: rid(source) },
         returnProperties: ['sourceId'],
@@ -600,23 +612,25 @@ const upload = async ({
     });
     previouslyEntered = new Set(previouslyEntered.map(r => r.sourceId));
     logger.info(`Found ${previouslyEntered.size} records previously added from ${SOURCE_DEFN.name}`);
+    // Get list of all Pubmed publication reccords from GraphKB
     logger.info('caching publication records');
     _pubmed.preLoadCache(conn);
 
-    const varById = await downloadVariantRecords();
-    const { records, errorList, counts } = await downloadEvidenceRecords(url, trustedCurators);
-    const purgeableEvidenceItems = new Set(await fetchDeletedEvidenceItems(url));
-    logger.info(`fetched ${purgeableEvidenceItems.size} deleted entries from CIViC`);
+    // Get evidence records from CIVIC (Accepted, or Submitted from a trusted curator)
+    const { counts, errorList, records } = await downloadEvidenceRecords(url, trustedCurators);
+    // Get rejected evidence records ids from CIVIC
+    const purgeableEvidenceItems = await fetchDeletedEvidenceItems(url);
 
     logger.info(`Processing ${records.length} records`);
-
-    // keep track of errors and already processed variants by their CIViC IDs to avoid repeat logging
+    // keep track of errors and already processed variants by their CIViC ID to avoid repeat logging
     const variantsCache = {
         errors: {},
         records: {},
     };
 
+    // Refactor records into recordsById and varById
     const recordsById = {};
+    const varById = {};
 
     for (const record of records) {
         if (!recordsById[record.id]) {
@@ -628,15 +642,20 @@ const upload = async ({
             logger.warn(`not loading all content due to max records limit (${maxRecords})`);
             break;
         }
+
+        if (record.variant && record.variant.id) {
+            varById[record.variant.id.toString()] = record.variant;
+        }
     }
 
+    // Main loop on recordsById
     for (const [sourceId, recordList] of Object.entries(recordsById)) {
         if (previouslyEntered.has(sourceId) && !ignoreCache) {
             counts.exists++;
             continue;
         }
         if (purgeableEvidenceItems.has(sourceId)) {
-            // this should never happen, but if it does we have made an invalida assumption about how civic uses IDs
+            // this should never happen. If it does we have made an invalid assumption about how civic uses IDs.
             throw new Error(`Record ID is both deleted and to-be loaded. Violates assumptions: ${sourceId}`);
         }
         const preupload = new Set((await conn.getRecords({
@@ -649,23 +668,27 @@ const upload = async ({
         let mappedCount = 0;
         const postupload = [];
 
-        // resolve combinations
+        // Resolve combinations
         for (const record of recordList) {
-            record.variants = [varById[record.variant_id]]; // OR-ing of variants
-
-            if (record.drugs === undefined || record.drugs.length === 0) {
+            // Splits civic evidence items drugs into separate evidence items based on their combination type.
+            if (record.drugs === null || record.drugs.length === 0) {
                 record.drugs = [null];
-            } else if (record.drug_interaction_type === 'Combination' || record.drug_interaction_type === 'Sequential') {
+            } else if (
+                record.drugInteractionType === 'COMBINATION'
+                || record.drugInteractionType === 'SEQUENTIAL'
+            ) {
                 record.drugs = [record.drugs];
-            } else if (record.drug_interaction_type === 'Substitutes' || record.drugs.length < 2) {
+            } else if (record.drugInteractionType === 'SUBSTITUTES' || record.drugs.length < 2) {
                 record.drugs = record.drugs.map(drug => [drug]);
-                record.drug_interaction_type = null;
+                record.drugInteractionType = null;
             } else {
-                logger.error(`(evidence: ${record.id}) unsupported drug interaction type (${record.drug_interaction_type}) for a multiple drug (${record.drugs.length}) statement`);
+                logger.error(`(evidence: ${record.id}) unsupported drug interaction type (${record.drugInteractionType}) for a multiple drug (${record.drugs.length}) statement`);
                 counts.skip++;
                 continue;
             }
 
+            // Splits variants into a list to indicate separate evidence items when variants have been linked as "or"
+            record.variants = [varById[record.variant.id.toString()]]; // OR-ing of variants
             let orCombination;
 
             if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variants[0].name)) {
@@ -680,7 +703,7 @@ const upload = async ({
 
         const oneToOne = mappedCount === 1 && preupload.size === 1;
 
-        // upload all GraphKB statements for this CIViC Evidence Item
+        // Upload all GraphKB statements for this CIViC Evidence Item
         for (const record of recordList) {
             for (const variant of record.variants) {
                 for (const drugs of record.drugs) {
@@ -696,11 +719,14 @@ const upload = async ({
                         postupload.push(rid(result));
                         counts.success += 1;
                     } catch (err) {
-                        if (err.toString().includes('is not a function') || err.toString().includes('of undefined')) {
+                        if (
+                            err.toString().includes('is not a function')
+                                || err.toString().includes('of undefined')
+                        ) {
                             console.error(err);
                         }
                         if (err instanceof NotImplementedError) {
-                            // accepted evidence that we do not support loading. Should delete as it may have changed to this from something we did support
+                            // accepted evidence that we do not support loading. Should delete as it may have changed from something we did support
                             purgeableEvidenceItems.add(sourceId);
                         }
                         errorList.push({ error: err, errorMessage: err.toString(), record });
@@ -717,12 +743,16 @@ const upload = async ({
         });
 
         if (preupload.size && purgeableEvidenceItems.has(sourceId)) {
-            logger.warn(`Removing ${preupload.size} CIViC Entries (EID:${sourceId}) of unsupported format`);
+            logger.warn(`
+                Removing ${preupload.size} CIViC Entries (EID:${sourceId}) of unsupported format
+            `);
 
             try {
-                await Promise.all(Array.from(preupload).map(async outdatedId => conn.deleteRecord(
-                    'Statement', outdatedId,
-                )));
+                await Promise.all(
+                    Array.from(preupload).map(
+                        async outdatedId => conn.deleteRecord('Statement', outdatedId),
+                    ),
+                );
             } catch (err) {
                 logger.error(err);
             }
@@ -731,9 +761,11 @@ const upload = async ({
                 logger.warn(`deleting ${preupload.size} outdated statement records (${Array.from(preupload).join(' ')}) has new/retained statements (${postupload.join(' ')})`);
 
                 try {
-                    await Promise.all(Array.from(preupload).map(async outdatedId => conn.deleteRecord(
-                        'Statement', outdatedId,
-                    )));
+                    await Promise.all(
+                        Array.from(preupload).map(
+                            async outdatedId => conn.deleteRecord('Statement', outdatedId),
+                        ),
+                    );
                 } catch (err) {
                     logger.error(err);
                 }
@@ -768,6 +800,7 @@ const upload = async ({
     logger.info(`writing ${errorJson}`);
     fs.writeFileSync(errorJson, JSON.stringify(errorList, null, 2));
 };
+
 
 module.exports = {
     SOURCE_DEFN,
