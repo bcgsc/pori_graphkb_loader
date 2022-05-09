@@ -127,6 +127,31 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
+    test('fusion with multiple variants (colon sep)', () => {
+        const variants = normalizeVariantRecord({
+            entrezId: 1,
+            entrezName: 'NTRK1',
+            name: 'LMNA::NTRK1 G595R AND G667C',
+        });
+        expect(variants).toEqual([
+            {
+                reference1: { name: 'lmna' },
+                reference2: { name: 'ntrk1', sourceId: '1' },
+                type: 'fusion',
+            },
+            {
+                positional: true,
+                reference1: { name: 'ntrk1', sourceId: '1' },
+                variant: 'p.g595r',
+            },
+            {
+                positional: true,
+                reference1: { name: 'ntrk1', sourceId: '1' },
+                variant: 'p.g667c',
+            },
+        ]);
+    });
+
     test('corrects deprecated indel syntax', () => {
         // S111C (c.330CA>TT)
         const variants = normalizeVariantRecord({
@@ -636,28 +661,25 @@ describe('normalizeVariantRecord', () => {
 
 describe('translateRelevance', () => {
     test.each([
-        ['Predictive', 'Supports', 'Sensitivity', 'sensitivity'],
-        ['Predictive', 'Supports', 'Adverse Response', 'adverse response'],
-        ['Predictive', 'Supports', 'Reduced Sensitivity', 'reduced sensitivity'],
-        ['Predictive', 'Supports', 'Resistance', 'resistance'],
-        ['Predictive', 'Supports', 'Sensitivity/Response', 'sensitivity'],
-        ['Diagnostic', 'Supports', 'Positive', 'favours diagnosis'],
-        ['Diagnostic', 'Supports', 'Negative', 'opposes diagnosis'],
-        ['Prognostic', 'Supports', 'Negative', 'unfavourable prognosis'],
-        ['Prognostic', 'Supports', 'Poor Outcome', 'unfavourable prognosis'],
-        ['Prognostic', 'Supports', 'Positive', 'favourable prognosis'],
-        ['Prognostic', 'Supports', 'Better Outcome', 'favourable prognosis'],
-        ['Predisposing', 'Supports', 'Positive', 'predisposing'],
-        ['Predisposing', 'Supports', null, 'predisposing'],
-        ['Predisposing', 'Supports', 'null', 'predisposing'],
-        ['Predisposing', 'Supports', 'Pathogenic', 'pathogenic'],
-        ['Predisposing', 'Supports', 'Likely Pathogenic', 'likely pathogenic'],
-        ['Functional', 'Supports', 'Gain of Function', 'gain of function'],
-        ['Predictive', 'Does Not Support', 'Sensitivity', 'no response'],
-        ['Predictive', 'Does Not Support', 'Sensitivity/Response', 'no response'],
-        ['Predictive', 'Does Not Support', 'Resistance', 'no resistance'],
-        ['Functional', 'Supports', 'Neomorphic', 'neomorphic'],
-        ['Functional', 'Supports', 'Unaltered Function', 'unaltered function'],
+        ['PREDICTIVE', 'SUPPORTS', 'ADVERSE_RESPONSE', 'adverse response'],
+        ['PREDICTIVE', 'SUPPORTS', 'REDUCED_SENSITIVITY', 'reduced sensitivity'],
+        ['PREDICTIVE', 'SUPPORTS', 'RESISTANCE', 'resistance'],
+        ['PREDICTIVE', 'SUPPORTS', 'SENSITIVITYRESPONSE', 'sensitivity'],
+        ['DIAGNOSTIC', 'SUPPORTS', 'POSITIVE', 'favours diagnosis'],
+        ['DIAGNOSTIC', 'SUPPORTS', 'NEGATIVE', 'opposes diagnosis'],
+        ['PROGNOSTIC', 'SUPPORTS', 'NEGATIVE', 'unfavourable prognosis'],
+        ['PROGNOSTIC', 'SUPPORTS', 'POOR_OUTCOME', 'unfavourable prognosis'],
+        ['PROGNOSTIC', 'SUPPORTS', 'POSITIVE', 'favourable prognosis'],
+        ['PROGNOSTIC', 'SUPPORTS', 'BETTER_OUTCOME', 'favourable prognosis'],
+        ['PREDISPOSING', 'SUPPORTS', 'POSITIVE', 'predisposing'],
+        ['PREDISPOSING', 'SUPPORTS', null, 'predisposing'],
+        ['PREDISPOSING', 'SUPPORTS', 'PATHOGENIC', 'pathogenic'],
+        ['PREDISPOSING', 'SUPPORTS', 'LIKELY_PATHOGENIC', 'likely pathogenic'],
+        ['FUNCTIONAL', 'SUPPORTS', 'GAIN_OF_FUNCTION', 'gain of function'],
+        ['PREDICTIVE', 'DOES_NOT_SUPPORT', 'SENSITIVITYRESPONSE', 'no response'],
+        ['PREDICTIVE', 'DOES_NOT_SUPPORT', 'RESISTANCE', 'no resistance'],
+        ['FUNCTIONAL', 'SUPPORTS', 'NEOMORPHIC', 'neomorphic'],
+        ['FUNCTIONAL', 'SUPPORTS', 'UNALTERED_FUNCTION', 'unaltered function'],
     ])(
         '%s|%s|%s returns %s', (evidenceType, evidenceDirection, clinicalSignificance, expected) => {
             expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
@@ -666,13 +688,13 @@ describe('translateRelevance', () => {
 
     test.each([
         // For EvType-EvDir-ClinSign test cases that should not be loaded
-        ['Prognostic', 'Does Not Support', 'Poor Outcome'],
-        ['Functional', 'Does Not Support', 'Neomorphic'],
-        ['Predisposing', 'Does Not Support', 'Positive'],
-        ['Predisposing', 'N/A', 'N/A'],
-        ['Diagnostic', 'Does Not Support', 'Positive'],
-        ['Diagnostic', 'Does Not Support', 'Negative'],
-        ['Functional', 'Does Not Support', 'Unaltered Function'],
+        ['PROGNOSTIC', 'DOES_NOT_SUPPORT', 'POOR_OUTCOME'],
+        ['FUNCTIONAL', 'DOES_NOT_SUPPORT', 'NEOMORPHIC'],
+        ['PREDISPOSING', 'DOES_NOT_SUPPORT', 'POSITIVE'],
+        ['PREDISPOSING', 'NA', 'NA'],
+        ['DIAGNOSTIC', 'DOES_NOT_SUPPORT', 'POSITIVE'],
+        ['DIAGNOSTIC', 'DOES_NOT_SUPPORT', 'NEGATIVE'],
+        ['FUNCTIONAL', 'DOES_NOT_SUPPORT', 'UNALTERED_FUNCTION'],
     ])(
         '%s|%s|%s errors', (evidenceType, evidenceDirection, clinicalSignificance) => {
             expect(() => translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toThrow('unable to process relevance');
