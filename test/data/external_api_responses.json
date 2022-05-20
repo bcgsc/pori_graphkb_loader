@@ -332,5 +332,559 @@
   },
   "http://rest.ensembl.org/lookup/id/enst00000544455": {
     "Parent": "ENSG00000139618"
+  },
+  "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?retmode=json&rettype=docsum&db=nucleotide&id=nm_000059": {
+    "header": {
+      "type": "esummary",
+      "version": "0.3"
+    },
+    "result": {
+      "1813836564": {
+        "uid": "1813836564",
+        "term": "1813836564",
+        "caption": "NM_000059",
+        "title": "Homo sapiens BRCA2 DNA repair associated (BRCA2), transcript variant 1, mRNA",
+        "extra": "gi|1813836564|ref|NM_000059.4|",
+        "gi": 1813836564,
+        "createdate": "1999/03/19",
+        "updatedate": "2022/05/20",
+        "flags": 512,
+        "taxid": 9606,
+        "slen": 11954,
+        "biomol": "mRNA",
+        "moltype": "rna",
+        "topology": "linear",
+        "sourcedb": "refseq",
+        "segsetsize": "",
+        "projectid": "0",
+        "genome": "genomic",
+        "subtype": "chromosome|map",
+        "subname": "13|13q13.1",
+        "assemblygi": "",
+        "assemblyacc": "AL137247.14",
+        "tech": "",
+        "completeness": "",
+        "geneticcode": "1",
+        "strand": "",
+        "organism": "human",
+        "strain": "",
+        "biosample": "",
+        "statistics": [
+          {
+            "type": "Length",
+            "count": 11954
+          },
+          {
+            "type": "Length",
+            "subtype": "literal",
+            "count": 11954
+          },
+          {
+            "type": "all",
+            "count": 4
+          },
+          {
+            "type": "blob_size",
+            "count": 40741
+          },
+          {
+            "type": "cdregion",
+            "count": 1
+          },
+          {
+            "type": "cdregion",
+            "subtype": "CDS",
+            "count": 1
+          },
+          {
+            "type": "gene",
+            "count": 1
+          },
+          {
+            "type": "gene",
+            "subtype": "Gene",
+            "count": 1
+          },
+          {
+            "type": "imp",
+            "count": 1
+          },
+          {
+            "type": "imp",
+            "subtype": "misc_feature",
+            "count": 1
+          },
+          {
+            "type": "org",
+            "count": 1
+          },
+          {
+            "type": "pub",
+            "count": 10
+          },
+          {
+            "type": "pub",
+            "subtype": "PubMed",
+            "count": 6
+          },
+          {
+            "type": "pub",
+            "subtype": "PubMed/Gene-rif",
+            "count": 4
+          },
+          {
+            "source": "CDS",
+            "type": "all",
+            "count": 26
+          },
+          {
+            "source": "CDS",
+            "type": "prot",
+            "count": 1
+          },
+          {
+            "source": "CDS",
+            "type": "prot",
+            "subtype": "Prot",
+            "count": 1
+          },
+          {
+            "source": "CDS",
+            "type": "region",
+            "count": 15
+          },
+          {
+            "source": "CDS",
+            "type": "region",
+            "subtype": "Region",
+            "count": 15
+          },
+          {
+            "source": "CDS",
+            "type": "site",
+            "count": 10
+          },
+          {
+            "source": "CDS",
+            "type": "site",
+            "subtype": "Site",
+            "count": 10
+          },
+          {
+            "source": "SNP",
+            "type": "VDB",
+            "count": 1
+          },
+          {
+            "source": "SNP",
+            "type": "VDB",
+            "subtype": "NA000146873.18#17",
+            "count": 1
+          },
+          {
+            "source": "SNP",
+            "type": "all",
+            "count": 1
+          },
+          {
+            "source": "all",
+            "type": "Length",
+            "count": 11954
+          },
+          {
+            "source": "all",
+            "type": "VDB",
+            "count": 1
+          },
+          {
+            "source": "all",
+            "type": "all",
+            "count": 60
+          },
+          {
+            "source": "all",
+            "type": "blob_size",
+            "count": 40741
+          },
+          {
+            "source": "all",
+            "type": "cdregion",
+            "count": 1
+          },
+          {
+            "source": "all",
+            "type": "evidence",
+            "count": 27
+          },
+          {
+            "source": "all",
+            "type": "gene",
+            "count": 1
+          },
+          {
+            "source": "all",
+            "type": "imp",
+            "count": 30
+          },
+          {
+            "source": "all",
+            "type": "org",
+            "count": 1
+          },
+          {
+            "source": "all",
+            "type": "prot",
+            "count": 1
+          },
+          {
+            "source": "all",
+            "type": "pub",
+            "count": 10
+          },
+          {
+            "source": "all",
+            "type": "region",
+            "count": 15
+          },
+          {
+            "source": "all",
+            "type": "site",
+            "count": 10
+          },
+          {
+            "source": "exons",
+            "type": "all",
+            "count": 27
+          },
+          {
+            "source": "exons",
+            "type": "evidence",
+            "count": 27
+          },
+          {
+            "source": "exons",
+            "type": "imp",
+            "count": 27
+          },
+          {
+            "source": "exons",
+            "type": "imp",
+            "subtype": "exon",
+            "count": 27
+          },
+          {
+            "source": "polyA sites",
+            "type": "all",
+            "count": 2
+          },
+          {
+            "source": "polyA sites",
+            "type": "imp",
+            "count": 2
+          },
+          {
+            "source": "polyA sites",
+            "type": "imp",
+            "subtype": "polyA_site",
+            "count": 1
+          },
+          {
+            "source": "polyA sites",
+            "type": "imp",
+            "subtype": "regulatory",
+            "count": 1
+          }
+        ],
+        "properties": {
+          "na": "1",
+          "value": "1"
+        },
+        "oslt": {
+          "indexed": true,
+          "value": "NM_000059.4"
+        },
+        "accessionversion": "NM_000059.4"
+      },
+      "uids": [
+        "1813836564"
+      ]
+    }
+  },
+  "http://rest.genenames.org/fetch/hgnc_id/1101": {
+    "responseHeader": {
+      "status": 0,
+      "QTime": 1
+    },
+    "response": {
+      "numFound": 1,
+      "start": 0,
+      "docs": [
+        {
+          "hgnc_id": "HGNC:1101",
+          "symbol": "BRCA2",
+          "name": "BRCA2 DNA repair associated",
+          "status": "Approved",
+          "locus_type": "gene with protein product",
+          "prev_symbol": [
+            "FANCD1",
+            "FACD",
+            "FANCD"
+          ],
+          "prev_name": [
+            "Fanconi anemia, complementation group D1",
+            "breast cancer 2, early onset",
+            "breast cancer 2"
+          ],
+          "alias_symbol": [
+            "FAD",
+            "FAD1",
+            "BRCC2",
+            "XRCC11"
+          ],
+          "alias_name": [
+            "BRCA1/BRCA2-containing complex, subunit 2"
+          ],
+          "location": "13q13.1",
+          "date_approved_reserved": "1994-10-17T00:00:00Z",
+          "date_modified": "2021-05-26T00:00:00Z",
+          "date_name_changed": "2019-01-22T00:00:00Z",
+          "ena": [
+            "U43746"
+          ],
+          "entrez_id": "675",
+          "mgd_id": [
+            "MGI:109337"
+          ],
+          "cosmic": "BRCA2",
+          "orphanet": 119072,
+          "pubmed_id": [
+            8091231,
+            7581463,
+            15057823
+          ],
+          "refseq_accession": [
+            "NM_000059"
+          ],
+          "gene_group": [
+            "FA complementation groups"
+          ],
+          "vega_id": "OTTHUMG00000017411",
+          "lsdb": [
+            "Breast Cancer|http://research.nhgri.nih.gov/bic/",
+            "Fanconi Anaemia Mutation Database|http://www2.rockefeller.edu/fanconi/",
+            "BRCA1 database at LOVD-China|http://genomed.org/LOVD/BC/home.php?select_db=BRCA2",
+            "Global Variome shared LOVD|https://databases.lovd.nl/shared/genes/BRCA2",
+            "LOVD - Leiden Open Variation Database|http://proteomics.bio21.unimelb.edu.au/lovd/genes/BRCA2",
+            "Global Variome shared LOVD|https://databases.lovd.nl/shared/genes/FANCD1",
+            "LRG_293|http://ftp.ebi.ac.uk/pub/databases/lrgex/LRG_293.xml"
+          ],
+          "ensembl_gene_id": "ENSG00000139618",
+          "ccds_id": [
+            "CCDS9344"
+          ],
+          "locus_group": "protein-coding gene",
+          "omim_id": [
+            "600185"
+          ],
+          "uniprot_ids": [
+            "P51587"
+          ],
+          "ucsc_id": "uc001uub.2",
+          "rgd_id": [
+            "RGD:2219"
+          ],
+          "gene_group_id": [
+            548
+          ],
+          "location_sortable": "13q13.1",
+          "agr": "HGNC:1101",
+          "symbol_report_tag": [
+            "Stable symbol"
+          ],
+          "mane_select": [
+            "ENST00000380152.8",
+            "NM_000059.4"
+          ],
+          "gencc": "HGNC:1101",
+          "uuid": "378d0197-e75d-40aa-8c4b-eda3304b5999",
+          "_version_": 1733782916146659300
+        }
+      ]
+    }
+  },
+  "https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?retmode=json&rettype=docsum&db=gene&id=675": {
+    "header": {
+      "type": "esummary",
+      "version": "0.3"
+    },
+    "result": {
+      "675": {
+        "uid": "675",
+        "name": "BRCA2",
+        "description": "BRCA2 DNA repair associated",
+        "status": "",
+        "currentid": "",
+        "chromosome": "13",
+        "geneticsource": "genomic",
+        "maplocation": "13q13.1",
+        "otheraliases": "BRCC2, BROVCA2, FACD, FAD, FAD1, FANCD, FANCD1, GLM3, PNCA2, XRCC11",
+        "otherdesignations": "breast cancer type 2 susceptibility protein|BRCA1/BRCA2-containing complex, subunit 2|DNA repair-associated BRCA2|Fanconi anemia group D1 protein|breast and ovarian cancer susceptibility gene, early onset|breast and ovarian cancer susceptibility protein 2|breast cancer 2 tumor suppressor|breast cancer 2, early onset|mutant BRCA2|mutant DNA repair-associated protein 2|truncated BRCA2 DNA repair associated|truncated BRCA2 DNA repair-associated protein|truncated DNA repair-associated BRCA2|truncated DNA repair-associated protein|truncated breast cancer 2",
+        "nomenclaturesymbol": "BRCA2",
+        "nomenclaturename": "BRCA2 DNA repair associated",
+        "nomenclaturestatus": "Official",
+        "mim": [
+          "600185"
+        ],
+        "genomicinfo": [
+          {
+            "chrloc": "13",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315507,
+            "chrstop": 32400267,
+            "exoncount": 27
+          }
+        ],
+        "geneweight": 171761,
+        "summary": "Inherited mutations in BRCA1 and this gene, BRCA2, confer increased lifetime risk of developing breast or ovarian cancer. Both BRCA1 and BRCA2 are involved in maintenance of genome stability, specifically the homologous recombination pathway for double-strand DNA repair. The largest exon in both genes is exon 11, which harbors the most important and frequent mutations in breast cancer patients. The BRCA2 gene was found on chromosome 13q12.3 in human. The BRCA2 protein contains several copies of a 70 aa motif called the BRC motif, and these motifs mediate binding to the RAD51 recombinase which functions in DNA repair. BRCA2 is considered a tumor suppressor gene, as tumors with BRCA2 mutations generally exhibit loss of heterozygosity (LOH) of the wild-type allele. [provided by RefSeq, May 2020]",
+        "chrsort": "13",
+        "chrstart": 32315507,
+        "organism": {
+          "scientificname": "Homo sapiens",
+          "commonname": "human",
+          "taxid": 9606
+        },
+        "locationhist": [
+          {
+            "annotationrelease": "110",
+            "assemblyaccver": "GCF_000001405.40",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315507,
+            "chrstop": 32400267
+          },
+          {
+            "annotationrelease": "110",
+            "assemblyaccver": "GCF_009914755.1",
+            "chraccver": "NC_060937.1",
+            "chrstart": 31532752,
+            "chrstop": 31617509
+          },
+          {
+            "annotationrelease": "109.20211119",
+            "assemblyaccver": "GCF_000001405.39",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315507,
+            "chrstop": 32400267
+          },
+          {
+            "annotationrelease": "109.20210514",
+            "assemblyaccver": "GCF_000001405.39",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315507,
+            "chrstop": 32400267
+          },
+          {
+            "annotationrelease": "109.20210226",
+            "assemblyaccver": "GCF_000001405.39",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315507,
+            "chrstop": 32400267
+          },
+          {
+            "annotationrelease": "109.20201120",
+            "assemblyaccver": "GCF_000001405.39",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315507,
+            "chrstop": 32400267
+          },
+          {
+            "annotationrelease": "109.20200815",
+            "assemblyaccver": "GCF_000001405.39",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315507,
+            "chrstop": 32400267
+          },
+          {
+            "annotationrelease": "109.20200522",
+            "assemblyaccver": "GCF_000001405.39",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315507,
+            "chrstop": 32400267
+          },
+          {
+            "annotationrelease": "109.20200228",
+            "assemblyaccver": "GCF_000001405.39",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315507,
+            "chrstop": 32400267
+          },
+          {
+            "annotationrelease": "109.20191205",
+            "assemblyaccver": "GCF_000001405.39",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315479,
+            "chrstop": 32399671
+          },
+          {
+            "annotationrelease": "109.20190905",
+            "assemblyaccver": "GCF_000001405.39",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315479,
+            "chrstop": 32399671
+          },
+          {
+            "annotationrelease": "109.20190607",
+            "assemblyaccver": "GCF_000001405.39",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315479,
+            "chrstop": 32399671
+          },
+          {
+            "annotationrelease": "109",
+            "assemblyaccver": "GCF_000001405.38",
+            "chraccver": "NC_000013.11",
+            "chrstart": 32315479,
+            "chrstop": 32399671
+          },
+          {
+            "annotationrelease": "105.20220307",
+            "assemblyaccver": "GCF_000001405.25",
+            "chraccver": "NC_000013.10",
+            "chrstart": 32889644,
+            "chrstop": 32974404
+          },
+          {
+            "annotationrelease": "105.20201022",
+            "assemblyaccver": "GCF_000001405.25",
+            "chraccver": "NC_000013.10",
+            "chrstart": 32889644,
+            "chrstop": 32974404
+          },
+          {
+            "annotationrelease": "105",
+            "assemblyaccver": "GCF_000001405.25",
+            "chraccver": "NC_000013.10",
+            "chrstart": 32889616,
+            "chrstop": 32973808
+          },
+          {
+            "annotationrelease": "105",
+            "assemblyaccver": "GCF_000002125.1",
+            "chraccver": "AC_000145.1",
+            "chrstart": 13701251,
+            "chrstop": 13785591
+          },
+          {
+            "annotationrelease": "105",
+            "assemblyaccver": "GCF_000306695.2",
+            "chraccver": "NC_018924.2",
+            "chrstart": 32857163,
+            "chrstop": 32941321
+          }
+        ]
+      },
+      "uids": [
+        "675"
+      ]
+    }
   }
 }
