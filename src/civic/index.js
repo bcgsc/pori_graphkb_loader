@@ -504,7 +504,7 @@ const fetchDeletedEvidenceItems = async (url) => {
     // Get rejected evidenceItems
     logger.info(`loading rejected evidenceItems from ${url}`);
     const rejected = await requestEvidenceItems(url, {
-        query: `query evidenceItems($after: String, $status: EvidenceStatus) {
+        query: `query evidenceItems($after: String, $status: EvidenceStatusFilter) {
                     evidenceItems(after: $after, status: $status) {
                         nodes {id}
                         pageCount

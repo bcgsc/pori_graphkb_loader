@@ -21,7 +21,7 @@ query evidenceItems(
   $phenotypeId: Int
   $sortBy: EvidenceSort
   $sourceId: Int
-  $status: EvidenceStatus
+  $status: EvidenceStatusFilter
   $userId: Int
   $variantId: Int
   $variantName: String
