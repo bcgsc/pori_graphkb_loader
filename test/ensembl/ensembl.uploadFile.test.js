@@ -23,8 +23,7 @@ class MockApiConnection extends ApiConnection {
     }
 
     request() {
-        const { result } = this.mockDataset[0];
-        this.mockDataset.shift();
+        const { result } = this.mockDataset.shift();
         return result;
     }
 }
