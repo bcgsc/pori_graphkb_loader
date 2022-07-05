@@ -23,6 +23,7 @@ class MockApiConnection extends ApiConnection {
     }
 
     request() {
+        // The expected http request is always the first of the array as we remove them when consume
         const { result } = this.mockDataset.shift();
         return result;
     }
