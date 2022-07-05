@@ -209,7 +209,8 @@ describe('uploadFile in Ensembl loader', () => {
 
         // Custom method - Returns the source's RID from mockDataset
         getSourceRid: () => ((conn.request).mock.results.filter(
-            (a) => a.value.result.name === el.feature.source,
+            (a) => a.value.result['@class'] === 'Source'
+                && a.value.result.name === el.feature.source,
         )[0].value.result['@rid']),
 
         // Custom method - Returns a string representation of the feature
