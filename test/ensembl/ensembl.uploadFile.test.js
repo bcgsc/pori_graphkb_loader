@@ -205,15 +205,16 @@ describe('uploadFile in Ensembl loader', () => {
 
         },
     ].map(el => Object.assign(el, {
-        // Custom method - Returns a string representation of the feature
-        toString: () => ('name' in el.feature
-            ? `${el.feature.biotype} Feature ${el.feature.name} from ${el.feature.source}`
-            : `${el.feature.biotype} Feature ${el.feature.sourceId} from ${el.feature.source}`),
-    })).map(el => Object.assign(el, {
+
         // Custom method - Returns the source's RID from mockDataset
         getSourceRid: () => ((conn.request).mock.results.filter(
             (a) => a.value.result.name === el.feature.source,
         )[0].value.result['@rid']),
+
+        // Custom method - Returns a string representation of the feature
+        toString: () => ('name' in el.feature
+            ? `${el.feature.biotype} Feature ${el.feature.name} from ${el.feature.source}`
+            : `${el.feature.biotype} Feature ${el.feature.sourceId} from ${el.feature.source}`),
     }));
 
 
