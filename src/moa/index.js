@@ -506,7 +506,7 @@ const parseRelevance = (moaRecord) => {
         variants.push(...feature.attributes);
     }
 
-    if (variants.every(variant => variant.pathogenic === '1.0') && variants.length > 0) {
+    if (variants.every(variant => variant.pathogenic === '1.0') && variants.length > 0 && relevance.length < 1) {
         relevance.push('pathogenic');
     }
 
