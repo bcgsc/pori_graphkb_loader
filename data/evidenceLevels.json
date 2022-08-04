@@ -60,7 +60,7 @@
                     "source": "vicc",
                     "target": "civic-a5"
                 },
-                {
+                { // Delete this one?
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "ipr-a"
@@ -141,7 +141,7 @@
                     "source": "vicc",
                     "target": "civic-b5"
                 },
-                {
+                { // Delete this one?
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "ipr-b"
@@ -182,7 +182,7 @@
                     "source": "ipr",
                     "target": "profyle-t3"
                 },
-                {
+                { // Delete this one?
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "ipr-c"
@@ -215,7 +215,7 @@
                     "source": "ipr",
                     "target": "profyle-t4"
                 },
-                {
+                { // Delete this one?
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "ipr-d"
@@ -343,6 +343,13 @@
             "sourceId": "a5",
             "url": "https://civicdb.org/glossary"
         },
+        "civic-b": {
+            "description": "clinical evidence from clinical trials and other primary tumor data.",
+            "displayName": "CIViC B",
+            "name": "b",
+            "source": "civic",
+            "sourceId": "b"
+        },
         "civic-b1": {
             "description": "Clinical evidence from clinical trials and other primary tumor data. Evidence likely does not belong in CIViC. Claim is not supported well by experimental evidence. Results are not reproducible, or have very small sample size. No follow-up is done to validate novel claims.",
             "displayName": "CIViC B1",
@@ -382,6 +389,13 @@
             "source": "civic",
             "sourceId": "b5",
             "url": "https://civicdb.org/glossary"
+        },
+        "civic-c": {
+            "description": "case study evidence from individual case reports in peer reviewed journals.",
+            "displayName": "CIViC C",
+            "name": "c",
+            "source": "civic",
+            "sourceId": "c"
         },
         "civic-c1": {
             "description": "Case study evidence from individual case reports in peer reviewed journals. Evidence likely does not belong in CIViC. Claim is not supported well by experimental evidence. Results are not reproducible, or have very small sample size. No follow-up is done to validate novel claims.",
@@ -423,6 +437,13 @@
             "sourceId": "c5",
             "url": "https://civicdb.org/glossary"
         },
+        "civic-d": {
+            "description": "preclinical evidence from cell line studies, mouse models, and other in vitro or in vivo models.",
+            "displayName": "CIViC D",
+            "name": "d",
+            "source": "civic",
+            "sourceId": "d"
+        },
         "civic-d1": {
             "description": "Preclinical evidence from cell line studies, mouse models, and other in vitro or in vivo models. Evidence likely does not belong in CIViC. Claim is not supported well by experimental evidence. Results are not reproducible, or have very small sample size. No follow-up is done to validate novel claims.",
             "displayName": "CIViC D1",
@@ -462,6 +483,12 @@
             "source": "civic",
             "sourceId": "d5",
             "url": "https://civicdb.org/glossary"
+        },
+        "civic-dswgw": {
+            "displayName": "CIViC DSWGW",
+            "name": "dswgw",
+            "source": "civic",
+            "sourceId": "dswgw"
         },
         "civic-e1": {
             "description": "Inferential association made from experimental data. Evidence likely does not belong in CIViC. Claim is not supported well by experimental evidence. Results are not reproducible, or have very small sample size. No follow-up is done to validate novel claims.",
@@ -542,24 +569,317 @@
         "ipr-a": {
             "description": "Evidence pertaining to biomarkers associated with FDA-approved therapies or professional guidelines for this tumour type",
             "displayName": "IPR-A",
+            "links": [
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "cgi-european leukemianet guidelines"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "cgi-fda guidelines"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "cgi-nccn guidelines"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "cgi-nccn/cap guidelines"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-a1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-a2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-a3"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-a4"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-a5"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "moa-fda-approved"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "moa-guideline"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-2a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-r1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-d1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-p1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t1"
+                },
+            ],
             "source": "ipr",
             "sourceId": "a"
         },
         "ipr-b": {
             "description": "Evidence for biomarkers that predict response or resistance to therapies for this tumour type based on well-powered clinical trials with expert consensus.",
             "displayName": "IPR-B",
+            "links": [
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "cgi-late trials"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-b"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "vicc",
+                    "target": "civic-b1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "vicc",
+                    "target": "civic-b2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "vicc",
+                    "target": "civic-b3"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "vicc",
+                    "target": "civic-b4"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "vicc",
+                    "target": "civic-b5"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "moa-clinical evidence"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "moa-clinical trial"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-3a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-r2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-d2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-p2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t2"
+                }
+            ],
             "source": "ipr",
             "sourceId": "b"
         },
         "ipr-c": {
             "description": "Evidence that a biomarker predicts response or resistance to a drug based on case studies or small scale clinical trials, is an inclusion criteria for a clinical trial, or predicts response or resistance to FDA-approved or investigational drugs in another tumour type.",
             "displayName": "IPR-C",
+            "links": [
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "cgi-case report"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "cgi-early trials"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-c"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-c1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-c2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-c3"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-c4"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-c5"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-2b"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-3b"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-d3"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-p3"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t3"
+                }
+            ],
             "source": "ipr",
             "sourceId": "c"
         },
         "ipr-d": {
             "description": "Evidence that demonstrates plausible therapeutic significance associated with the biomarker based on preclinical studies.",
             "displayName": "IPR-D",
+            "links": [
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "cgi-pre-clinical"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-d"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-d1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-d2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-d3"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-d4"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-d5"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "civic-dswgw"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "moa-preclinical"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-4"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-d4"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-p4"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t4"
+                }
+            ],
             "source": "ipr",
             "sourceId": "d"
         },
@@ -591,6 +911,11 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "civic-e5"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "moa-inferential"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -652,7 +977,7 @@
                     "class": "CrossReferenceOf",
                     "target": "profyle-t5"
                 },
-                {
+                { // Delete this one?
                     "class": "CrossReferenceOf",
                     "target": "ipr-e"
                 }
@@ -834,7 +1159,6 @@
             "name": "civic"
         },
         "cosmic": {
-
             "name": "cosmic"
         },
         "cpic": {
