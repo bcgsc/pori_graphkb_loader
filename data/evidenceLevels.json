@@ -60,11 +60,6 @@
                     "source": "vicc",
                     "target": "civic-a5"
                 },
-                { // Delete this one?
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
-                    "target": "ipr-a"
-                },
                 {
                     "class": "CrossReferenceOf",
                     "source": "vicc",
@@ -141,11 +136,6 @@
                     "source": "vicc",
                     "target": "civic-b5"
                 },
-                { // Delete this one?
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
-                    "target": "ipr-b"
-                },
                 {
                     "class": "CrossReferenceOf",
                     "source": "vicc",
@@ -182,11 +172,6 @@
                     "source": "ipr",
                     "target": "profyle-t3"
                 },
-                { // Delete this one?
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
-                    "target": "ipr-c"
-                },
                 {
                     "class": "CrossReferenceOf",
                     "source": "vicc",
@@ -214,11 +199,6 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "profyle-t4"
-                },
-                { // Delete this one?
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
-                    "target": "ipr-d"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -976,10 +956,6 @@
                 {
                     "class": "CrossReferenceOf",
                     "target": "profyle-t5"
-                },
-                { // Delete this one?
-                    "class": "CrossReferenceOf",
-                    "target": "ipr-e"
                 }
             ],
             "name": "Inferential",
