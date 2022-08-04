@@ -634,7 +634,7 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "profyle-t1"
-                },
+                }
             ],
             "source": "ipr",
             "sourceId": "a"
