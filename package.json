@@ -1,7 +1,7 @@
 {
   "name": "@bcgsc-pori/graphkb-loader",
   "main": "src/index.js",
-  "version": "6.3.1",
+  "version": "6.3.2",
   "repository": {
     "type": "git",
     "url": "https://github.com/bcgsc/pori_graphkb_loader.git"
@@ -37,13 +37,14 @@
     "xml2js": "^0.4.19"
   },
   "devDependencies": {
-    "eslint": "^8.3.0",
-    "eslint-config-airbnb": "^19.0.1",
-    "eslint-plugin-import": "^2.25.3",
+    "eslint": "^8.17.0",
+    "eslint-config-airbnb": "^19.0.4",
+    "eslint-plugin-import": "^2.26.0",
     "eslint-plugin-jest": "^22.20.0",
     "eslint-plugin-jest-formatting": "^1.1.0",
     "eslint-plugin-jsx-a11y": "^6.5.1",
-    "eslint-plugin-react": "^7.27.1",
+    "eslint-plugin-react": "^7.30.0",
+    "eslint-plugin-react-hooks": "^4.6.0",
     "eslint-plugin-sort-keys-fix": "^1.1.1",
     "fetch-mock": "^9.11.0",
     "fetch-mock-jest": "^1.5.1",

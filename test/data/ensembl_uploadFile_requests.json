@@ -1,0 +1,2104 @@
+[
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "name": "ensembl"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "description": "Ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. Ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. Ensembl tools include BLAST, BLAT, BioMart and the Variant Effect Predictor (VEP) for all supported species.",
+        "displayName": "Ensembl",
+        "name": "ensembl",
+        "sort": 3,
+        "url": "https://uswest.ensembl.org",
+        "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html"
+      },
+      "method": "POST",
+      "uri": "/sources"
+    },
+    "result": {
+      "result": {
+        "@class": "Source",
+        "sort": 3,
+        "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
+        "displayName": "Ensembl",
+        "name": "ensembl",
+        "url": "https://uswest.ensembl.org",
+        "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "05fbd973-8199-4812-bc57-bf2e49156534",
+        "createdAt": 1653589823064,
+        "updatedAt": 1653589823064,
+        "@rid": "#41:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "name": "refseq"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "description": "A comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.",
+        "displayName": "RefSeq",
+        "longName": "RefSeq: NCBI Reference Sequence Database",
+        "name": "refseq",
+        "url": "https://www.ncbi.nlm.nih.gov/refseq",
+        "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies"
+      },
+      "method": "POST",
+      "uri": "/sources"
+    },
+    "result": {
+      "result": {
+        "@class": "Source",
+        "sort": 99999,
+        "description": "a comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.",
+        "displayName": "RefSeq",
+        "longName": "refseq: ncbi reference sequence database",
+        "name": "refseq",
+        "url": "https://www.ncbi.nlm.nih.gov/refseq",
+        "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "f319e234-13b1-4841-b049-e48aacf2644a",
+        "createdAt": 1653589823081,
+        "updatedAt": 1653589823081,
+        "@rid": "#42:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": {
+                "filters": {
+                  "name": "entrez gene"
+                },
+                "target": "Source"
+              }
+            },
+            {
+              "dependency": null
+            },
+            {
+              "deprecated": false
+            }
+          ]
+        },
+        "limit": 1000,
+        "neighbors": 0,
+        "returnProperties": null,
+        "skip": 0,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": "#41:0"
+            },
+            {
+              "biotype": "gene"
+            },
+            {
+              "dependency": null
+            }
+          ]
+        },
+        "limit": 1000,
+        "neighbors": 0,
+        "returnProperties": null,
+        "skip": 0,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": {
+                "filters": {
+                  "name": "refseq"
+                },
+                "target": "Source"
+              }
+            },
+            {
+              "dependency": null
+            },
+            {
+              "deprecated": false
+            }
+          ]
+        },
+        "limit": 1000,
+        "neighbors": 0,
+        "returnProperties": null,
+        "skip": 0,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "name": "refseq"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 1
+      },
+      "result": [
+        {
+          "createdAt": 1653589823081,
+          "updatedBy": {
+            "createdAt": 1653589817005,
+            "lastLoginAt": 1653589823040,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1653589817002,
+            "firstLoginAt": 1653589823040,
+            "uuid": "d3ccc0e1-a51d-4086-abd4-a35ee8f8b6fa",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "createdBy": {
+            "createdAt": 1653589817005,
+            "lastLoginAt": 1653589823040,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1653589817002,
+            "firstLoginAt": 1653589823040,
+            "uuid": "d3ccc0e1-a51d-4086-abd4-a35ee8f8b6fa",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "displayName": "RefSeq",
+          "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies",
+          "name": "refseq",
+          "description": "a comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.",
+          "sort": 99999,
+          "uuid": "f319e234-13b1-4841-b049-e48aacf2644a",
+          "url": "https://www.ncbi.nlm.nih.gov/refseq",
+          "longName": "refseq: ncbi reference sequence database",
+          "updatedAt": 1653589823081,
+          "@rid": "#42:0",
+          "@class": "Source"
+        }
+      ]
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "sourceId": "NM_000059"
+            },
+            {
+              "source": "#42:0"
+            },
+            {
+              "sourceIdVersion": null
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "transcript",
+        "displayName": "NM_000059",
+        "sourceId": "NM_000059",
+        "sourceIdVersion": null,
+        "source": "#42:0"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "displayName": "NM_000059",
+        "sourceId": "nm_000059",
+        "sourceIdVersion": null,
+        "source": "#42:0",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "1703537d-b15a-4a95-a3f8-575939e5c89d",
+        "createdAt": 1653589823632,
+        "updatedAt": 1653589823632,
+        "name": "nm_000059",
+        "@rid": "#137:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "source": "#41:0",
+        "sourceId": "ENSG00000139618",
+        "sourceIdVersion": "17"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "source": "#41:0",
+        "sourceId": "ensg00000139618",
+        "sourceIdVersion": "17",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "1bcd1841-3140-4586-8ce4-c1dc1663e136",
+        "createdAt": 1653589823660,
+        "updatedAt": 1653589823660,
+        "name": "ensg00000139618",
+        "displayName": "ensg00000139618",
+        "@rid": "#138:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "source": "#41:0",
+        "sourceId": "ENSG00000139618",
+        "sourceIdVersion": null
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "source": "#41:0",
+        "sourceId": "ensg00000139618",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "c7df738b-8871-4678-a309-260d019beed9",
+        "createdAt": 1653589823670,
+        "updatedAt": 1653589823670,
+        "name": "ensg00000139618",
+        "displayName": "ensg00000139618",
+        "@rid": "#139:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:0",
+        "out": "#139:0",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#139:0",
+        "in": "#138:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "0c65e29b-8d81-4654-9df1-edf860812864",
+        "createdAt": 1653589823679,
+        "@rid": "#97:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000544455",
+        "sourceIdVersion": "6"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000544455",
+        "sourceIdVersion": "6",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "7be71924-5dc6-40ef-9289-153184ed6eba",
+        "createdAt": 1653589823689,
+        "updatedAt": 1653589823689,
+        "name": "enst00000544455",
+        "displayName": "enst00000544455",
+        "@rid": "#140:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000544455",
+        "sourceIdVersion": null
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000544455",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "df4d32df-e526-402e-8eec-ec5284108297",
+        "createdAt": 1653589823699,
+        "updatedAt": 1653589823699,
+        "name": "enst00000544455",
+        "displayName": "enst00000544455",
+        "@rid": "#137:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#140:0",
+        "out": "#137:1",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#137:1",
+        "in": "#140:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "90cc8c10-3a43-49ef-880d-b4294bfc2604",
+        "createdAt": 1653589823707,
+        "@rid": "#98:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#139:0",
+        "out": "#137:1",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#137:1",
+        "in": "#139:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "a469002c-185b-471c-983a-f8a80949916d",
+        "createdAt": 1653589823717,
+        "@rid": "#93:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:0",
+        "out": "#140:0",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#140:0",
+        "in": "#138:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "23cfd12e-429f-480f-9a41-1e0229a731b5",
+        "createdAt": 1653589823727,
+        "@rid": "#94:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": {
+                "filters": {
+                  "name": "hgnc"
+                },
+                "target": "Source"
+              }
+            },
+            {
+              "sourceId": "hgnc:1101"
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "name": "hgnc"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "description": "The HGNC is responsible for approving unique symbols and names for human loci, including protein coding genes, ncRNA genes and pseudogenes, to allow unambiguous scientific communication.",
+        "displayName": "HGNC",
+        "longName": "HUGO Gene Nomenclature Committee",
+        "name": "hgnc",
+        "sort": 2,
+        "url": "https://www.genenames.org/about",
+        "usage": "https://www.ebi.ac.uk/about/terms-of-use"
+      },
+      "method": "POST",
+      "uri": "/sources"
+    },
+    "result": {
+      "result": {
+        "@class": "Source",
+        "sort": 2,
+        "description": "the hgnc is responsible for approving unique symbols and names for human loci, including protein coding genes, ncrna genes and pseudogenes, to allow unambiguous scientific communication.",
+        "displayName": "HGNC",
+        "longName": "hugo gene nomenclature committee",
+        "name": "hgnc",
+        "url": "https://www.genenames.org/about",
+        "usage": "https://www.ebi.ac.uk/about/terms-of-use",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "7b4d8402-c3cb-462b-b1bd-6f0cb2d4ed14",
+        "createdAt": 1653589829457,
+        "updatedAt": 1653589829457,
+        "@rid": "#43:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "name": "ensembl"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 1
+      },
+      "result": [
+        {
+          "createdAt": 1653589823064,
+          "updatedBy": {
+            "createdAt": 1653589817005,
+            "lastLoginAt": 1653589823040,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1653589817002,
+            "firstLoginAt": 1653589823040,
+            "uuid": "d3ccc0e1-a51d-4086-abd4-a35ee8f8b6fa",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "createdBy": {
+            "createdAt": 1653589817005,
+            "lastLoginAt": 1653589823040,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1653589817002,
+            "firstLoginAt": 1653589823040,
+            "uuid": "d3ccc0e1-a51d-4086-abd4-a35ee8f8b6fa",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "displayName": "Ensembl",
+          "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html",
+          "name": "ensembl",
+          "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
+          "sort": 3,
+          "uuid": "05fbd973-8199-4812-bc57-bf2e49156534",
+          "url": "https://uswest.ensembl.org",
+          "updatedAt": 1653589823064,
+          "@rid": "#41:0",
+          "@class": "Source"
+        }
+      ]
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "biotype": "gene"
+            },
+            {
+              "deprecated": false
+            },
+            {
+              "name": "BRCA2"
+            },
+            {
+              "source": "#43:0"
+            },
+            {
+              "sourceId": "HGNC:1101"
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "deprecated": false,
+        "displayName": "BRCA2",
+        "longName": "BRCA2 DNA repair associated",
+        "name": "BRCA2",
+        "source": "#43:0",
+        "sourceId": "HGNC:1101",
+        "sourceIdVersion": "2021-05-26T00:00:00Z"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "displayName": "BRCA2",
+        "longName": "BRCA2 DNA repair associated",
+        "name": "brca2",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "sourceIdVersion": "2021-05-26t00:00:00z",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "5fa3e49c-6bd9-4d6d-8e70-928af004d147",
+        "createdAt": 1653589829497,
+        "updatedAt": 1653589829497,
+        "@rid": "#138:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": "#41:0"
+            },
+            {
+              "biotype": "gene"
+            },
+            {
+              "sourceId": "ENSG00000139618"
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 2
+      },
+      "result": [
+        {
+          "biotype": "gene",
+          "sourceId": "ensg00000139618",
+          "updatedBy": {
+            "createdAt": 1653589817005,
+            "lastLoginAt": 1653589823040,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1653589817002,
+            "firstLoginAt": 1653589823040,
+            "uuid": "d3ccc0e1-a51d-4086-abd4-a35ee8f8b6fa",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "displayName": "ensg00000139618",
+          "deprecated": false,
+          "sourceIdVersion": null,
+          "source": {
+            "createdAt": 1653589823064,
+            "updatedBy": "#32:0",
+            "createdBy": "#32:0",
+            "displayName": "Ensembl",
+            "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html",
+            "name": "ensembl",
+            "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
+            "sort": 3,
+            "uuid": "05fbd973-8199-4812-bc57-bf2e49156534",
+            "url": "https://uswest.ensembl.org",
+            "updatedAt": 1653589823064,
+            "@rid": "#41:0",
+            "@class": "Source"
+          },
+          "uuid": "c7df738b-8871-4678-a309-260d019beed9",
+          "createdAt": 1653589823670,
+          "createdBy": {
+            "createdAt": 1653589817005,
+            "lastLoginAt": 1653589823040,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1653589817002,
+            "firstLoginAt": 1653589823040,
+            "uuid": "d3ccc0e1-a51d-4086-abd4-a35ee8f8b6fa",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "in_ElementOf": [
+            {
+              "createdAt": 1653589823717,
+              "in": "#139:0",
+              "createdBy": "#32:0",
+              "source": "#41:0",
+              "uuid": "a469002c-185b-471c-983a-f8a80949916d",
+              "out": "#137:1",
+              "@rid": "#93:0",
+              "@class": "ElementOf"
+            }
+          ],
+          "name": "ensg00000139618",
+          "out_GeneralizationOf": [
+            {
+              "createdAt": 1653589823679,
+              "in": "#138:0",
+              "createdBy": "#32:0",
+              "source": "#41:0",
+              "uuid": "0c65e29b-8d81-4654-9df1-edf860812864",
+              "out": "#139:0",
+              "@rid": "#97:0",
+              "@class": "GeneralizationOf"
+            }
+          ],
+          "alias": false,
+          "updatedAt": 1653589823670,
+          "@rid": "#139:0",
+          "@class": "Feature"
+        },
+        {
+          "biotype": "gene",
+          "sourceId": "ensg00000139618",
+          "updatedBy": {
+            "createdAt": 1653589817005,
+            "lastLoginAt": 1653589823040,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1653589817002,
+            "firstLoginAt": 1653589823040,
+            "uuid": "d3ccc0e1-a51d-4086-abd4-a35ee8f8b6fa",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "in_GeneralizationOf": [
+            {
+              "createdAt": 1653589823679,
+              "in": "#138:0",
+              "createdBy": "#32:0",
+              "source": "#41:0",
+              "uuid": "0c65e29b-8d81-4654-9df1-edf860812864",
+              "out": "#139:0",
+              "@rid": "#97:0",
+              "@class": "GeneralizationOf"
+            }
+          ],
+          "displayName": "ensg00000139618",
+          "deprecated": false,
+          "sourceIdVersion": "17",
+          "source": {
+            "createdAt": 1653589823064,
+            "updatedBy": "#32:0",
+            "createdBy": "#32:0",
+            "displayName": "Ensembl",
+            "usage": "https://uswest.ensembl.org/info/about/legal/disclaimer.html",
+            "name": "ensembl",
+            "description": "ensembl is a genome browser for vertebrate genomes that supports research in comparative genomics, evolution, sequence variation and transcriptional regulation. ensembl annotate genes, computes multiple alignments, predicts regulatory function and collects disease data. ensembl tools include blast, blat, biomart and the variant effect predictor (vep) for all supported species.",
+            "sort": 3,
+            "uuid": "05fbd973-8199-4812-bc57-bf2e49156534",
+            "url": "https://uswest.ensembl.org",
+            "updatedAt": 1653589823064,
+            "@rid": "#41:0",
+            "@class": "Source"
+          },
+          "uuid": "1bcd1841-3140-4586-8ce4-c1dc1663e136",
+          "createdAt": 1653589823660,
+          "createdBy": {
+            "createdAt": 1653589817005,
+            "lastLoginAt": 1653589823040,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1653589817002,
+            "firstLoginAt": 1653589823040,
+            "uuid": "d3ccc0e1-a51d-4086-abd4-a35ee8f8b6fa",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "in_ElementOf": [
+            {
+              "createdAt": 1653589823727,
+              "in": "#138:0",
+              "createdBy": "#32:0",
+              "source": "#41:0",
+              "uuid": "23cfd12e-429f-480f-9a41-1e0229a731b5",
+              "out": "#140:0",
+              "@rid": "#94:0",
+              "@class": "ElementOf"
+            }
+          ],
+          "name": "ensg00000139618",
+          "alias": false,
+          "updatedAt": 1653589823660,
+          "@rid": "#138:0",
+          "@class": "Feature"
+        }
+      ]
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "deprecated": true,
+        "displayName": "FANCD1",
+        "name": "FANCD1",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": true,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FANCD1",
+        "name": "fancd1",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "e0363501-e4d5-4fb1-a4a2-57b03c74cb75",
+        "createdAt": 1653589829515,
+        "updatedAt": 1653589829515,
+        "@rid": "#139:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:1",
+        "out": "#139:1",
+        "source": "#43:0"
+      },
+      "method": "POST",
+      "uri": "/deprecatedby"
+    },
+    "result": {
+      "result": {
+        "@class": "DeprecatedBy",
+        "out": "#139:1",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "8047e9d4-b9b4-47e0-82c8-0de6414ae054",
+        "createdAt": 1653589829525,
+        "@rid": "#89:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "deprecated": true,
+        "displayName": "FACD",
+        "name": "FACD",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": true,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FACD",
+        "name": "facd",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "d696f638-8dab-49b3-8531-c0a23a977cef",
+        "createdAt": 1653589829532,
+        "updatedAt": 1653589829532,
+        "@rid": "#140:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:1",
+        "out": "#140:1",
+        "source": "#43:0"
+      },
+      "method": "POST",
+      "uri": "/deprecatedby"
+    },
+    "result": {
+      "result": {
+        "@class": "DeprecatedBy",
+        "out": "#140:1",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "1230342b-20e0-4e3f-9b8a-4d09c09dadda",
+        "createdAt": 1653589829538,
+        "@rid": "#90:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "deprecated": true,
+        "displayName": "FANCD",
+        "name": "FANCD",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": true,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FANCD",
+        "name": "fancd",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "cc036de2-bfa4-4bf0-8baa-db155b21497e",
+        "createdAt": 1653589829546,
+        "updatedAt": 1653589829546,
+        "@rid": "#137:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:1",
+        "out": "#137:2",
+        "source": "#43:0"
+      },
+      "method": "POST",
+      "uri": "/deprecatedby"
+    },
+    "result": {
+      "result": {
+        "@class": "DeprecatedBy",
+        "out": "#137:2",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "2eaa0675-d693-4450-992e-269dbce53ba9",
+        "createdAt": 1653589829553,
+        "@rid": "#91:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FAD",
+        "name": "FAD",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FAD",
+        "name": "fad",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "689969cd-70c3-48e9-9099-7cd75b5627fe",
+        "createdAt": 1653589829561,
+        "updatedAt": 1653589829561,
+        "@rid": "#138:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:1",
+        "out": "#138:2",
+        "source": "#43:0"
+      },
+      "method": "POST",
+      "uri": "/aliasof"
+    },
+    "result": {
+      "result": {
+        "@class": "AliasOf",
+        "out": "#138:2",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "271a5068-51c0-4915-a629-b78f733fa796",
+        "createdAt": 1653589829567,
+        "@rid": "#77:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FAD1",
+        "name": "FAD1",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "FAD1",
+        "name": "fad1",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "e66f7f55-1464-4109-b0d6-a7dcfd6d66ef",
+        "createdAt": 1653589829576,
+        "updatedAt": 1653589829576,
+        "@rid": "#139:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:1",
+        "out": "#139:2",
+        "source": "#43:0"
+      },
+      "method": "POST",
+      "uri": "/aliasof"
+    },
+    "result": {
+      "result": {
+        "@class": "AliasOf",
+        "out": "#139:2",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "258760f7-0440-4c72-b79d-dfb8c9c5fc34",
+        "createdAt": 1653589829583,
+        "@rid": "#78:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "BRCC2",
+        "name": "BRCC2",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "BRCC2",
+        "name": "brcc2",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "7181d6eb-3ea0-44d6-9566-4b5865fc1554",
+        "createdAt": 1653589829591,
+        "updatedAt": 1653589829591,
+        "@rid": "#140:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:1",
+        "out": "#140:2",
+        "source": "#43:0"
+      },
+      "method": "POST",
+      "uri": "/aliasof"
+    },
+    "result": {
+      "result": {
+        "@class": "AliasOf",
+        "out": "#140:2",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "165c28b1-7840-425a-9a50-6b3ad1c2be9b",
+        "createdAt": 1653589829599,
+        "@rid": "#79:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "XRCC11",
+        "name": "XRCC11",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "dependency": "#138:1",
+        "displayName": "XRCC11",
+        "name": "xrcc11",
+        "source": "#43:0",
+        "sourceId": "hgnc:1101",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "2b8c41de-34c0-44f5-8612-fbf88aa59211",
+        "createdAt": 1653589829607,
+        "updatedAt": 1653589829607,
+        "@rid": "#137:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:1",
+        "out": "#137:3",
+        "source": "#43:0"
+      },
+      "method": "POST",
+      "uri": "/aliasof"
+    },
+    "result": {
+      "result": {
+        "@class": "AliasOf",
+        "out": "#137:3",
+        "in": "#138:1",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "5134a31c-0a0c-444d-b070-16fba90f56f2",
+        "createdAt": 1653589829614,
+        "@rid": "#80:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "name": "entrez gene"
+        },
+        "neighbors": 1,
+        "target": "Source"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "description": "Gene integrates information from a wide range of species. A record may include nomenclature, Reference Sequences (RefSeqs), maps, pathways, variations, phenotypes, and links to genome-, phenotype-, and locus-specific resources worldwide.",
+        "name": "entrez gene",
+        "sort": 1,
+        "url": "https://www.ncbi.nlm.nih.gov/gene",
+        "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies"
+      },
+      "method": "POST",
+      "uri": "/sources"
+    },
+    "result": {
+      "result": {
+        "@class": "Source",
+        "sort": 1,
+        "description": "gene integrates information from a wide range of species. a record may include nomenclature, reference sequences (refseqs), maps, pathways, variations, phenotypes, and links to genome-, phenotype-, and locus-specific resources worldwide.",
+        "name": "entrez gene",
+        "url": "https://www.ncbi.nlm.nih.gov/gene",
+        "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "7cf938ba-0548-42bd-b6e1-1ab9ef86f9db",
+        "createdAt": 1653589830071,
+        "updatedAt": 1653589830071,
+        "displayName": "entrez gene",
+        "@rid": "#44:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "sourceId": "675"
+            },
+            {
+              "source": "#44:0"
+            },
+            {
+              "sourceIdVersion": null
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "gene",
+        "description": "Inherited mutations in BRCA1 and this gene, BRCA2, confer increased lifetime risk of developing breast or ovarian cancer. Both BRCA1 and BRCA2 are involved in maintenance of genome stability, specifically the homologous recombination pathway for double-strand DNA repair. The largest exon in both genes is exon 11, which harbors the most important and frequent mutations in breast cancer patients. The BRCA2 gene was found on chromosome 13q12.3 in human. The BRCA2 protein contains several copies of a 70 aa motif called the BRC motif, and these motifs mediate binding to the RAD51 recombinase which functions in DNA repair. BRCA2 is considered a tumor suppressor gene, as tumors with BRCA2 mutations generally exhibit loss of heterozygosity (LOH) of the wild-type allele. [provided by RefSeq, May 2020]",
+        "displayName": "BRCA2",
+        "longName": "BRCA2 DNA repair associated",
+        "name": "BRCA2",
+        "sourceId": "675",
+        "url": "https://www.ncbi.nlm.nih.gov/gene/675",
+        "source": "#44:0"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "gene",
+        "description": "Inherited mutations in BRCA1 and this gene, BRCA2, confer increased lifetime risk of developing breast or ovarian cancer. Both BRCA1 and BRCA2 are involved in maintenance of genome stability, specifically the homologous recombination pathway for double-strand DNA repair. The largest exon in both genes is exon 11, which harbors the most important and frequent mutations in breast cancer patients. The BRCA2 gene was found on chromosome 13q12.3 in human. The BRCA2 protein contains several copies of a 70 aa motif called the BRC motif, and these motifs mediate binding to the RAD51 recombinase which functions in DNA repair. BRCA2 is considered a tumor suppressor gene, as tumors with BRCA2 mutations generally exhibit loss of heterozygosity (LOH) of the wild-type allele. [provided by RefSeq, May 2020]",
+        "displayName": "BRCA2",
+        "longName": "BRCA2 DNA repair associated",
+        "name": "brca2",
+        "sourceId": "675",
+        "url": "https://www.ncbi.nlm.nih.gov/gene/675",
+        "source": "#44:0",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "24ddc8f0-bd2a-4e79-8235-da612897d9d2",
+        "createdAt": 1653589830087,
+        "updatedAt": 1653589830087,
+        "@rid": "#138:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:3",
+        "out": "#138:1",
+        "source": "#43:0"
+      },
+      "method": "POST",
+      "uri": "/crossreferenceof"
+    },
+    "result": {
+      "result": {
+        "@class": "CrossReferenceOf",
+        "out": "#138:1",
+        "in": "#138:3",
+        "source": "#43:0",
+        "createdBy": "#32:0",
+        "uuid": "9022f68e-79f3-4c7f-96af-5cc8e4f2dc13",
+        "createdAt": 1653589830097,
+        "@rid": "#81:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:1",
+        "out": "#139:0",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/crossreferenceof"
+    },
+    "result": {
+      "result": {
+        "@class": "CrossReferenceOf",
+        "out": "#139:0",
+        "in": "#138:1",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "e3c51874-45f5-41ae-86c6-e4dfc498ecf4",
+        "createdAt": 1653589830106,
+        "@rid": "#82:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:0",
+        "out": "#139:0",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {}
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000530893",
+        "sourceIdVersion": "6"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000530893",
+        "sourceIdVersion": "6",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "3c025f3a-81e5-4516-876a-c6e11c728337",
+        "createdAt": 1653589830128,
+        "updatedAt": 1653589830128,
+        "name": "enst00000530893",
+        "displayName": "enst00000530893",
+        "@rid": "#139:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000530893",
+        "sourceIdVersion": null
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000530893",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "25ad8bb3-e465-4884-9d30-c19a09d2204c",
+        "createdAt": 1653589830136,
+        "updatedAt": 1653589830136,
+        "name": "enst00000530893",
+        "displayName": "enst00000530893",
+        "@rid": "#140:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#139:3",
+        "out": "#140:3",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#140:3",
+        "in": "#139:3",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "c51db109-2d0f-4ddf-b8f6-7177bf862f7c",
+        "createdAt": 1653589830143,
+        "@rid": "#100:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#139:0",
+        "out": "#140:3",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#140:3",
+        "in": "#139:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "c53bf883-4edc-433e-b1ca-3e0b7065c196",
+        "createdAt": 1653589830152,
+        "@rid": "#95:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:0",
+        "out": "#139:3",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#139:3",
+        "in": "#138:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "696a05c4-0fca-449e-ab06-b1ff838731f4",
+        "createdAt": 1653589830160,
+        "@rid": "#96:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:0",
+        "out": "#139:0",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {}
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000380152",
+        "sourceIdVersion": "8"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000380152",
+        "sourceIdVersion": "8",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "83959813-cb70-4b29-bf6c-2c615137d5d8",
+        "createdAt": 1653589830193,
+        "updatedAt": 1653589830193,
+        "name": "enst00000380152",
+        "displayName": "enst00000380152",
+        "@rid": "#137:4",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000380152",
+        "sourceIdVersion": null
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000380152",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "c978f03e-f948-4ba6-93f4-c2eaf2639e39",
+        "createdAt": 1653589830202,
+        "updatedAt": 1653589830202,
+        "name": "enst00000380152",
+        "displayName": "enst00000380152",
+        "@rid": "#138:4",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#137:4",
+        "out": "#138:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#138:4",
+        "in": "#137:4",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "0b3717ed-776e-442f-ac03-d8a906b11613",
+        "createdAt": 1653589830214,
+        "@rid": "#98:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#139:0",
+        "out": "#138:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#138:4",
+        "in": "#139:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "4f650139-eacd-47cb-b040-27ff18092f7c",
+        "createdAt": 1653589830223,
+        "@rid": "#93:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:0",
+        "out": "#137:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#137:4",
+        "in": "#138:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "58d664a2-8465-403f-bc30-4a06821ce3e5",
+        "createdAt": 1653589830232,
+        "@rid": "#94:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": "#42:0"
+            },
+            {
+              "sourceId": "NM_000059"
+            },
+            {
+              "sourceIdVersion": null
+            }
+          ]
+        },
+        "neighbors": 1,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 1
+      },
+      "result": [
+        {
+          "biotype": "transcript",
+          "sourceId": "nm_000059",
+          "updatedBy": {
+            "createdAt": 1653589817005,
+            "lastLoginAt": 1653589823040,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1653589817002,
+            "firstLoginAt": 1653589823040,
+            "uuid": "d3ccc0e1-a51d-4086-abd4-a35ee8f8b6fa",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "displayName": "NM_000059",
+          "deprecated": false,
+          "sourceIdVersion": null,
+          "source": {
+            "createdAt": 1653589823081,
+            "updatedBy": "#32:0",
+            "createdBy": "#32:0",
+            "displayName": "RefSeq",
+            "usage": "https://www.ncbi.nlm.nih.gov/home/about/policies",
+            "name": "refseq",
+            "description": "a comprehensive, integrated, non-redundant, well-annotated set of reference sequences including genomic, transcript, and protein.",
+            "sort": 99999,
+            "uuid": "f319e234-13b1-4841-b049-e48aacf2644a",
+            "url": "https://www.ncbi.nlm.nih.gov/refseq",
+            "longName": "refseq: ncbi reference sequence database",
+            "updatedAt": 1653589823081,
+            "@rid": "#42:0",
+            "@class": "Source"
+          },
+          "uuid": "1703537d-b15a-4a95-a3f8-575939e5c89d",
+          "createdAt": 1653589823632,
+          "createdBy": {
+            "createdAt": 1653589817005,
+            "lastLoginAt": 1653589823040,
+            "name": "mlemieux",
+            "groups": [
+              "#25:0"
+            ],
+            "signedLicenseAt": 1653589817002,
+            "firstLoginAt": 1653589823040,
+            "uuid": "d3ccc0e1-a51d-4086-abd4-a35ee8f8b6fa",
+            "loginCount": 1,
+            "@rid": "#32:0",
+            "@class": "User"
+          },
+          "name": "nm_000059",
+          "alias": false,
+          "updatedAt": 1653589823632,
+          "@rid": "#137:0",
+          "@class": "Feature"
+        }
+      ]
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#137:0",
+        "out": "#138:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/crossreferenceof"
+    },
+    "result": {
+      "result": {
+        "@class": "CrossReferenceOf",
+        "out": "#138:4",
+        "in": "#137:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "5b3d1a81-1453-4464-8cba-4ef3d660c163",
+        "createdAt": 1653589830261,
+        "@rid": "#83:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:0",
+        "out": "#139:0",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {}
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000680887",
+        "sourceIdVersion": "1"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000680887",
+        "sourceIdVersion": "1",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "70adf241-3fac-418b-aa84-0743b2a7f0c4",
+        "createdAt": 1653589830282,
+        "updatedAt": 1653589830282,
+        "name": "enst00000680887",
+        "displayName": "enst00000680887",
+        "@rid": "#139:4",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "ENST00000680887",
+        "sourceIdVersion": null
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "transcript",
+        "source": "#41:0",
+        "sourceId": "enst00000680887",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "8f8df45f-da32-4173-8f7d-f31b8ca0708a",
+        "createdAt": 1653589830294,
+        "updatedAt": 1653589830294,
+        "name": "enst00000680887",
+        "displayName": "enst00000680887",
+        "@rid": "#140:4",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#139:4",
+        "out": "#140:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#140:4",
+        "in": "#139:4",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "309429ab-da47-4db6-a999-5f1014350e22",
+        "createdAt": 1653589830309,
+        "@rid": "#100:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#139:0",
+        "out": "#140:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#140:4",
+        "in": "#139:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "d37fe3df-c75b-4b44-9ab5-53518fa7c292",
+        "createdAt": 1653589830322,
+        "@rid": "#95:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:0",
+        "out": "#139:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#139:4",
+        "in": "#138:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "30897f3d-cc0e-4cf2-bd81-4d6b3103c0ac",
+        "createdAt": 1653589830331,
+        "@rid": "#96:1",
+        "@version": 1
+      }
+    }
+  }
+]
