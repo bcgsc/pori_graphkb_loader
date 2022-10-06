@@ -268,7 +268,11 @@ const loadVariant = async (conn, moaVariant) => {
         });
         const variantType = await conn.getVocabularyTerm('signature present');
         return conn.addVariant({
-            content: { reference1: rid(signature), type: rid(variantType) },
+            content: {
+                displayName: `${signature.name.toUpperCase()} signature present`,
+                reference1: rid(signature),
+                type: rid(variantType),
+            },
             existsOk: true,
             target: 'CategoryVariant',
         });
