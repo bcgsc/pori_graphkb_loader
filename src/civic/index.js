@@ -22,7 +22,7 @@ const { processVariantRecord } = require('./variant');
 const { getPublication } = require('./publication');
 const { EvidenceItem: evidenceSpec } = require('./specs.json');
 
-class NotImplementedError extends ErrorMixin {}
+class NotImplementedError extends ErrorMixin { }
 
 const ajv = new Ajv();
 
@@ -633,10 +633,12 @@ const upload = async ({
     const varById = {};
 
     for (const record of records) {
-        if (!recordsById[record.id]) {
-            recordsById[record.id] = [];
+        // Check if record id is unique
+        if (recordsById[record.id]) {
+            logger.warn(`Multiple evidenceItems with the same id: ${record.id}. Violates assumptions. Only the 1st one was kept.`);
+            continue;
         }
-        recordsById[record.id].push(record);
+        recordsById[record.id] = record;
 
         if (maxRecords && Object.values(recordsById).length >= maxRecords) {
             logger.warn(`not loading all content due to max records limit (${maxRecords})`);
@@ -649,7 +651,7 @@ const upload = async ({
     }
 
     // Main loop on recordsById
-    for (const [sourceId, recordList] of Object.entries(recordsById)) {
+    for (const [sourceId, record] of Object.entries(recordsById)) {
         if (previouslyEntered.has(sourceId) && !ignoreCache) {
             counts.exists++;
             continue;
@@ -669,70 +671,66 @@ const upload = async ({
         const postupload = [];
 
         // Resolve combinations
-        for (const record of recordList) {
-            // Splits civic evidence items drugs into separate evidence items based on their combination type.
-            if (record.drugs === null || record.drugs.length === 0) {
-                record.drugs = [null];
-            } else if (
-                record.drugInteractionType === 'COMBINATION'
-                || record.drugInteractionType === 'SEQUENTIAL'
-            ) {
-                record.drugs = [record.drugs];
-            } else if (record.drugInteractionType === 'SUBSTITUTES' || record.drugs.length < 2) {
-                record.drugs = record.drugs.map(drug => [drug]);
-                record.drugInteractionType = null;
-            } else {
-                logger.error(`(evidence: ${record.id}) unsupported drug interaction type (${record.drugInteractionType}) for a multiple drug (${record.drugs.length}) statement`);
-                counts.skip++;
-                continue;
-            }
-
-            // Splits variants into a list to indicate separate evidence items when variants have been linked as "or"
-            record.variants = [varById[record.variant.id.toString()]]; // OR-ing of variants
-            let orCombination;
-
-            if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variants[0].name)) {
-                const [, prefix, tail1, tail2] = orCombination;
-                record.variants = [
-                    { ...record.variants[0], name: `${prefix}${tail1}` },
-                    { ...record.variants[0], name: `${prefix}${tail2}` },
-                ];
-            }
-            mappedCount += record.variants.length * record.drugs.length;
+        // Splits civic evidence items drugs into separate evidence items based on their combination type.
+        if (record.drugs === null || record.drugs.length === 0) {
+            record.drugs = [null];
+        } else if (
+            record.drugInteractionType === 'COMBINATION'
+            || record.drugInteractionType === 'SEQUENTIAL'
+        ) {
+            record.drugs = [record.drugs];
+        } else if (record.drugInteractionType === 'SUBSTITUTES' || record.drugs.length < 2) {
+            record.drugs = record.drugs.map(drug => [drug]);
+            record.drugInteractionType = null;
+        } else {
+            logger.error(`(evidence: ${record.id}) unsupported drug interaction type (${record.drugInteractionType}) for a multiple drug (${record.drugs.length}) statement`);
+            counts.skip++;
+            continue;
         }
+
+        // Splits variants into a list to indicate separate evidence items when variants have been linked as "or"
+        record.variants = [varById[record.variant.id.toString()]]; // OR-ing of variants
+        let orCombination;
+
+        if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variants[0].name)) {
+            const [, prefix, tail1, tail2] = orCombination;
+            record.variants = [
+                { ...record.variants[0], name: `${prefix}${tail1}` },
+                { ...record.variants[0], name: `${prefix}${tail2}` },
+            ];
+        }
+        mappedCount += record.variants.length * record.drugs.length;
 
         const oneToOne = mappedCount === 1 && preupload.size === 1;
 
         // Upload all GraphKB statements for this CIViC Evidence Item
-        for (const record of recordList) {
-            for (const variant of record.variants) {
-                for (const drugs of record.drugs) {
-                    try {
-                        logger.debug(`processing ${record.id}`);
-                        const result = await processEvidenceRecord({
-                            conn,
-                            oneToOne,
-                            rawRecord: { ..._.omit(record, ['drugs', 'variants']), drugs, variant },
-                            sources: { civic: source },
-                            variantsCache,
-                        });
-                        postupload.push(rid(result));
-                        counts.success += 1;
-                    } catch (err) {
-                        if (
-                            err.toString().includes('is not a function')
-                                || err.toString().includes('of undefined')
-                        ) {
-                            console.error(err);
-                        }
-                        if (err instanceof NotImplementedError) {
-                            // accepted evidence that we do not support loading. Should delete as it may have changed from something we did support
-                            purgeableEvidenceItems.add(sourceId);
-                        }
-                        errorList.push({ error: err, errorMessage: err.toString(), record });
-                        logger.error(`evidence (${record.id}) ${err}`);
-                        counts.error += 1;
+        for (const variant of record.variants) {
+            for (const drugs of record.drugs) {
+                try {
+                    logger.debug(`processing ${record.id}`);
+                    const result = await processEvidenceRecord({
+                        conn,
+                        oneToOne,
+                        rawRecord: { ..._.omit(record, ['drugs', 'variants']), drugs, variant },
+                        sources: { civic: source },
+                        variantsCache,
+                    });
+                    postupload.push(rid(result));
+                    counts.success += 1;
+                } catch (err) {
+                    if (
+                        err.toString().includes('is not a function')
+                        || err.toString().includes('of undefined')
+                    ) {
+                        console.error(err);
                     }
+                    if (err instanceof NotImplementedError) {
+                        // accepted evidence that we do not support loading. Should delete as it may have changed from something we did support
+                        purgeableEvidenceItems.add(sourceId);
+                    }
+                    errorList.push({ error: err, errorMessage: err.toString(), record });
+                    logger.error(`evidence (${record.id}) ${err}`);
+                    counts.error += 1;
                 }
             }
         }
