@@ -180,36 +180,36 @@ const getRelevance = async ({ rawRecord, conn }) => {
 };
 
 /**
- * Given some drug name, find the drug that is equivalent by name in GraphKB
+ * Given some therapy name, find the therapy that is equivalent by name in GraphKB
  */
-const getDrug = async (conn, drugRecord) => {
+const getTherapy = async (conn, therapyRecord) => {
     let originalError;
 
     // fetch from NCIt first if possible, or pubchem
     // then use the name as a fallback
-    const name = drugRecord.name.toLowerCase().trim();
+    const name = therapyRecord.name.toLowerCase().trim();
 
-    if (drugRecord.ncitId) {
+    if (therapyRecord.ncitId) {
         try {
-            const drug = await conn.getUniqueRecordBy({
+            const therapy = await conn.getUniqueRecordBy({
                 filters: [
                     { source: { filters: { name: NCIT_SOURCE_DEFN.name }, target: 'Source' } },
-                    { sourceId: drugRecord.ncitId },
-                    { name: drugRecord.name },
+                    { sourceId: therapyRecord.ncitId },
+                    { name: therapyRecord.name },
                 ],
                 sort: orderPreferredOntologyTerms,
                 target: 'Therapy',
             });
-            return drug;
+            return therapy;
         } catch (err) {
-            logger.error(`had NCIt drug mapping (${drugRecord.ncitId}) named (${drugRecord.name}) but failed to fetch from graphkb: ${err}`);
+            logger.error(`had NCIt therapy mapping (${therapyRecord.ncitId}) named (${therapyRecord.name}) but failed to fetch from graphkb: ${err}`);
             throw err;
         }
     }
 
     try {
-        const drug = await conn.getTherapy(name);
-        return drug;
+        const therapy = await conn.getTherapy(name);
+        return therapy;
     } catch (err) {
         originalError = err;
     }
@@ -227,19 +227,19 @@ const getDrug = async (conn, drugRecord) => {
 
 
 /** *
- * Add or fetch an drug combination if there is not an existing record
- * Link the drug combination to its individual elements
+ * Add or fetch a therapy combination if there is not an existing record
+ * Link the therapy combination to its individual elements
  */
-const addOrFetchDrug = async (conn, source, drugsRecords, combinationType) => {
-    if (drugsRecords.length <= 1) {
-        if (drugsRecords[0] === null) {
+const addOrFetchTherapy = async (conn, source, therapiesRecords, combinationType) => {
+    if (therapiesRecords.length <= 1) {
+        if (therapiesRecords[0] === null) {
             return null;
         }
-        return getDrug(conn, drugsRecords[0]);
+        return getTherapy(conn, therapiesRecords[0]);
     }
-    const drugs = await Promise.all(drugsRecords.map(async drug => getDrug(conn, drug)));
-    const sourceId = drugs.map(e => e.sourceId).sort().join(' + ');
-    const name = drugs.map(e => e.name).sort().join(' + ');
+    const therapies = await Promise.all(therapiesRecords.map(async therapy => getTherapy(conn, therapy)));
+    const sourceId = therapies.map(e => e.sourceId).sort().join(' + ');
+    const name = therapies.map(e => e.name).sort().join(' + ');
     const combinedTherapy = await conn.addRecord({
         content: {
             combinationType, name, source: rid(source), sourceId,
@@ -248,10 +248,10 @@ const addOrFetchDrug = async (conn, source, drugsRecords, combinationType) => {
         target: 'Therapy',
     });
 
-    for (const drug of drugs) {
+    for (const therapy of therapies) {
         await conn.addRecord({
             content: {
-                in: rid(combinedTherapy), out: rid(drug), source: rid(source),
+                in: rid(combinedTherapy), out: rid(therapy), source: rid(source),
             },
             existsOk: true,
             target: 'ElementOf',
@@ -357,20 +357,20 @@ const processEvidenceRecord = async (opt) => {
             target: 'Disease',
         });
     }
-    // get the drug(s) by name
-    let drug;
+    // get the therapy/therapies by name
+    let therapy;
 
-    if (rawRecord.drugs) {
+    if (rawRecord.therapies) {
         try {
-            drug = await addOrFetchDrug(
+            therapy = await addOrFetchTherapy(
                 conn,
                 rid(sources.civic),
-                rawRecord.drugs,
-                (rawRecord.drugInteractionType || '').toLowerCase(),
+                rawRecord.therapies,
+                (rawRecord.therapyInteractionType || '').toLowerCase(),
             );
         } catch (err) {
             logger.error(err);
-            logger.error(`failed to fetch drug: ${JSON.stringify(rawRecord.drugs)}`);
+            logger.error(`failed to fetch therapy: ${JSON.stringify(rawRecord.therapies)}`);
             throw err;
         }
     }
@@ -402,8 +402,8 @@ const processEvidenceRecord = async (opt) => {
         content.conditions.push(rid(disease));
     }
 
-    if (rawRecord.evidenceType === 'PREDICTIVE' && drug) {
-        content.subject = rid(drug);
+    if (rawRecord.evidenceType === 'PREDICTIVE' && therapy) {
+        content.subject = rid(therapy);
     } if (rawRecord.evidenceType === 'PROGNOSTIC') {
         // get the patient vocabulary object
         content.subject = rid(await conn.getVocabularyTerm('patient'));
@@ -671,19 +671,19 @@ const upload = async ({
         const postupload = [];
 
         // Resolve combinations
-        // Splits civic evidence items drugs into separate evidence items based on their combination type.
-        if (record.drugs === null || record.drugs.length === 0) {
-            record.drugs = [null];
+        // Splits civic evidence items therapies into separate evidence items based on their combination type.
+        if (record.therapies === null || record.therapies.length === 0) {
+            record.therapies = [null];
         } else if (
-            record.drugInteractionType === 'COMBINATION'
-            || record.drugInteractionType === 'SEQUENTIAL'
+            record.therapyInteractionType === 'COMBINATION'
+            || record.therapyInteractionType === 'SEQUENTIAL'
         ) {
-            record.drugs = [record.drugs];
-        } else if (record.drugInteractionType === 'SUBSTITUTES' || record.drugs.length < 2) {
-            record.drugs = record.drugs.map(drug => [drug]);
-            record.drugInteractionType = null;
+            record.therapies = [record.therapies];
+        } else if (record.therapyInteractionType === 'SUBSTITUTES' || record.therapies.length < 2) {
+            record.therapies = record.therapies.map(therapy => [therapy]);
+            record.therapyInteractionType = null;
         } else {
-            logger.error(`(evidence: ${record.id}) unsupported drug interaction type (${record.drugInteractionType}) for a multiple drug (${record.drugs.length}) statement`);
+            logger.error(`(evidence: ${record.id}) unsupported therapy interaction type (${record.therapyInteractionType}) for a multiple therapy (${record.therapies.length}) statement`);
             counts.skip++;
             continue;
         }
@@ -699,19 +699,19 @@ const upload = async ({
                 { ...record.variants[0], name: `${prefix}${tail2}` },
             ];
         }
-        mappedCount += record.variants.length * record.drugs.length;
+        mappedCount += record.variants.length * record.therapies.length;
 
         const oneToOne = mappedCount === 1 && preupload.size === 1;
 
         // Upload all GraphKB statements for this CIViC Evidence Item
         for (const variant of record.variants) {
-            for (const drugs of record.drugs) {
+            for (const therapies of record.therapies) {
                 try {
                     logger.debug(`processing ${record.id}`);
                     const result = await processEvidenceRecord({
                         conn,
                         oneToOne,
-                        rawRecord: { ..._.omit(record, ['drugs', 'variants']), drugs, variant },
+                        rawRecord: { ..._.omit(record, ['therapies', 'variants']), therapies, variant },
                         sources: { civic: source },
                         variantsCache,
                     });
