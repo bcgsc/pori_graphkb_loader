@@ -633,21 +633,37 @@ const upload = async ({
     const varById = {};
 
     for (const record of records) {
+
+        // Check if max records limit has been reached
+        if (maxRecords && Object.keys(recordsById).length >= maxRecords) {
+            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
+            break;
+        }
+
         // Check if record id is unique
         if (recordsById[record.id]) {
             logger.warn(`Multiple evidenceItems with the same id: ${record.id}. Violates assumptions. Only the 1st one was kept.`);
             continue;
         }
+
+        // Introducing Molecular Profiles with CIViC GraphQL API v2.2.0
+        // EvidenceItem (many-to-one) MolecularProfile (many-to-many) Variant
+        if (record.molecularProfile && record.molecularProfile.id) {
+            if (record.molecularProfile.variants.length === 0) {
+                throw new Error(`Molecular Profile without Variant. Violates assumptions: ${record.molecularProfile.id}`);
+            } else if (record.molecularProfile.variants.length > 1) {
+                logger.warn(`Skip upload of Evidence Item with complex Molecular Profile (those with more that 1 Variant): ${record.molecularProfile.id}`);
+                continue;
+            } else {
+                // Assuming 1 Variant per Molecular Profile
+                varById[record.molecularProfile.variants[0].id.toString()] = record.molecularProfile.variants[0];
+            }
+        } else {
+            throw new Error(`Evidence Item without Molecular Profile. Violates assumptions: ${record.id}`);
+        }
+
+        // Adding EvidenceItem to object for upload
         recordsById[record.id] = record;
-
-        if (maxRecords && Object.values(recordsById).length >= maxRecords) {
-            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
-            break;
-        }
-
-        if (record.variant && record.variant.id) {
-            varById[record.variant.id.toString()] = record.variant;
-        }
     }
 
     // Main loop on recordsById
@@ -689,7 +705,8 @@ const upload = async ({
         }
 
         // Splits variants into a list to indicate separate evidence items when variants have been linked as "or"
-        record.variants = [varById[record.variant.id.toString()]]; // OR-ing of variants
+        // Assuming 1 Variant per Molecular Profile
+        record.variants = [varById[record.molecularProfile.variants[0].id.toString()]]; // OR-ing of variants
         let orCombination;
 
         if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variants[0].name)) {
@@ -699,6 +716,7 @@ const upload = async ({
                 { ...record.variants[0], name: `${prefix}${tail2}` },
             ];
         }
+
         mappedCount += record.variants.length * record.therapies.length;
 
         const oneToOne = mappedCount === 1 && preupload.size === 1;
