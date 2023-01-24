@@ -82,78 +82,315 @@ const requestEvidenceItems = async (url, opt) => {
 /**
  * Extract the appropriate GraphKB relevance term from a CIViC evidence record
  */
-const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificance) => {
+const translateRelevance = (evidenceType, evidenceDirection, significance) => {
     if (evidenceDirection === 'DOES_NOT_SUPPORT') {
-        if (evidenceType === 'PREDICTIVE') {
-            switch (clinicalSignificance) { // eslint-disable-line default-case
-                case 'SENSITIVITYRESPONSE': {
-                    return 'no response';
-                }
+        switch (evidenceType) { // eslint-disable-line default-case
+            case 'DIAGNOSTIC': {
+                switch (significance) { // eslint-disable-line default-case
+                    case 'NEGATIVE': {
+                        // 2 cases to address
+                        break;
+                    }
 
-                case 'RESISTANCE': { return 'no resistance'; }
+                    case 'POSITIVE': {
+                        // 11 cases to address
+                        break;
+                    }
+                }
+            }
+
+            case 'FUNCTIONAL': {
+                switch (significance) { // eslint-disable-line default-case
+                    case 'DOMINANT_NEGATIVE': {
+                        // 83 cases to address
+                        break;
+                    }
+
+                    case 'GAIN_OF_FUNCTION': {
+                        // 11 cases to address
+                        break;
+                    }
+
+                    case 'LOSS_OF_FUNCTION': {
+                        // 2 cases to address
+                        break;
+                    }
+
+                    case 'NEOMORPHIC': {
+                        // 6 cases to address
+                        break;
+                    }
+
+                    case 'UNALTERED_FUNCTION': {
+                        // No case so far
+                        break;
+                    }
+
+                    case 'UNKNOWNED': {
+                        // 1 case (to address?)
+                        break;
+                    }
+                }
+            }
+
+            case 'ONCOGENIC': {
+                switch (significance) { // eslint-disable-line default-case
+                    case 'ONCOGENICITY': {
+                        // 3 cases to address
+                        break;
+                    }
+
+                    case 'PROTECTIVENESS': {
+                        // No cases so far
+                        break;
+                    }
+                }
+            }
+
+            case 'PREDICTIVE': {
+                switch (significance) { // eslint-disable-line default-case
+                    case 'ADVERSE_RESPONSE': {
+                        // 1 case to address
+                        break;
+                    }
+
+                    case 'NA': {
+                        // According to https://civic.readthedocs.io/en/latest/model/evidence/significance.html
+                        // "Variant does not inform clinical interepretation"
+                        break;
+                    }
+
+                    case 'REDUCED_SENSITIVITY': {
+                        // 2 cases to address
+                        break;
+                    }
+
+                    case 'RESISTANCE': {
+                        return 'no resistance';
+                    }
+
+                    case 'SENSITIVITYRESPONSE': {
+                        return 'no response';
+                    }
+                }
+            }
+
+            case 'PREDISPOSING': {
+                switch (significance) { // eslint-disable-line default-case
+                    case 'LIKELY_PATHOGENIC': {
+                        // 1 case to address. Should not append according to CIViC docs
+                        break;
+                    }
+
+                    case 'POSITIVE': {
+                        // 1 case to address. Should not append according to CIViC docs
+                        break;
+                    }
+
+                    case 'PREDISPOSITION': {
+                        // 2 cases to address
+                        break;
+                    }
+
+                    case 'PROTECTIVENESS': {
+                        // No case so far
+                        break;
+                    }
+                }
+            }
+
+            case 'PROGNOSTIC': {
+                switch (significance) { // eslint-disable-line default-case
+                    case 'BETTER_OUTCOME': {
+                        // 4 case to address.
+                        break;
+                    }
+
+                    case 'NA': {
+                        // 38 cases (to address?)
+                        // According to https://civic.readthedocs.io/en/latest/model/evidence/significance.html
+                        // "The N/A option can be used to imply that the variant does not have an impact on patient prognosis."
+                        break;
+                    }
+
+                    case 'POOR_OUTCOME': {
+                        // 34 cases to address
+                        break;
+                    }
+                }
             }
         }
     } else if (evidenceDirection === 'SUPPORTS') {
         switch (evidenceType) { // eslint-disable-line default-case
-            case 'PREDICTIVE': {
-                switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'ADVERSE_RESPONSE':
-                    case 'REDUCED_SENSITIVITY':
-
-                    case 'RESISTANCE': {
-                        return clinicalSignificance.replace(/_/g, ' ').toLowerCase();
+            case 'DIAGNOSTIC': {
+                switch (significance) { // eslint-disable-line default-case
+                    case 'NEGATIVE': {
+                        return 'opposes diagnosis';
                     }
 
-                    case 'SENSITIVITYRESPONSE': { return 'sensitivity'; }
+                    case 'POSITIVE': {
+                        return 'favours diagnosis';
+                    }
+
+                    case 'NA': {
+                        // 9 cases (to address? 'POSITIVE' implied?). Should not append according to CIViC docs
+                        break;
+                    }
                 }
-                break;
             }
 
             case 'FUNCTIONAL': {
-                return clinicalSignificance.replace(/_/g, ' ').toLowerCase();
+                switch (significance) { // eslint-disable-line default-case
+                    case 'DOMINANT_NEGATIVE': {
+                        return 'dominant negative';
+                    }
+
+                    case 'GAIN_OF_FUNCTION': {
+                        return 'gain of function';
+                    }
+
+                    case 'LOSS_OF_FUNCTION': {
+                        return 'loss of function';
+                    }
+
+                    case 'NEOMORPHIC': {
+                        return 'neomorphic';
+                    }
+
+                    case 'UNALTERED_FUNCTION': {
+                        return 'unaltered function';
+                    }
+
+                    case 'UNKNOWNED': {
+                        // No case so far
+                        break;
+                    }
+                }
             }
 
-            case 'DIAGNOSTIC': {
-                switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'POSITIVE': { return 'favours diagnosis'; }
+            case 'ONCOGENIC': {
+                switch (significance) { // eslint-disable-line default-case
+                    case 'ONCOGENICITY': {
+                        // 92 cases to address
+                        break;
+                    }
 
-                    case 'NEGATIVE': { return 'opposes diagnosis'; }
+                    case 'PROTECTIVENESS': {
+                        // No case so far
+                        break;
+                    }
                 }
-                break;
+            }
+
+            case 'PREDICTIVE': {
+                switch (significance) { // eslint-disable-line default-case
+                    case 'ADVERSE_RESPONSE': {
+                        return 'adverse response';
+                    }
+
+                    case 'NA': {
+                        // According to https://civic.readthedocs.io/en/latest/model/evidence/significance.html
+                        // "Variant does not inform clinical interepretation"
+                        break;
+                    }
+
+                    case 'REDUCED_SENSITIVITY': {
+                        return 'reduced sensitivity';
+                    }
+
+                    case 'RESISTANCE': {
+                        return 'resistance';
+                    }
+
+                    case 'SENSITIVITYRESPONSE': {
+                        return 'sensitivity';
+                    }
+                }
+            }
+
+            case 'PREDISPOSING': {
+                switch (significance) { // eslint-disable-line default-case
+                    case 'LIKELY_PATHOGENIC': {
+                        // 23 cases. Should not append according to CIViC docs
+                        return 'likely pathogenic';
+                    }
+
+                    case 'NA': {
+                        // 3 cases. Should not append according to CIViC docs
+                        break;
+                    }
+
+                    case 'PATHOGENIC': {
+                        // 13 cases. Should not append according to CIViC docs
+                        return 'pathogenic';
+                    }
+
+                    case 'POSITIVE': {
+                        // 3 cases. Should not append according to CIViC docs
+                        return 'predisposing';
+                    }
+
+                    case 'PREDISPOSITION': {
+                        return 'predisposing';
+                    }
+
+                    case 'PROTECTIVENESS': {
+                        // No case so far
+                        break;
+                    }
+
+                    case 'UNCERTAIN_SIGNIFICANCE': {
+                        // 1267 cases. Should not append according to CIViC docs
+                        return 'likely predisposing';
+                    }
+                }
             }
 
             case 'PROGNOSTIC': {
-                switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'NEGATIVE':
+                switch (significance) { // eslint-disable-line default-case
+                    case 'BETTER_OUTCOME': {
+                        return 'favourable prognosis';
+                    }
+
+                    case 'NA': {
+                        // 9 cases (to address?)
+                        // According to https://civic.readthedocs.io/en/latest/model/evidence/significance.html
+                        // "The N/A option can be used to imply that the variant does not have an impact on patient prognosis."
+                        break;
+                    }
 
                     case 'POOR_OUTCOME': {
                         return 'unfavourable prognosis';
                     }
-                    case 'POSITIVE':
 
-                    case 'BETTER_OUTCOME': {
+                    case 'POSITIVE': {
+                        // 1 case. Should not append according to CIViC docs
                         return 'favourable prognosis';
                     }
                 }
+            }
+        }
+    }
+
+    // Addressing some NAs
+    if (evidenceDirection === 'NA' && significance === 'NA') {
+        switch (evidenceType) { // eslint-disable-line default-case
+            case 'PREDISPOSING': {
+                // 1116 cases (to address?)
                 break;
             }
 
-            case 'PREDISPOSING': {
-                if (['POSITIVE', null].includes(clinicalSignificance)) {
-                    return 'predisposing';
-                } if (clinicalSignificance.includes('PATHOGENIC')) {
-                    return clinicalSignificance.replace(/_/g, ' ').toLowerCase();
-                } if (clinicalSignificance === 'UNCERTAIN_SIGNIFICANCE') {
-                    return 'likely predisposing';
-                }
+            case 'ONCOGENIC': {
+                // 166 cases (to address?)
                 break;
             }
         }
     }
 
+    // If combination of evidenceDirection, evidenceType and significance not supported
     throw new NotImplementedError(
         `unable to process relevance (${JSON.stringify(
-            { clinicalSignificance, evidenceDirection, evidenceType },
+            { evidenceDirection, evidenceType, significance },
         )})`,
     );
 };
@@ -167,7 +404,7 @@ const getRelevance = async ({ rawRecord, conn }) => {
     let relevance = translateRelevance(
         rawRecord.evidenceType,
         rawRecord.evidenceDirection,
-        rawRecord.clinicalSignificance,
+        rawRecord.significance,
     ).toLowerCase();
 
     if (RELEVANCE_CACHE[relevance] === undefined) {
@@ -578,8 +815,8 @@ const downloadEvidenceRecords = async (url, trustedCurators) => {
         }
 
         if (
-            record.clinicalSignificance === 'NA'
-            || (record.clinicalSignificance === null && record.evidenceType === 'PREDICTIVE')
+            record.significance === 'NA'
+            || (record.significance === null && record.evidenceType === 'PREDICTIVE')
         ) {
             counts.skip++;
             logger.debug(`skipping uninformative record (${record.id})`);
