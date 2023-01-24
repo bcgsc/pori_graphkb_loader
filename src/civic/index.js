@@ -271,8 +271,10 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
             case 'ONCOGENIC': {
                 switch (significance) { // eslint-disable-line default-case
                     case 'ONCOGENICITY': {
-                        // 92 cases to address
-                        break;
+                        // 92 cases.
+                        // So far, only OncoKB and IPRKB had statement of relevance 'oncogenic'.
+                        // Needs confirmation !!
+                        return 'oncogenic';
                     }
 
                     case 'PROTECTIVENESS': {
@@ -317,7 +319,8 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
 
                     case 'NA': {
                         // 3 cases. Should not append according to CIViC docs
-                        break;
+                        // Similar to 'UNCERTAIN_SIGNIFICANCE' ?
+                        return 'likely predisposing';
                     }
 
                     case 'PATHOGENIC': {
@@ -372,17 +375,20 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
         }
     }
 
-    // Addressing some NAs
+    // Addressing some NAs combinations
     if (evidenceDirection === 'NA' && significance === 'NA') {
         switch (evidenceType) { // eslint-disable-line default-case
             case 'PREDISPOSING': {
-                // 1116 cases (to address?)
-                break;
+                // 1116 cases. Should not append according to CIViC docs
+                // Similar to 'SUPPORT'+'PREDISPOSING'+'UNCERTAIN_SIGNIFICANCE' ?
+                return 'likely predisposing';
             }
 
             case 'ONCOGENIC': {
                 // 166 cases (to address?)
-                break;
+                // Similar to 'SUPPORT'+'ONCOGENIC'+'ONCOGENICITY' ?
+                // Needs confirmation !!
+                return 'oncogenic';
             }
         }
     }
