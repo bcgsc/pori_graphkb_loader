@@ -88,12 +88,12 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
             case 'DIAGNOSTIC': {
                 switch (significance) { // eslint-disable-line default-case
                     case 'NEGATIVE': {
-                        // 2 cases to address
+                        // 2 cases
                         break;
                     }
 
                     case 'POSITIVE': {
-                        // 11 cases to address
+                        // 11 cases
                         break;
                     }
                 }
@@ -117,7 +117,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                     }
 
                     case 'NEOMORPHIC': {
-                        // 6 cases to address
+                        // 6 cases
                         break;
                     }
 
@@ -155,6 +155,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                     }
 
                     case 'NA': {
+                        // 2 cases
                         // According to https://civic.readthedocs.io/en/latest/model/evidence/significance.html
                         // "Variant does not inform clinical interepretation"
                         break;
@@ -183,7 +184,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                     }
 
                     case 'POSITIVE': {
-                        // 1 case to address. Should not append according to CIViC docs
+                        // 1 case. Should not append according to CIViC docs
                         break;
                     }
 
@@ -214,7 +215,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                     }
 
                     case 'POOR_OUTCOME': {
-                        // 34 cases to address
+                        // 34 cases
                         break;
                     }
                 }
@@ -224,17 +225,17 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
         switch (evidenceType) { // eslint-disable-line default-case
             case 'DIAGNOSTIC': {
                 switch (significance) { // eslint-disable-line default-case
+                    case 'NA': {
+                        // 9 cases (to address? 'POSITIVE' implied?). Should not append according to CIViC docs
+                        break;
+                    }
+
                     case 'NEGATIVE': {
                         return 'opposes diagnosis';
                     }
 
                     case 'POSITIVE': {
                         return 'favours diagnosis';
-                    }
-
-                    case 'NA': {
-                        // 9 cases (to address? 'POSITIVE' implied?). Should not append according to CIViC docs
-                        break;
                     }
                 }
             }
@@ -320,6 +321,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                     case 'NA': {
                         // 3 cases. Should not append according to CIViC docs
                         // Similar to 'UNCERTAIN_SIGNIFICANCE' ?
+                        // Needs confirmation !!
                         return 'likely predisposing';
                     }
 
@@ -381,7 +383,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
             case 'PREDISPOSING': {
                 // 1116 cases. Should not append according to CIViC docs
                 // Similar to 'SUPPORT'+'PREDISPOSING'+'UNCERTAIN_SIGNIFICANCE' ?
-                return 'likely predisposing';
+                return 'likely predisposing'; // Needs confirmation !! Used to be tested as an error
             }
 
             case 'ONCOGENIC': {
