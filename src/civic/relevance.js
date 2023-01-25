@@ -25,6 +25,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         break;
                     }
                 }
+                break;
             }
 
             case 'FUNCTIONAL': {
@@ -61,6 +62,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         break;
                     }
                 }
+                break;
             }
 
             case 'ONCOGENIC': {
@@ -77,6 +79,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         break;
                     }
                 }
+                break;
             }
 
             case 'PREDICTIVE': {
@@ -108,6 +111,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         return 'no response';
                     }
                 }
+                break;
             }
 
             case 'PREDISPOSING': {
@@ -134,6 +138,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         break;
                     }
                 }
+                break;
             }
 
             case 'PROGNOSTIC': {
@@ -157,6 +162,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         break;
                     }
                 }
+                break;
             }
         }
     } else if (evidenceDirection === 'SUPPORTS') {
@@ -178,6 +184,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         return 'favours diagnosis';
                     }
                 }
+                break;
             }
 
             case 'FUNCTIONAL': {
@@ -209,6 +216,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         break;
                     }
                 }
+                break;
             }
 
             case 'ONCOGENIC': {
@@ -227,6 +235,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         break;
                     }
                 }
+                break;
             }
 
             case 'PREDICTIVE': {
@@ -255,6 +264,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         return 'sensitivity';
                     }
                 }
+                break;
             }
 
             case 'PREDISPOSING': {
@@ -297,6 +307,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         return 'likely predisposing';
                     }
                 }
+                break;
             }
 
             case 'PROGNOSTIC': {
@@ -323,6 +334,7 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
                         return 'favourable prognosis';
                     }
                 }
+                break;
             }
         }
     }
