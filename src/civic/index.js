@@ -559,7 +559,6 @@ const upload = async ({
     const varById = {};
 
     for (const record of records) {
-
         // Check if max records limit has been reached
         if (maxRecords && Object.keys(recordsById).length >= maxRecords) {
             logger.warn(`not loading all content due to max records limit (${maxRecords})`);
@@ -573,11 +572,12 @@ const upload = async ({
         }
 
         // Introducing Molecular Profiles with CIViC GraphQL API v2.2.0
-        // EvidenceItem (many-to-one) MolecularProfile (many-to-many) Variant
+        // [EvidenceItem]--(many-to-one)--[MolecularProfile]--(many-to-many)--[Variant]
         if (record.molecularProfile && record.molecularProfile.id) {
             if (record.molecularProfile.variants.length === 0) {
                 throw new Error(`Molecular Profile without Variant. Violates assumptions: ${record.molecularProfile.id}`);
             } else if (record.molecularProfile.variants.length > 1) {
+                // TODO: Add support for Evidence Item with complex Molecular Profile
                 logger.warn(`Skip upload of Evidence Item with complex Molecular Profile (those with more that 1 Variant): ${record.molecularProfile.id}`);
                 continue;
             } else {
