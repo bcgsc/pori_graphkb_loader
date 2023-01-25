@@ -700,9 +700,9 @@ describe('translateRelevance', () => {
         ['PREDICTIVE', 'SENSITIVITYRESPONSE', 'sensitivity'],
         ['PREDISPOSING', 'PREDISPOSITION', 'predisposing'],
         // ['PREDISPOSING', 'PROTECTIVENESS, ''], // No case so far...
-        ['PROGNOSTIC', 'BETTER_OUTCOME', 'favorable prognosis'],
+        ['PROGNOSTIC', 'BETTER_OUTCOME', 'favourable prognosis'],
         // ['PROGNOSTIC', 'NA', ''],
-        ['PROGNOSTIC', 'POOR_OUTCOME', 'unfavorable prognosis'],
+        ['PROGNOSTIC', 'POOR_OUTCOME', 'unfavourable prognosis'],
     ])(
         'SUPPORTS|%s|%s returns %s', (evidenceType, clinicalSignificance, expected) => {
             expect(translateRelevance(evidenceType, 'SUPPORTS', clinicalSignificance)).toEqual(expected);
@@ -730,9 +730,9 @@ describe('translateRelevance', () => {
         ['SUPPORTS', 'PREDISPOSING', 'PATHOGENIC', 'pathogenic'],
         ['SUPPORTS', 'PREDISPOSING', 'POSITIVE', 'predisposing'],
         ['SUPPORTS', 'PREDISPOSING', 'UNCERTAIN_SIGNIFICANCE', 'likely predisposing'],
-        ['SUPPORTS', 'PROGNOSTIC', 'POSITIVE', 'favorable prognosis'],
+        ['SUPPORTS', 'PROGNOSTIC', 'POSITIVE', 'favourable prognosis'],
     ])(
-        'NA|%s|%s returns %s', (evidenceDirection, evidenceType, clinicalSignificance, expected) => {
+        '%s|%s|%s returns %s', (evidenceDirection, evidenceType, clinicalSignificance, expected) => {
             expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
         },
     );
