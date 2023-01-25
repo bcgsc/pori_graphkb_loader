@@ -837,6 +837,31 @@ const downloadEvidenceRecords = async (url, trustedCurators) => {
 
 
 /**
+ * Splits a variant into a list of it's variations
+ * Used to desambiguate variants that as been linked as "or"
+ * Ex. {name: 'Q157P/R'} --> [{name: 'Q157P'}, {name: 'Q157R'}]
+ * Ex. {name: 'Q157P'} --> [{name: 'Q157P'}]
+ *
+ * @param {Object} variant the Variant object to desambigaute
+ * @returns {Object[]} an array of Variant objects
+ */
+const disambiguateVariant = (variant) => {
+    let variants = [variant],
+        orCombination;
+
+    if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(variant.name)) {
+        const [, prefix, tail1, tail2] = orCombination;
+        variants = [
+            { ...variant, name: `${prefix}${tail1}` },
+            { ...variant, name: `${prefix}${tail2}` },
+        ];
+    }
+
+    return variants;
+};
+
+
+/**
  * Access the CIVic API, parse content, transform and load into GraphKB
  *
  * @param {object} opt options
@@ -949,18 +974,9 @@ const upload = async ({
             continue;
         }
 
-        // Splits variants into a list to indicate separate evidence items when variants have been linked as "or"
+        // Variant disambiguation
         // Assuming 1 Variant per Molecular Profile
-        record.variants = [varById[record.molecularProfile.variants[0].id.toString()]]; // OR-ing of variants
-        let orCombination;
-
-        if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variants[0].name)) {
-            const [, prefix, tail1, tail2] = orCombination;
-            record.variants = [
-                { ...record.variants[0], name: `${prefix}${tail1}` },
-                { ...record.variants[0], name: `${prefix}${tail2}` },
-            ];
-        }
+        record.variants = disambiguateVariant(varById[record.molecularProfile.variants[0].id.toString()]);
 
         mappedCount += record.variants.length * record.therapies.length;
 
@@ -1064,6 +1080,7 @@ const upload = async ({
 
 
 module.exports = {
+    disambiguateVariant,
     SOURCE_DEFN,
     specs: { validateEvidenceSpec },
     translateRelevance,
