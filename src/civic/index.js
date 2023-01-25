@@ -494,9 +494,9 @@ const downloadEvidenceRecords = async (url, trustedCurators) => {
 
 /**
  * Splits a variant into a list of it's variations
- * Used to desambiguate variants that as been linked as "or"
+ * Desambiguate variants that as been linked as "or"
  * Ex. {name: 'Q157P/R'} --> [{name: 'Q157P'}, {name: 'Q157R'}]
- * Ex. {name: 'Q157P'} --> [{name: 'Q157P'}]
+ * Ex. {name: 'Q157P'}   --> [{name: 'Q157P'}]
  *
  * @param {Object} variant the Variant object to desambigaute
  * @returns {Object[]} an array of Variant objects
