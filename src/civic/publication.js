@@ -50,6 +50,10 @@ const getPublication = async (conn, rawRecord) => {
         }
         return abstracts[0];
     }
+    if (rawRecord.source.sourceType === 'ASH') {
+        // 6 cases
+        // TODO: ASH loader
+    }
     throw Error(`unable to process non-pubmed/non-asco evidence type (${rawRecord.source.sourceType}) for evidence item (${rawRecord.id})`);
 };
 
