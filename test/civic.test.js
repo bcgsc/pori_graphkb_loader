@@ -1,5 +1,5 @@
 const { normalizeVariantRecord } = require('../src/civic/variant');
-const { translateRelevance } = require('../src/civic');
+const { translateRelevance } = require('../src/civic/relevance');
 
 describe('normalizeVariantRecord', () => {
     test('exon mutation', () => {
