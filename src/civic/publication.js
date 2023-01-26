@@ -20,6 +20,10 @@ const titlesMatch = (title1, title2) => {
 const getPublication = async (conn, rawRecord) => {
     if (rawRecord.source.sourceType === 'PUBMED') {
         const [publication] = await _pubmed.fetchAndLoadByIds(conn, [rawRecord.source.citationId]);
+
+        if (!publication) {
+            throw Error(`PMID ${rawRecord.source.citationId} is not available`);
+        }
         return publication;
     }
     if (rawRecord.source.sourceType === 'ASCO') {
