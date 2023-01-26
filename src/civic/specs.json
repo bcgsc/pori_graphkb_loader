@@ -73,6 +73,9 @@
             },
             "molecularProfile": {
                 "properties": {
+                    "id": {
+                        "type": "number"
+                    },
                     "name": {
                         "type": [
                             "null",

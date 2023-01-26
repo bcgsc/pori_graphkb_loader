@@ -69,6 +69,7 @@ query evidenceItems(
       evidenceType
       id
       molecularProfile {
+        id
         name
         rawName
         variants {
