@@ -577,7 +577,7 @@ const upload = async ({
                 throw new Error(`Molecular Profile without Variant. Violates assumptions: ${record.molecularProfile.id}`);
             } else if (record.molecularProfile.variants.length > 1) {
                 // TODO: Add support for Evidence Item with complex Molecular Profile
-                logger.warn(`Skip upload of Evidence Item with complex Molecular Profile (those with more that 1 Variant): ${record.molecularProfile.id}`);
+                logger.warn(`Skip upload of Evidence Item with complex Molecular Profile (those with more that 1 Variant): ${record.id}`);
                 continue;
             } else {
                 // Assuming 1 Variant per Molecular Profile
@@ -608,10 +608,7 @@ const upload = async ({
             target: 'Statement',
         })).map(rid));
 
-        let mappedCount = 0;
-        const postupload = [];
-
-        // Resolve combinations
+        // Resolve combinations of therapies
         // Splits civic evidence items therapies into separate evidence items based on their combination type.
         if (record.therapies === null || record.therapies.length === 0) {
             record.therapies = [null];
@@ -633,9 +630,9 @@ const upload = async ({
         // Assuming 1 Variant per Molecular Profile
         record.variants = disambiguateVariant(varById[record.molecularProfile.variants[0].id.toString()]);
 
-        mappedCount += record.variants.length * record.therapies.length;
 
-        const oneToOne = mappedCount === 1 && preupload.size === 1;
+        const oneToOne = (record.variants.length * record.therapies.length) === 1 && preupload.size === 1;
+        const postupload = [];
 
         // Upload all GraphKB statements for this CIViC Evidence Item
         for (const variant of record.variants) {
