@@ -48,7 +48,6 @@ const VOCAB = {
 };
 
 const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evidence levels
-const RELEVANCE_CACHE = {};
 
 const validateEvidenceSpec = ajv.compile(evidenceSpec);
 

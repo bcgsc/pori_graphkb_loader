@@ -1,8 +1,9 @@
-
-
 const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
 
 class NotImplementedError extends ErrorMixin { }
+
+
+const RELEVANCE_CACHE = {};
 
 
 /**
