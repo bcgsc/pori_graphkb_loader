@@ -661,76 +661,30 @@ describe('normalizeVariantRecord', () => {
 
 describe('translateRelevance', () => {
     test.each([
-        // evidenceDirection === 'DOES_NOT_SUPPORT'
-        // ['FUNCTIONAL', 'DOMINANT_NEGATIVE', ''],
-        // ['FUNCTIONAL', 'GAIN_OF_FUNCTION', ''],
-        // ['FUNCTIONAL', 'LOSS_OF_FUNCTION', ''],
-        // ['FUNCTIONAL', 'UNKNOWNED', ''],
-        // ['ONCOGENIC', 'ONCOGENICITY', ''],
-        // ['ONCOGENIC', 'PROTECTIVENESS', ''], // No case so far...
-        // ['PREDICTIVE', 'ADVERSE_RESPONSE', ''],
-        // ['PREDICTIVE', 'REDUCED_SENSITIVITY', ''],
-        ['PREDICTIVE', 'RESISTANCE', 'no resistance'],
-        ['PREDICTIVE', 'SENSITIVITYRESPONSE', 'no response'],
-        // ['PREDISPOSING', 'PREDISPOSITION', ''],
-        // ['PREDISPOSING', 'PROTECTIVENESS', ''], // No case so far...
-        // ['PROGNOSTIC', 'BETTER_OUTCOME', ''],
-        // ['PROGNOSTIC', 'NA', ''],
-    ])(
-        'DOES_NOT_SUPPORT|%s|%s returns %s', (evidenceType, clinicalSignificance, expected) => {
-            expect(translateRelevance(evidenceType, 'DOES_NOT_SUPPORT', clinicalSignificance)).toEqual(expected);
-        },
-    );
-
-    test.each([
-        // evidenceDirection === 'SUPPORTS'
-        ['DIAGNOSTIC', 'NEGATIVE', 'opposes diagnosis'],
-        ['DIAGNOSTIC', 'POSITIVE', 'favours diagnosis'],
-        ['FUNCTIONAL', 'DOMINANT_NEGATIVE', 'dominant negative'],
-        ['FUNCTIONAL', 'GAIN_OF_FUNCTION', 'gain of function'],
-        ['FUNCTIONAL', 'LOSS_OF_FUNCTION', 'loss of function'],
-        ['FUNCTIONAL', 'NEOMORPHIC', 'neomorphic'],
-        ['FUNCTIONAL', 'UNALTERED_FUNCTION', 'unaltered function'],
-        // ['FUNCTIONAL', 'UNKNOWNED', ''], // No case so far...
-        ['ONCOGENIC', 'ONCOGENICITY', 'oncogenic'], // Needs confirmation !!
-        // ['ONCOGENIC', 'PROTECTIVENESS', ''], // No case so far...
-        ['PREDICTIVE', 'ADVERSE_RESPONSE', 'adverse response'],
-        ['PREDICTIVE', 'REDUCED_SENSITIVITY', 'reduced sensitivity'],
-        ['PREDICTIVE', 'RESISTANCE', 'resistance'],
-        ['PREDICTIVE', 'SENSITIVITYRESPONSE', 'sensitivity'],
-        ['PREDISPOSING', 'PREDISPOSITION', 'predisposing'],
-        // ['PREDISPOSING', 'PROTECTIVENESS, ''], // No case so far...
-        ['PROGNOSTIC', 'BETTER_OUTCOME', 'favourable prognosis'],
-        // ['PROGNOSTIC', 'NA', ''],
-        ['PROGNOSTIC', 'POOR_OUTCOME', 'unfavourable prognosis'],
-    ])(
-        'SUPPORTS|%s|%s returns %s', (evidenceType, clinicalSignificance, expected) => {
-            expect(translateRelevance(evidenceType, 'SUPPORTS', clinicalSignificance)).toEqual(expected);
-        },
-    );
-
-    test.each([
-        // evidenceDirection === 'NA' && clinicalSignificance === 'NA'
-        ['PREDISPOSING', 'likely predisposing'], // Needs confirmation !!
-        ['ONCOGENIC', 'oncogenic'],
-    ])(
-        'NA|%s|NA returns %s', (evidenceType, expected) => {
-            expect(translateRelevance(evidenceType, 'NA', 'NA')).toEqual(expected);
-        },
-    );
-
-    test.each([
-        // Combinations that should not append according to Civic documentation
-        // but for which we still find evidenceItems
-        // ['DOES_NOT_SUPPORT', 'PREDISPOSING', 'LIKELY_PATHOGENIC', ''],
-        // ['DOES_NOT_SUPPORT', 'PREDISPOSING', 'POSITIVE', ''],
-        // ['SUPPORTS', 'DIAGNOSTIC', 'NA', ''],
+        ['DOES_NOT_SUPPORT', 'PREDICTIVE', 'RESISTANCE', 'no resistance'],
+        ['DOES_NOT_SUPPORT', 'PREDICTIVE', 'SENSITIVITYRESPONSE', 'no response'],
+        ['SUPPORTS', 'DIAGNOSTIC', 'NEGATIVE', 'opposes diagnosis'],
+        ['SUPPORTS', 'DIAGNOSTIC', 'POSITIVE', 'favours diagnosis'],
+        ['SUPPORTS', 'FUNCTIONAL', 'DOMINANT_NEGATIVE', 'dominant negative'],
+        ['SUPPORTS', 'FUNCTIONAL', 'GAIN_OF_FUNCTION', 'gain of function'],
+        ['SUPPORTS', 'FUNCTIONAL', 'LOSS_OF_FUNCTION', 'loss of function'],
+        ['SUPPORTS', 'FUNCTIONAL', 'NEOMORPHIC', 'neomorphic'],
+        ['SUPPORTS', 'FUNCTIONAL', 'UNALTERED_FUNCTION', 'unaltered function'],
+        ['SUPPORTS', 'ONCOGENIC', 'ONCOGENICITY', 'oncogenic'],
+        ['SUPPORTS', 'PREDICTIVE', 'ADVERSE_RESPONSE', 'adverse response'],
+        ['SUPPORTS', 'PREDICTIVE', 'REDUCED_SENSITIVITY', 'reduced sensitivity'],
+        ['SUPPORTS', 'PREDICTIVE', 'RESISTANCE', 'resistance'],
+        ['SUPPORTS', 'PREDICTIVE', 'SENSITIVITYRESPONSE', 'sensitivity'],
         ['SUPPORTS', 'PREDISPOSING', 'LIKELY_PATHOGENIC', 'likely pathogenic'],
-        ['SUPPORTS', 'PREDISPOSING', 'NA', 'likely predisposing'], // Needs confirmation !!
         ['SUPPORTS', 'PREDISPOSING', 'PATHOGENIC', 'pathogenic'],
         ['SUPPORTS', 'PREDISPOSING', 'POSITIVE', 'predisposing'],
+        ['SUPPORTS', 'PREDISPOSING', 'PREDISPOSITION', 'predisposing'],
         ['SUPPORTS', 'PREDISPOSING', 'UNCERTAIN_SIGNIFICANCE', 'likely predisposing'],
+        ['SUPPORTS', 'PROGNOSTIC', 'BETTER_OUTCOME', 'favourable prognosis'],
+        ['SUPPORTS', 'PROGNOSTIC', 'POOR_OUTCOME', 'unfavourable prognosis'],
         ['SUPPORTS', 'PROGNOSTIC', 'POSITIVE', 'favourable prognosis'],
+        ['NA', 'PREDISPOSING', 'NA', 'likely predisposing'],
+        ['NA', 'ONCOGENIC', 'NA', 'oncogenic'],
     ])(
         '%s|%s|%s returns %s', (evidenceDirection, evidenceType, clinicalSignificance, expected) => {
             expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
@@ -741,12 +695,28 @@ describe('translateRelevance', () => {
         // Test cases that should throw an error
         ['DOES_NOT_SUPPORT', 'DIAGNOSTIC', 'POSITIVE'],
         ['DOES_NOT_SUPPORT', 'DIAGNOSTIC', 'NEGATIVE'],
+        ['DOES_NOT_SUPPORT', 'FUNCTIONAL', 'DOMINANT_NEGATIVE'],
+        ['DOES_NOT_SUPPORT', 'FUNCTIONAL', 'GAIN_OF_FUNCTION'],
+        ['DOES_NOT_SUPPORT', 'FUNCTIONAL', 'LOSS_OF_FUNCTION'],
         ['DOES_NOT_SUPPORT', 'FUNCTIONAL', 'NEOMORPHIC'],
         ['DOES_NOT_SUPPORT', 'FUNCTIONAL', 'UNALTERED_FUNCTION'],
+        ['DOES_NOT_SUPPORT', 'FUNCTIONAL', 'UNKNOWNED'],
+        ['DOES_NOT_SUPPORT', 'ONCOGENIC', 'ONCOGENICITY'],
+        ['DOES_NOT_SUPPORT', 'ONCOGENIC', 'PROTECTIVENESS'],
+        ['DOES_NOT_SUPPORT', 'PREDICTIVE', 'ADVERSE_RESPONSE'],
         ['DOES_NOT_SUPPORT', 'PREDICTIVE', 'NA'],
+        ['DOES_NOT_SUPPORT', 'PREDICTIVE', 'REDUCED_SENSITIVITY'],
         ['DOES_NOT_SUPPORT', 'PREDISPOSING', 'POSITIVE'],
+        ['DOES_NOT_SUPPORT', 'PREDISPOSING', 'PREDISPOSITION'],
+        ['DOES_NOT_SUPPORT', 'PREDISPOSING', 'PROTECTIVENESS'],
+        ['DOES_NOT_SUPPORT', 'PROGNOSTIC', 'BETTER_OUTCOME'],
+        ['DOES_NOT_SUPPORT', 'PROGNOSTIC', 'NA'],
         ['DOES_NOT_SUPPORT', 'PROGNOSTIC', 'POOR_OUTCOME'],
+        ['SUPPORTS', 'FUNCTIONAL', 'UNKNOWNED'],
+        ['SUPPORTS', 'ONCOGENIC', 'PROTECTIVENESS'],
         ['SUPPORTS', 'PREDICTIVE', 'NA'],
+        ['SUPPORTS', 'PREDISPOSING', 'PROTECTIVENESS'],
+        ['SUPPORTS', 'PROGNOSTIC', 'NA'],
     ])(
         '%s|%s|%s errors', (evidenceDirection, evidenceType, clinicalSignificance) => {
             expect(() => translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toThrow('unable to process relevance');
