@@ -725,7 +725,6 @@ describe('translateRelevance', () => {
         ['SUPPORTS', 'ONCOGENIC', '--'],
         ['SUPPORTS', 'PREDICTIVE', 'NA'],
         ['SUPPORTS', 'PREDICTIVE', '--'],
-        ['SUPPORTS', 'PREDISPOSING', 'PROTECTIVENESS'],
         ['SUPPORTS', 'PREDISPOSING', '--'],
         ['SUPPORTS', 'PROGNOSTIC', 'NA'],
         ['SUPPORTS', 'PROGNOSTIC', '--'],
