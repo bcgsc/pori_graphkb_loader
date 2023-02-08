@@ -979,6 +979,14 @@
                 }
             ]
         },
+        "likely protective": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "protective"
+                }
+            ]
+        },
         "likely resistance": {
             "links": [
                 {
@@ -1240,6 +1248,19 @@
                 {
                     "class": "OppositeOf",
                     "target": "loss of function"
+                }
+            ]
+        },
+        "no neomorphic": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "AliasOf",
+                    "target": "no switch of function"
+                },
+                {
+                    "class": "OppositeOf",
+                    "target": "neomorphic"
                 }
             ]
         },
@@ -2121,7 +2142,7 @@
                 }
             ]
         },
-	"unaltered function": {
+        "unaltered function": {
             "description": "event is not associated with a change in protein function",
             "links": [
                 {
@@ -2129,7 +2150,7 @@
                     "target": "no functional effect"
                 }
             ]
-	},
+        },
         "underexpression": {
             "deprecated": true,
             "links": [
