@@ -118,6 +118,27 @@ const MolecularProfile = (molecularProfile) => ({
         }
         return conditions;
     },
+    /* Convert conditions' variant ids to variant objects */
+    _variants(conditions) {
+        // Getting variants by ids from molecular profile's variants array
+        const variantsById = {};
+        this.profile.variants.forEach((variant) => {
+            variantsById[variant.id] = variant;
+        });
+
+        // Refactoring conditions with variant objects
+        const temp = [];
+        conditions.forEach((condition) => {
+            try {
+                temp.push(condition.map(id => variantsById[id]));
+            } catch (err) {
+                throw new Error(
+                    `unable to process molecular profile with missing or misformatted variants (${this.profile.id || ''})`,
+                );
+            }
+        });
+        return temp;
+    },
     /* Main object's method. Process expression into array of conditions' arrays */
     process() {
         const { parsedName } = this.profile;
@@ -142,7 +163,10 @@ const MolecularProfile = (molecularProfile) => ({
         // Filters out unwanted gene's info from expression
         const filteredParsedName = parsedName.filter(el => !el.entrezId);
 
-        return this._parse(filteredParsedName);
+        // Parse expression into conditions and get variant objects from ids
+        return this._variants(
+            this._parse(filteredParsedName),
+        );
     },
     profile: molecularProfile || {},
 });
