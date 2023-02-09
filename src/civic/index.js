@@ -5,6 +5,7 @@ const _ = require('lodash');
 const Ajv = require('ajv');
 const fs = require('fs');
 const path = require('path');
+// const util = require('util');
 
 const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
 
@@ -21,6 +22,7 @@ const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
 const { processVariantRecord } = require('./variant');
 const { getRelevance } = require('./relevance');
 const { getPublication } = require('./publication');
+const { MolecularProfile } = require('./profile');
 const { EvidenceItem: evidenceSpec } = require('./specs.json');
 
 class NotImplementedError extends ErrorMixin { }
@@ -405,13 +407,13 @@ const fetchDeletedEvidenceItems = async (url) => {
     logger.info(`loading rejected evidenceItems from ${url}`);
     const rejected = await requestEvidenceItems(url, {
         query: `query evidenceItems($after: String, $status: EvidenceStatusFilter) {
-                    evidenceItems(after: $after, status: $status) {
-                        nodes {id}
-                        pageCount
-                        pageInfo {endCursor, hasNextPage}
-                        totalCount
-                    }
-                }`,
+                      evidenceItems(after: $after, status: $status) {
+                          nodes {id}
+                          pageCount
+                          pageInfo {endCursor, hasNextPage}
+                          totalCount
+                      }
+                  }`,
         variables: {
             status: 'REJECTED',
         },
@@ -553,9 +555,9 @@ const upload = async ({
         records: {},
     };
 
-    // Refactor records into recordsById and varById
+    // Refactor records into recordsById // ICI
     const recordsById = {};
-    const varById = {};
+    // ICI - DELETION
 
     for (const record of records) {
         // Check if max records limit has been reached
@@ -579,11 +581,9 @@ const upload = async ({
                 // TODO: Add support for Evidence Item with complex Molecular Profile
                 logger.warn(`Skip upload of Evidence Item with complex Molecular Profile (those with more that 1 Variant): ${record.id}`);
                 continue;
-            } else {
-                // Assuming 1 Variant per Molecular Profile
-                varById[record.molecularProfile.variants[0].id.toString()] = record.molecularProfile.variants[0];
-            }
+            } // ICI - DELETION
         } else {
+            // console.log(util.inspect(record, { colors: true, depth: null, showHidden: false }));  // ICI
             throw new Error(`Evidence Item without Molecular Profile. Violates assumptions: ${record.id}`);
         }
 
@@ -626,9 +626,12 @@ const upload = async ({
             continue;
         }
 
+        // Molecular Profiles
+        record.variants = MolecularProfile().process(record.molecularProfile);
+
         // Variant disambiguation
         // Assuming 1 Variant per Molecular Profile
-        record.variants = disambiguateVariant(varById[record.molecularProfile.variants[0].id.toString()]);
+        record.variants = disambiguateVariant(record.molecularProfile.variants[0]); // ICI - MODIFS
 
 
         const oneToOne = (record.variants.length * record.therapies.length) === 1 && preupload.size === 1;
@@ -653,7 +656,7 @@ const upload = async ({
                         err.toString().includes('is not a function')
                         || err.toString().includes('of undefined')
                     ) {
-                        console.error(err);
+                        console.error(err); // Console.log ?
                     }
                     if (err instanceof NotImplementedError) {
                         // accepted evidence that we do not support loading. Should delete as it may have changed from something we did support
@@ -673,8 +676,8 @@ const upload = async ({
 
         if (preupload.size && purgeableEvidenceItems.has(sourceId)) {
             logger.warn(`
-                Removing ${preupload.size} CIViC Entries (EID:${sourceId}) of unsupported format
-            `);
+                  Removing ${preupload.size} CIViC Entries (EID:${sourceId}) of unsupported format
+              `);
 
             try {
                 await Promise.all(
