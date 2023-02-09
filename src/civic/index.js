@@ -19,10 +19,11 @@ const _pubmed = require('../entrez/pubmed');
 const _entrezGene = require('../entrez/gene');
 const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
 const { processVariantRecord } = require('./variant');
+const { getRelevance } = require('./relevance');
 const { getPublication } = require('./publication');
 const { EvidenceItem: evidenceSpec } = require('./specs.json');
 
-class NotImplementedError extends ErrorMixin {}
+class NotImplementedError extends ErrorMixin { }
 
 const ajv = new Ajv();
 
@@ -47,7 +48,6 @@ const VOCAB = {
 };
 
 const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evidence levels
-const RELEVANCE_CACHE = {};
 
 const validateEvidenceSpec = ajv.compile(evidenceSpec);
 
@@ -80,136 +80,36 @@ const requestEvidenceItems = async (url, opt) => {
 
 
 /**
- * Extract the appropriate GraphKB relevance term from a CIViC evidence record
+ * Given some therapy name, find the therapy that is equivalent by name in GraphKB
  */
-const translateRelevance = (evidenceType, evidenceDirection, clinicalSignificance) => {
-    if (evidenceDirection === 'DOES_NOT_SUPPORT') {
-        if (evidenceType === 'PREDICTIVE') {
-            switch (clinicalSignificance) { // eslint-disable-line default-case
-                case 'SENSITIVITYRESPONSE': {
-                    return 'no response';
-                }
-
-                case 'RESISTANCE': { return 'no resistance'; }
-            }
-        }
-    } else if (evidenceDirection === 'SUPPORTS') {
-        switch (evidenceType) { // eslint-disable-line default-case
-            case 'PREDICTIVE': {
-                switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'ADVERSE_RESPONSE':
-                    case 'REDUCED_SENSITIVITY':
-
-                    case 'RESISTANCE': {
-                        return clinicalSignificance.replace(/_/g, ' ').toLowerCase();
-                    }
-
-                    case 'SENSITIVITYRESPONSE': { return 'sensitivity'; }
-                }
-                break;
-            }
-
-            case 'FUNCTIONAL': {
-                return clinicalSignificance.replace(/_/g, ' ').toLowerCase();
-            }
-
-            case 'DIAGNOSTIC': {
-                switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'POSITIVE': { return 'favours diagnosis'; }
-
-                    case 'NEGATIVE': { return 'opposes diagnosis'; }
-                }
-                break;
-            }
-
-            case 'PROGNOSTIC': {
-                switch (clinicalSignificance) { // eslint-disable-line default-case
-                    case 'NEGATIVE':
-
-                    case 'POOR_OUTCOME': {
-                        return 'unfavourable prognosis';
-                    }
-                    case 'POSITIVE':
-
-                    case 'BETTER_OUTCOME': {
-                        return 'favourable prognosis';
-                    }
-                }
-                break;
-            }
-
-            case 'PREDISPOSING': {
-                if (['POSITIVE', null].includes(clinicalSignificance)) {
-                    return 'predisposing';
-                } if (clinicalSignificance.includes('PATHOGENIC')) {
-                    return clinicalSignificance.replace(/_/g, ' ').toLowerCase();
-                } if (clinicalSignificance === 'UNCERTAIN_SIGNIFICANCE') {
-                    return 'likely predisposing';
-                }
-                break;
-            }
-        }
-    }
-
-    throw new NotImplementedError(
-        `unable to process relevance (${JSON.stringify(
-            { clinicalSignificance, evidenceDirection, evidenceType },
-        )})`,
-    );
-};
-
-
-/**
- * Convert the CIViC relevance types to GraphKB terms
- */
-const getRelevance = async ({ rawRecord, conn }) => {
-    // translate the type to a GraphKB vocabulary term
-    let relevance = translateRelevance(
-        rawRecord.evidenceType,
-        rawRecord.evidenceDirection,
-        rawRecord.clinicalSignificance,
-    ).toLowerCase();
-
-    if (RELEVANCE_CACHE[relevance] === undefined) {
-        relevance = await conn.getVocabularyTerm(relevance);
-        RELEVANCE_CACHE[relevance.name] = relevance;
-    } else {
-        relevance = RELEVANCE_CACHE[relevance];
-    }
-    return relevance;
-};
-
-/**
- * Given some drug name, find the drug that is equivalent by name in GraphKB
- */
-const getDrug = async (conn, drugRecord) => {
+const getTherapy = async (conn, therapyRecord) => {
     let originalError;
 
     // fetch from NCIt first if possible, or pubchem
     // then use the name as a fallback
-    const name = drugRecord.name.toLowerCase().trim();
+    const name = therapyRecord.name.toLowerCase().trim();
 
-    if (drugRecord.ncitId) {
+    if (therapyRecord.ncitId) {
         try {
-            const drug = await conn.getUniqueRecordBy({
+            const therapy = await conn.getUniqueRecordBy({
                 filters: [
                     { source: { filters: { name: NCIT_SOURCE_DEFN.name }, target: 'Source' } },
-                    { sourceId: drugRecord.ncitId },
-                    { name: drugRecord.name },
+                    { sourceId: therapyRecord.ncitId },
+                    { name: therapyRecord.name },
                 ],
                 sort: orderPreferredOntologyTerms,
                 target: 'Therapy',
             });
-            return drug;
+            return therapy;
         } catch (err) {
-            logger.error(`had NCIt drug mapping (${drugRecord.ncitId}) named (${drugRecord.name}) but failed to fetch from graphkb: ${err}`);
+            logger.error(`had NCIt therapy mapping (${therapyRecord.ncitId}) named (${therapyRecord.name}) but failed to fetch from graphkb: ${err}`);
             throw err;
         }
     }
 
     try {
-        const drug = await conn.getTherapy(name);
-        return drug;
+        const therapy = await conn.getTherapy(name);
+        return therapy;
     } catch (err) {
         originalError = err;
     }
@@ -227,19 +127,19 @@ const getDrug = async (conn, drugRecord) => {
 
 
 /** *
- * Add or fetch an drug combination if there is not an existing record
- * Link the drug combination to its individual elements
+ * Add or fetch a therapy combination if there is not an existing record
+ * Link the therapy combination to its individual elements
  */
-const addOrFetchDrug = async (conn, source, drugsRecords, combinationType) => {
-    if (drugsRecords.length <= 1) {
-        if (drugsRecords[0] === null) {
+const addOrFetchTherapy = async (conn, source, therapiesRecords, combinationType) => {
+    if (therapiesRecords.length <= 1) {
+        if (therapiesRecords[0] === null) {
             return null;
         }
-        return getDrug(conn, drugsRecords[0]);
+        return getTherapy(conn, therapiesRecords[0]);
     }
-    const drugs = await Promise.all(drugsRecords.map(async drug => getDrug(conn, drug)));
-    const sourceId = drugs.map(e => e.sourceId).sort().join(' + ');
-    const name = drugs.map(e => e.name).sort().join(' + ');
+    const therapies = await Promise.all(therapiesRecords.map(async therapy => getTherapy(conn, therapy)));
+    const sourceId = therapies.map(e => e.sourceId).sort().join(' + ');
+    const name = therapies.map(e => e.name).sort().join(' + ');
     const combinedTherapy = await conn.addRecord({
         content: {
             combinationType, name, source: rid(source), sourceId,
@@ -248,10 +148,10 @@ const addOrFetchDrug = async (conn, source, drugsRecords, combinationType) => {
         target: 'Therapy',
     });
 
-    for (const drug of drugs) {
+    for (const therapy of therapies) {
         await conn.addRecord({
             content: {
-                in: rid(combinedTherapy), out: rid(drug), source: rid(source),
+                in: rid(combinedTherapy), out: rid(therapy), source: rid(source),
             },
             existsOk: true,
             target: 'ElementOf',
@@ -357,20 +257,20 @@ const processEvidenceRecord = async (opt) => {
             target: 'Disease',
         });
     }
-    // get the drug(s) by name
-    let drug;
+    // get the therapy/therapies by name
+    let therapy;
 
-    if (rawRecord.drugs) {
+    if (rawRecord.therapies) {
         try {
-            drug = await addOrFetchDrug(
+            therapy = await addOrFetchTherapy(
                 conn,
                 rid(sources.civic),
-                rawRecord.drugs,
-                (rawRecord.drugInteractionType || '').toLowerCase(),
+                rawRecord.therapies,
+                (rawRecord.therapyInteractionType || '').toLowerCase(),
             );
         } catch (err) {
             logger.error(err);
-            logger.error(`failed to fetch drug: ${JSON.stringify(rawRecord.drugs)}`);
+            logger.error(`failed to fetch therapy: ${JSON.stringify(rawRecord.therapies)}`);
             throw err;
         }
     }
@@ -402,8 +302,8 @@ const processEvidenceRecord = async (opt) => {
         content.conditions.push(rid(disease));
     }
 
-    if (rawRecord.evidenceType === 'PREDICTIVE' && drug) {
-        content.subject = rid(drug);
+    if (rawRecord.evidenceType === 'PREDICTIVE' && therapy) {
+        content.subject = rid(therapy);
     } if (rawRecord.evidenceType === 'PROGNOSTIC') {
         // get the patient vocabulary object
         content.subject = rid(await conn.getVocabularyTerm('patient'));
@@ -578,8 +478,8 @@ const downloadEvidenceRecords = async (url, trustedCurators) => {
         }
 
         if (
-            record.clinicalSignificance === 'NA'
-            || (record.clinicalSignificance === null && record.evidenceType === 'PREDICTIVE')
+            record.significance === 'NA'
+            || (record.significance === null && record.evidenceType === 'PREDICTIVE')
         ) {
             counts.skip++;
             logger.debug(`skipping uninformative record (${record.id})`);
@@ -588,6 +488,31 @@ const downloadEvidenceRecords = async (url, trustedCurators) => {
         }
     }
     return { counts, errorList, records };
+};
+
+
+/**
+ * Splits a variant into a list of it's variations
+ * Desambiguate variants that as been linked as "or"
+ * Ex. {name: 'Q157P/R'} --> [{name: 'Q157P'}, {name: 'Q157R'}]
+ * Ex. {name: 'Q157P'}   --> [{name: 'Q157P'}]
+ *
+ * @param {Object} variant the Variant object to desambigaute
+ * @returns {Object[]} an array of Variant objects
+ */
+const disambiguateVariant = (variant) => {
+    let variants = [variant],
+        orCombination;
+
+    if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(variant.name)) {
+        const [, prefix, tail1, tail2] = orCombination;
+        variants = [
+            { ...variant, name: `${prefix}${tail1}` },
+            { ...variant, name: `${prefix}${tail2}` },
+        ];
+    }
+
+    return variants;
 };
 
 
@@ -633,23 +558,41 @@ const upload = async ({
     const varById = {};
 
     for (const record of records) {
-        if (!recordsById[record.id]) {
-            recordsById[record.id] = [];
-        }
-        recordsById[record.id].push(record);
-
-        if (maxRecords && Object.values(recordsById).length >= maxRecords) {
+        // Check if max records limit has been reached
+        if (maxRecords && Object.keys(recordsById).length >= maxRecords) {
             logger.warn(`not loading all content due to max records limit (${maxRecords})`);
             break;
         }
 
-        if (record.variant && record.variant.id) {
-            varById[record.variant.id.toString()] = record.variant;
+        // Check if record id is unique
+        if (recordsById[record.id]) {
+            logger.warn(`Multiple evidenceItems with the same id: ${record.id}. Violates assumptions. Only the 1st one was kept.`);
+            continue;
         }
+
+        // Introducing Molecular Profiles with CIViC GraphQL API v2.2.0
+        // [EvidenceItem]--(many-to-one)--[MolecularProfile]--(many-to-many)--[Variant]
+        if (record.molecularProfile && record.molecularProfile.id) {
+            if (record.molecularProfile.variants.length === 0) {
+                throw new Error(`Molecular Profile without Variant. Violates assumptions: ${record.molecularProfile.id}`);
+            } else if (record.molecularProfile.variants.length > 1) {
+                // TODO: Add support for Evidence Item with complex Molecular Profile
+                logger.warn(`Skip upload of Evidence Item with complex Molecular Profile (those with more that 1 Variant): ${record.id}`);
+                continue;
+            } else {
+                // Assuming 1 Variant per Molecular Profile
+                varById[record.molecularProfile.variants[0].id.toString()] = record.molecularProfile.variants[0];
+            }
+        } else {
+            throw new Error(`Evidence Item without Molecular Profile. Violates assumptions: ${record.id}`);
+        }
+
+        // Adding EvidenceItem to object for upload
+        recordsById[record.id] = record;
     }
 
     // Main loop on recordsById
-    for (const [sourceId, recordList] of Object.entries(recordsById)) {
+    for (const [sourceId, record] of Object.entries(recordsById)) {
         if (previouslyEntered.has(sourceId) && !ignoreCache) {
             counts.exists++;
             continue;
@@ -665,74 +608,60 @@ const upload = async ({
             target: 'Statement',
         })).map(rid));
 
-        let mappedCount = 0;
-        const postupload = [];
-
-        // Resolve combinations
-        for (const record of recordList) {
-            // Splits civic evidence items drugs into separate evidence items based on their combination type.
-            if (record.drugs === null || record.drugs.length === 0) {
-                record.drugs = [null];
-            } else if (
-                record.drugInteractionType === 'COMBINATION'
-                || record.drugInteractionType === 'SEQUENTIAL'
-            ) {
-                record.drugs = [record.drugs];
-            } else if (record.drugInteractionType === 'SUBSTITUTES' || record.drugs.length < 2) {
-                record.drugs = record.drugs.map(drug => [drug]);
-                record.drugInteractionType = null;
-            } else {
-                logger.error(`(evidence: ${record.id}) unsupported drug interaction type (${record.drugInteractionType}) for a multiple drug (${record.drugs.length}) statement`);
-                counts.skip++;
-                continue;
-            }
-
-            // Splits variants into a list to indicate separate evidence items when variants have been linked as "or"
-            record.variants = [varById[record.variant.id.toString()]]; // OR-ing of variants
-            let orCombination;
-
-            if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(record.variants[0].name)) {
-                const [, prefix, tail1, tail2] = orCombination;
-                record.variants = [
-                    { ...record.variants[0], name: `${prefix}${tail1}` },
-                    { ...record.variants[0], name: `${prefix}${tail2}` },
-                ];
-            }
-            mappedCount += record.variants.length * record.drugs.length;
+        // Resolve combinations of therapies
+        // Splits civic evidence items therapies into separate evidence items based on their combination type.
+        if (record.therapies === null || record.therapies.length === 0) {
+            record.therapies = [null];
+        } else if (
+            record.therapyInteractionType === 'COMBINATION'
+            || record.therapyInteractionType === 'SEQUENTIAL'
+        ) {
+            record.therapies = [record.therapies];
+        } else if (record.therapyInteractionType === 'SUBSTITUTES' || record.therapies.length < 2) {
+            record.therapies = record.therapies.map(therapy => [therapy]);
+            record.therapyInteractionType = null;
+        } else {
+            logger.error(`(evidence: ${record.id}) unsupported therapy interaction type (${record.therapyInteractionType}) for a multiple therapy (${record.therapies.length}) statement`);
+            counts.skip++;
+            continue;
         }
 
-        const oneToOne = mappedCount === 1 && preupload.size === 1;
+        // Variant disambiguation
+        // Assuming 1 Variant per Molecular Profile
+        record.variants = disambiguateVariant(varById[record.molecularProfile.variants[0].id.toString()]);
+
+
+        const oneToOne = (record.variants.length * record.therapies.length) === 1 && preupload.size === 1;
+        const postupload = [];
 
         // Upload all GraphKB statements for this CIViC Evidence Item
-        for (const record of recordList) {
-            for (const variant of record.variants) {
-                for (const drugs of record.drugs) {
-                    try {
-                        logger.debug(`processing ${record.id}`);
-                        const result = await processEvidenceRecord({
-                            conn,
-                            oneToOne,
-                            rawRecord: { ..._.omit(record, ['drugs', 'variants']), drugs, variant },
-                            sources: { civic: source },
-                            variantsCache,
-                        });
-                        postupload.push(rid(result));
-                        counts.success += 1;
-                    } catch (err) {
-                        if (
-                            err.toString().includes('is not a function')
-                                || err.toString().includes('of undefined')
-                        ) {
-                            console.error(err);
-                        }
-                        if (err instanceof NotImplementedError) {
-                            // accepted evidence that we do not support loading. Should delete as it may have changed from something we did support
-                            purgeableEvidenceItems.add(sourceId);
-                        }
-                        errorList.push({ error: err, errorMessage: err.toString(), record });
-                        logger.error(`evidence (${record.id}) ${err}`);
-                        counts.error += 1;
+        for (const variant of record.variants) {
+            for (const therapies of record.therapies) {
+                try {
+                    logger.debug(`processing ${record.id}`);
+                    const result = await processEvidenceRecord({
+                        conn,
+                        oneToOne,
+                        rawRecord: { ..._.omit(record, ['therapies', 'variants']), therapies, variant },
+                        sources: { civic: source },
+                        variantsCache,
+                    });
+                    postupload.push(rid(result));
+                    counts.success += 1;
+                } catch (err) {
+                    if (
+                        err.toString().includes('is not a function')
+                        || err.toString().includes('of undefined')
+                    ) {
+                        console.error(err);
                     }
+                    if (err instanceof NotImplementedError) {
+                        // accepted evidence that we do not support loading. Should delete as it may have changed from something we did support
+                        purgeableEvidenceItems.add(sourceId);
+                    }
+                    errorList.push({ error: err, errorMessage: err.toString(), record });
+                    logger.error(`evidence (${record.id}) ${err}`);
+                    counts.error += 1;
                 }
             }
         }
@@ -804,7 +733,7 @@ const upload = async ({
 
 module.exports = {
     SOURCE_DEFN,
+    disambiguateVariant,
     specs: { validateEvidenceSpec },
-    translateRelevance,
     upload,
 };

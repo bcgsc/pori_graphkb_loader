@@ -275,6 +275,10 @@ const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
                 reference2 = feature;
                 // fetch reference1
                 [reference1] = await _entrezGene.fetchAndLoadBySymbol(conn, normalizedVariant.reference1.name);
+
+                if (!reference1) {
+                    throw new Error(`Gene name not found in NCBI's Entrez gene database (${normalizedVariant.reference1.name}})`);
+                }
             } else if (normalizedVariant.reference1.sourceId !== feature.sourceId) {
                 throw new ParsingError(`Feature ID input (${feature.sourceId}) does not match the linked gene IDs (${normalizedVariant.reference1.sourceId},${normalizedVariant.reference2.sourceId})`);
             } else {
@@ -282,6 +286,7 @@ const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
                 [reference2] = await _entrezGene.fetchAndLoadBySymbol(conn, normalizedVariant.reference2.name);
             }
         }
+
         content.reference1 = rid(reference1);
 
         if (reference2) {

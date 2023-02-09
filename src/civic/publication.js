@@ -20,6 +20,10 @@ const titlesMatch = (title1, title2) => {
 const getPublication = async (conn, rawRecord) => {
     if (rawRecord.source.sourceType === 'PUBMED') {
         const [publication] = await _pubmed.fetchAndLoadByIds(conn, [rawRecord.source.citationId]);
+
+        if (!publication) {
+            throw Error(`PMID ${rawRecord.source.citationId} is not available`);
+        }
         return publication;
     }
     if (rawRecord.source.sourceType === 'ASCO') {
@@ -49,6 +53,10 @@ const getPublication = async (conn, rawRecord) => {
             throw Error(`too many choice for abstract (${rawRecord.source.ascoAbstractId})`);
         }
         return abstracts[0];
+    }
+    if (rawRecord.source.sourceType === 'ASH') {
+        // 6 cases
+        // TODO: ASH loader
     }
     throw Error(`unable to process non-pubmed/non-asco evidence type (${rawRecord.source.sourceType}) for evidence item (${rawRecord.id})`);
 };
