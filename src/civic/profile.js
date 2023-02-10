@@ -129,14 +129,20 @@ const MolecularProfile = (molecularProfile) => ({
         // Refactoring conditions with variant objects
         const temp = [];
         conditions.forEach((condition) => {
-            try {
-                temp.push(condition.map(id => variantsById[id]));
-            } catch (err) {
-                throw new Error(
-                    `unable to process molecular profile with missing or misformatted variants (${this.profile.id || ''})`,
-                );
-            }
+            temp.push(condition.map(id => variantsById[id]));
         });
+
+        // Checking for missing variants
+        temp.forEach((condition) => {
+            condition.forEach((variant) => {
+                if (!variant) {
+                    throw new Error(
+                        `unable to process molecular profile with missing or misformatted variants (${this.profile.id || ''})`,
+                    );
+                }
+            });
+        });
+
         return temp;
     },
     /* Main object's method. Process expression into array of conditions' arrays */

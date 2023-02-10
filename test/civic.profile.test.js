@@ -123,6 +123,21 @@ describe('MolecularProfile._variants()', () => {
             [{ id: 1, name: 'a1' }, { id: 3, name: 'a3' }],
         ]);
     });
+
+    test('tests cases that should throw an Error', () => {
+        const molecularProfile = {
+            id: 123,
+            variants: [
+                { id: 1, name: 'a1' },
+                { id: 2, name: 'a2' },
+            ],
+        };
+        expect(() => MolecularProfile(molecularProfile)._variants(
+            [[1, 2], [1, 3]],
+        )).toThrow(
+            `unable to process molecular profile with missing or misformatted variants (${molecularProfile.id || ''})`,
+        );
+    });
 });
 
 describe('MolecularProfile.process()', () => {
