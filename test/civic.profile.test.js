@@ -108,22 +108,29 @@ describe('MolecularProfile._parse()', () => {
     );
 });
 
-describe('MolecularProfile.process()', () => {
-    test('variants ids replaced by objects & gene infos not interfering', () => {
+describe('MolecularProfile._variants()', () => {
+    test('variants ids replaced by objects', () => {
         expect(MolecularProfile({
-            parsedName: [
-                { entrezId: 9 }, { id: 1 }, { text: 'AND' }, { text: '(' },
-                { entrezId: 9 }, { id: 2 }, { text: 'OR' }, { entrezId: 9 }, { id: 3 }, { text: ')' },
-            ],
             variants: [
                 { id: 1, name: 'a1' },
                 { id: 2, name: 'a2' },
                 { id: 3, name: 'a3' },
             ],
-        }).process()).toEqual([
+        })._variants(
+            [[1, 2], [1, 3]],
+        )).toEqual([
             [{ id: 1, name: 'a1' }, { id: 2, name: 'a2' }],
             [{ id: 1, name: 'a1' }, { id: 3, name: 'a3' }],
         ]);
+    });
+});
+
+describe('MolecularProfile.process()', () => {
+    test('gene infos not interfering', () => {
+        expect(MolecularProfile({
+            parsedName: [{ entrezId: 9 }, { id: 1 }],
+            variants: [{ id: 1, name: 'a1' }],
+        }).process()).toEqual([[{ id: 1, name: 'a1' }]]);
     });
 
     test.each([
