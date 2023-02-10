@@ -48,87 +48,83 @@ describe('MolecularProfile._not()', () => {
     });
 });
 
-describe('MolecularProfile.process()', () => {
+describe('MolecularProfile._parse()', () => {
     test.each([
         [
-            { parsedName: [{ entrezId: 9 }, { id: 1 }, { text: 'AND' }, { entrezId: 9 }, { id: 2 }] },
+            [{ id: 1 }, { text: 'AND' }, { id: 2 }],
             [[1, 2]],
         ],
         [
-            { parsedName: [{ entrezId: 9 }, { id: 1 }, { text: 'OR' }, { entrezId: 9 }, { id: 2 }] },
+            [{ id: 1 }, { text: 'OR' }, { id: 2 }],
             [[1], [2]],
         ],
         [
-            {
-                parsedName: [
-                    { entrezId: 9 }, { id: 1 }, { text: 'AND' },
-                    { text: '(' }, { entrezId: 9 }, { id: 2 }, { text: 'OR' }, { entrezId: 9 }, { id: 3 }, { text: ')' },
-                ],
-            },
+            [{ id: 1 }, { text: 'AND' }, { text: '(' }, { id: 2 }, { text: 'OR' }, { id: 3 }, { text: ')' }],
             [[1, 2], [1, 3]],
         ],
         [
-            {
-                parsedName: [
-                    { entrezId: 9 }, { id: 1 }, { text: 'OR' },
-                    { text: '(' }, { entrezId: 9 }, { id: 2 }, { text: 'AND' }, { entrezId: 9 }, { id: 3 }, { text: ')' },
-                ],
-            },
+            [{ id: 1 }, { text: 'OR' }, { text: '(' }, { id: 2 }, { text: 'AND' }, { id: 3 }, { text: ')' }],
             [[1], [2, 3]],
         ],
         [
-            {
-                parsedName: [
-                    { text: '(' }, { entrezId: 9 }, { id: 1 }, { text: 'AND' }, { entrezId: 9 }, { id: 2 }, { text: ')' },
-                    { text: 'OR' }, { text: '(' }, { entrezId: 9 }, { id: 3 }, { text: 'AND' }, { entrezId: 9 }, { id: 4 }, { text: ')' },
-                ],
-            },
+            [
+                { text: '(' }, { id: 1 }, { text: 'AND' }, { id: 2 }, { text: ')' },
+                { text: 'OR' }, { text: '(' }, { id: 3 }, { text: 'AND' }, { id: 4 }, { text: ')' },
+            ],
             [[1, 2], [3, 4]],
         ],
         [
-            {
-                parsedName: [
-                    { text: '(' }, { entrezId: 9 }, { id: 1 }, { text: 'OR' }, { entrezId: 9 }, { id: 2 }, { text: ')' },
-                    { text: 'AND' }, { text: '(' }, { entrezId: 9 }, { id: 3 }, { text: 'OR' }, { entrezId: 9 }, { id: 4 }, { text: ')' },
-                ],
-            },
+            [
+                { text: '(' }, { id: 1 }, { text: 'OR' }, { id: 2 }, { text: ')' },
+                { text: 'AND' }, { text: '(' }, { id: 3 }, { text: 'OR' }, { id: 4 }, { text: ')' },
+            ],
             [[1, 3], [1, 4], [2, 3], [2, 4]],
         ],
         [
-            {
-                parsedName: [
-                    { entrezId: 9 }, { id: 1 }, { text: 'AND' },
-                    { text: '(' }, { entrezId: 9 }, { id: 2 }, { text: 'OR' }, { entrezId: 9 }, { id: 3 }, { text: ')' },
-                    { text: 'AND' }, { text: '(' }, { entrezId: 9 }, { id: 4 }, { text: 'OR' }, { entrezId: 9 }, { id: 5 }, { text: ')' },
-                ],
-            },
+            [
+                { id: 1 }, { text: 'AND' }, { text: '(' }, { id: 2 }, { text: 'OR' }, { id: 3 }, { text: ')' },
+                { text: 'AND' }, { text: '(' }, { id: 4 }, { text: 'OR' }, { id: 5 }, { text: ')' },
+            ],
             [[1, 2, 4], [1, 2, 5], [1, 3, 4], [1, 3, 5]],
         ],
         [
-            {
-                parsedName: [
-                    { entrezId: 9 }, { id: 1 }, { text: 'OR' },
-                    { text: '(' }, { entrezId: 9 }, { id: 2 }, { text: 'AND' }, { entrezId: 9 }, { id: 3 }, { text: ')' },
-                    { text: 'OR' }, { text: '(' }, { entrezId: 9 }, { id: 4 }, { text: 'AND' }, { entrezId: 9 }, { id: 5 }, { text: ')' },
-                ],
-            },
+            [
+                { id: 1 }, { text: 'OR' }, { text: '(' }, { id: 2 }, { text: 'AND' }, { id: 3 }, { text: ')' },
+                { text: 'OR' }, { text: '(' }, { id: 4 }, { text: 'AND' }, { id: 5 }, { text: ')' },
+            ],
             [[1], [2, 3], [4, 5]],
         ],
         [
-            {
-                parsedName: [
-                    { entrezId: 9 }, { id: 1 }, { text: 'AND' },
-                    { text: '(' }, { entrezId: 9 }, { id: 2 }, { text: 'AND' },
-                    { text: '(' }, { entrezId: 9 }, { id: 3 }, { text: 'OR' }, { id: 4 }, { text: ')' }, { text: ')' },
-                ],
-            },
+            [
+                { id: 1 }, { text: 'AND' }, { text: '(' }, { id: 2 }, { text: 'AND' },
+                { text: '(' }, { id: 3 }, { text: 'OR' }, { id: 4 }, { text: ')' }, { text: ')' },
+            ],
             [[1, 2, 3], [1, 2, 4]],
         ],
     ])(
-        'testing some Molecular Profiles expressions', (molecularProfile, expected) => {
-            expect(MolecularProfile(molecularProfile).process()).toEqual(expected);
+        'testing some Molecular Profiles expressions', (block, expected) => {
+            expect(MolecularProfile()._parse(block)).toEqual(expected);
         },
     );
+});
+
+describe('MolecularProfile.process()', () => {
+    test('variants ids replaced by objects & gene infos not interfering', () => {
+        expect(MolecularProfile({
+            parsedName: [
+                { entrezId: 9 }, { id: 1 }, { text: 'AND' }, { text: '(' },
+                { entrezId: 9 }, { id: 2 }, { text: 'OR' }, { entrezId: 9 }, { id: 3 }, { text: ')' },
+            ],
+            variants: [
+                { id: 1, name: 'a1' },
+                { id: 2, name: 'a2' },
+                { id: 3, name: 'a3' },
+            ],
+        }).process()).toEqual([
+            [{ id: 1, name: 'a1' }, { id: 2, name: 'a2' }],
+            [{ id: 1, name: 'a1' }, { id: 3, name: 'a3' }],
+        ]);
+    });
 
     test.each([
         [{}],
