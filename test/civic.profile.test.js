@@ -1,6 +1,21 @@
 const { MolecularProfile } = require('../src/civic/profile');
 
 
+describe('MolecularProfile._combine()', () => {
+    test.each([
+        [{ arr1: [[]], arr2: [[]] }, [[]]],
+        [{ arr1: [['A']], arr2: [[]] }, [['A']]],
+        [{ arr1: [[]], arr2: [['B']] }, [['B']]],
+        [{ arr1: [['A']], arr2: [['B']] }, [['A', 'B']]],
+        [{ arr1: [['A']], arr2: [['B'], ['C']] }, [['A', 'B'], ['A', 'C']]],
+        [{ arr1: [['A'], ['B']], arr2: [['C'], ['D']] }, [['A', 'C'], ['A', 'D'], ['B', 'C'], ['B', 'D']]],
+    ])(
+        'combine some conditions', ({ arr1, arr2 }, expected) => {
+            expect(MolecularProfile()._combine({ arr1, arr2 })).toEqual(expected);
+        },
+    );
+});
+
 describe('MolecularProfile._compile()', () => {
     test.each([
         [[['A', 'B']], 'AND', [['C', 'D']], [['A', 'B', 'C', 'D']]],
@@ -10,10 +25,27 @@ describe('MolecularProfile._compile()', () => {
         [[['A', 'B']], 'OR', [['C', 'D'], ['E', 'F']], [['A', 'B'], ['C', 'D'], ['E', 'F']]],
         [[['A', 'B'], ['C', 'D']], 'OR', [['E', 'F']], [['A', 'B'], ['C', 'D'], ['E', 'F']]],
     ])(
-        'testing some conditions\' combinations', (arr, op, part, expected) => {
+        'compile somme expressions', (arr, op, part, expected) => {
             expect(MolecularProfile()._compile({ arr, op, part })).toEqual(expected);
         },
     );
+});
+
+describe('MolecularProfile._disambiguate()', () => {
+    test('disambiguate conditions', () => {
+        const Mp = MolecularProfile();
+        Mp.conditions = [
+            [{ id: 8, name: 'X123M/N' }, { id: 9, name: 'X456O/P' }, { id: 10, name: 'X456Q' }],
+        ];
+        expect(Mp._disambiguate().conditions).toEqual(
+            [
+                [{ id: 8, name: 'X123M' }, { id: 9, name: 'X456O' }, { id: 10, name: 'X456Q' }],
+                [{ id: 8, name: 'X123M' }, { id: 9, name: 'X456P' }, { id: 10, name: 'X456Q' }],
+                [{ id: 8, name: 'X123N' }, { id: 9, name: 'X456O' }, { id: 10, name: 'X456Q' }],
+                [{ id: 8, name: 'X123N' }, { id: 9, name: 'X456P' }, { id: 10, name: 'X456Q' }],
+            ],
+        );
+    });
 });
 
 describe('MolecularProfile._end()', () => {
@@ -108,17 +140,29 @@ describe('MolecularProfile._parse()', () => {
     );
 });
 
+
+describe('MolecularProfile._split()', () => {
+    test.each([
+        ['Q157P/R', [[{ name: 'Q157P' }], [{ name: 'Q157R' }]]],
+        ['Q157P', [[{ name: 'Q157P' }]]],
+    ])(
+        'Split %s into its variations', (name, expected) => {
+            expect(MolecularProfile()._split({ name })).toEqual(expected);
+        },
+    );
+});
+
 describe('MolecularProfile._variants()', () => {
     test('variants ids replaced by objects', () => {
-        expect(MolecularProfile({
+        const Mp = MolecularProfile({
             variants: [
                 { id: 1, name: 'a1' },
                 { id: 2, name: 'a2' },
                 { id: 3, name: 'a3' },
             ],
-        })._variants(
-            [[1, 2], [1, 3]],
-        )).toEqual([
+        });
+        Mp.conditions = [[1, 2], [1, 3]];
+        expect(Mp._variants().conditions).toEqual([
             [{ id: 1, name: 'a1' }, { id: 2, name: 'a2' }],
             [{ id: 1, name: 'a1' }, { id: 3, name: 'a3' }],
         ]);
@@ -132,9 +176,9 @@ describe('MolecularProfile._variants()', () => {
                 { id: 2, name: 'a2' },
             ],
         };
-        expect(() => MolecularProfile(molecularProfile)._variants(
-            [[1, 2], [1, 3]],
-        )).toThrow(
+        const Mp = MolecularProfile(molecularProfile);
+        Mp.conditions = [[1, 2], [1, 3]];
+        expect(() => Mp._variants()).toThrow(
             `unable to process molecular profile with missing or misformatted variants (${molecularProfile.id || ''})`,
         );
     });
@@ -145,7 +189,7 @@ describe('MolecularProfile.process()', () => {
         expect(MolecularProfile({
             parsedName: [{ entrezId: 9 }, { id: 1 }],
             variants: [{ id: 1, name: 'a1' }],
-        }).process()).toEqual([[{ id: 1, name: 'a1' }]]);
+        }).process().conditions).toEqual([[{ id: 1, name: 'a1' }]]);
     });
 
     test.each([
