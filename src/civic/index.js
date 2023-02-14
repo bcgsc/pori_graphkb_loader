@@ -312,7 +312,7 @@ const processEvidenceRecord = async (opt) => {
     } if (rawRecord.evidenceType === 'PROGNOSTIC') {
         // get the patient vocabulary object
         content.subject = rid(await conn.getVocabularyTerm('patient'));
-    } if (rawRecord.evidenceType === 'FUNCTIONAL' || rawRecord.evidenceType === 'ONCOGENIC') { // TO BE CONFIRMED - See in GKB !!
+    } if (rawRecord.evidenceType === 'FUNCTIONAL' || rawRecord.evidenceType === 'ONCOGENIC') {
         content.subject = rid(feature);
     }
 
