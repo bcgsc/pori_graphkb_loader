@@ -485,31 +485,6 @@ const downloadEvidenceRecords = async (url, trustedCurators) => {
 
 
 /**
- * Splits a variant into a list of it's variations
- * Desambiguate variants that as been linked as "or"
- * Ex. {name: 'Q157P/R'} --> [{name: 'Q157P'}, {name: 'Q157R'}]
- * Ex. {name: 'Q157P'}   --> [{name: 'Q157P'}]
- *
- * @param {Object} variant the Variant object to desambigaute
- * @returns {Object[]} an array of Variant objects
- */
-const disambiguateVariant = (variant) => {
-    let variants = [variant],
-        orCombination;
-
-    if (orCombination = /^([a-z]\d+)([a-z])\/([a-z])$/i.exec(variant.name)) {
-        const [, prefix, tail1, tail2] = orCombination;
-        variants = [
-            { ...variant, name: `${prefix}${tail1}` },
-            { ...variant, name: `${prefix}${tail2}` },
-        ];
-    }
-
-    return variants;
-};
-
-
-/**
  * Access the CIVic API, parse content, transform and load into GraphKB
  *
  * @param {object} opt options
