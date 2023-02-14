@@ -309,7 +309,7 @@ const processEvidenceRecord = async (opt) => {
     } if (rawRecord.evidenceType === 'PROGNOSTIC') {
         // get the patient vocabulary object
         content.subject = rid(await conn.getVocabularyTerm('patient'));
-    } if (rawRecord.evidenceType === 'FUNCTIONAL') {
+    } if (rawRecord.evidenceType === 'FUNCTIONAL' || rawRecord.evidenceType === 'ONCOGENIC') { // TO BE CONFIRMED - See in GKB !!
         content.subject = rid(feature);
     }
 
@@ -478,17 +478,8 @@ const downloadEvidenceRecords = async (url, trustedCurators) => {
             counts.error++;
             continue;
         }
-
-        if (
-            record.significance === 'NA'
-            || (record.significance === null && record.evidenceType === 'PREDICTIVE')
-        ) {
-            counts.skip++;
-            logger.debug(`skipping uninformative record (${record.id})`);
-        } else {
             records.push(record);
         }
-    }
     return { counts, errorList, records };
 };
 
