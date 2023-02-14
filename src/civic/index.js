@@ -128,7 +128,7 @@ const getTherapy = async (conn, therapyRecord) => {
 };
 
 
-/** *
+/**
  * Add or fetch a therapy combination if there is not an existing record
  * Link the therapy combination to its individual elements
  */
@@ -163,6 +163,9 @@ const addOrFetchTherapy = async (conn, source, therapiesRecords, combinationType
 };
 
 
+/**
+ * Add or fetch an evidence level if there is not an existing record
+ */
 const getEvidenceLevel = async ({
     conn, rawRecord, sources,
 }) => {
@@ -478,8 +481,8 @@ const downloadEvidenceRecords = async (url, trustedCurators) => {
             counts.error++;
             continue;
         }
-            records.push(record);
-        }
+        records.push(record);
+    }
     return { counts, errorList, records };
 };
 
@@ -521,9 +524,8 @@ const upload = async ({
         records: {},
     };
 
-    // Refactor records into recordsById // ICI
+    // Refactor records into recordsById
     const recordsById = {};
-    // ICI - DELETION
 
     for (const record of records) {
         // Check if max records limit has been reached
@@ -534,23 +536,22 @@ const upload = async ({
 
         // Check if record id is unique
         if (recordsById[record.id]) {
-            logger.warn(`Multiple evidenceItems with the same id: ${record.id}. Violates assumptions. Only the 1st one was kept.`);
+            logger.error(`Multiple evidenceItems with the same id: ${record.id}. Violates assumptions. Only the 1st one was kept.`);
+            counts.skip++;
             continue;
         }
 
         // Introducing Molecular Profiles with CIViC GraphQL API v2.2.0
         // [EvidenceItem]--(many-to-one)--[MolecularProfile]--(many-to-many)--[Variant]
-        if (record.molecularProfile && record.molecularProfile.id) {
-            if (record.molecularProfile.variants.length === 0) {
-                throw new Error(`Molecular Profile without Variant. Violates assumptions: ${record.molecularProfile.id}`);
-            } else if (record.molecularProfile.variants.length > 1) {
-                // TODO: Add support for Evidence Item with complex Molecular Profile
-                logger.warn(`Skip upload of Evidence Item with complex Molecular Profile (those with more that 1 Variant): ${record.id}`);
-                continue;
-            } // ICI - DELETION
-        } else {
-            // console.log(util.inspect(record, { colors: true, depth: null, showHidden: false }));  // ICI
-            throw new Error(`Evidence Item without Molecular Profile. Violates assumptions: ${record.id}`);
+        if (!record.molecularProfile) {
+            logger.error(`Evidence Item without Molecular Profile. Violates assumptions: ${record.id}`);
+            counts.skip++;
+            continue;
+        }
+        if (!record.molecularProfile.variants || record.molecularProfile.variants.length > 0) {
+            logger.error(`Molecular Profile without Variants. Violates assumptions: ${record.molecularProfile.id}`);
+            counts.skip++;
+            continue;
         }
 
         // Adding EvidenceItem to object for upload
@@ -592,49 +593,55 @@ const upload = async ({
             continue;
         }
 
-        // Molecular Profiles
-        record.variants = MolecularProfile().process(record.molecularProfile);
+        // Process Molecular Profiles expression into an array of conditions
+        // Each condition is itself an array of variants, one array for each expected GraphKB Statement from this CIViC Evidence Item
+        const Mp = MolecularProfile(record.molecularProfile);
 
-        // Variant disambiguation
-        // Assuming 1 Variant per Molecular Profile
-        record.variants = disambiguateVariant(record.molecularProfile.variants[0]); // ICI - MODIFS
+        try {
+            record.conditions = Mp.process().conditions;
+        } catch (err) {
+            logger.error(`evidence (${record.id}) ${err}`);
+            counts.skip += 1;
+            continue;
+        }
 
-
-        const oneToOne = (record.variants.length * record.therapies.length) === 1 && preupload.size === 1;
         const postupload = [];
 
         // Upload all GraphKB statements for this CIViC Evidence Item
-        for (const variant of record.variants) {
-            for (const therapies of record.therapies) {
-                try {
-                    logger.debug(`processing ${record.id}`);
-                    const result = await processEvidenceRecord({
-                        conn,
-                        oneToOne,
-                        rawRecord: { ..._.omit(record, ['therapies', 'variants']), therapies, variant },
-                        sources: { civic: source },
-                        variantsCache,
-                    });
-                    postupload.push(rid(result));
-                    counts.success += 1;
-                } catch (err) {
-                    if (
-                        err.toString().includes('is not a function')
-                        || err.toString().includes('of undefined')
-                    ) {
-                        console.error(err); // Console.log ?
+        for (const condition of record.conditions) {
+            const oneToOne = (condition.length * record.therapies.length) === 1 && preupload.size === 1;
+
+            for (const variant of condition) {
+                for (const therapies of record.therapies) {
+                    try {
+                        logger.debug(`processing ${record.id}`);
+                        const result = await processEvidenceRecord({
+                            conn,
+                            oneToOne,
+                            rawRecord: { ..._.omit(record, ['therapies', 'variants']), therapies, variant },
+                            sources: { civic: source },
+                            variantsCache,
+                        });
+                        postupload.push(rid(result));
+                        counts.success += 1;
+                    } catch (err) {
+                        if (
+                            err.toString().includes('is not a function')
+                            || err.toString().includes('of undefined')
+                        ) {
+                            console.error(err);
+                        }
+                        if (err instanceof NotImplementedError) {
+                            // accepted evidence that we do not support loading. Should delete as it may have changed from something we did support
+                            purgeableEvidenceItems.add(sourceId);
+                        }
+                        errorList.push({ error: err, errorMessage: err.toString(), record });
+                        logger.error(`evidence (${record.id}) ${err}`);
+                        counts.error += 1;
                     }
-                    if (err instanceof NotImplementedError) {
-                        // accepted evidence that we do not support loading. Should delete as it may have changed from something we did support
-                        purgeableEvidenceItems.add(sourceId);
-                    }
-                    errorList.push({ error: err, errorMessage: err.toString(), record });
-                    logger.error(`evidence (${record.id}) ${err}`);
-                    counts.error += 1;
                 }
             }
         }
-
         // compare statments before/after upload to determine if any records should be soft-deleted
         postupload.forEach((id) => {
             preupload.delete(id);
