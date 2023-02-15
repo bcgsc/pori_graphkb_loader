@@ -5,7 +5,6 @@ const _ = require('lodash');
 const Ajv = require('ajv');
 const fs = require('fs');
 const path = require('path');
-// const util = require('util');
 
 const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
 
@@ -548,7 +547,7 @@ const upload = async ({
             counts.skip++;
             continue;
         }
-        if (!record.molecularProfile.variants || record.molecularProfile.variants.length > 0) {
+        if (!record.molecularProfile.variants || record.molecularProfile.variants.length === 0) {
             logger.error(`Molecular Profile without Variants. Violates assumptions: ${record.molecularProfile.id}`);
             counts.skip++;
             continue;
