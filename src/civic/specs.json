@@ -82,6 +82,37 @@
                             "string"
                         ]
                     },
+                    "parsedName": {
+                        "items": {
+                            "anyOf": [
+                                {
+                                    "properties": {
+                                        "entrezId": {
+                                            "type": "number"
+                                        }
+                                    },
+                                    "type": "object"
+                                },
+                                {
+                                    "properties": {
+                                        "id": {
+                                            "type": "number"
+                                        }
+                                    },
+                                    "type": "object"
+                                },
+                                {
+                                    "properties": {
+                                        "text": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "type": "object"
+                                }
+                            ]
+                        },
+                        "type": "array"
+                    },
                     "rawName": {
                         "type": [
                             "null",

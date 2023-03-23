@@ -71,6 +71,11 @@ query evidenceItems(
       molecularProfile {
         id
         name
+        parsedName {
+          ... on Gene { entrezId }
+          ... on MolecularProfileTextSegment { text }
+          ... on Variant { id }
+        }
         rawName
         variants {
           gene {
