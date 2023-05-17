@@ -145,6 +145,15 @@ const sources = {
         url: 'https://www.ncbi.nlm.nih.gov/gene',
         usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
     },
+    esmo: {
+        description: 'Esmo is the leading professional organisation for medical oncology. with more than 25,000 members representing oncology professionals from over 160 countries worldwide, esmo is the society of reference for oncology education and information.',
+        displayName: 'ESMO',
+        longName: 'European Society for Medical Oncology  ',
+        name: 'esmo',
+        sort: 1,
+        url: 'https://www.esmo.org',
+        usage: 'https://www.esmo.org/terms-of-use/website-terms-conditions',
+    },
     fdaApprovals: {
         displayName: 'FDA Approvals',
         longName: 'FDA Hematology/Oncology (Cancer) Approvals & Safety Notifications',
