@@ -179,6 +179,7 @@ const processRecord = async (opt) => {
         throw new Error('Failed to parse either variant');
     }
     // get the vocabulary term
+    // KBDEV-1050: treat all incoming docm relevance as recurrent
     const relevance = await conn.getVocabularyTerm('recurrent');
 
     if (!relevance) {
