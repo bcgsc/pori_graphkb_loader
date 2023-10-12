@@ -259,6 +259,15 @@ const sources = {
         url: 'http://www.sequenceontology.org',
         usage: 'http://www.sequenceontology.org/?page_id=269',
     },
+    tso500: {
+        description: 'TruSight Oncology 500 is a next-generation sequencing (NGS) assay that enables in-house comprehensive genomic profiling of tumor samples.',
+        displayName: 'TSO500',
+        longName: 'TruSight Oncology 500',
+        name: 'tso500',
+        sort: 99999,
+        url: 'https://www.illumina.com',
+        usage: 'https://www.illumina.com/products/by-type/clinical-research-products/trusight-oncology-500.html',
+    },
     uberon: {
         comment: 'https://github.com/obophenotype/uberon/issues/1139',
         description: 'Uberon is an integrated cross-species ontology covering anatomical structures in animals.',
