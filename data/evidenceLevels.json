@@ -37,6 +37,14 @@
                 },
                 {
                     "class": "CrossReferenceOf",
+                    "target": "profyle-t1a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t1b"
+                },
+                {
+                    "class": "CrossReferenceOf",
                     "source": "vicc",
                     "target": "civic-a1"
                 },
@@ -634,6 +642,14 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "profyle-t1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t1a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t1b"
                 }
             ],
             "source": "ipr",
@@ -1091,9 +1107,35 @@
         "profyle-t1": {
             "description": "Biomarkers that predict response or resistance to FDA/HC-approved therapies",
             "displayName": "PROFYLE T1",
+            "links": [
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t1a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t1b"
+                }
+            ],
             "name": "PROFYLE Therapeutic Level 1",
             "source": "profyle",
             "sourceId": "T1"
+        },
+        "profyle-t1a": {
+            "comment": "Not intended to be used in Statement",
+            "description": "Biomarkers that predict response or resistance to FDA/HC-approved therapies in the same tumour type",
+            "displayName": "PROFYLE T1A",
+            "name": "PROFYLE Therapeutic Level 1A",
+            "source": "profyle",
+            "sourceId": "T1A"
+        },
+        "profyle-t1b": {
+            "comment": "Not intended to be used in Statement",
+            "description": "Biomarkers that predict response or resistance to FDA/HC-approved therapies in another tumour type",
+            "displayName": "PROFYLE T1B",
+            "name": "PROFYLE Therapeutic Level 1B",
+            "source": "profyle",
+            "sourceId": "T1B"
         },
         "profyle-t2": {
             "description": "Biomarkers that predict response or resistance to therapies based on well-powered clinical trials",
