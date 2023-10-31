@@ -325,7 +325,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
     let index = 0;
-    const parserPromise = new Promise((resolve, reject) => {
+    const parserPromise2 = new Promise((resolve, reject) => {
         const parser = csv
             .parseFile(filename, {
                 comment: '#', delimiter: '\t', headers: true, trim: true,
@@ -410,7 +410,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
                 resolve();
             });
     });
-    await parserPromise;
+    await parserPromise2;
     const errorJson = `${errorLogPrefix}-cancerhotspots.json`;
     logger.info(`writing: ${errorJson}`);
     fs.writeFileSync(errorJson, JSON.stringify({ records: errorList }, null, 2));
