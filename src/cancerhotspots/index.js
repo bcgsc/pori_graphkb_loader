@@ -255,17 +255,17 @@ const createRowId = row => hashRecordToId(row);
 const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     logger.info(`loading: ${filename}`);
 
-    // get the dbID for the source
+    // SOURCE RID
     const source = rid(await conn.addSource(SOURCE_DEFN));
+
+    // RELEVANCE VOCABULARY TERM
     const relevance = rid(await conn.getVocabularyTerm('mutation hotspot'));
-    const counts = { error: 0, skip: 0, success: 0 };
-    const errorList = [];
 
-    let index = 0;
-
+    // ENTREZ GENE LIST
     logger.info('load entrez genes cache');
     await _entrezGene.preLoadCache(conn);
 
+    // PREVIOUSLY LOADED STATEMENTS
     const previousLoad = new Set();
     logger.info('load previous statements');
     const statements = await conn.getRecords({
@@ -279,6 +279,52 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     }
     logger.info(`${previousLoad.size} loaded statements`);
 
+
+    // MODERATE IMPACT COMPILATION
+    // 1st loop over records
+    // KBDEV-1049. Compile occurence of each distinct 'moderate impact' variant
+    logger.info('compiling records of moderate impact, per distinct variant');
+    const moderateImpact = new Map();
+
+    const parserPromise1 = new Promise((resolve, reject) => {
+        csv.parseFile(filename, {
+            comment: '#', delimiter: '\t', headers: true, trim: true,
+        })
+            .on('data', (data) => {
+                const record = convertRowFields(HEADER, data);
+
+                if (record.impact.toLowerCase() === 'moderate') {
+                    const variant = `${record.geneId}:${record.protein}`;
+                    let count = moderateImpact.get(variant);
+
+                    if (count) {
+                        moderateImpact.set(variant, ++count);
+                    } else {
+                        moderateImpact.set(variant, 1);
+                    }
+                }
+            })
+            .on('error', (err) => {
+                console.error(err);
+                logger.error(err);
+                reject(err);
+            })
+            .on('end', () => {
+                logger.info('completed stream');
+                resolve();
+            });
+    });
+    await parserPromise1;
+    const moderateImpactFiveAndOver = new Map(
+        [...moderateImpact].filter(([k, v]) => v >= 5),
+    );
+
+
+    // RECORD UPLOADING
+    // 2nd loop over records
+    const counts = { error: 0, skip: 0, success: 0 };
+    const errorList = [];
+    let index = 0;
     const parserPromise = new Promise((resolve, reject) => {
         const parser = csv
             .parseFile(filename, {
@@ -290,36 +336,69 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
                 record.sourceId = sourceId;
                 index++;
 
+                // FILTERS
+                // Clinical significance filter
                 if (
-                    record.impact.toLowerCase() !== 'high'
-                    || record.clinSig === ''
-                    || record.clinSig.includes('benign')
+                    record.clinSig === 'benign'
+                    || record.clinSig === 'likely_benign'
+                    || record.clinSig === 'benign,likely_benign'
                 ) {
                     counts.skip++;
-                } else if (previousLoad.has(sourceId)) {
+                    return;
+                }
+
+                // Impact filter
+                if (
+                    record.impact.toLowerCase() !== 'high'
+                    && record.impact.toLowerCase() !== 'moderate'
+                ) {
+                    counts.skip++;
+                    return;
+                }
+                const variant = `${record.geneId}:${record.protein}`;
+
+                if (
+                    record.impact.toLowerCase() === 'moderate'
+                    && !moderateImpactFiveAndOver.get(variant)
+                ) {
+                    counts.skip++;
+                    return;
+                }
+
+                // Previously loaded record filter
+                if (previousLoad.has(sourceId)) {
                     logger.info(`Already loaded ${sourceId}`);
-                } else if (record.protein.endsWith('=')) {
+                    return;
+                }
+
+                // Synonymous protein variant filter
+                if (record.protein.endsWith('=')) {
                     counts.skip++;
                     logger.info('skipping synonymous protein variant');
-                } else if (record.protein.endsWith('_splice')) {
+                    return;
+                }
+
+                // Unsupported splice notation filter
+                if (record.protein.endsWith('_splice')) {
                     counts.skip++;
                     logger.info('skipping non-standard splice notation');
-                } else {
-                    parser.pause();
-
-                    logger.info(`processing row #${index} ${sourceId}`);
-                    processRecord(conn, record, source, relevance)
-                        .then(() => {
-                            logger.info('created record');
-                            counts.success++;
-                            parser.resume();
-                        }).catch((err) => {
-                            logger.error(err);
-                            errorList.push({ error: err, errorMessage: err.toString(), record });
-                            counts.error++;
-                            parser.resume();
-                        });
+                    return;
                 }
+
+                // PROCESS & UPLOAD RECORD
+                parser.pause();
+                logger.info(`processing row #${index} ${sourceId}`);
+                processRecord(conn, record, source, relevance)
+                    .then(() => {
+                        logger.info('created record');
+                        counts.success++;
+                        parser.resume();
+                    }).catch((err) => {
+                        logger.error(err);
+                        errorList.push({ error: err, errorMessage: err.toString(), record });
+                        counts.error++;
+                        parser.resume();
+                    });
             })
             .on('error', (err) => {
                 console.error(err);
