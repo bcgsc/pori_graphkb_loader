@@ -316,7 +316,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     });
     await parserPromise1;
     const moderateImpactFiveAndOver = new Map(
-        [...moderateImpact].filter(([k, v]) => v >= 5),
+        [...moderateImpact].filter(([, v]) => v >= 5),
     );
 
 
