@@ -7,7 +7,6 @@ const { checkSpec } = require('../util');
 const { fetchByIdList, uploadRecord, preLoadCache: preLoadAnyCache } = require('./util');
 
 const ajv = new Ajv();
-const LINK_URL = 'https://pubmed.ncbi.nlm.nih.gov';
 
 const { pubmed: SOURCE_DEFN } = require('../sources');
 
@@ -35,7 +34,7 @@ const parseRecord = (record) => {
     const parsed = {
         name: record.title,
         sourceId: record.uid,
-        url: `${LINK_URL}/${record.uid}`,
+        url: `${SOURCE_DEFN.url}/${record.uid}`,
     };
 
     if (record.fulljournalname) {

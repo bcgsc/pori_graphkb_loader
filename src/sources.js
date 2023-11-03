@@ -242,7 +242,7 @@ const sources = {
         description: 'pubmed comprises more than 29 million citations for biomedical literature from medline, life science journals, and online books. citations may include links to full-text content from pubmed central and publisher web sites',
         displayName: 'PubMed',
         name: 'pubmed',
-        url: 'https://www.ncbi.nlm.nih.gov/pubmed',
+        url: 'https://pubmed.ncbi.nlm.nih.gov',
         usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
     },
     refseq: {
