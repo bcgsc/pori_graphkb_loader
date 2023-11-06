@@ -1187,6 +1187,7 @@
             "sourceId": "T2"
         },
         "profyle-t2a": {
+            "comment": "Not intended to be used in Statement",
             "description": "Biomarkers that predict response or resistance to therapies based on well-powered clinical trials in the same tumour type",
             "displayName": "PROFYLE T2A",
             "name": "PROFYLE Therapeutic Level 2A",
@@ -1194,6 +1195,7 @@
             "sourceId": "T2A"
         },
         "profyle-t2b": {
+            "comment": "Not intended to be used in Statement",
             "description": "Biomarkers that predict response or resistance to therapies based on well-powered clinical trials in another tumour type",
             "displayName": "PROFYLE T2B",
             "name": "PROFYLE Therapeutic Level 2B",
@@ -1218,6 +1220,7 @@
             "sourceId": "T3"
         },
         "profyle-t3a": {
+            "comment": "Not intended to be used in Statement",
             "description": "Biomarkers that predict response or resistance to therapies based on small series, case-reports, or that serve as inclusion criteria for a clinical trial, in the same tumour type",
             "displayName": "PROFYLE T3A",
             "name": "PROFYLE Therapeutic Level 3A",
@@ -1225,6 +1228,7 @@
             "sourceId": "T3A"
         },
         "profyle-t3b": {
+            "comment": "Not intended to be used in Statement",
             "description": "Biomarkers that predict response or resistance to therapies based on small series, case-reports, or that serve as inclusion criteria for a clinical trial, in another tumour type",
             "displayName": "PROFYLE T3B",
             "name": "PROFYLE Therapeutic Level 3B",
@@ -1249,6 +1253,7 @@
             "sourceId": "T4"
         },
         "profyle-t4a": {
+            "comment": "Not intended to be used in Statement",
             "description": "Biomarkers that show plausible therapeutic significance based on preclinical studies in the same tumour type",
             "displayName": "PROFYLE T4A",
             "name": "PROFYLE Therapeutic Level 4A",
@@ -1256,6 +1261,7 @@
             "sourceId": "T4A"
         },
         "profyle-t4b": {
+            "comment": "Not intended to be used in Statement",
             "description": "Biomarkers that show plausible therapeutic significance based on preclinical studies in another tumour type",
             "displayName": "PROFYLE T4B",
             "name": "PROFYLE Therapeutic Level 4B",
@@ -1280,6 +1286,7 @@
             "sourceId": "T5"
         },
         "profyle-t5a": {
+            "comment": "Not intended to be used in Statement",
             "description": "Novel biomarkers predicted to be oncogenic in therapeutically actionable genes, or evidence of activation of a therapeutically actionable pathway in the same tumour type",
             "displayName": "PROFYLE T5A",
             "name": "PROFYLE Therapeutic Level 5A",
@@ -1287,6 +1294,7 @@
             "sourceId": "T5A"
         },
         "profyle-t5b": {
+            "comment": "Not intended to be used in Statement",
             "description": "Novel biomarkers predicted to be oncogenic in therapeutically actionable genes, or evidence of activation of a therapeutically actionable pathway in another tumour type",
             "displayName": "PROFYLE T5B",
             "name": "PROFYLE Therapeutic Level 5B",
