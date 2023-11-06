@@ -37,14 +37,6 @@
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "target": "profyle-t1a"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t1b"
-                },
-                {
-                    "class": "CrossReferenceOf",
                     "source": "vicc",
                     "target": "civic-a1"
                 },
@@ -728,6 +720,16 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "profyle-t2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t2a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t2b"
                 }
             ],
             "source": "ipr",
@@ -801,6 +803,16 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "profyle-t3"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t3a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t3b"
                 }
             ],
             "source": "ipr",
@@ -874,6 +886,16 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "profyle-t4"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t4a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t4b"
                 }
             ],
             "source": "ipr",
@@ -917,6 +939,16 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "profyle-t5"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t5a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-t5b"
                 }
             ],
             "source": "ipr",
@@ -1140,30 +1172,126 @@
         "profyle-t2": {
             "description": "Biomarkers that predict response or resistance to therapies based on well-powered clinical trials",
             "displayName": "PROFYLE T2",
+            "links": [
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t2a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t2b"
+                }
+            ],
             "name": "PROFYLE Therapeutic Level 2",
             "source": "profyle",
             "sourceId": "T2"
         },
+        "profyle-t2a": {
+            "description": "Biomarkers that predict response or resistance to therapies based on well-powered clinical trials in the same tumour type",
+            "displayName": "PROFYLE T2A",
+            "name": "PROFYLE Therapeutic Level 2A",
+            "source": "profyle",
+            "sourceId": "T2A"
+        },
+        "profyle-t2b": {
+            "description": "Biomarkers that predict response or resistance to therapies based on well-powered clinical trials in another tumour type",
+            "displayName": "PROFYLE T2B",
+            "name": "PROFYLE Therapeutic Level 2B",
+            "source": "profyle",
+            "sourceId": "T2B"
+        },
         "profyle-t3": {
             "description": "Biomarkers that predict response or resistance to therapies based on small series, case-reports, or that serve as inclusion criteria for a clinical trial",
             "displayName": "PROFYLE T3",
+            "links": [
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t3a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t3b"
+                }
+            ],
             "name": "PROFYLE Therapeutic Level 3",
             "source": "profyle",
             "sourceId": "T3"
         },
+        "profyle-t3a": {
+            "description": "Biomarkers that predict response or resistance to therapies based on small series, case-reports, or that serve as inclusion criteria for a clinical trial, in the same tumour type",
+            "displayName": "PROFYLE T3A",
+            "name": "PROFYLE Therapeutic Level 3A",
+            "source": "profyle",
+            "sourceId": "T3A"
+        },
+        "profyle-t3b": {
+            "description": "Biomarkers that predict response or resistance to therapies based on small series, case-reports, or that serve as inclusion criteria for a clinical trial, in another tumour type",
+            "displayName": "PROFYLE T3B",
+            "name": "PROFYLE Therapeutic Level 3B",
+            "source": "profyle",
+            "sourceId": "T3B"
+        },
         "profyle-t4": {
             "description": "Biomarkers that show plausible therapeutic significance based on preclinical studies",
             "displayName": "PROFYLE T4",
+            "links": [
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t4a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t4b"
+                }
+            ],
             "name": "PROFYLE Therapeutic Level 4",
             "source": "profyle",
             "sourceId": "T4"
         },
+        "profyle-t4a": {
+            "description": "Biomarkers that show plausible therapeutic significance based on preclinical studies in the same tumour type",
+            "displayName": "PROFYLE T4A",
+            "name": "PROFYLE Therapeutic Level 4A",
+            "source": "profyle",
+            "sourceId": "T4A"
+        },
+        "profyle-t4b": {
+            "description": "Biomarkers that show plausible therapeutic significance based on preclinical studies in another tumour type",
+            "displayName": "PROFYLE T4B",
+            "name": "PROFYLE Therapeutic Level 4B",
+            "source": "profyle",
+            "sourceId": "T4B"
+        },
         "profyle-t5": {
             "description": "Novel biomarkers predicted to be oncogenic in therapeutically actionable genes, or evidence of activation of a therapeutically actionable pathway",
             "displayName": "PROFYLE T5",
+            "links": [
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t5a"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "target": "profyle-t5b"
+                }
+            ],
             "name": "PROFYLE Therapeutic Level 5",
             "source": "profyle",
             "sourceId": "T5"
+        },
+        "profyle-t5a": {
+            "description": "Novel biomarkers predicted to be oncogenic in therapeutically actionable genes, or evidence of activation of a therapeutically actionable pathway in the same tumour type",
+            "displayName": "PROFYLE T5A",
+            "name": "PROFYLE Therapeutic Level 5A",
+            "source": "profyle",
+            "sourceId": "T5A"
+        },
+        "profyle-t5b": {
+            "description": "Novel biomarkers predicted to be oncogenic in therapeutically actionable genes, or evidence of activation of a therapeutically actionable pathway in another tumour type",
+            "displayName": "PROFYLE T5B",
+            "name": "PROFYLE Therapeutic Level 5B",
+            "source": "profyle",
+            "sourceId": "T5B"
         }
     },
     "sources": {
