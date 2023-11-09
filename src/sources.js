@@ -238,6 +238,13 @@ const sources = {
         sort: 0,
         url: 'http://oncotree.mskcc.org',
     },
+    profyle: {
+        description: 'PROFYLE (PRecision Oncology For Young peopLE) is a pan-Canadian research project for children and young adults ages 29 and under who have been told they are out of treatment options, giving them another chance.',
+        displayName: 'PROFYLE',
+        name: 'profyle',
+        sort: 99999,
+        url: 'https://www.profyle.ca/',
+    },
     pubmed: {
         description: 'PubMed is a free resource supporting the search and retrieval of biomedical and life sciences literature with the aim of improving health–both globally and personally.',
         displayName: 'PubMed',
