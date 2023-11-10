@@ -222,7 +222,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "structural variant"
+                    "target": "mutation"
                 }
             ]
         },
