@@ -3,8 +3,9 @@
 First download the latest version of the plain text tab delimited files. This should include both
 the main thesaurus file and the cross mapping file
 
-- [Load the Main Flat File](#load-the-main-flat-file)
-- [FDA Cross Mapping File](#fda-cross-mapping-file)
+- [NCI Thesaurus](#nci-thesaurus)
+  - [Load the Main Flat File](#load-the-main-flat-file)
+  - [FDA Cross Mapping File](#fda-cross-mapping-file)
 
 ## Load the Main Flat File
 
@@ -27,11 +28,12 @@ This is a headerless tab delimited file with the following
 - display name
 - concept status
 - semantic type
+- concept in subset
 
 Next use the general file loader to load the NCIt terms
 
 ```bash
-node bin/loadFile ncit Thesaurus.txt
+node bin/load.js file ncit Thesaurus.txt
 ```
 
 ## FDA Cross Mapping File
@@ -46,5 +48,5 @@ Then, after you have loaded the [FDA-SRS](../fdaSrs) data (if you are planning t
 load the cross-reference mapping data
 
 ```bash
-node bin/loadFile ncitFdaXref FDA-UNII_NCIt_Subsets.txt
+node bin/load.js file ncitFdaXref FDA-UNII_NCIt_Subsets.txt
 ```

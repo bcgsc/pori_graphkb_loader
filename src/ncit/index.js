@@ -211,6 +211,7 @@ const uploadFile = async ({
             'name',
             'conceptStatus',
             'semanticType',
+            'conceptInSubset',
         ],
     });
     // determine unresolvable records
