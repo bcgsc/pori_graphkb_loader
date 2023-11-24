@@ -21,7 +21,7 @@ This is a headerless tab delimited file with the following
 [format](https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/ReadMe.txt)
 
 - code
-- concept name
+- concept IRI
 - parents
 - synonyms
 - definition
