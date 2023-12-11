@@ -1,7 +1,7 @@
 import os
 from textwrap import dedent
 
-CONTAINER = 'docker://bcgsc/pori-graphkb-loader:v6.2.0'
+CONTAINER = 'docker://bcgsc/pori-graphkb-loader:v6.4.0'
 DATA_DIR = 'snakemake_data'
 LOGS_DIR = 'snakemake_logs'
 
@@ -334,6 +334,13 @@ rule all_diseases:
     output: f'{LOGS_DIR}/all_diseases.COMPLETE'
     shell: 'touch {output}'
 
+rule all_local:
+    input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes', 'evidenceLevels', 'aacr', 'asco']),
+    container: CONTAINER
+    log: f'{LOGS_DIR}/all_local.logs.txt'
+    output: f'{DATA_DIR}/all_local.COMPLETE'
+    shell: 'touch {output}'
+    
 
 rule load_cancerhotspots:
     input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes']),
