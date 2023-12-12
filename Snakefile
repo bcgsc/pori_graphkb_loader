@@ -334,13 +334,14 @@ rule all_diseases:
     output: f'{LOGS_DIR}/all_diseases.COMPLETE'
     shell: 'touch {output}'
 
+
 rule all_local:
     input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes', 'evidenceLevels', 'aacr', 'asco']),
     container: CONTAINER
     log: f'{LOGS_DIR}/all_local.logs.txt'
     output: f'{DATA_DIR}/all_local.COMPLETE'
     shell: 'touch {output}'
-    
+
 
 rule load_cancerhotspots:
     input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes']),
@@ -404,6 +405,7 @@ rule load_docm:
 
 
 rule load_approvals:
+    input:
     container: CONTAINER
     log: f'{LOGS_DIR}/fdaApprovals.logs.txt'
     output: f'{DATA_DIR}/fdaApprovals.COMPLETE'
@@ -450,3 +452,17 @@ rule load_moa:
     log: f'{LOGS_DIR}/load_moa.logs.txt'
     output: f'{DATA_DIR}/moa.COMPLETE'
     shell: LOADER_COMMAND + ' api moa  &> {log}; cp {log} {output}'
+
+
+rule all_ontologies:
+    input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes', 'evidenceLevels', 'aacr', 'asco']),
+        rules.load_oncotree.output,
+        rules.load_ensembl.output,
+        rules.all_drugs.output,
+        rules.all_diseases.output,
+        rules.load_uberon.output,
+        rules.load_approvals.output,
+        rules.load_ncit.output
+    container: CONTAINER
+    output: f'{DATA_DIR}/all_ontologies.COMPLETE'
+    shell: 'touch {output}'
