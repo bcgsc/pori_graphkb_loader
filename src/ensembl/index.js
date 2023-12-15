@@ -181,6 +181,7 @@ const uploadFile = async (opt) => {
     const HEADER = {
         geneIdVersion: 'Gene stable ID version',
         hgncId: 'HGNC ID',
+        proteinIdVersion: 'Protein stable ID version',
         refseqId: 'RefSeq mRNA ID',
         transcriptIdVersion: 'Transcript stable ID version',
     };
@@ -192,6 +193,7 @@ const uploadFile = async (opt) => {
     for (const row of rows) {
         [row.geneId, row.geneIdVersion] = row.geneIdVersion.split('.');
         [row.transcriptId, row.transcriptIdVersion] = row.transcriptIdVersion.split('.');
+        [row.proteinId, row.proteinIdVersion] = row.proteinIdVersion.split('.');
     }
 
     const source = await conn.addSource(SOURCE_DEFN);
@@ -340,8 +342,53 @@ const uploadFile = async (opt) => {
             target: 'elementof',
         });
 
-        // TODO: protein
-        // TODO: protein -> elementof -> transcript
+        // protein
+        const versionedProtein = await conn.addRecord({
+            content: {
+                biotype: 'protein',
+                source: rid(source),
+                sourceId: record.proteinId,
+                sourceIdVersion: record.proteinIdVersion,
+            },
+            existsOk: true,
+            target: 'Feature',
+        });
+        const protein = await conn.addRecord({
+            content: {
+                biotype: 'protein',
+                source: rid(source),
+                sourceId: record.proteinId,
+                sourceIdVersion: null,
+            },
+            existsOk: true,
+            target: 'Feature',
+        });
+        await conn.addRecord({
+            content: {
+                in: rid(versionedProtein), out: rid(protein), source: rid(source),
+            },
+            existsOk: true,
+            fetchExisting: false,
+            target: 'generalizationof',
+        });
+
+        // protein -> elementof -> transcript
+        await conn.addRecord({
+            content: {
+                in: rid(transcript), out: rid(protein), source: rid(source),
+            },
+            existsOk: true,
+            fetchExisting: false,
+            target: 'elementof',
+        });
+        await conn.addRecord({
+            content: {
+                in: rid(versionedTranscript), out: rid(versionedProtein), source: rid(source),
+            },
+            existsOk: true,
+            fetchExisting: false,
+            target: 'elementof',
+        });
 
         // transcript -> aliasof -> refseq
         if (record.refseqId) {
