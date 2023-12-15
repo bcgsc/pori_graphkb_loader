@@ -559,6 +559,142 @@
   {
     "opt": {
       "body": {
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ENSP00000439902",
+        "sourceIdVersion": "1"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ensp00000439902",
+        "sourceIdVersion": "1",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "7be71924-5dc6-40ef-9289-153184ed6eba",
+        "createdAt": 1653589823689,
+        "updatedAt": 1653589823689,
+        "name": "ensp00000439902",
+        "displayName": "ensp00000439902",
+        "@rid": "#145:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ENSP00000439902",
+        "sourceIdVersion": null
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ensp00000439902",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "df4d32df-e526-402e-8eec-ec5284108297",
+        "createdAt": 1653589823699,
+        "updatedAt": 1653589823699,
+        "name": "ensp00000439902",
+        "displayName": "ensp00000439902",
+        "@rid": "#146:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#145:1",
+        "out": "#146:1",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#146:1",
+        "in": "#145:1",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "90cc8c10-3a43-49ef-880d-b4294bfc2604",
+        "createdAt": 1653589823707,
+        "@rid": "#75:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#140:0",
+        "out": "#145:1",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#145:1",
+        "in": "#140:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "a469002c-185b-471c-983a-f8a80949916d",
+        "createdAt": 1653589823717,
+        "@rid": "#65:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#137:1",
+        "out": "#146:1",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#146:1",
+        "in": "#137:1",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "23cfd12e-429f-480f-9a41-1e0229a731b5",
+        "createdAt": 1653589823727,
+        "@rid": "#66:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
         "filters": {
           "AND": [
             {
@@ -1692,6 +1828,142 @@
   {
     "opt": {
       "body": {
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ENSP00000499438",
+        "sourceIdVersion": "2"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ensp00000499438",
+        "sourceIdVersion": "2",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "3c025f3a-81e5-4516-876a-c6e11c728337",
+        "createdAt": 1653589830128,
+        "updatedAt": 1653589830128,
+        "name": "ensp00000499438",
+        "displayName": "ensp00000499438",
+        "@rid": "#147:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ENSP00000499438",
+        "sourceIdVersion": null
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ensp00000499438",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "25ad8bb3-e465-4884-9d30-c19a09d2204c",
+        "createdAt": 1653589830136,
+        "updatedAt": 1653589830136,
+        "name": "ensp00000499438",
+        "displayName": "ensp00000499438",
+        "@rid": "#148:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#147:2",
+        "out": "#148:2",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#148:2",
+        "in": "#147:2",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "c51db109-2d0f-4ddf-b8f6-7177bf862f7c",
+        "createdAt": 1653589830143,
+        "@rid": "#56:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#139:3",
+        "out": "#147:2",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#147:2",
+        "in": "#139:3",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "c53bf883-4edc-433e-b1ca-3e0b7065c196",
+        "createdAt": 1653589830152,
+        "@rid": "#67:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#140:3",
+        "out": "#148:2",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#148:2",
+        "in": "#140:3",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "696a05c4-0fca-449e-ab06-b1ff838731f4",
+        "createdAt": 1653589830160,
+        "@rid": "#68:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
         "in": "#138:0",
         "out": "#139:0",
         "source": "#41:0"
@@ -1835,6 +2107,142 @@
         "uuid": "58d664a2-8465-403f-bc30-4a06821ce3e5",
         "createdAt": 1653589830232,
         "@rid": "#94:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ENSP00000369497",
+        "sourceIdVersion": "3"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ensp00000369497",
+        "sourceIdVersion": "3",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "83959813-cb70-4b29-bf6c-2c615137d5d8",
+        "createdAt": 1653589830193,
+        "updatedAt": 1653589830193,
+        "name": "ensp00000369497",
+        "displayName": "ensp00000369497",
+        "@rid": "#149:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ENSP00000369497",
+        "sourceIdVersion": null
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ensp00000369497",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "c978f03e-f948-4ba6-93f4-c2eaf2639e39",
+        "createdAt": 1653589830202,
+        "updatedAt": 1653589830202,
+        "name": "ensp00000369497",
+        "displayName": "ensp00000369497",
+        "@rid": "#150:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#149:3",
+        "out": "#150:3",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#150:3",
+        "in": "#149:3",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "0b3717ed-776e-442f-ac03-d8a906b11613",
+        "createdAt": 1653589830214,
+        "@rid": "#57:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#137:4",
+        "out": "#149:3",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#149:3",
+        "in": "#137:4",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "4f650139-eacd-47cb-b040-27ff18092f7c",
+        "createdAt": 1653589830223,
+        "@rid": "#70:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:4",
+        "out": "#150:3",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#150:3",
+        "in": "#138:4",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "58d664a2-8465-403f-bc30-4a06821ce3e5",
+        "createdAt": 1653589830232,
+        "@rid": "#71:1",
         "@version": 1
       }
     }
@@ -2097,6 +2505,141 @@
         "uuid": "30897f3d-cc0e-4cf2-bd81-4d6b3103c0ac",
         "createdAt": 1653589830331,
         "@rid": "#96:1",
+        "@version": 1
+      }
+    }
+  },{
+    "opt": {
+      "body": {
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ENSP00000505508",
+        "sourceIdVersion": "1"
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ensp00000505508",
+        "sourceIdVersion": "1",
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "70adf241-3fac-418b-aa84-0743b2a7f0c4",
+        "createdAt": 1653589830282,
+        "updatedAt": 1653589830282,
+        "name": "ensp00000505508",
+        "displayName": "ensp00000505508",
+        "@rid": "#151:4",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ENSP00000505508",
+        "sourceIdVersion": null
+      },
+      "method": "POST",
+      "uri": "/features"
+    },
+    "result": {
+      "result": {
+        "@class": "Feature",
+        "deprecated": false,
+        "alias": false,
+        "biotype": "protein",
+        "source": "#41:0",
+        "sourceId": "ensp00000505508",
+        "sourceIdVersion": null,
+        "createdBy": "#32:0",
+        "updatedBy": "#32:0",
+        "uuid": "8f8df45f-da32-4173-8f7d-f31b8ca0708a",
+        "createdAt": 1653589830294,
+        "updatedAt": 1653589830294,
+        "name": "ensp00000505508",
+        "displayName": "ensp00000505508",
+        "@rid": "#152:4",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#151:4",
+        "out": "#152:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#152:4",
+        "in": "#151:4",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "309429ab-da47-4db6-a999-5f1014350e22",
+        "createdAt": 1653589830309,
+        "@rid": "#60:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#139:4",
+        "out": "#151:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#151:4",
+        "in": "#139:4",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "d37fe3df-c75b-4b44-9ab5-53518fa7c292",
+        "createdAt": 1653589830322,
+        "@rid": "#72:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#140:4",
+        "out": "#152:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#152:4",
+        "in": "#140:4",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "30897f3d-cc0e-4cf2-bd81-4d6b3103c0ac",
+        "createdAt": 1653589830331,
+        "@rid": "#73:1",
         "@version": 1
       }
     }
