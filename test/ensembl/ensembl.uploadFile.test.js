@@ -135,6 +135,82 @@ describe('uploadFile in Ensembl loader', () => {
             },
         },
         {
+            '@rid': '#145:1',
+            edges: [
+                { class: 'elementof', in: '#140:0' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ENSP00000439902', sourceIdVersion: '1',
+            },
+        },
+        {
+            '@rid': '#146:1',
+            edges: [
+                { class: 'elementof', in: '#137:1' },
+                { class: 'generalizationof', in: '#145:1' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ENSP00000439902', sourceIdVersion: null,
+            },
+        },
+        {
+            '@rid': '#147:2',
+            edges: [
+                { class: 'elementof', in: '#139:3' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ENSP00000499438', sourceIdVersion: '2',
+            },
+        },
+        {
+            '@rid': '#148:2',
+            edges: [
+                { class: 'elementof', in: '#140:3' },
+                { class: 'generalizationof', in: '#147:2' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ENSP00000499438', sourceIdVersion: null,
+            },
+        },
+        {
+            '@rid': '#149:3',
+            edges: [
+                { class: 'elementof', in: '#137:4' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ENSP00000369497', sourceIdVersion: '3',
+            },
+        },
+        {
+            '@rid': '#150:3',
+            edges: [
+                { class: 'elementof', in: '#138:4' },
+                { class: 'generalizationof', in: '#149:3' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ENSP00000369497', sourceIdVersion: null,
+            },
+        },
+        {
+            '@rid': '#151:4',
+            edges: [
+                { class: 'elementof', in: '#139:4' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ENSP00000505508', sourceIdVersion: '1',
+            },
+        },
+        {
+            '@rid': '#152:4',
+            edges: [
+                { class: 'elementof', in: '#140:4' },
+                { class: 'generalizationof', in: '#151:4' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ENSP00000505508', sourceIdVersion: null,
+            },
+        },
+        {
             '@rid': '#138:3',
             edges: [],
             feature: {
