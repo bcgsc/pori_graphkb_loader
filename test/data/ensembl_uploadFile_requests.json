@@ -358,7 +358,7 @@
         "createdAt": 1653589823660,
         "updatedAt": 1653589823660,
         "name": "ensg00000139618",
-        "displayName": "ensg00000139618",
+        "displayName": "ENSG00000139618.17",
         "@rid": "#138:0",
         "@version": 1
       }
@@ -390,7 +390,7 @@
         "createdAt": 1653589823670,
         "updatedAt": 1653589823670,
         "name": "ensg00000139618",
-        "displayName": "ensg00000139618",
+        "displayName": "ENSG00000139618",
         "@rid": "#139:0",
         "@version": 1
       }
@@ -446,7 +446,7 @@
         "createdAt": 1653589823689,
         "updatedAt": 1653589823689,
         "name": "enst00000544455",
-        "displayName": "enst00000544455",
+        "displayName": "ENST00000544455.6",
         "@rid": "#140:0",
         "@version": 1
       }
@@ -478,7 +478,7 @@
         "createdAt": 1653589823699,
         "updatedAt": 1653589823699,
         "name": "enst00000544455",
-        "displayName": "enst00000544455",
+        "displayName": "ENST00000544455",
         "@rid": "#137:1",
         "@version": 1
       }
@@ -582,7 +582,7 @@
         "createdAt": 1653589823689,
         "updatedAt": 1653589823689,
         "name": "ensp00000439902",
-        "displayName": "ensp00000439902",
+        "displayName": "ENSP00000439902.1",
         "@rid": "#145:1",
         "@version": 1
       }
@@ -614,7 +614,7 @@
         "createdAt": 1653589823699,
         "updatedAt": 1653589823699,
         "name": "ensp00000439902",
-        "displayName": "ensp00000439902",
+        "displayName": "ENSP00000439902",
         "@rid": "#146:1",
         "@version": 1
       }
@@ -953,7 +953,7 @@
             "@rid": "#32:0",
             "@class": "User"
           },
-          "displayName": "ensg00000139618",
+          "displayName": "ENSG00000139618",
           "deprecated": false,
           "sourceIdVersion": null,
           "source": {
@@ -1046,7 +1046,7 @@
               "@class": "GeneralizationOf"
             }
           ],
-          "displayName": "ensg00000139618",
+          "displayName": "ENSG00000139618.17",
           "deprecated": false,
           "sourceIdVersion": "17",
           "source": {
@@ -1715,7 +1715,7 @@
         "createdAt": 1653589830128,
         "updatedAt": 1653589830128,
         "name": "enst00000530893",
-        "displayName": "enst00000530893",
+        "displayName": "ENST00000530893.6",
         "@rid": "#139:3",
         "@version": 1
       }
@@ -1747,7 +1747,7 @@
         "createdAt": 1653589830136,
         "updatedAt": 1653589830136,
         "name": "enst00000530893",
-        "displayName": "enst00000530893",
+        "displayName": "ENST00000530893",
         "@rid": "#140:3",
         "@version": 1
       }
@@ -1851,7 +1851,7 @@
         "createdAt": 1653589830128,
         "updatedAt": 1653589830128,
         "name": "ensp00000499438",
-        "displayName": "ensp00000499438",
+        "displayName": "ENSP00000499438.2",
         "@rid": "#147:2",
         "@version": 1
       }
@@ -1883,7 +1883,7 @@
         "createdAt": 1653589830136,
         "updatedAt": 1653589830136,
         "name": "ensp00000499438",
-        "displayName": "ensp00000499438",
+        "displayName": "ENSP00000499438",
         "@rid": "#148:2",
         "@version": 1
       }
@@ -2001,7 +2001,7 @@
         "createdAt": 1653589830193,
         "updatedAt": 1653589830193,
         "name": "enst00000380152",
-        "displayName": "enst00000380152",
+        "displayName": "ENST00000380152.8",
         "@rid": "#137:4",
         "@version": 1
       }
@@ -2033,7 +2033,7 @@
         "createdAt": 1653589830202,
         "updatedAt": 1653589830202,
         "name": "enst00000380152",
-        "displayName": "enst00000380152",
+        "displayName": "ENST00000380152",
         "@rid": "#138:4",
         "@version": 1
       }
@@ -2137,7 +2137,7 @@
         "createdAt": 1653589830193,
         "updatedAt": 1653589830193,
         "name": "ensp00000369497",
-        "displayName": "ensp00000369497",
+        "displayName": "ENSP00000369497.3",
         "@rid": "#149:3",
         "@version": 1
       }
@@ -2169,7 +2169,7 @@
         "createdAt": 1653589830202,
         "updatedAt": 1653589830202,
         "name": "ensp00000369497",
-        "displayName": "ensp00000369497",
+        "displayName": "ENSP00000369497",
         "@rid": "#150:3",
         "@version": 1
       }
@@ -2399,7 +2399,7 @@
         "createdAt": 1653589830282,
         "updatedAt": 1653589830282,
         "name": "enst00000680887",
-        "displayName": "enst00000680887",
+        "displayName": "ENST00000680887.1",
         "@rid": "#139:4",
         "@version": 1
       }
@@ -2431,7 +2431,7 @@
         "createdAt": 1653589830294,
         "updatedAt": 1653589830294,
         "name": "enst00000680887",
-        "displayName": "enst00000680887",
+        "displayName": "ENST00000680887",
         "@rid": "#140:4",
         "@version": 1
       }
@@ -2534,7 +2534,7 @@
         "createdAt": 1653589830282,
         "updatedAt": 1653589830282,
         "name": "ensp00000505508",
-        "displayName": "ensp00000505508",
+        "displayName": "ENSP00000505508.1",
         "@rid": "#151:4",
         "@version": 1
       }
@@ -2566,7 +2566,7 @@
         "createdAt": 1653589830294,
         "updatedAt": 1653589830294,
         "name": "ensp00000505508",
-        "displayName": "ensp00000505508",
+        "displayName": "ENSP00000505508",
         "@rid": "#152:4",
         "@version": 1
       }
