@@ -191,9 +191,9 @@ const uploadFile = async (opt) => {
 
     // process versions
     for (const row of rows) {
-        [row.geneId, row.geneIdVersion] = row.geneIdVersion.split('.');
-        [row.transcriptId, row.transcriptIdVersion] = row.transcriptIdVersion.split('.');
-        [row.proteinId, row.proteinIdVersion] = row.proteinIdVersion.split('.');
+        [row.geneId, row.geneIdVersion] = row.geneIdVersion.toLowerCase().split('.');
+        [row.transcriptId, row.transcriptIdVersion] = row.transcriptIdVersion.toLowerCase().split('.');
+        [row.proteinId, row.proteinIdVersion] = row.proteinIdVersion.toLowerCase().split('.');
     }
 
     const source = await conn.addSource(SOURCE_DEFN);
@@ -209,7 +209,7 @@ const uploadFile = async (opt) => {
     await _entrez.preLoadCache(conn);
     // skip any genes that have already been loaded before we start
     logger.info('retreiving the list of previously loaded genes');
-    const preLoaded = new Set();
+    const preLoadedGene = new Set();
     const genesList = await conn.getRecords({
         filters: {
             AND: [
@@ -220,13 +220,48 @@ const uploadFile = async (opt) => {
         target: 'Feature',
     });
 
+    const preLoadedTranscript = new Set();
+    const transcriptList = await conn.getRecords({
+        filters: {
+            AND: [
+                { source: rid(source) }, { biotype: 'transcript' }, { dependency: null },
+            ],
+        },
+        neighbors: 0,
+        target: 'Feature',
+    });
+
+    const preLoadedProtein = new Set();
+    const proteinList = await conn.getRecords({
+        filters: {
+            AND: [
+                { source: rid(source) }, { biotype: 'protein' }, { dependency: null },
+            ],
+        },
+        neighbors: 0,
+        target: 'Feature',
+    });
+
     const counts = { error: 0, skip: 0, success: 0 };
 
     for (const record of genesList) {
         const gene = generateCacheKey(record);
-        preLoaded.add(gene);
-        logger.info(`${gene} has already been loaded`);
+        preLoadedGene.add(gene);
+        logger.info(`Gene ${gene} has already been loaded`);
     }
+
+    for (const record of transcriptList) {
+        const transcript = generateCacheKey(record);
+        preLoadedTranscript.add(transcript);
+        logger.info(`Transcript ${transcript} has already been loaded`);
+    }
+
+    for (const record of proteinList) {
+        const protein = generateCacheKey(record);
+        preLoadedProtein.add(protein);
+        logger.info(`Protein ${protein} has already been loaded`);
+    }
+
 
     logger.info('pre-fetching refseq entries');
     await _refseq.preLoadCache(conn);
@@ -246,152 +281,210 @@ const uploadFile = async (opt) => {
         const record = rows[index];
 
         const { geneId, geneIdVersion } = record;
+        const { transcriptId, transcriptIdVersion } = record;
+        const { proteinId, proteinIdVersion } = record;
 
-        const key = generateCacheKey({ sourceId: geneId, sourceIdVersion: geneIdVersion });
-
-        if (preLoaded.has(key)) {
-            counts.skip++;
-            continue;
-        }
-        logger.info(`processing ${geneId}.${geneIdVersion || ''} (${index} / ${rows.length})`);
-        let newGene = false;
-
-        if (visited[key] === undefined) {
-            visited[key] = await conn.addRecord({
-                content: {
-                    biotype: 'gene',
-                    source: rid(source),
-                    sourceId: geneId,
-                    sourceIdVersion: geneIdVersion,
-                },
-                existsOk: true,
-                target: 'Feature',
-            });
-        }
-
-        if (visited[geneId] === undefined) {
-            newGene = true;
-            visited[geneId] = await conn.addRecord({
-                content: {
-                    biotype: 'gene',
-                    source: rid(source),
-                    sourceId: geneId,
-                    sourceIdVersion: null,
-                },
-                existsOk: true,
-                target: 'Feature',
-            });
-        }
-        const gene = visited[geneId];
-        const versionedGene = visited[key];
-
-        await conn.addRecord({
-            content: {
-                in: rid(versionedGene), out: rid(gene), source: rid(source),
-            },
-            existsOk: true,
-            fetchExisting: false,
-            target: 'generalizationof',
+        const geneVersion = generateCacheKey({
+            sourceId: geneId,
+            sourceIdVersion: geneIdVersion,
         });
+        const transcriptVersion = generateCacheKey({
+            sourceId: transcriptId,
+            sourceIdVersion: transcriptIdVersion,
+        });
+        const proteinVersion = generateCacheKey({
+            sourceId: proteinId,
+            sourceIdVersion: proteinIdVersion,
+        });
+
+        logger.info(`processing ${geneId}.${geneIdVersion || ''} (${index} / ${rows.length})`);
+
+        let newGene = false,
+            skip = 0;
+
+        if (preLoadedGene.has(geneVersion)) {
+            visited[geneVersion] = genesList.find((gene) => `${gene.sourceId}-${gene.sourceIdVersion}` === geneVersion);
+            visited[geneId] = genesList.find((gene) => `${gene.sourceId}` === geneId && gene.sourceIdVersion === null);
+            skip++;
+        } else {
+            if (visited[geneVersion] === undefined) {
+                visited[geneVersion] = await conn.addRecord({
+                    content: {
+                        biotype: 'gene',
+                        source: rid(source),
+                        sourceId: geneId,
+                        sourceIdVersion: geneIdVersion,
+                    },
+                    existsOk: true,
+                    target: 'Feature',
+                });
+            }
+
+            if (visited[geneId] === undefined) {
+                newGene = true;
+                visited[geneId] = await conn.addRecord({
+                    content: {
+                        biotype: 'gene',
+                        source: rid(source),
+                        sourceId: geneId,
+                        sourceIdVersion: null,
+                    },
+                    existsOk: true,
+                    target: 'Feature',
+                });
+            }
+
+            await conn.addRecord({
+                content: {
+                    in: rid(visited[geneVersion]), out: rid(visited[geneId]), source: rid(source),
+                },
+                existsOk: true,
+                fetchExisting: false,
+                target: 'generalizationof',
+            });
+        }
+
+        const gene = visited[geneId];
+        const versionedGene = visited[geneVersion];
 
         // transcript
-        const versionedTranscript = await conn.addRecord({
-            content: {
-                biotype: 'transcript',
-                source: rid(source),
-                sourceId: record.transcriptId,
-                sourceIdVersion: record.transcriptIdVersion,
-            },
-            existsOk: true,
-            target: 'Feature',
-        });
-        const transcript = await conn.addRecord({
-            content: {
-                biotype: 'transcript',
-                source: rid(source),
-                sourceId: record.transcriptId,
-                sourceIdVersion: null,
-            },
-            existsOk: true,
-            target: 'Feature',
-        });
+        if (preLoadedTranscript.has(transcriptVersion)) {
+            visited[transcriptVersion] = transcriptList.find((transcript) => `${transcript.sourceId}-${transcript.sourceIdVersion}` === transcriptVersion);
+            visited[transcriptId] = transcriptList.find((transcript) => `${transcript.sourceId}` === transcriptId && transcript.sourceIdVersion === null);
+            skip++;
+        } else {
+            if (visited[transcriptVersion] === undefined) {
+                visited[transcriptVersion] = await conn.addRecord({
+                    content: {
+                        biotype: 'transcript',
+                        source: rid(source),
+                        sourceId: record.transcriptId,
+                        sourceIdVersion: record.transcriptIdVersion,
+                    },
+                    existsOk: true,
+                    target: 'Feature',
+                });
+            }
+            if (visited[transcriptId] === undefined) {
+                visited[transcriptId] = await conn.addRecord({
+                    content: {
+                        biotype: 'transcript',
+                        source: rid(source),
+                        sourceId: record.transcriptId,
+                        sourceIdVersion: null,
+                    },
+                    existsOk: true,
+                    target: 'Feature',
+                });
+                // transcript -> elementof -> gene
+                await conn.addRecord({
+                    content: {
+                        in: rid(gene), out: rid(visited[transcriptId]), source: rid(source),
+                    },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'elementof',
+                });
+            }
+
+            await conn.addRecord({
+                content: {
+                    in: rid(visited[transcriptVersion]),
+                    out: rid(visited[transcriptId]),
+                    source: rid(source),
+                },
+                existsOk: true,
+                fetchExisting: false,
+                target: 'generalizationof',
+            });
+        }
+
+        const versionedTranscript = visited[transcriptVersion];
+        const transcript = visited[transcriptId];
+
+        // versioned: transcript -> elementof -> gene
         await conn.addRecord({
             content: {
-                in: rid(versionedTranscript), out: rid(transcript), source: rid(source),
+                in: rid(versionedGene),
+                out: rid(versionedTranscript),
+                source: rid(source),
             },
             existsOk: true,
             fetchExisting: false,
-            target: 'generalizationof',
+            target: 'elementof',
         });
 
-        // transcript -> elementof -> gene
-        await conn.addRecord({
-            content: {
-                in: rid(gene), out: rid(transcript), source: rid(source),
-            },
-            existsOk: true,
-            fetchExisting: false,
-            target: 'elementof',
-        });
-        await conn.addRecord({
-            content: {
-                in: rid(versionedGene), out: rid(versionedTranscript), source: rid(source),
-            },
-            existsOk: true,
-            fetchExisting: false,
-            target: 'elementof',
-        });
 
         // protein
-        const versionedProtein = await conn.addRecord({
-            content: {
-                biotype: 'protein',
-                source: rid(source),
-                sourceId: record.proteinId,
-                sourceIdVersion: record.proteinIdVersion,
-            },
-            existsOk: true,
-            target: 'Feature',
-        });
-        const protein = await conn.addRecord({
-            content: {
-                biotype: 'protein',
-                source: rid(source),
-                sourceId: record.proteinId,
-                sourceIdVersion: null,
-            },
-            existsOk: true,
-            target: 'Feature',
-        });
-        await conn.addRecord({
-            content: {
-                in: rid(versionedProtein), out: rid(protein), source: rid(source),
-            },
-            existsOk: true,
-            fetchExisting: false,
-            target: 'generalizationof',
-        });
+        if (preLoadedProtein.has(proteinVersion)) {
+            visited[proteinVersion] = proteinList.find((protein) => `${protein.sourceId}-${protein.sourceIdVersion}` === proteinVersion);
+            visited[proteinId] = proteinList.find((protein) => `${protein.sourceId}` === proteinId && protein.sourceIdVersion === null);
+            skip++;
+        } else {
+            if (visited[proteinVersion] === undefined) {
+                visited[proteinVersion] = await conn.addRecord({
+                    content: {
+                        biotype: 'protein',
+                        source: rid(source),
+                        sourceId: record.proteinId,
+                        sourceIdVersion: record.proteinIdVersion,
+                    },
+                    existsOk: true,
+                    target: 'Feature',
+                });
+            }
+            if (visited[proteinId] === undefined) {
+                visited[proteinId] = await conn.addRecord({
+                    content: {
+                        biotype: 'protein',
+                        source: rid(source),
+                        sourceId: record.proteinId,
+                        sourceIdVersion: null,
+                    },
+                    existsOk: true,
+                    target: 'Feature',
+                });
+                // protein -> elementof -> transcript
+                await conn.addRecord({
+                    content: {
+                        in: rid(transcript), out: rid(visited[proteinId]), source: rid(source),
+                    },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'elementof',
+                });
+            }
 
-        // protein -> elementof -> transcript
+            await conn.addRecord({
+                content: {
+                    in: rid(visited[proteinVersion]),
+                    out: rid(visited[proteinId]),
+                    source: rid(source),
+                },
+                existsOk: true,
+                fetchExisting: false,
+                target: 'generalizationof',
+            });
+        }
+
+        // versioned: protein -> elementof -> transcript
         await conn.addRecord({
             content: {
-                in: rid(transcript), out: rid(protein), source: rid(source),
+                in: rid(versionedTranscript),
+                out: rid(visited[proteinVersion]),
+                source: rid(source),
             },
             existsOk: true,
             fetchExisting: false,
             target: 'elementof',
         });
-        await conn.addRecord({
-            content: {
-                in: rid(versionedTranscript), out: rid(versionedProtein), source: rid(source),
-            },
-            existsOk: true,
-            fetchExisting: false,
-            target: 'elementof',
-        });
 
-        // transcript -> aliasof -> refseq
+
+
+        // transcript -> crossreferenceof -> refseq
         if (record.refseqId) {
+            skip--;
+
             try {
                 const refseq = await conn.getUniqueRecordBy({
                     filters: {
@@ -417,8 +510,10 @@ const uploadFile = async (opt) => {
                 refseqMissingRecords.add(record.refseqId);
             }
         }
-        // gene -> aliasof -> hgnc
+        // gene -> crossreferenceof -> hgnc
         if (record.hgncId && newGene) {
+            skip--;
+
             try {
                 const hgnc = await _hgnc.fetchAndLoadBySymbol({ conn, paramType: 'hgnc_id', symbol: record.hgncId });
                 await conn.addRecord({
@@ -433,6 +528,10 @@ const uploadFile = async (opt) => {
                 hgncMissingRecords.add(record.hgncId);
                 logger.log('error', `failed cross-linking from ${gene.sourceid} to ${record.hgncId}`);
             }
+        }
+        if (skip === 3) {
+            counts.skip++;
+            continue;
         }
         counts.success++;
     }
