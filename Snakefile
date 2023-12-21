@@ -454,6 +454,22 @@ rule load_moa:
     shell: LOADER_COMMAND + ' api moa  &> {log}; cp {log} {output}'
 
 
+# input isn't actually needed but it is a file-type loader so a dummy file must be supplied
+rule download_pubmed_source:
+    output: f'{DATA_DIR}/local/pubmed_source.json'
+    shell: dedent(f'''\
+        cd {DATA_DIR}/local
+        touch pubmed_source.json
+        ''')
+
+rule load_pubmed_source:
+    input: f'{DATA_DIR}/local/pubmed_source.json'
+    container: CONTAINER
+    log: f'{LOGS_DIR}/pubmed_source.logs.txt'
+    output: f'{DATA_DIR}/pubmed_source.COMPLETE'
+    shell: LOADER_COMMAND + ' file pubmed_source {input} &> {log}; cp {log} {output}'
+
+
 rule all_ontologies:
     input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes', 'evidenceLevels', 'aacr', 'asco']),
         rules.load_oncotree.output,
@@ -462,7 +478,8 @@ rule all_ontologies:
         rules.all_diseases.output,
         rules.load_uberon.output,
         rules.load_approvals.output,
-        rules.load_ncit.output
+        rules.load_ncit.output,
+        rules.load_pubmed_source.output
     container: CONTAINER
     output: f'{DATA_DIR}/all_ontologies.COMPLETE'
     shell: 'touch {output}'
