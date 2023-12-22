@@ -55,12 +55,12 @@ rule download_ncit:
         rm -rf __MACOSX''')
 
 
-if USE_FDA_UNII:
-    rule download_ncit_fda:
-        output: f'{DATA_DIR}/ncit/FDA-UNII_NCIt_Subsets.txt'
-        shell: dedent(f'''\
-            cd {DATA_DIR}/ncit
-            wget https://evs.nci.nih.gov/ftp1/FDA/UNII/FDA-UNII_NCIt_Subsets.txt''')
+# if USE_FDA_UNII:
+rule download_ncit_fda:
+    output: f'{DATA_DIR}/ncit/FDA-UNII_NCIt_Subsets.txt'
+    shell: dedent(f'''\
+        cd {DATA_DIR}/ncit
+        wget https://evs.nci.nih.gov/ftp1/FDA/UNII/FDA-UNII_NCIt_Subsets.txt''')
 
 
 rule download_ensembl:
@@ -72,17 +72,18 @@ rule download_ensembl:
         ''')
 
 
-if USE_FDA_UNII:
-    rule download_fda_srs:
-        output: f'{DATA_DIR}/fda/UNII_Records.txt'
-        shell: dedent(f'''\
-            cd {DATA_DIR}/fda
-            wget https://fdasis.nlm.nih.gov/srs/download/srs/UNII_Data.zip
-            unzip UNII_Data.zip
-            rm UNII_Data.zip
+#if USE_FDA_UNII:
+rule download_fda_srs:
+    output: f'{DATA_DIR}/fda/UNII_Records.txt'
+    shell: dedent(f'''\
+        set -e  # Exit on error
+        cd {DATA_DIR}/fda
+        wget https://precision.fda.gov/uniisearch/archive/latest/UNII_Data.zip
+        unzip UNII_Data.zip
+        rm UNII_Data.zip
 
-            mv UNII*.txt UNII_Records.txt
-            ''')
+        mv UNII*.txt UNII_Records.txt
+        ''')
 
 
 rule download_refseq:
@@ -228,24 +229,24 @@ rule load_ncit:
     shell: LOADER_COMMAND + ' file ncit {input.data} &> {log}; cp {log} {output}'
 
 
-if USE_FDA_UNII:
-    rule load_fda_srs:
-        input: expand(rules.load_local.output, local=['vocab']),
-            data=f'{DATA_DIR}/fda/UNII_Records.txt'
-        container: CONTAINER
-        log: f'{LOGS_DIR}/fdaSrs.logs.txt'
-        output: f'{DATA_DIR}/fdaSrs.COMPLETE'
-        shell: LOADER_COMMAND + ' file fdaSrs {input.data} &> {log}; cp {log} {output}'
+#if USE_FDA_UNII:
+rule load_fda_srs:
+    input: expand(rules.load_local.output, local=['vocab']),
+        data=f'{DATA_DIR}/fda/UNII_Records.txt'
+    container: CONTAINER
+    log: f'{LOGS_DIR}/fdaSrs.logs.txt'
+    output: f'{DATA_DIR}/fdaSrs.COMPLETE'
+    shell: LOADER_COMMAND + ' file fdaSrs {input.data} &> {log}; cp {log} {output}'
 
 
-    rule load_ncit_fda:
-        input: rules.load_ncit.output,
-            rules.load_fda_srs.output,
-            data=rules.download_ncit_fda.output
-        container: CONTAINER
-        log: f'{LOGS_DIR}/ncitFdaXref.logs.txt'
-        output: f'{DATA_DIR}/ncitFdaXref.COMPLETE'
-        shell: LOADER_COMMAND + ' file ncitFdaXref {input.data} &> {log}; cp {log} {output}'
+rule load_ncit_fda:
+    input: rules.load_ncit.output,
+        rules.load_fda_srs.output,
+        data=rules.download_ncit_fda.output
+    container: CONTAINER
+    log: f'{LOGS_DIR}/ncitFdaXref.logs.txt'
+    output: f'{DATA_DIR}/ncitFdaXref.COMPLETE'
+    shell: LOADER_COMMAND + ' file ncitFdaXref {input.data} &> {log}; cp {log} {output}'
 
 
 rule load_refseq:
@@ -380,7 +381,7 @@ rule load_civic:
     container: CONTAINER
     log: f'{LOGS_DIR}/civic.logs.txt'
     output: f'{DATA_DIR}/civic.COMPLETE'
-    shell: LOADER_COMMAND + ' api civic &> {log}; cp {log} {output}'
+    shell: LOADER_COMMAND + ' civic &> {log}; cp {log} {output}'
 
 
 rule load_cgi:
