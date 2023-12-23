@@ -26,7 +26,7 @@ COSMIC_EMAIL = config.get('cosmic_email')
 COSMIC_PASSWORD = config.get('cosmic_password')
 USE_COSMIC = COSMIC_EMAIL or COSMIC_PASSWORD
 BACKFILL_TRIALS = config.get('trials')
-USE_FDA_UNII = config.get('fda')  # due to the non-scriptable download, making FDA optional
+# USE_FDA_UNII = config.get('fda')  # due to the non-scriptable download, making FDA optional
 GITHUB_DATA = 'https://raw.githubusercontent.com/bcgsc/pori_graphkb_loader/develop/data'
 
 
@@ -40,7 +40,7 @@ rule all:
         f'{DATA_DIR}/fdaApprovals.COMPLETE',
         f'{DATA_DIR}/cancerhotspots.COMPLETE',
         f'{DATA_DIR}/moa.COMPLETE',
-        *([f'{DATA_DIR}/ncitFdaXref.COMPLETE'] if USE_FDA_UNII else []),
+        f'{DATA_DIR}/ncitFdaXref.COMPLETE',
         *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []),
         *([f'{DATA_DIR}/cosmic_resistance.COMPLETE', f'{DATA_DIR}/cosmic_fusions.COMPLETE'] if USE_COSMIC else [])
 
@@ -55,7 +55,6 @@ rule download_ncit:
         rm -rf __MACOSX''')
 
 
-# if USE_FDA_UNII:
 rule download_ncit_fda:
     output: f'{DATA_DIR}/ncit/FDA-UNII_NCIt_Subsets.txt'
     shell: dedent(f'''\
@@ -72,11 +71,9 @@ rule download_ensembl:
         ''')
 
 
-#if USE_FDA_UNII:
 rule download_fda_srs:
     output: f'{DATA_DIR}/fda/UNII_Records.txt'
     shell: dedent(f'''\
-        set -e  # Exit on error
         cd {DATA_DIR}/fda
         wget https://precision.fda.gov/uniisearch/archive/latest/UNII_Data.zip
         unzip UNII_Data.zip
@@ -172,6 +169,7 @@ rule download_cancerhotspots:
 rule download_clinicaltrialsgov:
     output: directory(f'{DATA_DIR}/clinicaltrialsgov')
     shell: dedent(f'''\
+        mkdir -p {DATA_DIR}/clinicaltrialsgov
         cd {DATA_DIR}/clinicaltrialsgov
         wget https://clinicaltrials.gov/AllPublicXML.zip
         unzip AllPublicXML.zip''')
@@ -229,7 +227,6 @@ rule load_ncit:
     shell: LOADER_COMMAND + ' file ncit {input.data} &> {log}; cp {log} {output}'
 
 
-#if USE_FDA_UNII:
 rule load_fda_srs:
     input: expand(rules.load_local.output, local=['vocab']),
         data=f'{DATA_DIR}/fda/UNII_Records.txt'
@@ -286,7 +283,7 @@ rule load_uberon:
 
 
 rule load_drugbank:
-    input: rules.load_fda_srs.output if USE_FDA_UNII else [],
+    input: rules.load_fda_srs.output,
         data=rules.download_drugbank.output
     container: CONTAINER
     log: f'{LOGS_DIR}/drugbank.logs.txt'
@@ -312,8 +309,7 @@ rule load_dgidb:
 
 def get_drug_inputs(wildcards):
     inputs = [*rules.load_ncit.output]
-    if USE_FDA_UNII:
-        inputs.extend(rules.load_fda_srs.output)
+    inputs.extend(rules.load_fda_srs.output)
     container: CONTAINER
     if USE_DRUGBANK:
         inputs.append(*rules.load_drugbank.output)
@@ -480,7 +476,9 @@ rule all_ontologies:
         rules.load_uberon.output,
         rules.load_approvals.output,
         rules.load_ncit.output,
-        rules.load_pubmed_source.output
+        rules.load_pubmed_source.output,
+        rules.load_fda_srs.output,
+        rules.load_ncit_fda.output
     container: CONTAINER
     output: f'{DATA_DIR}/all_ontologies.COMPLETE'
     shell: 'touch {output}'
