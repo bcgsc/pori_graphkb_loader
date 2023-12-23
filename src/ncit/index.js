@@ -181,6 +181,7 @@ const cleanRawRow = (rawRow) => {
         endpoint,
         name: row.name.toLowerCase(),
         sourceId,
+        original_synonyms: row.synonyms,
         synonyms: Array.from(new Set(row.synonyms))
             .map(s => s.toLowerCase())
             .filter(s => s !== row.name.toLowerCase()),
@@ -286,11 +287,26 @@ const uploadFile = async ({
             }
         }
 
+        // check list of synonyms to find non-duplicate names - first position in this list is the 'preferred name' from ncit
+
+        const preferredNames = dups.map(dup => dup.original_synonyms[0]);
+
+        const allPreferredNamesDifferent = (preferredNames) => new Set(preferredNames).size === preferredNames.length;
+
+        if (allPreferredNamesDifferent) {
+            for (const dup of dups) {
+                dup.name = dup.original_synonyms[0];
+                logger.log('info', `record with non-unique name (${name}, ${dup.sourceId}) being loaded with its preferred name (${dup.name});`)
+            }
+            continue;
+        }
+
         if (name && humanDups.length > 1) {
             logger.warn(`ncit terms (${humanDups.map(r => r.sourceId).join(', ')}) have non-unique name (${name})`);
             humanDups.forEach(d => rejected.add(d.sourceId));
         }
     }
+
     logger.warn(`rejected ${rejected.size} rows for unresolveable primary/display name conflicts`);
 
     const source = rid(await conn.addSource(SOURCE_DEFN));
