@@ -319,7 +319,7 @@ def get_drug_inputs(wildcards):
 rule all_drugs:
     input: lambda wildcards: get_drug_inputs(wildcards)
     container: CONTAINER
-    output: f'{LOGS_DIR}/all_drugs.COMPLETE'
+    output: f'{DATA_DIR}/all_drugs.COMPLETE'
     shell: 'touch {output}'
 
 
@@ -328,7 +328,7 @@ rule all_diseases:
         rules.load_ncit.output,
         rules.load_oncotree.output
     container: CONTAINER
-    output: f'{LOGS_DIR}/all_diseases.COMPLETE'
+    output: f'{DATA_DIR}/all_diseases.COMPLETE'
     shell: 'touch {output}'
 
 
