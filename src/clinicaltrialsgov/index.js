@@ -268,7 +268,6 @@ const processRecord = async ({
  */
 const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
     const url = `${BASE_URL}/${nctID}`;
-
     if (CACHE[nctID.toLowerCase()]) {
         return CACHE[nctID.toLowerCase()];
     }
@@ -292,11 +291,12 @@ const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
     // fetch from the external api
     const resp = await requestWithRetry({
         headers: { Accept: 'application/xml' },
-        json: true,
+        // json: true,
         method: 'GET',
         qs: { displayxml: true },
         uri: url,
     });
+    // console.dir(resp);
     const result = await parseXmlToJson(resp);
 
     // get or add the source
@@ -330,7 +330,7 @@ const uploadFiles = async ({ conn, files }) => {
     for (const filepath of files) {
         const filename = path.basename(filepath);
 
-        if (!filename.endsWith('.xml')) {
+        if (!filename.endsWith('.xml')) {   
             logger.warn(`ignoring non-xml file: ${filename}`);
             continue;
         }
@@ -381,7 +381,6 @@ const loadNewTrials = async ({ conn }) => {
 
     logger.info(`loading ${recentlyUpdatedTrials.length} recently updated trials`);
     const counts = { error: 0, success: 0 };
-
     for (const trialId of recentlyUpdatedTrials) {
         try {
             await fetchAndLoadById(conn, trialId, { upsert: true });
