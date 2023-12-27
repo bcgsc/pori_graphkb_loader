@@ -26,24 +26,24 @@ COSMIC_EMAIL = config.get('cosmic_email')
 COSMIC_PASSWORD = config.get('cosmic_password')
 USE_COSMIC = COSMIC_EMAIL or COSMIC_PASSWORD
 BACKFILL_TRIALS = config.get('trials')
-# USE_FDA_UNII = config.get('fda')  # due to the non-scriptable download, making FDA optional
 GITHUB_DATA = 'https://raw.githubusercontent.com/bcgsc/pori_graphkb_loader/develop/data'
 
 
 rule all:
     input: f'{DATA_DIR}/civic.COMPLETE',
-        f'{DATA_DIR}/cgi.COMPLETE',
-        f'{DATA_DIR}/docm.COMPLETE',
+        f'{DATA_DIR}/cgi.COMPLETE', # can we use these for ucalg?
+        f'{DATA_DIR}/docm.COMPLETE', # requires chromosomes; some variants not parsed correctly
         f'{DATA_DIR}/PMC4468049.COMPLETE',
         f'{DATA_DIR}/PMC4232638.COMPLETE',
         f'{DATA_DIR}/uberon.COMPLETE',
         f'{DATA_DIR}/fdaApprovals.COMPLETE',
-        f'{DATA_DIR}/cancerhotspots.COMPLETE',
-        f'{DATA_DIR}/moa.COMPLETE',
+        f'{DATA_DIR}/cancerhotspots.COMPLETE', # bad connection
+        f'{DATA_DIR}/moa.COMPLETE', # some missing records and some spec updates needed
         f'{DATA_DIR}/ncitFdaXref.COMPLETE',
-        *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []),
+        *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []), #bad format
         *([f'{DATA_DIR}/cosmic_resistance.COMPLETE', f'{DATA_DIR}/cosmic_fusions.COMPLETE'] if USE_COSMIC else [])
 
+# fdasrs - missing a lot of therapy records which should have come with ncit
 
 rule download_ncit:
     output: f'{DATA_DIR}/ncit/Thesaurus.txt',
@@ -451,7 +451,7 @@ rule load_moa:
     shell: LOADER_COMMAND + ' api moa  &> {log}; cp {log} {output}'
 
 
-# input isn't actually needed but it is a file-type loader so a dummy file must be supplied
+# input isn't actually needed but it is a file-type loader, so a dummy file must be supplied
 rule download_pubmed_source:
     output: f'{DATA_DIR}/local/pubmed_source.json'
     shell: dedent(f'''\
