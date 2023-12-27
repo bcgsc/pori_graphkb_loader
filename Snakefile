@@ -31,19 +31,22 @@ GITHUB_DATA = 'https://raw.githubusercontent.com/bcgsc/pori_graphkb_loader/devel
 
 rule all:
     input: f'{DATA_DIR}/civic.COMPLETE',
-        f'{DATA_DIR}/cgi.COMPLETE', # can we use these for ucalg?
-        f'{DATA_DIR}/docm.COMPLETE', # requires chromosomes; some variants not parsed correctly
+        f'{DATA_DIR}/cgi.COMPLETE', # TODO: can we use these for ucalg?
+        f'{DATA_DIR}/docm.COMPLETE', # TODO: some variants not parsed correctly
+        f'{DATA_DIR}/dgidb.COMPLETE',
         f'{DATA_DIR}/PMC4468049.COMPLETE',
         f'{DATA_DIR}/PMC4232638.COMPLETE',
         f'{DATA_DIR}/uberon.COMPLETE',
         f'{DATA_DIR}/fdaApprovals.COMPLETE',
-        f'{DATA_DIR}/cancerhotspots.COMPLETE', # bad connection
-        f'{DATA_DIR}/moa.COMPLETE', # some missing records and some spec updates needed
+        f'{DATA_DIR}/cancerhotspots.COMPLETE', # TODO: bad connection
+        f'{DATA_DIR}/moa.COMPLETE', # TODO: some missing records and some spec updates needed
         f'{DATA_DIR}/ncitFdaXref.COMPLETE',
-        *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []), #bad format
+        *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []), # TODO: bad format
         *([f'{DATA_DIR}/cosmic_resistance.COMPLETE', f'{DATA_DIR}/cosmic_fusions.COMPLETE'] if USE_COSMIC else [])
 
-# fdasrs - missing a lot of therapy records which should have come with ncit
+# TODO: fdasrs - missing a lot of therapy records which should have come with ncit
+# TODO: oncotree - missing some disease records which look like they should have come with ncit
+# TODO: add chembl rule?
 
 rule download_ncit:
     output: f'{DATA_DIR}/ncit/Thesaurus.txt',
@@ -299,14 +302,6 @@ rule load_oncotree:
     shell: LOADER_COMMAND + ' api oncotree &> {log}; cp {log} {output}'
 
 
-rule load_dgidb:
-    input: rules.load_local.output
-    container: CONTAINER
-    log: f'{LOGS_DIR}/dgidb.logs.txt'
-    output: f'{DATA_DIR}/dgidb.COMPLETE'
-    shell: LOADER_COMMAND + ' api dgidb &> {log}; cp {log} {output}'
-
-
 def get_drug_inputs(wildcards):
     inputs = [*rules.load_ncit.output]
     inputs.extend(rules.load_fda_srs.output)
@@ -338,6 +333,14 @@ rule all_local:
     log: f'{LOGS_DIR}/all_local.logs.txt'
     output: f'{DATA_DIR}/all_local.COMPLETE'
     shell: 'touch {output}'
+
+
+rule load_dgidb:
+    input: rules.all_local.output
+    container: CONTAINER
+    log: f'{LOGS_DIR}/dgidb.logs.txt'
+    output: f'{DATA_DIR}/dgidb.COMPLETE'
+    shell: LOADER_COMMAND + ' api dgidb &> {log}; cp {log} {output}'
 
 
 rule load_cancerhotspots:
@@ -478,7 +481,8 @@ rule all_ontologies:
         rules.load_ncit.output,
         rules.load_pubmed_source.output,
         rules.load_fda_srs.output,
-        rules.load_ncit_fda.output
+        rules.load_ncit_fda.output,
+        rules.load_dgidb.output
     container: CONTAINER
     output: f'{DATA_DIR}/all_ontologies.COMPLETE'
     shell: 'touch {output}'
