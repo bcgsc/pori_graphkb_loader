@@ -288,15 +288,13 @@ const uploadFile = async ({
         }
 
         // check list of synonyms to find non-duplicate names - first position in this list is the 'preferred name' from ncit
-
         const preferredNames = dups.map(dup => dup.original_synonyms[0]);
-
-        const allPreferredNamesDifferent = (preferredNames) => new Set(preferredNames).size === preferredNames.length;
+        const allPreferredNamesDifferent = () => new Set(preferredNames).size === preferredNames.length;
 
         if (allPreferredNamesDifferent) {
             for (const dup of dups) {
                 dup.name = dup.original_synonyms[0];
-                logger.log('info', `record with non-unique name (${name}, ${dup.sourceId}) being loaded with its preferred name (${dup.name});`)
+                logger.log('info', `record with non-unique name (${name}, ${dup.sourceId}) being loaded with its preferred name (${dup.name});`);
             }
             continue;
         }

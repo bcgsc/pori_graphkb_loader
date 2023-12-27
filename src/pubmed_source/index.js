@@ -1,18 +1,13 @@
-const readXlsxFile = require('read-excel-file/node');
-const fs = require('fs');
-
 const { logger } = require('../logging');
-const { convertRowFields } = require('../util');
-const { rid, orderPreferredOntologyTerms } = require('../graphkb');
-const _entrezGene = require('../entrez/gene');
-const _pubmed = require('../entrez/pubmed');
+const { rid } = require('../graphkb');
 const { pubmed: SOURCE_DEFN } = require('../sources');
 
-
-const uploadFile = async ({ conn, errorLogPrefix }) => {
+const uploadFile = async ({ conn }) => {
     logger.info('retrieve the record details');
+
     try {
-        source = await conn.addSource(SOURCE_DEFN)[0];
+        const source = rid(await conn.addSource(SOURCE_DEFN));
+        logger.log('info', `pubmed source: ${source}`);
     } catch (err) {
         logger.error(err);
     }
