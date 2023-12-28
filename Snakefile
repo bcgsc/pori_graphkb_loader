@@ -31,7 +31,7 @@ GITHUB_DATA = 'https://raw.githubusercontent.com/bcgsc/pori_graphkb_loader/devel
 
 rule all:
     input: f'{DATA_DIR}/civic.COMPLETE',
-        f'{DATA_DIR}/cgi.COMPLETE', # TODO: can we use these for ucalg?
+        # f'{DATA_DIR}/cgi.COMPLETE', # TODO: can we use these for ucalg?
         f'{DATA_DIR}/docm.COMPLETE', # TODO: some variants not parsed correctly
         f'{DATA_DIR}/dgidb.COMPLETE',
         f'{DATA_DIR}/PMC4468049.COMPLETE',
@@ -41,12 +41,10 @@ rule all:
         f'{DATA_DIR}/cancerhotspots.COMPLETE', # TODO: bad connection
         f'{DATA_DIR}/moa.COMPLETE', # TODO: some missing records and some spec updates needed
         f'{DATA_DIR}/ncitFdaXref.COMPLETE',
-        *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []), # TODO: bad format
+        *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []),
         *([f'{DATA_DIR}/cosmic_resistance.COMPLETE', f'{DATA_DIR}/cosmic_fusions.COMPLETE'] if USE_COSMIC else [])
 
 # TODO: fdasrs - missing a lot of therapy records which should have come with ncit
-# TODO: oncotree - missing some disease records which look like they should have come with ncit
-# TODO: add chembl rule?
 
 rule download_ncit:
     output: f'{DATA_DIR}/ncit/Thesaurus.txt',
