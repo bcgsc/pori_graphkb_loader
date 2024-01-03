@@ -31,20 +31,19 @@ GITHUB_DATA = 'https://raw.githubusercontent.com/bcgsc/pori_graphkb_loader/devel
 
 rule all:
     input: f'{DATA_DIR}/civic.COMPLETE',
-        # f'{DATA_DIR}/cgi.COMPLETE', # TODO: can we use these for ucalg?
-        f'{DATA_DIR}/docm.COMPLETE', # TODO: some variants not parsed correctly
+        f'{DATA_DIR}/cgi.COMPLETE',
+        f'{DATA_DIR}/docm.COMPLETE',
         f'{DATA_DIR}/dgidb.COMPLETE',
         f'{DATA_DIR}/PMC4468049.COMPLETE',
         f'{DATA_DIR}/PMC4232638.COMPLETE',
         f'{DATA_DIR}/uberon.COMPLETE',
         f'{DATA_DIR}/fdaApprovals.COMPLETE',
-        f'{DATA_DIR}/cancerhotspots.COMPLETE', # TODO: bad connection
-        f'{DATA_DIR}/moa.COMPLETE', # TODO: some missing records and some spec updates needed
+        f'{DATA_DIR}/cancerhotspots.COMPLETE',
+        f'{DATA_DIR}/moa.COMPLETE',
         f'{DATA_DIR}/ncitFdaXref.COMPLETE',
         *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []),
         *([f'{DATA_DIR}/cosmic_resistance.COMPLETE', f'{DATA_DIR}/cosmic_fusions.COMPLETE'] if USE_COSMIC else [])
 
-# TODO: fdasrs - missing a lot of therapy records which should have come with ncit
 
 rule download_ncit:
     output: f'{DATA_DIR}/ncit/Thesaurus.txt',
@@ -161,8 +160,9 @@ rule download_local_data:
 rule download_cancerhotspots:
     output: f'{DATA_DIR}/cancerhotspots/cancerhotspots.v2.maf'
     shell: dedent(f'''\
+        mkdir -p {DATA_DIR}/cancerhotspots
         cd {DATA_DIR}/cancerhotspots
-        wget http://download.cbioportal.org/cancerhotspots/cancerhotspots.v2.maf.gz
+        wget https://www.cancerhotspots.org/files/hotspots_v2.xls
         gunzip cancerhotspots.v2.maf.gz
         ''')
 
@@ -453,19 +453,19 @@ rule load_moa:
 
 
 # input isn't actually needed but it is a file-type loader, so a dummy file must be supplied
-rule download_pubmed_source:
-    output: f'{DATA_DIR}/local/pubmed_source.json'
+rule download_sources:
+    output: f'{DATA_DIR}/local/sources.json'
     shell: dedent(f'''\
         cd {DATA_DIR}/local
-        touch pubmed_source.json
+        touch sources.json
         ''')
 
-rule load_pubmed_source:
-    input: f'{DATA_DIR}/local/pubmed_source.json'
+rule load_sources:
+    input: f'{DATA_DIR}/local/sources.json'
     container: CONTAINER
-    log: f'{LOGS_DIR}/pubmed_source.logs.txt'
-    output: f'{DATA_DIR}/pubmed_source.COMPLETE'
-    shell: LOADER_COMMAND + ' file pubmed_source {input} &> {log}; cp {log} {output}'
+    log: f'{LOGS_DIR}/sources.logs.txt'
+    output: f'{DATA_DIR}/sources.COMPLETE'
+    shell: LOADER_COMMAND + ' file sources {input} &> {log}; cp {log} {output}'
 
 
 rule all_ontologies:
@@ -477,7 +477,7 @@ rule all_ontologies:
         rules.load_uberon.output,
         rules.load_approvals.output,
         rules.load_ncit.output,
-        rules.load_pubmed_source.output,
+        rules.load_sources.output,
         rules.load_fda_srs.output,
         rules.load_ncit_fda.output,
         rules.load_dgidb.output

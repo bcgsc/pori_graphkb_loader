@@ -24,7 +24,7 @@ const ontology = require('../src/ontology');
 const refseq = require('../src/refseq');
 const PMC4468049 = require('../src/PMC4468049');
 const PMC4232638 = require('../src/PMC4232638');
-const pubmed_source = require('../src/pubmed_source');
+const sources = require('../src/all_sources');
 const uberon = require('../src/uberon');
 const variants = require('../src/variants');
 const asco = require('../src/asco');
@@ -54,7 +54,7 @@ const FILE_MODULES = {
     ncit,
     ncitFdaXref,
     ontology,
-    pubmed_source,
+    sources,
     refseq,
     uberon,
     variants,
