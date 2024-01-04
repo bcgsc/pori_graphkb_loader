@@ -162,7 +162,7 @@ rule download_cancerhotspots:
     shell: dedent(f'''\
         mkdir -p {DATA_DIR}/cancerhotspots
         cd {DATA_DIR}/cancerhotspots
-        wget https://www.cancerhotspots.org/files/hotspots_v2.xls
+        wget http://download.cbioportal.org/cancerhotspots/cancerhotspots.v2.maf.gz
         gunzip cancerhotspots.v2.maf.gz
         ''')
 
