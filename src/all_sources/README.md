@@ -1,4 +1,4 @@
-# Pubmed Source Record
+# Source Records
 
 This loader adds all source records in sources.js. Among these, the pubmed source record is required in order for the Pubmed importer to work.
 This loader does not require any external data.
