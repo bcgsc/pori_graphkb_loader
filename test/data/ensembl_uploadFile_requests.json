@@ -177,6 +177,70 @@
         "filters": {
           "AND": [
             {
+              "source": "#41:0"
+            },
+            {
+              "biotype": "transcript"
+            },
+            {
+              "dependency": null
+            }
+          ]
+        },
+        "limit": 1000,
+        "neighbors": 0,
+        "returnProperties": null,
+        "skip": 0,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "AND": [
+            {
+              "source": "#41:0"
+            },
+            {
+              "biotype": "protein"
+            },
+            {
+              "dependency": null
+            }
+          ]
+        },
+        "limit": 1000,
+        "neighbors": 0,
+        "returnProperties": null,
+        "skip": 0,
+        "target": "Feature"
+      },
+      "method": "POST",
+      "uri": "/query"
+    },
+    "result": {
+      "metadata": {
+        "records": 0
+      },
+      "result": []
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "filters": {
+          "AND": [
+            {
               "source": {
                 "filters": {
                   "name": "refseq"
@@ -304,7 +368,7 @@
       "body": {
         "biotype": "transcript",
         "displayName": "NM_000059",
-        "sourceId": "NM_000059",
+        "sourceId": "nm_000059",
         "sourceIdVersion": null,
         "source": "#42:0"
       },
@@ -337,7 +401,7 @@
       "body": {
         "biotype": "gene",
         "source": "#41:0",
-        "sourceId": "ENSG00000139618",
+        "sourceId": "ensg00000139618",
         "sourceIdVersion": "17"
       },
       "method": "POST",
@@ -369,7 +433,7 @@
       "body": {
         "biotype": "gene",
         "source": "#41:0",
-        "sourceId": "ENSG00000139618",
+        "sourceId": "ensg00000139618",
         "sourceIdVersion": null
       },
       "method": "POST",
@@ -425,7 +489,7 @@
       "body": {
         "biotype": "transcript",
         "source": "#41:0",
-        "sourceId": "ENST00000544455",
+        "sourceId": "enst00000544455",
         "sourceIdVersion": "6"
       },
       "method": "POST",
@@ -457,7 +521,7 @@
       "body": {
         "biotype": "transcript",
         "source": "#41:0",
-        "sourceId": "ENST00000544455",
+        "sourceId": "enst00000544455",
         "sourceIdVersion": null
       },
       "method": "POST",
@@ -487,30 +551,6 @@
   {
     "opt": {
       "body": {
-        "in": "#140:0",
-        "out": "#137:1",
-        "source": "#41:0"
-      },
-      "method": "POST",
-      "uri": "/generalizationof"
-    },
-    "result": {
-      "result": {
-        "@class": "GeneralizationOf",
-        "out": "#137:1",
-        "in": "#140:0",
-        "source": "#41:0",
-        "createdBy": "#32:0",
-        "uuid": "90cc8c10-3a43-49ef-880d-b4294bfc2604",
-        "createdAt": 1653589823707,
-        "@rid": "#98:0",
-        "@version": 1
-      }
-    }
-  },
-  {
-    "opt": {
-      "body": {
         "in": "#139:0",
         "out": "#137:1",
         "source": "#41:0"
@@ -528,6 +568,30 @@
         "uuid": "a469002c-185b-471c-983a-f8a80949916d",
         "createdAt": 1653589823717,
         "@rid": "#93:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#140:0",
+        "out": "#137:1",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#137:1",
+        "in": "#140:0",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "90cc8c10-3a43-49ef-880d-b4294bfc2604",
+        "createdAt": 1653589823707,
+        "@rid": "#98:0",
         "@version": 1
       }
     }
@@ -561,7 +625,7 @@
       "body": {
         "biotype": "protein",
         "source": "#41:0",
-        "sourceId": "ENSP00000439902",
+        "sourceId": "ensp00000439902",
         "sourceIdVersion": "1"
       },
       "method": "POST",
@@ -593,7 +657,7 @@
       "body": {
         "biotype": "protein",
         "source": "#41:0",
-        "sourceId": "ENSP00000439902",
+        "sourceId": "ensp00000439902",
         "sourceIdVersion": null
       },
       "method": "POST",
@@ -616,6 +680,30 @@
         "name": "ensp00000439902",
         "displayName": "ENSP00000439902",
         "@rid": "#146:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#137:1",
+        "out": "#146:1",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#146:1",
+        "in": "#137:1",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "23cfd12e-429f-480f-9a41-1e0229a731b5",
+        "createdAt": 1653589823727,
+        "@rid": "#66:0",
         "@version": 1
       }
     }
@@ -664,30 +752,6 @@
         "uuid": "a469002c-185b-471c-983a-f8a80949916d",
         "createdAt": 1653589823717,
         "@rid": "#65:0",
-        "@version": 1
-      }
-    }
-  },
-  {
-    "opt": {
-      "body": {
-        "in": "#137:1",
-        "out": "#146:1",
-        "source": "#41:0"
-      },
-      "method": "POST",
-      "uri": "/elementof"
-    },
-    "result": {
-      "result": {
-        "@class": "ElementOf",
-        "out": "#146:1",
-        "in": "#137:1",
-        "source": "#41:0",
-        "createdBy": "#32:0",
-        "uuid": "23cfd12e-429f-480f-9a41-1e0229a731b5",
-        "createdAt": 1653589823727,
-        "@rid": "#66:0",
         "@version": 1
       }
     }
@@ -921,7 +985,7 @@
               "biotype": "gene"
             },
             {
-              "sourceId": "ENSG00000139618"
+              "sourceId": "ensg00000139618"
             }
           ]
         },
@@ -1694,7 +1758,7 @@
       "body": {
         "biotype": "transcript",
         "source": "#41:0",
-        "sourceId": "ENST00000530893",
+        "sourceId": "enst00000530893",
         "sourceIdVersion": "6"
       },
       "method": "POST",
@@ -1726,7 +1790,7 @@
       "body": {
         "biotype": "transcript",
         "source": "#41:0",
-        "sourceId": "ENST00000530893",
+        "sourceId": "enst00000530893",
         "sourceIdVersion": null
       },
       "method": "POST",
@@ -1756,30 +1820,6 @@
   {
     "opt": {
       "body": {
-        "in": "#139:3",
-        "out": "#140:3",
-        "source": "#41:0"
-      },
-      "method": "POST",
-      "uri": "/generalizationof"
-    },
-    "result": {
-      "result": {
-        "@class": "GeneralizationOf",
-        "out": "#140:3",
-        "in": "#139:3",
-        "source": "#41:0",
-        "createdBy": "#32:0",
-        "uuid": "c51db109-2d0f-4ddf-b8f6-7177bf862f7c",
-        "createdAt": 1653589830143,
-        "@rid": "#100:0",
-        "@version": 1
-      }
-    }
-  },
-  {
-    "opt": {
-      "body": {
         "in": "#139:0",
         "out": "#140:3",
         "source": "#41:0"
@@ -1797,6 +1837,30 @@
         "uuid": "c53bf883-4edc-433e-b1ca-3e0b7065c196",
         "createdAt": 1653589830152,
         "@rid": "#95:0",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#139:3",
+        "out": "#140:3",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#140:3",
+        "in": "#139:3",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "c51db109-2d0f-4ddf-b8f6-7177bf862f7c",
+        "createdAt": 1653589830143,
+        "@rid": "#100:0",
         "@version": 1
       }
     }
@@ -1830,7 +1894,7 @@
       "body": {
         "biotype": "protein",
         "source": "#41:0",
-        "sourceId": "ENSP00000499438",
+        "sourceId": "ensp00000499438",
         "sourceIdVersion": "2"
       },
       "method": "POST",
@@ -1862,7 +1926,7 @@
       "body": {
         "biotype": "protein",
         "source": "#41:0",
-        "sourceId": "ENSP00000499438",
+        "sourceId": "ensp00000499438",
         "sourceIdVersion": null
       },
       "method": "POST",
@@ -1885,6 +1949,30 @@
         "name": "ensp00000499438",
         "displayName": "ENSP00000499438",
         "@rid": "#148:2",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#140:3",
+        "out": "#148:2",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#148:2",
+        "in": "#140:3",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "696a05c4-0fca-449e-ab06-b1ff838731f4",
+        "createdAt": 1653589830160,
+        "@rid": "#68:0",
         "@version": 1
       }
     }
@@ -1940,30 +2028,6 @@
   {
     "opt": {
       "body": {
-        "in": "#140:3",
-        "out": "#148:2",
-        "source": "#41:0"
-      },
-      "method": "POST",
-      "uri": "/elementof"
-    },
-    "result": {
-      "result": {
-        "@class": "ElementOf",
-        "out": "#148:2",
-        "in": "#140:3",
-        "source": "#41:0",
-        "createdBy": "#32:0",
-        "uuid": "696a05c4-0fca-449e-ab06-b1ff838731f4",
-        "createdAt": 1653589830160,
-        "@rid": "#68:0",
-        "@version": 1
-      }
-    }
-  },
-  {
-    "opt": {
-      "body": {
         "in": "#138:0",
         "out": "#139:0",
         "source": "#41:0"
@@ -1980,7 +2044,7 @@
       "body": {
         "biotype": "transcript",
         "source": "#41:0",
-        "sourceId": "ENST00000380152",
+        "sourceId": "enst00000380152",
         "sourceIdVersion": "8"
       },
       "method": "POST",
@@ -2012,7 +2076,7 @@
       "body": {
         "biotype": "transcript",
         "source": "#41:0",
-        "sourceId": "ENST00000380152",
+        "sourceId": "enst00000380152",
         "sourceIdVersion": null
       },
       "method": "POST",
@@ -2042,30 +2106,6 @@
   {
     "opt": {
       "body": {
-        "in": "#137:4",
-        "out": "#138:4",
-        "source": "#41:0"
-      },
-      "method": "POST",
-      "uri": "/generalizationof"
-    },
-    "result": {
-      "result": {
-        "@class": "GeneralizationOf",
-        "out": "#138:4",
-        "in": "#137:4",
-        "source": "#41:0",
-        "createdBy": "#32:0",
-        "uuid": "0b3717ed-776e-442f-ac03-d8a906b11613",
-        "createdAt": 1653589830214,
-        "@rid": "#98:1",
-        "@version": 1
-      }
-    }
-  },
-  {
-    "opt": {
-      "body": {
         "in": "#139:0",
         "out": "#138:4",
         "source": "#41:0"
@@ -2083,6 +2123,30 @@
         "uuid": "4f650139-eacd-47cb-b040-27ff18092f7c",
         "createdAt": 1653589830223,
         "@rid": "#93:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#137:4",
+        "out": "#138:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#138:4",
+        "in": "#137:4",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "0b3717ed-776e-442f-ac03-d8a906b11613",
+        "createdAt": 1653589830214,
+        "@rid": "#98:1",
         "@version": 1
       }
     }
@@ -2116,7 +2180,7 @@
       "body": {
         "biotype": "protein",
         "source": "#41:0",
-        "sourceId": "ENSP00000369497",
+        "sourceId": "ensp00000369497",
         "sourceIdVersion": "3"
       },
       "method": "POST",
@@ -2148,7 +2212,7 @@
       "body": {
         "biotype": "protein",
         "source": "#41:0",
-        "sourceId": "ENSP00000369497",
+        "sourceId": "ensp00000369497",
         "sourceIdVersion": null
       },
       "method": "POST",
@@ -2171,6 +2235,30 @@
         "name": "ensp00000369497",
         "displayName": "ENSP00000369497",
         "@rid": "#150:3",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#138:4",
+        "out": "#150:3",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#150:3",
+        "in": "#138:4",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "58d664a2-8465-403f-bc30-4a06821ce3e5",
+        "createdAt": 1653589830232,
+        "@rid": "#71:1",
         "@version": 1
       }
     }
@@ -2219,30 +2307,6 @@
         "uuid": "4f650139-eacd-47cb-b040-27ff18092f7c",
         "createdAt": 1653589830223,
         "@rid": "#70:1",
-        "@version": 1
-      }
-    }
-  },
-  {
-    "opt": {
-      "body": {
-        "in": "#138:4",
-        "out": "#150:3",
-        "source": "#41:0"
-      },
-      "method": "POST",
-      "uri": "/elementof"
-    },
-    "result": {
-      "result": {
-        "@class": "ElementOf",
-        "out": "#150:3",
-        "in": "#138:4",
-        "source": "#41:0",
-        "createdBy": "#32:0",
-        "uuid": "58d664a2-8465-403f-bc30-4a06821ce3e5",
-        "createdAt": 1653589830232,
-        "@rid": "#71:1",
         "@version": 1
       }
     }
@@ -2378,7 +2442,7 @@
       "body": {
         "biotype": "transcript",
         "source": "#41:0",
-        "sourceId": "ENST00000680887",
+        "sourceId": "enst00000680887",
         "sourceIdVersion": "1"
       },
       "method": "POST",
@@ -2410,7 +2474,7 @@
       "body": {
         "biotype": "transcript",
         "source": "#41:0",
-        "sourceId": "ENST00000680887",
+        "sourceId": "enst00000680887",
         "sourceIdVersion": null
       },
       "method": "POST",
@@ -2440,30 +2504,6 @@
   {
     "opt": {
       "body": {
-        "in": "#139:4",
-        "out": "#140:4",
-        "source": "#41:0"
-      },
-      "method": "POST",
-      "uri": "/generalizationof"
-    },
-    "result": {
-      "result": {
-        "@class": "GeneralizationOf",
-        "out": "#140:4",
-        "in": "#139:4",
-        "source": "#41:0",
-        "createdBy": "#32:0",
-        "uuid": "309429ab-da47-4db6-a999-5f1014350e22",
-        "createdAt": 1653589830309,
-        "@rid": "#100:1",
-        "@version": 1
-      }
-    }
-  },
-  {
-    "opt": {
-      "body": {
         "in": "#139:0",
         "out": "#140:4",
         "source": "#41:0"
@@ -2481,6 +2521,30 @@
         "uuid": "d37fe3df-c75b-4b44-9ab5-53518fa7c292",
         "createdAt": 1653589830322,
         "@rid": "#95:1",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#139:4",
+        "out": "#140:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/generalizationof"
+    },
+    "result": {
+      "result": {
+        "@class": "GeneralizationOf",
+        "out": "#140:4",
+        "in": "#139:4",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "309429ab-da47-4db6-a999-5f1014350e22",
+        "createdAt": 1653589830309,
+        "@rid": "#100:1",
         "@version": 1
       }
     }
@@ -2513,7 +2577,7 @@
       "body": {
         "biotype": "protein",
         "source": "#41:0",
-        "sourceId": "ENSP00000505508",
+        "sourceId": "ensp00000505508",
         "sourceIdVersion": "1"
       },
       "method": "POST",
@@ -2545,7 +2609,7 @@
       "body": {
         "biotype": "protein",
         "source": "#41:0",
-        "sourceId": "ENSP00000505508",
+        "sourceId": "ensp00000505508",
         "sourceIdVersion": null
       },
       "method": "POST",
@@ -2568,6 +2632,30 @@
         "name": "ensp00000505508",
         "displayName": "ENSP00000505508",
         "@rid": "#152:4",
+        "@version": 1
+      }
+    }
+  },
+  {
+    "opt": {
+      "body": {
+        "in": "#140:4",
+        "out": "#152:4",
+        "source": "#41:0"
+      },
+      "method": "POST",
+      "uri": "/elementof"
+    },
+    "result": {
+      "result": {
+        "@class": "ElementOf",
+        "out": "#152:4",
+        "in": "#140:4",
+        "source": "#41:0",
+        "createdBy": "#32:0",
+        "uuid": "30897f3d-cc0e-4cf2-bd81-4d6b3103c0ac",
+        "createdAt": 1653589830331,
+        "@rid": "#73:1",
         "@version": 1
       }
     }
@@ -2616,30 +2704,6 @@
         "uuid": "d37fe3df-c75b-4b44-9ab5-53518fa7c292",
         "createdAt": 1653589830322,
         "@rid": "#72:1",
-        "@version": 1
-      }
-    }
-  },
-  {
-    "opt": {
-      "body": {
-        "in": "#140:4",
-        "out": "#152:4",
-        "source": "#41:0"
-      },
-      "method": "POST",
-      "uri": "/elementof"
-    },
-    "result": {
-      "result": {
-        "@class": "ElementOf",
-        "out": "#152:4",
-        "in": "#140:4",
-        "source": "#41:0",
-        "createdBy": "#32:0",
-        "uuid": "30897f3d-cc0e-4cf2-bd81-4d6b3103c0ac",
-        "createdAt": 1653589830331,
-        "@rid": "#73:1",
         "@version": 1
       }
     }
