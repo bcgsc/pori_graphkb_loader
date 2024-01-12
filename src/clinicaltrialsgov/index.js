@@ -292,11 +292,12 @@ const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
     // fetch from the external api
     const resp = await requestWithRetry({
         headers: { Accept: 'application/xml' },
-        json: true,
+        // json: true,
         method: 'GET',
         qs: { displayxml: true },
         uri: url,
     });
+    // console.dir(resp);
     const result = await parseXmlToJson(resp);
 
     // get or add the source
