@@ -180,8 +180,8 @@ rule download_cosmic_resistance:
     output: f'{DATA_DIR}/cosmic/CosmicResistanceMutations.tsv'
     shell: dedent(f'''
         cd {DATA_DIR}/cosmic
-        AUTH=$( echo "{COSMIC_EMAIL}:{COSMIC_PASSWORD}" | base64 )
-        resp=$( curl -H "Authorization: Basic $AUTH" https://cancer.sanger.ac.uk/cosmic/file_download/GRCh38/cosmic/v92/CosmicResistanceMutations.tsv.gz );
+        AUTH=$( echo "$COSMIC_EMAIL:$COSMIC_PASSWORD" | base64 )
+        resp=$( curl -H "Authorization: Basic $AUTH" https://cancer.sanger.ac.uk/cosmic/file_download/GRCh38/cosmic/v99/CosmicResistanceMutations.tsv.gz );
         url=$( node  -e "var resp = $resp; console.log(resp.url);" );
         curl "$url" -o CosmicResistanceMutations.tsv.gz
         gunzip CosmicResistanceMutations.tsv.gz
@@ -192,8 +192,8 @@ rule download_cosmic_diseases:
     output: f'{DATA_DIR}/cosmic/classification.csv'
     shell: dedent(f'''
         cd {DATA_DIR}/cosmic
-        AUTH=$( echo "{COSMIC_EMAIL}:{COSMIC_PASSWORD}" | base64 )
-        resp=$( curl -H "Authorization: Basic $AUTH" https://cancer.sanger.ac.uk/cosmic/file_download/GRCh38/cosmic/v92/classification.csv );
+        AUTH=$( echo "$COSMIC_EMAIL:$COSMIC_PASSWORD" | base64 )
+        resp=$( curl -H "Authorization: Basic $AUTH" https://cancer.sanger.ac.uk/cosmic/file_download/GRCh38/cosmic/v99/classification.csv );
         url=$( node  -e "var resp = $resp; console.log(resp.url);" );
         curl "$url" -o classification.csv
         ''')
@@ -203,8 +203,8 @@ rule download_cosmic_fusions:
     output: f'{DATA_DIR}/cosmic/CosmicFusionExport.tsv'
     shell: dedent(f'''
         cd {DATA_DIR}/cosmic
-        AUTH=$( echo "{COSMIC_EMAIL}:{COSMIC_PASSWORD}" | base64 )
-        resp=$( curl -H "Authorization: Basic $AUTH" https://cancer.sanger.ac.uk/cosmic/file_download/GRCh38/cosmic/v92/CosmicFusionExport.tsv.gz );
+        AUTH=$( echo "$COSMIC_EMAIL:$COSMIC_PASSWORD" | base64 )
+        resp=$( curl -H "Authorization: Basic $AUTH" https://cancer.sanger.ac.uk/cosmic/file_download/GRCh38/cosmic/v99/CosmicFusionExport.tsv.gz );
         url=$( node  -e "var resp = $resp; console.log(resp.url);" );
         curl "$url" -o CosmicFusionExport.tsv.gz
         gunzip CosmicFusionExport.tsv.gz
