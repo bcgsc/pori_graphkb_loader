@@ -1,8 +1,6 @@
 const fs = require('fs');
 const path = require('path');
 
-const { parseXmlToJson } = require('../src/util');
-
 const ctg = require('../src/clinicaltrialsgov');
 const gene = require('../src/entrez/gene');
 const pubmed = require('../src/entrez/pubmed');
