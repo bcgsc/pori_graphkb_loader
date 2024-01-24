@@ -34,12 +34,12 @@ afterEach(() => {
 
 describe('clinicaltrialsgov', () => {
     test('convertAPIRecord', async () => {
-        const raw = await parseXmlToJson(dataFileLoad('data/clinicaltrialsgov.NCT03478891.xml'));
+        const raw = await dataFileToJson('data/clinicaltrialsgov.NCT03478891.json');
         const result = ctg.convertAPIRecord(raw);
         expect(result).toHaveProperty('sourceId', 'NCT03478891');
-        expect(result).toHaveProperty('sourceIdVersion', '2019-07-15');
+        expect(result).toHaveProperty('sourceIdVersion', '2020-10-26');
 
-        expect(result).toHaveProperty('phases', ['Phase 1']);
+        expect(result).toHaveProperty('phases', ['PHASE1']);
         expect(result).toHaveProperty('startDate', '2018-05-16');
         expect(result).toHaveProperty('completionDate', '2019-03-20');
         expect(result).toHaveProperty('locations', [{ city: 'bethesda', country: 'united states' }]);
@@ -49,11 +49,11 @@ describe('clinicaltrialsgov', () => {
 
     test('fetchAndLoadById', async () => {
         api.getUniqueRecordBy.mockRejectedValueOnce(new Error('doesnt exist yet'));
-        util.requestWithRetry.mockResolvedValueOnce(dataFileLoad('data/clinicaltrialsgov.NCT03478891.xml'));
+        util.requestWithRetry.mockResolvedValueOnce(dataFileToJson('data/clinicaltrialsgov.NCT03478891.json'));
 
         const result = await ctg.fetchAndLoadById(api, 'NCT03478891');
         expect(result).toHaveProperty('sourceId', 'NCT03478891');
-        expect(result).toHaveProperty('sourceIdVersion', '2019-07-15');
+        expect(result).toHaveProperty('sourceIdVersion', '2020-10-26');
 
         expect(result).toHaveProperty('source');
         expect(result).toHaveProperty('phase', '1');
