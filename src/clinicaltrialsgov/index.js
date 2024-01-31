@@ -86,7 +86,15 @@ const convertAPIRecord = (rawRecord) => {
 
     if (record.contactsLocationsModule) {
         for (const { country, city } of record.contactsLocationsModule.locations || []) {
-            content.locations.push({ city: city.toLowerCase(), country: country.toLowerCase() });
+            if (city && country) {
+                content.locations.push({ city: city.toLowerCase(), country: country.toLowerCase() });
+            }
+            if (city && !country) {
+                content.locations.push({ city: city.toLowerCase() });
+            }
+            if (!city && country) {
+                content.locations.push({ country: country.toLowerCase() });
+            }
         }
     }
 
@@ -138,6 +146,11 @@ const processRecord = async ({
         url: record.url,
     };
 
+    // temperory mapping to avoid schema change
+    if (content.recruitmentStatus && content.recruitmentStatus.toLowerCase() === 'active not recruiting') {
+        content.recruitmentStatus = 'active, not recruiting';
+    }
+
     if (content.recruitmentStatus && content.recruitmentStatus.toLowerCase() === 'unknown status') {
         content.recruitmentStatus = 'unknown';
     }
@@ -157,23 +170,24 @@ const processRecord = async ({
         consensusCity;
 
     for (const { city, country } of record.locations) {
-        if (consensusCountry) {
+        if (country && consensusCountry) {
             if (consensusCountry !== country.toLowerCase()) {
                 consensusCountry = null;
                 consensusCity = null;
                 break;
             }
-        } else {
+        } else if (country) {
             consensusCountry = country.toLowerCase();
         }
-        if (consensusCity !== undefined) {
+        if (city && consensusCity) {
             if (consensusCity !== city.toLowerCase()) {
                 consensusCity = null;
             }
-        } else {
+        } else if (city) {
             consensusCity = city.toLowerCase();
         }
     }
+
 
     if (consensusCountry) {
         content.country = consensusCountry;
@@ -329,6 +343,77 @@ const uploadFiles = async ({ conn, files }) => {
     logger.info(JSON.stringify(counts));
 };
 
+const upload = async ({ conn }) => {
+    const source = await conn.addSource(SOURCE_DEFN);
+
+
+
+    let trials = await requestWithRetry({
+        json: true,
+        method: 'GET',
+        qs: {
+            aggFilters: 'studyType:int',
+            countTotal: true,
+            pageSize: 1000,
+            'query.cond': 'cancer',
+        },
+        uri: BASE_URL,
+    });
+
+
+    logger.info(`loading ${trials.totalCount} records`);
+    const counts = {
+        error: 0, success: 0,
+    };
+
+    for (const trial of trials.studies) {
+        try {
+            const record = convertAPIRecord(trial);
+            await processRecord({
+                conn, record, source, upsert: true,
+            });
+            counts.success++;
+        } catch (err) {
+            counts.error++;
+            logger.error(`[${trial}] ${err}`);
+        }
+    }
+
+    let next = trials.nextPageToken;
+
+    while (next) {
+        trials = await requestWithRetry({
+            json: true,
+            method: 'GET',
+            qs: {
+                aggFilters: 'studyType:int',
+                countTotal: true,
+                pageSize: 1000,
+                pageToken: next,
+                'query.cond': 'cancer',
+            },
+            uri: BASE_URL,
+        });
+
+        for (const trial of trials.studies) {
+            try {
+                const record = convertAPIRecord(trial);
+                await processRecord({
+                    conn, record, source, upsert: true,
+                });
+                counts.success++;
+            } catch (err) {
+                counts.error++;
+                logger.error(`[${trial}] ${err}`);
+            }
+        }
+
+        next = trials.nextPageToken;
+    }
+    logger.info(JSON.stringify(counts));
+};
+
+
 
 /**
  * Parses clinical trial RSS Feed results for clinical trials in Canada and the US
@@ -378,6 +463,7 @@ module.exports = {
     convertAPIRecord,
     fetchAndLoadById,
     kb: true,
-    upload: loadNewTrials,
+    loadNewTrials,
+    upload,
     uploadFiles,
 };

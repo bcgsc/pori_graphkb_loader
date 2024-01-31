@@ -23,6 +23,22 @@
                     },
                     "statusModule":{
                         "properties":{
+                            "lastUpdatePostDateStruct":{
+                                "properties":{
+                                    "date": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required":[
+                                    "date"
+                                ],
+                                "type": "object"
+                            },
+                            "overallStatus":{
+                                "type": "string"
+                            }
+                        },
+                        "optionalProperties":{
                             "startDateStruct":{
                                 "properties":{
                                     "date": {
@@ -44,25 +60,9 @@
                                     "date"
                                 ],
                                 "type": "object"
-                            },
-                            "lastUpdatePostDateStruct":{
-                                "properties":{
-                                    "date": {
-                                        "type": "string"
-                                    }
-                                },
-                                "required":[
-                                    "date"
-                                ],
-                                "type": "object"
-                            },
-                            "overallStatus":{
-                                "type": "string"
                             }
                         },
                         "required":[
-                            "startDateStruct",
-                            "completionDateStruct",
                             "lastUpdatePostDateStruct",
                             "overallStatus"
                         ],
