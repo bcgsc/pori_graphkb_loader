@@ -30,7 +30,7 @@ const HEADER = {
     evidenceLevel: 'Evidence level',
     gene: 'Gene',
     genomic: 'gDNA',
-    protein: 'individual_mutation',
+    protein: 'protein',
     relevance: 'Association',
     reviewData: 'Curation date',
     reviewer: 'Curator',
@@ -489,26 +489,50 @@ const uploadFile = async ({
     const counts = { error: 0, skip: 0, success: 0 }; // tracking errors relative to the number of total statements
     const inputCounts = { error: 0, skip: 0, success: 0 }; // tracking errors relative to the input number of records
 
+    const perVariantRows = [];
+
+    for (const row of rows) {
+        let match,
+            protein;
+
+        if (match = /^(\w+) \(([A-Z0-9*,;]+)\)$/.exec(row.Biomarker)) {
+            const mutations = match[2].split(',');
+
+            for (const mutation of mutations) {
+                protein = `${match[1]}:${mutation}`;
+                perVariantRows.push({
+                    ...row,
+                    protein,
+                });
+            }
+        } else {
+            perVariantRows.push({
+                ...row,
+                protein: '',
+            });
+        }
+    }
+
     logger.info('creating the evidence levels');
     await uploadFromJSON({ conn, data: evidenceLevels });
     logger.info('preloading the pubmed cache');
     await _pubmed.preLoadCache(conn);
     const errorList = [];
 
-    logger.info(`loading ${rows.length} rows`);
+    logger.info(`loading ${perVariantRows.length} rows`);
 
-    for (let index = 0; index < rows.length; index++) {
+    for (let index = 0; index < perVariantRows.length; index++) {
         if (maxRecords && index > maxRecords) {
             logger.warn(`not loading all content due to max records limit (${maxRecords})`);
             break;
         }
-        const rawRow = rows[index];
+        const rawRow = perVariantRows[index];
         const sourceId = hashRecordToId(rawRow);
-        logger.info(`processing: ${sourceId} (${index} / ${rows.length})`);
+        logger.info(`processing: ${sourceId} (${index} / ${perVariantRows.length})`);
         const row = {
             _raw: rawRow,
             sourceId,
-            ...convertRowFields(HEADER, rows[index]),
+            ...convertRowFields(HEADER, perVariantRows[index]),
         };
         row.therapy = parseTherapy(row);
 
