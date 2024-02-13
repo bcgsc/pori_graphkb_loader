@@ -8,12 +8,11 @@ files.
 First, download the data
 
 ```bash
-wget https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_latest.zip
-unzip cgi_biomarkers_latest.zip
+wget https://www.cancergenomeinterpreter.org/data/biomarkers/cgi_biomarkers_latest.tsv
 ```
 
 Then load into graphkb
 
 ```bash
-node bin/load.js file cgi cgi_biomarkers_per_variant.tsv
+node bin/load.js file cgi cgi_biomarkers_latest.tsv
 ```
