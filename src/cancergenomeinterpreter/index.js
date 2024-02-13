@@ -5,7 +5,6 @@ const kbParser = require('@bcgsc-pori/graphkb-parser');
 const {
     loadDelimToJson,
     convertRowFields,
-    hashRecordToId,
 } = require('../util');
 const {
     orderPreferredOntologyTerms, rid,
@@ -30,7 +29,7 @@ const HEADER = {
     evidenceLevel: 'Evidence level',
     gene: 'Gene',
     genomic: 'gDNA',
-    protein: 'individual_mutation',
+    protein: 'protein',
     relevance: 'Association',
     reviewData: 'Curation date',
     reviewer: 'Curator',
@@ -493,23 +492,23 @@ const uploadFile = async ({
 
     for (let index = 0; index < rows.length; index++) {
         let match,
-            individual_mutation;
+            protein;
 
         if (match = /^(\w+) \(([A-Z0-9*,;]+)\)$/.exec(rows[index].Biomarker)) {
             const mutations = match[2].split(',');
 
             for (let i = 0; i < mutations.length; i++) {
-                individual_mutation = `${match[1]}:${mutations[i]}`;
+                protein = `${match[1]}:${mutations[i]}`;
                 perVariantRows.push({
                     ...rows[i],
-                    individual_mutation,
+                    protein,
                     sourceId: `${index + 1}:${i + 1}`,
                 });
             }
         } else {
             perVariantRows.push({
                 ...rows[index],
-                individual_mutation: '',
+                protein: '',
                 sourceId: `${index + 1}`,
             });
         }
