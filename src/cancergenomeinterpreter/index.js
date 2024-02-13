@@ -30,7 +30,7 @@ const HEADER = {
     evidenceLevel: 'Evidence level',
     gene: 'Gene',
     genomic: 'gDNA',
-    protein: 'protein',
+    protein: 'individual_mutation',
     relevance: 'Association',
     reviewData: 'Curation date',
     reviewer: 'Curator',
@@ -491,24 +491,26 @@ const uploadFile = async ({
 
     const perVariantRows = [];
 
-    for (const row of rows) {
+    for (let index = 0; index < rows.length; index++) {
         let match,
-            protein;
+            individual_mutation;
 
-        if (match = /^(\w+) \(([A-Z0-9*,;]+)\)$/.exec(row.Biomarker)) {
+        if (match = /^(\w+) \(([A-Z0-9*,;]+)\)$/.exec(rows[index].Biomarker)) {
             const mutations = match[2].split(',');
 
-            for (const mutation of mutations) {
-                protein = `${match[1]}:${mutation}`;
+            for (let i = 0; i < mutations.length; i++) {
+                individual_mutation = `${match[1]}:${mutations[i]}`;
                 perVariantRows.push({
-                    ...row,
-                    protein,
+                    ...rows[i],
+                    individual_mutation,
+                    sourceId: `${index + 1}:${i + 1}`,
                 });
             }
         } else {
             perVariantRows.push({
-                ...row,
-                protein: '',
+                ...rows[index],
+                individual_mutation: '',
+                sourceId: `${index + 1}`,
             });
         }
     }
@@ -527,11 +529,10 @@ const uploadFile = async ({
             break;
         }
         const rawRow = perVariantRows[index];
-        const sourceId = hashRecordToId(rawRow);
-        logger.info(`processing: ${sourceId} (${index} / ${perVariantRows.length})`);
+        logger.info(`processing: ${perVariantRows[index].sourceId} (${index} / ${perVariantRows.length})`);
         const row = {
             _raw: rawRow,
-            sourceId,
+            sourceId: perVariantRows[index].sourceId,
             ...convertRowFields(HEADER, perVariantRows[index]),
         };
         row.therapy = parseTherapy(row);
