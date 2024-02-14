@@ -66,6 +66,7 @@ const therapyMapping = {
     'jak inhibitors (alone or in combination)': 'jak inhibitor',
     'mek inhibitors (alone or in combination)': 'mek inhibitor',
     tensirolimus: 'temsirolimus',
+    'trastuzumab deruxtecan-nxki': 'fam-trastuzumab deruxtecan-nxki',
 };
 
 
