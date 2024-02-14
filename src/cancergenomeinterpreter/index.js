@@ -14,7 +14,6 @@ const _trials = require('../clinicaltrialsgov');
 const _pubmed = require('../entrez/pubmed');
 const _asco = require('../asco');
 const _gene = require('../entrez/gene');
-const { uploadFromJSON } = require('../ontology');
 
 const { cgi: SOURCE_DEFN } = require('../sources');
 
@@ -29,29 +28,11 @@ const HEADER = {
     evidenceLevel: 'Evidence level',
     gene: 'Gene',
     genomic: 'gDNA',
-    protein: 'protein',
     relevance: 'Association',
     reviewData: 'Curation date',
     reviewer: 'Curator',
     transcript: 'transcript',
     variantClass: 'Alteration type',
-};
-
-const evidenceLevels = {
-    class: 'EvidenceLevel',
-    defaultNameToSourceId: true,
-    records: {
-        'CPIC guidelines': {},
-        'Case report': {},
-        'Early trials': {},
-        'European LeukemiaNet guidelines': {},
-        'FDA guidelines': {},
-        'Late trials': {},
-        'NCCN guidelines': {},
-        'NCCN/CAP guidelines': {},
-        'Pre-clinical': {},
-    },
-    sources: { default: SOURCE_DEFN },
 };
 
 // mappings are given primarily to fix known typos
@@ -514,9 +495,6 @@ const uploadFile = async ({
         }
     }
 
-    logger.info('creating the evidence levels');
-    await uploadFromJSON({ conn, data: evidenceLevels });
-    logger.info('preloading the pubmed cache');
     await _pubmed.preLoadCache(conn);
     const errorList = [];
 
@@ -531,6 +509,7 @@ const uploadFile = async ({
         logger.info(`processing: ${perVariantRows[index].sourceId} (${index} / ${perVariantRows.length})`);
         const row = {
             _raw: rawRow,
+            protein: perVariantRows[index].protein,
             sourceId: perVariantRows[index].sourceId,
             ...convertRowFields(HEADER, perVariantRows[index]),
         };
