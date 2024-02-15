@@ -27,7 +27,7 @@ const { logger } = require('../logging');
 const { clinicalTrialsGov: SOURCE_DEFN } = require('../sources');
 const { api: apiSpec, rss: rssSpec } = require('./specs.json');
 
-const BASE_URL = 'https://clinicaltrials.gov/ct2/show';
+const BASE_URL = 'https://clinicaltrials.gov/api/v2/studies';
 const RSS_URL = 'https://clinicaltrials.gov/ct2/results/rss.xml';
 const CACHE = {};
 
@@ -36,78 +36,68 @@ const validateAPITrialRecord = ajv.compile(apiSpec);
 const validateRssFeed = ajv.compile(rssSpec);
 
 
-const standardizeDate = (dateString) => {
-    const dateObj = new Date(Date.parse(dateString));
-
-    if (Number.isNaN(dateObj.getTime())) {
-        throw new Error(`unable to standardize input date (${dateString})`);
-    }
-    const month = dateObj.getMonth() + 1 < 10
-        ? `0${dateObj.getMonth() + 1}`
-        : dateObj.getMonth() + 1;
-    const date = dateObj.getDate() < 10
-        ? `0${dateObj.getDate()}`
-        : dateObj.getDate();
-    return `${dateObj.getFullYear()}-${month}-${date}`;
-};
-
-
 /**
  * Given some records from the API, convert its form to a standard represention
  */
 const convertAPIRecord = (rawRecord) => {
-    checkSpec(validateAPITrialRecord, rawRecord, rec => rec.clinical_study.id_info[0].nct_id[0]);
+    checkSpec(validateAPITrialRecord, rawRecord, rec => rec.protocolSection.identificationModule.nctId);
 
-    const { clinical_study: record } = rawRecord;
+    const { protocolSection: record } = rawRecord;
     let startDate,
         completionDate;
 
 
     try {
-        startDate = standardizeDate(record.start_date[0]._ || record.start_date[0]);
+        startDate = record.statusModule.startDateStruct.date;
     } catch (err) {}
 
     try {
-        completionDate = standardizeDate(
-            record.completion_date[0]._ || record.completion_date[0],
-        );
+        completionDate = record.statusModule.completionDateStruct.date;
     } catch (err) {}
 
-    const [title] = record.official_title || record.brief_title;
+    const title = record.identificationModule.officialTitle || record.identificationModule.briefTitle;
+
+    const { nctId } = record.identificationModule;
+    const url = `${BASE_URL}/${nctId}`;
 
     const content = {
         completionDate,
-        diseases: record.condition,
+        diseases: record.conditionsModule.conditions,
         displayName: title,
         drugs: [],
         locations: [],
         name: title,
-        recruitmentStatus: record.overall_status[0],
-        sourceId: record.id_info[0].nct_id[0],
-        sourceIdVersion: standardizeDate(record.last_update_posted[0]._),
+        recruitmentStatus: record.statusModule.overallStatus,
+        sourceId: nctId,
+        sourceIdVersion: record.statusModule.lastUpdatePostDateStruct.date,
         startDate,
-        url: record.required_header[0].url[0],
+        url,
     };
 
-    if (record.phase) {
-        content.phases = record.phase;
+    if (record.designModule.phases) {
+        content.phases = record.designModule.phases;
     }
 
-    for (const { intervention_name: [name], intervention_type: [type] } of record.intervention || []) {
+    for (const { name, type } of record.armsInterventionsModule.interventions || []) {
         if (type.toLowerCase() === 'drug' || type.toLowerCase() === 'biological') {
             content.drugs.push(name);
         }
     }
 
-    for (const location of record.location || []) {
-        const { facility: [{ address }] } = location;
-
-        if (!address) {
-            continue;
+    if (record.contactsLocationsModule) {
+        for (const { country, city } of record.contactsLocationsModule.locations || []) {
+            if (city && country) {
+                content.locations.push({ city: city.toLowerCase(), country: country.toLowerCase() });
+            }
+            if (city && !country) {
+                content.locations.push({ city: city.toLowerCase() });
+            }
+            if (!city && country) {
+                content.locations.push({ country: country.toLowerCase() });
+            }
         }
-        const [{ country: [country], city: [city] }] = address;
-        content.locations.push({ city: city.toLowerCase(), country: country.toLowerCase() });
     }
+
     return content;
 };
 
@@ -119,8 +109,8 @@ const processPhases = (phaseList) => {
         const cleanedPhaseList = raw.trim().toLowerCase().replace(/\bn\/a\b/, '').split(/[,/]/);
 
         for (const phase of cleanedPhaseList) {
-            if (phase !== '' && phase !== 'not applicable') {
-                const match = /^(early )?phase (\d+)$/.exec(phase);
+            if (phase !== '' && phase !== 'na' && phase !== 'ph') {
+                const match = /^(early_)?phase(\d+)$/.exec(phase);
 
                 if (!match) {
                     throw new Error(`unrecognized phase description (${phase})`);
@@ -149,12 +139,17 @@ const processRecord = async ({
     const content = {
         displayName: record.displayName,
         name: record.name,
-        recruitmentStatus: record.recruitmentStatus,
+        recruitmentStatus: record.recruitmentStatus.replace(/_/g, ' '),
         source: rid(source),
         sourceId: record.sourceId,
         sourceIdVersion: record.sourceIdVersion,
         url: record.url,
     };
+
+    // temperory mapping to avoid schema change
+    if (content.recruitmentStatus && content.recruitmentStatus.toLowerCase() === 'active not recruiting') {
+        content.recruitmentStatus = 'active, not recruiting';
+    }
 
     if (content.recruitmentStatus && content.recruitmentStatus.toLowerCase() === 'unknown status') {
         content.recruitmentStatus = 'unknown';
@@ -175,23 +170,24 @@ const processRecord = async ({
         consensusCity;
 
     for (const { city, country } of record.locations) {
-        if (consensusCountry) {
+        if (country && consensusCountry) {
             if (consensusCountry !== country.toLowerCase()) {
                 consensusCountry = null;
                 consensusCity = null;
                 break;
             }
-        } else {
+        } else if (country) {
             consensusCountry = country.toLowerCase();
         }
-        if (consensusCity !== undefined) {
+        if (city && consensusCity) {
             if (consensusCity !== city.toLowerCase()) {
                 consensusCity = null;
             }
-        } else {
+        } else if (city) {
             consensusCity = city.toLowerCase();
         }
     }
+
 
     if (consensusCountry) {
         content.country = consensusCountry;
@@ -264,7 +260,7 @@ const processRecord = async ({
 /**
  * Given some NCT ID, fetch and load the corresponding clinical trial information
  *
- * https://clinicaltrials.gov/ct2/show/NCT03478891?displayxml=true
+ * https://clinicaltrials.gov/api/v2/studies/NCT03478891
  */
 const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
     const url = `${BASE_URL}/${nctID}`;
@@ -290,15 +286,11 @@ const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
     } catch (err) {}
     logger.info(`loading: ${url}`);
     // fetch from the external api
-    const resp = await requestWithRetry({
-        headers: { Accept: 'application/xml' },
-        // json: true,
+    const result = await requestWithRetry({
+        json: true,
         method: 'GET',
-        qs: { displayxml: true },
         uri: url,
     });
-    // console.dir(resp);
-    const result = await parseXmlToJson(resp);
 
     // get or add the source
     if (!CACHE.source) {
@@ -351,6 +343,77 @@ const uploadFiles = async ({ conn, files }) => {
     logger.info(JSON.stringify(counts));
 };
 
+const upload = async ({ conn }) => {
+    const source = await conn.addSource(SOURCE_DEFN);
+
+
+
+    let trials = await requestWithRetry({
+        json: true,
+        method: 'GET',
+        qs: {
+            aggFilters: 'studyType:int',
+            countTotal: true,
+            pageSize: 1000,
+            'query.cond': 'cancer',
+        },
+        uri: BASE_URL,
+    });
+
+
+    logger.info(`loading ${trials.totalCount} records`);
+    const counts = {
+        error: 0, success: 0,
+    };
+
+    for (const trial of trials.studies) {
+        try {
+            const record = convertAPIRecord(trial);
+            await processRecord({
+                conn, record, source, upsert: true,
+            });
+            counts.success++;
+        } catch (err) {
+            counts.error++;
+            logger.error(`[${trial}] ${err}`);
+        }
+    }
+
+    let next = trials.nextPageToken;
+
+    while (next) {
+        trials = await requestWithRetry({
+            json: true,
+            method: 'GET',
+            qs: {
+                aggFilters: 'studyType:int',
+                countTotal: true,
+                pageSize: 1000,
+                pageToken: next,
+                'query.cond': 'cancer',
+            },
+            uri: BASE_URL,
+        });
+
+        for (const trial of trials.studies) {
+            try {
+                const record = convertAPIRecord(trial);
+                await processRecord({
+                    conn, record, source, upsert: true,
+                });
+                counts.success++;
+            } catch (err) {
+                counts.error++;
+                logger.error(`[${trial}] ${err}`);
+            }
+        }
+
+        next = trials.nextPageToken;
+    }
+    logger.info(JSON.stringify(counts));
+};
+
+
 
 /**
  * Parses clinical trial RSS Feed results for clinical trials in Canada and the US
@@ -400,6 +463,7 @@ module.exports = {
     convertAPIRecord,
     fetchAndLoadById,
     kb: true,
-    upload: loadNewTrials,
+    loadNewTrials,
+    upload,
     uploadFiles,
 };
