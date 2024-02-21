@@ -193,7 +193,10 @@ const uploadFile = async (opt) => {
     for (const row of rows) {
         [row.geneId, row.geneIdVersion] = row.geneIdVersion.toLowerCase().split('.');
         [row.transcriptId, row.transcriptIdVersion] = row.transcriptIdVersion.toLowerCase().split('.');
-        [row.proteinId, row.proteinIdVersion] = row.proteinIdVersion.toLowerCase().split('.');
+
+        if (row.proteinIdVersion !== '') {
+            [row.proteinId, row.proteinIdVersion] = row.proteinIdVersion.toLowerCase().split('.');
+        }
     }
 
     const source = await conn.addSource(SOURCE_DEFN);
@@ -292,10 +295,15 @@ const uploadFile = async (opt) => {
             sourceId: transcriptId,
             sourceIdVersion: transcriptIdVersion,
         });
-        const proteinVersion = generateCacheKey({
-            sourceId: proteinId,
-            sourceIdVersion: proteinIdVersion,
-        });
+
+        let proteinVersion;
+
+        if (proteinIdVersion !== '') {
+            proteinVersion = generateCacheKey({
+                sourceId: proteinId,
+                sourceIdVersion: proteinIdVersion,
+            });
+        }
 
         logger.info(`processing ${geneId}.${geneIdVersion || ''} (${index} / ${rows.length})`);
 
@@ -416,69 +424,70 @@ const uploadFile = async (opt) => {
 
 
         // protein
-        if (preLoadedProtein.has(proteinVersion)) {
-            visited[proteinVersion] = proteinList.find((protein) => `${protein.sourceId}-${protein.sourceIdVersion}` === proteinVersion);
-            visited[proteinId] = proteinList.find((protein) => `${protein.sourceId}` === proteinId && protein.sourceIdVersion === null);
-            skip++;
-        } else {
-            if (visited[proteinVersion] === undefined) {
-                visited[proteinVersion] = await conn.addRecord({
-                    content: {
-                        biotype: 'protein',
-                        source: rid(source),
-                        sourceId: record.proteinId,
-                        sourceIdVersion: record.proteinIdVersion,
-                    },
-                    existsOk: true,
-                    target: 'Feature',
-                });
-            }
-            if (visited[proteinId] === undefined) {
-                visited[proteinId] = await conn.addRecord({
-                    content: {
-                        biotype: 'protein',
-                        source: rid(source),
-                        sourceId: record.proteinId,
-                        sourceIdVersion: null,
-                    },
-                    existsOk: true,
-                    target: 'Feature',
-                });
-                // protein -> elementof -> transcript
+        if (proteinVersion) {
+            if (preLoadedProtein.has(proteinVersion)) {
+                visited[proteinVersion] = proteinList.find((protein) => `${protein.sourceId}-${protein.sourceIdVersion}` === proteinVersion);
+                visited[proteinId] = proteinList.find((protein) => `${protein.sourceId}` === proteinId && protein.sourceIdVersion === null);
+                skip++;
+            } else {
+                if (visited[proteinVersion] === undefined) {
+                    visited[proteinVersion] = await conn.addRecord({
+                        content: {
+                            biotype: 'protein',
+                            source: rid(source),
+                            sourceId: record.proteinId,
+                            sourceIdVersion: record.proteinIdVersion,
+                        },
+                        existsOk: true,
+                        target: 'Feature',
+                    });
+                }
+                if (visited[proteinId] === undefined) {
+                    visited[proteinId] = await conn.addRecord({
+                        content: {
+                            biotype: 'protein',
+                            source: rid(source),
+                            sourceId: record.proteinId,
+                            sourceIdVersion: null,
+                        },
+                        existsOk: true,
+                        target: 'Feature',
+                    });
+                    // protein -> elementof -> transcript
+                    await conn.addRecord({
+                        content: {
+                            in: rid(transcript), out: rid(visited[proteinId]), source: rid(source),
+                        },
+                        existsOk: true,
+                        fetchExisting: false,
+                        target: 'elementof',
+                    });
+                }
+
                 await conn.addRecord({
                     content: {
-                        in: rid(transcript), out: rid(visited[proteinId]), source: rid(source),
+                        in: rid(visited[proteinVersion]),
+                        out: rid(visited[proteinId]),
+                        source: rid(source),
                     },
                     existsOk: true,
                     fetchExisting: false,
-                    target: 'elementof',
+                    target: 'generalizationof',
                 });
             }
 
+            // versioned: protein -> elementof -> transcript
             await conn.addRecord({
                 content: {
-                    in: rid(visited[proteinVersion]),
-                    out: rid(visited[proteinId]),
+                    in: rid(versionedTranscript),
+                    out: rid(visited[proteinVersion]),
                     source: rid(source),
                 },
                 existsOk: true,
                 fetchExisting: false,
-                target: 'generalizationof',
+                target: 'elementof',
             });
         }
-
-        // versioned: protein -> elementof -> transcript
-        await conn.addRecord({
-            content: {
-                in: rid(versionedTranscript),
-                out: rid(visited[proteinVersion]),
-                source: rid(source),
-            },
-            existsOk: true,
-            fetchExisting: false,
-            target: 'elementof',
-        });
-
 
 
         // transcript -> crossreferenceof -> refseq
@@ -529,7 +538,10 @@ const uploadFile = async (opt) => {
                 logger.log('error', `failed cross-linking from ${gene.sourceid} to ${record.hgncId}`);
             }
         }
-        if (skip === 3) {
+        if (proteinVersion && skip === 3) {
+            counts.skip++;
+            continue;
+        } else if (proteinVersion === undefined && skip === 2) {
             counts.skip++;
             continue;
         }

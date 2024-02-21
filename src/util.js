@@ -220,7 +220,7 @@ const convertRowFields = (header, row) => {
     const result = {};
 
     for (const [name, col] of Object.entries(header)) {
-        result[name] = row[col];
+        result[name] = row[col] || '';
     }
     return result;
 };
