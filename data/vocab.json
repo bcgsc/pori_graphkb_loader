@@ -135,6 +135,15 @@
         "biological": {
             "name": "biological"
         },
+        "cancer gene": {
+            "description": "Tumourigenesis gene that is neither oncogenic nor tumour suppressive",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "tumourigenesis"
+                }
+            ]
+        },
         "conditional loss of function": {
             "description": "loss-of-function is predicted or assumed (by the literature) under specific conditions only",
             "links": [
@@ -213,7 +222,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "structural variant"
+                    "target": "mutation"
                 }
             ]
         },

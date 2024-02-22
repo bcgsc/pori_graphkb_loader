@@ -49,7 +49,7 @@ const processRecord = async ({ conn, record, source }) => {
 const upload = async ({ conn, url = BASE_URL }) => {
     logger.info('creating the source record');
     const source = rid(await conn.addSource(SOURCE_DEFN));
-    const limit = 1000;
+    const limit = 100;
     let page = `${url}/interactions?count=${limit}&page=1`;
     const counts = { error: 0, skip: 0, success: 0 };
 

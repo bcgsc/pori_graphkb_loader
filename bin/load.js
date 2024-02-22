@@ -24,6 +24,7 @@ const ontology = require('../src/ontology');
 const refseq = require('../src/refseq');
 const PMC4468049 = require('../src/PMC4468049');
 const PMC4232638 = require('../src/PMC4232638');
+const sources = require('../src/all_sources');
 const uberon = require('../src/uberon');
 const variants = require('../src/variants');
 const asco = require('../src/asco');
@@ -35,7 +36,7 @@ const cosmicResistance = require('../src/cosmic/resistance');
 const cosmicFusions = require('../src/cosmic/fusions');
 
 const API_MODULES = {
-    asco, clinicaltrialsgov, dgidb, docm, fdaApprovals, moa, oncotree,
+    asco, clinicaltrialsgov, dgidb, docm, fdaApprovals, moa, oncotree
 };
 
 const FILE_MODULES = {
@@ -53,6 +54,7 @@ const FILE_MODULES = {
     ncit,
     ncitFdaXref,
     ontology,
+    sources,
     refseq,
     uberon,
     variants,
@@ -123,12 +125,14 @@ let loaderFunction;
 if (input) {
     loaderFunction = ALL_MODULES[moduleName || 'civic'].uploadFile;
 } else {
+    debugger;
     loaderFunction = ALL_MODULES[moduleName || 'civic'].upload;
 }
 
 const loaderOptions = { ...options };
 
 if (input) {
+    debugger;
     if (moduleName === 'clinicaltrialsgov') {
         if (fs.lstatSync(input).isDirectory()) {
             const files = fs.readdirSync(input)
