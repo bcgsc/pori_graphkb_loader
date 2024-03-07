@@ -6,13 +6,12 @@
 
 const { loadDelimToJson, requestWithRetry, convertRowFields } = require('../util');
 const {
-    rid, orderPreferredOntologyTerms, generateCacheKey,
+    rid, generateCacheKey,
 } = require('../graphkb');
 const { logger } = require('../logging');
 const _hgnc = require('../hgnc');
 const _entrez = require('../entrez/gene');
-const _refseq = require('../entrez/refseq');
-const { ensembl: SOURCE_DEFN, refseq: refseqSourceDefn } = require('../sources');
+const { ensembl: SOURCE_DEFN } = require('../sources');
 
 const BASE_URL = 'http://rest.ensembl.org';
 
@@ -182,7 +181,6 @@ const uploadFile = async (opt) => {
         geneIdVersion: 'Gene stable ID version',
         hgncId: 'HGNC ID',
         proteinIdVersion: 'Protein stable ID version',
-        refseqId: 'RefSeq mRNA ID',
         transcriptIdVersion: 'Transcript stable ID version',
     };
     const { filename, conn } = opt;
@@ -198,12 +196,9 @@ const uploadFile = async (opt) => {
 
     const source = await conn.addSource(SOURCE_DEFN);
 
-    const refseqSource = await conn.addSource(refseqSourceDefn);
-
 
     const visited = {}; // cache genes to speed up adding records
     const hgncMissingRecords = new Set();
-    const refseqMissingRecords = new Set();
 
     logger.info('pre-load the entrez cache to avoid unecessary requests');
     await _entrez.preLoadCache(conn);
@@ -262,18 +257,6 @@ const uploadFile = async (opt) => {
         logger.info(`Protein ${protein} has already been loaded`);
     }
 
-
-    logger.info('pre-fetching refseq entries');
-    await _refseq.preLoadCache(conn);
-    const missingRefSeqIds = new Set();
-    rows.map(r => r.refseqId || '').forEach((id) => {
-        if (!_refseq.cacheHas(id) && id) {
-            missingRefSeqIds.add(id);
-        }
-    });
-
-    logger.info(`fetching ${missingRefSeqIds.size} missing refseq entries`);
-    await _refseq.fetchAndLoadByIds(conn, Array.from(missingRefSeqIds));
 
     logger.info(`processing ${rows.length} records`);
 
@@ -481,35 +464,6 @@ const uploadFile = async (opt) => {
 
 
 
-        // transcript -> crossreferenceof -> refseq
-        if (record.refseqId) {
-            skip--;
-
-            try {
-                const refseq = await conn.getUniqueRecordBy({
-                    filters: {
-                        AND: [
-                            { source: rid(refseqSource) },
-                            { sourceId: record.refseqId },
-                            { sourceIdVersion: null },
-                        ],
-                    },
-                    sort: orderPreferredOntologyTerms,
-                    target: 'Feature',
-                });
-                await conn.addRecord({
-                    content: {
-                        in: rid(refseq), out: rid(transcript), source: rid(source),
-                    },
-                    existsOk: true,
-                    fetchExisting: false,
-                    target: 'crossreferenceof',
-                });
-            } catch (err) {
-                logger.log('error', `failed cross-linking from ${record.transcriptId} to ${record.refseqId}`);
-                refseqMissingRecords.add(record.refseqId);
-            }
-        }
         // gene -> crossreferenceof -> hgnc
         if (record.hgncId && newGene) {
             skip--;
@@ -539,9 +493,7 @@ const uploadFile = async (opt) => {
     if (hgncMissingRecords.size) {
         logger.warn(`Unable to retrieve ${hgncMissingRecords.size} hgnc records for linking`);
     }
-    if (refseqMissingRecords.size) {
-        logger.warn(`Unable to retrieve ${refseqMissingRecords.size} refseq records for linking`);
-    }
+
     logger.info(JSON.stringify(counts));
 };
 
