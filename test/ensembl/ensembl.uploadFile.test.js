@@ -107,7 +107,6 @@ describe('uploadFile in Ensembl loader', () => {
         {
             '@rid': '#138:4',
             edges: [
-                { class: 'crossreferenceof', in: '#137:0' },
                 { class: 'elementof', in: '#139:0' },
                 { class: 'generalizationof', in: '#137:4' },
             ],
@@ -272,14 +271,6 @@ describe('uploadFile in Ensembl loader', () => {
                 { class: 'aliasof', in: '#138:1' },
             ],
             feature: { biotype: 'gene', name: 'XRCC11', source: 'hgnc' },
-        },
-        {
-            '@rid': '#137:0',
-            edges: [],
-            feature: {
-                biotype: 'transcript', source: 'refseq', sourceId: 'NM_000059', sourceIdVersion: null,
-            },
-
         },
     ].map(el => Object.assign(el, {
 
