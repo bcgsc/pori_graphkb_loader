@@ -22,7 +22,6 @@ const CACHE = {};
 
 const ajv = new Ajv();
 const validateAPITrialRecord = ajv.compile(apiSpec);
-const validateRssFeed = ajv.compile(rssSpec);
 
 
 /**
