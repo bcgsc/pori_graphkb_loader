@@ -2,7 +2,6 @@
  * Module to import clinical trials data exported from clinicaltrials.gov
  * @module importer/clinicaltrialsgov
  */
-const path = require('path');
 const Ajv = require('ajv');
 
 const {
@@ -15,7 +14,7 @@ const {
 } = require('../graphkb');
 const { logger } = require('../logging');
 const { clinicalTrialsGov: SOURCE_DEFN } = require('../sources');
-const { api: apiSpec, rss: rssSpec } = require('./specs.json');
+const { api: apiSpec } = require('./specs.json');
 
 const BASE_URL = 'https://clinicaltrials.gov/api/v2/studies';
 const CACHE = {};
@@ -294,9 +293,7 @@ const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
     return trial;
 };
 
-const formatDate  = (date) => {
-    return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
-}
+const formatDate = (date) => `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
 
 /**
  * Loading all clinical trials related to cancer
@@ -308,7 +305,7 @@ const upload = async ({ conn, maxRecords, days }) => {
 
     if (days) {
         const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
-        options = {'query.term': `AREA[LastUpdatePostDate]RANGE[${formatDate(startDate)},MAX]`};
+        options = { 'query.term': `AREA[LastUpdatePostDate]RANGE[${formatDate(startDate)},MAX]` };
         logger.info(`loading records updated from ${formatDate(startDate)} to ${formatDate(new Date())}`);
     }
 
@@ -319,9 +316,9 @@ const upload = async ({ conn, maxRecords, days }) => {
             aggFilters: 'studyType:int',
             countTotal: true,
             pageSize: 1000,
-            sort: 'LastUpdatePostDate',
             'query.cond': 'cancer',
-            ...options
+            sort: 'LastUpdatePostDate',
+            ...options,
         },
         uri: BASE_URL,
     });
@@ -334,7 +331,7 @@ const upload = async ({ conn, maxRecords, days }) => {
 
     let processCount = 1,
         total;
-        
+
     if (maxRecords) {
         total = maxRecords;
     } else {
@@ -345,6 +342,7 @@ const upload = async ({ conn, maxRecords, days }) => {
         if (processCount > total) {
             break;
         }
+
         try {
             const record = convertAPIRecord(trial);
             logger.info(`processing (${processCount++}/${total}) record: ${record.sourceId}`);
@@ -372,9 +370,9 @@ const upload = async ({ conn, maxRecords, days }) => {
                 countTotal: true,
                 pageSize: 1000,
                 pageToken: next,
-                sort: 'LastUpdatePostDate',
                 'query.cond': 'cancer',
-                ...options
+                sort: 'LastUpdatePostDate',
+                ...options,
             },
             uri: BASE_URL,
         });
@@ -383,6 +381,7 @@ const upload = async ({ conn, maxRecords, days }) => {
             if (processCount > total) {
                 break;
             }
+
             try {
                 const record = convertAPIRecord(trial);
                 logger.info(`processing (${processCount++}/${total}) record: ${record.sourceId}`);
