@@ -1,21 +1,11 @@
 /**
  * Module to import clinical trials data exported from clinicaltrials.gov
- *
- * 1. Perform a search on their site, for example https://clinicaltrials.gov/ct2/results?cond=Cancer&cntry=CA&Search=Apply&recrs=b&recrs=a&age_v=&gndr=&type=Intr&rslt=
- * 2. Click their Download link/Button
- * 3. Adjust the settings in the Pop up dialog (Include all studies, all columns, and export as XML)
- * 4. Download and save the file
- * 5. Upload the file to GraphKB using this module
- *
  * @module importer/clinicaltrialsgov
  */
 const path = require('path');
 const Ajv = require('ajv');
-const fs = require('fs');
 
 const {
-    loadXmlToJson,
-    parseXmlToJson,
     checkSpec,
     requestWithRetry,
 } = require('../util');
@@ -28,7 +18,6 @@ const { clinicalTrialsGov: SOURCE_DEFN } = require('../sources');
 const { api: apiSpec, rss: rssSpec } = require('./specs.json');
 
 const BASE_URL = 'https://clinicaltrials.gov/api/v2/studies';
-const RSS_URL = 'https://clinicaltrials.gov/ct2/results/rss.xml';
 const CACHE = {};
 
 const ajv = new Ajv();
@@ -124,11 +113,11 @@ const processPhases = (phaseList) => {
 
 
 /**
- * Process the XML trial record. Attempt to link the drug and/or disease information
+ * Process the record. Attempt to link the drug and/or disease information
  *
  * @param {object} opt
  * @param {ApiConnection} opt.conn the GraphKB connection object
- * @param {object} opt.record the XML record (pre-parsed into JSON)
+ * @param {object} opt.record the record (pre-parsed into JSON)
  * @param {object|string} opt.source the 'source' record for clinicaltrials.gov
  *
  * @todo: handle updates to existing clinical trial records
@@ -306,47 +295,23 @@ const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
     return trial;
 };
 
+const formatDate  = (date) => {
+    return `${date.getFullYear()}-${date.getMonth()+1}-${date.getDate()}`;
+}
+
 /**
- * Uploads a file exported from clinicaltrials.gov as XML
- * @param {object} opt
- * @param {ApiConnection} opt.conn the GraphKB connection object
- * @param {string} opt.filename the path to the XML export
+ * Loading all clinical trials related to cancer
  */
-const uploadFiles = async ({ conn, files }) => {
+const upload = async ({ conn, maxRecords, days }) => {
     const source = await conn.addSource(SOURCE_DEFN);
 
-    logger.info(`loading ${files.length} records`);
-    const counts = {
-        error: 0, success: 0,
-    };
+    let options = {};
 
-    for (const filepath of files) {
-        const filename = path.basename(filepath);
-
-        if (!filename.endsWith('.xml')) {
-            logger.warn(`ignoring non-xml file: ${filename}`);
-            continue;
-        }
-
-        try {
-            const xml = await loadXmlToJson(filepath);
-            const record = convertAPIRecord(xml);
-            await processRecord({
-                conn, record, source, upsert: true,
-            });
-            counts.success++;
-        } catch (err) {
-            logger.error(`[${filename}] ${err}`);
-            counts.error++;
-        }
+    if (days) {
+        const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+        options = {'query.term': `AREA[LastUpdatePostDate]RANGE[${formatDate(startDate)},MAX]`};
+        logger.info(`loading records updated from ${formatDate(startDate)} to ${formatDate(new Date())}`);
     }
-    logger.info(JSON.stringify(counts));
-};
-
-const upload = async ({ conn }) => {
-    const source = await conn.addSource(SOURCE_DEFN);
-
-
 
     let trials = await requestWithRetry({
         json: true,
@@ -355,7 +320,9 @@ const upload = async ({ conn }) => {
             aggFilters: 'studyType:int',
             countTotal: true,
             pageSize: 1000,
+            sort: 'LastUpdatePostDate',
             'query.cond': 'cancer',
+            ...options
         },
         uri: BASE_URL,
     });
@@ -366,9 +333,22 @@ const upload = async ({ conn }) => {
         error: 0, success: 0,
     };
 
+    let processCount = 1,
+        total;
+        
+    if (maxRecords) {
+        total = maxRecords;
+    } else {
+        total = trials.totalCount;
+    }
+
     for (const trial of trials.studies) {
+        if (processCount > total) {
+            break;
+        }
         try {
             const record = convertAPIRecord(trial);
+            logger.info(`processing (${processCount++}/${total}) record: ${record.sourceId}`);
             await processRecord({
                 conn, record, source, upsert: true,
             });
@@ -382,6 +362,9 @@ const upload = async ({ conn }) => {
     let next = trials.nextPageToken;
 
     while (next) {
+        if (processCount > total) {
+            break;
+        }
         trials = await requestWithRetry({
             json: true,
             method: 'GET',
@@ -390,14 +373,20 @@ const upload = async ({ conn }) => {
                 countTotal: true,
                 pageSize: 1000,
                 pageToken: next,
+                sort: 'LastUpdatePostDate',
                 'query.cond': 'cancer',
+                ...options
             },
             uri: BASE_URL,
         });
 
         for (const trial of trials.studies) {
+            if (processCount > total) {
+                break;
+            }
             try {
                 const record = convertAPIRecord(trial);
+                logger.info(`processing (${processCount++}/${total}) record: ${record.sourceId}`);
                 await processRecord({
                     conn, record, source, upsert: true,
                 });
@@ -413,57 +402,10 @@ const upload = async ({ conn }) => {
     logger.info(JSON.stringify(counts));
 };
 
-
-
-/**
- * Parses clinical trial RSS Feed results for clinical trials in Canada and the US
- * which were updated in the last 2 weeks
- */
-const loadNewTrials = async ({ conn }) => {
-    // ping them both to get the list of recently updated trials
-    const recentlyUpdatedTrials = [];
-
-    const resp = await requestWithRetry({
-        method: 'GET',
-        qs: {
-            cond: 'cancer', // cancer related trials
-            count: 10000,
-            lup_d: 14,
-            rcv_d: '',
-            recrs: 'abdef',
-            sel_rss: 'mod14', // mod14 for last 2 weeks updated
-            type: 'Intr', // interventional only
-        },
-        uri: RSS_URL,
-    });
-    const xml = await parseXmlToJson(resp);
-    fs.writeFileSync('output.json', JSON.stringify(xml, null, 2));
-    checkSpec(validateRssFeed, xml);
-    recentlyUpdatedTrials.push(
-        ...xml.rss.channel[0].item.map(item => item.guid[0]._),
-    );
-
-    logger.info(`loading ${recentlyUpdatedTrials.length} recently updated trials`);
-    const counts = { error: 0, success: 0 };
-
-    for (const trialId of recentlyUpdatedTrials) {
-        try {
-            await fetchAndLoadById(conn, trialId, { upsert: true });
-            counts.success++;
-        } catch (err) {
-            counts.error++;
-            logger.error(`[${trialId}] ${err}`);
-        }
-    }
-    logger.info(JSON.stringify(counts));
-};
-
 module.exports = {
     SOURCE_DEFN,
     convertAPIRecord,
     fetchAndLoadById,
     kb: true,
-    loadNewTrials,
     upload,
-    uploadFiles,
 };

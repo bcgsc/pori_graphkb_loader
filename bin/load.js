@@ -36,7 +36,7 @@ const cosmicResistance = require('../src/cosmic/resistance');
 const cosmicFusions = require('../src/cosmic/fusions');
 
 const API_MODULES = {
-    asco, clinicaltrialsgov, dgidb, docm, fdaApprovals, moa, oncotree
+    asco, dgidb, docm, fdaApprovals, moa, oncotree
 };
 
 const FILE_MODULES = {
@@ -45,7 +45,6 @@ const FILE_MODULES = {
     cancerhotspots,
     cgi,
     cgl,
-    clinicaltrialsgov,
     diseaseOntology,
     drugbank,
     ensembl,
@@ -70,11 +69,12 @@ const ALL_MODULES = {
     ...FILE_MODULES,
     ...COSMIC_MODULES,
     civic,
+    clinicaltrialsgov,
 };
 
 const parser = createOptionsMenu();
 
-const subparsers = parser.add_subparsers({ help: 'Sub-command help', required: true });
+const subparsers = parser.add_subparsers({ help: 'Sub-command help', required: true, dest: 'subparser_name' });
 const apiParser = subparsers.add_parser('api');
 apiParser.add_argument('module', {
     choices: Object.keys(API_MODULES),
@@ -103,6 +103,11 @@ civicParser.add_argument('--trustedCurators', {
     nargs: '+',
 });
 
+const clinicaltrialsgovParser = subparsers.add_parser('clinicaltrialsgov');
+clinicaltrialsgovParser.add_argument('--days', {
+    help: 'Load new and existing studies added or modified (last update posted) in the last # of days',
+    type: Number,
+});
 
 const cosmicParser = subparsers.add_parser('cosmic');
 cosmicParser.add_argument('module', {
@@ -118,36 +123,22 @@ cosmicParser.add_argument('classification', {
     type: fileExists,
 });
 
-const { module: moduleName, input, ...options } = parser.parse_args();
+const { subparser_name, moduleName, input, ...options } = parser.parse_args();
 
 let loaderFunction;
 
 if (input) {
-    loaderFunction = ALL_MODULES[moduleName || 'civic'].uploadFile;
+    loaderFunction = ALL_MODULES[moduleName || subparser_name].uploadFile;
 } else {
     debugger;
-    loaderFunction = ALL_MODULES[moduleName || 'civic'].upload;
+    loaderFunction = ALL_MODULES[moduleName || subparser_name].upload;
 }
 
 const loaderOptions = { ...options };
 
 if (input) {
     debugger;
-    if (moduleName === 'clinicaltrialsgov') {
-        if (fs.lstatSync(input).isDirectory()) {
-            const files = fs.readdirSync(input)
-                .map(filename => path.join(input, filename));
-            loaderOptions.files = files;
-        } else {
-            loaderOptions.files = [input];
-        }
-    } else {
-        loaderOptions.filename = input;
-
-        if (options.module === 'cosmic') {
-            loaderOptions.classification = options.classification;
-        }
-    }
+    loaderOptions.filename = input;
 }
 
 runLoader(options, loaderFunction, loaderOptions)
