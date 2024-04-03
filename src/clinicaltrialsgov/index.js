@@ -14,13 +14,13 @@ const {
 } = require('../graphkb');
 const { logger } = require('../logging');
 const { clinicalTrialsGov: SOURCE_DEFN } = require('../sources');
-const { api: apiSpec } = require('./specs.json');
+const { studies: studiesSpecs } = require('./specs.json');
 
 const BASE_URL = 'https://clinicaltrials.gov/api/v2/studies';
 const CACHE = {};
 
 const ajv = new Ajv();
-const validateAPITrialRecord = ajv.compile(apiSpec);
+const validateAPITrialRecord = ajv.compile(studiesSpecs);
 
 
 /**
@@ -309,73 +309,40 @@ const upload = async ({ conn, maxRecords, days }) => {
         logger.info(`loading records updated from ${formatDate(startDate)} to ${formatDate(new Date())}`);
     }
 
-    let trials = await requestWithRetry({
-        json: true,
-        method: 'GET',
-        qs: {
-            aggFilters: 'studyType:int',
-            countTotal: true,
-            pageSize: 1000,
-            'query.cond': 'cancer',
-            sort: 'LastUpdatePostDate',
-            ...options,
-        },
-        uri: BASE_URL,
-    });
-
-
-    logger.info(`loading ${trials.totalCount} records`);
     const counts = {
         error: 0, success: 0,
     };
 
     let processCount = 1,
-        total;
-
-    if (maxRecords) {
+        next = true,
+        nextToken,
         total = maxRecords;
-    } else {
-        total = trials.totalCount;
-    }
-
-    for (const trial of trials.studies) {
-        if (processCount > total) {
-            break;
-        }
-
-        try {
-            const record = convertAPIRecord(trial);
-            logger.info(`processing (${processCount++}/${total}) record: ${record.sourceId}`);
-            await processRecord({
-                conn, record, source, upsert: true,
-            });
-            counts.success++;
-        } catch (err) {
-            counts.error++;
-            logger.error(`[${trial}] ${err}`);
-        }
-    }
-
-    let next = trials.nextPageToken;
 
     while (next) {
-        if (processCount > total) {
-            break;
+        if (nextToken) {
+            options = { pageToken: nextToken, ...options };
         }
-        trials = await requestWithRetry({
+        const trials = await requestWithRetry({
             json: true,
             method: 'GET',
             qs: {
                 aggFilters: 'studyType:int',
                 countTotal: true,
                 pageSize: 1000,
-                pageToken: next,
                 'query.cond': 'cancer',
                 sort: 'LastUpdatePostDate',
                 ...options,
             },
             uri: BASE_URL,
         });
+
+        if (!total) {
+            total = trials.totalCount;
+        }
+
+        if (processCount > total) {
+            break;
+        }
 
         for (const trial of trials.studies) {
             if (processCount > total) {
@@ -395,7 +362,8 @@ const upload = async ({ conn, maxRecords, days }) => {
             }
         }
 
-        next = trials.nextPageToken;
+        nextToken = trials.nextPageToken;
+        next = nextToken !== undefined;
     }
     logger.info(JSON.stringify(counts));
 };

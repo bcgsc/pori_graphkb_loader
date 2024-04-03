@@ -36,7 +36,7 @@ const cosmicResistance = require('../src/cosmic/resistance');
 const cosmicFusions = require('../src/cosmic/fusions');
 
 const API_MODULES = {
-    asco, dgidb, docm, fdaApprovals, moa, oncotree
+    asco, dgidb, docm, fdaApprovals, moa, oncotree,
 };
 
 const FILE_MODULES = {
@@ -53,8 +53,8 @@ const FILE_MODULES = {
     ncit,
     ncitFdaXref,
     ontology,
-    sources,
     refseq,
+    sources,
     uberon,
     variants,
 };
@@ -74,7 +74,7 @@ const ALL_MODULES = {
 
 const parser = createOptionsMenu();
 
-const subparsers = parser.add_subparsers({ help: 'Sub-command help', required: true, dest: 'subparser_name' });
+const subparsers = parser.add_subparsers({ dest: 'subparser_name', help: 'Sub-command help', required: true });
 const apiParser = subparsers.add_parser('api');
 apiParser.add_argument('module', {
     choices: Object.keys(API_MODULES),
@@ -123,7 +123,9 @@ cosmicParser.add_argument('classification', {
     type: fileExists,
 });
 
-const { subparser_name, moduleName, input, ...options } = parser.parse_args();
+const {
+    subparser_name, module: moduleName, input, ...options
+} = parser.parse_args();
 
 let loaderFunction;
 
