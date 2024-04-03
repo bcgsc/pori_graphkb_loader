@@ -351,7 +351,8 @@ const upload = async ({ conn, maxRecords, days }) => {
 
             try {
                 const record = convertAPIRecord(trial);
-                logger.info(`processing (${processCount++}/${total}) record: ${record.sourceId}`);
+                logger.info(`processing (${processCount}/${total}) record: ${record.sourceId}`);
+                processCount++;
                 await processRecord({
                     conn, record, source, upsert: true,
                 });
