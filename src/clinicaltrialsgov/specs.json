@@ -1,5 +1,5 @@
 {
-    "api": {
+    "studies": {
         "properties":{
             "protocolSection":{
                 "properties":{
@@ -146,63 +146,6 @@
         },
         "required":[
             "protocolSection"
-        ],
-        "type": "object"
-    },
-    "rss": {
-        "properties": {
-            "rss": {
-                "properties": {
-                    "channel": {
-                        "items": {
-                            "properties": {
-                                "item": {
-                                    "items": {
-                                        "properties": {
-                                            "guid": {
-                                                "items": {
-                                                    "properties": {
-                                                        "_": {
-                                                            "pattern": "^NCT\\d+$",
-                                                            "type": "string"
-                                                        }
-                                                    },
-                                                    "required": [
-                                                        "_"
-                                                    ],
-                                                    "type": "object"
-                                                },
-                                                "maxItems": 1,
-                                                "minItems": 1,
-                                                "type": "array"
-                                            }
-                                        },
-                                        "required": [
-                                            "guid"
-                                        ],
-                                        "type": "object"
-                                    },
-                                    "type": "array"
-                                }
-                            },
-                            "required": [
-                                "item"
-                            ],
-                            "type": "object"
-                        },
-                        "maxItems": 1,
-                        "minItems": 1,
-                        "type": "array"
-                    }
-                },
-                "required": [
-                    "channel"
-                ],
-                "type": "object"
-            }
-        },
-        "required": [
-            "rss"
         ],
         "type": "object"
     }
