@@ -167,14 +167,6 @@ rule download_cancerhotspots:
         ''')
 
 
-rule download_clinicaltrialsgov:
-    output: directory(f'{DATA_DIR}/clinicaltrialsgov')
-    shell: dedent(f'''\
-        mkdir -p {DATA_DIR}/clinicaltrialsgov
-        cd {DATA_DIR}/clinicaltrialsgov
-        wget https://clinicaltrials.gov/AllPublicXML.zip
-        unzip AllPublicXML.zip''')
-
 
 rule download_cosmic_resistance:
     output: f'{DATA_DIR}/cosmic/CosmicResistanceMutations.tsv'
@@ -413,12 +405,11 @@ rule load_approvals:
 rule load_clinicaltrialsgov:
     input: expand(rules.load_local.output, local=['vocab']),
         rules.all_diseases.output,
-        rules.all_drugs.output,
-        data=rules.download_clinicaltrialsgov.output
+        rules.all_drugs.output
     container: CONTAINER
     log: f'{LOGS_DIR}/clinicaltrialsgov.logs.txt'
     output: f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'
-    shell: LOADER_COMMAND + ' api clinicaltrialsgov &> {log}; cp {log} {output}'
+    shell: LOADER_COMMAND + ' clinicaltrialsgov &> {log}; cp {log} {output}'
 
 
 rule load_cosmic_resistance:
