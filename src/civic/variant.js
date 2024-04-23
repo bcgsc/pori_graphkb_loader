@@ -341,7 +341,7 @@ const processVariantRecord = async (conn, civicVariantRecord, feature) => {
         // TODO: Deal with __typename === 'Factor'
         // No actual case as April 22nd, 2024
         throw new NotImplementedError(
-            `unable to process variant's feature of type Factor`,
+            'unable to process variant\'s feature of type Factor',
         );
     }
 
