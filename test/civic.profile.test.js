@@ -70,12 +70,12 @@ describe('MolecularProfile._end()', () => {
 describe('MolecularProfile._not()', () => {
     test('check for presence of NOT operator in expression', () => {
         expect(MolecularProfile()._not([
-            { entrezId: 9 }, { id: 1 }, { text: 'AND' }, { text: 'NOT' }, { text: '(' },
-            { entrezId: 9 }, { id: 2 }, { text: 'OR' }, { entrezId: 9 }, { id: 3 }, { text: ')' },
+            { __typename: 'Feature' }, { id: 1 }, { text: 'AND' }, { text: 'NOT' }, { text: '(' },
+            { __typename: 'Feature' }, { id: 2 }, { text: 'OR' }, { __typename: 'Feature' }, { id: 3 }, { text: ')' },
         ])).toBe(true);
         expect(MolecularProfile()._not([
-            { entrezId: 9 }, { id: 1 }, { text: 'AND' }, { text: '(' }, { entrezId: 9 },
-            { id: 2 }, { text: 'OR' }, { entrezId: 9 }, { id: 3 }, { text: ')' },
+            { __typename: 'Feature' }, { id: 1 }, { text: 'AND' }, { text: '(' }, { __typename: 'Feature' },
+            { id: 2 }, { text: 'OR' }, { __typename: 'Feature' }, { id: 3 }, { text: ')' },
         ])).toBe(false);
     });
 });
@@ -187,7 +187,7 @@ describe('MolecularProfile._variants()', () => {
 describe('MolecularProfile.process()', () => {
     test('gene infos not interfering', () => {
         expect(MolecularProfile({
-            parsedName: [{ entrezId: 9 }, { id: 1 }],
+            parsedName: [{ __typename: 'Feature' }, { id: 1 }],
             variants: [{ id: 1, name: 'a1' }],
         }).process().conditions).toEqual([[{ id: 1, name: 'a1' }]]);
     });
@@ -215,8 +215,8 @@ describe('MolecularProfile.process()', () => {
         const molecularProfile = {
             id: 1,
             parsedName: [
-                { entrezId: 9 }, { id: 1 }, { text: 'AND' }, { text: 'NOT' }, { text: '(' },
-                { entrezId: 9 }, { id: 2 }, { text: 'OR' }, { entrezId: 9 }, { id: 3 }, { text: ')' },
+                { __typename: 'Feature' }, { id: 1 }, { text: 'AND' }, { text: 'NOT' }, { text: '(' },
+                { __typename: 'Feature' }, { id: 2 }, { text: 'OR' }, { __typename: 'Feature' }, { id: 3 }, { text: ')' },
             ],
         };
         expect(() => MolecularProfile(molecularProfile).process()).toThrow(
