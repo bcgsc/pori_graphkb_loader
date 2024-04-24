@@ -301,7 +301,8 @@ const formatDate = (date) => `${date.getFullYear()}-${date.getMonth() + 1}-${dat
 const upload = async ({ conn, maxRecords, days }) => {
     const source = await conn.addSource(SOURCE_DEFN);
 
-    let options = {};
+    let options,
+        optionsWithToken;
 
     if (days) {
         const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
@@ -320,7 +321,9 @@ const upload = async ({ conn, maxRecords, days }) => {
 
     while (next) {
         if (nextToken) {
-            options = { pageToken: nextToken, ...options };
+            optionsWithToken = { pageToken: nextToken, ...options };
+        } else {
+            optionsWithToken = options;
         }
         const trials = await requestWithRetry({
             json: true,
@@ -331,7 +334,7 @@ const upload = async ({ conn, maxRecords, days }) => {
                 pageSize: 1000,
                 'query.cond': 'cancer',
                 sort: 'LastUpdatePostDate',
-                ...options,
+                ...optionsWithToken,
             },
             uri: BASE_URL,
         });

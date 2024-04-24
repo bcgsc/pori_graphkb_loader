@@ -226,8 +226,8 @@ const MolecularProfile = (molecularProfile) => ({
                 `unable to process molecular profile with NOT operator (${this.profile.id || ''})`,
             );
         }
-        // Filters out unwanted gene's info from expression
-        const filteredParsedName = parsedName.filter(el => !el.entrezId);
+        // Filters out unwanted Feature info from expression
+        const filteredParsedName = parsedName.filter(el => el.__typename !== 'Feature');
 
         // Parse expression into conditions
         this.conditions = this._parse(filteredParsedName);
