@@ -26,8 +26,6 @@ const { EvidenceItem: evidenceSpec } = require('./specs.json');
 
 class NotImplementedError extends ErrorMixin { }
 
-const ajv = new Ajv();
-
 const BASE_URL = 'https://civicdb.org/api/graphql';
 
 /**
@@ -50,6 +48,8 @@ const VOCAB = {
 
 const EVIDENCE_LEVEL_CACHE = {}; // avoid unecessary requests by caching the evidence levels
 
+// Spec compiler
+const ajv = new Ajv();
 const validateEvidenceSpec = ajv.compile(evidenceSpec);
 
 
@@ -213,11 +213,28 @@ const processEvidenceRecord = async (opt) => {
         conn, rawRecord, sources, variantsCache, oneToOne = false,
     } = opt;
 
-    const [level, relevance, [feature]] = await Promise.all([
+    // Relevance & EvidenceLevel
+    const [level, relevance] = await Promise.all([
         getEvidenceLevel(opt),
         getRelevance(opt),
-        _entrezGene.fetchAndLoadByIds(conn, [rawRecord.variant.gene.entrezId]),
     ]);
+
+    // Variant's Feature
+    let feature;
+    const civicFeature = rawRecord.variant.feature.featureInstance;
+
+    if (civicFeature.__typename === 'Gene') {
+        [feature] = await _entrezGene.fetchAndLoadByIds(conn, [civicFeature.entrezId]);
+    } else if (civicFeature.__typename === 'Factor') {
+        // TODO: Deal with __typename === 'Factor'
+        // No actual case as April 22nd, 2024
+        throw new NotImplementedError(
+            'unable to process variant\'s feature of type Factor',
+        );
+    }
+
+
+    // Variant
     let variants;
 
     if (variantsCache.records[rawRecord.variant.id]) {
@@ -235,7 +252,6 @@ const processEvidenceRecord = async (opt) => {
             throw err;
         }
     }
-
 
     // get the disease by doid
     let disease;
@@ -382,6 +398,7 @@ const processEvidenceRecord = async (opt) => {
         // update the existing record
         return conn.updateRecord('Statement', rid(original), content);
     }
+
     // create a new record
     return conn.addRecord({
         content,
@@ -486,6 +503,7 @@ const downloadEvidenceRecords = async (url, trustedCurators) => {
         }
         records.push(record);
     }
+    logger.info(`${records.length}/${evidenceItems.length} evidenceItem records successfully validated with the specs`);
     return { counts, errorList, records };
 };
 
@@ -604,7 +622,7 @@ const upload = async ({
             record.conditions = Mp.process().conditions;
         } catch (err) {
             logger.error(`evidence (${record.id}) ${err}`);
-            counts.skip += 1;
+            counts.skip++;
             continue;
         }
 

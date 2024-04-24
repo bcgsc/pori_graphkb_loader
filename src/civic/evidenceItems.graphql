@@ -72,15 +72,21 @@ query evidenceItems(
         id
         name
         parsedName {
-          ... on Gene { entrezId }
+          __typename
           ... on MolecularProfileTextSegment { text }
           ... on Variant { id }
         }
         rawName
         variants {
-          gene {
-            entrezId
-            name
+          feature {
+            featureInstance {
+              __typename
+              ... on Factor { id }
+              ... on Gene {
+                entrezId
+                name
+              }
+            }
           }
           id
           name

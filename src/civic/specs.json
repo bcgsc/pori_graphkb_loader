@@ -84,32 +84,21 @@
                     },
                     "parsedName": {
                         "items": {
-                            "anyOf": [
-                                {
-                                    "properties": {
-                                        "entrezId": {
-                                            "type": "number"
-                                        }
-                                    },
-                                    "type": "object"
+                            "properties": {
+                                "__typename": {
+                                    "type": "string"
                                 },
-                                {
-                                    "properties": {
-                                        "id": {
-                                            "type": "number"
-                                        }
-                                    },
-                                    "type": "object"
+                                "id": {
+                                    "type": "number"
                                 },
-                                {
-                                    "properties": {
-                                        "text": {
-                                            "type": "string"
-                                        }
-                                    },
-                                    "type": "object"
+                                "text": {
+                                    "type": "string"
                                 }
-                            ]
+                            },
+                            "required":[
+                                "__typename"
+                            ],
+                            "type": "object"
                         },
                         "type": "array"
                     },
@@ -122,39 +111,45 @@
                     "variants": {
                         "items": {
                             "properties": {
-                                "gene": {
+                                "feature": {
                                     "properties": {
-                                        "entrezId": {
-                                            "type": [
-                                                "null",
-                                                "number"
-                                            ]
-                                        },
-                                        "name": {
-                                            "type": [
-                                                "null",
-                                                "string"
-                                            ]
+                                        "featureInstance": {
+                                            "properties": {
+                                                "__typename": {
+                                                    "type": "string"
+                                                },
+                                                "entrezId": {
+                                                    "type": "number"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required":[
+                                                "__typename",
+                                                "entrezId",
+                                                "name"
+                                            ],
+                                            "type": "object"
                                         }
                                     },
-                                    "type": [
-                                        "null",
-                                        "object"
-                                    ]
+                                    "required": [
+                                        "featureInstance"
+                                    ],
+                                    "type": "object"
                                 },
                                 "id": {
-                                    "type": [
-                                        "null",
-                                        "number"
-                                    ]
+                                    "type": "number"
                                 },
                                 "name": {
-                                    "type": [
-                                        "null",
-                                        "string"
-                                    ]
+                                    "type": "string"
                                 }
                             },
+                            "required": [
+                                "feature",
+                                "id",
+                                "name"
+                            ],
                             "type": [
                                 "null",
                                 "object"
@@ -166,10 +161,14 @@
                         ]
                     }
                 },
-                "type": [
-                    "null",
-                    "object"
-                ]
+                "required": [
+                    "id",
+                    "name",
+                    "parsedName",
+                    "rawName",
+                    "variants"
+                ],
+                "type": "object"
             },
             "phenotypes": {
                 "items": {
@@ -317,9 +316,22 @@
                 ]
             }
         },
-        "type": [
-            "null",
-            "object"
-        ]
+        "required":[
+            "description",
+            "disease",
+            "evidenceDirection",
+            "evidenceLevel",
+            "evidenceRating",
+            "evidenceType",
+            "id",
+            "molecularProfile",
+            "phenotypes",
+            "significance",
+            "source",
+            "status",
+            "therapies",
+            "therapyInteractionType"
+        ],
+        "type": "object"
     }
 }

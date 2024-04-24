@@ -1,15 +1,11 @@
 const kbParser = require('@bcgsc-pori/graphkb-parser');
-
-const { error: { ParsingError } } = kbParser;
-const {
-    rid,
-} = require('../graphkb');
+const { rid } = require('../graphkb');
 const _entrezGene = require('../entrez/gene');
 const _snp = require('../entrez/snp');
+const { civic: SOURCE_DEFN } = require('../sources');
 
-const {
-    civic: SOURCE_DEFN,
-} = require('../sources');
+const { error: { ErrorMixin, ParsingError } } = kbParser;
+class NotImplementedError extends ErrorMixin { }
 
 
 // based on discussion with cam here: https://www.bcgsc.ca/jira/browse/KBDEV-844
@@ -229,8 +225,8 @@ const normalizeVariantRecord = ({
 };
 
 /**
- * Given some normalized variant record from CIViC load into graphkb, create links and
- * return the record
+ * Given some normalized variant record from CIViC,
+ * load into graphkb, create links and return the record
  *
  * @param {ApiConnection} conn the connection to GraphKB
  * @param {Object} normalizedVariant the normalized variant record
@@ -328,11 +324,30 @@ const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
 
 /**
  * Given some variant record and a feature, process the variant and return a GraphKB equivalent
+ *
+ * @param {ApiConnection} conn the connection to GraphKB
+ * @param {Object} civicVariantRecord the raw variant record from CIViC
+ * @param {Object} feature the gene feature already grabbed from GraphKB
  */
 const processVariantRecord = async (conn, civicVariantRecord, feature) => {
+    const featureInstance = civicVariantRecord.feature.featureInstance;
+    let entrezId,
+        entrezName;
+
+    if (featureInstance.__typename === 'Gene') {
+        entrezId = featureInstance.entrezId;
+        entrezName = featureInstance.name;
+    } else if (featureInstance.__typename === 'Factor') {
+        // TODO: Deal with __typename === 'Factor'
+        // No actual case as April 22nd, 2024
+        throw new NotImplementedError(
+            'unable to process variant\'s feature of type Factor',
+        );
+    }
+
     const variants = normalizeVariantRecord({
-        entrezId: civicVariantRecord.gene.entrezId,
-        entrezName: civicVariantRecord.gene.name,
+        entrezId,
+        entrezName,
         name: civicVariantRecord.name,
     });
 
