@@ -215,7 +215,7 @@ const processEvidenceRecord = async (opt) => {
     // Relevance & EvidenceLevel
     const [level, relevance] = await Promise.all([
         getEvidenceLevel(opt),
-        getRelevance(opt),
+        getRelevance(conn, { rawRecord }),
     ]);
 
     // Variant's Feature
