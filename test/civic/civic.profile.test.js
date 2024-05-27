@@ -1,4 +1,4 @@
-const { MolecularProfile } = require('../src/civic/profile');
+const { MolecularProfile } = require('../../src/civic/profile');
 
 
 describe('MolecularProfile._combine()', () => {

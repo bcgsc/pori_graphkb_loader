@@ -1,5 +1,5 @@
 /* eslint-disable jest/no-disabled-tests */
-const { normalizeVariantRecord } = require('../src/civic/variant');
+const { normalizeVariantRecord } = require('../../src/civic/variant');
 
 describe('normalizeVariantRecord', () => {
     test('exon mutation', () => {

@@ -1,4 +1,4 @@
-const { translateRelevance } = require('../src/civic/relevance');
+const { translateRelevance } = require('../../src/civic/relevance');
 
 describe('translateRelevance', () => {
     test.each([
