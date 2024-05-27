@@ -32,7 +32,11 @@ describe('translateRelevance', () => {
         ['NA', 'PREDISPOSING', 'NA', 'likely predisposing'],
     ])(
         '%s|%s|%s returns %s', (evidenceDirection, evidenceType, clinicalSignificance, expected) => {
-            expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
+            expect(translateRelevance(
+                evidenceType,
+                evidenceDirection,
+                clinicalSignificance,
+            )).toEqual(expected);
         },
     );
 
@@ -74,7 +78,11 @@ describe('translateRelevance', () => {
         ['--', '--', '--'],
     ])(
         '%s|%s|%s errors', (evidenceDirection, evidenceType, clinicalSignificance) => {
-            expect(() => translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toThrow('unable to process relevance');
+            expect(() => translateRelevance(
+                evidenceType,
+                evidenceDirection,
+                clinicalSignificance,
+            )).toThrow('unable to process relevance');
         },
     );
 });

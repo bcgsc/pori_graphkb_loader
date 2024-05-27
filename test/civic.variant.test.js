@@ -1,3 +1,4 @@
+/* eslint-disable jest/no-disabled-tests */
 const { normalizeVariantRecord } = require('../src/civic/variant');
 
 describe('normalizeVariantRecord', () => {
@@ -218,7 +219,6 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
-
     test('categorical variant with spaces', () => {
         const variants = normalizeVariantRecord({
             entrezId: 1,
@@ -333,7 +333,6 @@ describe('normalizeVariantRecord', () => {
             },
         ]);
     });
-
 
     test('cds notation', () => {
         // BCR-ABL
@@ -521,7 +520,6 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
-
     test('protein dup with cds dup', () => {
         // p.s193_c196dupstsc (c.577_588dupagcaccagctgc)
         const variants = normalizeVariantRecord({
@@ -584,7 +582,7 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
-    test('catalogue variant', () => {
+    test.skip('catalogue variant', () => {
         // RS3910384
     });
 
@@ -620,11 +618,11 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
-    test('duplicate fusion', () => {
+    test.skip('duplicate fusion', () => {
         // AGGF1-PDGFRB, AGGF1-PDGFRB C843G
     });
 
-    test('non-specific positional mutaiton', () => {
+    test.skip('non-specific positional mutaiton', () => {
         // E1813 mutations
     });
 
