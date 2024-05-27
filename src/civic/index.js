@@ -17,6 +17,7 @@ const {
 const { logger } = require('../logging');
 const _entrezGene = require('../entrez/gene');
 const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
+const { getDisease } = require('./disease');
 const { processVariantRecord } = require('./variant');
 const { getRelevance } = require('./relevance');
 const { getEvidenceLevel } = require('./evidenceLevel');
@@ -109,30 +110,6 @@ const processEvidenceRecord = async (opt) => {
         throw err;
     }
 
-    // get the disease by doid
-    let disease;
-
-    // find the disease if it is not null
-    if (rawRecord.disease) {
-        let diseaseQueryFilters = {};
-
-        if (rawRecord.disease.doid) {
-            diseaseQueryFilters = {
-                AND: [
-                    { sourceId: `doid:${rawRecord.disease.doid}` },
-                    { source: { filters: { name: 'disease ontology' }, target: 'Source' } },
-                ],
-            };
-        } else {
-            diseaseQueryFilters = { name: rawRecord.disease.name };
-        }
-
-        disease = await conn.getUniqueRecordBy({
-            filters: diseaseQueryFilters,
-            sort: orderPreferredOntologyTerms,
-            target: 'Disease',
-        });
-    }
     // get the therapy/therapies by name
     let therapy;
 
@@ -167,6 +144,9 @@ const processEvidenceRecord = async (opt) => {
         source: rid(sources.civic),
         sourceId: rawRecord.id,
     };
+
+    // get the disease by doid
+    const disease = getDisease(conn, { rawRecord });
 
     // create the statement and connecting edges
     if (rawRecord.evidenceType === 'DIAGNOSTIC' || rawRecord.evidenceType === 'PREDISPOSING') {
