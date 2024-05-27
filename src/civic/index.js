@@ -21,6 +21,7 @@ const { processVariantRecord } = require('./variant');
 const { getRelevance } = require('./relevance');
 const { getPublication, loadPubmedCache } = require('./publication');
 const { processMolecularProfile } = require('./profile');
+const { addOrFetchTherapy, resolveTherapies } = require('./therapy');
 const { EvidenceItem: evidenceSpec } = require('./specs.json');
 
 class NotImplementedError extends ErrorMixin { }
@@ -76,88 +77,6 @@ const requestEvidenceItems = async (url, opt) => {
         }
     }
     return allRecords;
-};
-
-
-/**
- * Given some therapy name, find the therapy that is equivalent by name in GraphKB
- */
-const getTherapy = async (conn, therapyRecord) => {
-    let originalError;
-
-    // fetch from NCIt first if possible, or pubchem
-    // then use the name as a fallback
-    const name = therapyRecord.name.toLowerCase().trim();
-
-    if (therapyRecord.ncitId) {
-        try {
-            const therapy = await conn.getUniqueRecordBy({
-                filters: [
-                    { source: { filters: { name: NCIT_SOURCE_DEFN.name }, target: 'Source' } },
-                    { sourceId: therapyRecord.ncitId },
-                    { name: therapyRecord.name },
-                ],
-                sort: orderPreferredOntologyTerms,
-                target: 'Therapy',
-            });
-            return therapy;
-        } catch (err) {
-            logger.error(`had NCIt therapy mapping (${therapyRecord.ncitId}) named (${therapyRecord.name}) but failed to fetch from graphkb: ${err}`);
-            throw err;
-        }
-    }
-
-    try {
-        const therapy = await conn.getTherapy(name);
-        return therapy;
-    } catch (err) {
-        originalError = err;
-    }
-
-    try {
-        const match = /^\s*(\S+)\s*\([^)]+\)$/.exec(name);
-
-        if (match) {
-            return await conn.getTherapy(match[1]);
-        }
-    } catch (err) { }
-    logger.error(originalError);
-    throw originalError;
-};
-
-
-/**
- * Add or fetch a therapy combination if there is not an existing record
- * Link the therapy combination to its individual elements
- */
-const addOrFetchTherapy = async (conn, source, therapiesRecords, combinationType) => {
-    if (therapiesRecords.length <= 1) {
-        if (therapiesRecords[0] === null) {
-            return null;
-        }
-        return getTherapy(conn, therapiesRecords[0]);
-    }
-    const therapies = await Promise.all(therapiesRecords.map(async therapy => getTherapy(conn, therapy)));
-    const sourceId = therapies.map(e => e.sourceId).sort().join(' + ');
-    const name = therapies.map(e => e.name).sort().join(' + ');
-    const combinedTherapy = await conn.addRecord({
-        content: {
-            combinationType, name, source: rid(source), sourceId,
-        },
-        existsOk: true,
-        target: 'Therapy',
-    });
-
-    for (const therapy of therapies) {
-        await conn.addRecord({
-            content: {
-                in: rid(combinedTherapy), out: rid(therapy), source: rid(source),
-            },
-            existsOk: true,
-            target: 'ElementOf',
-        });
-    }
-    return combinedTherapy;
 };
 
 
@@ -585,23 +504,11 @@ const upload = async ({
             target: 'Statement',
         })).map(rid));
 
-        // Resolve combinations of therapies
-        // Splits civic evidence items therapies into separate evidence items based on their combination type.
-        if (record.therapies === null || record.therapies.length === 0) {
-            record.therapies = [null];
-        } else if (
-            record.therapyInteractionType === 'COMBINATION'
-            || record.therapyInteractionType === 'SEQUENTIAL'
-        ) {
-            record.therapies = [record.therapies];
-        } else if (record.therapyInteractionType === 'SUBSTITUTES' || record.therapies.length < 2) {
-            record.therapies = record.therapies.map(therapy => [therapy]);
-            record.therapyInteractionType = null;
-        } else {
-            logger.error(`(evidence: ${record.id}) unsupported therapy interaction type (${record.therapyInteractionType}) for a multiple therapy (${record.therapies.length}) statement`);
-            counts.skip++;
-            continue;
-        }
+        // Resolve therapy combinations if any
+        // Updates record.therapies and record.therapyInteractionType properties
+        const { therapies, therapyInteractionType } = resolveTherapies(record);
+        record.therapies = therapies;
+        record.therapyInteractionType = therapyInteractionType;
 
         // Process Molecular Profiles expression into an array of conditions
         // Each condition is itself an array of variants, one array for each expected GraphKB Statement from this CIViC Evidence Item
