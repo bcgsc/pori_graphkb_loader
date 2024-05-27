@@ -132,14 +132,12 @@ let loaderFunction;
 if (input) {
     loaderFunction = ALL_MODULES[moduleName || subparser_name].uploadFile;
 } else {
-    debugger;
     loaderFunction = ALL_MODULES[moduleName || subparser_name].upload;
 }
 
 const loaderOptions = { ...options };
 
 if (input) {
-    debugger;
     loaderOptions.filename = input;
 }
 
