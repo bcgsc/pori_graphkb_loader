@@ -1,555 +1,469 @@
 /**
  * @module importer/civic
  */
-const _ = require('lodash');
-const Ajv = require('ajv');
 const fs = require('fs');
-const path = require('path');
 
-const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
-
-const { checkSpec, request } = require('../util');
-const {
-    rid,
-    shouldUpdate,
-} = require('../graphkb');
+const { rid } = require('../graphkb');
 const { logger } = require('../logging');
-const _entrezGene = require('../entrez/gene');
 const { civic: SOURCE_DEFN } = require('../sources');
 const { getDisease } = require('./disease');
-const { processVariantRecord } = require('./variant');
 const { getRelevance } = require('./relevance');
 const { getEvidenceLevel } = require('./evidenceLevel');
 const { getPublication, loadPubmedCache } = require('./publication');
-const { processMolecularProfile } = require('./profile');
-const { addOrFetchTherapy, resolveTherapies } = require('./therapy');
-const { EvidenceItem: evidenceSpec } = require('./specs.json');
-
-class NotImplementedError extends ErrorMixin { }
+const {
+    downloadEvidenceItems,
+    processCombination,
+    processEvidenceItem,
+} = require('./evidenceItem');
+const {
+    contentMatching,
+    createStatement,
+    deleteStatements,
+    needsUpdate,
+    updateStatement,
+} = require('./statement');
 
 const BASE_URL = 'https://civicdb.org/api/graphql';
 
-// Spec compiler
-const ajv = new Ajv();
-const validateEvidenceSpec = ajv.compile(evidenceSpec);
-
 
 /**
- * Requests evidence items from CIViC using their graphql API
- */
-const requestEvidenceItems = async (url, opt) => {
-    const allRecords = [];
-    let hasNextPage = true;
-
-    while (hasNextPage) {
-        try {
-            const page = await request({
-                body: { ...opt },
-                json: true,
-                method: 'POST',
-                uri: url,
-            });
-            allRecords.push(...page.data.evidenceItems.nodes);
-            opt.variables = { ...opt.variables, after: page.data.evidenceItems.pageInfo.endCursor };
-            hasNextPage = page.data.evidenceItems.pageInfo.hasNextPage;
-        } catch (err) {
-            logger.error(err);
-            throw (err);
-        }
-    }
-    return allRecords;
-};
-
-
-/**
- * Transform a CIViC evidence record into a GraphKB statement
+ * Increment counter on GraphKB Statement CRUD operations
  *
- * @param {object} opt
- * @param {ApiConnection} opt.conn the API connection object for GraphKB
- * @param {object} opt.rawRecord the unparsed record from CIViC
- * @param {object} opt.sources the sources by name
- * @param {boolean} opt.oneToOne civic statements to graphkb statements is a 1 to 1 mapping
- * @param {object} opt.variantsCache used to avoid repeat processing of civic variants. stores the graphkb variant(s) if success or the error if not
- * @param
+ * @param {object} initial the counter
+ * @param {object} updates the increment to apply
+ * @returns {object} the incremented counter
  */
-const processEvidenceRecord = async (opt) => {
-    const {
-        conn, rawRecord, sources, variantsCache, oneToOne = false,
-    } = opt;
-
-    // Relevance & EvidenceLevel
-    const [level, relevance] = await Promise.all([
-        getEvidenceLevel(opt),
-        getRelevance(conn, { rawRecord }),
-    ]);
-
-    // Variant's Feature
-    let feature;
-    const civicFeature = rawRecord.variant.feature.featureInstance;
-
-    if (civicFeature.__typename === 'Gene') {
-        [feature] = await _entrezGene.fetchAndLoadByIds(conn, [civicFeature.entrezId]);
-    } else if (civicFeature.__typename === 'Factor') {
-        // TODO: Deal with __typename === 'Factor'
-        // No actual case as April 22nd, 2024
-        throw new NotImplementedError(
-            'unable to process variant\'s feature of type Factor',
-        );
+const incrementCounts = (initial, updates) => {
+    if (!initial) {
+        return updates;
     }
 
+    // deep copy
+    const updated = JSON.parse(JSON.stringify(initial));
 
-    // Variant
-    let variants;
-
-    try {
-        variants = await processVariantRecord(conn, rawRecord.variant, feature);
-        logger.verbose(`converted variant name (${rawRecord.variant.name}) to variants (${variants.map(v => v.displayName).join(', and ')})`);
-    } catch (err) {
-        logger.error(`evidence (${rawRecord.id}) Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name}): ${err}`);
-        throw err;
-    }
-
-    // get the therapy/therapies by name
-    let therapy;
-
-    if (rawRecord.therapies) {
-        try {
-            therapy = await addOrFetchTherapy(
-                conn,
-                rid(sources.civic),
-                rawRecord.therapies,
-                (rawRecord.therapyInteractionType || '').toLowerCase(),
-            );
-        } catch (err) {
-            logger.error(err);
-            logger.error(`failed to fetch therapy: ${JSON.stringify(rawRecord.therapies)}`);
-            throw err;
+    for (const level1 of Object.keys(updated)) {
+        for (const level2 of Object.keys(updated[level1])) {
+            updated[level1][level2] += updates[level1][level2];
         }
     }
 
-    const publication = await getPublication(conn, rawRecord);
-
-    // common content
-    const content = {
-        conditions: [...variants.map(v => rid(v))],
-        description: rawRecord.description,
-        evidence: [rid(publication)],
-        evidenceLevel: [rid(level)],
-        relevance: rid(relevance),
-        reviewStatus: (rawRecord.status === 'ACCEPTED'
-            ? 'not required'
-            : 'pending'
-        ),
-        source: rid(sources.civic),
-        sourceId: rawRecord.id,
-    };
-
-    // get the disease by doid
-    const disease = getDisease(conn, { rawRecord });
-
-    // create the statement and connecting edges
-    if (rawRecord.evidenceType === 'DIAGNOSTIC' || rawRecord.evidenceType === 'PREDISPOSING') {
-        if (!disease) {
-            throw new Error('Unable to create a diagnostic or predisposing statement without a corresponding disease');
-        }
-        content.subject = rid(disease);
-    } else if (disease) {
-        content.conditions.push(rid(disease));
-    }
-
-    if (rawRecord.evidenceType === 'PREDICTIVE' && therapy) {
-        content.subject = rid(therapy);
-    } if (rawRecord.evidenceType === 'PROGNOSTIC') {
-        // get the patient vocabulary object
-        content.subject = rid(await conn.getVocabularyTerm('patient'));
-    } if (rawRecord.evidenceType === 'FUNCTIONAL') {
-        content.subject = rid(feature);
-    } if (rawRecord.evidenceType === 'ONCOGENIC') {
-        content.subject = variants.length === 1
-            ? rid(variants[0])
-            : rid(feature);
-    }
-
-    if (content.subject && !content.conditions.includes(content.subject)) {
-        content.conditions.push(content.subject);
-    }
-
-    if (!content.subject) {
-        throw Error(`unable to determine statement subject for evidence (${content.sourceId}) record`);
-    }
-
-    const fetchConditions = [
-        { sourceId: content.sourceId },
-        { source: content.source },
-        { evidence: content.evidence }, // civic evidence items are per publication
-    ];
-
-    if (!oneToOne) {
-        fetchConditions.push(...[
-            { relevance: content.relevance },
-            { subject: content.subject },
-            { conditions: content.conditions },
-        ]);
-    }
-
-    let original;
-
-    if (oneToOne) {
-        // get previous iteration
-        const originals = await conn.getRecords({
-            filters: {
-                AND: [
-                    { source: rid(sources.civic) },
-                    { sourceId: rawRecord.id },
-                ],
-            },
-            target: 'Statement',
-        });
-
-        if (originals.length > 1) {
-            throw Error(`Supposed to be 1to1 mapping between graphKB and civic but found multiple records with source ID (${rawRecord.id})`);
-        }
-        if (originals.length === 1) {
-            [original] = originals;
-
-            const excludeTerms = [
-                '@rid',
-                '@version',
-                'comment',
-                'createdAt',
-                'createdBy',
-                'reviews',
-                'updatedAt',
-                'updatedBy',
-            ];
-
-            if (!shouldUpdate('Statement', original, content, excludeTerms)) {
-                return original;
-            }
-        }
-    }
-
-    if (original) {
-        // update the existing record
-        return conn.updateRecord('Statement', rid(original), content);
-    }
-
-    // create a new record
-    return conn.addRecord({
-        content,
-        existsOk: true,
-        fetchConditions: {
-            AND: fetchConditions,
-        },
-        target: 'Statement',
-        upsert: true,
-        upsertCheckExclude: [
-            'comment',
-            'displayNameTemplate',
-            'reviews',
-        ],
-    });
+    return updated;
 };
-
-
-/**
- * Get a list of CIViC Evidence Items which have since been deleted.
- * Returns the list of evidence item IDs to be purged from GraphKB
- *
- * @param {string} url endpoint for the CIViC API
- */
-const fetchDeletedEvidenceItems = async (url) => {
-    const ids = new Set();
-
-    // Get rejected evidenceItems
-    logger.info(`loading rejected evidenceItems from ${url}`);
-    const rejected = await requestEvidenceItems(url, {
-        query: `query evidenceItems($after: String, $status: EvidenceStatusFilter) {
-                      evidenceItems(after: $after, status: $status) {
-                          nodes {id}
-                          pageCount
-                          pageInfo {endCursor, hasNextPage}
-                          totalCount
-                      }
-                  }`,
-        variables: {
-            status: 'REJECTED',
-        },
-    });
-    rejected.forEach(node => ids.add(node.id));
-    logger.info(`fetched ${ids.size} rejected entries from CIViC`);
-    return ids;
-};
-
-
-/**
- * Fetch civic approved evidence entries as well as those submitted by trusted curators
- *
- * @param {string} url the endpoint for the request
- * @param {string[]} trustedCurators a list of curator IDs to also fetch submitted only evidence items for
- */
-const downloadEvidenceRecords = async (url, trustedCurators) => {
-    const records = [];
-    const errorList = [];
-    const counts = {
-        error: 0, exists: 0, skip: 0, success: 0,
-    };
-
-    const evidenceItems = [];
-    const query = fs.readFileSync(path.join(__dirname, 'evidenceItems.graphql')).toString();
-
-    // Get accepted evidenceItems
-    logger.info(`loading accepted evidenceItems from ${url}`);
-    const accepted = await requestEvidenceItems(url, {
-        query,
-        variables: {
-            status: 'ACCEPTED',
-        },
-    });
-    logger.info(`fetched ${accepted.length} accepted entries from CIViC`);
-    evidenceItems.push(...accepted);
-
-    // Get submitted evidenceItems from trusted curators
-    for (const curator of Array.from(new Set(trustedCurators))) {
-        if (!Number.isNaN(curator)) {
-            logger.info(`loading submitted evidenceItems by trusted curator ${curator} from ${url}`);
-            const submittedByATrustedCurator = await requestEvidenceItems(url, {
-                query,
-                variables: {
-                    status: 'SUBMITTED',
-                    userId: parseInt(curator, 10),
-                },
-            });
-            evidenceItems.push(...submittedByATrustedCurator);
-        }
-    }
-    const submittedCount = evidenceItems.length - accepted.length;
-    logger.info(`loaded ${submittedCount} unaccepted entries by trusted submitters from CIViC`);
-
-    // Validation
-    for (const record of evidenceItems) {
-        try {
-            checkSpec(validateEvidenceSpec, record);
-        } catch (err) {
-            errorList.push({ error: err, errorMessage: err.toString(), record });
-            logger.error(err);
-            counts.error++;
-            continue;
-        }
-        records.push(record);
-    }
-    logger.info(`${records.length}/${evidenceItems.length} evidenceItem records successfully validated with the specs`);
-    return { counts, errorList, records };
-};
-
 
 /**
  * Access the CIVic API, parse content, transform and load into GraphKB
  *
- * @param {object} opt options
- * @param {ApiConnection} opt.conn the api connection object for GraphKB
- * @param {string} [opt.url] url to use as the base for accessing the civic ApiConnection
- * @param {string[]} opt.trustedCurators a list of curator IDs to also fetch submitted only evidence items for
+ * @param {object} param0
+ * @param {ApiConnection} param0.conn the api connection object for GraphKB
+ * @param {string} param0.errorLogPrefix prefix to the generated error json file
+ * @param {number} param0.maxRecords limit of EvidenceItem records to be processed and upload
+ * @param {?boolean} param0.noUpdate for avoiding deletion/update of existing GraphKB Statements
+ * @param {string[]} param0.trustedCurators a list of curator IDs for submitted-only EvidenceItems
+ * @param {?string} param0.url url to use as the base for accessing the civic ApiConnection
  */
 const upload = async ({
-    conn, errorLogPrefix, trustedCurators, ignoreCache = false, maxRecords, url = BASE_URL,
+    conn,
+    errorLogPrefix,
+    maxRecords,
+    noUpdate = false,
+    trustedCurators,
+    url = BASE_URL,
 }) => {
-    const source = await conn.addSource(SOURCE_DEFN);
+    const countsEI = {
+        error: 0,
+        partialSuccess: 0,
+        skip: 0,
+        success: 0,
+    };
+    let countsST;
 
-    // Get list of all previous statements from CIVIC in GraphKB
-    let previouslyEntered = await conn.getRecords({
-        filters: { source: rid(source) },
-        returnProperties: ['sourceId'],
+    // Adding CIViC as source if not already in GraphKB
+    const source = await conn.addSource(SOURCE_DEFN);
+    const sourceRid = rid(source);
+
+    /*
+        1. DOWNLOAD & PREPROCESSING
+    */
+
+    // GETTING CIVIC EVIDENCEITEMS FROM CIVIC API
+    // Evidences accepted, or submitted from a trusted curator
+    logger.info(`loading evidenceItems from ${url}`);
+    const {
+        errors: downloadEvidenceItemsErr,
+        records: evidenceItems,
+    } = await downloadEvidenceItems(url, trustedCurators);
+
+    // Validation errors
+    const validationErrorList = [];
+
+    if (downloadEvidenceItemsErr.length > 0) {
+        countsEI.error += downloadEvidenceItemsErr.length;
+        validationErrorList.push(...downloadEvidenceItemsErr);
+    }
+
+    // GETTING CIVIC STATEMENTS FROM GRAPHKB API
+    // Note: One or more GKB Statement can come from the same CIVIC id (sourceId)
+    logger.info('loading related statements from GraphKB');
+    const statements = await conn.getRecords({
+        filters: { source: sourceRid },
+        returnProperties: [
+            '@rid',
+            'conditions',
+            'description',
+            'evidence',
+            'evidenceLevel',
+            'relevance',
+            'reviewStatus',
+            'source',
+            'sourceId',
+            'subject',
+        ],
         target: 'Statement',
     });
-    previouslyEntered = new Set(previouslyEntered.map(r => r.sourceId));
-    logger.info(`Found ${previouslyEntered.size} records previously added from ${SOURCE_DEFN.name}`);
+    const sourceIdsFromGKB = new Set(statements.map(r => r.sourceId));
+    logger.info(`${sourceIdsFromGKB.size} distinct ${SOURCE_DEFN.name} sourceId in GraphKB statements`);
+    logger.info(`${statements.length} total statements previously added to GraphKB from ${SOURCE_DEFN.name}`);
+
+    // REFACTORING GRAPHKB STATEMENTS INTO STATEMENTSBYSOURCEID
+    // where each sourceId is a key associated with an array
+    // of one or more GKB Statement records
+    const statementsBySourceId = {};
+
+    for (const record of statements) {
+        if (!statementsBySourceId[record.sourceId]) {
+            statementsBySourceId[record.sourceId] = [];
+        }
+        // Sorting conditions for downstream object comparison
+        record.conditions.sort();
+        statementsBySourceId[record.sourceId].push(record);
+    }
+
+    // REFACTORING CIVIC EVIDENCEITEMS INTO EVIDENCEITEMSBYID
+    // where each id is a key associated with one CIViC EvidenceItem as value
+    logger.info(`Pre-pocessing ${evidenceItems.length} records`);
+    const evidenceItemsById = {};
+
+    // Performing some checks. Skipping some records if needed
+    // eslint-disable-next-line guard-for-in
+    for (const i in evidenceItems) {
+        // Check if max records limit has been reached
+        if (maxRecords && Object.keys(evidenceItemsById).length >= maxRecords) {
+            logger.warn(`Not loading all content due to max records limit (${maxRecords})`);
+            countsEI.skip += (evidenceItems.length - i);
+            break;
+        }
+        // Check if record id is unique
+        if (evidenceItemsById[evidenceItems[i].id]) {
+            logger.error(`Multiple Evidence Items with the same id: ${evidenceItems[i].id}. Violates assumptions. Only the 1st one was kept.`);
+            countsEI.skip++;
+            continue;
+        }
+        // Adding EvidenceItem to object for upload
+        evidenceItemsById[evidenceItems[i].id] = evidenceItems[i];
+    }
+    const noRecords = Object.keys(evidenceItemsById).length;
+    logger.info(`${noRecords}/${evidenceItems.length} Evidence Items to process`);
+
+    /*
+        2. PROCESSING EACH CIVIC EVIDENCEITEM INTO ONE OR MORE GKB STATEMENTS
+    */
+
     // PubMed caching
     logger.info('Caching Pubmed publication');
     await loadPubmedCache(conn);
 
-    // Get evidence records from CIVIC (Accepted, or Submitted from a trusted curator)
-    const { counts, errorList, records } = await downloadEvidenceRecords(url, trustedCurators);
-    // Get rejected evidence records ids from CIVIC
-    const purgeableEvidenceItems = await fetchDeletedEvidenceItems(url);
-
-    logger.info(`Processing ${records.length} records`);
-    // keep track of errors and already processed variants by their CIViC ID to avoid repeat logging
-    const variantsCache = {
-        errors: {},
-        records: {},
+    // Keeping track of EvidenceItem sourceIds who raised errors during processing
+    const errorSourceIds = {
+        disease: new Map(),
+        evidence: new Map(),
+        evidenceLevel: new Map(),
+        individualCombinationProcessing: new Map(),
+        processingIntoCombinations: new Map(),
+        relevance: new Map(),
     };
 
-    // Refactor records into recordsById
-    const recordsById = {};
+    logger.info(`\n\n${'#'.repeat(80)}\n## PROCESSING RECORDS\n${'#'.repeat(80)}\n`);
+    let recordNumber = 0;
 
-    for (const record of records) {
-        // Check if max records limit has been reached
-        if (maxRecords && Object.keys(recordsById).length >= maxRecords) {
-            logger.warn(`not loading all content due to max records limit (${maxRecords})`);
-            break;
-        }
+    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    const specialId = null; // '11681'; //
 
-        // Check if record id is unique
-        if (recordsById[record.id]) {
-            logger.error(`Multiple evidenceItems with the same id: ${record.id}. Violates assumptions. Only the 1st one was kept.`);
-            counts.skip++;
+    // MAIN LOOP
+    // Looping through Evidence Items
+    for (const [id, evidenceItem] of Object.entries(evidenceItemsById)) {
+        if (specialId && id !== specialId) {
             continue;
         }
+        /*  PROCESSING EVIDENCEITEMS */
 
-        if (!record.molecularProfile) {
-            logger.error(`Evidence Item without Molecular Profile. Violates assumptions: ${record.id}`);
-            counts.skip++;
-            continue;
-        }
-        if (!record.molecularProfile.variants || record.molecularProfile.variants.length === 0) {
-            logger.error(`Molecular Profile without Variants. Violates assumptions: ${record.molecularProfile.id}`);
-            counts.skip++;
-            continue;
-        }
+        recordNumber++;
+        logger.info();
+        logger.info(`***** ${recordNumber}/${noRecords} : processing id ${id} *****`);
 
-        // Adding EvidenceItem to object for upload
-        recordsById[record.id] = record;
-    }
+        const numberOfStatements = statementsBySourceId[id]
+            ? statementsBySourceId[id].length
+            : 0;
+        logger.info(`${numberOfStatements} related statement(s)`);
 
-    // Main loop on recordsById
-    for (const [sourceId, record] of Object.entries(recordsById)) {
-        if (previouslyEntered.has(sourceId) && !ignoreCache) {
-            counts.exists++;
-            continue;
-        }
-        if (purgeableEvidenceItems.has(sourceId)) {
-            // this should never happen. If it does we have made an invalid assumption about how civic uses IDs.
-            throw new Error(`Record ID is both deleted and to-be loaded. Violates assumptions: ${sourceId}`);
-        }
-        const preupload = new Set((await conn.getRecords({
-            filters: [
-                { source: rid(source) }, { sourceId },
-            ],
-            target: 'Statement',
-        })).map(rid));
+        // Base object (properties order matters)
+        // Common content will be deep copied downstream for each combination
+        evidenceItem.content = {
+            conditions: [],
+            description: evidenceItem.description || '',
+            evidence: [],
+            evidenceLevel: [],
+            relevance: undefined,
+            reviewStatus: (evidenceItem.status === 'ACCEPTED'
+                ? 'not required'
+                : 'pending'
+            ),
+            source: sourceRid,
+            sourceId: id,
+            subject: undefined,
+        };
 
-        // Resolve therapy combinations if any
-        // Updates record.therapies and record.therapyInteractionType properties
-        const { therapies, therapyInteractionType } = resolveTherapies(record);
-        record.therapies = therapies;
-        record.therapyInteractionType = therapyInteractionType;
+        // PROCESSING DATA COMMON TO ALL COMBINATIONS
 
-        // Process Molecular Profiles expression into an array of conditions
-        // Each condition is itself an array of variants, one array for each expected GraphKB Statement from this CIViC Evidence Item
+        // Removing extra spaces in description. Needed before content comparison
+        evidenceItem.content.description = evidenceItem.content.description.replace(/\s+/g, ' ').trim();
+
+        // Get evidence (publication) rid
         try {
-            // Molecular Profile (conditions w/ variants)
-            record.conditions = processMolecularProfile(record.molecularProfile).conditions;
+            evidenceItem.content.evidence.push(rid(
+                await getPublication(conn, evidenceItem),
+            ));
         } catch (err) {
-            logger.error(`evidence (${record.id}) ${err}`);
-            counts.skip++;
+            logger.error(err);
+            countsEI.error++;
+            errorSourceIds.evidence.set(id, err);
             continue;
         }
 
-        const postupload = [];
-
-        // Upload all GraphKB statements for this CIViC Evidence Item
-        for (const condition of record.conditions) {
-            const oneToOne = (condition.length * record.therapies.length) === 1 && preupload.size === 1;
-
-            for (const variant of condition) {
-                for (const therapies of record.therapies) {
-                    try {
-                        logger.debug(`processing ${record.id}`);
-                        const result = await processEvidenceRecord({
-                            conn,
-                            oneToOne,
-                            rawRecord: { ..._.omit(record, ['therapies', 'variants']), therapies, variant },
-                            sources: { civic: source },
-                            variantsCache,
-                        });
-                        postupload.push(rid(result));
-                        counts.success += 1;
-                    } catch (err) {
-                        if (
-                            err.toString().includes('is not a function')
-                            || err.toString().includes('of undefined')
-                        ) {
-                            console.error(err);
-                        }
-                        if (err instanceof NotImplementedError) {
-                            // accepted evidence that we do not support loading. Should delete as it may have changed from something we did support
-                            purgeableEvidenceItems.add(sourceId);
-                        }
-                        errorList.push({ error: err, errorMessage: err.toString(), record });
-                        logger.error(`evidence (${record.id}) ${err}`);
-                        counts.error += 1;
-                    }
-                }
-            }
+        // Get evidenceLevel rid
+        try {
+            evidenceItem.content.evidenceLevel.push(rid(
+                await getEvidenceLevel(conn, {
+                    rawRecord: evidenceItem,
+                    source: sourceRid,
+                    sourceDisplayName: SOURCE_DEFN.displayName,
+                }),
+            ));
+        } catch (err) {
+            logger.error(err);
+            countsEI.error++;
+            errorSourceIds.evidenceLevel.set(id, err);
+            continue;
         }
-        // compare statments before/after upload to determine if any records should be soft-deleted
-        postupload.forEach((id) => {
-            preupload.delete(id);
-        });
 
-        if (preupload.size && purgeableEvidenceItems.has(sourceId)) {
-            logger.warn(`
-                  Removing ${preupload.size} CIViC Entries (EID:${sourceId}) of unsupported format
-              `);
+        // Get relevance rid
+        try {
+            evidenceItem.content.relevance = rid(
+                await getRelevance(conn, { rawRecord: evidenceItem }),
+            );
+        } catch (err) {
+            logger.error(err);
+            countsEI.error++;
+            errorSourceIds.relevance.set(id, err);
+            continue;
+        }
 
+        // Get disease rid
+        try {
+            // Will be removed downstream after being used as content's subject and/or condition
+            evidenceItem.content.disease = rid(
+                await getDisease(conn, { rawRecord: evidenceItem }),
+                true, // nullOk=true since some EvidenceItems aren't related to any specific disease
+            );
+        } catch (err) {
+            logger.error(err);
+            countsEI.error++;
+            errorSourceIds.disease.set(id, err);
+            continue;
+        }
+
+        // PROCESSING INDIVIDUAL EVIDENCEITEM INTO AN ARRAY OF COMBINATIONS
+        // (One combination per expected GraphKB statement)
+        const combinations = [];
+
+        try {
+            combinations.push(...await processEvidenceItem(evidenceItem));
+        } catch (err) {
+            logger.error(err);
+            countsEI.error++;
+            errorSourceIds.processingIntoCombinations.set(id, err);
+            continue;
+        }
+        logger.info(`${combinations.length} combination(s)`);
+
+        // PROCESSING INDIVIDUAL COMBINATION
+        // Formatting each combination's content for GraphKB statement requirements
+        const contents = [];
+        let processCombinationErrors = 0;
+
+        for (const combination of combinations) {
             try {
-                await Promise.all(
-                    Array.from(preupload).map(
-                        async outdatedId => conn.deleteRecord('Statement', outdatedId),
-                    ),
+                contents.push(
+                    await processCombination(conn, {
+                        record: combination,
+                        sourceRid,
+                    }),
                 );
             } catch (err) {
                 logger.error(err);
-            }
-        } else if (preupload.size) {
-            if (postupload.length) {
-                logger.warn(`deleting ${preupload.size} outdated statement records (${Array.from(preupload).join(' ')}) has new/retained statements (${postupload.join(' ')})`);
+                processCombinationErrors++;
 
-                try {
-                    await Promise.all(
-                        Array.from(preupload).map(
-                            async outdatedId => conn.deleteRecord('Statement', outdatedId),
-                        ),
-                    );
-                } catch (err) {
-                    logger.error(err);
+                if (!errorSourceIds.individualCombinationProcessing.get(id)) {
+                    errorSourceIds.individualCombinationProcessing.set(id, []);
                 }
-            } else {
-                logger.error(`NOT deleting ${preupload.size} outdated statement records (${Array.from(preupload).join(' ')}) because failed to create replacements`);
+                const v = errorSourceIds.individualCombinationProcessing.get(id);
+                errorSourceIds.individualCombinationProcessing.set(id, [...v, err]);
             }
+        }
+
+        const successRatio = `${combinations.length - processCombinationErrors}/${combinations.length}`;
+        const processCombinationsMsg = `Processed ${successRatio} combination(s)`;
+
+        // If at least some combinations succeeds, then it's a success
+        if (processCombinationErrors === 0) {
+            countsEI.success++;
+            logger.info(processCombinationsMsg);
+        } else if (processCombinationErrors < combinations.length) {
+            countsEI.partialSuccess++;
+            logger.warn(processCombinationsMsg);
+        } else {
+            countsEI.error++;
+            logger.error(processCombinationsMsg);
+        }
+
+
+        /* MATCHING EVIDENCEITEMS WITH STATEMENTS */
+
+        // Content matching between CIViC and GraphKB records
+        // so we know which CRUD operation to perform on each statement
+        const { toCreate, toDelete, toUpdate } = contentMatching({
+            allFromCivic: contents,
+            allFromGkb: statementsBySourceId[id] || [],
+        });
+
+        /* CREATE/UPDATE/DELETE STATEMENTS */
+
+        const loaclCountsST = {
+            create: { err: 0, success: 0 },
+            delete: { err: 0, success: 0 },
+            noUpdateNeeded: { success: 0 },
+            update: { err: 0, success: 0 },
+        };
+
+        // UPDATE
+        if (!noUpdate && toUpdate.length > 0) {
+            for (let i = 0; i < toUpdate.length; i++) {
+                const { fromCivic, fromGkb } = toUpdate[i];
+
+                // Check if an update is needed to avoid unnecessary API calls
+                if (needsUpdate({ fromCivic, fromGkb })) {
+                    const updatedCount = await updateStatement(conn, { fromCivic, fromGkb });
+                    loaclCountsST.update.err += updatedCount.err;
+                    loaclCountsST.update.success += updatedCount.success;
+                } else {
+                    loaclCountsST.noUpdateNeeded.success++;
+                }
+            }
+        }
+
+        // DELETE
+        if (!noUpdate && toDelete.length > 0) {
+            loaclCountsST.delete = await deleteStatements(conn,
+                { rids: toDelete.map(el => el['@rid']) },
+            );
+        }
+
+        // CREATE
+        if (toCreate.length > 0) {
+            for (let i = 0; i < toCreate.length; i++) {
+                const createdCount = await createStatement(conn, { fromCivic: toCreate[i] });
+                loaclCountsST.create.err += createdCount.err;
+                loaclCountsST.create.success += createdCount.success;
+            }
+        }
+
+        // logging
+        for (const level of Object.keys(loaclCountsST)) {
+            if (loaclCountsST[level].err > 0 || loaclCountsST[level].success > 0) {
+                logger.info(`${level}: ${JSON.stringify(loaclCountsST[level])}`);
+            }
+        }
+        countsST = incrementCounts(countsST, loaclCountsST);
+
+        if (specialId && id === specialId) {
+            process.exit();
+        }
+    }
+    logger.info(`\n\n${'#'.repeat(80)}\n## END OF RECORD PROCESSING\n${'#'.repeat(80)}\n`);
+
+    // Logging EvidenceItem processing counts
+    logger.info();
+    logger.info('***** CIViC EvidenceItem records processing report: *****');
+    logger.info(JSON.stringify(countsEI));
+
+    // Logging detailed EvidenceItem processing counts
+    logger.info('Processing errors report:');
+
+    for (const [key, value] of Object.entries(errorSourceIds)) {
+        logger.info(`${key}: ${value.size}`);
+        // Also formatting Maps into objects for saving to file downstream
+        errorSourceIds[key] = Object.fromEntries(errorSourceIds[key]);
+    }
+
+    // DELETING UNWANTED GRAPHKB STATEMENTS
+    // sourceIds no longer in CIViC (not accepted/submitted by trustedCurators) but still in GraphKB
+    const allIdsFromCivic = new Set(evidenceItems.map(r => r.id.toString()));
+    const toDelete = new Set([...sourceIdsFromGKB].filter(x => !allIdsFromCivic.has(x)));
+    logger.info();
+    logger.info('***** Deprecated items *****');
+    logger.warn(`${toDelete.size} deprecated ${SOURCE_DEFN.name} Evidence Items still in GraphKB Statement`);
+
+    if (toDelete.size > 0) {
+        logger.info(`sourceIds: ${Array.from(toDelete)}`);
+    }
+
+    // GraphKB Statements Soft-deletion
+    if (!noUpdate && toDelete.size > 0) {
+        const deletedCount = await deleteStatements(conn, {
+            source: sourceRid,
+            sourceIds: Array.from(toDelete),
+        });
+        const attempts = deletedCount.success + deletedCount.err;
+        logger.info(`${deletedCount.success}/${attempts} soft-deleted statements`);
+
+        if (countsST) {
+            countsST.delete.err += deletedCount.err;
+            countsST.delete.success += deletedCount.success;
+        } else {
+            countsST = { delete: { err: deletedCount.err, success: deletedCount.success } };
         }
     }
 
-    // purge any remaining entries that are in GraphKB but have since been rejected/deleted by CIViC
-    const toDelete = await conn.getRecords({
-        filters: {
-            AND: [
-                { sourceId: Array.from(purgeableEvidenceItems) },
-                { source: rid(source) },
-            ],
-        },
-        target: 'Statement',
-    });
+    // Logging Statement CRUD operations counts
+    if (countsST) {
+        logger.info();
+        logger.info('***** GraphKB Statement records CRUD operations report: *****');
 
-    try {
-        logger.warn(`Deleting ${toDelete.length} outdated CIViC statements from GraphKB`);
-        await Promise.all(toDelete.map(async statement => conn.deleteRecord(
-            'Statement', rid(statement),
-        )));
-    } catch (err) {
-        logger.error(err);
+        for (const op of Object.keys(countsST)) {
+            logger.info(`${op}: ${JSON.stringify(countsST[op])}`);
+        }
     }
 
-    logger.info(JSON.stringify(counts));
+    // SAVING LOGGED ERRORS TO FILE
+    const errorFileContent = {
+        ...errorSourceIds,
+        validationErrors: validationErrorList,
+    };
     const errorJson = `${errorLogPrefix}-civic.json`;
-    logger.info(`writing ${errorJson}`);
-    fs.writeFileSync(errorJson, JSON.stringify(errorList, null, 2));
+    logger.info();
+    logger.info(`***** Global report: *****\nwriting ${errorJson}`);
+    fs.writeFileSync(errorJson, JSON.stringify(errorFileContent, null, 2));
 };
 
-
 module.exports = {
-    SOURCE_DEFN,
-    specs: { validateEvidenceSpec },
     upload,
 };
