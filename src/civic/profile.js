@@ -60,23 +60,29 @@ const MolecularProfile = (molecularProfile) => ({
     },
     /* Desambiguation of variants with implicit 'or' in the name */
     _disambiguate() {
-        // Split ambiguous variants
-        const temp = [];
+        const newConditions = [];
+
+        // For each set of conditions
         this.conditions.forEach((condition) => {
+            const temp = [];
             condition.forEach((variant) => {
                 temp.push(
+                    // Split ambiguous variants into an array of 1 or more variant(s)
                     this._split(variant),
                 );
             });
+
+            // Combine variations into new condition
+            let newConditionSet;
+
+            for (let i = 0; i < temp.length; i++) {
+                newConditionSet = this._combine({ arr1: newConditionSet || [[]], arr2: temp[i] });
+            }
+            newConditions.push(...newConditionSet);
         });
 
-        let newCondition;
-
-        // Combine variations into new condition
-        for (let i = 0; i < temp.length; i++) {
-            newCondition = this._combine({ arr1: newCondition || [[]], arr2: temp[i] });
-        }
-        this.conditions = newCondition;
+        // Replace old conditions by new ones
+        this.conditions = [...newConditions];
         return this;
     },
     /* Returns index of closing parenthesis for end of block */

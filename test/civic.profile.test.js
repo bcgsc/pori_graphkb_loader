@@ -32,7 +32,7 @@ describe('MolecularProfile._compile()', () => {
 });
 
 describe('MolecularProfile._disambiguate()', () => {
-    test('disambiguate conditions', () => {
+    test('disambiguate conditions in AND statements', () => {
         const Mp = MolecularProfile();
         Mp.conditions = [
             [{ id: 8, name: 'X123M/N' }, { id: 9, name: 'X456O/P' }, { id: 10, name: 'X456Q' }],
@@ -43,6 +43,22 @@ describe('MolecularProfile._disambiguate()', () => {
                 [{ id: 8, name: 'X123M' }, { id: 9, name: 'X456P' }, { id: 10, name: 'X456Q' }],
                 [{ id: 8, name: 'X123N' }, { id: 9, name: 'X456O' }, { id: 10, name: 'X456Q' }],
                 [{ id: 8, name: 'X123N' }, { id: 9, name: 'X456P' }, { id: 10, name: 'X456Q' }],
+            ],
+        );
+    });
+
+    test('disambiguate conditions in OR statements', () => {
+        const Mp = MolecularProfile();
+        Mp.conditions = [
+            [{ id: 8, name: 'X123M/N' }],
+            [{ id: 9, name: 'X456O/P' }],
+        ];
+        expect(Mp._disambiguate().conditions).toEqual(
+            [
+                [{ id: 8, name: 'X123M' }],
+                [{ id: 8, name: 'X123N' }],
+                [{ id: 9, name: 'X456O' }],
+                [{ id: 9, name: 'X456P' }],
             ],
         );
     });
@@ -139,7 +155,6 @@ describe('MolecularProfile._parse()', () => {
         },
     );
 });
-
 
 describe('MolecularProfile._split()', () => {
     test.each([
