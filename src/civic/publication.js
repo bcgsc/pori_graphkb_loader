@@ -61,5 +61,8 @@ const getPublication = async (conn, rawRecord) => {
     throw Error(`unable to process non-pubmed/non-asco evidence type (${rawRecord.source.sourceType}) for evidence item (${rawRecord.id})`);
 };
 
-
-module.exports = { getPublication, titlesMatch };
+module.exports = {
+    getPublication,
+    loadPubmedCache: _pubmed.preLoadCache,
+    titlesMatch,
+};

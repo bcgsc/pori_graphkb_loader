@@ -15,12 +15,11 @@ const {
     shouldUpdate,
 } = require('../graphkb');
 const { logger } = require('../logging');
-const _pubmed = require('../entrez/pubmed');
 const _entrezGene = require('../entrez/gene');
 const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
 const { processVariantRecord } = require('./variant');
 const { getRelevance } = require('./relevance');
-const { getPublication } = require('./publication');
+const { getPublication, loadPubmedCache } = require('./publication');
 const { processMolecularProfile } = require('./profile');
 const { EvidenceItem: evidenceSpec } = require('./specs.json');
 
@@ -529,9 +528,9 @@ const upload = async ({
     });
     previouslyEntered = new Set(previouslyEntered.map(r => r.sourceId));
     logger.info(`Found ${previouslyEntered.size} records previously added from ${SOURCE_DEFN.name}`);
-    // Get list of all Pubmed publication reccords from GraphKB
-    logger.info('caching publication records');
-    _pubmed.preLoadCache(conn);
+    // PubMed caching
+    logger.info('Caching Pubmed publication');
+    await loadPubmedCache(conn);
 
     // Get evidence records from CIVIC (Accepted, or Submitted from a trusted curator)
     const { counts, errorList, records } = await downloadEvidenceRecords(url, trustedCurators);
