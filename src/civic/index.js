@@ -185,15 +185,9 @@ const upload = async ({
     logger.info(`\n\n${'#'.repeat(80)}\n## PROCESSING RECORDS\n${'#'.repeat(80)}\n`);
     let recordNumber = 0;
 
-    // !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-    const specialId = null; // '11681'; //
-
     // MAIN LOOP
     // Looping through Evidence Items
     for (const [id, evidenceItem] of Object.entries(evidenceItemsById)) {
-        if (specialId && id !== specialId) {
-            continue;
-        }
         /*  PROCESSING EVIDENCEITEMS */
 
         recordNumber++;
@@ -393,10 +387,6 @@ const upload = async ({
             }
         }
         countsST = incrementCounts(countsST, loaclCountsST);
-
-        if (specialId && id === specialId) {
-            process.exit();
-        }
     }
     logger.info(`\n\n${'#'.repeat(80)}\n## END OF RECORD PROCESSING\n${'#'.repeat(80)}\n`);
 

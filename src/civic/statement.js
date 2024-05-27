@@ -11,13 +11,9 @@ const { logger } = require('../logging');
  * @param {object} fromGkb actual content from GraphKB
  * @returns {boolean} whether both contents are matching or not
  */
-const isMatching = ({ fromCivic, fromGkb, p = ['conditions', 'subject'] }) => {
-    const c = JSON.stringify(_.pick(fromCivic, ...p));
-    const g = JSON.stringify(_.pick(fromGkb, ...p));
-    const rel = c === g;
-    // console.log({ p, c, g, rel });
-    return rel; // JSON.stringify(_.pick(fromCivic, ...p)) === JSON.stringify(_.pick(fromGkb, ...p));
-};
+const isMatching = ({ fromCivic, fromGkb, p = ['conditions', 'subject'] }) => (
+    JSON.stringify(_.pick(fromCivic, ...p)) === JSON.stringify(_.pick(fromGkb, ...p))
+);
 
 /**
  * Evaluate if a statement needs to be updated
