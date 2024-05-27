@@ -557,6 +557,7 @@ class ApiConnection {
         const model = schema.get(target);
         const filters = fetchConditions || convertRecordToQueryFilters(content);
 
+        // Will first try to fetch and/or update the record if it already exists
         if (fetchFirst || upsert) {
             try {
                 const result = await this.getUniqueRecordBy({
@@ -577,6 +578,7 @@ class ApiConnection {
             throw new Error(`cannot find model from target (${target})`);
         }
 
+        // Then (since record dosen't already exists) will create a new record
         try {
             const { result } = jc.retrocycle(await this.request({
                 body: content,
