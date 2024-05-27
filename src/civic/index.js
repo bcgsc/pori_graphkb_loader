@@ -21,7 +21,7 @@ const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
 const { processVariantRecord } = require('./variant');
 const { getRelevance } = require('./relevance');
 const { getPublication } = require('./publication');
-const { MolecularProfile } = require('./profile');
+const { processMolecularProfile } = require('./profile');
 const { EvidenceItem: evidenceSpec } = require('./specs.json');
 
 class NotImplementedError extends ErrorMixin { }
@@ -562,8 +562,6 @@ const upload = async ({
             continue;
         }
 
-        // Introducing Molecular Profiles with CIViC GraphQL API v2.2.0
-        // [EvidenceItem]--(many-to-one)--[MolecularProfile]--(many-to-many)--[Variant]
         if (!record.molecularProfile) {
             logger.error(`Evidence Item without Molecular Profile. Violates assumptions: ${record.id}`);
             counts.skip++;
@@ -616,10 +614,9 @@ const upload = async ({
 
         // Process Molecular Profiles expression into an array of conditions
         // Each condition is itself an array of variants, one array for each expected GraphKB Statement from this CIViC Evidence Item
-        const Mp = MolecularProfile(record.molecularProfile);
-
         try {
-            record.conditions = Mp.process().conditions;
+            // Molecular Profile (conditions w/ variants)
+            record.conditions = processMolecularProfile(record.molecularProfile).conditions;
         } catch (err) {
             logger.error(`evidence (${record.id}) ${err}`);
             counts.skip++;

@@ -1,7 +1,12 @@
+/**
+ * Introducing Molecular Profiles with CIViC GraphQL API v2.2.0
+ * [EvidenceItem]--(many-to-one)--[MolecularProfile]--(many-to-many)--[Variant]
+ */
 const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
 
-class NotImplementedError extends ErrorMixin { }
 
+class NotImplementedError extends ErrorMixin { }
+const MOLECULAR_PROFILE_CACHE = new Map();
 
 /**
  * Factory function returning a MolecularProfile object.
@@ -198,9 +203,9 @@ const MolecularProfile = (molecularProfile) => ({
         newConditions.forEach((condition) => {
             condition.forEach((variant) => {
                 if (!variant) {
-                    throw new Error(
-                        `unable to process molecular profile with missing or misformatted variants (${this.profile.id || ''})`,
-                    );
+                    const errMsg = `unable to process molecular profile with missing or misformatted variants (${this.profile.id || ''})`;
+                    this.error = errMsg;
+                    throw new Error(errMsg);
                 }
             });
         });
@@ -211,6 +216,8 @@ const MolecularProfile = (molecularProfile) => ({
     },
     /* Corresponding GKB Statements' conditions (1 array per statement) */
     conditions: [[]],
+    /* Keep track of processing error */
+    error: undefined,
     /* Main object's method. Process expression into array of conditions' arrays */
     process() {
         // Get Molecular Profile's expression (parsedName property)
@@ -222,15 +229,15 @@ const MolecularProfile = (molecularProfile) => ({
             || parsedName.length === 0
             || typeof parsedName[0] !== 'object'
         ) {
-            throw new Error(
-                `unable to process molecular profile with missing or misformatted parsedName (${this.profile.id || ''})`,
-            );
+            const errMsg = `unable to process molecular profile with missing or misformatted parsedName (${this.profile.id || ''})`;
+            this.error = errMsg;
+            throw new Error(errMsg);
         }
         // NOT operator not yet supported
         if (this._not(parsedName)) {
-            throw new NotImplementedError(
-                `unable to process molecular profile with NOT operator (${this.profile.id || ''})`,
-            );
+            const errMsg = `unable to process molecular profile with NOT operator (${this.profile.id || ''})`;
+            this.error = errMsg;
+            throw new NotImplementedError(errMsg);
         }
         // Filters out unwanted Feature info from expression
         const filteredParsedName = parsedName.filter(el => el.__typename !== 'Feature');
@@ -247,7 +254,38 @@ const MolecularProfile = (molecularProfile) => ({
     profile: molecularProfile || {},
 });
 
+/**
+ * Processing a molecular profile expression while managing the cache
+ *
+ * @param {Object} molecularProfile a Molecular Profile segment from GraphQL query
+ * @returns {MolecularProfile} object whose conditions' property is an array of lists of conditions
+ */
+const processMolecularProfile = (molecularProfile) => {
+    let Mp = MOLECULAR_PROFILE_CACHE.get(molecularProfile.id);
+
+    if (Mp) {
+        if (Mp.error) {
+            throw new Error(
+                `Molecular profile ${molecularProfile.id} already processed with error "${Mp.error}"`,
+            );
+        }
+        return Mp;
+    }
+    Mp = MolecularProfile(molecularProfile);
+
+    // Actually process the profile expression
+    try {
+        Mp.process();
+    } catch (err) {
+        MOLECULAR_PROFILE_CACHE.set(molecularProfile.id, Mp);
+        throw err;
+    }
+    MOLECULAR_PROFILE_CACHE.set(molecularProfile.id, Mp);
+
+    return Mp;
+};
 
 module.exports = {
     MolecularProfile,
+    processMolecularProfile,
 };
