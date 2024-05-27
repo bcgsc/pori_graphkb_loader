@@ -32,7 +32,13 @@ const SUBS = {
     'p26.3-25.3 11mb del': 'y.p26.3_p25.3del',
 };
 
-
+/**
+ * Compares two gene names together for equality
+ *
+ * @param {string} gene1 a gene name
+ * @param {string} gene2 a second gene name
+ * @returns {boolean} whether the genes names are equal or not
+ */
 const compareGeneNames = (gene1, gene2) => {
     if (['abl1', 'abl'].includes(gene1.toLowerCase()) && ['abl1', 'abl'].includes(gene2.toLowerCase())) {
         return true;
@@ -43,7 +49,14 @@ const compareGeneNames = (gene1, gene2) => {
 };
 
 /**
- * Given a CIViC Variant record entrez information and name, normalize into a set of graphkb-style variants
+ * Given a CIViC Variant record entrez information and name,
+ * normalize into a set of graphkb-style variants
+ *
+ * @param {object} param0
+ * @param {string} param0.name
+ * @param {string} param0.entrezId
+ * @param {string} param0.entrezName
+ * @returns {object}
  */
 const normalizeVariantRecord = ({
     name: rawName, entrezId, entrezName: rawEntrezName,
@@ -232,6 +245,7 @@ const normalizeVariantRecord = ({
  * @param {ApiConnection} conn the connection to GraphKB
  * @param {Object} normalizedVariant the normalized variant record
  * @param {Object} feature the gene feature already grabbed from GraphKB
+ * @returns {object[]}
  */
 const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
     let result;
@@ -322,13 +336,13 @@ const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
     return result;
 };
 
-
 /**
  * Given some variant record and a feature, process the variant and return a GraphKB equivalent
  *
  * @param {ApiConnection} conn the connection to GraphKB
  * @param {Object} civicVariantRecord the raw variant record from CIViC
  * @param {Object} feature the gene feature already grabbed from GraphKB
+ * @returns {object[]}
  */
 const processVariantRecord = async (conn, civicVariantRecord, feature) => {
     const { feature: { featureInstance } } = civicVariantRecord;
@@ -385,6 +399,8 @@ const processVariantRecord = async (conn, civicVariantRecord, feature) => {
 };
 
 module.exports = {
+    compareGeneNames,
     normalizeVariantRecord,
     processVariantRecord,
+    uploadNormalizedVariant,
 };
