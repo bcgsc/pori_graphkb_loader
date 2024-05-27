@@ -236,20 +236,12 @@ const processEvidenceRecord = async (opt) => {
     // Variant
     let variants;
 
-    if (variantsCache.records[rawRecord.variant.id]) {
-        variants = variantsCache.records[rawRecord.variant.id];
-    } else if (variantsCache.errors[rawRecord.variant.id]) {
-        throw variantsCache.errors[rawRecord.variant.id];
-    } else {
-        try {
-            variants = await processVariantRecord(conn, rawRecord.variant, feature);
-            variantsCache.records[rawRecord.variant.id] = variants;
-            logger.verbose(`converted variant name (${rawRecord.variant.name}) to variants (${variants.map(v => v.displayName).join(', and ')})`);
-        } catch (err) {
-            variantsCache.errors[rawRecord.variant.id] = err;
-            logger.error(`evidence (${rawRecord.id}) Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name}): ${err}`);
-            throw err;
-        }
+    try {
+        variants = await processVariantRecord(conn, rawRecord.variant, feature);
+        logger.verbose(`converted variant name (${rawRecord.variant.name}) to variants (${variants.map(v => v.displayName).join(', and ')})`);
+    } catch (err) {
+        logger.error(`evidence (${rawRecord.id}) Unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name}): ${err}`);
+        throw err;
     }
 
     // get the disease by doid

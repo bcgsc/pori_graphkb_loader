@@ -7,6 +7,7 @@ const { civic: SOURCE_DEFN } = require('../sources');
 const { error: { ErrorMixin, ParsingError } } = kbParser;
 class NotImplementedError extends ErrorMixin { }
 
+const VARIANT_CACHE = new Map();
 
 // based on discussion with cam here: https://www.bcgsc.ca/jira/browse/KBDEV-844
 const SUBS = {
@@ -330,10 +331,11 @@ const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
  * @param {Object} feature the gene feature already grabbed from GraphKB
  */
 const processVariantRecord = async (conn, civicVariantRecord, feature) => {
-    const featureInstance = civicVariantRecord.feature.featureInstance;
+    const { feature: { featureInstance } } = civicVariantRecord;
     let entrezId,
         entrezName;
 
+    // featureInstance
     if (featureInstance.__typename === 'Gene') {
         entrezId = featureInstance.entrezId;
         entrezName = featureInstance.name;
@@ -345,20 +347,42 @@ const processVariantRecord = async (conn, civicVariantRecord, feature) => {
         );
     }
 
-    const variants = normalizeVariantRecord({
+    // Raw variant from CIViC to normalize & upload to GraphKB if needed
+    const rawVariant = {
         entrezId,
         entrezName,
         name: civicVariantRecord.name,
-    });
+    };
+
+    // Trying cache first
+    const fromCache = VARIANT_CACHE.get(JSON.stringify(rawVariant));
+
+    if (fromCache) {
+        if (fromCache.err) {
+            throw new Error('Variant record previously processed with errors');
+        }
+        if (fromCache.result) {
+            return fromCache.result;
+        }
+    }
 
     const result = [];
 
-    for (const normalizedVariant of variants) {
-        result.push(await uploadNormalizedVariant(conn, normalizedVariant, feature));
+    try {
+        // Normalizing
+        const variants = normalizeVariantRecord(rawVariant);
+
+        // Uploading
+        for (const normalizedVariant of variants) {
+            result.push(await uploadNormalizedVariant(conn, normalizedVariant, feature));
+        }
+    } catch (err) {
+        VARIANT_CACHE.set(JSON.stringify(rawVariant), { err });
     }
+
+    VARIANT_CACHE.set(JSON.stringify(rawVariant), { result });
     return result;
 };
-
 
 module.exports = {
     normalizeVariantRecord,
