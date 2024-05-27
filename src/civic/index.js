@@ -10,13 +10,12 @@ const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
 
 const { checkSpec, request } = require('../util');
 const {
-    orderPreferredOntologyTerms,
     rid,
     shouldUpdate,
 } = require('../graphkb');
 const { logger } = require('../logging');
 const _entrezGene = require('../entrez/gene');
-const { civic: SOURCE_DEFN, ncit: NCIT_SOURCE_DEFN } = require('../sources');
+const { civic: SOURCE_DEFN } = require('../sources');
 const { getDisease } = require('./disease');
 const { processVariantRecord } = require('./variant');
 const { getRelevance } = require('./relevance');
