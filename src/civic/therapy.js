@@ -1,6 +1,7 @@
 const { logger } = require('../logging');
 const { ncit: NCIT_SOURCE_DEFN } = require('../sources');
 const { orderPreferredOntologyTerms, rid } = require('../graphkb');
+const { isString } = require('lodash');
 
 
 /**
@@ -59,7 +60,9 @@ const resolveTherapies = (evidenceItem) => {
  */
 const getTherapy = async (conn, therapyRecord) => {
     const name = therapyRecord.name.toLowerCase().trim();
-    const ncitId = therapyRecord.ncitId.toLowerCase().trim();
+    const ncitId = therapyRecord.ncitId && isString(therapyRecord.ncitId)
+        ? therapyRecord.ncitId.toLowerCase().trim()
+        : therapyRecord.ncitId;
 
     // Trying with the ncitId
     if (ncitId) {
