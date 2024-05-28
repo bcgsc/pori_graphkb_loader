@@ -59,21 +59,22 @@ const resolveTherapies = (evidenceItem) => {
  */
 const getTherapy = async (conn, therapyRecord) => {
     const name = therapyRecord.name.toLowerCase().trim();
+    const ncitId = therapyRecord.ncitId.toLowerCase().trim();
 
     // Trying with the ncitId
-    if (therapyRecord.ncitId) {
+    if (ncitId) {
         try {
             return await conn.getUniqueRecordBy({
                 filters: [
                     { source: { filters: { name: NCIT_SOURCE_DEFN.name }, target: 'Source' } },
-                    { sourceId: therapyRecord.ncitId },
+                    { sourceId: ncitId },
                     { name },
                 ],
                 sort: orderPreferredOntologyTerms,
                 target: 'Therapy',
             });
         } catch (err) {
-            logger.error(`had NCIt therapy mapping (${therapyRecord.ncitId}) named (${therapyRecord.name}) but failed to fetch from graphkb: ${err}`);
+            logger.error(`had NCIt therapy mapping (${ncitId}) named (${therapyRecord.name}) but failed to fetch from graphkb`);
             throw err;
         }
     }
