@@ -63,8 +63,10 @@ const getTherapy = async (conn, therapyRecord) => {
         ? therapyRecord.ncitId.toLowerCase().trim()
         : therapyRecord.ncitId;
 
-    // Trying with the ncitId
+    let originalError;
+
     if (ncitId) {
+        // Trying with the ncitId and the name
         try {
             return await conn.getUniqueRecordBy({
                 filters: [
@@ -76,15 +78,33 @@ const getTherapy = async (conn, therapyRecord) => {
                 target: 'Therapy',
             });
         } catch (err) {
-            logger.error(`had NCIt therapy mapping (${ncitId}) named (${therapyRecord.name}) but failed to fetch from graphkb`);
+            logger.warn(`Failed to fetch therapy with NCIt id (${ncitId}) & name (${therapyRecord.name}) from graphkb`);
+        }
+
+        // Trying with the ncitId only
+        // Choosing the most recently created one
+        try {
+            const matchingTherapies = await conn.getRecords({
+                filters: {
+                    AND: [
+                        { source: { filters: { name: NCIT_SOURCE_DEFN.name }, target: 'Source' } },
+                        { sourceId: ncitId },
+                    ],
+                },
+                target: 'Therapy',
+            });
+            // In-place sorting
+            matchingTherapies.sort((a, b) => b.createdAt - a.createdAt);
+            // returning 1st one (latest created)
+            return matchingTherapies[0];
+        } catch (err) {
+            logger.error(`Failed to fetch therapy with NCIt id (${ncitId}) from graphkb`);
             throw err;
         }
     }
 
     // Trying instead with the name
     // Using the getTherapy method from the connection object
-    let originalError;
-
     try {
         // With the name as-is first
         return await conn.getTherapy(name);
