@@ -63,8 +63,6 @@ const getTherapy = async (conn, therapyRecord) => {
         ? therapyRecord.ncitId.toLowerCase().trim()
         : therapyRecord.ncitId;
 
-    let originalError;
-
     if (ncitId) {
         // Trying with the ncitId and the name
         try {
@@ -103,6 +101,8 @@ const getTherapy = async (conn, therapyRecord) => {
         }
     }
 
+    let originalError;
+
     // Trying instead with the name
     // Using the getTherapy method from the connection object
     try {
@@ -122,7 +122,6 @@ const getTherapy = async (conn, therapyRecord) => {
     } catch (err) { }
 
     // Logging errors
-    logger.error(originalError);
     throw originalError;
 };
 

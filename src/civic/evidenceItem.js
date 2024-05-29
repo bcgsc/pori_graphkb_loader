@@ -145,8 +145,7 @@ const processCombination = async (conn, {
                 (rawRecord.therapyInteractionType || '').toLowerCase(), // combinationType
             );
         } catch (err) {
-            logger.error(`failed to fetch therapy: ${JSON.stringify(rawRecord.therapies)}`);
-            throw err;
+            throw new Error(`failed to fetch therapy: ${JSON.stringify(rawRecord.therapies)}\nerr:${err}`);
         }
     }
 
