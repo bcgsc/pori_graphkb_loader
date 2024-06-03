@@ -181,6 +181,7 @@ const upload = async ({
         processingIntoCombinations: new Map(),
         relevance: new Map(),
     };
+    const casesToReview = new Map();
 
     logger.info(`\n\n${'#'.repeat(80)}\n## PROCESSING RECORDS\n${'#'.repeat(80)}\n`);
     let recordNumber = 0;
@@ -366,9 +367,15 @@ const upload = async ({
 
         // DELETE
         if (!noUpdate && toDelete.length > 0) {
-            loaclCountsST.delete = await deleteStatements(conn,
-                { rids: toDelete.map(el => el['@rid']) },
-            );
+            const rids = toDelete.map(el => el['@rid']);
+
+            if (processCombinationErrors > 0) {
+                // Do not delete any statements if some combinations have processing errors
+                logger.info(`${toDelete.length} unmatched statement(s) to be reviewed for deletion`);
+                casesToReview.set(id, rids);
+            } else {
+                loaclCountsST.delete = await deleteStatements(conn, { rids });
+            }
         }
 
         // CREATE
@@ -387,6 +394,8 @@ const upload = async ({
             }
         }
         countsST = incrementCounts(countsST, loaclCountsST);
+
+        // END OF MAIN LOOP
     }
     logger.info(`\n\n${'#'.repeat(80)}\n## END OF RECORD PROCESSING\n${'#'.repeat(80)}\n`);
 
@@ -432,6 +441,13 @@ const upload = async ({
             countsST = { delete: { err: deletedCount.err, success: deletedCount.success } };
         }
     }
+
+    // Logging processing error cases to be reviewed,
+    // so a reviewer can decide if corresponding statements need to be deleted or not
+    logger.info();
+    logger.info('***** Cases to be reviewed for deletion *****');
+    logger.warn(`${casesToReview.size} Evidence Item(s) with processing errors leading to unmatched Statement(s)`);
+    casesToReview.forEach((v, k) => logger.info(`${k} -> ${JSON.stringify(v)}`));
 
     // Logging Statement CRUD operations counts
     if (countsST) {
