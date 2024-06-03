@@ -151,13 +151,11 @@
                                 "name"
                             ],
                             "type": [
-                                "null",
                                 "object"
                             ]
                         },
                         "type": [
-                            "array",
-                            "null"
+                            "array"
                         ]
                     }
                 },

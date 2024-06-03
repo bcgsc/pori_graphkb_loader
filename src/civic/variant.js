@@ -7,6 +7,7 @@ const { civic: SOURCE_DEFN } = require('../sources');
 const { error: { ErrorMixin, ParsingError } } = kbParser;
 class NotImplementedError extends ErrorMixin { }
 
+const VARIANT_CACHE = new Map();
 
 // based on discussion with cam here: https://www.bcgsc.ca/jira/browse/KBDEV-844
 const SUBS = {
@@ -31,7 +32,13 @@ const SUBS = {
     'p26.3-25.3 11mb del': 'y.p26.3_p25.3del',
 };
 
-
+/**
+ * Compares two gene names together for equality
+ *
+ * @param {string} gene1 a gene name
+ * @param {string} gene2 a second gene name
+ * @returns {boolean} whether the genes names are equal or not
+ */
 const compareGeneNames = (gene1, gene2) => {
     if (['abl1', 'abl'].includes(gene1.toLowerCase()) && ['abl1', 'abl'].includes(gene2.toLowerCase())) {
         return true;
@@ -42,7 +49,14 @@ const compareGeneNames = (gene1, gene2) => {
 };
 
 /**
- * Given a CIViC Variant record entrez information and name, normalize into a set of graphkb-style variants
+ * Given a CIViC Variant record entrez information and name,
+ * normalize into a set of graphkb-style variants
+ *
+ * @param {object} param0
+ * @param {string} param0.name
+ * @param {string} param0.entrezId
+ * @param {string} param0.entrezName
+ * @returns {object}
  */
 const normalizeVariantRecord = ({
     name: rawName, entrezId, entrezName: rawEntrezName,
@@ -231,6 +245,7 @@ const normalizeVariantRecord = ({
  * @param {ApiConnection} conn the connection to GraphKB
  * @param {Object} normalizedVariant the normalized variant record
  * @param {Object} feature the gene feature already grabbed from GraphKB
+ * @returns {object[]}
  */
 const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
     let result;
@@ -321,19 +336,20 @@ const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
     return result;
 };
 
-
 /**
  * Given some variant record and a feature, process the variant and return a GraphKB equivalent
  *
  * @param {ApiConnection} conn the connection to GraphKB
  * @param {Object} civicVariantRecord the raw variant record from CIViC
  * @param {Object} feature the gene feature already grabbed from GraphKB
+ * @returns {object[]}
  */
 const processVariantRecord = async (conn, civicVariantRecord, feature) => {
-    const featureInstance = civicVariantRecord.feature.featureInstance;
+    const { feature: { featureInstance } } = civicVariantRecord;
     let entrezId,
         entrezName;
 
+    // featureInstance
     if (featureInstance.__typename === 'Gene') {
         entrezId = featureInstance.entrezId;
         entrezName = featureInstance.name;
@@ -345,22 +361,46 @@ const processVariantRecord = async (conn, civicVariantRecord, feature) => {
         );
     }
 
-    const variants = normalizeVariantRecord({
+    // Raw variant from CIViC to normalize & upload to GraphKB if needed
+    const rawVariant = {
         entrezId,
         entrezName,
         name: civicVariantRecord.name,
-    });
+    };
+
+    // Trying cache first
+    const fromCache = VARIANT_CACHE.get(JSON.stringify(rawVariant));
+
+    if (fromCache) {
+        if (fromCache.err) {
+            throw new Error('Variant record previously processed with errors');
+        }
+        if (fromCache.result) {
+            return fromCache.result;
+        }
+    }
 
     const result = [];
 
-    for (const normalizedVariant of variants) {
-        result.push(await uploadNormalizedVariant(conn, normalizedVariant, feature));
+    try {
+        // Normalizing
+        const variants = normalizeVariantRecord(rawVariant);
+
+        // Uploading
+        for (const normalizedVariant of variants) {
+            result.push(await uploadNormalizedVariant(conn, normalizedVariant, feature));
+        }
+    } catch (err) {
+        VARIANT_CACHE.set(JSON.stringify(rawVariant), { err });
     }
+
+    VARIANT_CACHE.set(JSON.stringify(rawVariant), { result });
     return result;
 };
 
-
 module.exports = {
+    compareGeneNames,
     normalizeVariantRecord,
     processVariantRecord,
+    uploadNormalizedVariant,
 };

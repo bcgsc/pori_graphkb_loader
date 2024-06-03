@@ -1,8 +1,18 @@
+const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
+
 const _asco = require('../asco');
 const _pubmed = require('../entrez/pubmed');
 
+class NotImplementedError extends ErrorMixin { }
+
+
 /**
- * Check two strings are the same irrespective of casing, trailing periods and other formatting
+ * Check if two strings are the same irrespective of casing,
+ * trailing periods and other formatting
+ *
+ * @param {string} title1 a publication title
+ * @param {string} title2 a second publication title
+ * @returns {Boolean} whether both titles are matching or not
  */
 const titlesMatch = (title1, title2) => {
     const title1Simple = title1.trim().toLowerCase().replace(/\.$/, '').replace(/<\/?(em|i|bold)>/g, '');
@@ -10,14 +20,15 @@ const titlesMatch = (title1, title2) => {
     return title1Simple === title2Simple;
 };
 
-
 /**
- * Fetches the publication record either from pubmed or the ASCO abstract
+ * Fetches the publication record either from PubMed or the ASCO abstract
  *
  * @param {ApiConnection} conn graphkb API connector
- * @param {object} rawRecord CIViC Evidence Item JSON record
+ * @param {object} rawRecord CIViC EvidenceItem record
+ * @returns {object} the publication record from GraphKB
  */
 const getPublication = async (conn, rawRecord) => {
+    // Upload Publication to GraphKB FROM PUBMED
     if (rawRecord.source.sourceType === 'PUBMED') {
         const [publication] = await _pubmed.fetchAndLoadByIds(conn, [rawRecord.source.citationId]);
 
@@ -26,6 +37,8 @@ const getPublication = async (conn, rawRecord) => {
         }
         return publication;
     }
+
+    // Upload Publication to GraphKB FROM ASCO
     if (rawRecord.source.sourceType === 'ASCO') {
         const abstracts = await _asco.fetchAndLoadByIds(conn, [rawRecord.source.ascoAbstractId]);
 
@@ -54,12 +67,16 @@ const getPublication = async (conn, rawRecord) => {
         }
         return abstracts[0];
     }
+
+    // Upload Publication to GraphKB FROM ASH - No loader yet!
     if (rawRecord.source.sourceType === 'ASH') {
-        // 6 cases
-        // TODO: ASH loader
+        // TODO: ASH loader. Only a handfull of cases though
     }
-    throw Error(`unable to process non-pubmed/non-asco evidence type (${rawRecord.source.sourceType}) for evidence item (${rawRecord.id})`);
+    throw new NotImplementedError(`unable to process non-pubmed/non-asco evidence type (${rawRecord.source.sourceType}) for evidence item (${rawRecord.id})`);
 };
 
-
-module.exports = { getPublication, titlesMatch };
+module.exports = {
+    getPublication,
+    loadPubmedCache: _pubmed.preLoadCache,
+    titlesMatch,
+};
