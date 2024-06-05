@@ -2,7 +2,6 @@ const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
 
 class NotImplementedError extends ErrorMixin { }
 
-
 const RELEVANCE_CACHE = {};
 
 
@@ -333,11 +332,10 @@ const translateRelevance = (evidenceType, evidenceDirection, significance) => {
     );
 };
 
-
 /**
  * Convert the CIViC relevance types to GraphKB terms
  */
-const getRelevance = async ({ rawRecord, conn }) => {
+const getRelevance = async (conn, { rawRecord }) => {
     // translate the type to a GraphKB vocabulary term
     let relevance = translateRelevance(
         rawRecord.evidenceType,
@@ -353,8 +351,6 @@ const getRelevance = async ({ rawRecord, conn }) => {
     }
     return relevance;
 };
-
-
 
 module.exports = {
     getRelevance,

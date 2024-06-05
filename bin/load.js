@@ -1,6 +1,3 @@
-const fs = require('fs');
-const path = require('path');
-
 const { runLoader } = require('../src');
 const { createOptionsMenu, fileExists } = require('../src/cli');
 
@@ -36,7 +33,12 @@ const cosmicResistance = require('../src/cosmic/resistance');
 const cosmicFusions = require('../src/cosmic/fusions');
 
 const API_MODULES = {
-    asco, dgidb, docm, fdaApprovals, moa, oncotree,
+    asco,
+    dgidb,
+    docm,
+    fdaApprovals,
+    moa,
+    oncotree,
 };
 
 const FILE_MODULES = {
@@ -102,6 +104,11 @@ civicParser.add_argument('--trustedCurators', {
     help: 'CIViC User IDs of curators whose statements should be imported even if they have not yet been reviewed (evidence is submitted but not accepted)',
     nargs: '+',
 });
+civicParser.add_argument('--noUpdate', {
+    action: 'store_true',
+    default: false,
+    help: 'Will not check for updating content of existing GraphKB Statements',
+});
 
 const clinicaltrialsgovParser = subparsers.add_parser('clinicaltrialsgov');
 clinicaltrialsgovParser.add_argument('--days', {
@@ -132,14 +139,12 @@ let loaderFunction;
 if (input) {
     loaderFunction = ALL_MODULES[moduleName || subparser_name].uploadFile;
 } else {
-    debugger;
     loaderFunction = ALL_MODULES[moduleName || subparser_name].upload;
 }
 
 const loaderOptions = { ...options };
 
 if (input) {
-    debugger;
     loaderOptions.filename = input;
 }
 
