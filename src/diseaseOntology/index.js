@@ -252,6 +252,7 @@ const uploadFile = async ({
             alias: false,
             deprecated,
             description,
+            displayName: `${name} [${sourceId.toUpperCase()}]`,
             name,
             source,
             sourceId,
@@ -286,6 +287,7 @@ const uploadFile = async ({
         for (const alias of aliases) {
             const content = {
                 alias: true,
+                displayName: `${alias} [${record.sourceId.toUpperCase()}]`,
                 name: alias,
                 source,
                 sourceId: record.sourceId,
@@ -331,6 +333,7 @@ const uploadFile = async ({
         for (const alternateId of hasDeprecated) {
             const content = {
                 deprecated: true,
+                displayName: `${record.name} [${alternateId.toUpperCase()}]`,
                 name: record.name,
                 source,
                 sourceId: alternateId,
