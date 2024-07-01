@@ -33,12 +33,12 @@ rule all:
     input: f'{DATA_DIR}/civic.COMPLETE',
         f'{DATA_DIR}/cgi.COMPLETE',
         f'{DATA_DIR}/docm.COMPLETE',
-        f'{DATA_DIR}/dgidb.COMPLETE',
+        #f'{DATA_DIR}/dgidb.COMPLETE',
         f'{DATA_DIR}/PMC4468049.COMPLETE',
         f'{DATA_DIR}/PMC4232638.COMPLETE',
         f'{DATA_DIR}/uberon.COMPLETE',
         f'{DATA_DIR}/fdaApprovals.COMPLETE',
-        f'{DATA_DIR}/cancerhotspots.COMPLETE',
+        #f'{DATA_DIR}/cancerhotspots.COMPLETE',
         f'{DATA_DIR}/moa.COMPLETE',
         f'{DATA_DIR}/ncitFdaXref.COMPLETE',
         *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []),
@@ -471,7 +471,7 @@ rule all_ontologies:
         rules.load_sources.output,
         rules.load_fda_srs.output,
         rules.load_ncit_fda.output,
-        rules.load_dgidb.output
+        #rules.load_dgidb.output
     container: CONTAINER
     output: f'{DATA_DIR}/all_ontologies.COMPLETE'
     shell: 'touch {output}'
