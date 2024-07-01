@@ -1,5 +1,5 @@
-# usage: docker build -t my-node-snakemake-image .
-# usage: docker run -e USERNAME=myuser -e PASSWORD=mypassword my-node-snakemake-image
+# usage: docker build -t gkb-snakemake-loader .
+# usage: docker run -e GKB_USER=<user> -e GKB_PASS=<pass> -e GKB_URL=<gkb_url> -e GKB_LOAD_MODULE=<gkb_load_module> gkb-snakemake-loader 
 
 FROM node:16
 WORKDIR /usr/src/app
@@ -22,11 +22,14 @@ RUN pip3 install snakemake
 # set to avoid errors when singularity overloads working dir
 ENV NODE_PATH=/usr/src/app/node_modules
 
-# Environment variables for username and password
+# Environment variables for username, password and url to load to
 ENV GKB_USER ""
 ENV GKB_PASS ""
 ENV GKB_URL ""
-ENV SNAKEMAKE_GOAL ""
+
+# Environment variable for the module to run the loader until - that is,
+# all modules required by this module will also be run
+ENV GKB_LOAD_MODULE "" 
 
 # Example CMD to run Snakemake with arguments
 CMD ["snakemake", "-j", "1", "--directory", ".", "--config", "--gkb_user", "$GKB_USER", "--gkb_pass", "$GKB_PASS" "--gkb_url", "$GKB_URL", "--until", "$SNAKEMAKE_GOAL"] 
