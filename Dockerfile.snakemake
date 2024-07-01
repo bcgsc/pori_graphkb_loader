@@ -1,0 +1,32 @@
+# usage: docker build -t my-node-snakemake-image .
+# usage: docker run -e USERNAME=myuser -e PASSWORD=mypassword my-node-snakemake-image
+
+FROM node:16
+WORKDIR /usr/src/app
+# Bundle app source
+COPY package*.json ./
+RUN npm ci --only=production
+# COPY everything not in dockerignore file
+COPY . .
+
+# Install necessary dependencies for Snakemake
+RUN apt-get update && apt-get install -y \
+    python3 \
+    python3-pip \
+    && rm -rf /var/lib/apt/lists/*
+
+# Install Snakemake using pip
+RUN pip3 install -U pip setuptools wheel
+RUN pip3 install snakemake
+
+# set to avoid errors when singularity overloads working dir
+ENV NODE_PATH=/usr/src/app/node_modules
+
+# Environment variables for username and password
+ENV GKB_USER ""
+ENV GKB_PASS ""
+ENV GKB_URL ""
+ENV SNAKEMAKE_GOAL ""
+
+# Example CMD to run Snakemake with arguments
+CMD ["snakemake", "-j", "1", "--directory", ".", "--config", "--gkb_user", "$GKB_USER", "--gkb_pass", "$GKB_PASS" "--gkb_url", "$GKB_URL", "--until", "$SNAKEMAKE_GOAL"] 
