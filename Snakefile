@@ -16,7 +16,7 @@ def build_docker_image(tag):
     shell(f"docker build -t {docker_image_name} .")
     return docker_image_name
 
-if config.get('build-docker'):
+if config.get('build_docker'):
     containerchoice = build_docker_image('test')
 else:
     containerchoice = CONTAINER
