@@ -33,7 +33,6 @@ RUN chmod 777 /usr/src/app/snakemake_logs
 # Copy the Snakefile to the working directory (assuming it's already in the build context)
 COPY . .
 
-#$GKB_URL
 # Run the Snakefile using Snakemake
 CMD [ "sh", "-c", "snakemake --debug -j 1 --config gkb_url=$GKB_URL gkb_user=$GKB_USER gkb_pass=$GKB_PASS --until $GKB_LOADER"]
 
