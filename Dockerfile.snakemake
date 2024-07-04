@@ -1,0 +1,39 @@
+FROM node:16 as node_stage
+WORKDIR /usr/src/app
+# Bundle app source
+COPY package*.json ./
+RUN npm ci --only=production
+# COPY everything not in dockerignore file
+COPY . .
+# set to avoid errors when singularity overloads working dir
+ENV NODE_PATH=/usr/src/app/node_modules
+
+FROM python:3.12
+WORKDIR /usr/src/app
+COPY --from=node_stage /usr/src/app/package*.json ./
+COPY --from=node_stage /usr/src/app/node_modules ./node_modules
+
+RUN apt-get update && \
+    apt-get install -y curl && \
+    curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
+    apt-get install -y nodejs
+
+# Verify Node.js version
+RUN node -v
+
+RUN pip3 install --upgrade setuptools pip wheel && \
+    pip3 install "pulp<2.3.1" && \
+    pip3 install snakemake
+
+RUN mkdir /usr/src/app/snakemake_data
+RUN mkdir /usr/src/app/snakemake_logs
+RUN chmod 777 /usr/src/app/snakemake_data
+RUN chmod 777 /usr/src/app/snakemake_logs
+
+# Copy the Snakefile to the working directory (assuming it's already in the build context)
+COPY . .
+
+#$GKB_URL
+# Run the Snakefile using Snakemake
+CMD [ "sh", "-c", "snakemake --debug -j 1 --config gkb_url=$GKB_URL gkb_user=$GKB_USER gkb_pass=$GKB_PASS --until $GKB_LOADER"]
+
