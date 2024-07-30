@@ -17,7 +17,9 @@ const recordSpec = ajv.compile(spec);
 const BASE_URL = 'https://dgidb.org/api/graphql';
 
 
-const processRecord = async ({ conn, record, source, counts }) => {
+const processRecord = async ({
+    conn, record, source, counts,
+}) => {
     checkSpec(recordSpec, record);
     const { node: { id, conceptId: chemblId, interactions } } = record;
 
@@ -31,7 +33,10 @@ const processRecord = async ({ conn, record, source, counts }) => {
 
         if (conceptId.split(':')[0] === 'hgnc') {
             const hgncRecord = await conn.getUniqueRecordBy({
-                filters: { AND: [{displayName: name}, { sourceId: conceptId }, { source: { filters: { name: 'hgnc' }, target: 'Source' } }] },
+                filters: {
+                    AND: [{ displayName: name }, { sourceId: conceptId },
+                        { source: { filters: { name: 'hgnc' }, target: 'Source' } }],
+                },
                 returnProperies: ['out_CrossReferenceOf'],
                 target: 'Feature',
             });
@@ -42,7 +47,6 @@ const processRecord = async ({ conn, record, source, counts }) => {
         }
 
         if (geneRid !== undefined) {
-            logger.info(`success find geneRid ${geneRid}`);
             await conn.addRecord({
                 content: {
                     actionType: interactionType,
@@ -113,11 +117,11 @@ const upload = async ({ conn, url = BASE_URL }) => {
 
         for (const record of edges) {
             logger.info(`processing ${record.cursor}`);
-            if (record.cursor == "NDI"){
-                logger.info(`processing ${record.cursor}`);
-            }
+
             try {
-                await processRecord({ conn, record, source, counts });
+                await processRecord({
+                    conn, counts, record, source,
+                });
                 counts.success++;
             } catch (err) {
                 logger.error(err);
