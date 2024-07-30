@@ -1,47 +1,48 @@
 {
     "properties": {
-        "concept_id": {
-            "pattern": "^chembl:CHEMBL\\d+$",
+        "cursor":{
             "type": "string"
         },
-        "entrez_id": {
-            "min": 1,
-            "type": "number"
-        },
-        "id": {
-            "format": "uuid",
-            "type": "string"
-        },
-        "interaction_direction": {
-            "items": {
-                "type": [
-                    "string",
-                    "null"
-                ]
+        "node": {
+            "properties": {
+                "conceptId": {
+                    "pattern": "^chembl:CHEMBL\\d+$",
+                    "type": "string"
+                },
+                "id": {
+                    "format": "uuid",
+                    "type": "string"
+                },
+                "interactions": {
+                    "items": {
+                        "properties": {
+                            "gene": {
+                                "properties": {
+                                    "conceptId": {
+                                        "type": "string"
+                                    }
+                                }
+                            },
+                            "interactionTypes": {
+                                "items": {
+                                    "properties": {
+                                        "type": {
+                                            "type": "string"
+                                        }
+                                    }
+                                },
+                                "type": "array"
+                            }
+                        }
+                    },
+                    "type": "array"
+                }
             },
-            "type": "array"
-        },
-        "interaction_types": {
-            "items": {
-                "type": "string"
-            },
-            "type": "array"
-        },
-        "score": {
-            "type": "number"
-        },
-        "sources": {
-            "items": {
-                "type": "string"
-            },
-            "type": "array"
+            "required": [
+                "conceptId"
+            ],
+            "type": "object"
         }
     },
-    "required": [
-        "entrez_id",
-        "concept_id",
-        "interaction_types",
-        "id"
-    ],
     "type": "object"
 }

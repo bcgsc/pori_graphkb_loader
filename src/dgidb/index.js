@@ -14,35 +14,49 @@ const ajv = new Ajv();
 
 const recordSpec = ajv.compile(spec);
 
-const BASE_URL = 'https://dgidb.org/api/v2';
+const BASE_URL = 'https://dgidb.org/api/graphql';
 
 
-const processRecord = async ({ conn, record, source }) => {
+const processRecord = async ({ conn, record, source, counts }) => {
     checkSpec(recordSpec, record);
-    const {
-        entrez_id: entrezId,
-        concept_id: chemblId,
-        interaction_types: interactionTypes,
-        id,
-    } = record;
+    const { node: { id, conceptId: chemblId, interactions } } = record;
 
-    const [gene] = await _entrezGene.fetchAndLoadByIds(conn, [entrezId]);
     const drug = await _chembl.fetchAndLoadById(conn, chemblId.replace('chembl:', ''));
 
-    const interactionType = interactionTypes.map(i => i.toLowerCase().trim()).sort().join(';');
+    for (const interaction of interactions) {
+        const { gene: { conceptId, name }, interactionTypes } = interaction;
+        const interactionType = interactionTypes.map(item => item.type).sort().join(';');
 
-    await conn.addRecord({
-        content: {
-            actionType: interactionType,
-            in: rid(drug),
-            out: rid(gene),
-            source: rid(source),
-            uuid: id, // use the input uuid as the uuid rather than generating one
-        },
-        existsOk: true,
-        fetchExisting: false,
-        target: 'TargetOf',
-    });
+        let geneRid;
+
+        if (conceptId.split(':')[0] === 'hgnc') {
+            const hgncRecord = await conn.getUniqueRecordBy({
+                filters: { AND: [{displayName: name}, { sourceId: conceptId }, { source: { filters: { name: 'hgnc' }, target: 'Source' } }] },
+                returnProperies: ['out_CrossReferenceOf'],
+                target: 'Feature',
+            });
+            geneRid = hgncRecord.out_CrossReferenceOf[0].in;
+        } else {
+            logger.info(`skip unrecognized concept id: ${conceptId}`);
+            counts.skip++;
+        }
+
+        if (geneRid !== undefined) {
+            logger.info(`success find geneRid ${geneRid}`);
+            await conn.addRecord({
+                content: {
+                    actionType: interactionType,
+                    in: rid(drug),
+                    out: geneRid,
+                    source: rid(source),
+                    uuid: id, // use the input uuid as the uuid rather than generating one
+                },
+                existsOk: true,
+                fetchExisting: false,
+                target: 'TargetOf',
+            });
+        }
+    }
 };
 
 
@@ -50,31 +64,60 @@ const upload = async ({ conn, url = BASE_URL }) => {
     logger.info('creating the source record');
     const source = rid(await conn.addSource(SOURCE_DEFN));
     const limit = 100;
-    let page = `${url}/interactions?count=${limit}&page=1`;
     const counts = { error: 0, skip: 0, success: 0 };
 
-    // pre-cache the entrez genes
-    logger.info('pre-loading the entrez gene list');
-    await _entrezGene.preLoadCache(conn);
     logger.info('pre-loading the chembl drug list');
     await _chembl.preLoadCache(conn);
+    let endCursor = '',
+        hasNextPage = true;
 
-    while (page) {
-        logger.info(`loading: ${page}`);
+    while (hasNextPage) {
         const resp = await request({
+            body: {
+                query: `{
+                    drugs(first:${limit}${endCursor}) {
+                    pageInfo {
+                        endCursor
+                        hasNextPage
+                    }
+                    pageCount
+                    edges {
+                        cursor
+                        node {
+                        id
+                        conceptId
+                        interactions {
+                            gene {
+                            name
+                            conceptId
+                            longName
+                            }
+                            interactionTypes {
+                            type
+                            }
+                        }
+                        }
+                    }
+                    }
+                }`,
+            },
             json: true,
-            method: 'GET',
-            uri: page,
+            method: 'POST',
+            uri: url,
         });
-        const { _meta: { links: { next } }, records } = resp;
-        page = next;
 
-        // process this batch of records
-        for (const record of records) {
-            logger.info(`processing ${record.id}`);
+        const { data: { drugs: { edges, pageInfo } } } = resp;
 
+        endCursor = ` after:"${pageInfo.endCursor}"`;
+        hasNextPage = pageInfo.hasNextPage;
+
+        for (const record of edges) {
+            logger.info(`processing ${record.cursor}`);
+            if (record.cursor == "NDI"){
+                logger.info(`processing ${record.cursor}`);
+            }
             try {
-                await processRecord({ conn, record, source });
+                await processRecord({ conn, record, source, counts });
                 counts.success++;
             } catch (err) {
                 logger.error(err);
