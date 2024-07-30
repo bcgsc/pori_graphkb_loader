@@ -144,7 +144,7 @@ rule download_cgi:
     output: f'{DATA_DIR}/cgi/cgi_biomarkers_per_variant.tsv'
     shell: dedent(f'''\
         cd {DATA_DIR}/cgi
-        wget https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_20180117.zip
+        wget https://www.cancergenomeinterpreter.org/data/biomarkers/cgi_biomarkers_20180117.zip
         unzip cgi_biomarkers_20180117.zip
         ''')
 
