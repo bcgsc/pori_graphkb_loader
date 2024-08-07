@@ -2250,12 +2250,7 @@
             ]
         },
         "wild type": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "no functional effect"
-                }
-            ]
+            "comment": "Not a SubClassOf 'no functional effect' anymore. See KBDEV-1231"
         },
         "wildtype": {
             "deprecated": true,
