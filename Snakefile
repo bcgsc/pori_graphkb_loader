@@ -222,6 +222,7 @@ rule load_ncit:
 
 rule load_fda_srs:
     input: expand(rules.load_local.output, local=['vocab']),
+        f'{DATA_DIR}/ncit.COMPLETE',
         data=f'{DATA_DIR}/fda/UNII_Records.txt'
     container: CONTAINER
     log: f'{LOGS_DIR}/fdaSrs.logs.txt'
