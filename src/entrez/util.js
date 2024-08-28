@@ -138,6 +138,7 @@ const fetchRecord = async (api, {
  * @param {boolean} opt.fetchFirst attempt to get the record by source Id before uploading it
  * @param {string} opt.target
  * @param {object} opt.sourceDefn
+ * @param {boolean} opt.upsert update the record if already exists
  * @param {function} opt.createDisplayName
  */
 const uploadRecord = async (api, content, opt = {}) => {
@@ -257,14 +258,16 @@ const preLoadCache = async (api, { sourceDefn, cache, target }) => {
  * @param {Array.<string>} idListIn list of pubmed IDs
  * @param {Object} opt
  * @param {string} opt.dbName name of the entrez db to pull from ex. gene
+ * @param {boolean} opt.fetchFirst override uploadRecord() fetchFirst
  * @param {function} opt.parser function to convert records from the api to the graphkb format
  * @param {object} opt.cache
  * @param {number} opt.MAX_CONSEC maximum consecutive records to upload at once
  * @param {string} opt.target the graphkb api target to upload to
  * @param {object} opt.sourceDefn the object with the source information
+ * @param {boolean} opt.upsert override uploadRecord() upsert
  */
 const fetchAndLoadByIds = async (api, idListIn, {
-    dbName, parser, cache, MAX_CONSEC = 100, target, sourceDefn,
+    dbName, fetchFirst, parser, cache, MAX_CONSEC = 100, target, sourceDefn, upsert
 }) => {
     const records = await fetchByIdList(
         idListIn,
@@ -281,8 +284,10 @@ const fetchAndLoadByIds = async (api, idListIn, {
         const newRecords = await Promise.all(current.map(
             async record => uploadRecord(api, record, {
                 cache,
+                fetchFirst,
                 sourceDefn,
                 target,
+                upsert,
             }),
         ));
         result.push(...newRecords);
