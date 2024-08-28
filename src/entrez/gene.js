@@ -70,7 +70,7 @@ const fetchAndLoadGeneByIds = async (api, idListIn, opt = {}) => {
             target: 'Feature',
             upsert,
         },
-    )
+    );
 };
 
 /**

@@ -267,7 +267,14 @@ const preLoadCache = async (api, { sourceDefn, cache, target }) => {
  * @param {boolean} opt.upsert override uploadRecord() upsert
  */
 const fetchAndLoadByIds = async (api, idListIn, {
-    dbName, fetchFirst, parser, cache, MAX_CONSEC = 100, target, sourceDefn, upsert
+    dbName,
+    fetchFirst,
+    parser,
+    cache,
+    MAX_CONSEC = 100,
+    target,
+    sourceDefn,
+    upsert,
 }) => {
     const records = await fetchByIdList(
         idListIn,
