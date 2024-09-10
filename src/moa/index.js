@@ -269,6 +269,8 @@ const loadVariant = async (conn, moaVariant) => {
         const variantType = await conn.getVocabularyTerm('signature present');
         return conn.addVariant({
             content: {
+                // KBDEV-994 adding displayName
+                // TODO: test displayName in KBDEV-993 and remove both comments.
                 displayName: `${signature.name.toUpperCase()} signature present`,
                 reference1: rid(signature),
                 type: rid(variantType),
