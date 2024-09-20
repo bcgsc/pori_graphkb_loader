@@ -178,6 +178,13 @@ const processRecord = async (opt) => {
     if (!variant) {
         throw new Error('Failed to parse either variant');
     }
+    // get the vocabulary term
+    // KBDEV-1050: treat all incoming docm relevance as recurrent
+    const relevance = await conn.getVocabularyTerm('recurrent');
+
+    if (!relevance) {
+        throw new Error('Unable to find recurrent as relevance');
+    }
 
     for (const diseaseRec of record.diseases) {
         if (!diseaseRec.tags || diseaseRec.tags.length !== 1) {
@@ -186,8 +193,6 @@ const processRecord = async (opt) => {
         }
 
         try {
-            // get the vocabulary term
-            const relevance = await conn.getVocabularyTerm(diseaseRec.tags[0]);
             // get the disease by name
             const disease = await conn.getUniqueRecordBy({
                 filters: {

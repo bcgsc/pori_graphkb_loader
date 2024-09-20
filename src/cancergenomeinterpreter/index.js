@@ -5,7 +5,6 @@ const kbParser = require('@bcgsc-pori/graphkb-parser');
 const {
     loadDelimToJson,
     convertRowFields,
-    hashRecordToId,
 } = require('../util');
 const {
     orderPreferredOntologyTerms, rid,
@@ -15,7 +14,6 @@ const _trials = require('../clinicaltrialsgov');
 const _pubmed = require('../entrez/pubmed');
 const _asco = require('../asco');
 const _gene = require('../entrez/gene');
-const { uploadFromJSON } = require('../ontology');
 
 const { cgi: SOURCE_DEFN } = require('../sources');
 
@@ -30,29 +28,11 @@ const HEADER = {
     evidenceLevel: 'Evidence level',
     gene: 'Gene',
     genomic: 'gDNA',
-    protein: 'individual_mutation',
     relevance: 'Association',
     reviewData: 'Curation date',
     reviewer: 'Curator',
     transcript: 'transcript',
     variantClass: 'Alteration type',
-};
-
-const evidenceLevels = {
-    class: 'EvidenceLevel',
-    defaultNameToSourceId: true,
-    records: {
-        'CPIC guidelines': {},
-        'Case report': {},
-        'Early trials': {},
-        'European LeukemiaNet guidelines': {},
-        'FDA guidelines': {},
-        'Late trials': {},
-        'NCCN guidelines': {},
-        'NCCN/CAP guidelines': {},
-        'Pre-clinical': {},
-    },
-    sources: { default: SOURCE_DEFN },
 };
 
 // mappings are given primarily to fix known typos
@@ -86,6 +66,7 @@ const therapyMapping = {
     'jak inhibitors (alone or in combination)': 'jak inhibitor',
     'mek inhibitors (alone or in combination)': 'mek inhibitor',
     tensirolimus: 'temsirolimus',
+    'trastuzumab deruxtecan-nxki': 'fam-trastuzumab deruxtecan-nxki',
 };
 
 
@@ -489,26 +470,49 @@ const uploadFile = async ({
     const counts = { error: 0, skip: 0, success: 0 }; // tracking errors relative to the number of total statements
     const inputCounts = { error: 0, skip: 0, success: 0 }; // tracking errors relative to the input number of records
 
-    logger.info('creating the evidence levels');
-    await uploadFromJSON({ conn, data: evidenceLevels });
-    logger.info('preloading the pubmed cache');
+    const perVariantRows = [];
+
+    for (let index = 0; index < rows.length; index++) {
+        let match,
+            protein;
+
+        if (match = /^(\w+) \(([A-Z0-9*,;]+)\)$/.exec(rows[index].Biomarker)) {
+            const mutations = match[2].split(',');
+
+            for (let i = 0; i < mutations.length; i++) {
+                protein = `${match[1]}:${mutations[i]}`;
+                perVariantRows.push({
+                    ...rows[i],
+                    protein,
+                    sourceId: `${index + 1}:${i + 1}`,
+                });
+            }
+        } else {
+            perVariantRows.push({
+                ...rows[index],
+                protein: '',
+                sourceId: `${index + 1}`,
+            });
+        }
+    }
+
     await _pubmed.preLoadCache(conn);
     const errorList = [];
 
-    logger.info(`loading ${rows.length} rows`);
+    logger.info(`loading ${perVariantRows.length} rows`);
 
-    for (let index = 0; index < rows.length; index++) {
+    for (let index = 0; index < perVariantRows.length; index++) {
         if (maxRecords && index > maxRecords) {
             logger.warn(`not loading all content due to max records limit (${maxRecords})`);
             break;
         }
-        const rawRow = rows[index];
-        const sourceId = hashRecordToId(rawRow);
-        logger.info(`processing: ${sourceId} (${index} / ${rows.length})`);
+        const rawRow = perVariantRows[index];
+        logger.info(`processing: ${perVariantRows[index].sourceId} (${index} / ${perVariantRows.length})`);
         const row = {
             _raw: rawRow,
-            sourceId,
-            ...convertRowFields(HEADER, rows[index]),
+            protein: perVariantRows[index].protein,
+            sourceId: perVariantRows[index].sourceId,
+            ...convertRowFields(HEADER, perVariantRows[index]),
         };
         row.therapy = parseTherapy(row);
 

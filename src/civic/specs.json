@@ -1,31 +1,6 @@
 {
     "EvidenceItem": {
         "properties": {
-            "clinicalSignificance": {
-                "enum": [
-                    "ADVERSE_RESPONSE",
-                    "BENIGN",
-                    "BETTER_OUTCOME",
-                    "DOMINANT_NEGATIVE",
-                    "GAIN_OF_FUNCTION",
-                    "LIKELY_BENIGN",
-                    "LIKELY_PATHOGENIC",
-                    "LOSS_OF_FUNCTION",
-                    "NA",
-                    "NEGATIVE",
-                    "NEOMORPHIC",
-                    "PATHOGENIC",
-                    "POOR_OUTCOME",
-                    "POSITIVE",
-                    "REDUCED_SENSITIVITY",
-                    "RESISTANCE",
-                    "SENSITIVITYRESPONSE",
-                    "UNALTERED_FUNCTION",
-                    "UNCERTAIN_SIGNIFICANCE",
-                    "UNKNOWN",
-                    null
-                ]
-            },
             "description": {
                 "type": [
                     "null",
@@ -35,6 +10,12 @@
             "disease": {
                 "properties": {
                     "doid": {
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    },
+                    "id": {
                         "type": [
                             "null",
                             "number"
@@ -50,46 +31,6 @@
                 "type": [
                     "null",
                     "object"
-                ]
-            },
-            "drugInteractionType": {
-                "enum": [
-                    "COMBINATION",
-                    "SEQUENTIAL",
-                    "SUBSTITUTES",
-                    null
-                ]
-            },
-            "drugs": {
-                "items": {
-                    "properties": {
-                        "id": {
-                            "type": [
-                                "null",
-                                "number"
-                            ]
-                        },
-                        "name": {
-                            "type": [
-                                "null",
-                                "string"
-                            ]
-                        },
-                        "ncitId": {
-                            "type": [
-                                "null",
-                                "string"
-                            ]
-                        }
-                    },
-                    "type": [
-                        "null",
-                        "object"
-                    ]
-                },
-                "type": [
-                    "array",
-                    "null"
                 ]
             },
             "evidenceDirection": {
@@ -127,31 +68,105 @@
                     null
                 ]
             },
-            "gene": {
+            "id": {
+                "type": "number"
+            },
+            "molecularProfile": {
                 "properties": {
                     "id": {
-                        "type": [
-                            "null",
-                            "number"
-                        ]
+                        "type": "number"
                     },
                     "name": {
                         "type": [
                             "null",
                             "string"
                         ]
+                    },
+                    "parsedName": {
+                        "items": {
+                            "properties": {
+                                "__typename": {
+                                    "type": "string"
+                                },
+                                "id": {
+                                    "type": "number"
+                                },
+                                "text": {
+                                    "type": "string"
+                                }
+                            },
+                            "required":[
+                                "__typename"
+                            ],
+                            "type": "object"
+                        },
+                        "type": "array"
+                    },
+                    "rawName": {
+                        "type": [
+                            "null",
+                            "string"
+                        ]
+                    },
+                    "variants": {
+                        "items": {
+                            "properties": {
+                                "feature": {
+                                    "properties": {
+                                        "featureInstance": {
+                                            "properties": {
+                                                "__typename": {
+                                                    "type": "string"
+                                                },
+                                                "entrezId": {
+                                                    "type": "number"
+                                                },
+                                                "name": {
+                                                    "type": "string"
+                                                }
+                                            },
+                                            "required":[
+                                                "__typename",
+                                                "entrezId",
+                                                "name"
+                                            ],
+                                            "type": "object"
+                                        }
+                                    },
+                                    "required": [
+                                        "featureInstance"
+                                    ],
+                                    "type": "object"
+                                },
+                                "id": {
+                                    "type": "number"
+                                },
+                                "name": {
+                                    "type": "string"
+                                }
+                            },
+                            "required": [
+                                "feature",
+                                "id",
+                                "name"
+                            ],
+                            "type": [
+                                "object"
+                            ]
+                        },
+                        "type": [
+                            "array"
+                        ]
                     }
                 },
-                "type": [
-                    "null",
-                    "object"
-                ]
-            },
-            "id": {
-                "type": [
-                    "null",
-                    "number"
-                ]
+                "required": [
+                    "id",
+                    "name",
+                    "parsedName",
+                    "rawName",
+                    "variants"
+                ],
+                "type": "object"
             },
             "phenotypes": {
                 "items": {
@@ -179,6 +194,34 @@
                     "null"
                 ]
             },
+            "significance": {
+                "enum": [
+                    "ADVERSE_RESPONSE",
+                    "BENIGN",
+                    "BETTER_OUTCOME",
+                    "DOMINANT_NEGATIVE",
+                    "GAIN_OF_FUNCTION",
+                    "LIKELY_BENIGN",
+                    "LIKELY_PATHOGENIC",
+                    "LOSS_OF_FUNCTION",
+                    "NA",
+                    "NEGATIVE",
+                    "NEOMORPHIC",
+                    "ONCOGENICITY",
+                    "PATHOGENIC",
+                    "POOR_OUTCOME",
+                    "POSITIVE",
+                    "PREDISPOSITION",
+                    "PROTECTIVENESS",
+                    "REDUCED_SENSITIVITY",
+                    "RESISTANCE",
+                    "SENSITIVITYRESPONSE",
+                    "UNALTERED_FUNCTION",
+                    "UNCERTAIN_SIGNIFICANCE",
+                    "UNKNOWN",
+                    null
+                ]
+            },
             "source": {
                 "properties": {
                     "ascoAbstractId": {
@@ -190,7 +233,7 @@
                     "citationId": {
                         "type": [
                             "null",
-                            "number"
+                            "string"
                         ]
                     },
                     "name": {
@@ -208,6 +251,7 @@
                     "sourceType": {
                         "enum": [
                             "ASCO",
+                            "ASH",
                             "PUBMED",
                             null
                         ]
@@ -229,50 +273,63 @@
                     null
                 ]
             },
-            "variant": {
-                "properties": {
-                    "gene": {
-                        "properties": {
-                            "entrezId": {
-                                "type": [
-                                    "null",
-                                    "number"
-                                ]
-                            },
-                            "name": {
-                                "type": [
-                                    "null",
-                                    "string"
-                                ]
-                            }
+            "therapies": {
+                "items": {
+                    "properties": {
+                        "id": {
+                            "type": [
+                                "null",
+                                "number"
+                            ]
                         },
-                        "type": [
-                            "null",
-                            "object"
-                        ]
+                        "name": {
+                            "type": [
+                                "null",
+                                "string"
+                            ]
+                        },
+                        "ncitId": {
+                            "type": [
+                                "null",
+                                "string"
+                            ]
+                        }
                     },
-                    "id": {
-                        "type": [
-                            "null",
-                            "number"
-                        ]
-                    },
-                    "name": {
-                        "type": [
-                            "null",
-                            "string"
-                        ]
-                    }
+                    "type": [
+                        "null",
+                        "object"
+                    ]
                 },
                 "type": [
-                    "null",
-                    "object"
+                    "array",
+                    "null"
+                ]
+            },
+            "therapyInteractionType": {
+                "enum": [
+                    "COMBINATION",
+                    "SEQUENTIAL",
+                    "SUBSTITUTES",
+                    null
                 ]
             }
         },
-        "type": [
-            "null",
-            "object"
-        ]
+        "required":[
+            "description",
+            "disease",
+            "evidenceDirection",
+            "evidenceLevel",
+            "evidenceRating",
+            "evidenceType",
+            "id",
+            "molecularProfile",
+            "phenotypes",
+            "significance",
+            "source",
+            "status",
+            "therapies",
+            "therapyInteractionType"
+        ],
+        "type": "object"
     }
 }

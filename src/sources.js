@@ -145,6 +145,15 @@ const sources = {
         url: 'https://www.ncbi.nlm.nih.gov/gene',
         usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
     },
+    esmo: {
+        description: 'Esmo is the leading professional organisation for medical oncology. with more than 25,000 members representing oncology professionals from over 160 countries worldwide, esmo is the society of reference for oncology education and information.',
+        displayName: 'ESMO',
+        longName: 'European Society for Medical Oncology',
+        name: 'esmo',
+        sort: 1,
+        url: 'https://www.esmo.org',
+        usage: 'https://www.esmo.org/terms-of-use/website-terms-conditions',
+    },
     fdaApprovals: {
         displayName: 'FDA Approvals',
         longName: 'FDA Hematology/Oncology (Cancer) Approvals & Safety Notifications',
@@ -229,11 +238,18 @@ const sources = {
         sort: 0,
         url: 'http://oncotree.mskcc.org',
     },
+    profyle: {
+        description: 'PROFYLE (PRecision Oncology For Young peopLE) is a pan-Canadian research project for children and young adults ages 29 and under who have been told they are out of treatment options, giving them another chance.',
+        displayName: 'PROFYLE',
+        name: 'profyle',
+        sort: 99999,
+        url: 'https://www.profyle.ca/',
+    },
     pubmed: {
-        description: 'pubmed comprises more than 29 million citations for biomedical literature from medline, life science journals, and online books. citations may include links to full-text content from pubmed central and publisher web sites',
+        description: 'PubMed is a free resource supporting the search and retrieval of biomedical and life sciences literature with the aim of improving health–both globally and personally.',
         displayName: 'PubMed',
         name: 'pubmed',
-        url: 'https://www.ncbi.nlm.nih.gov/pubmed',
+        url: 'https://pubmed.ncbi.nlm.nih.gov',
         usage: 'https://www.ncbi.nlm.nih.gov/home/about/policies',
     },
     refseq: {
@@ -249,6 +265,15 @@ const sources = {
         name: 'sequence ontology',
         url: 'http://www.sequenceontology.org',
         usage: 'http://www.sequenceontology.org/?page_id=269',
+    },
+    tso500: {
+        description: 'TruSight Oncology 500 is a next-generation sequencing (NGS) assay that enables in-house comprehensive genomic profiling of tumor samples.',
+        displayName: 'TSO500',
+        longName: 'TruSight Oncology 500',
+        name: 'tso500',
+        sort: 99999,
+        url: 'https://www.illumina.com',
+        usage: 'https://www.illumina.com/products/by-type/clinical-research-products/trusight-oncology-500.html',
     },
     uberon: {
         comment: 'https://github.com/obophenotype/uberon/issues/1139',

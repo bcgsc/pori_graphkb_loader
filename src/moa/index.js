@@ -12,7 +12,7 @@ const pubmed = require('../entrez/pubmed');
 const _trials = require('../clinicaltrialsgov');
 
 
-const ajv = new Ajv({ allErrors: true });
+const ajv = new Ajv({ allErrors: true, coerceTypes: true });
 const validateMoaRecord = ajv.compile(spec);
 
 
@@ -459,6 +459,9 @@ const fixStringNulls = (obj) => {
     /**
      * Any values of "None" replace with null
      */
+    if (obj === '') {
+        return null;
+    }
     if (obj === 'None') {
         return null;
     }
@@ -551,7 +554,6 @@ const upload = async ({ conn, url = 'https://moalmanac.org/api/assertions' }) =>
             logger.info(`loading: ${rawRecord.assertion_id} / ${records.length}`);
             const record = fixStringNulls(rawRecord);
             checkSpec(validateMoaRecord, record);
-
             const key = `${record.assertion_id}`;
             const lastUpdate = new Date(record.last_updated).getTime();
             const relevance = parseRelevance(record);

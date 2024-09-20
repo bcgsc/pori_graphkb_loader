@@ -4,21 +4,15 @@ This module loads clinical trials data into GraphKB from [https://www.clinicaltr
 
 > :warning: Since this loader produces statements, ontology and vocabulary data should be loaded first
 
-## Multiple XML Files
 
-Loads Trial records from XML files. See: [https://clinicaltrials.gov/ct2/resources/download#DownloadMultipleRecords](https://clinicaltrials.gov/ct2/resources/download#DownloadMultipleRecords)
-
+Uses REST API to load clinical trials data.
 ```bash
-wget https://clinicaltrials.gov/AllPublicXML.zip
-unzip AllPublicXML.zip
+node bin/load.js clinicaltrialsgov
 ```
 
-Then you can load these by pointing directly to the sub-folders
-
+By default this loader loads all studies that related to cancer, which will be a huge number of records.
+Using `--days` can load the new and existing studies added or modified (last update posted) in the last # of days.
 ```bash
-for folder in AllPublicXML/*;
-do
-    echo "Loading folder: $folder"
-    node bin/clinicaltrialsgov.js --dir $folder
-done
+node bin/load.js clinicaltrialsgov --days 7
 ```
+Loading the studies added or modified in the last week.

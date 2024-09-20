@@ -44,7 +44,7 @@ describe('uploadFile in Ensembl loader', () => {
             '@rid': '#138:0',
             edges: [],
             feature: {
-                biotype: 'gene', source: 'ensembl', sourceId: 'ENSG00000139618', sourceIdVersion: '17',
+                biotype: 'gene', source: 'ensembl', sourceId: 'ensg00000139618', sourceIdVersion: '17',
             },
         },
         {
@@ -54,7 +54,7 @@ describe('uploadFile in Ensembl loader', () => {
                 { class: 'generalizationof', in: '#138:0' },
             ],
             feature: {
-                biotype: 'gene', source: 'ensembl', sourceId: 'ENSG00000139618', sourceIdVersion: null,
+                biotype: 'gene', source: 'ensembl', sourceId: 'ensg00000139618', sourceIdVersion: null,
             },
         },
         {
@@ -63,7 +63,7 @@ describe('uploadFile in Ensembl loader', () => {
                 { class: 'elementof', in: '#138:0' },
             ],
             feature: {
-                biotype: 'transcript', source: 'ensembl', sourceId: 'ENST00000544455', sourceIdVersion: '6',
+                biotype: 'transcript', source: 'ensembl', sourceId: 'enst00000544455', sourceIdVersion: '6',
             },
         },
         {
@@ -73,7 +73,7 @@ describe('uploadFile in Ensembl loader', () => {
                 { class: 'generalizationof', in: '#140:0' },
             ],
             feature: {
-                biotype: 'transcript', source: 'ensembl', sourceId: 'ENST00000544455', sourceIdVersion: null,
+                biotype: 'transcript', source: 'ensembl', sourceId: 'enst00000544455', sourceIdVersion: null,
             },
         },
         {
@@ -82,7 +82,7 @@ describe('uploadFile in Ensembl loader', () => {
                 { class: 'elementof', in: '#138:0' },
             ],
             feature: {
-                biotype: 'transcript', source: 'ensembl', sourceId: 'ENST00000530893', sourceIdVersion: '6',
+                biotype: 'transcript', source: 'ensembl', sourceId: 'enst00000530893', sourceIdVersion: '6',
             },
         },
         {
@@ -92,7 +92,7 @@ describe('uploadFile in Ensembl loader', () => {
                 { class: 'generalizationof', in: '#139:3' },
             ],
             feature: {
-                biotype: 'transcript', source: 'ensembl', sourceId: 'ENST00000530893', sourceIdVersion: null,
+                biotype: 'transcript', source: 'ensembl', sourceId: 'enst00000530893', sourceIdVersion: null,
             },
         },
         {
@@ -101,18 +101,17 @@ describe('uploadFile in Ensembl loader', () => {
                 { class: 'elementof', in: '#138:0' },
             ],
             feature: {
-                biotype: 'transcript', source: 'ensembl', sourceId: 'ENST00000380152', sourceIdVersion: '8',
+                biotype: 'transcript', source: 'ensembl', sourceId: 'enst00000380152', sourceIdVersion: '8',
             },
         },
         {
             '@rid': '#138:4',
             edges: [
-                { class: 'crossreferenceof', in: '#137:0' },
                 { class: 'elementof', in: '#139:0' },
                 { class: 'generalizationof', in: '#137:4' },
             ],
             feature: {
-                biotype: 'transcript', source: 'ensembl', sourceId: 'ENST00000380152', sourceIdVersion: null,
+                biotype: 'transcript', source: 'ensembl', sourceId: 'enst00000380152', sourceIdVersion: null,
             },
         },
         {
@@ -121,7 +120,7 @@ describe('uploadFile in Ensembl loader', () => {
                 { class: 'elementof', in: '#138:0' },
             ],
             feature: {
-                biotype: 'transcript', source: 'ensembl', sourceId: 'ENST00000680887', sourceIdVersion: '1',
+                biotype: 'transcript', source: 'ensembl', sourceId: 'enst00000680887', sourceIdVersion: '1',
             },
         },
         {
@@ -131,7 +130,83 @@ describe('uploadFile in Ensembl loader', () => {
                 { class: 'generalizationof', in: '#139:4' },
             ],
             feature: {
-                biotype: 'transcript', source: 'ensembl', sourceId: 'ENST00000680887', sourceIdVersion: null,
+                biotype: 'transcript', source: 'ensembl', sourceId: 'enst00000680887', sourceIdVersion: null,
+            },
+        },
+        {
+            '@rid': '#145:1',
+            edges: [
+                { class: 'elementof', in: '#140:0' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ensp00000439902', sourceIdVersion: '1',
+            },
+        },
+        {
+            '@rid': '#146:1',
+            edges: [
+                { class: 'elementof', in: '#137:1' },
+                { class: 'generalizationof', in: '#145:1' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ensp00000439902', sourceIdVersion: null,
+            },
+        },
+        {
+            '@rid': '#147:2',
+            edges: [
+                { class: 'elementof', in: '#139:3' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ensp00000499438', sourceIdVersion: '2',
+            },
+        },
+        {
+            '@rid': '#148:2',
+            edges: [
+                { class: 'elementof', in: '#140:3' },
+                { class: 'generalizationof', in: '#147:2' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ensp00000499438', sourceIdVersion: null,
+            },
+        },
+        {
+            '@rid': '#149:3',
+            edges: [
+                { class: 'elementof', in: '#137:4' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ensp00000369497', sourceIdVersion: '3',
+            },
+        },
+        {
+            '@rid': '#150:3',
+            edges: [
+                { class: 'elementof', in: '#138:4' },
+                { class: 'generalizationof', in: '#149:3' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ensp00000369497', sourceIdVersion: null,
+            },
+        },
+        {
+            '@rid': '#151:4',
+            edges: [
+                { class: 'elementof', in: '#139:4' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ensp00000505508', sourceIdVersion: '1',
+            },
+        },
+        {
+            '@rid': '#152:4',
+            edges: [
+                { class: 'elementof', in: '#140:4' },
+                { class: 'generalizationof', in: '#151:4' },
+            ],
+            feature: {
+                biotype: 'protein', source: 'ensembl', sourceId: 'ensp00000505508', sourceIdVersion: null,
             },
         },
         {
@@ -197,14 +272,6 @@ describe('uploadFile in Ensembl loader', () => {
             ],
             feature: { biotype: 'gene', name: 'XRCC11', source: 'hgnc' },
         },
-        {
-            '@rid': '#137:0',
-            edges: [],
-            feature: {
-                biotype: 'transcript', source: 'refseq', sourceId: 'NM_000059', sourceIdVersion: null,
-            },
-
-        },
     ].map(el => Object.assign(el, {
 
         // Custom method - Returns the source's RID from mockDataset
@@ -218,6 +285,7 @@ describe('uploadFile in Ensembl loader', () => {
             ? `${el.feature.biotype} Feature ${el.feature.name} from ${el.feature.source}`
             : `${el.feature.biotype} Feature ${el.feature.sourceId} from ${el.feature.source}`),
     }));
+
 
 
     // TEST SUITE

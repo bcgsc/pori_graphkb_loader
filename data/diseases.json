@@ -3,7 +3,8 @@
   "defaultNameToSourceId": true,
   "records": {
     "all solid tumors": {
-      "name": "all solid tumors"
+      "name": "all solid tumors",
+      "source": "oncokb"
     },
     "phc": {
       "links": [

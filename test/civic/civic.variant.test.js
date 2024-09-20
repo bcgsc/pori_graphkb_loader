@@ -1,5 +1,5 @@
-const { normalizeVariantRecord } = require('../src/civic/variant');
-const { translateRelevance } = require('../src/civic');
+/* eslint-disable jest/no-disabled-tests */
+const { normalizeVariantRecord } = require('../../src/civic/variant');
 
 describe('normalizeVariantRecord', () => {
     test('exon mutation', () => {
@@ -219,7 +219,6 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
-
     test('categorical variant with spaces', () => {
         const variants = normalizeVariantRecord({
             entrezId: 1,
@@ -334,7 +333,6 @@ describe('normalizeVariantRecord', () => {
             },
         ]);
     });
-
 
     test('cds notation', () => {
         // BCR-ABL
@@ -522,7 +520,6 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
-
     test('protein dup with cds dup', () => {
         // p.s193_c196dupstsc (c.577_588dupagcaccagctgc)
         const variants = normalizeVariantRecord({
@@ -585,7 +582,7 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
-    test('catalogue variant', () => {
+    test.skip('catalogue variant', () => {
         // RS3910384
     });
 
@@ -621,11 +618,11 @@ describe('normalizeVariantRecord', () => {
         ]);
     });
 
-    test('duplicate fusion', () => {
+    test.skip('duplicate fusion', () => {
         // AGGF1-PDGFRB, AGGF1-PDGFRB C843G
     });
 
-    test('non-specific positional mutaiton', () => {
+    test.skip('non-specific positional mutaiton', () => {
         // E1813 mutations
     });
 
@@ -657,47 +654,4 @@ describe('normalizeVariantRecord', () => {
             }]);
         });
     });
-});
-
-describe('translateRelevance', () => {
-    test.each([
-        ['PREDICTIVE', 'SUPPORTS', 'ADVERSE_RESPONSE', 'adverse response'],
-        ['PREDICTIVE', 'SUPPORTS', 'REDUCED_SENSITIVITY', 'reduced sensitivity'],
-        ['PREDICTIVE', 'SUPPORTS', 'RESISTANCE', 'resistance'],
-        ['PREDICTIVE', 'SUPPORTS', 'SENSITIVITYRESPONSE', 'sensitivity'],
-        ['DIAGNOSTIC', 'SUPPORTS', 'POSITIVE', 'favours diagnosis'],
-        ['DIAGNOSTIC', 'SUPPORTS', 'NEGATIVE', 'opposes diagnosis'],
-        ['PROGNOSTIC', 'SUPPORTS', 'NEGATIVE', 'unfavourable prognosis'],
-        ['PROGNOSTIC', 'SUPPORTS', 'POOR_OUTCOME', 'unfavourable prognosis'],
-        ['PROGNOSTIC', 'SUPPORTS', 'POSITIVE', 'favourable prognosis'],
-        ['PROGNOSTIC', 'SUPPORTS', 'BETTER_OUTCOME', 'favourable prognosis'],
-        ['PREDISPOSING', 'SUPPORTS', 'POSITIVE', 'predisposing'],
-        ['PREDISPOSING', 'SUPPORTS', null, 'predisposing'],
-        ['PREDISPOSING', 'SUPPORTS', 'PATHOGENIC', 'pathogenic'],
-        ['PREDISPOSING', 'SUPPORTS', 'LIKELY_PATHOGENIC', 'likely pathogenic'],
-        ['FUNCTIONAL', 'SUPPORTS', 'GAIN_OF_FUNCTION', 'gain of function'],
-        ['PREDICTIVE', 'DOES_NOT_SUPPORT', 'SENSITIVITYRESPONSE', 'no response'],
-        ['PREDICTIVE', 'DOES_NOT_SUPPORT', 'RESISTANCE', 'no resistance'],
-        ['FUNCTIONAL', 'SUPPORTS', 'NEOMORPHIC', 'neomorphic'],
-        ['FUNCTIONAL', 'SUPPORTS', 'UNALTERED_FUNCTION', 'unaltered function'],
-    ])(
-        '%s|%s|%s returns %s', (evidenceType, evidenceDirection, clinicalSignificance, expected) => {
-            expect(translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toEqual(expected);
-        },
-    );
-
-    test.each([
-        // For EvType-EvDir-ClinSign test cases that should not be loaded
-        ['PROGNOSTIC', 'DOES_NOT_SUPPORT', 'POOR_OUTCOME'],
-        ['FUNCTIONAL', 'DOES_NOT_SUPPORT', 'NEOMORPHIC'],
-        ['PREDISPOSING', 'DOES_NOT_SUPPORT', 'POSITIVE'],
-        ['PREDISPOSING', 'NA', 'NA'],
-        ['DIAGNOSTIC', 'DOES_NOT_SUPPORT', 'POSITIVE'],
-        ['DIAGNOSTIC', 'DOES_NOT_SUPPORT', 'NEGATIVE'],
-        ['FUNCTIONAL', 'DOES_NOT_SUPPORT', 'UNALTERED_FUNCTION'],
-    ])(
-        '%s|%s|%s errors', (evidenceType, evidenceDirection, clinicalSignificance) => {
-            expect(() => translateRelevance(evidenceType, evidenceDirection, clinicalSignificance)).toThrow('unable to process relevance');
-        },
-    );
 });

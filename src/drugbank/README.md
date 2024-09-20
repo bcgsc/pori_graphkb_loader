@@ -18,7 +18,7 @@ mv full\ database.xml $filename
 Then use the general file loader to load this into GraphKB
 
 ```bash
-node bin/load.js file drugbank_all_full_database_*.xml
+node bin/load.js file drugbank full_database.xml
 ```
 
 > :warning: Since this contains cross-mappings to [FDA-SRS](../fdaSrs) UNII identifiers it is useful to load that file

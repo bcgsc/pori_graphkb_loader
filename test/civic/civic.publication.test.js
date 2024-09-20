@@ -1,4 +1,4 @@
-const { titlesMatch } = require('../src/civic/publication');
+const { titlesMatch } = require('../../src/civic/publication');
 
 
 describe('titlesMatch', () => {

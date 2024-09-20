@@ -80,5 +80,5 @@ the ontology term
 Once this file has been built it can be loaded as follows. The script will create records if they do not already exist. Any conflicts will be reported in the logging
 
 ```bash
-node bin/ontology.js --filename /path/to/json/file
+node bin/load.js file ontology </path/to/json/file>
 ```

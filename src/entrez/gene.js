@@ -49,19 +49,29 @@ const parseRecord = (record) => {
  *
  * @param {ApiConnection} api connection to GraphKB
  * @param {Array.<string>} idList list of gene IDs
+ * @param {object} opt
+ * @param {boolean} opt.fetchFirst override util.uploadRecord() fetchFirst
+ * @param {boolean} opt.upsert override util.uploadRecord() upsert
  */
-const fetchAndLoadGeneByIds = async (api, idListIn) => util.fetchAndLoadByIds(
-    api,
-    idListIn,
-    {
-        MAX_CONSEC,
-        cache: CACHE,
-        dbName: DB_NAME,
-        parser: parseRecord,
-        sourceDefn: SOURCE_DEFN,
-        target: 'Feature',
-    },
-);
+const fetchAndLoadGeneByIds = async (api, idListIn, opt = {}) => {
+    // For record update, set fetchFirst to false & upsert to true.
+    const { fetchFirst, upsert } = opt;
+
+    return util.fetchAndLoadByIds(
+        api,
+        idListIn,
+        {
+            MAX_CONSEC,
+            cache: CACHE,
+            dbName: DB_NAME,
+            fetchFirst,
+            parser: parseRecord,
+            sourceDefn: SOURCE_DEFN,
+            target: 'Feature',
+            upsert,
+        },
+    );
+};
 
 /**
  * Given a gene symbol, search the genes and upload the resulting records to graphkb

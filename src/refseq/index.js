@@ -28,7 +28,13 @@ const uploadFile = async ({ filename, conn, maxRecords }) => {
         fetchConditions: { name: SOURCE_DEFN.name },
         target: 'Source',
     });
-    logger.log('info', `Loading ${json.length} gene records`);
+
+    if (maxRecords) {
+        logger.log('info', `Loading ${maxRecords} gene records`);
+    } else {
+        logger.log('info', `Loading ${json.length} gene records`);
+    }
+
     const counts = { error: 0, skipped: 0, success: 0 };
     // batch load entrez genes
     await _entrez.preLoadCache(conn);

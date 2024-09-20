@@ -1,21 +1,10 @@
 /**
  * Module to import clinical trials data exported from clinicaltrials.gov
- *
- * 1. Perform a search on their site, for example https://clinicaltrials.gov/ct2/results?cond=Cancer&cntry=CA&Search=Apply&recrs=b&recrs=a&age_v=&gndr=&type=Intr&rslt=
- * 2. Click their Download link/Button
- * 3. Adjust the settings in the Pop up dialog (Include all studies, all columns, and export as XML)
- * 4. Download and save the file
- * 5. Upload the file to GraphKB using this module
- *
  * @module importer/clinicaltrialsgov
  */
-const path = require('path');
 const Ajv = require('ajv');
-const fs = require('fs');
 
 const {
-    loadXmlToJson,
-    parseXmlToJson,
     checkSpec,
     requestWithRetry,
 } = require('../util');
@@ -25,89 +14,77 @@ const {
 } = require('../graphkb');
 const { logger } = require('../logging');
 const { clinicalTrialsGov: SOURCE_DEFN } = require('../sources');
-const { api: apiSpec, rss: rssSpec } = require('./specs.json');
+const { studies: studiesSpecs } = require('./specs.json');
 
-const BASE_URL = 'https://clinicaltrials.gov/ct2/show';
-const RSS_URL = 'https://clinicaltrials.gov/ct2/results/rss.xml';
+const BASE_URL = 'https://clinicaltrials.gov/api/v2/studies';
 const CACHE = {};
 
 const ajv = new Ajv();
-const validateAPITrialRecord = ajv.compile(apiSpec);
-const validateRssFeed = ajv.compile(rssSpec);
-
-
-const standardizeDate = (dateString) => {
-    const dateObj = new Date(Date.parse(dateString));
-
-    if (Number.isNaN(dateObj.getTime())) {
-        throw new Error(`unable to standardize input date (${dateString})`);
-    }
-    const month = dateObj.getMonth() + 1 < 10
-        ? `0${dateObj.getMonth() + 1}`
-        : dateObj.getMonth() + 1;
-    const date = dateObj.getDate() < 10
-        ? `0${dateObj.getDate()}`
-        : dateObj.getDate();
-    return `${dateObj.getFullYear()}-${month}-${date}`;
-};
+const validateAPITrialRecord = ajv.compile(studiesSpecs);
 
 
 /**
  * Given some records from the API, convert its form to a standard represention
  */
 const convertAPIRecord = (rawRecord) => {
-    checkSpec(validateAPITrialRecord, rawRecord, rec => rec.clinical_study.id_info[0].nct_id[0]);
+    checkSpec(validateAPITrialRecord, rawRecord, rec => rec.protocolSection.identificationModule.nctId);
 
-    const { clinical_study: record } = rawRecord;
+    const { protocolSection: record } = rawRecord;
     let startDate,
         completionDate;
 
 
     try {
-        startDate = standardizeDate(record.start_date[0]._ || record.start_date[0]);
+        startDate = record.statusModule.startDateStruct.date;
     } catch (err) {}
 
     try {
-        completionDate = standardizeDate(
-            record.completion_date[0]._ || record.completion_date[0],
-        );
+        completionDate = record.statusModule.completionDateStruct.date;
     } catch (err) {}
 
-    const [title] = record.official_title || record.brief_title;
+    const title = record.identificationModule.officialTitle || record.identificationModule.briefTitle;
+
+    const { nctId } = record.identificationModule;
+    const url = `${BASE_URL}/${nctId}`;
 
     const content = {
         completionDate,
-        diseases: record.condition,
+        diseases: record.conditionsModule.conditions,
         displayName: title,
         drugs: [],
         locations: [],
         name: title,
-        recruitmentStatus: record.overall_status[0],
-        sourceId: record.id_info[0].nct_id[0],
-        sourceIdVersion: standardizeDate(record.last_update_posted[0]._),
+        recruitmentStatus: record.statusModule.overallStatus,
+        sourceId: nctId,
+        sourceIdVersion: record.statusModule.lastUpdatePostDateStruct.date,
         startDate,
-        url: record.required_header[0].url[0],
+        url,
     };
 
-    if (record.phase) {
-        content.phases = record.phase;
+    if (record.designModule.phases) {
+        content.phases = record.designModule.phases;
     }
 
-    for (const { intervention_name: [name], intervention_type: [type] } of record.intervention || []) {
+    for (const { name, type } of record.armsInterventionsModule.interventions || []) {
         if (type.toLowerCase() === 'drug' || type.toLowerCase() === 'biological') {
             content.drugs.push(name);
         }
     }
 
-    for (const location of record.location || []) {
-        const { facility: [{ address }] } = location;
-
-        if (!address) {
-            continue;
+    if (record.contactsLocationsModule) {
+        for (const { country, city } of record.contactsLocationsModule.locations || []) {
+            if (city && country) {
+                content.locations.push({ city: city.toLowerCase(), country: country.toLowerCase() });
+            }
+            if (city && !country) {
+                content.locations.push({ city: city.toLowerCase() });
+            }
+            if (!city && country) {
+                content.locations.push({ country: country.toLowerCase() });
+            }
         }
-        const [{ country: [country], city: [city] }] = address;
-        content.locations.push({ city: city.toLowerCase(), country: country.toLowerCase() });
     }
+
     return content;
 };
 
@@ -119,8 +96,8 @@ const processPhases = (phaseList) => {
         const cleanedPhaseList = raw.trim().toLowerCase().replace(/\bn\/a\b/, '').split(/[,/]/);
 
         for (const phase of cleanedPhaseList) {
-            if (phase !== '' && phase !== 'not applicable') {
-                const match = /^(early )?phase (\d+)$/.exec(phase);
+            if (phase !== '' && phase !== 'na' && phase !== 'ph') {
+                const match = /^(early_)?phase(\d+)$/.exec(phase);
 
                 if (!match) {
                     throw new Error(`unrecognized phase description (${phase})`);
@@ -134,11 +111,11 @@ const processPhases = (phaseList) => {
 
 
 /**
- * Process the XML trial record. Attempt to link the drug and/or disease information
+ * Process the record. Attempt to link the drug and/or disease information
  *
  * @param {object} opt
  * @param {ApiConnection} opt.conn the GraphKB connection object
- * @param {object} opt.record the XML record (pre-parsed into JSON)
+ * @param {object} opt.record the record (pre-parsed into JSON)
  * @param {object|string} opt.source the 'source' record for clinicaltrials.gov
  *
  * @todo: handle updates to existing clinical trial records
@@ -149,12 +126,17 @@ const processRecord = async ({
     const content = {
         displayName: record.displayName,
         name: record.name,
-        recruitmentStatus: record.recruitmentStatus,
+        recruitmentStatus: record.recruitmentStatus.replace(/_/g, ' '),
         source: rid(source),
         sourceId: record.sourceId,
         sourceIdVersion: record.sourceIdVersion,
         url: record.url,
     };
+
+    // temperory mapping to avoid schema change
+    if (content.recruitmentStatus && content.recruitmentStatus.toLowerCase() === 'active not recruiting') {
+        content.recruitmentStatus = 'active, not recruiting';
+    }
 
     if (content.recruitmentStatus && content.recruitmentStatus.toLowerCase() === 'unknown status') {
         content.recruitmentStatus = 'unknown';
@@ -175,23 +157,24 @@ const processRecord = async ({
         consensusCity;
 
     for (const { city, country } of record.locations) {
-        if (consensusCountry) {
+        if (country && consensusCountry) {
             if (consensusCountry !== country.toLowerCase()) {
                 consensusCountry = null;
                 consensusCity = null;
                 break;
             }
-        } else {
+        } else if (country) {
             consensusCountry = country.toLowerCase();
         }
-        if (consensusCity !== undefined) {
+        if (city && consensusCity) {
             if (consensusCity !== city.toLowerCase()) {
                 consensusCity = null;
             }
-        } else {
+        } else if (city) {
             consensusCity = city.toLowerCase();
         }
     }
+
 
     if (consensusCountry) {
         content.country = consensusCountry;
@@ -264,7 +247,7 @@ const processRecord = async ({
 /**
  * Given some NCT ID, fetch and load the corresponding clinical trial information
  *
- * https://clinicaltrials.gov/ct2/show/NCT03478891?displayxml=true
+ * https://clinicaltrials.gov/api/v2/studies/NCT03478891
  */
 const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
     const url = `${BASE_URL}/${nctID}`;
@@ -290,14 +273,11 @@ const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
     } catch (err) {}
     logger.info(`loading: ${url}`);
     // fetch from the external api
-    const resp = await requestWithRetry({
-        headers: { Accept: 'application/xml' },
+    const result = await requestWithRetry({
         json: true,
         method: 'GET',
-        qs: { displayxml: true },
         uri: url,
     });
-    const result = await parseXmlToJson(resp);
 
     // get or add the source
     if (!CACHE.source) {
@@ -313,83 +293,81 @@ const fetchAndLoadById = async (conn, nctID, { upsert = false } = {}) => {
     return trial;
 };
 
+const formatDate = (date) => `${date.getFullYear()}-${date.getMonth() + 1}-${date.getDate()}`;
+
 /**
- * Uploads a file exported from clinicaltrials.gov as XML
- * @param {object} opt
- * @param {ApiConnection} opt.conn the GraphKB connection object
- * @param {string} opt.filename the path to the XML export
+ * Loading all clinical trials related to cancer
  */
-const uploadFiles = async ({ conn, files }) => {
+const upload = async ({ conn, maxRecords, days }) => {
     const source = await conn.addSource(SOURCE_DEFN);
 
-    logger.info(`loading ${files.length} records`);
+    let options,
+        optionsWithToken;
+
+    if (days) {
+        const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+        options = { 'query.term': `AREA[LastUpdatePostDate]RANGE[${formatDate(startDate)},MAX]` };
+        logger.info(`loading records updated from ${formatDate(startDate)} to ${formatDate(new Date())}`);
+    }
+
     const counts = {
         error: 0, success: 0,
     };
 
-    for (const filepath of files) {
-        const filename = path.basename(filepath);
+    let processCount = 1,
+        next = true,
+        nextToken,
+        total = maxRecords;
 
-        if (!filename.endsWith('.xml')) {
-            logger.warn(`ignoring non-xml file: ${filename}`);
-            continue;
+    while (next) {
+        if (nextToken) {
+            optionsWithToken = { pageToken: nextToken, ...options };
+        } else {
+            optionsWithToken = options;
+        }
+        const trials = await requestWithRetry({
+            json: true,
+            method: 'GET',
+            qs: {
+                aggFilters: 'studyType:int',
+                countTotal: true,
+                pageSize: 1000,
+                'query.cond': 'cancer',
+                sort: 'LastUpdatePostDate',
+                ...optionsWithToken,
+            },
+            uri: BASE_URL,
+        });
+
+        if (!total) {
+            total = trials.totalCount;
         }
 
-        try {
-            const xml = await loadXmlToJson(filepath);
-            const record = convertAPIRecord(xml);
-            await processRecord({
-                conn, record, source, upsert: true,
-            });
-            counts.success++;
-        } catch (err) {
-            logger.error(`[${filename}] ${err}`);
-            counts.error++;
+        if (processCount > total) {
+            break;
         }
-    }
-    logger.info(JSON.stringify(counts));
-};
 
+        for (const trial of trials.studies) {
+            if (processCount > total) {
+                break;
+            }
 
-/**
- * Parses clinical trial RSS Feed results for clinical trials in Canada and the US
- * which were updated in the last 2 weeks
- */
-const loadNewTrials = async ({ conn }) => {
-    // ping them both to get the list of recently updated trials
-    const recentlyUpdatedTrials = [];
-
-    const resp = await requestWithRetry({
-        method: 'GET',
-        qs: {
-            cond: 'cancer', // cancer related trials
-            count: 10000,
-            lup_d: 14,
-            rcv_d: '',
-            recrs: 'abdef',
-            sel_rss: 'mod14', // mod14 for last 2 weeks updated
-            type: 'Intr', // interventional only
-        },
-        uri: RSS_URL,
-    });
-    const xml = await parseXmlToJson(resp);
-    fs.writeFileSync('output.json', JSON.stringify(xml, null, 2));
-    checkSpec(validateRssFeed, xml);
-    recentlyUpdatedTrials.push(
-        ...xml.rss.channel[0].item.map(item => item.guid[0]._),
-    );
-
-    logger.info(`loading ${recentlyUpdatedTrials.length} recently updated trials`);
-    const counts = { error: 0, success: 0 };
-
-    for (const trialId of recentlyUpdatedTrials) {
-        try {
-            await fetchAndLoadById(conn, trialId, { upsert: true });
-            counts.success++;
-        } catch (err) {
-            counts.error++;
-            logger.error(`[${trialId}] ${err}`);
+            try {
+                const record = convertAPIRecord(trial);
+                logger.info(`processing (${processCount}/${total}) record: ${record.sourceId}`);
+                processCount++;
+                await processRecord({
+                    conn, record, source, upsert: true,
+                });
+                counts.success++;
+            } catch (err) {
+                counts.error++;
+                logger.error(`[${trial}] ${err}`);
+            }
         }
+
+        nextToken = trials.nextPageToken;
+        next = nextToken !== undefined;
     }
     logger.info(JSON.stringify(counts));
 };
@@ -399,6 +377,5 @@ module.exports = {
     convertAPIRecord,
     fetchAndLoadById,
     kb: true,
-    upload: loadNewTrials,
-    uploadFiles,
+    upload,
 };

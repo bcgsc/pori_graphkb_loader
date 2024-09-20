@@ -135,6 +135,15 @@
         "biological": {
             "name": "biological"
         },
+        "cancer gene": {
+            "description": "Tumourigenesis gene that is neither oncogenic nor tumour suppressive",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "tumourigenesis"
+                }
+            ]
+        },
         "conditional loss of function": {
             "description": "loss-of-function is predicted or assumed (by the literature) under specific conditions only",
             "links": [
@@ -213,7 +222,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "structural variant"
+                    "target": "mutation"
                 }
             ]
         },
@@ -979,6 +988,14 @@
                 }
             ]
         },
+        "likely protective": {
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "protective"
+                }
+            ]
+        },
         "likely resistance": {
             "links": [
                 {
@@ -1240,6 +1257,19 @@
                 {
                     "class": "OppositeOf",
                     "target": "loss of function"
+                }
+            ]
+        },
+        "no neomorphic": {
+            "deprecated": true,
+            "links": [
+                {
+                    "class": "AliasOf",
+                    "target": "no switch of function"
+                },
+                {
+                    "class": "OppositeOf",
+                    "target": "neomorphic"
                 }
             ]
         },
@@ -2121,7 +2151,7 @@
                 }
             ]
         },
-	"unaltered function": {
+        "unaltered function": {
             "description": "event is not associated with a change in protein function",
             "links": [
                 {
@@ -2129,7 +2159,7 @@
                     "target": "no functional effect"
                 }
             ]
-	},
+        },
         "underexpression": {
             "deprecated": true,
             "links": [
@@ -2220,12 +2250,7 @@
             ]
         },
         "wild type": {
-            "links": [
-                {
-                    "class": "SubClassOf",
-                    "target": "no functional effect"
-                }
-            ]
+            "comment": "Not a SubClassOf 'no functional effect' anymore. See KBDEV-1231"
         },
         "wildtype": {
             "deprecated": true,

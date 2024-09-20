@@ -47,7 +47,7 @@ const fetchAndLoadById = async (conn, drugId) => {
     const source = rid(CACHE.SOURCE);
 
     const content = {
-        name: chemblRecord.pref_name,
+        name: chemblRecord.pref_name || chemblRecord.molecule_properties.full_molformula,
         source,
         sourceId: chemblRecord.molecule_chembl_id,
     };

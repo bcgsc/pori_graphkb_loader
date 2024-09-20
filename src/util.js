@@ -234,6 +234,7 @@ module.exports = {
     hashStringToId,
     loadDelimToJson,
     loadXmlToJson,
+    logger,
     parseXmlToJson,
     request,
     requestWithRetry,
