@@ -256,28 +256,35 @@ const loadVariant = async (conn, moaVariant) => {
             });
         }
     } else if (moaVariant.feature_type === 'mutational_signature') {
-        const signature = await conn.getUniqueRecordBy({
+        const signature = await conn.getRecords({
             filters: {
                 AND: [
                     { source: { filters: { name: 'cosmic' }, target: 'Source' } },
-                    { sourceId: `SBS${Number.parseInt(moaVariant.cosmic_signature_number, 10)}` },
-                    { sourceIdVersion: `${Number.parseInt(moaVariant.cosmic_signature_version, 10)}` },
+                    { sourceId: moaVariant.cosmic_signature},
                 ],
             },
             target: 'Signature',
         });
         const variantType = await conn.getVocabularyTerm('signature present');
-        return conn.addVariant({
-            content: {
-                // KBDEV-994 adding displayName
-                // TODO: test displayName in KBDEV-993 and remove both comments.
-                displayName: `${signature.name.toUpperCase()} signature present`,
-                reference1: rid(signature),
-                type: rid(variantType),
-            },
-            existsOk: true,
-            target: 'CategoryVariant',
-        });
+        try{
+           const record = await conn.getUniqueRecordBy({
+                filters: { AND: [{ reference1: rid(signature[0])}, { type: rid(variantType) }] },
+                target: 'CategoryVariant',
+            });
+            return await conn.updateRecord('CategoryVariant', record['@rid'], {
+                displayName: `${signature[0].name.toUpperCase()} signature present`
+            });
+        } catch(err) {
+            return await conn.addVariant({
+                content: {
+                    displayName: `${signature[0].name.toUpperCase()} signature present`,
+                    reference1: rid(signature[0]),
+                    type: rid(variantType),
+                },
+                existsOk: true,
+                target: 'CategoryVariant',
+            });
+        }
         // } else if (moaVariant.feature_type === 'mutational_burden') {
     } else if (moaVariant.feature_type === 'copy_number') {
         const variantType = await conn.getVocabularyTerm(moaVariant.direction);
@@ -309,7 +316,6 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
         disease = await conn.getUniqueRecordBy({
             filters: {
                 AND: [
-                    { name: moaRecord.oncotree_term },
                     { sourceId: moaRecord.oncotree_code },
                     { source: { filters: { name: 'oncotree' }, target: 'Source' } },
                 ],
@@ -362,18 +368,30 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
             if (sourceRecord.nct && sourceRecord.source_type !== 'Abstract') {
                 articles.push(await _trials.fetchAndLoadById(conn, sourceRecord.nct));
             } else if (['FDA', 'Guideline'].includes(sourceRecord.source_type)) {
-                articles.push(await conn.addRecord({
-                    content: {
+                try {
+                    const record = await conn.getUniqueRecordBy({
+                        filters: { AND: [{ source: rid(moaSource)}, { sourceId: sourceRecord.source_id }, {name: `${sourceRecord.source_type}-${sourceRecord.source_id}`}] },
+                        target: 'CuratedContent',
+                    });
+                    articles.push(await conn.updateRecord('CuratedContent', record['@rid'], {
                         citation: sourceRecord.citation,
                         displayName: `${SOURCE_DEFN.displayName} ${sourceRecord.source_type}-${sourceRecord.source_id}`,
-                        name: `${sourceRecord.source_type}-${sourceRecord.source_id}`,
-                        source: rid(moaSource),
-                        sourceId: sourceRecord.source_id,
                         url: sourceRecord.url,
-                    },
-                    existsOk: true,
-                    target: 'CuratedContent',
-                }));
+                    }));
+                } catch(err) {
+                    articles.push(await conn.addRecord({
+                        content: {
+                            citation: sourceRecord.citation,
+                            displayName: `${SOURCE_DEFN.displayName} ${sourceRecord.source_type}-${sourceRecord.source_id}`,
+                            name: `${sourceRecord.source_type}-${sourceRecord.source_id}`,
+                            source: rid(moaSource),
+                            sourceId: sourceRecord.source_id,
+                            url: sourceRecord.url,
+                        },
+                        existsOk: true,
+                        target: 'CuratedContent',
+                    }));
+                }
             } else {
                 throw Error(`Unable to process evidence (${sourceRecord.source_type})`);
             }
@@ -503,9 +521,9 @@ const parseRelevance = (moaRecord) => {
             relevance.push('no sensitivity');
         }
     }
-    if (moaRecord.favorable_prognosis === true) {
+    if (moaRecord.favorable_prognosis === 1) {
         relevance.push('favourable prognosis');
-    } else if (moaRecord.favorable_prognosis === false) {
+    } else if (moaRecord.favorable_prognosis === 0) {
         relevance.push('unfavourable prognosis');
     }
 
@@ -553,6 +571,10 @@ const upload = async ({ conn, url = 'https://moalmanac.org/api/assertions' }) =>
         try {
             logger.info(`loading: ${rawRecord.assertion_id} / ${records.length}`);
             const record = fixStringNulls(rawRecord);
+            // handle empty space in url
+            if (record.sources[0].url && record.sources[0].url.includes(' ')){
+                record.sources[0].url = record.sources[0].url.replace(/\s/g,'');
+            }
             checkSpec(validateMoaRecord, record);
             const key = `${record.assertion_id}`;
             const lastUpdate = new Date(record.last_updated).getTime();
