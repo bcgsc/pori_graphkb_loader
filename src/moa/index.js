@@ -260,22 +260,23 @@ const loadVariant = async (conn, moaVariant) => {
             filters: {
                 AND: [
                     { source: { filters: { name: 'cosmic' }, target: 'Source' } },
-                    { sourceId: moaVariant.cosmic_signature},
+                    { sourceId: moaVariant.cosmic_signature },
                 ],
             },
             target: 'Signature',
         });
         const variantType = await conn.getVocabularyTerm('signature present');
-        try{
-           const record = await conn.getUniqueRecordBy({
-                filters: { AND: [{ reference1: rid(signature[0])}, { type: rid(variantType) }] },
+
+        try {
+            const record = await conn.getUniqueRecordBy({
+                filters: { AND: [{ reference1: rid(signature[0]) }, { type: rid(variantType) }] },
                 target: 'CategoryVariant',
             });
             return await conn.updateRecord('CategoryVariant', record['@rid'], {
-                displayName: `${signature[0].name.toUpperCase()} signature present`
+                displayName: `${signature[0].name.toUpperCase()} signature present`,
             });
-        } catch(err) {
-            return await conn.addVariant({
+        } catch (err) {
+            return conn.addVariant({
                 content: {
                     displayName: `${signature[0].name.toUpperCase()} signature present`,
                     reference1: rid(signature[0]),
@@ -370,7 +371,7 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
             } else if (['FDA', 'Guideline'].includes(sourceRecord.source_type)) {
                 try {
                     const record = await conn.getUniqueRecordBy({
-                        filters: { AND: [{ source: rid(moaSource)}, { sourceId: sourceRecord.source_id }, {name: `${sourceRecord.source_type}-${sourceRecord.source_id}`}] },
+                        filters: { AND: [{ source: rid(moaSource) }, { sourceId: sourceRecord.source_id }, { name: `${sourceRecord.source_type}-${sourceRecord.source_id}` }] },
                         target: 'CuratedContent',
                     });
                     articles.push(await conn.updateRecord('CuratedContent', record['@rid'], {
@@ -378,7 +379,7 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
                         displayName: `${SOURCE_DEFN.displayName} ${sourceRecord.source_type}-${sourceRecord.source_id}`,
                         url: sourceRecord.url,
                     }));
-                } catch(err) {
+                } catch (err) {
                     articles.push(await conn.addRecord({
                         content: {
                             citation: sourceRecord.citation,
@@ -571,9 +572,10 @@ const upload = async ({ conn, url = 'https://moalmanac.org/api/assertions' }) =>
         try {
             logger.info(`loading: ${rawRecord.assertion_id} / ${records.length}`);
             const record = fixStringNulls(rawRecord);
+
             // handle empty space in url
-            if (record.sources[0].url && record.sources[0].url.includes(' ')){
-                record.sources[0].url = record.sources[0].url.replace(/\s/g,'');
+            if (record.sources[0].url && record.sources[0].url.includes(' ')) {
+                record.sources[0].url = record.sources[0].url.replace(/\s/g, '');
             }
             checkSpec(validateMoaRecord, record);
             const key = `${record.assertion_id}`;
