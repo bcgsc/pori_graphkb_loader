@@ -265,7 +265,7 @@ const loadVariant = async (conn, moaVariant) => {
             },
             target: 'Signature',
         });
-        const variantType = await conn.getVocabularyTerm('signature present');
+        const variantType = await conn.getVocabularyTerm('high signature');
 
         try {
             const record = await conn.getUniqueRecordBy({
