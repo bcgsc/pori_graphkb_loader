@@ -1,5 +1,5 @@
 const readXlsxFile = require('read-excel-file/node');
-const kbParser = require('@bcgsc-pori/graphkb-parser');
+const {parseVariant, stringifyVariant, jsonifyVariant} = require('@bcgsc-pori/graphkb-parser');
 
 const { logger } = require('../logging');
 const { rid } = require('../graphkb');
@@ -134,7 +134,7 @@ const uploadFile = async ({ conn, filename }) => {
         logger.info(`loading: ${row.Gene}:${row['Amino acid change']}`);
 
         try {
-            const parsed = kbParser.variant.parse(`p.${row['Amino acid change']}`, false).toJSON();
+            const parsed = jsonifyVariant(parseVariant(`p.${row['Amino acid change']}`, false) );
             const [gene] = await _entrezGene.fetchAndLoadBySymbol(conn, row.Gene);
             const relevance = await conn.getVocabularyTerm(row.relevance);
             const evidence = await _pubmed.fetchAndLoadByIds(conn, row.evidence);

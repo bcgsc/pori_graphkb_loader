@@ -1,7 +1,7 @@
 const fs = require('fs');
 
-const { variant: { parse: variantParser } } = require('@bcgsc-pori/graphkb-parser');
-
+//const { variant: { parse: variantParser } } = require('@bcgsc-pori/graphkb-parser');
+const {parseVariant, stringifyVariant, jsonifyVariant} = require('@bcgsc-pori/graphkb-parser');
 const {
     loadDelimToJson,
     hashRecordToId,

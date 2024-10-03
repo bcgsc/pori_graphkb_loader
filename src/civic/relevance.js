@@ -1,4 +1,5 @@
-const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
+//const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
+const {ParsingError, ErrorMixin, InputValidationError } = require('@bcgsc-pori/graphkb-parser');
 
 class NotImplementedError extends ErrorMixin { }
 
