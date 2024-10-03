@@ -3,8 +3,8 @@ const path = require('path');
 
 const _ = require('lodash');
 const Ajv = require('ajv');
-const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
-
+//const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
+const { ParsingError, ErrorMixin, InputValidationError } = require('@bcgsc-pori/graphkb-parser');
 const { checkSpec, request } = require('../util');
 const { logger } = require('../logging');
 const { civic: SOURCE_DEFN } = require('../sources');
