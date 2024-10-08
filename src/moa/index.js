@@ -547,7 +547,7 @@ const parseRelevance = (moaRecord) => {
 const removeRecords = async (conn, records) => {
     if (records.length && records.length > 0) {
         for (const record of records) {
-            try{
+            try {
                 await conn.deleteRecord('Statement', record['@rid']);
                 logger.info(`Removing Statement ${record['@rid']} that are out of date`);
             } catch (err) {
@@ -591,9 +591,6 @@ const upload = async ({ conn, url = 'https://moalmanac.org/api/assertions' }) =>
             logger.info(`loading: ${rawRecord.assertion_id} / ${records.length}`);
             const record = fixStringNulls(rawRecord);
 
-            if (record.assertion_id === 258){
-                logger.info(`loading: ${rawRecord.assertion_id}`);
-            }
             // handle empty space in url
             if (record.sources[0].url && record.sources[0].url.includes(' ')) {
                 record.sources[0].url = record.sources[0].url.replace(/\s/g, '');
