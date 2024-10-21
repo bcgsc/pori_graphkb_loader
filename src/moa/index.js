@@ -261,7 +261,7 @@ const loadVariant = async (conn, moaVariant) => {
                 AND: [
                     { source: { filters: { name: 'cosmic' }, target: 'Source' } },
                     { sourceId: moaVariant.cosmic_signature },
-                    { sourceIdVersion: '3'},
+                    { sourceIdVersion: '3' },
                 ],
             },
             target: 'Signature',
