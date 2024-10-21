@@ -256,11 +256,12 @@ const loadVariant = async (conn, moaVariant) => {
             });
         }
     } else if (moaVariant.feature_type === 'mutational_signature') {
-        const signature = await conn.getRecords({
+        const signature = await conn.getUniqueRecordBy({
             filters: {
                 AND: [
                     { source: { filters: { name: 'cosmic' }, target: 'Source' } },
                     { sourceId: moaVariant.cosmic_signature },
+                    { sourceIdVersion: '3'},
                 ],
             },
             target: 'Signature',
@@ -269,17 +270,17 @@ const loadVariant = async (conn, moaVariant) => {
 
         try {
             const record = await conn.getUniqueRecordBy({
-                filters: { AND: [{ reference1: rid(signature[0]) }, { type: rid(variantType) }] },
+                filters: { AND: [{ reference1: rid(signature) }, { type: rid(variantType) }] },
                 target: 'CategoryVariant',
             });
             return await conn.updateRecord('CategoryVariant', record['@rid'], {
-                displayName: `${signature[0].name.toUpperCase()} signature present`,
+                displayName: `${signature.name.toUpperCase()} signature present`,
             });
         } catch (err) {
             return conn.addVariant({
                 content: {
-                    displayName: `${signature[0].name.toUpperCase()} signature present`,
-                    reference1: rid(signature[0]),
+                    displayName: `${signature.name.toUpperCase()} signature present`,
+                    reference1: rid(signature),
                     type: rid(variantType),
                 },
                 existsOk: true,
