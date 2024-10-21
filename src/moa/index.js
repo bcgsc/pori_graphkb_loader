@@ -547,19 +547,6 @@ const parseRelevance = (moaRecord) => {
     return relevance;
 };
 
-const removeRecords = async (conn, records) => {
-    if (records.length && records.length > 0) {
-        for (const record of records) {
-            try {
-                await conn.deleteRecord('Statement', record['@rid']);
-                logger.info(`Removing Statement ${record['@rid']} that are out of date`);
-            } catch (err) {
-                logger.warn(`${err}`);
-            }
-        }
-    }
-};
-
 const upload = async ({ conn, url = 'https://moalmanac.org/api/assertions' }) => {
     const source = await conn.addSource(SOURCE_DEFN);
     const records = await requestWithRetry({ json: true, method: 'GET', uri: url });
@@ -578,19 +565,18 @@ const upload = async ({ conn, url = 'https://moalmanac.org/api/assertions' }) =>
             }
             // work around to match with gkb records
             if (record.therapy_name) {
-                if (record.therapy_name.includes("Amivantamab-vmjw")) {
-                    record.therapy_name = record.therapy_name.replace("Amivantamab-vmjw","amivantamab");
-                } else if (record.therapy_name === "KU0058684") {
-                    record.therapy_name = "olaparib";
-                } else if (record.therapy_name === "Tovorafenib") {
-                    record.therapy_name = "pan-raf kinase inhibitor tak-580";
+                if (record.therapy_name.includes('Amivantamab-vmjw')) {
+                    record.therapy_name = record.therapy_name.replace('Amivantamab-vmjw', 'amivantamab');
+                } else if (record.therapy_name === 'KU0058684') {
+                    record.therapy_name = 'olaparib';
+                } else if (record.therapy_name === 'Tovorafenib') {
+                    record.therapy_name = 'pan-raf kinase inhibitor tak-580';
                 }
             }
             checkSpec(validateMoaRecord, record);
-            const key = `${record.assertion_id}`;
             const relevance = parseRelevance(record);
 
-            const updatedRecords = (await loadRecord(conn, record, source, relevance)).map(r => r['@rid']);
+            await loadRecord(conn, record, source, relevance);
 
             counts.success++;
         } catch (err) {
