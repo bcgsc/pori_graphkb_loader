@@ -323,7 +323,7 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
             },
             target: 'Disease',
         });
-    } else if (moaRecord.oncotree_term) {
+    } else if (moaRecord.oncotree_term & moaRecord.oncotree_term !== 'Any solid tumor') {
         disease = await conn.getUniqueRecordBy({
             filters: {
                 AND: [
@@ -334,6 +334,9 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
             target: 'Disease',
         });
     } else if (moaRecord.disease) {
+        if (moaRecord.disease === 'Any solid tumor') {
+            moaRecord.disease = 'all solid tumors';
+        }
         disease = await conn.getUniqueRecordBy({
             filters: {
                 AND: [
@@ -563,28 +566,6 @@ const upload = async ({ conn, url = 'https://moalmanac.org/api/assertions' }) =>
     logger.info(`loaded ${records.length} assertions from MOA API`);
 
     const counts = { error: 0, skipped: 0, success: 0 };
-    const existingRecords = await conn.getRecords({
-        filters: { source: rid(source) },
-        returnProperties: ['@rid', 'sourceId', 'updatedAt'],
-        target: 'Statement',
-    });
-
-    const existing = {};
-
-    const newIds = records.map(record => record.assertion_id);
-    let toRemove = existingRecords.filter(
-        record => !newIds.includes(parseInt(record.sourceId, 10)),
-    );
-    await removeRecords(conn, toRemove);
-
-    for (const record of existingRecords) {
-        const key = record.sourceId;
-
-        if (existing[key] === undefined) {
-            existing[key] = [];
-        }
-        existing[key].push(record);
-    }
 
     for (const rawRecord of records) {
         try {
@@ -595,24 +576,26 @@ const upload = async ({ conn, url = 'https://moalmanac.org/api/assertions' }) =>
             if (record.sources[0].url && record.sources[0].url.includes(' ')) {
                 record.sources[0].url = record.sources[0].url.replace(/\s/g, '');
             }
+            // work around to match with gkb records
+            if (record.therapy_name) {
+                if (record.therapy_name.includes("Amivantamab-vmjw")) {
+                    record.therapy_name = record.therapy_name.replace("Amivantamab-vmjw","amivantamab");
+                } else if (record.therapy_name === "KU0058684") {
+                    record.therapy_name = "olaparib";
+                } else if (record.therapy_name === "Tovorafenib") {
+                    record.therapy_name = "pan-raf kinase inhibitor tak-580";
+                }
+            }
             checkSpec(validateMoaRecord, record);
             const key = `${record.assertion_id}`;
             const relevance = parseRelevance(record);
 
             const updatedRecords = (await loadRecord(conn, record, source, relevance)).map(r => r['@rid']);
 
-            if (existing[key]) {
-                toRemove = existing[key].filter(r => !updatedRecords.includes(r['@rid']));
-                await removeRecords(conn, toRemove);
-            }
             counts.success++;
         } catch (err) {
             logger.warn(`${err}`);
             counts.error++;
-            toRemove = existingRecords.filter(
-                record => rawRecord.assertion_id === parseInt(record.sourceId, 10),
-            );
-            await removeRecords(conn, toRemove);
 
             if (err.toString().includes('Cannot read property')) {
                 throw err;
