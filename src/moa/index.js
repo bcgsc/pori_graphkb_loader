@@ -274,12 +274,12 @@ const loadVariant = async (conn, moaVariant) => {
                 target: 'CategoryVariant',
             });
             return await conn.updateRecord('CategoryVariant', record['@rid'], {
-                displayName: `${signature.name.toUpperCase()} signature present`,
+                displayName: `${signature.name.toUpperCase()} high signature`,
             });
         } catch (err) {
             return conn.addVariant({
                 content: {
-                    displayName: `${signature.name.toUpperCase()} signature present`,
+                    displayName: `${signature.name.toUpperCase()} high signature`,
                     reference1: rid(signature),
                     type: rid(variantType),
                 },
