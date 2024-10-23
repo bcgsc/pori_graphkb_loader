@@ -256,28 +256,46 @@ const loadVariant = async (conn, moaVariant) => {
             });
         }
     } else if (moaVariant.feature_type === 'mutational_signature') {
-        const signature = await conn.getUniqueRecordBy({
-            filters: {
-                AND: [
-                    { source: { filters: { name: 'cosmic' }, target: 'Source' } },
-                    { sourceId: `SBS${Number.parseInt(moaVariant.cosmic_signature_number, 10)}` },
-                    { sourceIdVersion: `${Number.parseInt(moaVariant.cosmic_signature_version, 10)}` },
-                ],
-            },
-            target: 'Signature',
-        });
-        const variantType = await conn.getVocabularyTerm('signature present');
-        return conn.addVariant({
-            content: {
-                // KBDEV-994 adding displayName
-                // TODO: test displayName in KBDEV-993 and remove both comments.
-                displayName: `${signature.name.toUpperCase()} signature present`,
-                reference1: rid(signature),
-                type: rid(variantType),
-            },
-            existsOk: true,
-            target: 'CategoryVariant',
-        });
+        // Cosmic signature
+        let signature = {};
+
+        try {
+            signature = await conn.getUniqueRecordBy({
+                target: 'Signature',
+                filters: {
+                    AND: [
+                        {
+                            source: {
+                                target: 'Source',
+                                filters: { name: 'cosmic' },
+                            },
+                        },
+                        { sourceId: moaVariant.cosmic_signature },
+                        { sourceIdVersion: '3' },
+                    ],
+                },
+            });
+        } catch (err) {
+            // Enforcing usage of v3 Cosmic signatures
+            throw Error(`Missing Cosmic signature ${moaVariant.cosmic_signature}`);
+        }
+
+        // 'high signature' variant type (prefered over 'signature present')
+        const variantType = await conn.getVocabularyTerm('high signature');
+
+        // Corresponding 'high signature' CategoryVariant
+        try {
+            return await conn.addVariant({
+                content: {
+                    reference1: rid(signature),
+                    type: rid(variantType),
+                },
+                existsOk: true,
+                target: 'CategoryVariant',
+            });
+        } catch (err) {
+            throw Error(`Unable to add variant for Cosmic signature ${moaVariant.cosmic_signature}`);
+        }
         // } else if (moaVariant.feature_type === 'mutational_burden') {
     } else if (moaVariant.feature_type === 'copy_number') {
         const variantType = await conn.getVocabularyTerm(moaVariant.direction);
@@ -309,14 +327,13 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
         disease = await conn.getUniqueRecordBy({
             filters: {
                 AND: [
-                    { name: moaRecord.oncotree_term },
                     { sourceId: moaRecord.oncotree_code },
                     { source: { filters: { name: 'oncotree' }, target: 'Source' } },
                 ],
             },
             target: 'Disease',
         });
-    } else if (moaRecord.oncotree_term) {
+    } else if (moaRecord.oncotree_term & moaRecord.oncotree_term !== 'Any solid tumor') {
         disease = await conn.getUniqueRecordBy({
             filters: {
                 AND: [
@@ -327,6 +344,9 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
             target: 'Disease',
         });
     } else if (moaRecord.disease) {
+        if (moaRecord.disease === 'Any solid tumor') {
+            moaRecord.disease = 'all solid tumors';
+        }
         disease = await conn.getUniqueRecordBy({
             filters: {
                 AND: [
@@ -362,18 +382,30 @@ const loadRecord = async (conn, moaRecord, moaSource, relevanceTerms) => {
             if (sourceRecord.nct && sourceRecord.source_type !== 'Abstract') {
                 articles.push(await _trials.fetchAndLoadById(conn, sourceRecord.nct));
             } else if (['FDA', 'Guideline'].includes(sourceRecord.source_type)) {
-                articles.push(await conn.addRecord({
-                    content: {
+                try {
+                    const record = await conn.getUniqueRecordBy({
+                        filters: { AND: [{ source: rid(moaSource) }, { sourceId: sourceRecord.source_id }, { name: `${sourceRecord.source_type}-${sourceRecord.source_id}` }] },
+                        target: 'CuratedContent',
+                    });
+                    articles.push(await conn.updateRecord('CuratedContent', record['@rid'], {
                         citation: sourceRecord.citation,
                         displayName: `${SOURCE_DEFN.displayName} ${sourceRecord.source_type}-${sourceRecord.source_id}`,
-                        name: `${sourceRecord.source_type}-${sourceRecord.source_id}`,
-                        source: rid(moaSource),
-                        sourceId: sourceRecord.source_id,
                         url: sourceRecord.url,
-                    },
-                    existsOk: true,
-                    target: 'CuratedContent',
-                }));
+                    }));
+                } catch (err) {
+                    articles.push(await conn.addRecord({
+                        content: {
+                            citation: sourceRecord.citation,
+                            displayName: `${SOURCE_DEFN.displayName} ${sourceRecord.source_type}-${sourceRecord.source_id}`,
+                            name: `${sourceRecord.source_type}-${sourceRecord.source_id}`,
+                            source: rid(moaSource),
+                            sourceId: sourceRecord.source_id,
+                            url: sourceRecord.url,
+                        },
+                        existsOk: true,
+                        target: 'CuratedContent',
+                    }));
+                }
             } else {
                 throw Error(`Unable to process evidence (${sourceRecord.source_type})`);
             }
@@ -503,9 +535,9 @@ const parseRelevance = (moaRecord) => {
             relevance.push('no sensitivity');
         }
     }
-    if (moaRecord.favorable_prognosis === true) {
+    if (moaRecord.favorable_prognosis === 1) {
         relevance.push('favourable prognosis');
-    } else if (moaRecord.favorable_prognosis === false) {
+    } else if (moaRecord.favorable_prognosis === 0) {
         relevance.push('unfavourable prognosis');
     }
 
@@ -525,61 +557,37 @@ const parseRelevance = (moaRecord) => {
     return relevance;
 };
 
-
 const upload = async ({ conn, url = 'https://moalmanac.org/api/assertions' }) => {
     const source = await conn.addSource(SOURCE_DEFN);
     const records = await requestWithRetry({ json: true, method: 'GET', uri: url });
     logger.info(`loaded ${records.length} assertions from MOA API`);
 
     const counts = { error: 0, skipped: 0, success: 0 };
-    const existingRecords = await conn.getRecords({
-        filters: { source: rid(source) },
-        returnProperties: ['@rid', 'sourceId', 'updatedAt'],
-        target: 'Statement',
-    });
-
-    const existing = {};
-
-    for (const record of existingRecords) {
-        const key = record.sourceId;
-
-        if (existing[key] === undefined) {
-            existing[key] = [];
-        }
-        existing[key].push(record);
-    }
 
     for (const rawRecord of records) {
         try {
             logger.info(`loading: ${rawRecord.assertion_id} / ${records.length}`);
             const record = fixStringNulls(rawRecord);
+
+            // handle empty space in url
+            if (record.sources[0].url && record.sources[0].url.includes(' ')) {
+                record.sources[0].url = record.sources[0].url.replace(/\s/g, '');
+            }
+            // work around to match with gkb records
+            if (record.therapy_name) {
+                if (record.therapy_name.includes('Amivantamab-vmjw')) {
+                    record.therapy_name = record.therapy_name.replace('Amivantamab-vmjw', 'amivantamab');
+                } else if (record.therapy_name === 'KU0058684') {
+                    record.therapy_name = 'olaparib';
+                } else if (record.therapy_name === 'Tovorafenib') {
+                    record.therapy_name = 'pan-raf kinase inhibitor tak-580';
+                }
+            }
             checkSpec(validateMoaRecord, record);
-            const key = `${record.assertion_id}`;
-            const lastUpdate = new Date(record.last_updated).getTime();
             const relevance = parseRelevance(record);
 
-            // do we have the expected number of GraphKB records for this MOA assertion
-            if (existing[key] && existing[key].length === relevance.length) {
-                // check the last update date of the assertion against the timestamp in GraphKB
-                if (existing[key].every(r => lastUpdate <= r.updatedAt)) {
-                    logger.debug('Skip. Current record exists and does not need updating');
-                    counts.skipped++;
-                    continue;
-                }
-            }
-            const updatedRecords = (await loadRecord(conn, record, source, relevance)).map(r => r['@rid']);
+            await loadRecord(conn, record, source, relevance);
 
-            if (existing[key]) {
-                const toRemove = existing[key].map(r => r['@rid']).filter(r => !updatedRecords.includes(r));
-
-                if (toRemove.length) {
-                    logger.warn(`Removing ${toRemove.length} records that are out of date`);
-
-                    for (const recordId of toRemove) {
-                        await conn.deleteRecord('Statement', recordId);
-                    }
-                }
-            }
             counts.success++;
         } catch (err) {
             logger.warn(`${err}`);
