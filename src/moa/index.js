@@ -256,36 +256,45 @@ const loadVariant = async (conn, moaVariant) => {
             });
         }
     } else if (moaVariant.feature_type === 'mutational_signature') {
-        const signature = await conn.getUniqueRecordBy({
-            filters: {
-                AND: [
-                    { source: { filters: { name: 'cosmic' }, target: 'Source' } },
-                    { sourceId: moaVariant.cosmic_signature },
-                    { sourceIdVersion: '3' },
-                ],
-            },
-            target: 'Signature',
-        });
-        const variantType = await conn.getVocabularyTerm('high signature');
-
+        // Cosmic signature
+        let signature = {};
         try {
-            const record = await conn.getUniqueRecordBy({
-                filters: { AND: [{ reference1: rid(signature) }, { type: rid(variantType) }] },
-                target: 'CategoryVariant',
+            signature = await conn.getUniqueRecordBy({
+                target: 'Signature',
+                filters: {
+                    AND: [
+                        {
+                            source: {
+                                target: 'Source',
+                                filters: { name: 'cosmic' },
+                            },
+                        },
+                        { sourceId: moaVariant.cosmic_signature },
+                        { sourceIdVersion: '3' },
+                    ],
+                },
             });
-            return await conn.updateRecord('CategoryVariant', record['@rid'], {
-                displayName: `${signature.name.toUpperCase()} high signature`,
-            });
-        } catch (err) {
-            return conn.addVariant({
+        } catch(err) {
+            // Enforcing usage of v3 Cosmic signatures
+            throw Error(`Missing Cosmic signature ${moaVariant.cosmic_signature}`);
+        }
+
+        // 'high signature' variant type (prefered over 'signature present')
+        const variantType = await conn.getVocabularyTerm('high signature');
+        
+        
+        // Corresponding 'high signature' CategoryVariant
+        try {
+            return await conn.addVariant({
                 content: {
-                    displayName: `${signature.name.toUpperCase()} high signature`,
                     reference1: rid(signature),
                     type: rid(variantType),
                 },
                 existsOk: true,
                 target: 'CategoryVariant',
             });
+        } catch (err) {
+            throw Error(`Unable to add variant for Cosmic signature ${moaVariant.cosmic_signature}`);
         }
         // } else if (moaVariant.feature_type === 'mutational_burden') {
     } else if (moaVariant.feature_type === 'copy_number') {
