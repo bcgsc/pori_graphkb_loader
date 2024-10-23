@@ -258,6 +258,7 @@ const loadVariant = async (conn, moaVariant) => {
     } else if (moaVariant.feature_type === 'mutational_signature') {
         // Cosmic signature
         let signature = {};
+
         try {
             signature = await conn.getUniqueRecordBy({
                 target: 'Signature',
@@ -274,15 +275,14 @@ const loadVariant = async (conn, moaVariant) => {
                     ],
                 },
             });
-        } catch(err) {
+        } catch (err) {
             // Enforcing usage of v3 Cosmic signatures
             throw Error(`Missing Cosmic signature ${moaVariant.cosmic_signature}`);
         }
 
         // 'high signature' variant type (prefered over 'signature present')
         const variantType = await conn.getVocabularyTerm('high signature');
-        
-        
+
         // Corresponding 'high signature' CategoryVariant
         try {
             return await conn.addVariant({
