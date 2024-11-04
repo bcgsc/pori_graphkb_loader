@@ -180,9 +180,8 @@ const processCombination = async (conn, {
             const processedVariants = await processVariantRecord(conn, variant, feature);
             logger.verbose(`converted variant name (${variant.name}) to variants (${processedVariants.map(v => v.displayName).join(', and ')})`);
             variants.push(...processedVariants);
-        } catch (err) {
-            logger.error(`unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name})`);
-            throw err;
+        } catch {
+            throw new Error(`unable to process the variant (id=${variant.id}, name=${variant.name})`);
         }
     }
 
