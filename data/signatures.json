@@ -655,6 +655,12 @@
                     "target": "immune infiltration"
                 }
             ]
+        },
+        "HLA-A*02:01": {
+            "description": "Allele 02:01 for HLA-A gene. Meant to describe all alleles of higher precision, if any; See KBDEV-1224 for more details"
+        },
+        "HLA-B*27": {
+            "description": "Allele 27 for HLA-B gene. Meant to describe all alleles of higher precision, if any; See KBDEV-1224 for more details"
         }
     },
     "sources": {
