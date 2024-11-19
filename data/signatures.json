@@ -564,9 +564,6 @@
                 }
             ]
         },
-        "hla genotype": {
-            "description": "homo- or heterozygosity in HLA class I locus (HLA-A, HLA-B or HLA-C)"
-        },
         "homologous recombination deficiency": {
             "description": "genetic instability due to genomic alterations in the homologous recombination (HR) DNA repair pathway",
             "links": [
