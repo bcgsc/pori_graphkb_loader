@@ -564,9 +564,6 @@
                 }
             ]
         },
-        "hla genotype": {
-            "description": "homo- or heterozygosity in HLA class I locus (HLA-A, HLA-B or HLA-C)"
-        },
         "homologous recombination deficiency": {
             "description": "genetic instability due to genomic alterations in the homologous recombination (HR) DNA repair pathway",
             "links": [
@@ -657,10 +654,12 @@
             ]
         },
         "HLA-A*02:01": {
-            "description": "Allele 02:01 for HLA-A gene. Meant to describe all alleles of higher precision, if any; See KBDEV-1224 for more details"
+            "description": "Allele 02:01 for HLA-A gene. Meant to describe all alleles of higher precision, if any; See KBDEV-1224 for more details",
+            "displayName": "HLA-A*02:01"
         },
         "HLA-B*27": {
-            "description": "Allele 27 for HLA-B gene. Meant to describe all alleles of higher precision, if any; See KBDEV-1224 for more details"
+            "description": "Allele 27 for HLA-B gene. Meant to describe all alleles of higher precision, if any; See KBDEV-1224 for more details",
+            "displayName": "HLA-B*27"
         }
     },
     "sources": {
