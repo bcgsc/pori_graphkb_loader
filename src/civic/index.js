@@ -57,7 +57,8 @@ const incrementCounts = (initial, updates) => {
  * @param {ApiConnection} param0.conn the api connection object for GraphKB
  * @param {string} param0.errorLogPrefix prefix to the generated error json file
  * @param {number} param0.maxRecords limit of EvidenceItem records to be processed and upload
- * @param {?boolean} param0.noUpdate for avoiding deletion/update of existing GraphKB Statements
+ * @param {?boolean} param0.noDeleteOnUnmatched no deletion of existing GraphKB Statements related to unmatched combination(s)
+ * @param {?boolean} param0.noUpdate no update of existing GraphKB Statements
  * @param {string[]} param0.trustedCurators a list of curator IDs for submitted-only EvidenceItems
  * @param {?string} param0.url url to use as the base for accessing the civic ApiConnection
  */
@@ -65,6 +66,7 @@ const upload = async ({
     conn,
     errorLogPrefix,
     maxRecords,
+    noDeleteOnUnmatched = false,
     noUpdate = false,
     trustedCurators,
     url = BASE_URL,
@@ -181,7 +183,8 @@ const upload = async ({
         processingIntoCombinations: new Map(),
         relevance: new Map(),
     };
-    const casesToReview = new Map();
+    const statementsToReview_unmatched_processingError = new Map();
+    const statementsToReview_unmatched = new Map();
 
     logger.info(`\n\n${'#'.repeat(80)}\n## PROCESSING RECORDS\n${'#'.repeat(80)}\n`);
     let recordNumber = 0;
@@ -366,13 +369,17 @@ const upload = async ({
         }
 
         // DELETE
-        if (!noUpdate && toDelete.length > 0) {
+        if (toDelete.length > 0) {
             const rids = toDelete.map(el => el['@rid']);
 
             if (processCombinationErrors > 0) {
                 // Do not delete any statements if some combinations have processing errors
-                logger.info(`${toDelete.length} unmatched statement(s) to be reviewed for deletion`);
-                casesToReview.set(id, rids);
+                logger.warn(`${toDelete.length} unmatched statement(s). To be reviewed since some processing errors occured`);
+                statementsToReview_unmatched_processingError.set(id, rids);
+            } else if (noDeleteOnUnmatched) {
+                // Do not delete any statements if noDeleteOnUnmatched flag
+                logger.warn(`${toDelete.length} unmatched statement(s). To be reviewed since the noDeleteOnUnmatched flag is being used`);
+                statementsToReview_unmatched.set(id, rids);
             } else {
                 loaclCountsST.delete = await deleteStatements(conn, { rids });
             }
@@ -445,9 +452,11 @@ const upload = async ({
     // Logging processing error cases to be reviewed,
     // so a reviewer can decide if corresponding statements need to be deleted or not
     logger.info();
-    logger.info('***** Cases to be reviewed for deletion *****');
-    logger.warn(`${casesToReview.size} Evidence Item(s) with processing errors leading to unmatched Statement(s)`);
-    casesToReview.forEach((v, k) => logger.info(`${k} -> ${JSON.stringify(v)}`));
+    logger.info('***** Unmatched cases to be reviewed for deletion *****');
+    logger.warn(`${statementsToReview_unmatched_processingError.size} Evidence Item(s) with processing errors leading to unmatched Statement(s)`);
+    statementsToReview_unmatched_processingError.forEach((v, k) => logger.info(`${k} -> ${JSON.stringify(v)}`));
+    logger.warn(`${statementsToReview_unmatched.size} Evidence Item(s) with unmatched Statement(s) with no processing error involved`);
+    statementsToReview_unmatched.forEach((v, k) => logger.info(`${k} -> ${JSON.stringify(v)}`));
 
     // Logging Statement CRUD operations counts
     if (countsST) {
