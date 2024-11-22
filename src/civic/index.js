@@ -441,11 +441,18 @@ const upload = async ({
     if (sourceIdstoDeleteStatementsFrom.length > 0) {
         if (!deleteDeprecated) {
             // Do not delete any statements if no deleteDeprecated flag
-            const deprecatedStatementRids = await getStatements(conn, { source: sourceRid, sourceIds: sourceIdstoDeleteStatementsFrom });
+            const deprecatedStatementRids = await getStatements(
+                conn,
+                { source: sourceRid, sourceIds: sourceIdstoDeleteStatementsFrom },
+            );
             logger.warn(`${deprecatedStatementRids.length} corresponding deprecated statement(s). To be reviewed since no deleteDeprecated flag`);    
+
             const deprecatedStatementsFilepath = `${errorLogPrefix}-civic-deprecatedStatements.json`;
             logger.info(`writing ${deprecatedStatementsFilepath}`);
-            fs.writeFileSync(deprecatedStatementsFilepath, JSON.stringify(deprecatedStatementRids, null, 2));
+            fs.writeFileSync(
+                deprecatedStatementsFilepath,
+                JSON.stringify(deprecatedStatementRids, null, 2),
+            );
         } else {
         const deletedCount = await deleteStatements(conn, {
             source: sourceRid,
