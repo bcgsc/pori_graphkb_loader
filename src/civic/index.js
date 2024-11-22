@@ -445,8 +445,7 @@ const upload = async ({
                 conn,
                 { source: sourceRid, sourceIds: sourceIdstoDeleteStatementsFrom },
             );
-            logger.warn(`${deprecatedStatementRids.length} corresponding deprecated statement(s). To be reviewed since no deleteDeprecated flag`);    
-
+            logger.warn(`${deprecatedStatementRids.length} corresponding deprecated statement(s). To be reviewed since no deleteDeprecated flag`);
             const deprecatedStatementsFilepath = `${errorLogPrefix}-civic-deprecatedStatements.json`;
             logger.info(`writing ${deprecatedStatementsFilepath}`);
             fs.writeFileSync(
@@ -454,18 +453,18 @@ const upload = async ({
                 JSON.stringify(deprecatedStatementRids, null, 2),
             );
         } else {
-        const deletedCount = await deleteStatements(conn, {
-            source: sourceRid,
+            const deletedCount = await deleteStatements(conn, {
+                source: sourceRid,
                 sourceIds: sourceIdstoDeleteStatementsFrom,
-        });
-        const attempts = deletedCount.success + deletedCount.err;
-        logger.info(`${deletedCount.success}/${attempts} soft-deleted statements`);
+            });
+            const attempts = deletedCount.success + deletedCount.err;
+            logger.info(`${deletedCount.success}/${attempts} soft-deleted statements`);
 
-        if (countsST) {
-            countsST.delete.err += deletedCount.err;
-            countsST.delete.success += deletedCount.success;
-        } else {
-            countsST = { delete: { err: deletedCount.err, success: deletedCount.success } };
+            if (countsST) {
+                countsST.delete.err += deletedCount.err;
+                countsST.delete.success += deletedCount.success;
+            } else {
+                countsST = { delete: { err: deletedCount.err, success: deletedCount.success } };
             }
         }
     }
