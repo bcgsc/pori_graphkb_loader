@@ -275,7 +275,7 @@ const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
         } catch (err) {
             try {
                 variantType = await conn.getVocabularyTerm(normalizedVariant.type || content.type);
-            } catch {
+            } catch (e) {
                 throw new Error(`Unable to upload CIVIC variant (${normalizedVariant}})`);
             }
         }
@@ -396,7 +396,7 @@ const processVariantRecord = async (conn, civicVariantRecord, feature) => {
         }
     } catch (err) {
         VARIANT_CACHE.set(JSON.stringify(rawVariant), { err });
-        throw err
+        throw err;
     }
 
     VARIANT_CACHE.set(JSON.stringify(rawVariant), { result });
