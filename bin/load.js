@@ -109,6 +109,16 @@ civicParser.add_argument('--noUpdate', {
     default: false,
     help: 'Will not check for updating content of existing GraphKB Statements',
 });
+civicParser.add_argument('--noDeleteOnUnmatched', {
+    action: 'store_true',
+    default: false,
+    help: 'Will not delete GraphKB Statements from valid sourceID but not matching a combination',
+});
+civicParser.add_argument('--deleteDeprecated', {
+    action: 'store_true',
+    default: false,
+    help: 'Will delete GraphKB Statements from deprecated sourceID',
+});
 
 const clinicaltrialsgovParser = subparsers.add_parser('clinicaltrialsgov');
 clinicaltrialsgovParser.add_argument('--days', {
