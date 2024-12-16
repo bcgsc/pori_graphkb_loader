@@ -2,7 +2,7 @@
  * Introducing Molecular Profiles with CIViC GraphQL API v2.2.0
  * [EvidenceItem]--(many-to-one)--[MolecularProfile]--(many-to-many)--[Variant]
  */
-const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
+const { ErrorMixin } = require('@bcgsc-pori/graphkb-parser');
 
 
 class NotImplementedError extends ErrorMixin { }

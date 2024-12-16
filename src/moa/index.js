@@ -1,6 +1,9 @@
-
 const Ajv = require('ajv');
-const kbParser = require('@bcgsc-pori/graphkb-parser');
+
+const { parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
+const { parseVariantDecorator } = require('../util');
+
+const parseVariant = parseVariantDecorator(parseVariantOriginal);
 
 const { checkSpec, requestWithRetry } = require('../util');
 const { moa: SOURCE_DEFN } = require('../sources');
@@ -59,7 +62,7 @@ const loadSmallMutation = async (conn, gene, moaVariant) => {
 
     // create the genomic variant if we have the appropriate fields
     if (!['reference_allele', 'alternate_allele', 'start_position', 'end_position', 'chromosome'].some(v => moaVariant[v] === null)) {
-        const hgvsg = kbParser.variant.parse(composeGenomicHgvs(moaVariant), false).toJSON();
+        const hgvsg = parseVariant(composeGenomicHgvs(moaVariant), false).toJSON();
         const chromosome = await conn.getUniqueRecordBy({
             filters: {
                 AND: [
@@ -85,7 +88,7 @@ const loadSmallMutation = async (conn, gene, moaVariant) => {
 
     // create the cds variant
     if (moaVariant.cdna_change !== null && moaVariant.cdna_change !== '') {
-        const hgvsc = kbParser.variant.parse(moaVariant.cdna_change, false).toJSON();
+        const hgvsc = parseVariant(moaVariant.cdna_change, false).toJSON();
         const cdsType = rid(await conn.getVocabularyTerm(hgvsc.type));
         cdsVariant = rid(await conn.addVariant({
             content: {
@@ -98,7 +101,7 @@ const loadSmallMutation = async (conn, gene, moaVariant) => {
 
     // create the protein variant
     if (moaVariant.protein_change !== null && moaVariant.protein_change !== '') {
-        const hgvsp = kbParser.variant.parse(moaVariant.protein_change, false).toJSON();
+        const hgvsp = parseVariant(moaVariant.protein_change, false).toJSON();
         const proteinType = rid(await conn.getVocabularyTerm(hgvsp.type));
         proteinVariant = rid(await conn.addVariant({
             content: {
@@ -129,7 +132,7 @@ const loadSmallMutation = async (conn, gene, moaVariant) => {
         } else {
             variantType = await conn.getVocabularyTerm('mutation');
         }
-        const parsed = kbParser.variant.parse(`e.${exonNumber}mut`, false).toJSON();
+        const parsed = parseVariant(`e.${exonNumber}mut`, false).toJSON();
         exonVariant = await conn.addVariant({
             content: {
                 ...parsed,

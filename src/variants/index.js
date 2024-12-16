@@ -1,10 +1,13 @@
 const fs = require('fs');
 
-const { variant: { parse: parseVariant } } = require('@bcgsc-pori/graphkb-parser');
-
+const { parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
 const { logger } = require('../logging');
 const { orderPreferredOntologyTerms, rid } = require('../graphkb');
 const { fetchAndLoadBySymbol } = require('../entrez/gene');
+
+const { parseVariantDecorator } = require('../util');
+
+const parseVariant = parseVariantDecorator(parseVariantOriginal);
 
 
 const getEntrezGene = async (conn, name) => {

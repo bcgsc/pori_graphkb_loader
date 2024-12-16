@@ -5,7 +5,10 @@ const fs = require('fs');
 
 const csv = require('fast-csv');
 
-const { variant: { parse: variantParser } } = require('@bcgsc-pori/graphkb-parser');
+const { parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
+const { parseVariantDecorator } = require('../util');
+
+const parseVariant = parseVariantDecorator(parseVariantOriginal);
 
 const {
     convertRowFields,
@@ -101,7 +104,7 @@ const processVariants = async ({ conn, record, source }) => {
             // deletion
             notation = `${notation}${start}_${stop}del${refSeq}`;
         }
-        const variant = variantParser(notation).toJSON();
+        const variant = parseVariant(notation).toJSON();
 
         variant.reference1 = rid(reference1);
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
@@ -125,7 +128,7 @@ const processVariants = async ({ conn, record, source }) => {
             [reference1] = await _entrezGene.fetchAndLoadByIds(conn, [geneId]);
             featureCache[geneId] = reference1;
         }
-        const variant = variantParser(
+        const variant = parseVariant(
             protein.replace(/fs\*\?$/, 'fs'), // ignore uncertain truncations
             false,
         ).toJSON();
@@ -163,7 +166,7 @@ const processVariants = async ({ conn, record, source }) => {
             featureCache[transcriptId] = reference1;
         }
         // parse the cds variant
-        const variant = variantParser(cds, false).toJSON();
+        const variant = parseVariant(cds, false).toJSON();
 
         variant.reference1 = reference1;
         variant.type = rid(await conn.getVocabularyTerm(variant.type));

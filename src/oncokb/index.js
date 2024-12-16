@@ -5,7 +5,10 @@ const Ajv = require('ajv');
 const fs = require('fs');
 const path = require('path');
 
-const kbParser = require('@bcgsc-pori/graphkb-parser');
+const { ParsingError, parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
+const { parseVariantDecorator } = require('../util');
+
+const parseVariant = parseVariantDecorator(parseVariantOriginal);
 
 const {
     checkSpec,
@@ -132,7 +135,7 @@ const parseVariantName = (variantIn, { reference1 } = {}) => {
     const variant = variantIn.toLowerCase().trim();
 
     try {
-        kbParser.variant.parse(`p.${variant}`, false);
+        parseVariant(`p.${variant}`, false);
         return { type: `p.${variant}` };
     } catch (err) { }
     let match = /^([a-z])?(\d+)_([a-z])?(\d+)splice$/.exec(variant);
@@ -276,11 +279,11 @@ const processVariant = async (conn, {
 
     if (!variant) {
         try {
-            variant = kbParser.variant.parse(type, false).toJSON();
+            variant = parseVariant(type, false).toJSON();
         } catch (err) {
             try {
                 // try with adding a p prefix also
-                variant = kbParser.variant.parse(`p.${type}`, false).toJSON();
+                variant = parseVariant(`p.${type}`, false).toJSON();
             } catch (err2) { }
             logger.warn(`failed to parse the variant (${type}) for record (gene=${gene}, variant=${variantName})`);
             throw err;
@@ -303,7 +306,7 @@ const processVariant = async (conn, {
 
     // create the variant
     for (const [key, value] of Object.entries(variant)) {
-        if (value instanceof kbParser.position.Position) {
+        if (value.pos) {
             variant[key] = value.toJSON();
         }
     }
@@ -327,7 +330,7 @@ const processVariant = async (conn, {
 
         try {
             // try with adding a p prefix also
-            const parsed = kbParser.variant.parse(altVariantName, false).toJSON();
+            const parsed = parseVariant(altVariantName, false).toJSON();
             parsed.reference1 = rid(reference1);
             parsed.type = rid(await getVocabulary(conn, parsed.type));
             const altVariant = rid(await conn.addVariant({
@@ -617,7 +620,7 @@ const addEvidenceLevels = async (conn, proxy, source) => {
 
     for (let [level, desc] of Object.entries(levels)) {
         if (!/^LEVEL_[A-Z0-9]+$/.exec(level)) {
-            throw new kbParser.error.ParsingError({
+            throw new ParsingError({
                 expected: '/^LEVEL_[A-Z0-9]+$/',
                 message: `Error in parsing the level name: ${level}`,
                 observed: level,

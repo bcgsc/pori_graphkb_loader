@@ -12,7 +12,7 @@
   "private": true,
   "license": "GPL-3",
   "dependencies": {
-    "@bcgsc-pori/graphkb-parser": "^1.1.1",
+    "@bcgsc-pori/graphkb-parser": "^2.1.0",
     "@bcgsc-pori/graphkb-schema": "^3.14.3",
     "ajv": "^6.10.0",
     "argparse": "^2.0.1",

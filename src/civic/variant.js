@@ -1,13 +1,16 @@
-const kbParser = require('@bcgsc-pori/graphkb-parser');
+const { ErrorMixin, ParsingError, parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
 const { rid } = require('../graphkb');
 const _entrezGene = require('../entrez/gene');
 const _snp = require('../entrez/snp');
 const { civic: SOURCE_DEFN } = require('../sources');
+const { parseVariantDecorator } = require('../util');
 
-const { error: { ErrorMixin, ParsingError } } = kbParser;
+const parseVariant = parseVariantDecorator(parseVariantOriginal);
+
 class NotImplementedError extends ErrorMixin { }
 
 const VARIANT_CACHE = new Map();
+
 
 // based on discussion with cam here: https://www.bcgsc.ca/jira/browse/KBDEV-844
 const SUBS = {
@@ -223,11 +226,11 @@ const normalizeVariantRecord = ({
 
     // try parser fallback for notation that is close to correct
     try {
-        kbParser.variant.parse(name, false);
+        parseVariant(name, false);
         return [{ positional: true, reference1: { ...referenceGene }, variant: name }];
     } catch (err) {
         try {
-            kbParser.variant.parse(`p.${name}`, false);
+            parseVariant(`p.${name}`, false);
             return [{
                 positional: true,
                 reference1: { ...referenceGene },
@@ -261,10 +264,9 @@ const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
     } else {
         let content = {};
 
-        if (normalizedVariant.positional) {
-            content = kbParser.variant.parse(normalizedVariant.variant, false).toJSON();
-        }
-        let variantType;
+    if (normalizedVariant.positional) {
+        content = parseVariant(normalizedVariant.variant, false).toJSON();
+    }
 
         // try to fetch civic specific term first
         try {
