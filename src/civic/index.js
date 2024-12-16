@@ -56,10 +56,10 @@ const incrementCounts = (initial, updates) => {
  *
  * @param {object} param0
  * @param {ApiConnection} param0.conn the api connection object for GraphKB
- * @param {?boolean} param0.deleteDeprecated deletion of existing GraphKB Statements related to deprecated evidence(s)
+ * @param {?boolean} param0.deleteDeprecated delete GraphKB Statements if deprecated evidence(s)
  * @param {string} param0.errorLogPrefix prefix to the generated error json file
  * @param {number} param0.maxRecords limit of EvidenceItem records to be processed and upload
- * @param {?boolean} param0.noDeleteOnUnmatched no deletion of existing GraphKB Statements related to unmatched combination(s)
+ * @param {?boolean} param0.noDeleteOnUnmatched don't delete GraphKB St. if unmatched combination(s)
  * @param {?boolean} param0.noUpdate no update of existing GraphKB Statements
  * @param {string[]} param0.trustedCurators a list of curator IDs for submitted-only EvidenceItems
  * @param {?string} param0.url url to use as the base for accessing the civic ApiConnection
