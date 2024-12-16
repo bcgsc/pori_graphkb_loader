@@ -264,19 +264,19 @@ const loadVariant = async (conn, moaVariant) => {
 
         try {
             signature = await conn.getUniqueRecordBy({
-                target: 'Signature',
                 filters: {
                     AND: [
                         {
                             source: {
-                                target: 'Source',
                                 filters: { name: 'cosmic' },
+                                target: 'Source',
                             },
                         },
                         { sourceId: moaVariant.cosmic_signature },
                         { sourceIdVersion: '3' },
                     ],
                 },
+                target: 'Signature',
             });
         } catch (err) {
             // Enforcing usage of v3 Cosmic signatures
