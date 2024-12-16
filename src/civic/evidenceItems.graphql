@@ -81,9 +81,27 @@ query evidenceItems(
           feature {
             featureInstance {
               __typename
-              ... on Factor { id }
+              ... on Factor {
+                id
+                name
+              }
+              ... on Fusion {
+                fivePrimeGene {
+                  entrezId
+                  id
+                  name
+                }
+                id
+                name
+                threePrimeGene {
+                  entrezId
+                  id
+                  name
+                }
+              }
               ... on Gene {
                 entrezId
+                id
                 name
               }
             }
