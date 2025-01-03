@@ -1,6 +1,6 @@
 const Ajv = require('ajv');
 
-const { parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
+const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
 const { checkSpec } = require('../util');
 const {
     fetchByIdList, uploadRecord, preLoadCache: preLoadAnyCache, BASE_FETCH_URL,
@@ -9,10 +9,6 @@ const refseq = require('./refseq');
 const entrezGene = require('./gene');
 const { rid } = require('../graphkb');
 const { logger } = require('../logging');
-
-const { parseVariantDecorator } = require('../util');
-
-const parseVariant = parseVariantDecorator(parseVariantOriginal);
 
 const ajv = new Ajv();
 
@@ -52,7 +48,7 @@ const loadFromDocsumHgvs = async (api, hgvsVariants) => {
 
     try {
         if (hgvsVariants.cds) {
-            const parsed = parseVariant(hgvsVariants.cds.split('|')[0], true).toJSON();
+            const parsed = jsonifyVariant(parseVariant(hgvsVariants.cds.split('|')[0], true));
             const [transcript] = await refseq.fetchAndLoadByIds(api, [parsed.reference1]);
             const type = await api.getVocabularyTerm(parsed.type);
             cds = await api.addVariant({
@@ -68,7 +64,7 @@ const loadFromDocsumHgvs = async (api, hgvsVariants) => {
     try {
         if (hgvsVariants.protein) {
             const gene = hgvsVariants.protein.split('|').find(p => p.startsWith('GENE='));
-            const parsed = parseVariant(hgvsVariants.protein.split('|')[0], true).toJSON();
+            const parsed = jsonifyVariant(parseVariant(hgvsVariants.protein.split('|')[0], true));
             const [reference1] = await refseq.fetchAndLoadByIds(api, [parsed.reference1]);
             const type = await api.getVocabularyTerm(parsed.type);
             protein = await api.addVariant({

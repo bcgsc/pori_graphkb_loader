@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const { parseVariant } = require('@bcgsc-pori/graphkb-parser');
+const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
 
 const {
     loadDelimToJson,
@@ -50,7 +50,7 @@ const loadCdsVariant = async (graphkbConn, transcriptId, cdsNotation) => {
     variant.reference1 = reference1;
     variant.type = rid(await graphkbConn.getVocabularyTerm(variant.type));
     const cds = rid(await graphkbConn.addVariant({
-        content: { ...variant },
+        content: { ...jsonifyVariant(variant) },
         existsOk: true,
         target: 'PositionalVariant',
     }));
@@ -91,7 +91,7 @@ const loadProteinVariant = async (graphkbConn, gene, proteinNotation) => {
     variant.reference1 = reference1;
     variant.type = rid(await graphkbConn.getVocabularyTerm(variant.type));
     const protein = rid(await graphkbConn.addVariant({
-        content: { ...variant },
+        content: { ...jsonifyVariant(variant) },
         existsOk: true,
         target: 'PositionalVariant',
     }));
@@ -167,7 +167,7 @@ const loadGenomicVariant = async (graphkbConn, chromosome, position, ref, alt) =
     variant.reference1 = reference1;
     variant.type = rid(await graphkbConn.getVocabularyTerm(variant.type));
     const genomic = rid(await graphkbConn.addVariant({
-        content: { ...variant, assembly: 'hg19' },
+        content: { ...jsonifyVariant(variant), assembly: 'hg19' },
         existsOk: true,
         target: 'PositionalVariant',
     }));

@@ -1,15 +1,11 @@
 const readXlsxFile = require('read-excel-file/node');
 
-const { parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
+const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
 const { logger } = require('../logging');
 const { rid } = require('../graphkb');
 const _pubmed = require('../entrez/pubmed');
 const _entrezGene = require('../entrez/gene');
 const { PMC4232638: SOURCE_DEFN } = require('../sources');
-
-const { parseVariantDecorator } = require('../util');
-
-const parseVariant = parseVariantDecorator(parseVariantOriginal);
 
 const TP53_COLS = {
     DOM: 'Functional categories for TP53 - Dominant negative activity',
@@ -137,7 +133,7 @@ const uploadFile = async ({ conn, filename }) => {
         logger.info(`loading: ${row.Gene}:${row['Amino acid change']}`);
 
         try {
-            const parsed = parseVariant(`p.${row['Amino acid change']}`, false).toJSON();
+            const parsed = jsonifyVariant(parseVariant(`p.${row['Amino acid change']}`, false));
             const [gene] = await _entrezGene.fetchAndLoadBySymbol(conn, row.Gene);
             const relevance = await conn.getVocabularyTerm(row.relevance);
             const evidence = await _pubmed.fetchAndLoadByIds(conn, row.evidence);

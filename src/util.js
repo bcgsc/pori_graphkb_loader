@@ -225,49 +225,6 @@ const convertRowFields = (header, row) => {
     return result;
 };
 
-/**
- * Decorator function to add toJSON() method to parseVariant returned object
- * (from graphkb-parser v1 not avail. anymore in v2.1.1)
- */
-function parseVariantDecorator(parseVariant) {
-    // Method
-    function toJSON() {
-        const positionToJSON = (position) => {
-            const json = {};
-
-            for (const [attr, value] of Object.entries(position)) {
-                if (value !== null && !['prefix', 'longRefAA'].includes(attr)) {
-                    json[attr] = value;
-                }
-            }
-            return json;
-        };
-
-        const json = {};
-        const IGNORE = ['prefix', 'multiFeature', 'noFeatures', 'notationType', 'toJSON'];
-
-        for (const [attr, value] of Object.entries(this)) {
-            if (value !== undefined && !IGNORE.includes(attr)) {
-                if (value.pos) {
-                    json[attr] = positionToJSON(value);
-                } else {
-                    json[attr] = value;
-                }
-            }
-        }
-        return json;
-    }
-
-    return function (...args) {
-        const result = parseVariant(...args);
-
-        if (!('toJSON' in result) || typeof result.toJSON !== 'function') {
-            result.toJSON = toJSON;
-        }
-        return result;
-    };
-}
-
 
 module.exports = {
     checkSpec,
@@ -278,7 +235,6 @@ module.exports = {
     loadDelimToJson,
     loadXmlToJson,
     logger,
-    parseVariantDecorator,
     parseXmlToJson,
     request,
     requestWithRetry,

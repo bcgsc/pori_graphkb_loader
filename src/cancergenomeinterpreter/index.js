@@ -1,9 +1,6 @@
 const fs = require('fs');
 
-const { parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
-const { parseVariantDecorator } = require('../util');
-
-const parseVariant = parseVariantDecorator(parseVariantOriginal);
+const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
 
 const {
     loadDelimToJson,
@@ -220,7 +217,7 @@ const processVariants = async ({ conn, row, source }) => {
     }
 
     if (genomic && !isCat) {
-        const parsed = parseVariant(genomic).toJSON();
+        const parsed = jsonifyVariant(parseVariant(genomic));
         const reference1 = await conn.getUniqueRecordBy({
             filters: {
                 AND: [
@@ -245,7 +242,7 @@ const processVariants = async ({ conn, row, source }) => {
     }
 
     if (protein && !isCat) {
-        const parsed = parseVariant(`${gene}:${protein.split(':')[1]}`).toJSON();
+        const parsed = jsonifyVariant(parseVariant(`${gene}:${protein.split(':')[1]}`));
         const type = await conn.getVocabularyTerm(parsed.type);
         proteinVariant = await conn.addVariant({
             content: { ...parsed, reference1: rid(gene1Record), type },
@@ -254,7 +251,7 @@ const processVariants = async ({ conn, row, source }) => {
         });
     }
     if (transcript && cds && !isCat) {
-        const parsed = parseVariant(`${transcript}:${cds}`).toJSON();
+        const parsed = jsonifyVariant(parseVariant(`${transcript}:${cds}`));
         const reference1 = await conn.getUniqueRecordBy({
             filters: { AND: [{ biotype: 'transcript' }, { sourceId: transcript }, { sourceIdVersion: null }] },
             sort: orderPreferredOntologyTerms,
@@ -268,7 +265,7 @@ const processVariants = async ({ conn, row, source }) => {
         });
     }
     if (exonic && !isCat) {
-        const parsed = parseVariant(`${gene}:${exonic}`).toJSON();
+        const parsed = jsonifyVariant(parseVariant(`${gene}:${exonic}`));
         const type = await conn.getVocabularyTerm(parsed.type);
         exonicVariant = await conn.addVariant({
             content: { ...parsed, reference1: rid(gene1Record), type },

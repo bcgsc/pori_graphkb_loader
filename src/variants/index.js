@@ -1,13 +1,9 @@
 const fs = require('fs');
 
-const { parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
+const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
 const { logger } = require('../logging');
 const { orderPreferredOntologyTerms, rid } = require('../graphkb');
 const { fetchAndLoadBySymbol } = require('../entrez/gene');
-
-const { parseVariantDecorator } = require('../util');
-
-const parseVariant = parseVariantDecorator(parseVariantOriginal);
 
 
 const getEntrezGene = async (conn, name) => {
@@ -51,7 +47,7 @@ const uploadFile = async (opt) => {
         logger.info(`loading ${variant}`);
 
         try {
-            const parsed = parseVariant(variant, true).toJSON();
+            const parsed = jsonifyVariant(parseVariant(variant, true));
             const variantType = await conn.getVocabularyTerm(parsed.type);
             const reference1 = await getEntrezGene(conn, parsed.reference1);
 

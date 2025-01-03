@@ -6,10 +6,7 @@
 const Ajv = require('ajv');
 const fs = require('fs');
 
-const { parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
-const { parseVariantDecorator } = require('../util');
-
-const parseVariant = parseVariantDecorator(parseVariantOriginal);
+const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
 
 const { checkSpec, request } = require('../util');
 const {
@@ -110,7 +107,7 @@ const processVariants = async ({ conn, source, record: docmRecord }) => {
     try {
         // create the protein variant
         const [reference1] = await _gene.fetchAndLoadBySymbol(conn, gene);
-        let variant = parseVariant(parseDocmVariant(aminoAcid), false).toJSON();
+        let variant = jsonifyVariant(parseVariant(parseDocmVariant(aminoAcid), false));
         const type = await conn.getVocabularyTerm(variant.type);
         protein = variant = await conn.addVariant({
             content: { ...variant, reference1: rid(reference1), type: rid(type) },
@@ -124,7 +121,7 @@ const processVariants = async ({ conn, source, record: docmRecord }) => {
 
     try {
         // create the genomic variant
-        let variant = parseVariant(buildGenomicVariant(docmRecord), false).toJSON();
+        let variant = jsonifyVariant(parseVariant(buildGenomicVariant(docmRecord), false));
         const type = await conn.getVocabularyTerm(variant.type);
         const reference1 = await conn.getUniqueRecordBy({
             filters: {

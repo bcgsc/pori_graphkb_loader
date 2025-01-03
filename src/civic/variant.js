@@ -1,13 +1,15 @@
-const { ErrorMixin, ParsingError, parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
+const {
+    ErrorMixin,
+    jsonifyVariant,
+    parseVariant,
+    ParsingError,
+} = require('@bcgsc-pori/graphkb-parser');
+
 const { rid } = require('../graphkb');
 const _entrezGene = require('../entrez/gene');
 const _snp = require('../entrez/snp');
 const { civic: SOURCE_DEFN } = require('../sources');
 const { logger } = require('../logging');
-
-const { parseVariantDecorator } = require('../util');
-
-const parseVariant = parseVariantDecorator(parseVariantOriginal);
 
 class NotImplementedError extends ErrorMixin { }
 
@@ -523,7 +525,7 @@ const uploadVariant = async (conn, normalizedVariant) => {
     let content = {};
 
     if (normalizedVariant.positional) {
-        content = parseVariant(normalizedVariant.variant, false).toJSON();
+        content = jsonifyVariant(parseVariant(normalizedVariant.variant, false));
     }
 
     // Variant type

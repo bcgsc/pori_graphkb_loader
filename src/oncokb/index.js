@@ -5,10 +5,7 @@ const Ajv = require('ajv');
 const fs = require('fs');
 const path = require('path');
 
-const { ParsingError, parseVariant: parseVariantOriginal } = require('@bcgsc-pori/graphkb-parser');
-const { parseVariantDecorator } = require('../util');
-
-const parseVariant = parseVariantDecorator(parseVariantOriginal);
+const { jsonifyVariant, parseVariant, ParsingError } = require('@bcgsc-pori/graphkb-parser');
 
 const {
     checkSpec,
@@ -279,11 +276,11 @@ const processVariant = async (conn, {
 
     if (!variant) {
         try {
-            variant = parseVariant(type, false).toJSON();
+            variant = jsonifyVariant(parseVariant(type, false));
         } catch (err) {
             try {
                 // try with adding a p prefix also
-                variant = parseVariant(`p.${type}`, false).toJSON();
+                variant = jsonifyVariant(parseVariant(`p.${type}`, false));
             } catch (err2) { }
             logger.warn(`failed to parse the variant (${type}) for record (gene=${gene}, variant=${variantName})`);
             throw err;
@@ -330,7 +327,7 @@ const processVariant = async (conn, {
 
         try {
             // try with adding a p prefix also
-            const parsed = parseVariant(altVariantName, false).toJSON();
+            const parsed = jsonifyVariant(parseVariant(altVariantName, false));
             parsed.reference1 = rid(reference1);
             parsed.type = rid(await getVocabulary(conn, parsed.type));
             const altVariant = rid(await conn.addVariant({
