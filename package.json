@@ -51,6 +51,11 @@
     "jest-circus": "^27.3.1",
     "jest-junit": "^13.0.0"
   },
+  "overrides": {
+    "eslint-plugin-jest": {
+      "@typescript-eslint/utils": "^7.0.0"
+    }
+  },
   "scripts": {
     "test": "NODE_ENV=test jest --config config/jest.config.js",
     "lint": "eslint -c .eslintrc.json src test",
