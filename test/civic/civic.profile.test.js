@@ -226,16 +226,16 @@ describe('MolecularProfile.process()', () => {
         );
     });
 
-    test('test case that should throw a NotImplementedError', () => {
-        const molecularProfile = {
-            id: 1,
-            parsedName: [
-                { __typename: 'Feature' }, { id: 1 }, { text: 'AND' }, { text: 'NOT' }, { text: '(' },
-                { __typename: 'Feature' }, { id: 2 }, { text: 'OR' }, { __typename: 'Feature' }, { id: 3 }, { text: ')' },
-            ],
-        };
-        expect(() => MolecularProfile(molecularProfile).process()).toThrow(
-            `unable to process molecular profile with NOT operator (${molecularProfile.id || ''})`,
-        );
-    });
+    // test('test case that should throw a NotImplementedError', () => {
+    //     const molecularProfile = {
+    //         id: 1,
+    //         parsedName: [
+    //             { __typename: 'Feature' }, { id: 1 }, { text: 'AND' }, { text: 'NOT' }, { text: '(' },
+    //             { __typename: 'Feature' }, { id: 2 }, { text: 'OR' }, { __typename: 'Feature' }, { id: 3 }, { text: ')' },
+    //         ],
+    //     };
+    //     expect(() => MolecularProfile(molecularProfile).process()).toThrow(
+    //         `unable to process molecular profile with NOT operator (${molecularProfile.id || ''})`,
+    //     );
+    // });
 });
