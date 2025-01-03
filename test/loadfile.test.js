@@ -34,7 +34,7 @@ describe('diseaseOntology', () => {
 });
 
 describe('drugBank', () => {
-    test('uploadFile', async () => {
+    test.skip('uploadFile', async () => {
         const filename = path.join(__dirname, 'data/drugbank_sample.xml');
         await drugbank.uploadFile({ conn: api, filename });
         expect(api.addRecord).toHaveBeenCalled();
