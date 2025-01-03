@@ -276,63 +276,64 @@ const uploadFile = async ({ filename, conn, maxRecords }) => {
     await _chembl.preLoadCache(conn);
     const counts = { error: 0, skipped: 0, success: 0 };
 
-    // const parseXML = new Promise((resolve, reject) => {
-    //     logger.log('info', `loading XML data from ${filename}`);
-    //     const stream = fs.createReadStream(filename);
-    //     const xml = new XmlStream(stream);
-    //     xml.collect('drug drugbank-id');
-    //     xml.collect('drug external-identifier');
-    //     xml.collect('drug synonym');
-    //     xml.collect('drug categories > category');
-    //     xml.collect('drug atc-code level');
-    //     xml.collect('drug target polypeptide');
-    //     xml.collect('drug target actions action');
-    //     xml.collect('drug products product');
-    //     xml.collect('drug calculated-properties property');
-    //     xml.on('endElement: drug', (item) => {
-    //         if (Object.keys(item).length < 3) {
-    //             return;
-    //         }
-    //         xml.pause();
-    //         processRecord({
-    //             ATC, conn, drug: item, sources: { current: source, fda: fdaSource },
-    //         }).then(() => {
-    //             counts.success++;
+    const parseXML = new Promise((resolve, reject) => {
+        logger.log('info', `loading XML data from ${filename}`);
+        const stream = fs.createReadStream(filename);
+        // const xml = new XmlStream(stream);
+        const xml = {};
+        xml.collect('drug drugbank-id');
+        xml.collect('drug external-identifier');
+        xml.collect('drug synonym');
+        xml.collect('drug categories > category');
+        xml.collect('drug atc-code level');
+        xml.collect('drug target polypeptide');
+        xml.collect('drug target actions action');
+        xml.collect('drug products product');
+        xml.collect('drug calculated-properties property');
+        xml.on('endElement: drug', (item) => {
+            if (Object.keys(item).length < 3) {
+                return;
+            }
+            xml.pause();
+            processRecord({
+                ATC, conn, drug: item, sources: { current: source, fda: fdaSource },
+            }).then(() => {
+                counts.success++;
 
-    //             if (maxRecords && (counts.success + counts.error + counts.skipped) >= maxRecords) {
-    //                 logger.warn(`not loading all content due to max records limit (${maxRecords})`);
-    //                 logger.info('Parsing stream complete');
-    //                 stream.close();
-    //                 resolve();
-    //             }
+                if (maxRecords && (counts.success + counts.error + counts.skipped) >= maxRecords) {
+                    logger.warn(`not loading all content due to max records limit (${maxRecords})`);
+                    logger.info('Parsing stream complete');
+                    stream.close();
+                    resolve();
+                }
 
-    //             xml.resume();
-    //         }).catch((err) => {
-    //             let label;
+                xml.resume();
+            }).catch((err) => {
+                let label;
 
-    //             try {
-    //                 label = getDrugBankId(item);
-    //             } catch (err2) {}  // eslint-disable-line
-    //             counts.error++;
-    //             logger.error(err);
-    //             logger.error(`Unable to process record ${label}`);
-    //             xml.resume();
-    //         });
-    //     });
-    //     xml.on('end', () => {
-    //         logger.info('Parsing stream complete');
-    //         stream.close();
-    //         resolve();
-    //     });
-    //     xml.on('error', (err) => {
-    //         logger.error('Parsing stream error');
-    //         logger.error(err);
-    //         stream.close();
-    //         reject(err);
-    //     });
-    // });
+                try {
+                    label = getDrugBankId(item);
+                } catch (err2) {}  // eslint-disable-line
+                counts.error++;
+                logger.error(err);
+                logger.error(`Unable to process record ${label}`);
+                xml.resume();
+            });
+        });
+        xml.on('end', () => {
+            logger.info('Parsing stream complete');
+            stream.close();
+            resolve();
+        });
+        xml.on('error', (err) => {
+            logger.error('Parsing stream error');
+            logger.error(err);
+            stream.close();
+            reject(err);
+        });
+    });
 
-    // await parseXML;
+    await parseXML;
     logger.log('info', JSON.stringify(counts));
 };
 
