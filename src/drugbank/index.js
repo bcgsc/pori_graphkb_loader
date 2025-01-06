@@ -4,7 +4,7 @@
  */
 
 const Ajv = require('ajv');
-// const XmlStream = require('xml-stream');
+const XmlStream = require('xml-stream');
 const fs = require('fs');
 
 const { checkSpec } = require('../util');
@@ -279,8 +279,7 @@ const uploadFile = async ({ filename, conn, maxRecords }) => {
     const parseXML = new Promise((resolve, reject) => {
         logger.log('info', `loading XML data from ${filename}`);
         const stream = fs.createReadStream(filename);
-        // const xml = new XmlStream(stream);
-        const xml = {};
+        const xml = new XmlStream(stream);
         xml.collect('drug drugbank-id');
         xml.collect('drug external-identifier');
         xml.collect('drug synonym');
