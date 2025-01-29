@@ -3,20 +3,16 @@ const path = require('path');
 
 const _ = require('lodash');
 const Ajv = require('ajv');
-const { error: { ErrorMixin } } = require('@bcgsc-pori/graphkb-parser');
 
 const { checkSpec, request } = require('../util');
 const { logger } = require('../logging');
 const { civic: SOURCE_DEFN } = require('../sources');
 const { EvidenceItem: evidenceSpec } = require('./specs.json');
-const _entrezGene = require('../entrez/gene');
-const { processVariantRecord } = require('./variant');
+const { normalizeVariant, uploadVariants } = require('./variant');
 const { processMolecularProfile } = require('./profile');
 const { addOrFetchTherapy, resolveTherapies } = require('./therapy');
 const { rid } = require('../graphkb');
 
-
-class NotImplementedError extends ErrorMixin { }
 
 // Spec compiler
 const ajv = new Ajv();
@@ -114,6 +110,7 @@ const downloadEvidenceItems = async (url, trustedCurators) => {
     return { errors, records: validatedRecords };
 };
 
+
 /**
  * Format one combination from a CIViC EvidenceItem into an object
  * ready to be compared with a corresponding GraphKB statement
@@ -150,41 +147,18 @@ const processCombination = async (conn, {
     }
 
     // VARIANTS
-    // Note: the combination can have more than 1 variant
-    // if the Molecular profile was using AND operators
+    // The combination can have 1 or more CIViC variant(s),
+    // each of which can be normalized into 1 or more GraphKB variant(s).
     const { variants: civicVariants } = rawRecord;
-    const variants = [];
+    const normalizedVariants = [];
+    const uploadedVariants = [];
 
-    for (const variant of civicVariants) {
-        // Variant's Feature
-        const { feature: { featureInstance } } = variant;
-
-        // TODO: Deal with __typename === 'Factor'. No actual case as April 22nd, 2024
-        if (featureInstance.__typename !== 'Gene') {
-            throw new NotImplementedError(
-                'unable to process variant\'s feature of type other than Gene (e.g. Factor)',
-            );
-        }
-
-        let feature;
-
-        try {
-            [feature] = await _entrezGene.fetchAndLoadByIds(conn, [featureInstance.entrezId]);
-        } catch (err) {
-            logger.error(`failed to fetch variant's feature: ${featureInstance.entrezId}`);
-            throw err;
-        }
-
-        // Variant
-        try {
-            const processedVariants = await processVariantRecord(conn, variant, feature);
-            logger.verbose(`converted variant name (${variant.name}) to variants (${processedVariants.map(v => v.displayName).join(', and ')})`);
-            variants.push(...processedVariants);
-        } catch (err) {
-            logger.error(`unable to process the variant (id=${rawRecord.variant.id}, name=${rawRecord.variant.name})`);
-            throw err;
-        }
+    // Normalize
+    for (const record of civicVariants) {
+        normalizedVariants.push(...await normalizeVariant(record));
     }
+    // Upload
+    uploadedVariants.push(...await uploadVariants(conn, normalizedVariants));
 
     /*
         FORMATTING CONTENT FOR GRAPHKB STATEMENT
@@ -221,12 +195,12 @@ const processCombination = async (conn, {
 
     // Adding feature (reference1) or Variant (1st variant as the default) as subject.
     if (rawRecord.evidenceType === 'FUNCTIONAL') {
-        content.subject = rid(variants[0].reference1);
+        content.subject = rid(uploadedVariants[0].reference1);
     }
     if (rawRecord.evidenceType === 'ONCOGENIC') {
-        content.subject = variants.length === 1
-            ? rid(variants[0])
-            : rid(variants[0].reference1);
+        content.subject = uploadedVariants.length === 1
+            ? rid(uploadedVariants[0])
+            : rid(uploadedVariants[0].reference1);
     }
 
     // Checking for Subject
@@ -236,7 +210,7 @@ const processCombination = async (conn, {
 
     // CONDITIONS
     // Adding variants as conditions
-    content.conditions = [...variants.map(v => rid(v))];
+    content.conditions = [...uploadedVariants.map(v => rid(v))];
 
     // Adding Disease as condition
     if (content.disease) {
