@@ -1,7 +1,7 @@
 {
   "name": "@bcgsc-pori/graphkb-loader",
   "main": "src/index.js",
-  "version": "8.0.2",
+  "version": "8.1.0",
   "repository": {
     "type": "git",
     "url": "https://github.com/bcgsc/pori_graphkb_loader.git"
