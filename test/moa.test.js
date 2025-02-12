@@ -77,14 +77,14 @@ describe('parseRelevance', () => {
 
     test('favorable prognosis', () => {
         expect(parseRelevance({
-            favorable_prognosis: true,
+            favorable_prognosis: 1,
             features: [],
         })).toEqual(['favourable prognosis']);
     });
 
     test('unfavorable prognosis', () => {
         expect(parseRelevance({
-            favorable_prognosis: false,
+            favorable_prognosis: 0,
             features: [],
         })).toEqual(['unfavourable prognosis']);
     });

@@ -91,15 +91,18 @@
         },
         "MT": {
             "biotype": "chromosome",
-            "name": "chrMT"
+            "name": "chrMT",
+            "displayName":"mt"
         },
         "X": {
             "biotype": "chromosome",
-            "name": "chrX"
+            "name": "chrX",
+            "displayName":"x"
         },
         "Y": {
             "biotype": "chromosome",
-            "name": "chrY"
+            "name": "chrY",
+            "displayName":"y"
         }
     },
     "sources": {

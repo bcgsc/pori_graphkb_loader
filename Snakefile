@@ -144,7 +144,7 @@ rule download_cgi:
     output: f'{DATA_DIR}/cgi/cgi_biomarkers_per_variant.tsv'
     shell: dedent(f'''\
         cd {DATA_DIR}/cgi
-        wget https://www.cancergenomeinterpreter.org/data/cgi_biomarkers_20180117.zip
+        wget https://www.cancergenomeinterpreter.org/data/biomarkers/cgi_biomarkers_20180117.zip
         unzip cgi_biomarkers_20180117.zip
         ''')
 
@@ -162,7 +162,7 @@ rule download_cancerhotspots:
     shell: dedent(f'''\
         mkdir -p {DATA_DIR}/cancerhotspots
         cd {DATA_DIR}/cancerhotspots
-        wget http://download.cbioportal.org/cancerhotspots/cancerhotspots.v2.maf.gz
+        wget https://cbioportal-download.s3.amazonaws.com/cancerhotspots.v2.maf.gz
         gunzip cancerhotspots.v2.maf.gz
         ''')
 
@@ -222,6 +222,7 @@ rule load_ncit:
 
 rule load_fda_srs:
     input: expand(rules.load_local.output, local=['vocab']),
+        f'{DATA_DIR}/ncit.COMPLETE',
         data=f'{DATA_DIR}/fda/UNII_Records.txt'
     container: CONTAINER
     log: f'{LOGS_DIR}/fdaSrs.logs.txt'

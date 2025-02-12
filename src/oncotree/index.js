@@ -211,6 +211,7 @@ const upload = async (opt) => {
     // upload the results
     for (const record of records) {
         const body = {
+            displayName: `${record.name} [${record.sourceId.toUpperCase()}]`,
             name: record.name,
             source: rid(source),
             sourceId: record.sourceId,
