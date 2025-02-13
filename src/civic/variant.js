@@ -5,6 +5,7 @@ const {
     ParsingError,
 } = require('@bcgsc-pori/graphkb-parser');
 
+const { variants: hardcodedVariants } = require('./hardcoded');
 const { rid } = require('../graphkb');
 const _entrezGene = require('../entrez/gene');
 const _snp = require('../entrez/snp');
@@ -347,6 +348,13 @@ const normalizeFusionVariant = (record) => {
  * @returns {object[]} array of normalized variant(s)
  */
 const normalizeVariant = (record) => {
+    // KBDEV-1277. Harcoded solution first, if any
+    let { id = 0 } = record;
+    id = String(id);
+    if (id in hardcodedVariants) {
+        return hardcodedVariants[id];
+    }
+
     try {
         const { feature: { featureInstance } } = record;
         const featureType = featureInstance.__typename;
