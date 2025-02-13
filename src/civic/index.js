@@ -3,6 +3,7 @@
  */
 const fs = require('fs');
 
+// const { discardedEvidenceItems } = require('./hardcoded');
 const { rid } = require('../graphkb');
 const { logger } = require('../logging');
 const { civic: SOURCE_DEFN } = require('../sources');
@@ -195,6 +196,11 @@ const upload = async ({
     // MAIN LOOP
     // Looping through Evidence Items
     for (const [id, evidenceItem] of Object.entries(evidenceItemsById)) {
+        // // KBDEV-1277. Known problematic EvidenceItems we want to discard
+        // if (discardedEvidenceItems.has(id)) {
+        //     continue;
+        // }
+
         /*  PROCESSING EVIDENCEITEMS */
 
         recordNumber++;
@@ -407,6 +413,8 @@ const upload = async ({
 
         // END OF MAIN LOOP
     }
+    return;
+
     logger.info(`\n\n${'#'.repeat(80)}\n## END OF RECORD PROCESSING\n${'#'.repeat(80)}\n`);
 
     // Logging EvidenceItem processing counts
