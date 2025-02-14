@@ -52,13 +52,16 @@ const variants = {
             type: 'in-frame deletion',
         },
     ],
-    // EGFRVIII
-    // **************** Same as 312 ?? ********************
+    // EGFRVIII ************* Same as 312 ?? *************
     '1516': [
+        // {
+        //     positional: true,
+        //     reference1: { name: 'egfr', sourceId: '1956' },
+        //     variant: 'e.2_7del',
+        // },
         {
-            positional: true,
             reference1: { name: 'egfr', sourceId: '1956' },
-            variant: 'e.2_7del',
+            type: 'in-frame deletion',
         },
     ],
     // VEGFA Decreased Peri-therapeutic Expression
@@ -76,7 +79,6 @@ const variants = {
             variant: 'e.4_8delins',
         },
     ],
-    // 
 };
 
 module.exports = {

@@ -351,6 +351,7 @@ const normalizeVariant = (record) => {
     // KBDEV-1277. Harcoded solution first, if any
     let { id = 0 } = record;
     id = String(id);
+
     if (id in hardcodedVariants) {
         return hardcodedVariants[id];
     }

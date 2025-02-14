@@ -413,7 +413,6 @@ const upload = async ({
 
         // END OF MAIN LOOP
     }
-    return;
 
     logger.info(`\n\n${'#'.repeat(80)}\n## END OF RECORD PROCESSING\n${'#'.repeat(80)}\n`);
 
