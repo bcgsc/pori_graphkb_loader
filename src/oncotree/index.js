@@ -220,6 +220,13 @@ const upload = async (opt) => {
         const rec = await conn.addRecord({
             content: body,
             existsOk: true,
+            fetchConditions: {
+                AND: [
+                    { name: body.name },
+                    { source: body.source },
+                    { sourceId: body.sourceId },
+                ],
+            },
             target: 'Disease',
         });
         dbRecordsByCode[record.sourceId] = rec;
