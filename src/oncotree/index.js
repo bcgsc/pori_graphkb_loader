@@ -225,6 +225,7 @@ const upload = async (opt) => {
                     { name: body.name },
                     { source: body.source },
                     { sourceId: body.sourceId },
+                    { sourceIdVersion: body.sourceIdVersion },
                 ],
             },
             target: 'Disease',
