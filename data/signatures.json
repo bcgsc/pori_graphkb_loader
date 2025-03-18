@@ -550,6 +550,10 @@
                 }
             ]
         },
+        "ebv": {
+            "description": "Epstein-Barr Virus (EBV)",
+            "displayName": "EBV"
+        },
         "erv load": {
             "description": "endogenous retroviruses (ERV) expression due to epigenetic derepression"
         },
