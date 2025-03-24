@@ -4,7 +4,8 @@ const _entrezGene = require('../entrez/gene');
 const _snp = require('../entrez/snp');
 const { civic: SOURCE_DEFN } = require('../sources');
 
-const { error: { ErrorMixin, ParsingError } } = kbParser;
+//const { error: { ErrorMixin, ParsingError } } = kbParser;
+const { ParsingError, ErrorMixin, InputValidationError } = kbParser;
 class NotImplementedError extends ErrorMixin { }
 
 const VARIANT_CACHE = new Map();

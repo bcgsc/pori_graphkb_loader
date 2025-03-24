@@ -1,7 +1,6 @@
 import os
-from textwrap import dedent
 
-CONTAINER = 'docker://bcgsc/pori-graphkb-loader:v6.4.0'
+CONTAINER = 'bcgsc/pori-graphkb-loader'
 DATA_DIR = 'snakemake_data'
 LOGS_DIR = 'snakemake_logs'
 
@@ -44,11 +43,11 @@ rule all:
         f'{DATA_DIR}/cgi.COMPLETE',
         f'{DATA_DIR}/docm.COMPLETE',
         #f'{DATA_DIR}/dgidb.COMPLETE',
-        f'{DATA_DIR}/PMC4468049.COMPLETE',
-        f'{DATA_DIR}/PMC4232638.COMPLETE',
+        #f'{DATA_DIR}/PMC4468049.COMPLETE',
+        #f'{DATA_DIR}/PMC4232638.COMPLETE',
         f'{DATA_DIR}/uberon.COMPLETE',
         f'{DATA_DIR}/fdaApprovals.COMPLETE',
-        #f'{DATA_DIR}/cancerhotspots.COMPLETE',
+        f'{DATA_DIR}/cancerhotspots.COMPLETE',
         f'{DATA_DIR}/moa.COMPLETE',
         f'{DATA_DIR}/ncitFdaXref.COMPLETE',
         *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []),
@@ -57,160 +56,131 @@ rule all:
 
 rule download_ncit:
     output: f'{DATA_DIR}/ncit/Thesaurus.txt',
-    shell: dedent(f'''\
-        cd {DATA_DIR}/ncit
-        wget https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus.FLAT.zip
-        unzip Thesaurus.FLAT.zip
-        rm Thesaurus.FLAT.zip
-        rm -rf __MACOSX''')
+    shell: f'''
+        mkdir -p {DATA_DIR}/ncit
+        curl https://evs.nci.nih.gov/ftp1/NCI_Thesaurus/Thesaurus.FLAT.zip | zcat > {DATA_DIR}/ncit/Thesaurus.txt
+        rm -rf {DATA_DIR}/ncit/__MACOSX'''
 
 
 rule download_ncit_fda:
     output: f'{DATA_DIR}/ncit/FDA-UNII_NCIt_Subsets.txt'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/ncit
-        wget https://evs.nci.nih.gov/ftp1/FDA/UNII/FDA-UNII_NCIt_Subsets.txt''')
+    shell: f'''
+        curl -L --create-dirs -o {DATA_DIR}/ncit/FDA-UNII_NCIt_Subsets.txt https://evs.nci.nih.gov/ftp1/FDA/UNII/FDA-UNII_NCIt_Subsets.txt'''
 
 
 rule download_ensembl:
+    # This is the original query string.  This has been URL encoded and put into download_ensembl_curl_config.txt
+    # Curl then runs using that config file to download ensembl.
+    #query_string='<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE Query><Query  virtualSchemaName = "default" formatter = "TSV" header = "1" uniqueRows = "0" count = "" datasetConfigVersion = "0.6" ><Dataset name = "hsapiens_gene_ensembl" interface = "default" ><Filter name = "transcript_biotype" value = "protein_coding"/><Attribute name = "ensembl_gene_id" /><Attribute name = "ensembl_gene_id_version" /><Attribute name = "ensembl_transcript_id" /><Attribute name = "ensembl_transcript_id_version" /><Attribute name = "ensembl_peptide_id" /><Attribute name = "ensembl_peptide_id_version" /><Attribute name = "hgnc_id" /><Attribute name = "refseq_mrna" /><Attribute name = "description" /><Attribute name = "external_gene_name" /><Attribute name = "external_gene_source" /></Dataset></Query>'
     output: f'{DATA_DIR}/ensembl/biomart_export.tsv'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/ensembl
-        query_string='<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE Query><Query  virtualSchemaName = "default" formatter = "TSV" header = "1" uniqueRows = "0" count = "" datasetConfigVersion = "0.6" ><Dataset name = "hsapiens_gene_ensembl" interface = "default" ><Filter name = "transcript_biotype" value = "protein_coding"/><Attribute name = "ensembl_gene_id" /><Attribute name = "ensembl_gene_id_version" /><Attribute name = "ensembl_transcript_id" /><Attribute name = "ensembl_transcript_id_version" /><Attribute name = "ensembl_peptide_id" /><Attribute name = "ensembl_peptide_id_version" /><Attribute name = "hgnc_id" /><Attribute name = "refseq_mrna" /><Attribute name = "description" /><Attribute name = "external_gene_name" /><Attribute name = "external_gene_source" /></Dataset></Query>'
-        wget -O biomart_export.tsv "http://www.ensembl.org/biomart/martservice?query=$query_string"
-        ''')
+    shell: f'''
+        curl --config download_ensembl_curl_config.txt 2>&1 | tee -a downloadEnsemblLog.txt
+        '''
 
 
 rule download_fda_srs:
     output: f'{DATA_DIR}/fda/UNII_Records.txt'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/fda
-        wget https://precision.fda.gov/uniisearch/archive/latest/UNII_Data.zip
-        unzip UNII_Data.zip
-        rm UNII_Data.zip
-
-        mv UNII*.txt UNII_Records.txt
-        ''')
+    shell: f'''
+        curl -L --create-dirs -o {DATA_DIR}/fda/UNII_Data.zip https://precision.fda.gov/uniisearch/archive/latest/UNII_Data.zip
+        unzip -o -d {DATA_DIR}/fda {DATA_DIR}/fda/UNII_Data.zip
+        rm {DATA_DIR}/fda/UNII_Data.zip
+        mv {DATA_DIR}/fda/UNII*.txt {DATA_DIR}/fda/UNII_Records.txt
+        '''
 
 
 rule download_refseq:
     output: f'{DATA_DIR}/refseq/LRG_RefSeqGene.tab'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/refseq
-        wget -O LRG_RefSeqGene.tab ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene
-        ''')
+    shell: f'''
+        curl -A "Mozilla" --fail-with-body -L --create-dirs -o {DATA_DIR}/refseq/LRG_RefSeqGene.tab ftp://ftp.ncbi.nih.gov/refseq/H_sapiens/RefSeqGene/LRG_RefSeqGene
+        '''
 
 
 rule download_uberon:
     output: f'{DATA_DIR}/uberon/uberon.owl'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/uberon
-        wget http://purl.obolibrary.org/obo/uberon.owl
-        ''')
+    shell: f'''
+        curl -A "Mozilla" -L --create-dirs -o {DATA_DIR}/uberon/uberon.owl https://github.com/obophenotype/uberon/releases/latest/download/uberon.owl
+        '''
 
 
 rule download_do:
     output: f'{DATA_DIR}/do/doid.json'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/do;
-        REPO=https://github.com/DiseaseOntology/HumanDiseaseOntology.git;
-        LATEST=$(git ls-remote $REPO --tags v\\* | cut -f 2 | sed 's/refs\\/tags\///' | grep '\\bv[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]\\b' | sort -d | tail -n 1)
-        echo $LATEST
-        wget https://github.com/DiseaseOntology/HumanDiseaseOntology/raw/$LATEST/src/ontology/doid.json
-        ''')
+    shell: f'''
+        curl -A "Mozilla" --create-dirs -o {DATA_DIR}/do/doid.json https://raw.githubusercontent.com/DiseaseOntology/HumanDiseaseOntology/refs/heads/main/src/ontology/doid.json
+        '''
+
 
 
 rule download_drugbank:
     output: f'{DATA_DIR}/drugbank/full_database.xml'
-    shell: dedent(f'''\
+    shell: f'''
         cd {DATA_DIR}/drugbank
         wget https://www.drugbank.ca/releases
         latest=$(grep 'href="/releases/[^"]*"' -o releases | cut -f 3 -d/ | sed 's/"//' | sort -V | tail -n 2 | head -n 1)
         rm releases
         filename="drugbank_all_full_database_v$latest".xml
 
-        curl -Lfv -o ${{filename}}.zip -u {DRUGBANK_EMAIL}:{DRUGBANK_PASSWORD} https://go.drugbank.com/releases/5-1-8/downloads/all-full-database
+        curl -L -v --fail-with-body -o ${{filename}}.zip -u {DRUGBANK_EMAIL}:{DRUGBANK_PASSWORD} https://go.drugbank.com/releases/5-1-8/downloads/all-full-database
         unzip ${{filename}}.zip
-        mv full\ database.xml full_database.xml''')
-
+        mv full\ database.xml full_database.xml'''
 
 rule download_PMC4468049:
     output: f'{DATA_DIR}/PMC4468049/NIHMS632238-supplement-2.xlsx'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/PMC4468049
-        wget https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4468049/bin/NIHMS632238-supplement-2.xlsx
-        ''')
+    shell: f''' curl -A "Mozilla" --create-dirs -o {DATA_DIR}/PMC4468049/NIHMS632238-supplement-2.xlsx https://pmc.ncbi.nlm.nih.gov/articles/instance/4468049/bin/NIHMS632238-supplement-2.xlsx'''
 
 
 rule download_PMC4232638:
     output: f'{DATA_DIR}/PMC4232638/13059_2014_484_MOESM2_ESM.xlsx'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/PMC4232638
-        wget https://www.ncbi.nlm.nih.gov/pmc/articles/PMC4232638/bin/13059_2014_484_MOESM2_ESM.xlsx
-        ''')
-
+    shell: f''' curl -A "Mozilla" --create-dirs -o {DATA_DIR}/PMC4232638/13059_2014_484_MOESM2_ESM.xlsx https://pmc.ncbi.nlm.nih.gov/articles/instance/4232638/bin/13059_2014_484_MOESM2_ESM.xlsx'''
 
 rule download_cgi:
     output: f'{DATA_DIR}/cgi/cgi_biomarkers_per_variant.tsv'
-    shell: dedent(f'''\
-        cd {DATA_DIR}/cgi
-        wget https://www.cancergenomeinterpreter.org/data/biomarkers/cgi_biomarkers_20180117.zip
-        unzip cgi_biomarkers_20180117.zip
-        ''')
+    shell: f'''
+        curl --create-dirs -o {DATA_DIR}/cgi/cgi_biomarkers.zip https://www.cancergenomeinterpreter.org/data/biomarkers/cgi_biomarkers_20180117.zip
+        unzip -d {DATA_DIR}/cgi {DATA_DIR}/cgi/cgi_biomarkers.zip
+        '''
 
 
 rule download_local_data:
     output: f'{DATA_DIR}/local/{{local}}.json'
-    shell: dedent(f'''\
+    shell: f'''
+        mkdir -p {DATA_DIR}/local
         cd {DATA_DIR}/local
         wget {GITHUB_DATA}/{{wildcards.local}}.json
-        ''')
+        '''
 
 
 rule download_cancerhotspots:
     output: f'{DATA_DIR}/cancerhotspots/cancerhotspots.v2.maf'
-    shell: dedent(f'''\
-        mkdir -p {DATA_DIR}/cancerhotspots
-        cd {DATA_DIR}/cancerhotspots
-        wget https://cbioportal-download.s3.amazonaws.com/cancerhotspots.v2.maf.gz
-        gunzip cancerhotspots.v2.maf.gz
-        ''')
+    shell: f'''
+        curl -A "Mozilla" --create-dirs -o {DATA_DIR}/cancerhotspots/cancerhotspots.v2.maf.gz https://cbioportal-download.s3.amazonaws.com/cancerhotspots.v2.maf.gz
+        gunzip {DATA_DIR}/cancerhotspots/cancerhotspots.v2.maf.gz
+        '''
 
 
 
 rule download_cosmic_resistance:
     output: f'{DATA_DIR}/cosmic/CosmicResistanceMutations.tsv'
-    shell: dedent(f'''
-        cd {DATA_DIR}/cosmic
-        AUTH=$( echo "{COSMIC_EMAIL}:{COSMIC_PASSWORD}" | base64 )
-        resp=$( curl -H "Authorization: Basic $AUTH" https://cancer.sanger.ac.uk/cosmic/file_download/GRCh38/cosmic/v92/CosmicResistanceMutations.tsv.gz );
-        url=$( node  -e "var resp = $resp; console.log(resp.url);" );
-        curl "$url" -o CosmicResistanceMutations.tsv.gz
-        gunzip CosmicResistanceMutations.tsv.gz
-        ''')
+    shell: f'''
+        ./downloadCosmic.sh mutations {COSMIC_EMAIL} {COSMIC_PASSWORD} "https://cancer.sanger.ac.uk/api/mono/products/v1/downloads/scripted?path=grch38/cosmic/v101/Cosmic_ResistanceMutations_Tsv_v101_GRCh38.tar&bucket=downloads" {DATA_DIR}
+        mv {DATA_DIR}/cosmic/mutations/Cosmic_ResistanceMutations_v[0-9]*_GRCh38.tsv {DATA_DIR}/cosmic/CosmicResistanceMutations.tsv
+        '''
 
 
 rule download_cosmic_diseases:
     output: f'{DATA_DIR}/cosmic/classification.csv'
-    shell: dedent(f'''
-        cd {DATA_DIR}/cosmic
-        AUTH=$( echo "{COSMIC_EMAIL}:{COSMIC_PASSWORD}" | base64 )
-        resp=$( curl -H "Authorization: Basic $AUTH" https://cancer.sanger.ac.uk/cosmic/file_download/GRCh38/cosmic/v92/classification.csv );
-        url=$( node  -e "var resp = $resp; console.log(resp.url);" );
-        curl "$url" -o classification.csv
-        ''')
+    shell: f'''
+        ./downloadCosmic.sh diseases {COSMIC_EMAIL} {COSMIC_PASSWORD} "https://cancer.sanger.ac.uk/api/mono/products/v1/downloads/scripted?path=grch38/cosmic/v101/Cosmic_Classification_Tsv_v101_GRCh38.tar&bucket=downloads" {DATA_DIR}
+        mv {DATA_DIR}/cosmic/diseases/Cosmic_Classification_v[0-9]*_GRCh38.tsv {DATA_DIR}/cosmic/diseases/classification.tsv
+        tr ',' '\\t' < {DATA_DIR}/cosmic/diseases/classification.tsv > {DATA_DIR}/cosmic/classification.csv
+        '''
 
 
 rule download_cosmic_fusions:
     output: f'{DATA_DIR}/cosmic/CosmicFusionExport.tsv'
-    shell: dedent(f'''
-        cd {DATA_DIR}/cosmic
-        AUTH=$( echo "{COSMIC_EMAIL}:{COSMIC_PASSWORD}" | base64 )
-        resp=$( curl -H "Authorization: Basic $AUTH" https://cancer.sanger.ac.uk/cosmic/file_download/GRCh38/cosmic/v92/CosmicFusionExport.tsv.gz );
-        url=$( node  -e "var resp = $resp; console.log(resp.url);" );
-        curl "$url" -o CosmicFusionExport.tsv.gz
-        gunzip CosmicFusionExport.tsv.gz
-        ''')
+    shell: f'''
+        ./downloadCosmic.sh fusion {COSMIC_EMAIL} {COSMIC_PASSWORD} "https://cancer.sanger.ac.uk/api/mono/products/v1/downloads/scripted?path=grch38/cosmic/v101/Cosmic_Fusion_Tsv_v101_GRCh38.tar&bucket=downloads" {DATA_DIR}
+        mv {DATA_DIR}/cosmic/fusion/Cosmic_Fusion_v[0-9]*_GRCh38.tsv {DATA_DIR}/cosmic/CosmicFusionExport.tsv
+        '''
 
 
 rule load_local:
@@ -457,10 +427,10 @@ rule load_moa:
 # input isn't actually needed but it is a file-type loader, so a dummy file must be supplied
 rule download_sources:
     output: f'{DATA_DIR}/local/sources.json'
-    shell: dedent(f'''\
+    shell: f'''
         cd {DATA_DIR}/local
         touch sources.json
-        ''')
+        '''
 
 rule load_sources:
     input: f'{DATA_DIR}/local/sources.json'
@@ -482,7 +452,7 @@ rule all_ontologies:
         rules.load_sources.output,
         rules.load_fda_srs.output,
         rules.load_ncit_fda.output,
-        #rules.load_dgidb.output
+        rules.load_dgidb.output
     containerized: containerchoice
     output: f'{DATA_DIR}/all_ontologies.COMPLETE'
     shell: 'touch {output}'
