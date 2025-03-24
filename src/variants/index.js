@@ -1,7 +1,7 @@
 const fs = require('fs');
 
-const { variant: { parse: parseVariant } } = require('@bcgsc-pori/graphkb-parser');
-
+//const { variant: { parse: parseVariant } } = require('@bcgsc-pori/graphkb-parser');
+const {parseVariant, stringifyVariant, jsonifyVariant} = require('@bcgsc-pori/graphkb-parser');
 const { logger } = require('../logging');
 const { orderPreferredOntologyTerms, rid } = require('../graphkb');
 const { fetchAndLoadBySymbol } = require('../entrez/gene');
