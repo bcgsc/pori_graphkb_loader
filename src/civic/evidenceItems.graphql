@@ -1,60 +1,12 @@
 query evidenceItems(
   $after: String
-  $assertionId: Int
-  $before: String
-  $clinicalTrialId: Int
-  $description: String
-  $diseaseId: Int
-  $diseaseName: String
-  $evidenceDirection: EvidenceDirection
-  $evidenceLevel: EvidenceLevel
-  $evidenceRating: Int
-  $evidenceType: EvidenceType
-  $first: Int
-  $id: Int
-  $last: Int
-  $molecularProfileId: Int
-  $molecularProfileName: String
-  $organizationId: Int
-  $phenotypeId: Int
-  $significance: EvidenceSignificance
-  $sortBy: EvidenceSort
-  $sourceId: Int
   $status: EvidenceStatusFilter
-  $therapyId: Int
-  $therapyName: String
   $userId: Int
-  $variantId: Int
-  $variantOrigin: VariantOrigin
 ) {
   evidenceItems(
     after: $after
-    assertionId: $assertionId
-    before: $before
-    clinicalTrialId: $clinicalTrialId
-    description: $description
-    diseaseId: $diseaseId
-    diseaseName: $diseaseName
-    evidenceDirection: $evidenceDirection
-    evidenceLevel: $evidenceLevel
-    evidenceRating: $evidenceRating
-    evidenceType: $evidenceType
-    first: $first
-    id: $id
-    last: $last
-    molecularProfileId: $molecularProfileId
-    molecularProfileName: $molecularProfileName
-    organizationId: $organizationId
-    phenotypeId: $phenotypeId
-    significance: $significance
-    sortBy: $sortBy
-    sourceId: $sourceId
     status: $status
-    therapyId: $therapyId
-    therapyName: $therapyName
     userId: $userId
-    variantId: $variantId
-    variantOrigin: $variantOrigin
   ) {
     nodes {
       description
