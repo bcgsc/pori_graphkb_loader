@@ -1548,6 +1548,15 @@
                 }
             ]
         },
+        "presence": {
+            "description": "Some signature present. Used to avoid the term 'signature' in the displayName",
+            "links": [
+                {
+                    "class": "AliasOf",
+                    "target": "signature present"
+                }
+            ]
+        },
         "prognostic indicator": {
             "name": "prognostic indicator"
         },
