@@ -585,6 +585,10 @@
                 }
             ]
         },
+        "hpv": {
+            "description": "Human Papillomavirus (HPV)",
+            "displayName": "HPV"
+        },
         "hrd": {
             "deprecated": true,
             "links": [
