@@ -830,6 +830,15 @@
             ],
             "shortName": "ins"
         },
+        "integration": {
+            "description": "DNA integration of microbe/virus, e.g. HPV integration",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "presence"
+                }
+            ]
+        },
         "intermediate metabolizer": {
             "description": "intermediate metabolizer: with a genotype carrying one normal function allele plus one no function allele or one decreased function allele, or carrying two decreased function alleles",
             "links": [
