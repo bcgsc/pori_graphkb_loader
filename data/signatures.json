@@ -585,6 +585,30 @@
                 }
             ]
         },
+        "hpv": {
+            "description": "Human Papillomavirus (HPV)",
+            "displayName": "HPV"
+        },
+        "hpv type 16": {
+            "description": "Human Papillomavirus (HPV) Type 16",
+            "displayName": "HPV Type 16",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "hpv"
+                }
+            ]
+        },
+        "hpv type 18": {
+            "description": "Human Papillomavirus (HPV) Type 18",
+            "displayName": "HPV Type 18",
+            "links": [
+                {
+                    "class": "SubClassOf",
+                    "target": "hpv"
+                }
+            ]
+        },
         "hrd": {
             "deprecated": true,
             "links": [
