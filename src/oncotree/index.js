@@ -5,7 +5,7 @@
 
 const { request } = require('../util');
 
-const { rid, orderPreferredOntologyTerms } = require('../graphkb');
+const { convertRecordToQueryFilters, orderPreferredOntologyTerms, rid } = require('../graphkb');
 const { logger } = require('../logging');
 const { SOURCE_DEFN: { name: ncitName } } = require('../ncit');
 const { oncotree: SOURCE_DEFN } = require('../sources');
@@ -209,17 +209,26 @@ const upload = async (opt) => {
     const ncitMissingRecords = new Set();
 
     // upload the results
+    logger.info(`Uploading ${records.length} OncoTree Disease records`);
+    let count = 0;
+
     for (const record of records) {
+        count++;
+        logger.info(`${count}/${records.length} - ${record.sourceId}`);
+
         const body = {
-            displayName: `${record.name} [${record.sourceId.toUpperCase()}]`,
-            name: record.name,
+            name: record.name.toLowerCase(),
             source: rid(source),
             sourceId: record.sourceId,
             sourceIdVersion: record.sourceIdVersion,
         };
         const rec = await conn.addRecord({
-            content: body,
+            content: {
+                ...body,
+                displayName: `${record.name} [${record.sourceId.toUpperCase()}]`,
+            },
             existsOk: true,
+            fetchConditions: convertRecordToQueryFilters(body),
             target: 'Disease',
         });
         dbRecordsByCode[record.sourceId] = rec;
@@ -253,7 +262,13 @@ const upload = async (opt) => {
         }
     }
 
+    logger.info('Creating \'subclassOf\' & \'deprecatedBy\' links between records');
+    count = 0;
+
     for (const record of records) {
+        count++;
+        logger.info(`${count}/${records.length} - subclassOf: ${(record.subclassOf || []).length}; deprecatedBy: ${(record.deprecatedBy || []).length}`);
+
         for (const parentRecord of record.subclassOf || []) {
             await conn.addRecord({
                 content: {
@@ -283,6 +298,8 @@ const upload = async (opt) => {
 
     if (ncitMissingRecords.size) {
         logger.warn(`Unable to retrieve ${ncitMissingRecords.size} ncit records for linking`);
+    } else {
+        logger.info(`All ${ncitMissingRecords.size} ncit records has been successfully retreived for linking`);
     }
 };
 
