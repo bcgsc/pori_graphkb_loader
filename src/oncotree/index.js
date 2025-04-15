@@ -226,6 +226,7 @@ const upload = async (opt) => {
             content: {
                 ...body,
                 displayName: `${record.name} [${record.sourceId.toUpperCase()}]`,
+                name: record.name.toLowerCase(),
             },
             existsOk: true,
             fetchConditions: convertRecordToQueryFilters(body),
