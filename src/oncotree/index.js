@@ -267,7 +267,7 @@ const upload = async (opt) => {
 
     for (const record of records) {
         count++;
-        logger.info(`${count}/${records.length} - subclassOf: ${(record.subclassOf || []).length}; deprecatedBy: ${(record.deprecatedBy || []).length}`);
+        logger.info(`${count}/${records.length} - subclassOf: ${(record.subclassOf || []).length}; deprecates: ${(record.deprecates || []).length}`);
 
         for (const parentRecord of record.subclassOf || []) {
             await conn.addRecord({
