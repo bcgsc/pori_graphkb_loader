@@ -217,7 +217,6 @@ const upload = async (opt) => {
         logger.info(`${count}/${records.length} - ${record.sourceId}`);
 
         const body = {
-            name: record.name.toLowerCase(),
             source: rid(source),
             sourceId: record.sourceId,
             sourceIdVersion: record.sourceIdVersion,
