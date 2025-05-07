@@ -835,7 +835,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "presence"
+                    "target": "present"
                 }
             ]
         },
@@ -1557,7 +1557,7 @@
                 }
             ]
         },
-        "presence": {
+        "present": {
             "description": "Some signature present. Used to avoid the term 'signature' in the displayName",
             "links": [
                 {
