@@ -2,7 +2,30 @@
   "class": "Disease",
   "defaultNameToSourceId": true,
   "records": {
+    "cancer_ncit": {
+      "name": "cancer",
+      "displayName": "cancer [c9305]",
+      "source": "ncit",
+      "sourceId": "c9305"
+    },
+    "cancer_oncokb": {
+      "links": [
+        {
+          "class": "CrossReferenceOf",
+          "target": "cancer_ncit"
+        }
+      ],
+      "name": "cancer",
+      "displayName": "cancer",
+      "source": "oncokb"
+    },
     "all solid tumors": {
+      "links": [
+        {
+          "class": "SubClassOf",
+          "target": "cancer_oncokb"
+        }
+      ],
       "name": "all solid tumors",
       "source": "oncokb"
     },
