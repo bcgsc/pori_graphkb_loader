@@ -38,6 +38,116 @@
       "name": "all solid tumors",
       "source": "oncokb"
     },
+    "intraductal papillary neoplasm of the bile duct": {
+      "links": [
+        {
+          "class": "SubClassOf",
+          "target": "all solid tumors"
+        }
+      ],
+      "name": "intraductal papillary neoplasm of the bile duct",
+      "source": "oncotree",
+      "sourceId": "ipn"
+    },
+    "intracholecystic papillary neoplasm": {
+      "links": [
+        {
+          "class": "SubClassOf",
+          "target": "all solid tumors"
+        }
+      ],
+      "name": "intracholecystic papillary neoplasm",
+      "source": "oncotree",
+      "sourceId": "icpn"
+    },
+    "basal cell carcinoma of prostate": {
+      "links": [
+        {
+          "class": "SubClassOf",
+          "target": "all solid tumors"
+        }
+      ],
+      "name": "basal cell carcinoma of prostate",
+      "source": "oncotree",
+      "sourceId": "bccp"
+    },
+    "inflammatory breast cancer": {
+      "links": [
+        {
+          "class": "SubClassOf",
+          "target": "all solid tumors"
+        }
+      ],
+      "name": "inflammatory breast cancer",
+      "source": "oncotree",
+      "sourceId": "ibc"
+    },
+    "low-grade appendiceal mucinous neoplasm": {
+      "links": [
+        {
+          "class": "SubClassOf",
+          "target": "all solid tumors"
+        }
+      ],
+      "name": "low-grade appendiceal mucinous neoplasm",
+      "source": "oncotree",
+      "sourceId": "lamn"
+    },
+    "adenocarcinoma in retrorectal cystic hamartoma": {
+      "links": [
+        {
+          "class": "SubClassOf",
+          "target": "all solid tumors"
+        }
+      ],
+      "name": "adenocarcinoma in retrorectal cystic hamartoma",
+      "source": "oncotree",
+      "sourceId": "arch"
+    },
+    "mixed cancer types": {
+      "links": [
+        {
+          "class": "SubClassOf",
+          "target": "all solid tumors"
+        }
+      ],
+      "name": "mixed cancer types",
+      "source": "oncotree",
+      "sourceId": "mixed"
+    },
+    "sarcoma, nos": {
+      "links": [
+        {
+          "class": "SubClassOf",
+          "target": "all solid tumors"
+        }
+      ],
+      "name": "sarcoma, nos",
+      "source": "oncotree",
+      "sourceId": "sarcnos"
+    },
+    "primary cns melanoma": {
+      "links": [
+        {
+          "class": "SubClassOf",
+          "target": "all solid tumors"
+        }
+      ],
+      "name": "primary cns melanoma",
+      "source": "oncotree",
+      "sourceId": "pcnsm"
+    },
+    "pancreatic neuroendocrine carcinoma": {
+      "links": [
+        {
+          "class": "SubClassOf",
+          "target": "all solid tumors"
+        }
+      ],
+      "name": "pancreatic neuroendocrine carcinoma",
+      "source": "oncotree",
+      "sourceId": "panec"
+    },
     "phc": {
       "links": [
         {
