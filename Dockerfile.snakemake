@@ -10,7 +10,7 @@ COPY . .
 # set to avoid errors when singularity overloads working dir
 ENV NODE_PATH=/usr/src/app/node_modules
 
-FROM python:3.12
+FROM ubuntu:noble
 WORKDIR /usr/src/app
 COPY --from=node_stage /usr/src/app/package*.json ./
 COPY --from=node_stage /usr/src/app/node_modules ./node_modules
@@ -18,14 +18,14 @@ COPY --from=node_stage /usr/src/app/node_modules ./node_modules
 RUN apt-get update && \
     apt-get install -y curl && \
     curl -fsSL https://deb.nodesource.com/setup_16.x | bash - && \
-    apt-get install -y nodejs
+    apt-get install -y nodejs python3 python3-pip python3-pulp python3-wheel snakemake unzip wget nano
 
 # Verify Node.js version
 RUN node -v
 
-RUN pip3 install --upgrade setuptools pip wheel && \
-    pip3 install "pulp<2.3.1" && \
-    pip3 install snakemake
+#RUN pip3 install --upgrade setuptools pip wheel && \
+    #pip3 install "pulp<2.3.1" && \
+    #pip3 install snakemake
 
 RUN mkdir /usr/src/app/snakemake_data
 RUN mkdir /usr/src/app/snakemake_logs
@@ -34,6 +34,8 @@ RUN chmod 777 /usr/src/app/snakemake_logs
 
 # Copy the Snakefile to the working directory (assuming it's already in the build context)
 COPY . .
+COPY ./download_ensembl_curl_config.txt /usr/src/app/
+COPY ./downloadCosmic.sh /usr/src/app
 
 # Still getting NODE version errors, but a rebuild is quick and helps.
 RUN npm rebuild
