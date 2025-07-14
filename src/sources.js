@@ -21,7 +21,7 @@ const sources = {
         displayName: 'ANZCTR',
         longName: 'Australian New Zealand Clinical Trials Registry',
         name: 'anzctr',
-        url: 'https://www.anzctr.org.au/',
+        url: 'https://www.anzctr.org.au',
     },
     asco: {
         displayName: 'ASCO',
