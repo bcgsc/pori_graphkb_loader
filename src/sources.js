@@ -17,6 +17,12 @@ const sources = {
         name: 'amp',
         url: 'https://www.amp.org',
     },
+    anzctr: {
+        displayName: 'ANZCTR',
+        longName: 'Australian New Zealand Clinical Trials Registry',
+        name: 'anzctr',
+        url: 'https://www.anzctr.org.au/',
+    },
     asco: {
         displayName: 'ASCO',
         longName: 'American Society of Clinical Oncology',
