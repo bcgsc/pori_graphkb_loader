@@ -41,7 +41,7 @@ GITHUB_DATA = 'https://raw.githubusercontent.com/bcgsc/pori_graphkb_loader/devel
 rule all:
     input: f'{DATA_DIR}/civic.COMPLETE',
         f'{DATA_DIR}/cgi.COMPLETE',
-        f'{DATA_DIR}/docm.COMPLETE',
+        #f'{DATA_DIR}/docm.COMPLETE',
         #f'{DATA_DIR}/dgidb.COMPLETE',
         #f'{DATA_DIR}/PMC4468049.COMPLETE',
         #f'{DATA_DIR}/PMC4232638.COMPLETE',
@@ -364,15 +364,15 @@ rule load_cgi:
     output: f'{DATA_DIR}/cgi.COMPLETE'
     shell: LOADER_COMMAND + ' file cgi {input.data} &> {log}; cp {log} {output}'
 
-
-rule load_docm:
-    input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes']),
-        rules.load_ncit.output,
-        rules.load_do.output
-    containerized: containerchoice
-    log: f'{LOGS_DIR}/docm.logs.txt'
-    output: f'{DATA_DIR}/docm.COMPLETE'
-    shell: LOADER_COMMAND + ' api docm &> {log}; cp {log} {output}'
+# DOCM has been retired and superceded by the CIViC project
+#rule load_docm:
+#    input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes']),
+#        rules.load_ncit.output,
+#        rules.load_do.output
+#    containerized: containerchoice
+#    log: f'{LOGS_DIR}/docm.logs.txt'
+#    output: f'{DATA_DIR}/docm.COMPLETE'
+#    shell: LOADER_COMMAND + ' api docm &> {log}; cp {log} {output}'
 
 
 rule load_approvals:

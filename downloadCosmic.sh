@@ -1,6 +1,7 @@
 #!/bin/bash
 AUTH=$( echo "$2:$3" | base64 )
 RESP=$( curl -H "Authorization: Basic $AUTH" "$4" )
+# If you are getting a blank $RESP, make sure to log in to the COSMIC website and accept the terms of use.
 URL=$( node  -e "var resp = $RESP; console.log(resp.url);" )
 curl --create-dirs "$URL" -o $5/cosmic/$1/Cosmic.tar
 tar -xvf $5/cosmic/$1/Cosmic.tar -C $5/cosmic/$1/
