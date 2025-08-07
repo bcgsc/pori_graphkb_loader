@@ -1,4 +1,4 @@
-FROM node:17 AS node_stage
+FROM node:18 AS node_stage
 WORKDIR /usr/src/app
 # Bundle app source
 COPY package*.json ./
