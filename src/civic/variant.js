@@ -1,13 +1,20 @@
-const kbParser = require('@bcgsc-pori/graphkb-parser');
+const {
+    ErrorMixin,
+    jsonifyVariant,
+    parseVariant,
+    ParsingError,
+} = require('@bcgsc-pori/graphkb-parser');
+
 const { rid } = require('../graphkb');
 const _entrezGene = require('../entrez/gene');
 const _snp = require('../entrez/snp');
 const { civic: SOURCE_DEFN } = require('../sources');
+const { logger } = require('../logging');
 
-const { error: { ErrorMixin, ParsingError } } = kbParser;
 class NotImplementedError extends ErrorMixin { }
 
 const VARIANT_CACHE = new Map();
+
 
 // based on discussion with cam here: https://www.bcgsc.ca/jira/browse/KBDEV-844
 const SUBS = {
@@ -49,20 +56,31 @@ const compareGeneNames = (gene1, gene2) => {
 };
 
 /**
- * Given a CIViC Variant record entrez information and name,
- * normalize into a set of graphkb-style variants
+ * Normalize CIViC Gene Variant record as GraphKB positional and/or category variant(s)
  *
  * @param {object} param0
  * @param {string} param0.name
  * @param {string} param0.entrezId
  * @param {string} param0.entrezName
- * @returns {object}
+ * @returns {object[]}
  */
-const normalizeVariantRecord = ({
+const normalizeGeneVariant = ({
     name: rawName, entrezId, entrezName: rawEntrezName,
 }) => {
-    const entrezName = rawEntrezName.toLowerCase().trim();
+    // Exceptions: unsupported/unimplemented CIViC variant nomenclature
+    if ([
+        'Non-V600',
+        'P-Loop Mutation',
+    ].includes(rawName)) {
+        throw new NotImplementedError(
+            `unable to process CIViC variant ${rawEntrezName} ${rawName}`,
+        );
+    }
+
+    // Substitutions: harcoded fix for known 'CIViC-to-GraphKB' correspondances
     let name = SUBS[rawName] || rawName;
+
+    const entrezName = rawEntrezName.toLowerCase().trim();
     const joiner = ' and ';
     name = name.replace(' + ', joiner);
     name = name.replace('; ', joiner).toLowerCase().trim();
@@ -73,7 +91,7 @@ const normalizeVariantRecord = ({
     if (name.includes(joiner)) {
         const result = [];
         name.split(joiner).forEach((n) => {
-            result.push(...normalizeVariantRecord({ entrezId, entrezName, name: n.trim() }));
+            result.push(...normalizeGeneVariant({ entrezId, entrezName, name: n.trim() }));
         });
         return result;
     }
@@ -153,8 +171,8 @@ const normalizeVariantRecord = ({
                 rest = { positional: true, variant: `fusion(e.${exon1},e.${exon2})` };
             } else {
                 return [
-                    ...normalizeVariantRecord({ entrezId, entrezName, name: `${gene1}-${gene2}` }),
-                    ...normalizeVariantRecord({ entrezId, entrezName, name: tail }),
+                    ...normalizeGeneVariant({ entrezId, entrezName, name: `${gene1}-${gene2}` }),
+                    ...normalizeGeneVariant({ entrezId, entrezName, name: tail }),
                 ];
             }
         }
@@ -210,8 +228,8 @@ const normalizeVariantRecord = ({
     } if (match = /^(\w+\s+fusion)\s+([a-z]\d+\S+)$/i.exec(name)) {
         const [, fusion, resistanceMutation] = match;
         const result = [];
-        result.push(...normalizeVariantRecord({ entrezId, entrezName, name: fusion }));
-        result.push(...normalizeVariantRecord({ entrezId, entrezName, name: resistanceMutation }));
+        result.push(...normalizeGeneVariant({ entrezId, entrezName, name: fusion }));
+        result.push(...normalizeGeneVariant({ entrezId, entrezName, name: resistanceMutation }));
         return result;
     } if (match = /^(.*)\s+mutations?$/.exec(name)) {
         const [, gene] = match;
@@ -223,11 +241,11 @@ const normalizeVariantRecord = ({
 
     // try parser fallback for notation that is close to correct
     try {
-        kbParser.variant.parse(name, false);
+        parseVariant(name, false);
         return [{ positional: true, reference1: { ...referenceGene }, variant: name }];
     } catch (err) {
         try {
-            kbParser.variant.parse(`p.${name}`, false);
+            parseVariant(`p.${name}`, false);
             return [{
                 positional: true,
                 reference1: { ...referenceGene },
@@ -238,169 +256,373 @@ const normalizeVariantRecord = ({
     return [{ reference1: { ...referenceGene }, type: name }];
 };
 
+
 /**
- * Given some normalized variant record from CIViC,
- * load into graphkb, create links and return the record
+ * Normalize CIViC Factors variant record as GraphKB Signatures/signature's CVs
+ *
+ * @param {object} record the raw variant record from CIViC
+ * @returns {object[]}
+ */
+const normalizeFactorVariant = (record) => {
+    const { feature: { featureInstance } } = record;
+
+    switch (featureInstance.name) {
+        case 'TMB':
+            return [{
+                reference1: {
+                    class: 'Signature', // flag to escape gene fetching/upload
+                    name: 'high mutation burden',
+                },
+                type: 'high signature',
+            }];
+        // TODO: Add support for other factors
+        case 'Methylation signature':
+        case 'Kataegis':
+        case 'CK':
+        default:
+            throw new NotImplementedError(
+                `unable to process Factor ${featureInstance.name} ${record.name}`,
+            );
+    }
+};
+
+
+/**
+ * Normalize CIViC Fusion variant record as GraphKB CVs
+ *
+ * @param {object} record the raw variant record from CIViC
+ * @returns {object[]} array of 1 normalized variant
+ */
+const normalizeFusionVariant = (record) => {
+    const {
+        feature: {
+            featureInstance: {
+                fivePrimeGene,
+                threePrimeGene,
+            },
+        },
+    } = record;
+
+    if (fivePrimeGene && threePrimeGene) {
+        return [{
+            reference1: {
+                name: fivePrimeGene.name.toLowerCase().trim(),
+                sourceId: `${fivePrimeGene.entrezId || ''}`,
+            },
+            reference2: {
+                name: threePrimeGene.name.toLowerCase().trim(),
+                sourceId: `${threePrimeGene.entrezId || ''}`,
+            },
+            type: 'fusion',
+        }];
+    }
+    if (fivePrimeGene) {
+        return [{
+            reference1: {
+                name: fivePrimeGene.name.toLowerCase().trim(),
+                sourceId: `${fivePrimeGene.entrezId || ''}`,
+            },
+            type: 'fusion',
+        }];
+    }
+    if (threePrimeGene) {
+        return [{
+            reference1: {
+                name: threePrimeGene.name.toLowerCase().trim(),
+                sourceId: `${threePrimeGene.entrezId || ''}`,
+            },
+            type: 'fusion',
+        }];
+    }
+    throw new Error('fivePrimeGene and/or threePrimeGene expected on Fusion variant');
+};
+
+
+/**
+ * Given a CIViC variant record, do the normalization based on the feature type.
+ * Can be more than 1 "GraphKB-normalized" variant per CIViC variant.
+ * Returns the normalized variant(s).
+ *
+ * @param {Object} record the raw variant record from CIViC
+ * @returns {object[]} array of normalized variant(s)
+ */
+const normalizeVariant = (record) => {
+    try {
+        const { feature: { featureInstance } } = record;
+        const featureType = featureInstance.__typename;
+
+        switch (featureType) {
+            case 'Gene':
+                // reformatting passed args for legacy purpose
+                return normalizeGeneVariant({
+                    entrezId: featureInstance.entrezId,
+                    entrezName: featureInstance.name,
+                    name: record.name,
+                });
+            case 'Factor':
+                return normalizeFactorVariant(record);
+            case 'Fusion':
+                return normalizeFusionVariant(record);
+            default:
+                throw new NotImplementedError(
+                    `unable to process variant's feature of type ${featureType}`,
+                );
+        }
+    } catch (err) {
+        logger.error(`unable to normalize the variant (id=${record.id}, name=${record.name})`);
+        throw err;
+    }
+};
+
+
+/**
+ * Get reference records for the new variant.
+ * Upload if needed (only if gene; signatures needs to be creates using the ontology loader)
  *
  * @param {ApiConnection} conn the connection to GraphKB
  * @param {Object} normalizedVariant the normalized variant record
- * @param {Object} feature the gene feature already grabbed from GraphKB
+ */
+const uploadReferences = async (conn, normalizedVariant) => {
+    const { reference1: r1, reference2: r2 } = normalizedVariant;
+
+    // r2 can be undefined, r1 cannot
+    if (!r1) {
+        // Shouldn't happen; means there is an error in the normalization code
+        throw new Error('reference1 is mandatory on normalizedVariant');
+    }
+
+    // Signature (from civic Factor) as reference
+    if (r1.class === 'Signature') {
+        try {
+            return [await conn.getUniqueRecordBy({
+                filters: { name: r1.name },
+                neighbors: 0,
+                target: r1.class,
+            })];
+        } catch (err) {
+            throw new Error(`failed to fetch variant's ${r1.class} Reference ${r1.name}`);
+        }
+    }
+
+    // Gene(s) as reference(s)
+    const references = [];
+
+    for (const ref of [r1, r2]) {
+        if (ref) {
+            let reference;
+
+            try {
+                if (ref.sourceId) {
+                    [reference] = await _entrezGene.fetchAndLoadByIds(conn, [ref.sourceId]);
+                }
+                if (!ref.sourceId && ref.name) {
+                    [reference] = await _entrezGene.fetchAndLoadBySymbol(conn, ref.name);
+                }
+                if (!ref.sourceId && !ref.name) {
+                    // Shouldn't happen; means there is an error in the normalization code
+                    throw new Error('name property is mandatory on normalizedVariant reference');
+                }
+                references.push(reference);
+            } catch (err) {
+                logger.error(`failed to fetch variant's feature: ${ref.name}`);
+                throw err;
+            }
+        }
+    }
+    return references;
+};
+
+
+/**
+ * Get or create inferred/inferring variant(s) and create linking Infers edge(s)
+ *
+ * @param {ApiConnection} conn the connection to GraphKB
+ * @param {Object} normalizedVariant the normalized variant record
+ * @param {Object} result the GraphKB variant record to connect edges from/to
  * @returns {object[]}
  */
-const uploadNormalizedVariant = async (conn, normalizedVariant, feature) => {
-    let result;
+const uploadInferences = async (conn, normalizedVariant, result) => {
+    const links = { inferredBy: [], infers: [] };
+    const variants = { inferred: [], inferring: [] };
 
+    // Outgoing, if any
+    for (const variant of normalizedVariant.infers || []) {
+        try {
+            // Creates or get the variant on the incomming side
+            const infers = await uploadVariant(conn, variant);
+            variants.inferred.push(infers);
+
+            // Creates the edge
+            links.infers.push(
+                await conn.addRecord({
+                    content: { in: rid(infers), out: rid(result) },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'Infers',
+                }),
+            );
+        } catch (err) {
+            // Non-blocking error
+            logger.warn(`Error while uploading inferred variant; ${JSON.stringify(variant)}`);
+        }
+    }
+
+    // Incomming, if any
+    for (const variant of normalizedVariant.inferredBy || []) {
+        try {
+            // Creates or get the variant on the outgoing side
+            const inferredBy = await uploadVariant(conn, variant);
+            variants.inferring.push(inferredBy);
+
+            // Creates the edge
+            links.inferredBy.push(
+                await conn.addRecord({
+                    content: { in: rid(result), out: rid(inferredBy) },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'Infers',
+                }),
+            );
+        } catch (err) {
+            // Non-blocking error
+            logger.warn(`Error while uploading inferring variant; ${JSON.stringify(variant)}`);
+        }
+    }
+
+    // Return for testing purpose only
+    return { links, variants };
+};
+
+
+/**
+ * Given a normalized CIViC variant record, upload to GraphKB,
+ * create any given links and return the GraphKB variant record.
+ *
+ * @param {ApiConnection} conn the connection to GraphKB
+ * @param {Object} normalizedVariant the normalized variant record
+ * @returns {object[]}
+ */
+const uploadVariant = async (conn, normalizedVariant) => {
+    let uploadedVariant;
+
+    // RSID Variant exception handled first
     if (!normalizedVariant.positional && /^\s*rs\d+\s*$/gi.exec(normalizedVariant.type)) {
-        const [rsVariant] = await _snp.fetchAndLoadByIds(conn, [normalizedVariant.type]);
+        // Create Variant VERTEX in GraphKB
+        [uploadedVariant] = await _snp.fetchAndLoadByIds(conn, [normalizedVariant.type]);
 
-        if (rsVariant) {
-            result = rsVariant;
+        if (uploadedVariant) {
+            // Create Inferring/inferred variant and Infers edge in GraphKB
+            if (normalizedVariant.infers || normalizedVariant.inferredBy) {
+                await uploadInferences(conn, normalizedVariant, uploadedVariant);
+            }
         } else {
             throw new Error(`unable to fetch variant by RSID (${normalizedVariant.type})`);
         }
-    } else {
-        let content = {};
+        return uploadedVariant;
+    }
 
-        if (normalizedVariant.positional) {
-            content = kbParser.variant.parse(normalizedVariant.variant, false).toJSON();
-        }
-        let variantType;
+    // Variant content
+    let content = {};
 
+    if (normalizedVariant.positional) {
+        content = jsonifyVariant(parseVariant(normalizedVariant.variant, false));
+    }
+
+    // Variant type
+    let variantType;
+
+    try {
         // try to fetch civic specific term first
-        try {
-            variantType = await conn.getVocabularyTerm(
-                normalizedVariant.type || content.type,
-                SOURCE_DEFN.name,
-            );
-        } catch (err) {
-            variantType = await conn.getVocabularyTerm(normalizedVariant.type || content.type);
-        }
-        content.type = rid(variantType);
+        variantType = await conn.getVocabularyTerm(
+            normalizedVariant.type || content.type,
+            SOURCE_DEFN.name,
+        );
+    } catch (err) {
+        // try to fetch term from any source
+        variantType = await conn.getVocabularyTerm(normalizedVariant.type || content.type);
+    }
+    content.type = rid(variantType);
 
-        // get the reference elements
-        let reference2,
-            reference1 = feature;
+    // Variant references
+    const [reference1, reference2] = await uploadReferences(conn, normalizedVariant);
+    content.reference1 = rid(reference1);
 
-        if (normalizedVariant.reference2) {
-            if (normalizedVariant.reference2.sourceId === feature.sourceId) {
-                reference2 = feature;
-                // fetch reference1
-                [reference1] = await _entrezGene.fetchAndLoadBySymbol(conn, normalizedVariant.reference1.name);
+    if (reference2) {
+        content.reference2 = rid(reference2);
+    }
 
-                if (!reference1) {
-                    throw new Error(`Gene name not found in NCBI's Entrez gene database (${normalizedVariant.reference1.name}})`);
-                }
-            } else if (normalizedVariant.reference1.sourceId !== feature.sourceId) {
-                throw new ParsingError(`Feature ID input (${feature.sourceId}) does not match the linked gene IDs (${normalizedVariant.reference1.sourceId},${normalizedVariant.reference2.sourceId})`);
-            } else {
-                // fetch reference2
-                [reference2] = await _entrezGene.fetchAndLoadBySymbol(conn, normalizedVariant.reference2.name);
+    // Create Variant VERTEX in GraphKB
+    uploadedVariant = await conn.addVariant({
+        content,
+        existsOk: true,
+        target: normalizedVariant.positional
+            ? 'PositionalVariant'
+            : 'CategoryVariant',
+    });
+
+    // Create Inferring/inferred variant and Infers edge in GraphKB
+    if (normalizedVariant.infers || normalizedVariant.inferredBy) {
+        await uploadInferences(conn, normalizedVariant, uploadedVariant);
+    }
+
+    return uploadedVariant;
+};
+
+
+/**
+ * Upload an array of normalized CIViC variants to GraphKB.
+ * Returns an array of corresponding GraphKB Variant record(s).
+ *
+ * @param {ApiConnection} conn the connection to GraphKB
+ * @param {Object[]} normalizedVariants an array of normalized CIViC variant records
+ * @returns {object[]}
+ */
+const uploadVariants = async (conn, normalizedVariants) => {
+    const uploadedVariants = [];
+
+    for (const normalizedVariant of normalizedVariants) {
+        // console.log(JSON.stringify(normalizedVariant));
+
+        // Trying cache first
+        const key = JSON.stringify(normalizedVariant);
+        const fromCache = VARIANT_CACHE.get(key);
+
+        if (fromCache) {
+            if (fromCache.err) {
+                throw new Error('Variant record previously processed with errors');
+            }
+            if (fromCache.uploaded) {
+                uploadedVariants.push(fromCache.uploaded);
+                continue;
             }
         }
 
-        content.reference1 = rid(reference1);
-
-        if (reference2) {
-            content.reference2 = rid(reference2);
-        }
-        result = await conn.addVariant({
-            content,
-            existsOk: true,
-            target: normalizedVariant.positional
-                ? 'PositionalVariant'
-                : 'CategoryVariant',
-        });
-    }
-
-    // now create any links
-    for (const variant of normalizedVariant.infers || []) {
-        const infers = await uploadNormalizedVariant(conn, variant, feature);
-        await conn.addRecord({
-            content: { in: rid(infers), out: rid(result) },
-            existsOk: true,
-            fetchExisting: false,
-            target: 'Infers',
-        });
-    }
-
-    for (const variant of normalizedVariant.inferredBy || []) {
-        const inferredBy = await uploadNormalizedVariant(conn, variant, feature);
-        await conn.addRecord({
-            content: { in: rid(result), out: rid(inferredBy) },
-            existsOk: true,
-            fetchExisting: false,
-            target: 'Infers',
-        });
-    }
-
-    return result;
-};
-
-/**
- * Given some variant record and a feature, process the variant and return a GraphKB equivalent
- *
- * @param {ApiConnection} conn the connection to GraphKB
- * @param {Object} civicVariantRecord the raw variant record from CIViC
- * @param {Object} feature the gene feature already grabbed from GraphKB
- * @returns {object[]}
- */
-const processVariantRecord = async (conn, civicVariantRecord, feature) => {
-    const { feature: { featureInstance } } = civicVariantRecord;
-    let entrezId,
-        entrezName;
-
-    // featureInstance
-    if (featureInstance.__typename === 'Gene') {
-        entrezId = featureInstance.entrezId;
-        entrezName = featureInstance.name;
-    } else if (featureInstance.__typename === 'Factor') {
-        // TODO: Deal with __typename === 'Factor'
-        // No actual case as April 22nd, 2024
-        throw new NotImplementedError(
-            'unable to process variant\'s feature of type Factor',
-        );
-    }
-
-    // Raw variant from CIViC to normalize & upload to GraphKB if needed
-    const rawVariant = {
-        entrezId,
-        entrezName,
-        name: civicVariantRecord.name,
-    };
-
-    // Trying cache first
-    const fromCache = VARIANT_CACHE.get(JSON.stringify(rawVariant));
-
-    if (fromCache) {
-        if (fromCache.err) {
-            throw new Error('Variant record previously processed with errors');
-        }
-        if (fromCache.result) {
-            return fromCache.result;
-        }
-    }
-
-    const result = [];
-
-    try {
-        // Normalizing
-        const variants = normalizeVariantRecord(rawVariant);
-
         // Uploading
-        for (const normalizedVariant of variants) {
-            result.push(await uploadNormalizedVariant(conn, normalizedVariant, feature));
+        try {
+            const uploaded = await uploadVariant(conn, normalizedVariant);
+            uploadedVariants.push(uploaded);
+            VARIANT_CACHE.set(key, { uploaded });
+        } catch (err) {
+            VARIANT_CACHE.set(key, { err });
+            logger.error(`failed to upload variant ${JSON.stringify(normalizedVariant)}`);
+            throw err;
         }
-    } catch (err) {
-        VARIANT_CACHE.set(JSON.stringify(rawVariant), { err });
     }
 
-    VARIANT_CACHE.set(JSON.stringify(rawVariant), { result });
-    return result;
+    // console.log({uploadedVariants: uploadedVariants[0]['@rid']});
+    return uploadedVariants;
 };
+
 
 module.exports = {
+    NotImplementedError,
     compareGeneNames,
-    normalizeVariantRecord,
-    processVariantRecord,
-    uploadNormalizedVariant,
+    normalizeFactorVariant,
+    normalizeFusionVariant,
+    normalizeGeneVariant,
+    normalizeVariant,
+    uploadInferences,
+    uploadReferences,
+    uploadVariant,
+    uploadVariants,
 };

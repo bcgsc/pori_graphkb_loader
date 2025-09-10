@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const { variant: { parse: variantParser } } = require('@bcgsc-pori/graphkb-parser');
+const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
 
 const {
     loadDelimToJson,
@@ -46,11 +46,11 @@ const loadCdsVariant = async (graphkbConn, transcriptId, cdsNotation) => {
     // add the cds variant
     const {
         noFeatures, multiFeature, prefix, ...variant
-    } = variantParser(cdsNotation, false);
+    } = parseVariant(cdsNotation, false);
     variant.reference1 = reference1;
     variant.type = rid(await graphkbConn.getVocabularyTerm(variant.type));
     const cds = rid(await graphkbConn.addVariant({
-        content: { ...variant },
+        content: { ...jsonifyVariant(variant) },
         existsOk: true,
         target: 'PositionalVariant',
     }));
@@ -87,11 +87,11 @@ const loadProteinVariant = async (graphkbConn, gene, proteinNotation) => {
     // add the cds variant
     const {
         noFeatures, multiFeature, prefix, ...variant
-    } = variantParser(proteinNotation, false);
+    } = parseVariant(proteinNotation, false);
     variant.reference1 = reference1;
     variant.type = rid(await graphkbConn.getVocabularyTerm(variant.type));
     const protein = rid(await graphkbConn.addVariant({
-        content: { ...variant },
+        content: { ...jsonifyVariant(variant) },
         existsOk: true,
         target: 'PositionalVariant',
     }));
@@ -163,11 +163,11 @@ const loadGenomicVariant = async (graphkbConn, chromosome, position, ref, alt) =
     // add the cds variant
     const {
         noFeatures, multiFeature, prefix, ...variant
-    } = variantParser(notation, false);
+    } = parseVariant(notation, false);
     variant.reference1 = reference1;
     variant.type = rid(await graphkbConn.getVocabularyTerm(variant.type));
     const genomic = rid(await graphkbConn.addVariant({
-        content: { ...variant, assembly: 'hg19' },
+        content: { ...jsonifyVariant(variant), assembly: 'hg19' },
         existsOk: true,
         target: 'PositionalVariant',
     }));
