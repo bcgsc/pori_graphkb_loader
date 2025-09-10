@@ -5,102 +5,105 @@ const {
 } = require('../src/graphkb');
 
 describe('orderPreferredOntologyTerms', () => {
-    test('prefer non-deprecated', () => {
+    test('prefer non-deprecated terms over deprecated ones', () => {
         expect(orderPreferredOntologyTerms(
-            { deprecated: true }, { deprecated: false },
-        )).toBe(1);
-        expect(orderPreferredOntologyTerms(
-            { deprecated: false }, { deprecated: true },
+            { deprecated: false },
+            { deprecated: true },
         )).toBe(-1);
+        expect(orderPreferredOntologyTerms(
+            { deprecated: true },
+            { deprecated: false },
+        )).toBe(1);
     });
 
     test('prefer terms with independent sourceId', () => {
         expect(orderPreferredOntologyTerms(
-            { alias: false }, { alias: true },
+            { alias: false },
+            { alias: true },
         )).toBe(-1);
         expect(orderPreferredOntologyTerms(
-            { alias: true }, { alias: false },
+            { alias: true },
+            { alias: false },
         )).toBe(1);
         expect(orderPreferredOntologyTerms(
-            { }, { dependency: true },
+            { },
+            { dependency: true },
         )).toBe(-1);
         expect(orderPreferredOntologyTerms(
-            { dependency: true }, { },
-        )).toBe(1);
-    });
-
-    test('prefer generic to versioned terms', () => {
-        expect(orderPreferredOntologyTerms(
-            { }, { sourceIdVersion: '' },
-        )).toBe(-1);
-        expect(orderPreferredOntologyTerms(
-            { sourceIdVersion: '' }, { },
-        )).toBe(1);
-    });
-
-    test('prefer newer version of same record', () => {
-        expect(orderPreferredOntologyTerms(
-            { sourceIdVersion: '2019-10-08' }, { sourceIdVersion: '2020-10-08' },
-        )).toBe(-1);
-        expect(orderPreferredOntologyTerms(
-            { sourceIdVersion: '2020-10-08' }, { sourceIdVersion: '2019-10-08' },
-        )).toBe(1);
-    });
-
-    test('prefer newer source version of same record', () => {
-        expect(orderPreferredOntologyTerms(
-            { source: { version: 1 }, sourceIdVersion: '2019-10-08' },
-            { source: { version: 2 }, sourceIdVersion: '2019-10-08' },
-        )).toBe(-1);
-        expect(orderPreferredOntologyTerms(
-            { source: { version: 2 }, sourceIdVersion: '2019-10-08' },
-            { source: { version: 1 }, sourceIdVersion: '2019-10-08' },
+            { dependency: true },
+            { },
         )).toBe(1);
     });
 
     test('prefer terms with descriptions', () => {
         expect(orderPreferredOntologyTerms(
-            { description: 'a description', sourceIdVersion: '2019-10-08' },
-            { description: '', sourceIdVersion: '2019-10-08' },
+            { description: 'a description' },
+            { description: '' },
         )).toBe(-1);
         expect(orderPreferredOntologyTerms(
-            { description: '', sourceIdVersion: '2019-10-08' },
-            { description: 'a description', sourceIdVersion: '2019-10-08' },
+            { description: '' },
+            { description: 'a description' },
         )).toBe(1);
     });
 
-    test('use source rank to sort results', () => {
+    test('prefer terms most recently updated', () => {
         expect(orderPreferredOntologyTerms(
-            { source: { sort: 1 }, sourceId: 1 },
-            { source: { sort: 2 }, sourceId: 2 },
+            { updatedAt: 1639435944133 },
+            { updatedAt: 1565316882229 },
         )).toBe(-1);
         expect(orderPreferredOntologyTerms(
-            { source: { sort: 2 }, sourceId: 1 },
-            { source: { sort: 1 }, sourceId: 2 },
-        )).toBe(1);
-        expect(orderPreferredOntologyTerms(
-            { source: { version: 1 }, sourceId: 1 },
-            { source: { version: 2 }, sourceId: 2 },
-        )).toBe(-1);
-        expect(orderPreferredOntologyTerms(
-            { source: { version: 2 }, sourceId: 1 },
-            { source: { version: 1 }, sourceId: 2 },
-        )).toBe(1);
-        expect(orderPreferredOntologyTerms(
-            { description: 'a description', source: {}, sourceId: 1 },
-            { description: '', source: {}, sourceId: 2 },
-        )).toBe(-1);
-        expect(orderPreferredOntologyTerms(
-            { description: '', source: {}, sourceId: 1 },
-            { description: 'a description', source: {}, sourceId: 2 },
+            { updatedAt: 1565316882229 },
+            { updatedAt: 1639435944133 },
         )).toBe(1);
     });
 
     test('fallback to 0 if there is no prefered one', () => {
         expect(orderPreferredOntologyTerms(
-            { source: { }, sourceId: 1 },
-            { source: { }, sourceId: 2 },
+            { },
+            { },
         )).toBe(0);
+    });
+
+    describe('when terms DO have the same source and sourceId', () => {
+        const term = { source: { '@rid': '#123:45' }, sourceId: '1' };
+
+        test('prefer generic to versioned terms', () => {
+            expect(orderPreferredOntologyTerms(
+                { ...term },
+                { ...term, sourceIdVersion: '2020-10-08' },
+            )).toBe(-1);
+            expect(orderPreferredOntologyTerms(
+                { ...term, sourceIdVersion: '2020-10-08' },
+                { ...term },
+            )).toBe(1);
+        });
+
+        test('prefer newer version of same record', () => {
+            expect(orderPreferredOntologyTerms(
+                { ...term, sourceIdVersion: '2020-10-08' },
+                { ...term, sourceIdVersion: '2019-10-08' },
+            )).toBe(-1);
+            expect(orderPreferredOntologyTerms(
+                { ...term, sourceIdVersion: '2019-10-08' },
+                { ...term, sourceIdVersion: '2020-10-08' },
+            )).toBe(1);
+        });
+    });
+
+    describe('when terms DO NOT have the same source and sourceId combination', () => {
+        const term1 = { source: { '@rid': '#123:45' }, sourceId: '1' };
+        const term2 = { source: { '@rid': '#123:46' }, sourceId: '2' };
+
+        test('use source rank to sort results', () => {
+            expect(orderPreferredOntologyTerms(
+                { ...term1, source: { sort: 1 } },
+                { ...term2, source: { sort: 2 } },
+            )).toBe(-1);
+            expect(orderPreferredOntologyTerms(
+                { ...term1, source: { sort: 2 } },
+                { ...term2, source: { sort: 1 } },
+            )).toBe(1);
+        });
     });
 });
 
