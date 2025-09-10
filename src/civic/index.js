@@ -19,6 +19,7 @@ const {
     contentMatching,
     createStatement,
     deleteStatements,
+    getStatements,
     needsUpdate,
     updateStatement,
 } = require('./statement');
@@ -55,16 +56,20 @@ const incrementCounts = (initial, updates) => {
  *
  * @param {object} param0
  * @param {ApiConnection} param0.conn the api connection object for GraphKB
+ * @param {?boolean} param0.deleteDeprecated delete GraphKB Statements if deprecated evidence(s)
  * @param {string} param0.errorLogPrefix prefix to the generated error json file
  * @param {number} param0.maxRecords limit of EvidenceItem records to be processed and upload
- * @param {?boolean} param0.noUpdate for avoiding deletion/update of existing GraphKB Statements
+ * @param {?boolean} param0.noDeleteOnUnmatched don't delete GraphKB St. if unmatched combination(s)
+ * @param {?boolean} param0.noUpdate no update of existing GraphKB Statements
  * @param {string[]} param0.trustedCurators a list of curator IDs for submitted-only EvidenceItems
  * @param {?string} param0.url url to use as the base for accessing the civic ApiConnection
  */
 const upload = async ({
     conn,
+    deleteDeprecated = false, // Won't delete deprecated sourceIds by default
     errorLogPrefix,
     maxRecords,
+    noDeleteOnUnmatched = false,
     noUpdate = false,
     trustedCurators,
     url = BASE_URL,
@@ -181,7 +186,8 @@ const upload = async ({
         processingIntoCombinations: new Map(),
         relevance: new Map(),
     };
-    const casesToReview = new Map();
+    const statementsToReviewUnmatchedProcessingError = new Map();
+    const statementsToReviewUnmatched = new Map();
 
     logger.info(`\n\n${'#'.repeat(80)}\n## PROCESSING RECORDS\n${'#'.repeat(80)}\n`);
     let recordNumber = 0;
@@ -366,13 +372,17 @@ const upload = async ({
         }
 
         // DELETE
-        if (!noUpdate && toDelete.length > 0) {
+        if (toDelete.length > 0) {
             const rids = toDelete.map(el => el['@rid']);
 
             if (processCombinationErrors > 0) {
                 // Do not delete any statements if some combinations have processing errors
-                logger.info(`${toDelete.length} unmatched statement(s) to be reviewed for deletion`);
-                casesToReview.set(id, rids);
+                logger.warn(`${toDelete.length} unmatched statement(s). To be reviewed since some processing errors occured`);
+                statementsToReviewUnmatchedProcessingError.set(id, rids);
+            } else if (noDeleteOnUnmatched) {
+                // Do not delete any statements if noDeleteOnUnmatched flag
+                logger.warn(`${toDelete.length} unmatched statement(s). To be reviewed since the noDeleteOnUnmatched flag is being used`);
+                statementsToReviewUnmatched.set(id, rids);
             } else {
                 loaclCountsST.delete = await deleteStatements(conn, { rids });
             }
@@ -414,40 +424,59 @@ const upload = async ({
     }
 
     // DELETING UNWANTED GRAPHKB STATEMENTS
-    // sourceIds no longer in CIViC (not accepted/submitted by trustedCurators) but still in GraphKB
+    // sourceIds no longer in CIViC (not accepted/submitted-by-trustedCurators) but still in GraphKB
     const allIdsFromCivic = new Set(evidenceItems.map(r => r.id.toString()));
-    const toDelete = new Set([...sourceIdsFromGKB].filter(x => !allIdsFromCivic.has(x)));
+    const sourceIdstoDeleteStatementsFrom = Array.from(
+        new Set([...sourceIdsFromGKB].filter(x => !allIdsFromCivic.has(x))),
+    );
     logger.info();
     logger.info('***** Deprecated items *****');
-    logger.warn(`${toDelete.size} deprecated ${SOURCE_DEFN.name} Evidence Items still in GraphKB Statement`);
+    logger.warn(`${sourceIdstoDeleteStatementsFrom.length} deprecated ${SOURCE_DEFN.name} Evidence Items still in GraphKB Statement`);
 
-    if (toDelete.size > 0) {
-        logger.info(`sourceIds: ${Array.from(toDelete)}`);
+    if (sourceIdstoDeleteStatementsFrom.length > 0) {
+        logger.info(`sourceIds: ${sourceIdstoDeleteStatementsFrom}`);
     }
 
     // GraphKB Statements Soft-deletion
-    if (!noUpdate && toDelete.size > 0) {
-        const deletedCount = await deleteStatements(conn, {
-            source: sourceRid,
-            sourceIds: Array.from(toDelete),
-        });
-        const attempts = deletedCount.success + deletedCount.err;
-        logger.info(`${deletedCount.success}/${attempts} soft-deleted statements`);
-
-        if (countsST) {
-            countsST.delete.err += deletedCount.err;
-            countsST.delete.success += deletedCount.success;
+    if (sourceIdstoDeleteStatementsFrom.length > 0) {
+        if (!deleteDeprecated) {
+            // Do not delete any statements if no deleteDeprecated flag
+            const deprecatedStatementRids = await getStatements(
+                conn,
+                { source: sourceRid, sourceIds: sourceIdstoDeleteStatementsFrom },
+            );
+            logger.warn(`${deprecatedStatementRids.length} corresponding deprecated statement(s). To be reviewed since no deleteDeprecated flag`);
+            const deprecatedStatementsFilepath = `${errorLogPrefix}-civic-deprecatedStatements.json`;
+            logger.info(`writing ${deprecatedStatementsFilepath}`);
+            fs.writeFileSync(
+                deprecatedStatementsFilepath,
+                JSON.stringify(deprecatedStatementRids, null, 2),
+            );
         } else {
-            countsST = { delete: { err: deletedCount.err, success: deletedCount.success } };
+            const deletedCount = await deleteStatements(conn, {
+                source: sourceRid,
+                sourceIds: sourceIdstoDeleteStatementsFrom,
+            });
+            const attempts = deletedCount.success + deletedCount.err;
+            logger.info(`${deletedCount.success}/${attempts} soft-deleted statements`);
+
+            if (countsST) {
+                countsST.delete.err += deletedCount.err;
+                countsST.delete.success += deletedCount.success;
+            } else {
+                countsST = { delete: { err: deletedCount.err, success: deletedCount.success } };
+            }
         }
     }
 
     // Logging processing error cases to be reviewed,
     // so a reviewer can decide if corresponding statements need to be deleted or not
     logger.info();
-    logger.info('***** Cases to be reviewed for deletion *****');
-    logger.warn(`${casesToReview.size} Evidence Item(s) with processing errors leading to unmatched Statement(s)`);
-    casesToReview.forEach((v, k) => logger.info(`${k} -> ${JSON.stringify(v)}`));
+    logger.info('***** Unmatched cases to be reviewed for deletion *****');
+    logger.warn(`${statementsToReviewUnmatchedProcessingError.size} Evidence Item(s) with processing errors leading to unmatched Statement(s)`);
+    statementsToReviewUnmatchedProcessingError.forEach((v, k) => logger.info(`${k} -> ${JSON.stringify(v)}`));
+    logger.warn(`${statementsToReviewUnmatched.size} Evidence Item(s) with unmatched Statement(s) with no processing error involved`);
+    statementsToReviewUnmatched.forEach((v, k) => logger.info(`${k} -> ${JSON.stringify(v)}`));
 
     // Logging Statement CRUD operations counts
     if (countsST) {

@@ -180,8 +180,8 @@ const cleanRawRow = (rawRow) => {
             : `${row.name} [${sourceId}]`,
         endpoint,
         name: row.name.toLowerCase(),
-        sourceId,
         original_synonyms: row.synonyms,
+        sourceId,
         synonyms: Array.from(new Set(row.synonyms))
             .map(s => s.toLowerCase())
             .filter(s => s !== row.name.toLowerCase()),

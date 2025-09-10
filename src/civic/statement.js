@@ -178,6 +178,31 @@ const contentMatching = ({
 };
 
 /**
+ * Given source & list of sourceIds, returns corresponding statements
+ *
+ * @param {ApiConnection} conn the api connection object for GraphKB
+ * @param {object} param1
+ * @param {string} param1.source the source RID
+ * @param {string[]} param1.sourceIds an array of sourceIds
+ * @returns {string[]} a list of statement RIDs
+ */
+const getStatements = async (conn, { source, sourceIds }) => {
+    const records = await conn.getRecords({
+        filters: {
+            AND: [
+                { sourceId: sourceIds },
+                { source },
+            ],
+        },
+        target: 'Statement',
+    });
+    const rids = records.map(
+        (el) => el['@rid'],
+    );
+    return rids;
+};
+
+/**
  * Given content from CIViC, try to create the GraphKB record
  *
  * @param {ApiConnection} conn the API connection object for GraphKB
@@ -250,18 +275,7 @@ const deleteStatements = async (conn, { rids = [], source, sourceIds }) => {
     // Get rids to delete if none provided
     if (rids.length === 0) {
         logger.info('Loading corresponding GraphKB statement RIDs to delete');
-        const records = await conn.getRecords({
-            filters: {
-                AND: [
-                    { sourceId: sourceIds },
-                    { source },
-                ],
-            },
-            target: 'Statement',
-        });
-        rids.push(...records.map(
-            (el) => el['@rid'],
-        ));
+        rids.push(...await getStatements(conn, { source, sourceIds }));
         logger.info(`${rids.length} RIDs found`);
     }
 
@@ -286,6 +300,7 @@ module.exports = {
     contentMatching,
     createStatement,
     deleteStatements,
+    getStatements,
     isMatching,
     needsUpdate,
     updateStatement,
