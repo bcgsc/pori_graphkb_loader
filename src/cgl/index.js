@@ -1,3 +1,4 @@
+/* eslint-disable one-var */
 const fs = require('fs');
 
 const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
@@ -7,53 +8,108 @@ const {
     hashRecordToId,
 } = require('../util');
 const {
+    // eslint-disable-next-line no-unused-vars
+    ApiConnection,
     orderPreferredOntologyTerms,
     rid,
 } = require('../graphkb');
 const _refseq = require('../entrez/refseq');
 const { logger } = require('../logging');
 
-const { cgl: SOURCE_DEFN } = require('../sources');
+const {
+    cgl: SOURCE_DEFN,
+    entrezGene: ENTREZGENE_SOURCE_DEFN,
+    refseq: REFSEQ_SOURCE_DEFN,
+} = require('../sources');
 
 
-const loadCdsVariant = async (graphkbConn, transcriptId, cdsNotation) => {
+const getTranscript = async (graphkbConn, transcriptId) => {
+    let newVersionedTranscript = false;
     let reference1;
 
+    const unversionedId = transcriptId.split('.')[0];
+    const version = transcriptId.split('.')[1];
+
     try {
+        // Try to fetch from GraphKB first
         reference1 = await graphkbConn.getUniqueRecordBy({
             filters: {
                 AND: [
-                    { source: { filters: { name: SOURCE_DEFN.name }, target: 'Source' } },
-                    { sourceId: transcriptId.split('.')[0] },
-                    { sourceIdVersion: transcriptId.split('.')[1] || null },
+                    { source: { filters: { name: REFSEQ_SOURCE_DEFN.name }, target: 'Source' } },
+                    { sourceId: unversionedId },
+                    { sourceIdVersion: version || null },
                     { biotype: 'transcript' },
                 ],
             },
             target: 'Feature',
         });
     } catch (err) {
-        const transcripts = await _refseq.fetchAndLoadByIds(graphkbConn, [transcriptId]);
+        // If it fail, try to fetch from RefSeq instead
+        if (version) {
+            const transcripts = await _refseq.fetchAndLoadByIds(graphkbConn, [transcriptId]);
 
-        if (transcripts.length !== 1) {
-            throw new Error(`unable to find unique transcript (${transcriptId}) (found: ${transcripts.length})`);
+            if (transcripts.length !== 1) {
+                throw new Error(`unable to find unique transcript (${transcriptId}) from RefSeq (found: ${transcripts.length})`);
+            }
+            [reference1] = transcripts;
+            newVersionedTranscript = true;
         }
-        [reference1] = transcripts;
     }
 
+    // If a new versioned transcript gets added,
+    // make sure it is linked to the corresponding unversioned transcript
+    let reference0;
+
+    if (version && newVersionedTranscript) {
+        // unversioned transcript
+        try {
+            reference0 = await getTranscript(graphkbConn, unversionedId); // recursive call
+        } catch (err) {
+            logger.warn(`Unable to fetch unversionized transcript ${transcriptId}`);
+        }
+
+        // GeneralizationOf edge
+        if (reference0) {
+            try {
+                await graphkbConn.addRecord({
+                    content: { in: rid(reference1), out: rid(reference0) },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'GeneralizationOf',
+                });
+                logger.info(`link: unversioned transcript ${rid(reference0)} to versioned transcript ${rid(reference1)}`);
+            } catch (err) {
+                logger.warn(`failed to link the unversionized transcript ${err}`);
+            }
+        }
+    }
+
+    return reference1;
+};
+
+const loadCdsVariant = async (graphkbConn, transcriptId, cdsNotation) => {
     if (!cdsNotation.startsWith('c.')) {
         throw new Error(`invalid HGVSc notation (${cdsNotation})`);
     }
-    // add the cds variant
+
+    // get the reference
+    const reference1 = await getTranscript(graphkbConn, transcriptId);
+
+    // get the object representation of the variant from parsing
     const {
         noFeatures, multiFeature, prefix, ...variant
     } = parseVariant(cdsNotation, false);
     variant.reference1 = reference1;
     variant.type = rid(await graphkbConn.getVocabularyTerm(variant.type));
+
+    // add the cds variant
     const cds = rid(await graphkbConn.addVariant({
         content: { ...jsonifyVariant(variant) },
         existsOk: true,
         target: 'PositionalVariant',
     }));
+    logger.info(`cds: ${transcriptId} ${cdsNotation}; PositionalVariant ${cds}`);
+
     return cds;
 };
 
@@ -65,36 +121,35 @@ const loadProteinVariant = async (graphkbConn, gene, proteinNotation) => {
     if (!proteinNotation.startsWith('p.')) {
         throw new Error(`invalid HGVSp notation (${proteinNotation})`);
     }
-    proteinNotation = proteinNotation.replace(/^p\.\(/, 'p.').replace(/\)$/, '');
+    let proteinNotationFixed = proteinNotation.replace(/^p\.\(/, 'p.').replace(/\)$/, '');
 
-    if (!proteinNotation.includes('fs')) {
-        proteinNotation = proteinNotation.replace(/\*$/, 'Ter');
+    if (!proteinNotationFixed.includes('fs')) {
+        proteinNotationFixed = proteinNotationFixed.replace(/\*$/, 'Ter');
     }
     const reference1 = await graphkbConn.getUniqueRecordBy({
         filters: [
-            {
-                name: gene,
-            },
-            {
-                biotype: 'gene',
-            },
-            {
-                source: { filters: { name: 'entrez gene' }, target: 'Source' },
-            },
+            { name: gene },
+            { biotype: 'gene' },
+            { source: { filters: { name: ENTREZGENE_SOURCE_DEFN.name }, target: 'Source' } },
         ],
         target: 'Feature',
     });
-    // add the cds variant
+
+    // get the object representation of the variant from parsing
     const {
         noFeatures, multiFeature, prefix, ...variant
-    } = parseVariant(proteinNotation, false);
+    } = parseVariant(proteinNotationFixed, false);
     variant.reference1 = reference1;
     variant.type = rid(await graphkbConn.getVocabularyTerm(variant.type));
+
+    // add the protein variant
     const protein = rid(await graphkbConn.addVariant({
         content: { ...jsonifyVariant(variant) },
         existsOk: true,
         target: 'PositionalVariant',
     }));
+    logger.info(`protein: ${gene} ${proteinNotation}; PositionalVariant ${protein}`);
+
     return protein;
 };
 
@@ -112,43 +167,43 @@ const loadGenomicVariant = async (graphkbConn, chromosome, position, ref, alt) =
             throw new Error(`unexpected ref (${ref}) vs alt (${alt}) combination, do not match on first base`);
         }
         let [start, end] = position.split('_').map(p => Number.parseInt(p, 10));
-        ref = ref.slice(1);
-        alt = alt.slice(1);
+        const refTrunc = ref.slice(1);
+        const altTrunc = alt.slice(1);
 
-        if (!ref.length) {
+        if (!refTrunc.length) {
             // insertion or duplication
             if (!end) {
                 end = start + 1;
             }
-            notation = `g.${start}_${end}ins${ref}`;
-        } else if (!alt.length) {
+            notation = `g.${start}_${end}ins${refTrunc}`;
+        } else if (!altTrunc.length) {
             // deletion
-            if (ref.length > 1) {
+            if (refTrunc.length > 1) {
                 if (!end) {
-                    end = start + ref.length - 1;
+                    end = start + refTrunc.length - 1;
                 }
-                if (ref.length !== end - start + 1) {
+                if (refTrunc.length !== end - start + 1) {
                     throw new Error(`deletion position (${position}) span (${end - start + 1}) does not match the length of reference sequence (${ref.length}) deleted`);
                 }
             }
             end = (!end || end === start)
                 ? ''
                 : `_${end}`;
-            notation = `g.${start}${end}del${ref}`;
+            notation = `g.${start}${end}del${refTrunc}`;
         } else {
             // indel
-            if (ref.length > 1) {
+            if (refTrunc.length > 1) {
                 if (!end) {
-                    end = start + ref.length - 1;
+                    end = start + refTrunc.length - 1;
                 }
-                if (ref.length !== end - start + 1) {
+                if (refTrunc.length !== end - start + 1) {
                     throw new Error(`indel position (${position}) span (${end - start + 1}) does not match the length of reference sequence (${ref.length}) deleted`);
                 }
             }
             end = (!end || end === start)
                 ? ''
                 : `_${end}`;
-            notation = `g.${start}${end}del${ref}ins${alt}`;
+            notation = `g.${start}${end}del${refTrunc}ins${altTrunc}`;
         }
     }
     const reference1 = await graphkbConn.getUniqueRecordBy({
@@ -160,17 +215,22 @@ const loadGenomicVariant = async (graphkbConn, chromosome, position, ref, alt) =
         ],
         target: 'Feature',
     });
-    // add the cds variant
+
+    // get the object representation of the variant from parsing
     const {
         noFeatures, multiFeature, prefix, ...variant
     } = parseVariant(notation, false);
     variant.reference1 = reference1;
     variant.type = rid(await graphkbConn.getVocabularyTerm(variant.type));
+
+    // add the genomic variant
     const genomic = rid(await graphkbConn.addVariant({
         content: { ...jsonifyVariant(variant), assembly: 'hg19' },
         existsOk: true,
         target: 'PositionalVariant',
     }));
+    logger.info(`genomic: ${chromosome}, ${position}, ${ref}, ${alt}; Parsed as ${notation}; PositionalVariant ${genomic}`);
+
     return genomic;
 };
 
@@ -183,13 +243,23 @@ const loadGenomicVariant = async (graphkbConn, chromosome, position, ref, alt) =
  * @param {ApiConnection} opt.conn the API connection object
  */
 const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
-    const jsonList = await loadDelimToJson(filename);
-    // get the dbID for the source
-    const source = rid(await conn.addSource(SOURCE_DEFN));
+    logger.warn(`
+    ATTENTION!
+    All genomic variants are assumed to be:
+    - reported on the hg19/GRCh37 genome assembly;
+    - following the HGVS 3'-rule, not the VCF 5'-rule
+      (conversion needed from 'position' to 'pos_CGL')`);
+
     const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
+
+    // Input file
+    const jsonList = await loadDelimToJson(filename);
     logger.info(`Processing ${jsonList.length} records`);
-    // Upload the list of pubmed IDs
+
+    // source, disease & relevance RIDs
+    const relevance = await conn.getVocabularyTerm('pathogenic');
+    const source = rid(await conn.addSource(SOURCE_DEFN));
     const disease = await conn.getUniqueRecordBy({
         filters: {
             name: 'cancer',
@@ -197,17 +267,19 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
         sort: orderPreferredOntologyTerms,
         target: 'Disease',
     });
-    const relevance = await conn.getVocabularyTerm('pathogenic');
 
-    // load all transcripts (entrez sometimes misses requests for single ones for some reason)
+    // load all transcripts
+    // (entrez sometimes misses requests for single ones for some reason)
     logger.info('loading all transcripts');
     await _refseq.preLoadCache(conn);
 
+    // Main loop over records
     for (let index = 0; index < jsonList.length; index++) {
         const sourceId = hashRecordToId(jsonList[index]);
         const record = jsonList[index];
         logger.verbose(`processing (${index} / ${jsonList.length}) ${sourceId}`);
 
+        /** Uploading variant in CDS, protein and genomic format */
         let protein,
             cds,
             genomic;
@@ -225,47 +297,60 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
         }
 
         try {
-            if (protein && cds) {
+            genomic = await loadGenomicVariant(
+                conn, record.chr_CGL, record.pos_CGL, record.ref, record.alt,
+            );
+        } catch (err) {
+            logger.warn(`failed to create genomic representation of variant (${record.chromosome}:g.${record.position}${record.ref}>${record.alt}): ${err}`);
+        }
+
+        /** Linking variants together with 'Infers' edges */
+        if (protein && cds) {
+            try {
                 await conn.addRecord({
                     content: { in: rid(protein), out: rid(cds) },
                     existsOk: true,
                     fetchExisting: false,
                     target: 'Infers',
                 });
+                logger.info(`link: cds ${rid(cds)} to protein ${rid(protein)}`);
+            } catch (err) {
+                logger.warn(`failed to link the protein variant to the cds one. ${err}`);
             }
-        } catch (err) {
-            logger.warn(`failed to link the protein variant ${err}`);
         }
 
-        try {
-            genomic = await loadGenomicVariant(conn, record.chr_CGL, record.pos_CGL, record.ref, record.alt);
-        } catch (err) {
-            logger.warn(`failed to create genomic representation of variant (${record.chromosome}:g.${record.position}${record.ref}>${record.alt}): ${err}`);
-        }
-
-        try {
-            if (genomic) {
-                if (cds) {
+        if (genomic) {
+            if (cds) {
+                try {
                     await conn.addRecord({
                         content: { in: rid(cds), out: rid(genomic) },
                         existsOk: true,
                         fetchExisting: false,
                         target: 'Infers',
                     });
-                } else if (protein) {
+                    logger.info(`link: genomic ${rid(genomic)} to cds ${rid(cds)}`);
+                } catch (err) {
+                    logger.warn(`failed to link the genomic variant to the cds one. ${err}`);
+                }
+            }
+
+            if (protein) {
+                try {
                     await conn.addRecord({
                         content: { in: rid(protein), out: rid(genomic) },
                         existsOk: true,
                         fetchExisting: false,
                         target: 'Infers',
                     });
+                    logger.info(`link: genomic ${rid(genomic)} to protein ${rid(protein)}`);
+                } catch (err) {
+                    logger.warn(`failed to link the genomic variant to the protein one. ${err}`);
                 }
             }
-        } catch (err) {
-            logger.warn(`failed to link the genomic variant ${err}`);
         }
 
 
+        /** Loading statement */
         try {
             const variant = protein || cds || genomic;
 
