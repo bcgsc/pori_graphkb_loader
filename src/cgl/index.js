@@ -121,7 +121,7 @@ const loadProteinVariant = async (graphkbConn, gene, proteinNotation) => {
     if (!proteinNotation.startsWith('p.')) {
         throw new Error(`invalid HGVSp notation (${proteinNotation})`);
     }
-    if (proteinNotation[proteinNotation.length - 1] === '=') {
+    if (proteinNotation.includes('=')) {
         throw new Error(`unsupported wildtype variant (${proteinNotation})`);
     }
     let proteinNotationFixed = proteinNotation.replace(/^p\.\(/, 'p.').replace(/\)$/, '');
