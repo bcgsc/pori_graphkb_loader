@@ -228,7 +228,7 @@ const loadGenomicVariant = async (graphkbConn, chromosome, position, ref, alt) =
 
     // add the genomic variant
     const genomic = rid(await graphkbConn.addVariant({
-        content: { ...jsonifyVariant(variant), assembly: 'hg19' },
+        content: { ...jsonifyVariant(variant), assembly: 'grch38' },
         existsOk: true,
         target: 'PositionalVariant',
     }));
@@ -250,6 +250,11 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     ATTENTION!
     All genomic variants are assumed to be following the HGVS 3'-rule,
     not the VCF 5'-rule. Conversion needed from 'position' to 'pos_CGL'.
+
+    ATTENTION!
+    Previously, all genomic variants were assumed to be reported
+    on the hg19/GRCh37 genome assembly.
+    Now we're assuming they are reported on the latest GRCh38 assembly
 
     ATTENTION!
     Previously, protein variants were prefered over cds ones, which were
