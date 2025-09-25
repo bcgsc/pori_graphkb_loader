@@ -248,10 +248,14 @@ const loadGenomicVariant = async (graphkbConn, chromosome, position, ref, alt) =
 const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
     logger.warn(`
     ATTENTION!
-    All genomic variants are assumed to be:
-    - reported on the hg19/GRCh37 genome assembly;
-    - following the HGVS 3'-rule, not the VCF 5'-rule
-      (conversion needed from 'position' to 'pos_CGL')`);
+    All genomic variants are assumed to be following the HGVS 3'-rule,
+    not the VCF 5'-rule. Conversion needed from 'position' to 'pos_CGL'.
+
+    ATTENTION!
+    Previously, protein variants were prefered over cds ones, which were
+    prefered over genomic ones.
+    Now, if provided, the genomic variant is prefered, otherwise the cds one.
+    Protein variants are only used in last resort`);
 
     const counts = { error: 0, skip: 0, success: 0 };
     const errorList = [];
@@ -355,7 +359,7 @@ const uploadFile = async ({ filename, conn, errorLogPrefix }) => {
 
         /** Loading statement */
         try {
-            const variant = protein || cds || genomic;
+            const variant = genomic || cds || protein;
 
             if (!variant) {
                 throw new Error('unable to load any variants');
