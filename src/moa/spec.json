@@ -36,6 +36,10 @@
                                             ]
                                         },
                                         "rearrangement_type": {
+                                            "enum": [
+                                                "Translocation",
+                                                "Fusion"
+                                            ],
                                             "type": [
                                                 "string",
                                                 "null"
@@ -52,7 +56,7 @@
                                 {
                                     "properties": {
                                         "alternate_allele": {
-                                            "pattern": "^[ATCG-]*$",
+                                            "pattern": "^[ATCG]*$",
                                             "type": [
                                                 "string",
                                                 "null"
@@ -169,7 +173,7 @@
                                         },
                                         "pathogenic": {
                                             "enum": [
-                                                "1",
+                                                "1.0",
                                                 null
                                             ]
                                         },
@@ -281,8 +285,15 @@
                                 },
                                 {
                                     "properties": {
-                                        "cosmic_signature": {
+                                        "cosmic_signature_number": {
+                                            "pattern": "^\\d+$",
                                             "type": "string"
+                                        },
+                                        "cosmic_signature_version": {
+                                            "enum": [
+                                                "2.0",
+                                                "2"
+                                            ]
                                         },
                                         "feature_type": {
                                             "const": "mutational_signature"
@@ -290,7 +301,8 @@
                                     },
                                     "required": [
                                         "feature_type",
-                                        "cosmic_signature"
+                                        "cosmic_signature_number",
+                                        "cosmic_signature_version"
                                     ],
                                     "type": "object"
                                 },

@@ -1,12 +1,12 @@
 const readXlsxFile = require('read-excel-file/node');
-const { parseVariant, stringifyVariant, jsonifyVariant } = require('@bcgsc-pori/graphkb-parser');
+const {parseVariant, stringifyVariant, jsonifyVariant} = require('@bcgsc-pori/graphkb-parser');
 
-const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
 const { logger } = require('../logging');
 const { rid } = require('../graphkb');
 const _pubmed = require('../entrez/pubmed');
 const _entrezGene = require('../entrez/gene');
 const { PMC4232638: SOURCE_DEFN } = require('../sources');
+
 
 const TP53_COLS = {
     DOM: 'Functional categories for TP53 - Dominant negative activity',

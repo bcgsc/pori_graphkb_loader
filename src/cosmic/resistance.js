@@ -3,7 +3,8 @@
  */
 const fs = require('fs');
 
-const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
+//const { variant: { parse: variantParser } } = require('@bcgsc-pori/graphkb-parser');
+const {parseVariant, stringifyVariant, jsonifyVariant} = require('@bcgsc-pori/graphkb-parser');
 const {
     loadDelimToJson,
     convertRowFields,
@@ -76,7 +77,7 @@ const processVariants = async ({ conn, record, source }) => {
 
     try {
         // add the protein variant with its protein translation
-        const variant = jsonifyVariant(parseVariant(record.protein, false));
+        const variant = variantParser(record.protein, false).toJSON();
         variant.type = rid(await conn.getVocabularyTerm(variant.type));
 
         const reference1 = rid(await _ensembl.fetchAndLoadById(
@@ -112,7 +113,7 @@ const processVariants = async ({ conn, record, source }) => {
     // create the cds variant
     if (record.cds && record.cds.trim()) {
         try {
-            const variant = jsonifyVariant(parseVariant(record.cds, false));
+            const variant = variantParser(record.cds, false).toJSON();
             // get the ensembl transcript
             const reference1 = rid(await _ensembl.fetchAndLoadById(
                 conn,
@@ -142,7 +143,7 @@ const processVariants = async ({ conn, record, source }) => {
     // add the genomic representation
     if (record.genomic) {
         try {
-            const variant = jsonifyVariant(parseVariant(record.genomic, false));
+            const variant = variantParser(record.genomic, false).toJSON();
             // get the chromosome
             const reference1 = rid(await conn.getUniqueRecordBy({
                 filters: {

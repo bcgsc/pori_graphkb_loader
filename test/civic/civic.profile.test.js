@@ -226,7 +226,7 @@ describe('MolecularProfile.process()', () => {
         );
     });
 
-    test('Case that should throw a NotImplementedError', () => {
+    test('test case that should throw a NotImplementedError', () => {
         const molecularProfile = {
             id: 1,
             parsedName: [
