@@ -390,27 +390,27 @@
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "vicc",
+                    "source": "ipr",
                     "target": "civic-b1"
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "vicc",
+                    "source": "ipr",
                     "target": "civic-b2"
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "vicc",
+                    "source": "ipr",
                     "target": "civic-b3"
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "vicc",
+                    "source": "ipr",
                     "target": "civic-b4"
                 },
                 {
                     "class": "CrossReferenceOf",
-                    "source": "vicc",
+                    "source": "ipr",
                     "target": "civic-b5"
                 },
                 {
@@ -1038,9 +1038,6 @@
         },
         "cpic": {
             "name": "cpic"
-        },
-        "vicc": {
-            "name": "Variant Interpretation for Cancer Consortium"
         },
         "default": {
             "name": "graphkb"
