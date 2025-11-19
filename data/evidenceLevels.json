@@ -860,16 +860,6 @@
         "profyle-t1": {
             "description": "Biomarkers that predict response or resistance to FDA/HC-approved therapies",
             "displayName": "PROFYLE T1",
-            "links": [
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t1a"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t1b"
-                }
-            ],
             "name": "PROFYLE Therapeutic Level 1",
             "source": "profyle",
             "sourceId": "T1"
