@@ -227,12 +227,6 @@
             "sourceId": "d5",
             "url": "https://civicdb.org/glossary"
         },
-        "civic-dswgw": {
-            "displayName": "CIViC DSWGW",
-            "name": "dswgw",
-            "source": "civic",
-            "sourceId": "dswgw"
-        },
         "civic-e1": {
             "description": "Inferential association made from experimental data. Evidence likely does not belong in CIViC. Claim is not supported well by experimental evidence. Results are not reproducible, or have very small sample size. No follow-up is done to validate novel claims.",
             "displayName": "CIViC E1",
