@@ -46,6 +46,27 @@
             "source": "cgi",
             "sourceId": "pre-clinical"
         },
+        "cpic-strong": {
+            "description" : "Strong evidence supporting function (from both in vitro and clinical studies)",
+            "displayName": "cpic strong",
+            "name": "cpic strong",
+            "source": "cpic",
+            "sourceId": "cpic strong"
+        },
+        "cpic-moderate": {
+            "description" : "Moderate evidence supporting function (from in vitro and clinical/ ex vivo studies)",
+            "displayName": "cpic moderate",
+            "name": "cpic moderate",
+            "source": "cpic",
+            "sourceId": "cpic moderate"
+        },
+        "cpic-limited": {
+            "description" : "",
+            "displayName": "cpic limited",
+            "name": "cpic limited",
+            "source": "cpic",
+            "sourceId": "cpic limited"
+        },
         "civic-a1": {
             "description": "Trusted association in clinical medicine that routinely informs treatment, including large scale metaanalyses, standard of care associations, and organizational recommendations. Evidence likely does not belong in CIViC. Claim is not supported well by experimental evidence. Results are not reproducible, or have very small sample size. No follow-up is done to validate novel claims.",
             "displayName": "CIViC A1",
@@ -410,6 +431,11 @@
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
+                    "target": "cpic-strong"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
                     "target": "moa-clinical evidence"
                 },
                 {
@@ -499,6 +525,11 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "civic-c5"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "cpic-moderate"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -650,6 +681,11 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "civic-e5"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "cpic-limited"
                 },
                 {
                     "class": "CrossReferenceOf",
