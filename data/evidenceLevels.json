@@ -43,6 +43,7 @@
         },
         "cgi-pre-clinical": {
             "displayName": "CGI Pre-clinical",
+            "preclinical": true,
             "source": "cgi",
             "sourceId": "pre-clinical"
         },
@@ -205,6 +206,7 @@
             "description": "preclinical evidence from cell line studies, mouse models, and other in vitro or in vivo models.",
             "displayName": "CIViC D",
             "name": "d",
+            "preclinical": true,
             "source": "civic",
             "sourceId": "d"
         },
@@ -212,6 +214,7 @@
             "description": "Preclinical evidence from cell line studies, mouse models, and other in vitro or in vivo models. Evidence likely does not belong in CIViC. Claim is not supported well by experimental evidence. Results are not reproducible, or have very small sample size. No follow-up is done to validate novel claims.",
             "displayName": "CIViC D1",
             "name": "d1",
+            "preclinical": true,
             "source": "civic",
             "sourceId": "d1",
             "url": "https://civicdb.org/glossary"
@@ -220,6 +223,7 @@
             "description": "Preclinical evidence from cell line studies, mouse models, and other in vitro or in vivo models. Evidence is not well supported by experimental data, and little follow-up data is available. Publication is from a journal with low academic impact. Experiments may lack proper controls, have small sample size, or are not statistically convincing.",
             "displayName": "CIViC D2",
             "name": "d2",
+            "preclinical": true,
             "source": "civic",
             "sourceId": "d2",
             "url": "https://civicdb.org/glossary"
@@ -228,6 +232,7 @@
             "description": "Preclinical evidence from cell line studies, mouse models, and other in vitro or in vivo models. Evidence is convincing, but not supported by a breadth of experiments. May be smaller scale projects, or novel results without many follow-up experiments. Discrepancies from expected results are explained and not concerning.",
             "displayName": "CIViC D3",
             "name": "d3",
+            "preclinical": true,
             "source": "civic",
             "sourceId": "d3",
             "url": "https://civicdb.org/glossary"
@@ -236,6 +241,7 @@
             "description": "Preclinical evidence from cell line studies, mouse models, and other in vitro or in vivo models. Strong, well supported evidence. Experiments are well controlled, and results are convincing. Any discrepancies from expected results are well-explained and not concerning.",
             "displayName": "CIViC D4",
             "name": "d4",
+            "preclinical": true,
             "source": "civic",
             "sourceId": "d4",
             "url": "https://civicdb.org/glossary"
@@ -244,6 +250,7 @@
             "description": "Preclinical evidence from cell line studies, mouse models, and other in vitro or in vivo models. Strong, well supported evidence from a lab or journal with respected academic standing. Experiments are well controlled, and results are clean and reproducible across multiple replicates. Evidence confirmed using separate methods.",
             "displayName": "CIViC D5",
             "name": "d5",
+            "preclinical": true,
             "source": "civic",
             "sourceId": "d5",
             "url": "https://civicdb.org/glossary"
@@ -650,6 +657,7 @@
                     "target": "profyle-t4b"
                 }
             ],
+            "preclinical": true,
             "source": "ipr",
             "sourceId": "d"
         },
@@ -770,6 +778,7 @@
         "moa-preclinical": {
             "displayName": "MOAlmanac Preclinical",
             "name": "Preclinical",
+            "preclinical": true,
             "source": "moa",
             "sourceId": "Preclinical"
         },
@@ -817,6 +826,7 @@
             "description": "Compelling biological evidence supports the biomarker as being predictive of response to a drug",
             "displayName": "OncoKB 4",
             "name": "4",
+            "preclinical": true,
             "source": "oncokb",
             "sourceId": "4",
             "url": "http://oncokb.org/api/v1/levels"
@@ -996,6 +1006,7 @@
                 }
             ],
             "name": "PROFYLE Therapeutic Level 4",
+            "preclinical": true,
             "source": "profyle",
             "sourceId": "T4"
         },
@@ -1004,6 +1015,7 @@
             "description": "Biomarkers that show plausible therapeutic significance based on preclinical studies in the same tumour type",
             "displayName": "PROFYLE T4A",
             "name": "PROFYLE Therapeutic Level 4A",
+            "preclinical": true,
             "source": "profyle",
             "sourceId": "T4A"
         },
@@ -1012,6 +1024,7 @@
             "description": "Biomarkers that show plausible therapeutic significance based on preclinical studies in another tumour type",
             "displayName": "PROFYLE T4B",
             "name": "PROFYLE Therapeutic Level 4B",
+            "preclinical": true,
             "source": "profyle",
             "sourceId": "T4B"
         },
