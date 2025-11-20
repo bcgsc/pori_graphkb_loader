@@ -629,11 +629,6 @@
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
-                    "target": "civic-dswgw"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
                     "target": "moa-preclinical"
                 },
                 {
