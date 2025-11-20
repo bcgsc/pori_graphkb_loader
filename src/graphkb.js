@@ -59,7 +59,7 @@ const shouldUpdate = (modelIn, originalContentIn, newContentIn, upsertCheckExclu
         ? schema.get(modelIn)
         : modelIn;
     const originalContent = simplifyRecordsLinks(originalContentIn);
-    const formatted = model.formatRecord(simplifyRecordsLinks(newContentIn), {
+    const formatted = schema.formatRecord(model.name, simplifyRecordsLinks(newContentIn), {
         addDefaults: false,
         dropExtra: true,
         ignoreMissing: true,
