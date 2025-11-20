@@ -549,7 +549,17 @@
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
+                    "target": "profyle-d4"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
                     "target": "profyle-p3"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "profyle-p4"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -623,16 +633,6 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "oncokb-4"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
-                    "target": "profyle-d4"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
-                    "target": "profyle-p4"
                 },
                 {
                     "class": "CrossReferenceOf",
