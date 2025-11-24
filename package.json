@@ -13,7 +13,7 @@
   "license": "GPL-3",
   "dependencies": {
     "@bcgsc-pori/graphkb-parser": "^2.1.0",
-    "@bcgsc-pori/graphkb-schema": "^3.14.3",
+    "@bcgsc-pori/graphkb-schema": "~4.1.0",
     "ajv": "^6.10.0",
     "argparse": "^2.0.1",
     "csv-parse": "^4.6.5",
