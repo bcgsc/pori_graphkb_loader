@@ -59,7 +59,7 @@ const shouldUpdate = (modelIn, originalContentIn, newContentIn, upsertCheckExclu
         ? schema.get(modelIn)
         : modelIn;
     const originalContent = simplifyRecordsLinks(originalContentIn);
-    const formatted = model.formatRecord(simplifyRecordsLinks(newContentIn), {
+    const formatted = schema.formatRecord(model.name, simplifyRecordsLinks(newContentIn), {
         addDefaults: false,
         dropExtra: true,
         ignoreMissing: true,
@@ -131,66 +131,59 @@ const convertRecordToQueryFilters = (record) => {
  * @returns {Number} the sorting number (-1, 0, +1)
  */
 const orderPreferredOntologyTerms = (term1, term2) => {
-    // prefer non-deprecated terms
-    if (term1.deprecated && !term2.deprecated) {
-        return 1;
-    } if (term2.deprecated && !term1.deprecated) {
+    // prefer non-deprecated terms over deprecated ones
+    if (!term1.deprecated && term2.deprecated) {
         return -1;
+    } if (term1.deprecated && !term2.deprecated) {
+        return 1;
     }
     // prefer terms with independent sourceId
     if (term1.alias === false & term2.alias !== false) {
         return -1;
-    } if (term2.alias === false & term1.alias !== false) {
+    } if (term1.alias !== false & term2.alias === false) {
         return 1;
     }
-    if (term1.dependency == null & term2.dependency != null) {
+    if (nullOrUndefined(term1.dependency) & !nullOrUndefined(term2.dependency)) {
         return -1;
-    } if (term2.dependency == null & term1.dependency != null) {
+    } if (!nullOrUndefined(term1.dependency) & nullOrUndefined(term2.dependency)) {
         return 1;
     }
     // when terms have the same sourceId and source
-    if (term1.sourceId === term2.sourceId && rid(term1.source, true) === rid(term2.source, true)) {
+    if (
+        (term1.sourceId && term1.sourceId === term2.sourceId)
+        && (rid(term1.source, true) && rid(term1.source, true) === rid(term2.source, true))
+    ) {
         // prefer generic to versioned terms (will not be together unless version not specified)
-        if (nullOrUndefined(term1.sourceIdVersion) && !(term2.sourceIdVersion)) {
+        if (nullOrUndefined(term1.sourceIdVersion) && !nullOrUndefined(term2.sourceIdVersion)) {
             return -1;
-        } if (nullOrUndefined(term2.sourceIdVersion) && !(term1.sourceIdVersion)) {
+        } if (!nullOrUndefined(term1.sourceIdVersion) && nullOrUndefined(term2.sourceIdVersion)) {
             return 1;
         }
         // prefer newer/later versions
-        if (term1.sourceIdVersion < term2.sourceIdVersion) {
+        if (term1.sourceIdVersion > term2.sourceIdVersion) {
             return -1;
-        } if (term1.sourceIdVersion > term2.sourceIdVersion) {
+        } if (term1.sourceIdVersion < term2.sourceIdVersion) {
             return 1;
         }
-        // prefer newer/later source version
-        if (term1.source && term2.source) {
-            if (term1.source.version < term2.source.version) {
-                return -1;
-            } if (term1.source.version > term2.source.version) {
-                return 1;
-            }
-        }
-        // prefer terms with descriptions
-        if (term1.description && !term2.description) {
-            return -1;
-        } if (!term1.description && term2.description) {
-            return 1;
-        }
-    } if (term1.source && term2.source) {
+    } else if (term1.source && term2.source) {
         // use source rank to sort results
         if (term1.source.sort < term2.source.sort) {
             return -1;
         } if (term1.source.sort > term2.source.sort) {
             return 1;
-        } if (term1.source.version < term2.source.version) {
-            return -1;
-        } if (term1.source.version > term2.source.version) {
-            return 1;
-        } if (term1.description && !term2.description) {
-            return -1;
-        } if (!term1.description && term2.description) {
-            return 1;
         }
+    }
+    // prefer terms with descriptions
+    if (term1.description && !term2.description) {
+        return -1;
+    } if (!term1.description && term2.description) {
+        return 1;
+    }
+    // prefer terms most recently updated
+    if (term1.updatedAt > term2.updatedAt) {
+        return -1;
+    } if (term1.updatedAt < term2.updatedAt) {
+        return 1;
     }
     return 0;
 };

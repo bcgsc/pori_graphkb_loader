@@ -8,7 +8,7 @@ const Ajv = require('ajv');
 const fs = require('fs');
 const jsonpath = require('jsonpath');
 
-const { schema, schema: { schema: kbSchema } } = require('@bcgsc-pori/graphkb-schema');
+const { schema } = require('@bcgsc-pori/graphkb-schema');
 const SOURCE_DEFAULTS = require('../sources');
 
 const { logger } = require('../logging');
@@ -22,7 +22,7 @@ const INPUT_ERROR_CODE = 2;
 const validateSpec = ajv.compile({
     properties: {
         class: {
-            enum: kbSchema.Ontology.descendantTree(true).map(model => model.name),
+            enum: schema.descendants('Ontology', { excludeAbstract: true }),
             type: 'string',
         },
         defaultNameToSourceId: { type: 'boolean' },
