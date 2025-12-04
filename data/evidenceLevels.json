@@ -62,7 +62,7 @@
             "sourceId": "cpic moderate"
         },
         "cpic-limited": {
-            "description" : "",
+            "description" : "In vitro data only and/or limited clinical/ex vivo data supporting function",
             "displayName": "cpic limited",
             "name": "cpic limited",
             "source": "cpic",
@@ -438,11 +438,6 @@
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
-                    "target": "cpic-strong"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
                     "target": "moa-clinical evidence"
                 },
                 {
@@ -532,11 +527,6 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "civic-c5"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
-                    "target": "cpic-moderate"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -684,11 +674,6 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "civic-e5"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
-                    "target": "cpic-limited"
                 },
                 {
                     "class": "CrossReferenceOf",
