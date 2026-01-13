@@ -302,6 +302,11 @@
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
+                    "target": "cgi-cpic guidelines"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
                     "target": "cgi-european leukemianet guidelines"
                 },
                 {
