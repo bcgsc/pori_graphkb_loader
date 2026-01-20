@@ -302,6 +302,11 @@
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
+                    "target": "cgi-cpic guidelines"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
                     "target": "cgi-european leukemianet guidelines"
                 },
                 {
@@ -725,32 +730,6 @@
         },
         "moa-inferential": {
             "displayName": "MOAlmanac Inferential",
-            "links": [
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "civic-e1"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "civic-e2"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "civic-e3"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "civic-e4"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "civic-e5"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t5"
-                }
-            ],
             "name": "Inferential",
             "source": "moa",
             "sourceId": "Inferential"
@@ -909,16 +888,6 @@
         "profyle-t2": {
             "description": "Biomarkers that predict response or resistance to therapies based on well-powered clinical trials",
             "displayName": "PROFYLE T2",
-            "links": [
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t2a"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t2b"
-                }
-            ],
             "name": "PROFYLE Therapeutic Level 2",
             "source": "profyle",
             "sourceId": "T2"
@@ -942,16 +911,6 @@
         "profyle-t3": {
             "description": "Biomarkers that predict response or resistance to therapies based on small series, case-reports, or that serve as inclusion criteria for a clinical trial",
             "displayName": "PROFYLE T3",
-            "links": [
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t3a"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t3b"
-                }
-            ],
             "name": "PROFYLE Therapeutic Level 3",
             "source": "profyle",
             "sourceId": "T3"
@@ -975,16 +934,6 @@
         "profyle-t4": {
             "description": "Biomarkers that show plausible therapeutic significance based on preclinical studies",
             "displayName": "PROFYLE T4",
-            "links": [
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t4a"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t4b"
-                }
-            ],
             "name": "PROFYLE Therapeutic Level 4",
             "preclinical": true,
             "source": "profyle",
@@ -1011,16 +960,6 @@
         "profyle-t5": {
             "description": "Novel biomarkers predicted to be oncogenic in therapeutically actionable genes, or evidence of activation of a therapeutically actionable pathway",
             "displayName": "PROFYLE T5",
-            "links": [
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t5a"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "target": "profyle-t5b"
-                }
-            ],
             "name": "PROFYLE Therapeutic Level 5",
             "source": "profyle",
             "sourceId": "T5"
