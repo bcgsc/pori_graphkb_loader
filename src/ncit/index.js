@@ -212,26 +212,34 @@ const cleanRawRow = (rawRow) => {
         row.species = speciesMatch(row.name);
     }
 
-    // use the synonym name if no name given
-    if (!row.name) {
-        row.name = sourceId;
-    }
-
+    // url
     const url = xmlTag.replace(/^</, '').replace(/>$/, '');
 
-    // add the parents
+    // name
+    // capitalization needs to remain until the end, for displayName
+    let { name } = row;
+
+    // if no name, use 1st synonym as prefered name, with fallback to sourceId
+    if (!name) {
+        name = sourceId;
+
+        if (row.synonyms) {
+            [name] = row.synonyms;
+        }
+    }
+
+    // synonyms
+    const synonyms = setSynonyms(row.synonyms, name.toLowerCase());
+
     return {
         ...row,
-        displayName: row.name.toLowerCase() === sourceId.toLowerCase()
+        displayName: name.toLowerCase() === sourceId
             ? sourceId
-            : `${row.name} [${sourceId}]`,
+            : `${name} [${sourceId}]`,
         endpoint,
-        name: row.name.toLowerCase(),
-        original_synonyms: row.synonyms,
+        name: name.toLowerCase(),
         sourceId,
-        synonyms: Array.from(new Set(row.synonyms))
-            .map(s => s.toLowerCase())
-            .filter(s => s !== row.name.toLowerCase()),
+        synonyms,
         url,
     };
 };
