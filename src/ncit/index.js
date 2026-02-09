@@ -344,13 +344,16 @@ const uploadFile = async ({
             }
         }
 
-        // check list of synonyms to find non-duplicate names - first position in this list is the 'preferred name' from ncit
-        const preferredNames = dups.map(dup => dup.original_synonyms[0]);
-        const allPreferredNamesDifferent = () => new Set(preferredNames).size === preferredNames.length;
+        // check list of synonyms to find non-duplicate names;
+        // first position in this list is presumed to be the 'preferred name' from ncit
+        const preferredNames = dups.map(dup => dup.synonyms[0]);
+        const allPreferredNamesDifferent = () => (
+            new Set(preferredNames).size === preferredNames.length
+        );
 
         if (allPreferredNamesDifferent) {
             for (const dup of dups) {
-                dup.name = dup.original_synonyms[0];
+                dup.name = dup.synonyms[0];
                 logger.log('info', `record with non-unique name (${name}, ${dup.sourceId}) being loaded with its preferred name (${dup.name});`);
             }
             continue;
@@ -422,7 +425,14 @@ const uploadFile = async ({
 
             // create the new record
             const {
-                endpoint, sourceId, description, url, name, deprecated, displayName,
+                displayName,
+                deprecated,
+                description,
+                endpoint,
+                name,
+                sourceId,
+                synonyms,
+                url,
             } = row;
 
             // main Therapy|Disease|AnatomicalEntity node record
@@ -438,7 +448,7 @@ const uploadFile = async ({
                 },
                 existsOk: true, // test behavior !!!
                 fetchConditions: convertRecordToQueryFilters({
-                    name: row.name,
+                    name,
                     source,
                     sourceId,
                 }),
@@ -450,18 +460,15 @@ const uploadFile = async ({
             });
             cached[record.sourceId] = record;
 
-            // add the synonyms
-            for (const synonym of row.synonyms) {
-                if (synonym.toLowerCase() === row.name.toLowerCase()) {
-                    continue;
-                }
-
+            // add the synonyms as alias records
+            for (const [synonym, synonymOriginal] of synonyms) {
                 try {
+                    // alias Therapy|Disease|AnatomicalEntity node record
                     const alias = await conn.addRecord({
                         content: {
                             alias: true,
                             deprecated,
-                            displayName: `${synonym} [${record.sourceId}]`,
+                            displayName: `${synonymOriginal} [${record.sourceId}]`,
                             name: synonym,
                             source,
                             sourceId: record.sourceId,
