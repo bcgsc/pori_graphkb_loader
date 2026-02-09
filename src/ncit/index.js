@@ -95,6 +95,47 @@ const pickEndpoint = (conceptName, parentConcepts = '') => {
 };
 
 /**
+ * Given an array of synonyms, sets the final collection of synonyms:
+ * - Different from the record's name
+ * - No duplicates when compared in lowercase
+ * - One uppercase version kept, if any, for displayName purpose.
+ *
+ * Returns a Map where:
+ * - key is the lowercase synonym
+ * - value is one of the uppercase version if any, otherwise lowercase
+ *
+ * @param {string[]} synonyms the synonym names to be formatted
+ * @param {string} name the record's name to be filtered out
+ * @returns {Map<string, string>}
+ */
+const setSynonyms = (synonyms, name) => {
+    const formatted = new Map();
+
+    // distinct lowercase synonyms
+    synonyms.forEach((el) => {
+        const k = el.toLowerCase();
+
+        if (!formatted.has(k)) {
+            formatted.set(k, new Set());
+        }
+        formatted.get(k).add(el);
+    });
+
+    // Keep first element with at least one uppercase letter, if any
+    for (const [key, valueSet] of formatted) {
+        const values = Array.from(valueSet);
+        const firstWithUpper = values.find(str => /[A-Z]/.test(str));
+        formatted.set(key, firstWithUpper || key);
+    }
+
+    // Remove name from synonyms
+    formatted.delete(name.toLowerCase());
+
+    return formatted;
+};
+
+
+/**
  * Convert the raw row record to a standard form
  *
  * Given a raw row object,
@@ -484,5 +525,6 @@ module.exports = {
     SOURCE_DEFN,
     cleanRawRow,
     pickEndpoint,
+    setSynonyms,
     uploadFile,
 };
