@@ -1,4 +1,4 @@
-const { cleanRawRow, pickEndpoint } = require('../src/ncit');
+const { cleanRawRow, pickEndpoint, setSynonyms } = require('../src/ncit');
 
 describe('cleanRawRow', () => {
     const rawRow = {
@@ -152,5 +152,24 @@ describe('pickEndpoint', () => {
     test('Concept do not correspond to any endpoint and there is no parent', () => {
         expect(() => pickEndpoint('A demogorgon', ''))
             .toThrow('Concept not implemented (A demogorgon)');
+    });
+});
+
+describe('setSynonyms', () => {
+    test('Synonyms formatted', () => {
+        expect([...setSynonyms([
+            'abc',
+            'Abc',
+            'ABC',
+            'def',
+            'ghi', // name to be removed
+        ], 'Ghi'), // name passed as capitalized
+        ]).toEqual([
+            // All names (1st pos) lowercase
+            // original displayName (2nd pos); with uppercases if any
+            // name removed when compared in lowercase
+            ['abc', 'Abc'],
+            ['def', 'def'],
+        ]);
     });
 });
