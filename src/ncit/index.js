@@ -59,6 +59,9 @@ const DEPRECATED = [
 
 /**
  * Determine if the term is a body part, disease, or drug
+ *
+ * Returns the corresponding GraphKB class name:
+ * 'AnatomicalEntity' | 'Disease' | 'Therapy'
  */
 const pickEndpoint = (conceptName, parentConcepts = '') => {
     let endpoint = null;
@@ -93,6 +96,9 @@ const pickEndpoint = (conceptName, parentConcepts = '') => {
 
 /**
  * Convert the raw row record to a standard form
+ *
+ * Given a raw row object,
+ * returns a formatted/cleaned row object
  */
 const cleanRawRow = (rawRow) => {
     const {
@@ -127,7 +133,7 @@ const cleanRawRow = (rawRow) => {
             .filter(s => s)),
     };
     const sourceId = id.toLowerCase().trim();
-    const endpoint = pickEndpoint(semanticType, parentConcepts);
+    const endpoint = pickEndpoint(semanticType, parentConcepts); // GraphKB class name
 
     // split up the name if it is a list
     if (row.name && row.name.includes('|')) {
@@ -204,15 +210,15 @@ const uploadFile = async ({
     const rawRows = await loadDelimToJson(filename, {
         delim: '\t',
         header: [
-            'id',
-            'xmlTag',
-            'parents',
-            'synonyms',
-            'definition',
-            'name',
-            'conceptStatus',
-            'semanticType',
-            'conceptInSubset',
+            'id', // code
+            'xmlTag', // concept IRI
+            'parents', // parents
+            'synonyms', // synonyms
+            'definition', // definition
+            'name', // display name
+            'conceptStatus', // concept status
+            'semanticType', // semantic type
+            'conceptInSubset', // concept in subset; used to populate parentConcepts
         ],
     });
     // determine unresolvable records
@@ -244,6 +250,7 @@ const uploadFile = async ({
         }
 
         try {
+            // row formatting
             const row = cleanRawRow(raw);
 
             if (row.deprecated) {
@@ -270,7 +277,8 @@ const uploadFile = async ({
     logger.verbose(`skipping (${deprecatedRows.length}) retired or obsolete concepts: ${deprecatedRows.map(d => d.sourceId).join(',')}`);
     const rejected = new Set();
 
-    // if possible, assign the row another name from its list of synonyms (instead of the display name)
+    // For duplicated names,
+    // if possible, assign the row another name from its list of synonyms
     for (const [name, dups] of Object.entries(nameDuplicates)) {
         if (dups.length < 2) {
             continue;
@@ -312,6 +320,7 @@ const uploadFile = async ({
     const subclassEdges = [];
 
     // list the ncit records already loaded
+    // query only the main records (aliased terms); should be one per sourceId
     const cached = {};
     logger.info('getting previously loaded records');
     const cachedRecords = await conn.getRecords({
@@ -336,6 +345,7 @@ const uploadFile = async ({
 
     const recordsById = {};
 
+    // Adding terms and their synonyms to GraphKB
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
 
@@ -352,7 +362,8 @@ const uploadFile = async ({
             }
             recordsById[row.sourceId] = row;
 
-            // add the parents
+            // Saving parent term relationships.
+            // SubClassOf edges will be created at the very end.
             subclassEdges.push(...row.parents.map(parent => [row.sourceId, parent]));
 
             if (exists.has(existsHashCheck(row)) && !ignoreCache) {
@@ -364,6 +375,8 @@ const uploadFile = async ({
             const {
                 endpoint, sourceId, description, url, name, deprecated, displayName,
             } = row;
+
+            // main Therapy|Disease|AnatomicalEntity node record
             record = await conn.addRecord({
                 content: {
                     deprecated,
@@ -374,7 +387,7 @@ const uploadFile = async ({
                     sourceId,
                     url,
                 },
-                existsOk: true,
+                existsOk: true, // test behavior !!!
                 fetchConditions: convertRecordToQueryFilters({
                     name: row.name,
                     source,
@@ -417,6 +430,7 @@ const uploadFile = async ({
                         ],
                     });
 
+                    // AliasOf edge
                     if (rid(alias) !== rid(record)) {
                         await conn.addRecord({
                             content: { in: rid(record), out: rid(alias), source },
@@ -439,7 +453,7 @@ const uploadFile = async ({
         }
     }
 
-    // now create all the subclass relationships
+    // Create SubClassOf relationships between child and parent records
     for (const [childSourceId, parentSourceId] of subclassEdges) {
         if (cached[childSourceId] && cached[parentSourceId]) {
             await conn.addRecord({
