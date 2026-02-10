@@ -109,17 +109,23 @@ describe('cleanRawRow', () => {
         ['keep first of multiple names', '', 'C10000|C20000', 'c10000'],
         ['extra separators', '', '||C10000', 'c10000'],
     ])('Has expected name value: %s', (_, id, name, expected) => {
-        const row = { ...rawRow, id, name };
+        const row = {
+            ...rawRow,
+            id,
+            name,
+            // clearing synonyms since they can be used as name if no name provided
+            synonyms: '',
+        };
         expect(cleanRawRow(row)).toHaveProperty('name', expected);
     });
 
     // synonyms property's value
     test.each([
-        ['to array', '', 'a|b', ['a', 'b']],
-        ['to lowercase', '', 'A|B', ['a', 'b']],
+        ['to array', 'C', 'a|b', ['a', 'b']],
+        ['keep capitalization', 'C', 'A|B', ['A', 'B']],
         ['filter by name', 'C', 'a|b|c', ['a', 'b']],
-        ['remove duplicate', '', 'a|a', ['a']],
-        ['extra separators', '', '||a|b', ['a', 'b']],
+        ['remove duplicate', 'C', 'a|a', ['a']],
+        ['extra separators', 'C', '||a|b', ['a', 'b']],
         ['add extra names to synonyms', 'a|b', 'c|d', ['c', 'd', 'b']],
     ])('Has expected synonyms value: %s', (_, name, synonyms, expected) => {
         const row = { ...rawRow, name, synonyms };
