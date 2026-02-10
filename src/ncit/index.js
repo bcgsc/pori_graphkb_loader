@@ -255,13 +255,13 @@ const uploadFile = async ({
         header: [
             'id', // code
             'xmlTag', // concept IRI
-            'parents', // parents
-            'synonyms', // synonyms
-            'definition', // definition
+            'parents',
+            'synonyms',
+            'definition',
             'name', // display name
-            'conceptStatus', // concept status
-            'semanticType', // semantic type
-            'conceptInSubset', // concept in subset; used to populate parentConcepts
+            'conceptStatus',
+            'semanticType',
+            'conceptInSubset', // ...used to populate parentConcepts
         ],
     });
     // determine unresolvable records
