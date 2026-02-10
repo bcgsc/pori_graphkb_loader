@@ -178,6 +178,7 @@ const cleanRawRow = (rawRow) => {
         row.synonyms.push(...names.slice(1));
     }
 
+    // utility function for non-human/mouse-like species matching
     const speciesMatch = (termName) => {
         const m = /\b(murine|mouse|rat)\b/ig.exec(termName);
 
@@ -216,8 +217,8 @@ const cleanRawRow = (rawRow) => {
     if (!name) {
         name = sourceId;
 
-        if (row.synonyms) {
-            [name] = row.synonyms;
+        if (row.synonyms && row.synonyms[0]) {
+            name = row.synonyms[0];
         }
     }
 
