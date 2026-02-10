@@ -95,43 +95,36 @@ const pickEndpoint = (conceptName, parentConcepts = '') => {
 };
 
 /**
- * Given an array of synonyms, sets the final collection of synonyms:
- * - Different from the record's name
- * - No duplicates when compared in lowercase
- * - One uppercase version kept, if any, for displayName purpose.
+ * Synonyms filtering:
+ * - no duplicates when compared in lowercase
+ * - for each unique term, one original version kept only
+ * - must be different from the record's name
  *
- * Returns a Map where:
- * - key is the lowercase synonym
- * - value is one of the uppercase version if any, otherwise lowercase
+ * Returns an array of filtered synonyms
  *
  * @param {string[]} synonyms the synonym names to be formatted
  * @param {string} name the record's name to be filtered out
- * @returns {Map<string, string>}
+ * @returns {string[]}
  */
-const setSynonyms = (synonyms, name) => {
-    const formatted = new Map();
+const filterSynonyms = (synonyms, name) => {
+    const filtered = new Map();
 
-    // distinct lowercase synonyms
+    // distinct lowercase synonyms as key
     synonyms.forEach((el) => {
         const k = el.toLowerCase();
 
-        if (!formatted.has(k)) {
-            formatted.set(k, new Set());
+        if (!filtered.has(k)) {
+            // Keep 1st one, so putative prefered one is conserved
+            filtered.set(k, el);
         }
-        formatted.get(k).add(el);
     });
 
-    // Keep first element with at least one uppercase letter, if any
-    for (const [key, valueSet] of formatted) {
-        const values = Array.from(valueSet);
-        const firstWithUpper = values.find(str => /[A-Z]/.test(str));
-        formatted.set(key, firstWithUpper || key);
-    }
-
     // Remove name from synonyms
-    formatted.delete(name.toLowerCase());
+    filtered.delete(name.toLowerCase());
 
-    return formatted;
+    return Array.from(
+        filtered.values(),
+    );
 };
 
 
@@ -229,7 +222,7 @@ const cleanRawRow = (rawRow) => {
     }
 
     // synonyms
-    const synonyms = setSynonyms(row.synonyms, name.toLowerCase());
+    const synonyms = filterSynonyms(row.synonyms, name);
 
     return {
         ...row,
@@ -461,21 +454,21 @@ const uploadFile = async ({
             cached[record.sourceId] = record;
 
             // add the synonyms as alias records
-            for (const [synonym, synonymOriginal] of synonyms) {
+            for (const synonym of synonyms) {
                 try {
                     // alias Therapy|Disease|AnatomicalEntity node record
                     const alias = await conn.addRecord({
                         content: {
                             alias: true,
                             deprecated,
-                            displayName: `${synonymOriginal} [${record.sourceId}]`,
-                            name: synonym,
+                            displayName: `${synonym} [${record.sourceId}]`,
+                            name: synonym.toLowerCase(),
                             source,
                             sourceId: record.sourceId,
                         },
                         existsOk: true,
                         fetchConditions: convertRecordToQueryFilters({
-                            name: synonym,
+                            name: synonym.toLowerCase(),
                             source,
                             sourceId,
                         }),
@@ -540,6 +533,6 @@ module.exports = {
     SOURCE_DEFN,
     cleanRawRow,
     pickEndpoint,
-    setSynonyms,
+    filterSynonyms,
     uploadFile,
 };

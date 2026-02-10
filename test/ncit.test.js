@@ -1,4 +1,4 @@
-const { cleanRawRow, pickEndpoint, setSynonyms } = require('../src/ncit');
+const { cleanRawRow, pickEndpoint, filterSynonyms } = require('../src/ncit');
 
 describe('cleanRawRow', () => {
     const rawRow = {
@@ -155,21 +155,17 @@ describe('pickEndpoint', () => {
     });
 });
 
-describe('setSynonyms', () => {
-    test('Synonyms formatted', () => {
-        expect([...setSynonyms([
-            'abc',
+describe('filterSynonyms', () => {
+    test('Synonyms filtering', () => {
+        expect(filterSynonyms([
             'Abc',
-            'ABC',
+            'ABC', // redundant based on lowercase comparison, to be skipped
             'def',
-            'ghi', // name to be removed
-        ], 'Ghi'), // name passed as capitalized
-        ]).toEqual([
-            // All names (1st pos) lowercase
-            // original displayName (2nd pos); with uppercases if any
-            // name removed when compared in lowercase
-            ['abc', 'Abc'],
-            ['def', 'def'],
+            'ghi', // synonym's name like record's name, to be skipped
+        ], 'Ghi'), // record's name, passed as capitalized
+        ).toEqual([
+            'Abc',
+            'def',
         ]);
     });
 });
