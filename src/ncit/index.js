@@ -6,6 +6,9 @@ const { logger } = require('../logging');
 
 const { ncit: SOURCE_DEFN } = require('../sources');
 
+let sourceIdAsNameCount = 0;
+let noExplicitNameCount = 0;
+
 const diseaseConcepts = [
     'Anatomical Abnormality',
     'Congenital Abnormality',
@@ -147,6 +150,10 @@ const cleanRawRow = (rawRow) => {
         parentConcepts,
     } = rawRow;
 
+    if (!rawName) {
+        noExplicitNameCount += 1;
+    }
+
     const row = {
         deprecated: (
             rawParents.split('|').some(p => DEPRECATED.includes(p))
@@ -216,9 +223,11 @@ const cleanRawRow = (rawRow) => {
     // if no name, use 1st synonym as prefered name, with fallback to sourceId
     if (!name) {
         name = sourceId;
+        sourceIdAsNameCount += 1;
 
         if (row.synonyms && row.synonyms[0]) {
             name = row.synonyms[0];
+            sourceIdAsNameCount -= 1;
         }
     }
 
@@ -526,6 +535,8 @@ const uploadFile = async ({
         }
     }
 
+    logger.info(`Count of records without an explicitly given name: ${noExplicitNameCount}`);
+    logger.info(`Count of sourceId used as record's name: ${sourceIdAsNameCount}`);
     logger.info(JSON.stringify(counts));
 };
 
@@ -533,7 +544,7 @@ const uploadFile = async ({
 module.exports = {
     SOURCE_DEFN,
     cleanRawRow,
-    pickEndpoint,
     filterSynonyms,
+    pickEndpoint,
     uploadFile,
 };
