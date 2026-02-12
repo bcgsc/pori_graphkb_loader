@@ -1,3 +1,4 @@
+/* eslint-disable one-var */
 const { loadDelimToJson } = require('../util');
 const {
     rid, convertRecordToQueryFilters, orderPreferredOntologyTerms,
@@ -101,15 +102,13 @@ const pickEndpoint = (conceptName, parentConcepts = '') => {
  * Synonyms filtering:
  * - no duplicates when compared in lowercase
  * - for each unique term, one original version kept only
- * - must be different from the record's name
  *
  * Returns an array of filtered synonyms
  *
  * @param {string[]} synonyms the synonym names to be formatted
- * @param {string} name the record's name to be filtered out
  * @returns {string[]}
  */
-const filterSynonyms = (synonyms, name) => {
+const filterSynonyms = (synonyms) => {
     const filtered = new Map();
 
     // distinct lowercase synonyms as key
@@ -121,9 +120,6 @@ const filterSynonyms = (synonyms, name) => {
             filtered.set(k, el);
         }
     });
-
-    // Remove name from synonyms
-    filtered.delete(name.toLowerCase());
 
     return Array.from(
         filtered.values(),
@@ -232,7 +228,9 @@ const cleanRawRow = (rawRow) => {
     }
 
     // synonyms
-    const synonyms = filterSynonyms(row.synonyms, name);
+    // We keep those equal to the record's name for now since we need them
+    // for duplicated names disambiguation. They will be skipped later on.
+    const synonyms = filterSynonyms(row.synonyms);
 
     return {
         ...row,
@@ -329,12 +327,14 @@ const uploadFile = async ({
     logger.verbose(`skipping (${deprecatedRows.length}) retired or obsolete concepts: ${deprecatedRows.map(d => d.sourceId).join(',')}`);
     const rejected = new Set();
 
-    // For duplicated names,
+    // Name disambiguation, for duplicated names,
     // if possible, assign the row another name from its list of synonyms
     for (const [name, dups] of Object.entries(nameDuplicates)) {
+        // skip if no duplicate for that name
         if (dups.length < 2) {
             continue;
         }
+
         // filter non-human name duplicates
         const humanDups = [];
 
@@ -465,6 +465,11 @@ const uploadFile = async ({
 
             // add the synonyms as alias records
             for (const synonym of synonyms) {
+                // Skipping synonym if equal to the record's name
+                if (synonym.toLowerCase() === name) {
+                    continue;
+                }
+
                 try {
                     // alias Therapy|Disease|AnatomicalEntity node record
                     const alias = await conn.addRecord({

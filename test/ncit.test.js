@@ -123,7 +123,7 @@ describe('cleanRawRow', () => {
     test.each([
         ['to array', 'C', 'a|b', ['a', 'b']],
         ['keep capitalization', 'C', 'A|B', ['A', 'B']],
-        ['filter by name', 'C', 'a|b|c', ['a', 'b']],
+        ['keep equal to name for now', 'C', 'a|b|c', ['a', 'b', 'c']],
         ['remove duplicate', 'C', 'a|a', ['a']],
         ['extra separators', 'C', '||a|b', ['a', 'b']],
         ['add extra names to synonyms', 'a|b', 'c|d', ['c', 'd', 'b']],
@@ -167,10 +167,8 @@ describe('filterSynonyms', () => {
             'Abc',
             'ABC', // redundant based on lowercase comparison, to be skipped
             'def',
-            'ghi', // synonym's name like record's name, to be skipped
-        ], 'Ghi'), // record's name, passed as capitalized
-        ).toEqual([
-            'Abc',
+        ])).toEqual([
+            'Abc', // keep capitalization
             'def',
         ]);
     });
