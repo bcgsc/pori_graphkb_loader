@@ -1,5 +1,5 @@
 /* eslint-disable one-var */
-const { loadDelimToJson } = require('../util');
+const { NotImplementedError, NotSupportedError, loadDelimToJson } = require('../util');
 const {
     rid, convertRecordToQueryFilters, orderPreferredOntologyTerms,
 } = require('../graphkb');
@@ -75,13 +75,13 @@ const pickEndpoint = (conceptName, parentConcepts = '') => {
     }
     if (diseaseConcepts.some(term => conceptName.includes(term))) {
         if (endpoint) {
-            throw Error(`Concept must be in a discrete category (${conceptName})`);
+            throw NotSupportedError(`Concept must be in a discrete category (${conceptName})`);
         }
         endpoint = 'Disease';
     }
     if (therapeuticConcepts.some(term => conceptName.includes(term))) {
         if (endpoint) {
-            throw Error(`Concept must be in a discrete category (${conceptName})`);
+            throw NotSupportedError(`Concept must be in a discrete category (${conceptName})`);
         }
         endpoint = 'Therapy';
     }
@@ -95,7 +95,7 @@ const pickEndpoint = (conceptName, parentConcepts = '') => {
             return endpoint;
         } catch (err) {}
     }
-    throw new Error(`Concept not implemented (${conceptName})`);
+    throw new NotImplementedError(`Concept not implemented (${conceptName})`);
 };
 
 /**
@@ -317,7 +317,16 @@ const uploadFile = async ({
         } catch (err) {
             if (!errors[err]) {
                 errors[err] = err;
-                logger.error(err);
+
+                if (err instanceof NotImplementedError) {
+                    // warning log only
+                    logger.warn(err);
+                } else if (err instanceof NotSupportedError) {
+                    // warning log only
+                    logger.warn(err);
+                } else {
+                    logger.error(err);
+                }
             }
             erroredSourceIds.add(raw.id.toLowerCase());
 
