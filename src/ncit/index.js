@@ -448,7 +448,7 @@ const uploadFile = async ({
                 url,
             } = row;
 
-            logger.verbose(`- processing ${name}`);
+            logger.verbose(`- ${name}`);
 
             // main Therapy|Disease|AnatomicalEntity node record
             record = await conn.addRecord({
@@ -482,7 +482,7 @@ const uploadFile = async ({
                     continue;
                 }
 
-                logger.verbose(`- processing synonym ${synonym.toLowerCase()}`);
+                logger.verbose(`- synonym ${synonym.toLowerCase()}`);
 
                 try {
                     // alias Therapy|Disease|AnatomicalEntity node record
