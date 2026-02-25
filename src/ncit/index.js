@@ -544,15 +544,8 @@ const uploadFile = async ({
                 fetchExisting: false,
                 target: 'SubClassOf',
             });
-        } else if (!(
-            erroredSourceIds.has(childSourceId)
-            || erroredSourceIds.has(parentSourceId)
-            || rejected.has(parentSourceId)
-            || rejected.has(childSourceId)
-        )) {
-            logger.warn(`Won't attempt to upload relationship for ${childSourceId} --SubClassOf-> ${parentSourceId}; one or more record(s) not loaded`);
         } else {
-            logger.warn(`Won't attempt to upload relationship for ${childSourceId} --SubClassOf-> ${parentSourceId}`);
+            logger.warn(`Can't upload relationship for ${childSourceId} --SubClassOf-> ${parentSourceId}; one or both record(s) not loaded`);
         }
     }
 
