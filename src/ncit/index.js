@@ -366,7 +366,7 @@ const uploadFile = async ({
         if (allPreferredNamesDifferent) {
             for (const dup of dups) {
                 dup.name = dup.synonyms[0];
-                logger.log('info', `record with non-unique name (${name}, ${dup.sourceId}) being loaded with its preferred name (${dup.name});`);
+                logger.log('info', `record with non-unique name (${name}, ${dup.sourceId}) being loaded with its preferred name (${dup.name.toLowerCase()});`);
             }
             continue;
         }
@@ -386,7 +386,7 @@ const uploadFile = async ({
     // list the ncit records already loaded
     // query only the main records (aliased terms); should be one per sourceId
     const cached = {};
-    logger.info('getting previously loaded records');
+    logger.info('getting previously loaded records...');
     const cachedRecords = await conn.getRecords({
         filters: { AND: [{ source }, { alias: false }] },
         neighbors: 0,
@@ -406,6 +406,7 @@ const uploadFile = async ({
         exists.add(existsHashCheck(record));
     }
     logger.info(`loaded and cached ${Object.keys(cached).length} records`);
+    logger.info('uploading NCIt records to GraphKB...');
 
     const recordsById = {};
 
@@ -447,6 +448,8 @@ const uploadFile = async ({
                 url,
             } = row;
 
+            logger.verbose(`- processing ${name}`);
+
             // main Therapy|Disease|AnatomicalEntity node record
             record = await conn.addRecord({
                 content: {
@@ -474,6 +477,8 @@ const uploadFile = async ({
 
             // add the synonyms as alias records
             for (const synonym of synonyms) {
+                logger.verbose(`- processing synonym ${synonym.toLowerCase()}`);
+
                 // Skipping synonym if equal to the record's name
                 if (synonym.toLowerCase() === name) {
                     continue;
