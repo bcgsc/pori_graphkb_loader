@@ -536,7 +536,9 @@ const uploadFile = async ({
             || rejected.has(parentSourceId)
             || rejected.has(childSourceId)
         )) {
-            logger.warn(`one or more records in relationship not loaded: ${childSourceId}, ${parentSourceId}`);
+            logger.warn(`Won't attempt to upload relationship for ${childSourceId} --SubClassOf-> ${parentSourceId}; one or more record(s) not loaded`);
+        } else {
+            logger.warn(`Won't attempt to upload relationship for ${childSourceId} --SubClassOf-> ${parentSourceId}`);
         }
     }
 
