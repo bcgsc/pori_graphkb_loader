@@ -477,12 +477,12 @@ const uploadFile = async ({
 
             // add the synonyms as alias records
             for (const synonym of synonyms) {
-                logger.verbose(`- processing synonym ${synonym.toLowerCase()}`);
-
                 // Skipping synonym if equal to the record's name
-                if (synonym.toLowerCase() === name) {
+                if (synonym.toLowerCase() === name.toLowerCase()) {
                     continue;
                 }
+
+                logger.verbose(`- processing synonym ${synonym.toLowerCase()}`);
 
                 try {
                     // alias Therapy|Disease|AnatomicalEntity node record
