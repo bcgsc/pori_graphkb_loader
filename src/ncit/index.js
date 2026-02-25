@@ -75,13 +75,13 @@ const pickEndpoint = (conceptName, parentConcepts = '') => {
     }
     if (diseaseConcepts.some(term => conceptName.includes(term))) {
         if (endpoint) {
-            throw NotSupportedError(`Concept must be in a discrete category (${conceptName})`);
+            throw new NotSupportedError(`Concept must be in a discrete category (${conceptName})`);
         }
         endpoint = 'Disease';
     }
     if (therapeuticConcepts.some(term => conceptName.includes(term))) {
         if (endpoint) {
-            throw NotSupportedError(`Concept must be in a discrete category (${conceptName})`);
+            throw new NotSupportedError(`Concept must be in a discrete category (${conceptName})`);
         }
         endpoint = 'Therapy';
     }
