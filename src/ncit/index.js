@@ -445,7 +445,7 @@ const uploadFile = async ({
             counts.error++;
             continue;
         }
-        logger.verbose(`processing (${i + 1} / ${rows.length}) ${row.sourceId}`);
+        logger.info(`processing (${i + 1} / ${rows.length}) ${row.sourceId}`);
         let record;
 
         try {
