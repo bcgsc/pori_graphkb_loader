@@ -245,17 +245,16 @@ const cleanRawRow = (rawRow) => {
     };
 };
 
+
 /**
- * Given the path to some NCIT OWL file, upload the parsed ontology records
+ * Given the path to some NCIT OWL file,
+ * preprocess the file's content into an array of preformatted rows
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the input OWL file
- * @param {ApiRequst} opt.conn the API connection object
+ * @param {ApiRequst} opt.maxRecords
  */
-const uploadFile = async ({
-    filename, conn, ignoreCache = false, maxRecords,
-}) => {
-    logger.info('Loading external NCIT data');
+const processFileContent = async ({ filename, maxRecords }) => {
     logger.info(`loading: ${filename}`);
     const rawRows = await loadDelimToJson(filename, {
         delim: '\t',
@@ -271,6 +270,7 @@ const uploadFile = async ({
             'conceptInSubset', // ...used to populate parentConcepts
         ],
     });
+
     // determine unresolvable records
     const rows = [];
     const nameDuplicates = {};
@@ -334,6 +334,7 @@ const uploadFile = async ({
         }
     }
     logger.verbose(`skipping (${deprecatedRows.length}) retired or obsolete concepts: ${deprecatedRows.map(d => d.sourceId).join(',')}`);
+
     const rejected = new Set();
 
     // Name disambiguation, for duplicated names,
@@ -376,8 +377,34 @@ const uploadFile = async ({
             humanDups.forEach(d => rejected.add(d.sourceId));
         }
     }
-
     logger.warn(`rejected ${rejected.size} rows for unresolveable primary/display name conflicts`);
+
+    return {
+        counts,
+        erroredSourceIds,
+        rejected,
+        rows,
+    };
+};
+
+
+/**
+ * Given the path to some NCIT OWL file, upload the parsed ontology records
+ *
+ * @param {object} opt options
+ * @param {string} opt.filename the path to the input OWL file
+ * @param {ApiRequst} opt.conn the API connection object
+ */
+const uploadFile = async ({
+    filename, conn, ignoreCache = false, maxRecords,
+}) => {
+    logger.info('Loading external NCIT data');
+    const {
+        counts,
+        erroredSourceIds,
+        rejected,
+        rows,
+    } = processFileContent({ filename, maxRecords });
 
     const source = rid(await conn.addSource(SOURCE_DEFN));
 
@@ -560,5 +587,7 @@ module.exports = {
     cleanRawRow,
     filterSynonyms,
     pickEndpoint,
+    processFileContent,
     uploadFile,
 };
+
