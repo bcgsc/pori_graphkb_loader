@@ -404,7 +404,7 @@ const uploadFile = async ({
         erroredSourceIds,
         rejected,
         rows,
-    } = processFileContent({ filename, maxRecords });
+    } = await processFileContent({ filename, maxRecords });
 
     const source = rid(await conn.addSource(SOURCE_DEFN));
 
