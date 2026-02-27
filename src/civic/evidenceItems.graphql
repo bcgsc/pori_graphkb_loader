@@ -70,10 +70,10 @@ query evidenceItems(
       source {
         ascoAbstractId
         citationId
-        name
         publicationYear
         sourceType
         sourceUrl
+        title
       }
       status
       therapies {
