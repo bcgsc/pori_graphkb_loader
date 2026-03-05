@@ -1,7 +1,11 @@
 /* eslint-disable one-var */
 const { NotImplementedError, NotSupportedError, loadDelimToJson } = require('../util');
 const {
-    rid, convertRecordToQueryFilters, orderPreferredOntologyTerms,
+    // eslint-disable-next-line no-unused-vars
+    ApiConnection,
+    convertRecordToQueryFilters,
+    orderPreferredOntologyTerms,
+    rid,
 } = require('../graphkb');
 const { logger } = require('../logging');
 
@@ -252,10 +256,9 @@ const cleanRawRow = (rawRow) => {
  *
  * @param {object} opt options
  * @param {string} opt.filename the path to the input OWL file
- * @param {ApiRequst} opt.maxRecords
+ * @param {number} opt.maxRecords
  */
 const processFileContent = async ({ filename, maxRecords }) => {
-    logger.info(`loading: ${filename}`);
     const rawRows = await loadDelimToJson(filename, {
         delim: '\t',
         header: [
@@ -387,16 +390,84 @@ const processFileContent = async ({ filename, maxRecords }) => {
     };
 };
 
+/**
+ * Flag as deprecated = true all current GKB records
+ * no longer in the upload
+ *
+ * @param {ApiConnection} conn
+ * @param {object} opt options
+ * @param {set} opt.ncitIds the set of NCIt ids uploaded
+ * @param {object} opt.source the NCIt source RID object
+ */
+const deprecateRecords = async (conn, { ncitIds, source }) => {
+    // All current GKB records
+    const gkbRecords = await conn.getRecords({
+        filters: { source },
+        neighbors: 0,
+        target: 'Ontology',
+    });
+    logger.info(`Currently ${gkbRecords.length} NCIt Ontology records in GraphKB`);
+
+    // Refactor into Map; <sourceId> --> [<rid>, ...]
+    const deprecatedBySourceId = new Map();
+
+    for (const r of gkbRecords) {
+        // filters out active sourceId
+        if (ncitIds.has(r.sourceId)) {
+            continue;
+        }
+        // keep track of all RIDs that need deprecation, per sourceId
+        if (!deprecatedBySourceId.has(r.sourceId)) {
+            deprecatedBySourceId.set(r.sourceId, []);
+        }
+        if (!r.deprecated) {
+            deprecatedBySourceId.get(r.sourceId).push({
+                recordId: String(r['@rid']),
+                target: String(r['@class']),
+            });
+        }
+    }
+
+    // Eval. how many records
+    let totalLength = 0;
+
+    for (const arr of deprecatedBySourceId.values()) {
+        totalLength += arr.length;
+    }
+    logger.info(`Deprecating ${totalLength} Ontology records from ${deprecatedBySourceId.size} sourceIds`);
+
+    // Deprecating records
+    for (const [sourceId, records] of deprecatedBySourceId) {
+        for (const { recordId, target } of records) {
+            try {
+                await conn.updateRecord(
+                    target,
+                    recordId,
+                    { deprecated: true },
+                );
+            } catch (err) {
+                logger.error(`failed to deprecate ${target} record ${recordId} (${sourceId})`);
+                logger.debug(err);
+            }
+        }
+    }
+};
+
 
 /**
  * Given the path to some NCIT OWL file, upload the parsed ontology records
  *
  * @param {object} opt options
+ * @param {ApiConnection} opt.conn the API connection object
+ * @param {boolean} opt.deprecates if old records gets deprecated
  * @param {string} opt.filename the path to the input OWL file
- * @param {ApiRequst} opt.conn the API connection object
  */
 const uploadFile = async ({
-    filename, conn, ignoreCache = false, maxRecords,
+    conn,
+    deprecates = true,
+    filename,
+    ignoreCache = false,
+    maxRecords,
 }) => {
     logger.info('Loading external NCIT data');
     const {
@@ -435,7 +506,7 @@ const uploadFile = async ({
     logger.info(`loaded and cached ${Object.keys(cached).length} records`);
     logger.info('uploading NCIt records to GraphKB...');
 
-    const recordsById = {};
+    const ncitIds = new Set();
 
     // Adding terms and their synonyms to GraphKB
     for (let i = 0; i < rows.length; i++) {
@@ -449,10 +520,11 @@ const uploadFile = async ({
         let record;
 
         try {
-            if (recordsById[row.sourceId]) {
+            if (ncitIds.has(row.sourceId, false)) {
+                // Violates assumptions
                 throw new Error(`code is not unique (${row.sourceId})`);
             }
-            recordsById[row.sourceId] = row;
+            ncitIds.add(row.sourceId);
 
             // Saving parent term relationships.
             // SubClassOf edges will be created at the very end.
@@ -579,6 +651,12 @@ const uploadFile = async ({
     logger.info(`Count of records without an explicitly given name: ${noExplicitNameCount}`);
     logger.info(`Count of sourceId used as record's name: ${sourceIdAsNameCount}`);
     logger.info(JSON.stringify(counts));
+
+    // Deprecates GraphKB records no longer in upload
+    if (deprecates) {
+        logger.info('deprecating old GraphKB records...');
+        await deprecateRecords(conn, { ncitIds, source });
+    }
 };
 
 
