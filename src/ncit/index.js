@@ -445,6 +445,7 @@ const deprecateRecords = async (conn, { ncitIds, source }) => {
                     recordId,
                     { deprecated: true },
                 );
+                logger.info(`deprecated ${target} record ${recordId} (${sourceId})`);
             } catch (err) {
                 logger.error(`failed to deprecate ${target} record ${recordId} (${sourceId})`);
                 logger.debug(err);
