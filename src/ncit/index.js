@@ -428,9 +428,10 @@ const deprecateRecords = async (conn, { ncitIds, source }) => {
         }
     }
 
-    // Eval. how many records
     let totalLength = 0;
+    let count = 0;
 
+    // Eval. how many records
     for (const arr of deprecatedBySourceId.values()) {
         totalLength += arr.length;
     }
@@ -440,12 +441,13 @@ const deprecateRecords = async (conn, { ncitIds, source }) => {
     for (const [sourceId, records] of deprecatedBySourceId) {
         for (const { recordId, target } of records) {
             try {
+                count += 1;
+                logger.info(`deprecating (${count}/${totalLength}) ${target} record ${recordId} (${sourceId})`);
                 await conn.updateRecord(
                     target,
                     recordId,
                     { deprecated: true },
                 );
-                logger.info(`deprecated ${target} record ${recordId} (${sourceId})`);
             } catch (err) {
                 logger.error(`failed to deprecate ${target} record ${recordId} (${sourceId})`);
                 logger.debug(err);
