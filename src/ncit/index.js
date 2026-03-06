@@ -404,6 +404,7 @@ const deprecateRecords = async (conn, { ncitIds, source }) => {
     const gkbRecords = await conn.getRecords({
         filters: { source },
         neighbors: 0,
+        returnProperties: ['@class', '@rid', 'deprecated', 'sourceId'],
         target: 'Ontology',
     });
     logger.info(`Currently ${gkbRecords.length} NCIt Ontology records in GraphKB`);
@@ -666,6 +667,7 @@ const uploadFile = async ({
 module.exports = {
     SOURCE_DEFN,
     cleanRawRow,
+    deprecateRecords,
     filterSynonyms,
     pickEndpoint,
     processFileContent,

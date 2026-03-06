@@ -1,4 +1,9 @@
-const { cleanRawRow, pickEndpoint, filterSynonyms } = require('../src/ncit');
+const {
+    cleanRawRow,
+    deprecateRecords,
+    filterSynonyms,
+    pickEndpoint,
+} = require('../src/ncit');
 
 describe('cleanRawRow', () => {
     const rawRow = {
@@ -171,5 +176,46 @@ describe('filterSynonyms', () => {
             'Abc', // keep capitalization
             'def',
         ]);
+    });
+});
+
+describe('deprecateRecords', () => {
+    test('deprecates only non-uploaded, non-deprecated records', async () => {
+        const ncitIds = new Set(['C300']);
+        const records = [
+            // should be deprecated
+            {
+                '@class': 'Disease', '@rid': '#1:1', sourceId: 'C100',
+            },
+            // should not be deprecated since sourceId in already-uploaded ncitIds
+            {
+                '@class': 'Therapy', '@rid': '#1:2', sourceId: 'C300',
+            },
+            // should not be deprecated since already deprecated
+            {
+                '@class': 'AnatomicalEntity', '@rid': '#1:3', deprecated: true, sourceId: 'C200',
+            },
+        ];
+        const conn = {
+            getRecords: jest.fn().mockResolvedValue(records),
+            updateRecord: jest.fn().mockResolvedValue(),
+        };
+        const source = '#9:99';
+
+        await deprecateRecords(conn, { ncitIds, source });
+
+        expect(conn.getRecords).toHaveBeenCalledWith({
+            filters: { source },
+            neighbors: 0,
+            returnProperties: ['@class', '@rid', 'deprecated', 'sourceId'],
+            target: 'Ontology',
+        });
+
+        expect(conn.updateRecord).toHaveBeenCalledTimes(1);
+        expect(conn.updateRecord).toHaveBeenCalledWith(
+            'Disease',
+            '#1:1',
+            { deprecated: true },
+        );
     });
 });
