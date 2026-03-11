@@ -79,13 +79,13 @@ const pickEndpoint = (conceptName, parentConcepts = '') => {
     }
     if (diseaseConcepts.some(term => conceptName.includes(term))) {
         if (endpoint) {
-            throw new NotSupportedError(`Concept must be in a discrete category (${conceptName})`);
+            throw new NotSupportedError(`Concept not supported. Must be in a discrete category (${conceptName})`);
         }
         endpoint = 'Disease';
     }
     if (therapeuticConcepts.some(term => conceptName.includes(term))) {
         if (endpoint) {
-            throw new NotSupportedError(`Concept must be in a discrete category (${conceptName})`);
+            throw new NotSupportedError(`Concept not supported. Must be in a discrete category (${conceptName})`);
         }
         endpoint = 'Therapy';
     }
@@ -97,7 +97,7 @@ const pickEndpoint = (conceptName, parentConcepts = '') => {
         try {
             endpoint = pickEndpoint(parentConcepts);
             return endpoint;
-        } catch (err) {}
+        } catch (err) {} // will fall back to NotImplementedError
     }
     throw new NotImplementedError(`Concept not implemented (${conceptName})`);
 };
@@ -391,7 +391,7 @@ const processFileContent = async ({ filename, maxRecords }) => {
 };
 
 /**
- * Flag as deprecated = true all current GKB records
+ * Flag as deprecated all current GKB records
  * no longer in the upload
  *
  * @param {ApiConnection} conn
@@ -443,7 +443,7 @@ const deprecateRecords = async (conn, { ncitIds, source }) => {
         for (const { recordId, target } of records) {
             try {
                 count += 1;
-                logger.info(`deprecating (${count}/${totalLength}) ${target} record ${recordId} (${sourceId})`);
+                logger.info(`deprecating (${count}/${totalLength}) record ${recordId} (${target} ${sourceId})`);
                 await conn.updateRecord(
                     target,
                     recordId,
@@ -459,20 +459,44 @@ const deprecateRecords = async (conn, { ncitIds, source }) => {
 
 
 /**
+ * Key formatting utility based on record content
+ * Used to create unique key for the 'exists' set
+ */
+const existsHashCheck = (record) => [
+    record.sourceId.toLowerCase(),
+    record.name.toLowerCase(),
+    record.displayName,
+].join('____');
+
+
+/**
  * Given the path to some NCIT OWL file, upload the parsed ontology records
+ *
+ * Each line represent one MAIN term + a list of synonym terms
+ * Each term is uploaded as a distinct GraphKB Ontology vertice
+ * Vertices from the same row (main + syn.) share a common sourceId and are linked by AliasOf edges from synonyms to MAIN; many-to-one
+ * Child-parent relationships are described using SubClassOf edges between MAIN terms; many-to-many
  *
  * @param {object} opt options
  * @param {ApiConnection} opt.conn the API connection object
- * @param {boolean} opt.deprecates if old records gets deprecated
  * @param {string} opt.filename the path to the input OWL file
+ * @param {boolean} [opt.ignoreCache=false] whether to ignore upload when main record already exists as-is
+ * @param {boolean} [opt.ignoreDeprecating=false] whether to ignore deprecation of old records
+ * @param {boolean} [opt.ignoreSynonyms=false] whether synonyms should be ignored or uploaded as alias records
+ * @param {number} opt.maxRecords maximum number of records to upload
  */
 const uploadFile = async ({
     conn,
-    deprecates = true,
     filename,
     ignoreCache = false,
+    ignoreDeprecating = false,
+    ignoreSynonyms = false,
     maxRecords,
 }) => {
+    // ------------------------------------------------------------------
+    // NCIT FILE
+    // ------------------------------------------------------------------
+
     logger.info('Loading external NCIT data');
     const {
         counts,
@@ -481,37 +505,49 @@ const uploadFile = async ({
         rows,
     } = await processFileContent({ filename, maxRecords });
 
+
+    // ------------------------------------------------------------------
+    // EXISTING RECORDS
+    // ------------------------------------------------------------------
     const source = rid(await conn.addSource(SOURCE_DEFN));
 
-    const subclassEdges = [];
+    // caches
+    const mainRIDBySourceId = new Map(); // sourceId --> RID
+    const exists = new Set(); // "<sourceId>____<name>____<displayName>"
 
-    // list the ncit records already loaded
-    // query only the main records (aliased terms); should be one per sourceId
-    const cached = {};
+    // list the ncit records already loaded.
+    // query only the main records (aliased terms)
     logger.info('getting previously loaded records...');
     const cachedRecords = await conn.getRecords({
         filters: { AND: [{ source }, { alias: false }] },
         neighbors: 0,
         target: 'Ontology',
     });
+
+    // SourceId might not be unique among alias=false...
     cachedRecords.sort(orderPreferredOntologyTerms);
     cachedRecords.reverse();
-    const exists = new Set();
-    const existsHashCheck = record => [
-        record.sourceId.toLowerCase(),
-        record.name.toLowerCase(),
-        record.displayName,
-    ].join('____');
 
+    // populating caches
     for (const record of cachedRecords) {
-        cached[record.sourceId] = record;
+        mainRIDBySourceId.set(record.sourceId, String(record['@rid'])); // latest retained
         exists.add(existsHashCheck(record));
     }
-    logger.info(`loaded and cached ${Object.keys(cached).length} records`);
+    logger.info(`loaded and cached ${mainRIDBySourceId.size} main records`);
     logger.info('uploading NCIt records to GraphKB...');
 
-    const ncitIds = new Set();
 
+
+    // ------------------------------------------------------------------
+    // UPLOAD
+    // ------------------------------------------------------------------
+
+    // Set of sourceId (NCIt ids) for which an upload attempt has been made
+    const ncitIds = new Set();
+    // Keeping track of child->parent relationships
+    const subclassEdges = [];
+
+    // MAIN LOOP
     // Adding terms and their synonyms to GraphKB
     for (let i = 0; i < rows.length; i++) {
         const row = rows[i];
@@ -525,15 +561,17 @@ const uploadFile = async ({
 
         try {
             if (ncitIds.has(row.sourceId, false)) {
-                // Violates assumptions
+                // Violates assumptions (each file row have a unique id)
                 throw new Error(`code is not unique (${row.sourceId})`);
             }
             ncitIds.add(row.sourceId);
 
-            // Saving parent term relationships.
+            // Saving relationship to parent term
             // SubClassOf edges will be created at the very end.
             subclassEdges.push(...row.parents.map(parent => [row.sourceId, parent]));
 
+            // SKIPPING
+            // when already existing MAIN term (based on sourceId, name and displayName similarity)
             if (exists.has(existsHashCheck(row)) && !ignoreCache) {
                 counts.exists++;
                 continue;
@@ -576,53 +614,56 @@ const uploadFile = async ({
                     'comment',
                 ],
             });
-            cached[record.sourceId] = record;
+            // cache by sourceId the newly added/updated MAIN record
+            mainRIDBySourceId.set(record.sourceId, String(record['@rid']));
 
-            // add the synonyms as alias records
-            for (const synonym of synonyms) {
-                // Skipping synonym if equal to the record's name
-                if (synonym.toLowerCase() === name.toLowerCase()) {
-                    continue;
-                }
-
-                logger.verbose(`- synonym ${synonym.toLowerCase()}`);
-
-                try {
-                    // alias Therapy|Disease|AnatomicalEntity node record
-                    const alias = await conn.addRecord({
-                        content: {
-                            alias: true,
-                            deprecated,
-                            displayName: `${synonym} [${record.sourceId}]`,
-                            name: synonym.toLowerCase(),
-                            source,
-                            sourceId: record.sourceId,
-                        },
-                        existsOk: true,
-                        fetchConditions: convertRecordToQueryFilters({
-                            name: synonym.toLowerCase(),
-                            source,
-                            sourceId,
-                        }),
-                        target: endpoint,
-                        upsert: true,
-                        upsertCheckExclude: [
-                            'comment',
-                        ],
-                    });
-
-                    // AliasOf edge
-                    if (rid(alias) !== rid(record)) {
-                        await conn.addRecord({
-                            content: { in: rid(record), out: rid(alias), source },
-                            existsOk: true,
-                            fetchExisting: false,
-                            target: 'aliasof',
-                        });
+            // add synonyms as alias records
+            if (!ignoreSynonyms) {
+                for (const synonym of synonyms) {
+                    // Skipping synonym if equal to the record's name
+                    if (synonym.toLowerCase() === name.toLowerCase()) {
+                        continue;
                     }
-                } catch (err) {
-                    logger.error(`failed to link (${record.sourceId}) to alias (${synonym})`);
-                    logger.error(err);
+
+                    logger.verbose(`- synonym ${synonym.toLowerCase()}`);
+
+                    try {
+                        // alias Therapy|Disease|AnatomicalEntity node record
+                        const alias = await conn.addRecord({
+                            content: {
+                                alias: true,
+                                deprecated,
+                                displayName: `${synonym} [${record.sourceId}]`,
+                                name: synonym.toLowerCase(),
+                                source,
+                                sourceId: record.sourceId,
+                            },
+                            existsOk: true,
+                            fetchConditions: convertRecordToQueryFilters({
+                                name: synonym.toLowerCase(),
+                                source,
+                                sourceId,
+                            }),
+                            target: endpoint,
+                            upsert: true,
+                            upsertCheckExclude: [
+                                'comment',
+                            ],
+                        });
+
+                        // AliasOf edge
+                        if (rid(alias) !== rid(record)) {
+                            await conn.addRecord({
+                                content: { in: rid(record), out: rid(alias), source },
+                                existsOk: true,
+                                fetchExisting: false,
+                                target: 'aliasof',
+                            });
+                        }
+                    } catch (err) {
+                        logger.error(`failed to link (${record.sourceId}) to alias (${synonym})`);
+                        logger.error(err);
+                    }
                 }
             }
 
@@ -632,32 +673,40 @@ const uploadFile = async ({
             erroredSourceIds.add(row.sourceId);
             counts.error++;
         }
-    }
+    } // END OF MAIN LOOP
 
+    // SUBCLASSING
     // Create SubClassOf relationships between child and parent records
+    // subclassEdges is an array of arrays.
+    logger.info(`Uploading ${subclassEdges.length} SubClassOf edges...`);
+
     for (const [childSourceId, parentSourceId] of subclassEdges) {
-        if (cached[childSourceId] && cached[parentSourceId]) {
+        // Makes sure both child and parent are already existing/uploaded MAIN records
+        if (
+            mainRIDBySourceId.has(childSourceId)
+            && mainRIDBySourceId.has(parentSourceId)
+        ) {
             await conn.addRecord({
                 content: {
-                    in: rid(cached[parentSourceId]),
-                    out: rid(cached[childSourceId]),
+                    in: rid(mainRIDBySourceId.get(parentSourceId)),
+                    out: rid(mainRIDBySourceId.get(childSourceId)),
                     source,
                 },
                 existsOk: true,
                 fetchExisting: false,
                 target: 'SubClassOf',
             });
-        } else {
-            logger.warn(`Can't upload relationship for ${childSourceId} --SubClassOf-> ${parentSourceId}; one or both record(s) not loaded`);
         }
     }
+
 
     logger.info(`Count of records without an explicitly given name: ${noExplicitNameCount}`);
     logger.info(`Count of sourceId used as record's name: ${sourceIdAsNameCount}`);
     logger.info(JSON.stringify(counts));
 
+    // DEPRECATING
     // Deprecates GraphKB records no longer in upload
-    if (deprecates) {
+    if (!ignoreDeprecating) {
         logger.info('deprecating old GraphKB records...');
         await deprecateRecords(conn, { ncitIds, source });
     }
@@ -673,4 +722,3 @@ module.exports = {
     processFileContent,
     uploadFile,
 };
-
