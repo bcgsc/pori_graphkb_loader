@@ -699,17 +699,17 @@ const uploadFile = async ({
         }
     }
 
-
-    logger.info(`Count of records without an explicitly given name: ${noExplicitNameCount}`);
-    logger.info(`Count of sourceId used as record's name: ${sourceIdAsNameCount}`);
-    logger.info(JSON.stringify(counts));
-
     // DEPRECATING
     // Deprecates GraphKB records no longer in upload
     if (!ignoreDeprecating) {
         logger.info('deprecating old GraphKB records...');
         await deprecateRecords(conn, { ncitIds, source });
     }
+
+    // LOGGING
+    logger.info(`Count of records without an explicitly given name: ${noExplicitNameCount}`);
+    logger.info(`Count of sourceId used as record's name: ${sourceIdAsNameCount}`);
+    logger.info(JSON.stringify(counts));
 };
 
 
