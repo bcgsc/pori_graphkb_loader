@@ -527,13 +527,15 @@ class ApiConnection {
 
     /**
      * @param {object} opt
-     * @param {string} opt.target
      * @param {object} opt.content
-     * @param {boolean} [opt.existsOk=false] do not error if a record cannot be created because it already exists
+     * @param {string} opt.target
+     * @param {boolean} [opt.existsOk=false] do not error if a record cannot be created because it already exists (409)
      * @param {object} [opt.fetchConditions=null] the filters clause to be used in attempting to fetch this record
      * @param {boolean} [opt.fetchExisting=true] return the record if it already exists
-     * @param {boolean} [opt.fetchFirst=false] attempt to fetch the record before trying to create it
-     * @param {function} opt.sortFunc function to be used in order records if multiple are returned to limit the result to 1
+     * @param {boolean} [opt.fetchFirst=false] attempt first to fetch and return the record, otherwise create it
+     * @param {function} [opt.sortFunc=()=>0] function to be used in order records if multiple are returned to limit the result to 1
+     * @param {function} [opt.upsert=false]
+     * @param {function} [opt.upsertCheckExclude=[]]
      */
     async addRecord(opt) {
         const {
@@ -548,9 +550,18 @@ class ApiConnection {
             upsertCheckExclude = [],
         } = opt;
         const model = schema.get(target);
+
+        // Early exit on invalid target
+        if (!model) {
+            throw new Error(`cannot find model from target (${target})`);
+        }
+
+        // Unless specific fetchConditions filters are provided,
+        // will fetch the record, when needed, by all of its properties (except undefined ones)
         const filters = fetchConditions || convertRecordToQueryFilters(content);
 
-        // Will first try to fetch and/or update the record if it already exists
+        // 1. Optionnaly try to first fetch and return the record if it already exists.
+        // Will try to update it if upsert=true
         if (fetchFirst || upsert) {
             try {
                 const result = await this.getUniqueRecordBy({
@@ -566,12 +577,7 @@ class ApiConnection {
             } catch (err) { }
         }
 
-
-        if (!model) {
-            throw new Error(`cannot find model from target (${target})`);
-        }
-
-        // Then (since record dosen't already exists) will create a new record
+        // 2. Attemps to create a new record
         try {
             const { result } = jc.retrocycle(await this.request({
                 body: content,
@@ -585,6 +591,7 @@ class ApiConnection {
             this.created[model.name].push(result['@rid']);
             return result;
         } catch (err) {
+            // On conflict (409), do not throw error if existsOk or upsert.
             if (err.statusCode === 409 && (existsOk || upsert)) {
                 if (fetchExisting || upsert) {
                     const result = await this.getUniqueRecordBy({

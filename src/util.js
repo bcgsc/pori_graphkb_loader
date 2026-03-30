@@ -1,3 +1,4 @@
+/* eslint-disable max-classes-per-file */
 /**
  * @module
  * @ignore
@@ -123,6 +124,21 @@ class HTTPResponseError extends Error {
 }
 
 
+class NotImplementedError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'NotImplementedError';
+    }
+}
+
+
+class NotSupportedError extends Error {
+    constructor(message) {
+        super(message);
+        this.name = 'NotSupportedError';
+    }
+}
+
 
 const request = async ({
     body, uri, qs = {}, json = false, headers = {}, method = 'GET',
@@ -227,6 +243,8 @@ const convertRowFields = (header, row) => {
 
 
 module.exports = {
+    NotImplementedError,
+    NotSupportedError,
     checkSpec,
     convertOwlGraphToJson,
     convertRowFields,

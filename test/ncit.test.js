@@ -1,4 +1,9 @@
-const { cleanRawRow, pickEndpoint } = require('../src/ncit');
+const {
+    cleanRawRow,
+    deprecateRecords,
+    filterSynonyms,
+    pickEndpoint,
+} = require('../src/ncit');
 
 describe('cleanRawRow', () => {
     const rawRow = {
@@ -109,17 +114,23 @@ describe('cleanRawRow', () => {
         ['keep first of multiple names', '', 'C10000|C20000', 'c10000'],
         ['extra separators', '', '||C10000', 'c10000'],
     ])('Has expected name value: %s', (_, id, name, expected) => {
-        const row = { ...rawRow, id, name };
+        const row = {
+            ...rawRow,
+            id,
+            name,
+            // clearing synonyms since they can be used as name if no name provided
+            synonyms: '',
+        };
         expect(cleanRawRow(row)).toHaveProperty('name', expected);
     });
 
     // synonyms property's value
     test.each([
-        ['to array', '', 'a|b', ['a', 'b']],
-        ['to lowercase', '', 'A|B', ['a', 'b']],
-        ['filter by name', 'C', 'a|b|c', ['a', 'b']],
-        ['remove duplicate', '', 'a|a', ['a']],
-        ['extra separators', '', '||a|b', ['a', 'b']],
+        ['to array', 'C', 'a|b', ['a', 'b']],
+        ['keep capitalization', 'C', 'A|B', ['A', 'B']],
+        ['keep equal to name for now', 'C', 'a|b|c', ['a', 'b', 'c']],
+        ['remove duplicate', 'C', 'a|a', ['a']],
+        ['extra separators', 'C', '||a|b', ['a', 'b']],
         ['add extra names to synonyms', 'a|b', 'c|d', ['c', 'd', 'b']],
     ])('Has expected synonyms value: %s', (_, name, synonyms, expected) => {
         const row = { ...rawRow, name, synonyms };
@@ -152,5 +163,59 @@ describe('pickEndpoint', () => {
     test('Concept do not correspond to any endpoint and there is no parent', () => {
         expect(() => pickEndpoint('A demogorgon', ''))
             .toThrow('Concept not implemented (A demogorgon)');
+    });
+});
+
+describe('filterSynonyms', () => {
+    test('Synonyms filtering', () => {
+        expect(filterSynonyms([
+            'Abc',
+            'ABC', // redundant based on lowercase comparison, to be skipped
+            'def',
+        ])).toEqual([
+            'Abc', // keep capitalization
+            'def',
+        ]);
+    });
+});
+
+describe('deprecateRecords', () => {
+    test('deprecates only non-uploaded, non-deprecated records', async () => {
+        const ncitIds = new Set(['C300']);
+        const records = [
+            // should be deprecated
+            {
+                '@class': 'Disease', '@rid': '#1:1', sourceId: 'C100',
+            },
+            // should not be deprecated since sourceId in already-uploaded ncitIds
+            {
+                '@class': 'Therapy', '@rid': '#1:2', sourceId: 'C300',
+            },
+            // should not be deprecated since already deprecated
+            {
+                '@class': 'AnatomicalEntity', '@rid': '#1:3', deprecated: true, sourceId: 'C200',
+            },
+        ];
+        const conn = {
+            getRecords: jest.fn().mockResolvedValue(records),
+            updateRecord: jest.fn().mockResolvedValue(),
+        };
+        const source = '#9:99';
+
+        await deprecateRecords(conn, { ncitIds, source });
+
+        expect(conn.getRecords).toHaveBeenCalledWith({
+            filters: { source },
+            neighbors: 0,
+            returnProperties: ['@class', '@rid', 'deprecated', 'sourceId'],
+            target: 'Ontology',
+        });
+
+        expect(conn.updateRecord).toHaveBeenCalledTimes(1);
+        expect(conn.updateRecord).toHaveBeenCalledWith(
+            'Disease',
+            '#1:1',
+            { deprecated: true },
+        );
     });
 });

@@ -97,6 +97,16 @@ fileParser.add_argument('--ignoreCache', {
     default: false,
     help: 'Load the full content, to not check for previously loaded records already in the GraphKB instance',
 });
+fileParser.add_argument('--ignoreSynonyms', {
+    action: 'store_true',
+    default: false,
+    help: 'For NCIt loader only: ignore synonyms instead upload as alias records (overrides default behavior)',
+});
+fileParser.add_argument('--ignoreDeprecating', {
+    action: 'store_true',
+    default: false,
+    help: 'For NCIt loader only: ignore deprecation of old records (overrides default behavior)',
+});
 
 const civicParser = subparsers.add_parser('civic');
 civicParser.add_argument('--trustedCurators', {
