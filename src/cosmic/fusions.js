@@ -21,16 +21,15 @@ const { cosmic: SOURCE_DEFN } = require('../sources');
 const RECURRENCE_THRESHOLD = 3;
 
 const HEADER = {
-    disease: 'HISTOLOGY_SUBTYPE_1',
-    diseaseFamily: 'PRIMARY_HISTOLOGY',
-    exon1: '5\'_LAST_OBSERVED_EXON',
-    exon2: '3\'_FIRST_OBSERVED_EXON',
-    fusionId: 'FUSION_ID',
-    fusionName: 'TRANSLOCATION_NAME',
-    gene1: '5\'_GENE_NAME',
-    gene2: '3\'_GENE_NAME',
+    diseaseId: 'COSMIC_PHENOTYPE_ID',
+    exon1: 'FIVE_PRIME_LAST_OBSERVE_EXON',
+    exon2: 'THREE_PRIME_FIRST_OBSERVE_EXON',
+    fusionId: 'COSMIC_FUSION_ID',
+    fusionName: 'FUSION_SYNTAX',
+    gene1: 'FIVE_PRIME_CHROMOSOME',
+    gene2: 'THREE_PRIME_CHROMOSOME',
     pubmed: 'PUBMED_PMID',
-    sampleId: 'SAMPLE_ID',
+    sampleId: 'COSMIC_SAMPLE_ID',
 };
 
 
@@ -42,6 +41,9 @@ const processVariants = async ({
     const [gene2] = await _gene.fetchAndLoadBySymbol(conn, record.gene2);
 
     // create the variants
+    if (!gene1 || !gene2) {
+        throw new Error(`unable to find genes for record ${record.id}: ${record.gene1}, ${record.gene2}`);
+    }
     const general = await conn.addVariant({
         content: {
             reference1: rid(gene1),
@@ -93,7 +95,6 @@ const processRecordGroup = async ({
         conn, exonSpecific, record: records[0], variantType,
     });
 
-
     // create the recurrence statement
     await conn.addRecord({
         content: {
@@ -138,7 +139,7 @@ const uploadFile = async ({
     const variantType = rid(await conn.getVocabularyTerm('fusion'));
     const cancer = rid(await conn.getUniqueRecordBy({ filters: { name: 'cancer' }, sort: orderPreferredOntologyTerms, target: 'Disease' }));
 
-    await _pubmed.fetchAndLoadByIds(conn, records.map(rec => rec.pumbed));
+    await _pubmed.fetchAndLoadByIds(conn, records.map(rec => rec.pubmed));
 
     const addPropertyMatch = (histogram, object, properties) => {
         const hashId = hashRecordToId(object, properties);
@@ -163,7 +164,9 @@ const uploadFile = async ({
     // pre-process/clean records
     for (const record of records) {
         record.id = hashRecordToId(record, ['fusionId', 'sampleId']);
-        record.ncit = (mapping[record.diseaseFamily] || {})[record.disease];
+        record.ncit = mapping[record.diseaseId].ncit || '';
+        record.disease = mapping[record.diseaseId].disease || '';
+        record.diseaseFamily = mapping[record.diseaseId].diseaseFamily || '';
 
         record.disease = record.disease.toUpperCase() === 'NS'
             ? ''
@@ -183,7 +186,9 @@ const uploadFile = async ({
         record.variant = `(${record.gene1},${record.gene2}).fus(e.${record.exon1},e.${record.exon2})`;
         record.nonSpecificVariant = `(${record.gene1},${record.gene2}).fus(e.?,e.?)`;
 
-        recurrentProperties.forEach((plist, index) => addPropertyMatch(recurrenceCounts[index], record, plist));
+        recurrentProperties.forEach(
+            (plist, index) => addPropertyMatch(recurrenceCounts[index], record, plist),
+        );
     }
 
     const getSampleCount = group => (new Set(group.map(row => row.sampleId))).size;
@@ -192,7 +197,7 @@ const uploadFile = async ({
     const processed = new Set();
 
     // disease-specific, exon-specific, fusions
-    for (let index = 0; index <= recurrenceCounts.length; index++) {
+    for (let index = 0; index < recurrenceCounts.length; index++) {
         const recurrencyLevel = recurrenceCounts[index];
 
         for (const [groupId, group] of Object.entries(recurrencyLevel)) {

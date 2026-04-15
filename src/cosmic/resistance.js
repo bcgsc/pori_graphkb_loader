@@ -24,22 +24,20 @@ const { cosmic: SOURCE_DEFN } = require('../sources');
 
 const HEADER = {
     cds: 'HGVSC',
-    disease: 'Histology Subtype 1',
-    diseaseFamily: 'Histology',
-    gene: 'Gene Name',
+    diseaseId: 'COSMIC_PHENOTYPE_ID',
+    gene: 'GENE_SYMBOL',
     genomic: 'HGVSG',
     mutationId: 'LEGACY_MUTATION_ID',
     protein: 'HGVSP',
-    pubmed: 'Pubmed Id',
-    sampleId: 'Sample ID',
-    sampleName: 'Sample Name',
-    therapy: 'Drug Name',
-    transcript: 'Transcript',
+    pubmed: 'PUBMED_PMID',
+    sampleName: 'SAMPLE_NAME',
+    therapy: 'DRUG_NAME',
+    transcript: 'TRANSCRIPT_ACCESSION',
 };
 
 
 /**
- * Create and link the variant defuinitions for a single row/record
+ * Create and link the variant definitions for a single row/record
  */
 const processVariants = async ({ conn, record, source }) => {
     let protein,
@@ -91,7 +89,7 @@ const processVariants = async ({ conn, record, source }) => {
         }));
 
         if (gene) {
-            // add the same protein varaint with the gene notation
+            // add the same protein variant with the gene notation
             generalProtein = rid(await conn.addVariant({
                 content: { ...variant, reference1: gene },
                 existsOk: true,
@@ -299,17 +297,20 @@ const processCosmicRecord = async (conn, record, source) => {
  * Disease mappings
  */
 const loadClassifications = async (filename) => {
-    const classifications = await loadDelimToJson(filename, { delim: ',' });
+    const classifications = await loadDelimToJson(filename);
     const mapping = {};
 
     for (const row of classifications) {
-        const disease = row.HISTOLOGY_COSMIC;
-        const subdisease = row.HIST_SUBTYPE1_COSMIC;
+        const diseaseId = row.COSMIC_PHENOTYPE_ID;
 
-        if (!mapping[disease]) {
-            mapping[disease] = {};
+        if (!mapping[diseaseId]) {
+            mapping[diseaseId] = {};
         }
-        mapping[disease][subdisease] = row.NCI_CODE;
+        mapping[diseaseId] = {
+            disease: row.HISTOLOGY_SUBTYPE_1,
+            diseaseFamily: row.PRIMARY_HISTOLOGY,
+            ncit: row.NCI_CODE,
+        };
     }
     return mapping;
 };
@@ -367,7 +368,9 @@ const uploadFile = async ({
         }
 
         try {
-            record.ncit = (mapping[record.diseaseFamily] || {})[record.disease];
+            record.ncit = mapping[record.diseaseId].ncit || '';
+            record.disease = mapping[record.diseaseId].disease || '';
+            record.diseaseFamily = mapping[record.diseaseId].diseaseFamily || '';
             record.publication = rid((await _pubmed.fetchAndLoadByIds(conn, [record.pubmed]))[0]);
             const statement = await processCosmicRecord(conn, record, source);
 
