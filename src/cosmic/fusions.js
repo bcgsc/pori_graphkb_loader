@@ -19,6 +19,7 @@ const { logger } = require('../logging');
 const { cosmic: SOURCE_DEFN } = require('../sources');
 
 const RECURRENCE_THRESHOLD = 3;
+const cache = {};
 
 const HEADER = {
     diseaseId: 'COSMIC_PHENOTYPE_ID',
@@ -32,15 +33,39 @@ const HEADER = {
     sampleId: 'COSMIC_SAMPLE_ID',
 };
 
+const fetchChromosome = async (conn, sourceId) => {
+    if (cache[sourceId]) {
+        return cache[sourceId];
+    }
+    const record = await conn.getUniqueRecordBy({
+        filters: {
+            AND: [
+                { sourceId },
+                { biotype: 'chromosome' },
+            ],
+        },
+        sort: orderPreferredOntologyTerms,
+        target: 'Feature',
+    });
+    cache[sourceId] = record;
+    return record;
+};
+
 
 const processVariants = async ({
     conn, record, variantType, exonSpecific,
 }) => {
     // fetch the features
-    const [gene1] = await _gene.fetchAndLoadBySymbol(conn, record.gene1);
-    const [gene2] = await _gene.fetchAndLoadBySymbol(conn, record.gene2);
+    let [gene1] = await _gene.fetchAndLoadBySymbol(conn, record.gene1),
+        [gene2] = await _gene.fetchAndLoadBySymbol(conn, record.gene2);
 
     // create the variants
+    if (!gene1) {
+        gene1 = await fetchChromosome(conn, record.gene1);
+    }
+    if (!gene2) {
+        gene2 = await fetchChromosome(conn, record.gene2);
+    }
     if (!gene1 || !gene2) {
         throw new Error(`unable to find genes for record ${record.id}: ${record.gene1}, ${record.gene2}`);
     }

@@ -69,43 +69,45 @@ const processVariants = async ({ conn, record, source }) => {
                 throw Error(`failed to find the HGNC gene for ${record.gene}`);
             }
         } catch (err) {
-            logger.error(err);
+            logger.warn(err);
         }
     }
 
-    try {
-        // add the protein variant with its protein translation
-        const variant = jsonifyVariant(parseVariant(record.protein, false));
-        variant.type = rid(await conn.getVocabularyTerm(variant.type));
+    if (record.protein && record.protein.trim()) {
+        try {
+            // add the protein variant with its protein translation
+            const variant = jsonifyVariant(parseVariant(record.protein, false));
+            variant.type = rid(await conn.getVocabularyTerm(variant.type));
 
-        const reference1 = rid(await _ensembl.fetchAndLoadById(
-            conn,
-            { biotype: 'protein', sourceId: variant.reference1 },
-        ));
-        protein = rid(await conn.addVariant({
-            content: { ...variant, reference1 },
-            existsOk: true,
-            target: 'PositionalVariant',
-        }));
-
-        if (gene) {
-            // add the same protein variant with the gene notation
-            generalProtein = rid(await conn.addVariant({
-                content: { ...variant, reference1: gene },
+            const reference1 = rid(await _ensembl.fetchAndLoadById(
+                conn,
+                { biotype: 'protein', sourceId: variant.reference1 },
+            ));
+            protein = rid(await conn.addVariant({
+                content: { ...variant, reference1 },
                 existsOk: true,
                 target: 'PositionalVariant',
             }));
 
-            // link the translation version to the gene version
-            await conn.addRecord({
-                content: { in: generalProtein, out: protein },
-                existsOk: true,
-                fetchExisting: false,
-                target: 'Infers',
-            });
+            if (gene) {
+                // add the same protein variant with the gene notation
+                generalProtein = rid(await conn.addVariant({
+                    content: { ...variant, reference1: gene },
+                    existsOk: true,
+                    target: 'PositionalVariant',
+                }));
+
+                // link the translation version to the gene version
+                await conn.addRecord({
+                    content: { in: generalProtein, out: protein },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'Infers',
+                });
+            }
+        } catch (err) {
+            logger.error(err);
         }
-    } catch (err) {
-        logger.error(err);
     }
 
     // create the cds variant
