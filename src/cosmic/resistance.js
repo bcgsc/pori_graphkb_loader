@@ -340,7 +340,7 @@ const uploadFile = async ({
         filters: [
             { source },
             { relevance },
-            { createdBy: { filters: { name: conn.username }, target: 'User' } },
+            { createdBy: { filters: { name: 'graphkb_importer' }, target: 'User' } },
         ],
         returnProperties: ['@rid'],
         target: 'Statement',
