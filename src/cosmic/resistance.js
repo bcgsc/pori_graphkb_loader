@@ -370,9 +370,10 @@ const uploadFile = async ({
         }
 
         try {
-            record.ncit = mapping[record.diseaseId]?.ncit || '';
-            record.disease = mapping[record.diseaseId]?.disease || '';
-            record.diseaseFamily = mapping[record.diseaseId]?.diseaseFamily || '';
+            const diseaseMapping = mapping[record.diseaseId] || {};
+            record.ncit = diseaseMapping.ncit || '';
+            record.disease = diseaseMapping.disease || '';
+            record.diseaseFamily = diseaseMapping.diseaseFamily || '';
             record.publication = rid((await _pubmed.fetchAndLoadByIds(conn, [record.pubmed]))[0]);
             const statement = await processCosmicRecord(conn, record, source);
 
