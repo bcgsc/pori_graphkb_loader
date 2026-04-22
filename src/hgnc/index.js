@@ -203,9 +203,7 @@ const fetchAndLoadBySymbol = async ({
             CACHE[paramType][symbol] = record;
         }
         return record;
-    } catch (err) {
-        logger.info('Unable to fetch ensembl source for linking records');
-    }
+    } catch (err) { }
     // fetch from the HGNC API and upload
     const uri = `${HGNC_API}/${paramType}/${
         paramType === 'hgnc_id'
