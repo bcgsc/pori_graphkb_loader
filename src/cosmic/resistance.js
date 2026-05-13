@@ -353,6 +353,7 @@ const uploadFile = async ({
     const errorList = [];
     logger.info(`Processing ${jsonList.length} records`);
     // Upload the list of pubmed IDs
+    await _pubmed.preLoadCache(conn);
     await _pubmed.fetchAndLoadByIds(conn, jsonList.map(rec => rec[HEADER.pubmed]), { upsert: true });
 
     for (let index = 0; index < jsonList.length; index++) {
