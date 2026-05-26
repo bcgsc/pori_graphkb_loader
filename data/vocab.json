@@ -135,12 +135,12 @@
         "biological": {
             "name": "biological"
         },
-        "cancer gene": {
-            "description": "Tumourigenesis gene that is neither oncogenic nor tumour suppressive",
+        "other cancer gene": {
+            "description": "Cancer gene that is neither oncogenic nor tumour suppressive",
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "tumourigenesis"
+                    "target": "cancer gene"
                 }
             ]
         },
@@ -1395,7 +1395,7 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "tumourigenesis"
+                    "target": "cancer gene"
                 }
             ]
         },
@@ -2149,11 +2149,11 @@
             "links": [
                 {
                     "class": "SubClassOf",
-                    "target": "tumourigenesis"
+                    "target": "cancer gene"
                 }
             ]
         },
-        "tumourigenesis": {
+        "cancer gene": {
             "links": [
                 {
                     "class": "SubClassOf",
