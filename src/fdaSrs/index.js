@@ -9,7 +9,7 @@ const { fdaSrs: SOURCE_DEFN } = require('../sources');
 
 const HEADER = {
     id: 'UNII',
-    name: 'PT',
+    name: 'Display Name',
     ncit: 'NCIT',
     pubchem: 'PUBCHEM',
 };
