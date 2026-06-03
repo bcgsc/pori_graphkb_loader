@@ -17,12 +17,6 @@ const sources = {
         name: 'amp',
         url: 'https://www.amp.org',
     },
-    anzctr: {
-        displayName: 'ANZCTR',
-        longName: 'Australian New Zealand Clinical Trials Registry',
-        name: 'anzctr',
-        url: 'https://www.anzctr.org.au',
-    },
     asco: {
         displayName: 'ASCO',
         longName: 'American Society of Clinical Oncology',
@@ -51,7 +45,7 @@ const sources = {
         displayName: 'CGL',
         longName: 'BC Cancer Genetics and Genomics Laboratory',
         name: 'cgl',
-        url: 'http://cancergeneticslab.ca',
+        url: 'https://www.cancergenomeinterpreter.org',
     },
     chembl: {
         description: 'ChEMBL is a manually curated database of bioactive molecules with drug-like properties. It brings together chemical, bioactivity and genomic data to aid the translation of genomic information into effective new drugs.',

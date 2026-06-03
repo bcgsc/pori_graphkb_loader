@@ -1,129 +1,9 @@
 /* eslint-disable jest/no-disabled-tests */
-const {
-    normalizeFactorVariant,
-    normalizeFusionVariant,
-    normalizeGeneVariant,
-    normalizeVariant,
-    NotImplementedError,
-    uploadInferences,
-    uploadReferences,
-    uploadVariant,
-    uploadVariants,
-} = require('../../src/civic/variant');
+const { normalizeVariantRecord } = require('../../src/civic/variant');
 
-
-/*
-    SYNCHRONOUS TESTS
-*/
-
-const civicVariantRecordsFactor = [
-    {
-        feature: { featureInstance: { __typename: 'Factor', name: 'TMB' } },
-        id: 123,
-        name: 'abc',
-    },
-];
-const civicVariantRecordsFusion = [
-    {
-        feature: {
-            featureInstance: {
-                __typename: 'Fusion',
-                fivePrimeGene: {
-                    entrezId: 673,
-                    id: 5,
-                    name: 'BRAF',
-                },
-            },
-        },
-        id: 123,
-    },
-    {
-        feature: {
-            featureInstance: {
-                __typename: 'Fusion',
-                threePrimeGene: {
-                    entrezId: 238,
-                    id: 1,
-                    name: 'ALK',
-                },
-            },
-        },
-        id: 123,
-    },
-    {
-        feature: {
-            featureInstance: {
-                __typename: 'Fusion',
-                fivePrimeGene: {
-                    entrezId: 673,
-                    id: 5,
-                    name: 'BRAF',
-                },
-                threePrimeGene: {
-                    entrezId: 238,
-                    id: 1,
-                    name: 'ALK',
-                },
-            },
-        },
-        id: 123,
-    },
-];
-const civicVariantRecordsGene = [
-    {
-        feature: { featureInstance: { __typename: 'Gene', entrezId: 672, name: 'BRCA1' } },
-        name: 'Mutation',
-    },
-];
-
-
-describe('normalizeFactorVariant', () => {
-    test('testnormalizeFactorVariant', () => {
-        const normalizedVariants = normalizeFactorVariant(civicVariantRecordsFactor[0]);
-        expect(normalizedVariants.length).toEqual(1);
-        expect(normalizedVariants[0]).toEqual({
-            reference1: {
-                class: 'Signature',
-                name: 'high mutation burden',
-            },
-            type: 'high signature',
-        });
-    });
-});
-
-describe('normalizeFusionVariant', () => {
-    test('testnormalizeFusionVariantFivePrimeGeneOnly', () => {
-        const normalizedVariants = normalizeFusionVariant(civicVariantRecordsFusion[0]);
-        expect(normalizedVariants.length).toEqual(1);
-        expect(normalizedVariants[0]).toEqual({
-            reference1: { name: 'braf', sourceId: '673' },
-            type: 'fusion',
-        });
-    });
-
-    test('testnormalizeFusionVariantThreePrimeGeneOnly', () => {
-        const normalizedVariants = normalizeFusionVariant(civicVariantRecordsFusion[1]);
-        expect(normalizedVariants.length).toEqual(1);
-        expect(normalizedVariants[0]).toEqual({
-            reference1: { name: 'alk', sourceId: '238' },
-            type: 'fusion',
-        });
-    });
-
-    test('testnormalizeFusionVariantBothGenes', () => {
-        const normalizedVariants = normalizeFusionVariant(civicVariantRecordsFusion[2]);
-        expect(normalizedVariants.length).toEqual(1);
-        expect(normalizedVariants[0]).toEqual({
-            reference1: { name: 'braf', sourceId: '673' },
-            reference2: { name: 'alk', sourceId: '238' },
-            type: 'fusion',
-        });
-    });
-});
-
-describe('normalizeGeneVariant', () => {
+describe('normalizeVariantRecord', () => {
     test('exon mutation', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'gene',
             name: 'EXON 12 MUTATION',
@@ -139,7 +19,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('deleterious mutation', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'gene',
             name: 'DELETRIOUS MUTATION',
@@ -151,7 +31,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('phosphorylation variant', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'gene',
             name: 'Y1234 phosphorylation',
@@ -164,7 +44,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('single gene fusion with missense mutation', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 'ALK FUSION G1202R',
@@ -183,7 +63,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('multi-gene fusion with 2 resistance mutations (dash notation)', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'alk',
             name: 'EML4-ALK G1202R-L1198F',
@@ -208,7 +88,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('multi-gene fusion', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'NRG1',
             name: 'CD74-NRG1',
@@ -223,7 +103,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('fusion with multiple variants', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'NTRK1',
             name: 'LMNA-NTRK1 G595R AND G667C',
@@ -248,7 +128,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('fusion with multiple variants (colon sep)', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'NTRK1',
             name: 'LMNA::NTRK1 G595R AND G667C',
@@ -274,7 +154,7 @@ describe('normalizeGeneVariant', () => {
 
     test('corrects deprecated indel syntax', () => {
         // S111C (c.330CA>TT)
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'NTRK1',
             name: 'S111C (c.330CA>TT)',
@@ -293,8 +173,17 @@ describe('normalizeGeneVariant', () => {
         ]);
     });
 
+    test.skip('multiple variants with plus notation', () => {
+        // V600E+V600M
+        // E2014K + E2419K
+    });
+
+    test.skip('missense and amplification', () => {
+        // V600E AMPLIFICATION
+    });
+
     test('categorical variant', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'NTRK1',
             name: 'UNDEREXPRESSION',
@@ -309,7 +198,7 @@ describe('normalizeGeneVariant', () => {
 
     test('protein truncation with cds notation', () => {
         // e46* (c.136g>t)
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 'E46* (c.136G>T)',
@@ -331,7 +220,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('categorical variant with spaces', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'NTRK1',
             name: 'DNA BINDING DOMAIN MUTATION',
@@ -346,7 +235,7 @@ describe('normalizeGeneVariant', () => {
 
     test('regular missense mutation', () => {
         // R132H
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'NTRK1',
             name: 'R132H',
@@ -362,7 +251,7 @@ describe('normalizeGeneVariant', () => {
 
     test('plural for single gene fusion', () => {
         // ALK FUSIONS
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'NRG1',
             name: 'NRG1 fusions',
@@ -378,7 +267,7 @@ describe('normalizeGeneVariant', () => {
     test('fusion with exon positions', () => {
         // EML4-ALK E20;A20
         // ALK FUSIONS
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 'EML4-ALK E20;A20',
@@ -396,7 +285,7 @@ describe('normalizeGeneVariant', () => {
     test('fusion with new exon notation', () => {
         // EWSR1-FLI1 e7-e6
         // FLI1 Fusion
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'FLI1',
             name: 'EWSR1-FLI1 e7-e6',
@@ -414,7 +303,7 @@ describe('normalizeGeneVariant', () => {
     test('fusion with reference2 input gene', () => {
         // EML4-ALK E20;A20
         // ALK FUSIONS
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'EML4',
             name: 'EML4-ALK E20;A20',
@@ -431,7 +320,7 @@ describe('normalizeGeneVariant', () => {
 
     test('abl fusion', () => {
         // BCR-ABL
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ABL1',
             name: 'BCR-ABL',
@@ -447,7 +336,7 @@ describe('normalizeGeneVariant', () => {
 
     test('cds notation', () => {
         // BCR-ABL
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ABL1',
             name: 'c.123G>T',
@@ -463,7 +352,7 @@ describe('normalizeGeneVariant', () => {
 
     test('exon range deletion', () => {
         // BCR-ABL
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ABL1',
             name: 'exon 2-3 deletion',
@@ -478,7 +367,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('frameshift with cds', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 't133lfs*26 (c.397dela)',
@@ -500,7 +389,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('protein indel with cds', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 't133lfs*26 (c.397dela)',
@@ -523,7 +412,7 @@ describe('normalizeGeneVariant', () => {
 
     test('simple gene mutation', () => {
         // BCR-ABL
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ABL1',
             name: 'ABL1 mutations',
@@ -537,7 +426,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('exon plural mutations', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ABL1',
             name: 'exon 3 mutations',
@@ -552,7 +441,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('mutations', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ABL1',
             name: 'mutations',
@@ -565,9 +454,13 @@ describe('normalizeGeneVariant', () => {
         ]);
     });
 
+    test.skip('germline notation', () => {
+        // DPYD*2A HOMOZYGOSITY
+    });
+
     test('splice site mutation', () => {
         // F547 SPLICE SITE MUTATION
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 'F547 SPLICE SITE MUTATION',
@@ -584,7 +477,7 @@ describe('normalizeGeneVariant', () => {
     test('protein deletion with cds deletion sequence', () => {
         // r79_s80del (c.236_241delgcagtc)
         // r82_v84del (c.244_252del)
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 'r79_s80del (c.236_241delgcagtc)',
@@ -606,7 +499,7 @@ describe('normalizeGeneVariant', () => {
     });
 
     test('protein deletion with cds deletion no sequence', () => {
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 'r82_v84del (c.244_252del)',
@@ -629,7 +522,7 @@ describe('normalizeGeneVariant', () => {
 
     test('protein dup with cds dup', () => {
         // p.s193_c196dupstsc (c.577_588dupagcaccagctgc)
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 'p.s193_c196dupstsc (c.577_588dupagcaccagctgc)',
@@ -652,7 +545,7 @@ describe('normalizeGeneVariant', () => {
 
     test('protein with cds notation', () => {
         // A122I (c.364_365GC>AT)
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 'A122I (c.364_365GC>AT)',
@@ -675,7 +568,7 @@ describe('normalizeGeneVariant', () => {
 
     test('OR-able position no alt seq', () => {
         // G12/G13
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 'G12/G13',
@@ -689,9 +582,13 @@ describe('normalizeGeneVariant', () => {
         ]);
     });
 
+    test.skip('catalogue variant', () => {
+        // RS3910384
+    });
+
     test('semi-colon delimited variants', () => {
         // A50A (c.150C>G); Splicing alteration (c.463-1G>T)
-        const variants = normalizeGeneVariant({
+        const variants = normalizeVariantRecord({
             entrezId: 1,
             entrezName: 'ALK',
             name: 'A50A (c.150C>G); Splicing alteration (c.463-1G>T)',
@@ -721,23 +618,6 @@ describe('normalizeGeneVariant', () => {
         ]);
     });
 
-    test.skip('multiple variants with plus notation', () => {
-        // V600E+V600M
-        // E2014K + E2419K
-    });
-
-    test.skip('missense and amplification', () => {
-        // V600E AMPLIFICATION
-    });
-
-    test.skip('germline notation', () => {
-        // DPYD*2A HOMOZYGOSITY
-    });
-
-    test.skip('catalogue variant', () => {
-        // RS3910384
-    });
-
     test.skip('duplicate fusion', () => {
         // AGGF1-PDGFRB, AGGF1-PDGFRB C843G
     });
@@ -748,7 +628,7 @@ describe('normalizeGeneVariant', () => {
 
     describe('bad notation should return as vocabulary', () => {
         test('ERBB2 G776INSV_G/C', () => {
-            const variants = normalizeGeneVariant({
+            const variants = normalizeVariantRecord({
                 entrezId: 1,
                 entrezName: 'ERBB2',
                 name: 'ERBB2 G776INSV_G/C',
@@ -760,7 +640,7 @@ describe('normalizeGeneVariant', () => {
         });
 
         test('exon1 151nt del; Null (Partial deletion of Exon 1)', () => {
-            const variants = normalizeGeneVariant({
+            const variants = normalizeVariantRecord({
                 entrezId: 1,
                 entrezName: 'ERBB2',
                 name: 'exon1 151nt del; Null (Partial deletion of Exon 1)',
@@ -773,174 +653,5 @@ describe('normalizeGeneVariant', () => {
                 type: 'null (partial deletion of exon 1)',
             }]);
         });
-    });
-});
-
-describe('normalizeVariant', () => {
-    [
-        civicVariantRecordsFactor[0],
-        civicVariantRecordsFusion[0],
-        civicVariantRecordsGene[0],
-
-    ].forEach((record) => {
-        test(`testNormalizeVariantFeatureType${record.feature.featureInstance.__typename}`, () => {
-            expect(normalizeVariant(record).length).toBe(1);
-        });
-    });
-
-    test('testNormalizeVariantFeatureTypeNotImplemented', () => {
-        expect(() => {
-            normalizeVariant(
-                { feature: { featureInstance: { __typename: 'Other' } } },
-            );
-        }).toThrow(NotImplementedError);
-    });
-});
-
-
-/*
-    ASYNCHRONOUS TESTS
-*/
-
-const mockConn = () => ({
-    addRecord: jest.fn().mockResolvedValue({ '@rid': '#', reference1: '#' }), // used by Entrez loader
-    addSource: jest.fn().mockResolvedValue({ '@rid': '#', reference1: '#' }), // used by Entrez loader
-    addVariant: jest.fn().mockResolvedValue({ '@rid': '#123:45' }),
-    getUniqueRecordBy: jest.fn().mockResolvedValue({ '@rid': '#678:90', reference1: '#' }),
-    getVocabularyTerm: jest.fn().mockResolvedValue({ '@rid': '#' }),
-});
-const conn = mockConn();
-
-
-describe.skip('uploadReferences', () => {
-    const normalizedVariants = [
-        { },
-        { reference1: { } },
-        { reference1: { class: 'Signature', name: '' } },
-        { reference1: { sourceId: '123' } },
-        { reference1: { name: 'abc' } },
-        { reference1: { sourceId: '123' }, reference2: { sourceId: '456' } },
-    ];
-
-    test('testUploadReferencesNoReference1', async () => {
-        await expect(
-            uploadReferences(conn, normalizedVariants[0]),
-        ).rejects.toThrow('reference1 is mandatory on normalizedVariant');
-    });
-
-    test('testUploadReferencesNoName', async () => {
-        await expect(
-            uploadReferences(conn, normalizedVariants[1]),
-        ).rejects.toThrow('name property is mandatory on normalizedVariant reference');
-    });
-
-    test('testUploadReferencesSignature', async () => {
-        const [reference1, reference2] = await uploadReferences(conn, normalizedVariants[2]);
-        expect(reference1).toEqual({ '@rid': '#678:90', reference1: '#' });
-        expect(reference2).toEqual(undefined);
-    });
-
-    test('testUploadReferencesWithSourceId', async () => {
-        const [reference1, reference2] = await uploadReferences(conn, normalizedVariants[3]);
-        expect(reference1).toEqual({ '@rid': '#678:90', reference1: '#' });
-        expect(reference2).toEqual(undefined);
-    });
-
-    test('testUploadReferencesWithName', async () => {
-        const [reference1, reference2] = await uploadReferences(conn, normalizedVariants[4]);
-        expect(reference1).toEqual({ '@rid': '#678:90', reference1: '#' });
-        expect(reference2).toEqual(undefined);
-    });
-
-    test('testUploadReferencesWithReference2', async () => {
-        const [reference1, reference2] = await uploadReferences(conn, normalizedVariants[5]);
-        expect(reference1).toEqual({ '@rid': '#678:90', reference1: '#' });
-        expect(reference2).toEqual({ '@rid': '#678:90', reference1: '#' });
-    });
-});
-
-describe.skip('uploadInferences', () => {
-    const normalizedVariants = [
-        {
-            infers: [
-                { reference1: { name: '...' }, type: '...' },
-                { reference1: { name: '...' }, type: '...' },
-            ],
-        },
-        {
-            inferredBy: [
-                { reference1: { name: '...' }, type: '...' },
-                { reference1: { name: '...' }, type: '...' },
-                { reference1: { name: '...' }, type: '...' },
-            ],
-        },
-    ];
-
-    test('testUploadInferencesInfers', async () => {
-        const { links, variants } = await uploadInferences(conn, normalizedVariants[0], { '@rid': '#' });
-        expect(links.infers.length).toEqual(2);
-        expect(variants.inferred.length).toEqual(2);
-    });
-
-    test('testUploadInferencesInferredBy', async () => {
-        const { links, variants } = await uploadInferences(conn, normalizedVariants[1], { '@rid': '#' });
-        expect(links.inferredBy.length).toEqual(3);
-        expect(variants.inferring.length).toEqual(3);
-    });
-});
-
-describe.skip('uploadVariant', () => {
-    const normalizedVariants = [
-        { type: 'rs123' },
-        { positional: true, reference1: { name: 'egfr', sourceId: 1956 }, variant: 'c.1del' },
-        { reference1: { name: 'egfr', sourceId: 1956 }, type: 'mutation' },
-    ];
-
-    test('testUploadVariantRSID', async () => {
-        const result = await uploadVariant(conn, normalizedVariants[0]);
-        expect(result).toEqual({ '@rid': '#678:90', reference1: '#' });
-    });
-
-    test('testUploadVariantPositional', async () => {
-        const result = await uploadVariant(conn, normalizedVariants[1]);
-        expect(result).toEqual({ '@rid': '#123:45' });
-    });
-
-    test('testUploadVariantCategory', async () => {
-        const result = await uploadVariant(conn, normalizedVariants[2]);
-        expect(result).toEqual({ '@rid': '#123:45' });
-    });
-});
-
-describe('uploadVariants', () => {
-    const normalizedVariants = [
-        // Factor
-        {
-            reference1: {
-                class: 'Signature',
-                name: 'high mutation burden',
-            },
-            type: 'high signature',
-        },
-        // Fusion
-        {
-            reference1: { name: 'braf', sourceId: '673' },
-            reference2: { name: 'alk', sourceId: '238' },
-            type: 'fusion',
-        },
-        // Gene
-        {
-            reference1: { name: 'braf', sourceId: '673' },
-            type: 'mutation',
-        },
-    ];
-
-    test('testuploadVariants', async () => {
-        const uploadedVariants = await uploadVariants(conn, normalizedVariants);
-        expect(uploadedVariants.length).toEqual(3);
-
-        for (let i = 0; i < uploadedVariants.length; i++) {
-            expect(uploadedVariants[i]).toEqual({ '@rid': '#123:45' });
-        }
     });
 });
