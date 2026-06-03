@@ -135,8 +135,7 @@ rule download_PMC4232638:
 rule download_cgi:
     output: f'{DATA_DIR}/cgi/cgi_biomarkers_per_variant.tsv'
     shell: f'''
-        curl --create-dirs -o {DATA_DIR}/cgi/cgi_biomarkers.zip https://www.cancergenomeinterpreter.org/data/biomarkers/cgi_biomarkers_20180117.zip
-        unzip -d {DATA_DIR}/cgi {DATA_DIR}/cgi/cgi_biomarkers.zip
+        curl --create-dirs -o {DATA_DIR}/cgi/cgi_biomarkers_per_variant.tsv https://www.cancergenomeinterpreter.org/2021/data/biomarkers/cgi_biomarkers_latest.tsv
         '''
 
 
