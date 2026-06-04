@@ -15,6 +15,7 @@ const hgnc = require('./hgnc');
 const sources = require('./sources');
 const ontology = require('./ontology');
 const util = require('./util');
+const ncit = require('./ncit');
 
 const { logger } = require('./logging');
 
@@ -51,6 +52,7 @@ module.exports = {
     entrezGene,
     graphkb,
     hgnc,
+    ncit,
     ontology,
     pubmed,
     refseq,

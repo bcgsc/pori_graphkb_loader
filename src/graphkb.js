@@ -59,7 +59,7 @@ const shouldUpdate = (modelIn, originalContentIn, newContentIn, upsertCheckExclu
         ? schema.get(modelIn)
         : modelIn;
     const originalContent = simplifyRecordsLinks(originalContentIn);
-    const formatted = model.formatRecord(simplifyRecordsLinks(newContentIn), {
+    const formatted = schema.formatRecord(model.name, simplifyRecordsLinks(newContentIn), {
         addDefaults: false,
         dropExtra: true,
         ignoreMissing: true,
@@ -131,66 +131,59 @@ const convertRecordToQueryFilters = (record) => {
  * @returns {Number} the sorting number (-1, 0, +1)
  */
 const orderPreferredOntologyTerms = (term1, term2) => {
-    // prefer non-deprecated terms
-    if (term1.deprecated && !term2.deprecated) {
-        return 1;
-    } if (term2.deprecated && !term1.deprecated) {
+    // prefer non-deprecated terms over deprecated ones
+    if (!term1.deprecated && term2.deprecated) {
         return -1;
+    } if (term1.deprecated && !term2.deprecated) {
+        return 1;
     }
     // prefer terms with independent sourceId
     if (term1.alias === false & term2.alias !== false) {
         return -1;
-    } if (term2.alias === false & term1.alias !== false) {
+    } if (term1.alias !== false & term2.alias === false) {
         return 1;
     }
-    if (term1.dependency == null & term2.dependency != null) {
+    if (nullOrUndefined(term1.dependency) & !nullOrUndefined(term2.dependency)) {
         return -1;
-    } if (term2.dependency == null & term1.dependency != null) {
+    } if (!nullOrUndefined(term1.dependency) & nullOrUndefined(term2.dependency)) {
         return 1;
     }
     // when terms have the same sourceId and source
-    if (term1.sourceId === term2.sourceId && rid(term1.source, true) === rid(term2.source, true)) {
+    if (
+        (term1.sourceId && term1.sourceId === term2.sourceId)
+        && (rid(term1.source, true) && rid(term1.source, true) === rid(term2.source, true))
+    ) {
         // prefer generic to versioned terms (will not be together unless version not specified)
-        if (nullOrUndefined(term1.sourceIdVersion) && !(term2.sourceIdVersion)) {
+        if (nullOrUndefined(term1.sourceIdVersion) && !nullOrUndefined(term2.sourceIdVersion)) {
             return -1;
-        } if (nullOrUndefined(term2.sourceIdVersion) && !(term1.sourceIdVersion)) {
+        } if (!nullOrUndefined(term1.sourceIdVersion) && nullOrUndefined(term2.sourceIdVersion)) {
             return 1;
         }
         // prefer newer/later versions
-        if (term1.sourceIdVersion < term2.sourceIdVersion) {
+        if (term1.sourceIdVersion > term2.sourceIdVersion) {
             return -1;
-        } if (term1.sourceIdVersion > term2.sourceIdVersion) {
+        } if (term1.sourceIdVersion < term2.sourceIdVersion) {
             return 1;
         }
-        // prefer newer/later source version
-        if (term1.source && term2.source) {
-            if (term1.source.version < term2.source.version) {
-                return -1;
-            } if (term1.source.version > term2.source.version) {
-                return 1;
-            }
-        }
-        // prefer terms with descriptions
-        if (term1.description && !term2.description) {
-            return -1;
-        } if (!term1.description && term2.description) {
-            return 1;
-        }
-    } if (term1.source && term2.source) {
+    } else if (term1.source && term2.source) {
         // use source rank to sort results
         if (term1.source.sort < term2.source.sort) {
             return -1;
         } if (term1.source.sort > term2.source.sort) {
             return 1;
-        } if (term1.source.version < term2.source.version) {
-            return -1;
-        } if (term1.source.version > term2.source.version) {
-            return 1;
-        } if (term1.description && !term2.description) {
-            return -1;
-        } if (!term1.description && term2.description) {
-            return 1;
         }
+    }
+    // prefer terms with descriptions
+    if (term1.description && !term2.description) {
+        return -1;
+    } if (!term1.description && term2.description) {
+        return 1;
+    }
+    // prefer terms most recently updated
+    if (term1.updatedAt > term2.updatedAt) {
+        return -1;
+    } if (term1.updatedAt < term2.updatedAt) {
+        return 1;
     }
     return 0;
 };
@@ -534,13 +527,15 @@ class ApiConnection {
 
     /**
      * @param {object} opt
-     * @param {string} opt.target
      * @param {object} opt.content
-     * @param {boolean} [opt.existsOk=false] do not error if a record cannot be created because it already exists
+     * @param {string} opt.target
+     * @param {boolean} [opt.existsOk=false] do not error if a record cannot be created because it already exists (409)
      * @param {object} [opt.fetchConditions=null] the filters clause to be used in attempting to fetch this record
      * @param {boolean} [opt.fetchExisting=true] return the record if it already exists
-     * @param {boolean} [opt.fetchFirst=false] attempt to fetch the record before trying to create it
-     * @param {function} opt.sortFunc function to be used in order records if multiple are returned to limit the result to 1
+     * @param {boolean} [opt.fetchFirst=false] attempt first to fetch and return the record, otherwise create it
+     * @param {function} [opt.sortFunc=()=>0] function to be used in order records if multiple are returned to limit the result to 1
+     * @param {function} [opt.upsert=false]
+     * @param {function} [opt.upsertCheckExclude=[]]
      */
     async addRecord(opt) {
         const {
@@ -555,9 +550,18 @@ class ApiConnection {
             upsertCheckExclude = [],
         } = opt;
         const model = schema.get(target);
+
+        // Early exit on invalid target
+        if (!model) {
+            throw new Error(`cannot find model from target (${target})`);
+        }
+
+        // Unless specific fetchConditions filters are provided,
+        // will fetch the record, when needed, by all of its properties (except undefined ones)
         const filters = fetchConditions || convertRecordToQueryFilters(content);
 
-        // Will first try to fetch and/or update the record if it already exists
+        // 1. Optionnaly try to first fetch and return the record if it already exists.
+        // Will try to update it if upsert=true
         if (fetchFirst || upsert) {
             try {
                 const result = await this.getUniqueRecordBy({
@@ -573,12 +577,7 @@ class ApiConnection {
             } catch (err) { }
         }
 
-
-        if (!model) {
-            throw new Error(`cannot find model from target (${target})`);
-        }
-
-        // Then (since record dosen't already exists) will create a new record
+        // 2. Attemps to create a new record
         try {
             const { result } = jc.retrocycle(await this.request({
                 body: content,
@@ -592,6 +591,7 @@ class ApiConnection {
             this.created[model.name].push(result['@rid']);
             return result;
         } catch (err) {
+            // On conflict (409), do not throw error if existsOk or upsert.
             if (err.statusCode === 409 && (existsOk || upsert)) {
                 if (fetchExisting || upsert) {
                     const result = await this.getUniqueRecordBy({
