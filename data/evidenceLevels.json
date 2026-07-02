@@ -367,7 +367,17 @@
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
-                    "target": "oncokb-2a"
+                    "target": "oncokb-2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-dx1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-px1"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -458,6 +468,16 @@
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
+                    "target": "oncokb-dx2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-px2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
                     "target": "oncokb-r2"
                 },
                 {
@@ -536,12 +556,17 @@
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
-                    "target": "oncokb-2b"
+                    "target": "oncokb-3b"
                 },
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
-                    "target": "oncokb-3b"
+                    "target": "oncokb-dx3"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-px3"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -749,20 +774,12 @@
             "sourceId": "1",
             "url": "http://oncokb.org/api/v1/levels"
         },
-        "oncokb-2a": {
-            "description": "Standard care biomarker predictive of response to an FDA-approved drug in this indication",
-            "displayName": "OncoKB 2A",
-            "name": "2a",
+        "oncokb-2": {
+            "description": "Standard care biomarker recommended by the NCCN or other expert panels predictive of response to an FDA-approved drug in this indication",
+            "displayName": "OncoKB 2",
+            "name": "2",
             "source": "oncokb",
-            "sourceId": "2a",
-            "url": "http://oncokb.org/api/v1/levels"
-        },
-        "oncokb-2b": {
-            "description": "Standard care biomarker predictive of response to an FDA-approved drug in another indication but not standard care for this indication",
-            "displayName": "OncoKB 2B",
-            "name": "2b",
-            "source": "oncokb",
-            "sourceId": "2b",
+            "sourceId": "2",
             "url": "http://oncokb.org/api/v1/levels"
         },
         "oncokb-3a": {
@@ -774,7 +791,7 @@
             "url": "http://oncokb.org/api/v1/levels"
         },
         "oncokb-3b": {
-            "description": "Compelling clinical evidence supports the biomarker as being predictive of response to a drug in another indication",
+            "description": "Standard care or investigational biomarker predictive of response to an FDA-approved or investigational drug in another indication",
             "displayName": "OncoKB 3B",
             "name": "3b",
             "source": "oncokb",
@@ -788,6 +805,54 @@
             "preclinical": true,
             "source": "oncokb",
             "sourceId": "4",
+            "url": "http://oncokb.org/api/v1/levels"
+        },
+        "oncokb-dx1": {
+            "description": "FDA and/or professional guideline-recognized biomarker required for diagnosis in this indication",
+            "displayName": "OncoKB Dx1",
+            "name": "dx1",
+            "source": "oncokb",
+            "sourceId": "dx1",
+            "url": "http://oncokb.org/api/v1/levels"
+        },
+        "oncokb-dx2": {
+            "description": "FDA and/or professional guideline-recognized biomarker that supports diagnosis in this indication",
+            "displayName": "OncoKB Dx2",
+            "name": "dx2",
+            "source": "oncokb",
+            "sourceId": "dx2",
+            "url": "http://oncokb.org/api/v1/levels"
+        },
+        "oncokb-dx3": {
+            "description": "Biomarker that may assist disease diagnosis in this indication based on clinical evidence",
+            "displayName": "OncoKB Dx3",
+            "name": "dx3",
+            "source": "oncokb",
+            "sourceId": "dx3",
+            "url": "http://oncokb.org/api/v1/levels"
+        },
+        "oncokb-px1": {
+            "description": "FDA and/or professional guideline-recognized biomarker prognostic in this indication based on well-powered studie(s)",
+            "displayName": "OncoKB Px1",
+            "name": "px1",
+            "source": "oncokb",
+            "sourceId": "px1",
+            "url": "http://oncokb.org/api/v1/levels"
+        },
+        "oncokb-px2": {
+            "description": "FDA and/or professional guideline-recognized biomarker prognostic in this indication based on a single or multiple small studies",
+            "displayName": "OncoKB Px2",
+            "name": "px2",
+            "source": "oncokb",
+            "sourceId": "px2",
+            "url": "http://oncokb.org/api/v1/levels"
+        },
+        "oncokb-px3": {
+            "description": "Biomarker is prognostic in this indication based on clinical evidence in well-powered studies",
+            "displayName": "OncoKB Px3",
+            "name": "px3",
+            "source": "oncokb",
+            "sourceId": "px3",
             "url": "http://oncokb.org/api/v1/levels"
         },
         "oncokb-r1": {
