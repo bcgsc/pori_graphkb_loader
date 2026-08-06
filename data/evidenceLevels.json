@@ -377,7 +377,17 @@
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
+                    "target": "oncokb-dx2"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
                     "target": "oncokb-px1"
+                },
+                {
+                    "class": "CrossReferenceOf",
+                    "source": "ipr",
+                    "target": "oncokb-px2"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -468,12 +478,12 @@
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
-                    "target": "oncokb-dx2"
+                    "target": "oncokb-dx3"
                 },
                 {
                     "class": "CrossReferenceOf",
                     "source": "ipr",
-                    "target": "oncokb-px2"
+                    "target": "oncokb-px3"
                 },
                 {
                     "class": "CrossReferenceOf",
@@ -557,16 +567,6 @@
                     "class": "CrossReferenceOf",
                     "source": "ipr",
                     "target": "oncokb-3b"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
-                    "target": "oncokb-dx3"
-                },
-                {
-                    "class": "CrossReferenceOf",
-                    "source": "ipr",
-                    "target": "oncokb-px3"
                 },
                 {
                     "class": "CrossReferenceOf",
