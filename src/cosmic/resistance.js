@@ -24,22 +24,20 @@ const { cosmic: SOURCE_DEFN } = require('../sources');
 
 const HEADER = {
     cds: 'HGVSC',
-    disease: 'Histology Subtype 1',
-    diseaseFamily: 'Histology',
-    gene: 'Gene Name',
+    diseaseId: 'COSMIC_PHENOTYPE_ID',
+    gene: 'GENE_SYMBOL',
     genomic: 'HGVSG',
     mutationId: 'LEGACY_MUTATION_ID',
     protein: 'HGVSP',
-    pubmed: 'Pubmed Id',
-    sampleId: 'Sample ID',
-    sampleName: 'Sample Name',
-    therapy: 'Drug Name',
-    transcript: 'Transcript',
+    pubmed: 'PUBMED_PMID',
+    sampleName: 'SAMPLE_NAME',
+    therapy: 'DRUG_NAME',
+    transcript: 'TRANSCRIPT_ACCESSION',
 };
 
 
 /**
- * Create and link the variant defuinitions for a single row/record
+ * Create and link the variant definitions for a single row/record
  */
 const processVariants = async ({ conn, record, source }) => {
     let protein,
@@ -71,43 +69,45 @@ const processVariants = async ({ conn, record, source }) => {
                 throw Error(`failed to find the HGNC gene for ${record.gene}`);
             }
         } catch (err) {
-            logger.error(err);
+            logger.warn(err);
         }
     }
 
-    try {
-        // add the protein variant with its protein translation
-        const variant = jsonifyVariant(parseVariant(record.protein, false));
-        variant.type = rid(await conn.getVocabularyTerm(variant.type));
+    if (record.protein && record.protein.trim()) {
+        try {
+            // add the protein variant with its protein translation
+            const variant = jsonifyVariant(parseVariant(record.protein, false));
+            variant.type = rid(await conn.getVocabularyTerm(variant.type));
 
-        const reference1 = rid(await _ensembl.fetchAndLoadById(
-            conn,
-            { biotype: 'protein', sourceId: variant.reference1 },
-        ));
-        protein = rid(await conn.addVariant({
-            content: { ...variant, reference1 },
-            existsOk: true,
-            target: 'PositionalVariant',
-        }));
-
-        if (gene) {
-            // add the same protein varaint with the gene notation
-            generalProtein = rid(await conn.addVariant({
-                content: { ...variant, reference1: gene },
+            const reference1 = rid(await _ensembl.fetchAndLoadById(
+                conn,
+                { biotype: 'protein', sourceId: variant.reference1 },
+            ));
+            protein = rid(await conn.addVariant({
+                content: { ...variant, reference1 },
                 existsOk: true,
                 target: 'PositionalVariant',
             }));
 
-            // link the translation version to the gene version
-            await conn.addRecord({
-                content: { in: generalProtein, out: protein },
-                existsOk: true,
-                fetchExisting: false,
-                target: 'Infers',
-            });
+            if (gene) {
+                // add the same protein variant with the gene notation
+                generalProtein = rid(await conn.addVariant({
+                    content: { ...variant, reference1: gene },
+                    existsOk: true,
+                    target: 'PositionalVariant',
+                }));
+
+                // link the translation version to the gene version
+                await conn.addRecord({
+                    content: { in: generalProtein, out: protein },
+                    existsOk: true,
+                    fetchExisting: false,
+                    target: 'Infers',
+                });
+            }
+        } catch (err) {
+            logger.error(err);
         }
-    } catch (err) {
-        logger.error(err);
     }
 
     // create the cds variant
@@ -286,6 +286,7 @@ const processCosmicRecord = async (conn, record, source) => {
             evidence: [rid(record.publication)],
             relevance,
             reviewStatus: 'not required',
+            sourceId: record.sourceId,
             source: rid(source),
             subject: drug,
         },
@@ -299,17 +300,20 @@ const processCosmicRecord = async (conn, record, source) => {
  * Disease mappings
  */
 const loadClassifications = async (filename) => {
-    const classifications = await loadDelimToJson(filename, { delim: ',' });
+    const classifications = await loadDelimToJson(filename);
     const mapping = {};
 
     for (const row of classifications) {
-        const disease = row.HISTOLOGY_COSMIC;
-        const subdisease = row.HIST_SUBTYPE1_COSMIC;
+        const diseaseId = row.COSMIC_PHENOTYPE_ID;
 
-        if (!mapping[disease]) {
-            mapping[disease] = {};
+        if (!mapping[diseaseId]) {
+            mapping[diseaseId] = {};
         }
-        mapping[disease][subdisease] = row.NCI_CODE;
+        mapping[diseaseId] = {
+            disease: row.HISTOLOGY_SUBTYPE_1,
+            diseaseFamily: row.PRIMARY_HISTOLOGY,
+            ncit: row.NCI_CODE,
+        };
     }
     return mapping;
 };
@@ -337,7 +341,7 @@ const uploadFile = async ({
         filters: [
             { source },
             { relevance },
-            { createdBy: { filters: { name: conn.username }, target: 'User' } },
+            { createdBy: { filters: { name: 'graphkb_importer' }, target: 'User' } },
         ],
         returnProperties: ['@rid'],
         target: 'Statement',
@@ -350,6 +354,7 @@ const uploadFile = async ({
     const errorList = [];
     logger.info(`Processing ${jsonList.length} records`);
     // Upload the list of pubmed IDs
+    await _pubmed.preLoadCache(conn);
     await _pubmed.fetchAndLoadByIds(conn, jsonList.map(rec => rec[HEADER.pubmed]), { upsert: true });
 
     for (let index = 0; index < jsonList.length; index++) {
@@ -367,7 +372,10 @@ const uploadFile = async ({
         }
 
         try {
-            record.ncit = (mapping[record.diseaseFamily] || {})[record.disease];
+            const diseaseMapping = mapping[record.diseaseId] || {};
+            record.ncit = diseaseMapping.ncit || '';
+            record.disease = diseaseMapping.disease || '';
+            record.diseaseFamily = diseaseMapping.diseaseFamily || '';
             record.publication = rid((await _pubmed.fetchAndLoadByIds(conn, [record.pubmed]))[0]);
             const statement = await processCosmicRecord(conn, record, source);
 
