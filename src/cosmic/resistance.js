@@ -286,6 +286,7 @@ const processCosmicRecord = async (conn, record, source) => {
             evidence: [rid(record.publication)],
             relevance,
             reviewStatus: 'not required',
+            sourceId: record.sourceId,
             source: rid(source),
             subject: drug,
         },
