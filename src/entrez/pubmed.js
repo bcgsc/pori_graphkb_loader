@@ -71,9 +71,17 @@ const createDisplayName = sourceId => `pmid:${sourceId}`;
  * @param {Array.<string>} idList list of pubmed IDs
  */
 const fetchAndLoadByIds = async (api, idListIn, opt = {}) => {
-    const pmcIds = idListIn.filter(id => /^pmc\d+$/i.exec(id)).map(id => id.replace(/^pmc/i, ''));
+    // hardcoded fix for a record that was deleted from pubmed after being cited in a paper
+    // https://pubmed.ncbi.nlm.nih.gov/21656749/
+    const idList = idListIn.map((id) => {
+        if (id === '21225871') {
+            return '21656749';
+        }
+        return id;
+    });
+    const pmcIds = idList.filter(id => /^pmc\d+$/i.exec(id)).map(id => id.replace(/^pmc/i, ''));
     const records = await fetchByIdList(
-        idListIn.filter(id => !/^pmc\d+$/i.exec(id)),
+        idList.filter(id => !/^pmc\d+$/i.exec(id)),
         {
             cache: CACHE, db: DB_NAME, parser: parseRecord,
         },

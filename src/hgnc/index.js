@@ -218,6 +218,10 @@ const fetchAndLoadBySymbol = async ({
         uri,
     });
 
+    if (!docs || docs.length === 0) {
+        throw new Error(`No HGNC record found for ${paramType}: ${symbol}`);
+    }
+
     for (const record of docs) {
         checkSpec(validateHgncSpec, record, rec => rec.hgnc_id);
     }
@@ -238,7 +242,9 @@ const fetchAndLoadBySymbol = async ({
             filters: { name: ensemblSourceName },
             target: 'Source',
         });
-    } catch (err) { }
+    } catch (err) {
+        logger.info('Unable to fetch ensembl source for linking records');
+    }
     const result = await uploadRecord({
         conn,
         deprecated: (
