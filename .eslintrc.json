@@ -4,6 +4,9 @@
         "jest": true,
         "node": true
     },
+    "parserOptions": {
+        "ecmaVersion": 2020
+    },
     "extends": [
         "eslint:recommended",
         "airbnb",
