@@ -4,6 +4,7 @@ const { createOptionsMenu, fileExists } = require('../src/cli');
 const civic = require('../src/civic');
 const dgidb = require('../src/dgidb');
 const docm = require('../src/docm');
+const oncokb = require('../src/oncokb');
 const oncotree = require('../src/oncotree');
 const fdaApprovals = require('../src/fdaApprovals');
 
@@ -54,6 +55,7 @@ const FILE_MODULES = {
     gscTherapeuticOntology,
     ncit,
     ncitFdaXref,
+    oncokb,
     ontology,
     refseq,
     sources,
