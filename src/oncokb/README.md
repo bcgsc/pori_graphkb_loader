@@ -1,4 +1,32 @@
 # OncoKB
 
-> :warning: This is a deprecated loader as OncoKB content is no longer openly available. This loader was
-written for the previously available JSON files and for comparison purposes.
+
+### API Token
+An API Token must first be obtain from OncoKB. Save as **ONCOKB_TOKEN** environment variable.
+
+### Downloading files
+Relevant OncoKB files can be downloaded using the provided script. A release version can be passed as 1st argument. Creates a subdirectory per version.
+
+```Bash
+chmod +x src/oncokb/fetch.sh
+
+# latest data release
+./src/oncokb/fetch.sh
+
+# specific release (e.g. v7.2)
+./src/oncokb/fetch.sh v7.2
+```
+
+### Running the loader
+
+```Bash
+# Usage
+node bin/load.js file oncokb <dirpath>
+
+# Complete example
+node bin/load.js \
+    -g $GRAPHKB_API_URL \
+    -u $USER \
+    -p $PASSWORD \
+    file oncokb src/oncokb/v7.2
+```
