@@ -1,13 +1,17 @@
 /* eslint-disable multiline-ternary */
+const fs = require('fs');
+
 const { constants: { TYPES_TO_NOTATION } } = require('@bcgsc-pori/graphkb-parser');
 
 const { therapyMapping } = require('./therapies');
 const { parseEvidence } = require('./util');
 const { CATEGORIES, variantMapping } = require('./variants');
+const _ensembl = require('../ensembl')
 const _pubmed = require('../entrez/pubmed');
 const _entrezGene = require('../entrez/gene');
 const { orderPreferredOntologyTerms, rid } = require('../graphkb');
 const { logger } = require('../logging');
+const { requestWithRetry } = require('../util');
 
 /** @typedef {import('../graphkb').ApiConnection} ApiConnection */
 
@@ -23,6 +27,195 @@ const DISCARDED_RELEVANCES = new Set([
     'VUS with Special Interpretation',
     'Unknown',
 ]);
+
+
+/**
+ * Given an Ensembl stable (unversioned) id, returns the versioned id.
+ * Supports either transcript or protein id.
+ *
+ * Gets data from either the latest Ensembl release
+ * or the latest GRCh37-related Ensembl release (opt.grch37=true).
+ * Transcript id can optionally (default) have the protein versioned id
+ * returned as well (opt.expandToProtein=true).
+ *
+ * Note:
+ * The one-id-per-request GET route has proven itself more reliable
+ * than the batch POST route.
+ *
+ * @param {Array.<string>} id the Ensembl stable IDs
+ * @param {object} opt
+ * @param {boolean} [opt.expandToProtein=true] whether to return proteinId as well
+ * @param {boolean} [opt.grch37=false] whether to use the latest GRCh37-related release
+ * @returns {Promise<{id: string, proteinId?: string}|{}>}
+ */
+const ensemblLookupById = async (id, {
+    expandToProtein = true,
+    grch37 = false,
+}) => {
+    // Check
+    if (!(expandToProtein
+        ? /^ENST\d+$/.test(id)
+        : /^ENS[PT]\d+$/.test(id)
+    )) {
+        logger.error(`Accession id format not supported (${id})`);
+        return {};
+    }
+
+    // Uri
+    const subdomain = grch37 ? 'grch37.' : '';
+    const baseUrl = `https://${subdomain}rest.ensembl.org`;
+    const uri = `${baseUrl}/lookup/id/${id}${expandToProtein ? '?expand=1' : ''}`;
+
+    // Lookup
+    try {
+        const response = await requestWithRetry({
+            headers: { Accept: 'application/json' },
+            uri,
+        }, { waitMilliseconds: 5000 });
+        const record = JSON.parse(response);
+
+        if (record) {
+            const result = { id: `${record.id}.${record.version}` };
+
+            if (expandToProtein && record.Translation) {
+                result.proteinId = `${record.Translation.id}.${record.Translation.version}`;
+            } else if (expandToProtein) {
+                result.proteinId = null;
+            }
+            return result;
+        }
+    } catch (err) {
+        logger.error(`Cannot Retreive version ids for ${grch37 ? 'GRCh37' : 'GRCh38'} ${id}`);
+    }
+    return {};
+};
+
+/**
+ * Links all (unversioned) grch37Isoform and grch38Isoform ids to:
+ * - the latest GRCh37-related versioned ENST, and its versioned ENSP if any;
+ * - or the latest GRCh38-related versioned ENST, and its versioned ENSP if any;
+ * - or both when an id is given as both grch37Isoform and grch38Isoform;
+ *
+ * Leverage the REST API Ensembl lookup endpoint.
+ * Optionally (default) load from and save to file to speed up subsequent uploads.
+ *
+ * @param {object} data the parsed OncoKB files contentrelease
+ * @param {string} [filepath='ensembl.json'] the filepath for Ensembl versions
+ * @returns {Promise<{grch37?: <object>, : grch38?: <object>>}}
+ */
+const getEnsemblVersions = async (data, filepath = '') => {
+    logger.info('\nTRANSCRIPTS:');
+    logger.info(`Mapping Ensembl accession number to versions...`);
+    
+    let ensembl = { grch37: {}, grch38: {} };
+    
+    if (filepath && fs.existsSync(filepath)) {
+        logger.info(`Loading existing mappings from file: ${filepath}`);
+        ensembl = JSON.parse(fs.readFileSync(filepath, 'utf8'));
+    }
+
+    // utility
+    // => { id: '', proteinId: '' } || {}
+    const getVersions = async (id, grch37 = false) => {
+        const result = await ensemblLookupById(id, {
+            expandToProtein: true,
+            grch37,
+        });
+
+        logger.info(`Loading mapping from Ensembl REST API: ${grch37 ? 'GRCh37' : 'GRCh38'} ${id} => ${JSON.stringify(result)}`);
+        return result;
+    };
+
+    // Mapping each stable id to its corresponding GRCh37/GRCh38 versions
+    for (const type of ['actionable', 'annotated']) {
+        for (const r of data[type]) {
+            if (r.grch37Isoform && !Object.hasOwn(ensembl.grch37, r.grch37Isoform)) {
+                ensembl.grch37[r.grch37Isoform] = await getVersions(r.grch37Isoform, true);
+            }
+            if (r.grch38Isoform && !Object.hasOwn(ensembl.grch38, r.grch38Isoform)) {
+                ensembl.grch38[r.grch38Isoform] = await getVersions(r.grch38Isoform);
+            }
+        }
+    }
+
+    const mapped = Object.values(ensembl.grch38)
+        .filter(r => r.id !== undefined);
+    logger.info(`${mapped.length}/${Object.keys(ensembl.grch38).length} transcripts with successfull version mapping`);
+
+    if (filepath) {
+        fs.writeFileSync(filepath, JSON.stringify(ensembl, null, 4));
+    }
+    return ensembl;
+};
+
+/**
+ * Mapping Ensembl transcripts (grch38Isoform) to corresponding
+ * GraphKB transcript Feature RIDs. The latest (current) Ensembl version is used.
+ *
+ * Missing records get uploaded to GraphKB.
+ *
+ * @param {ApiConnection} opt.conn the API connection object
+ * @param {object} opt.data the parsed OncoKB files content
+ * @param {object} opt.ensembl the Ensembl isoform versions mapping
+ * @returns {Promise<Map<string, string>>}
+ */
+const transcriptMapping = async ({ conn, data, ensembl }) => {
+    logger.info('Mapping OncoKB GRCh38-linked Ensembl accession number to GraphKB records...');
+    const transcriptMap = new Map();
+
+    // All OncoKB GRCh38-linked Ensembl transcripts, mapped to the latest version
+    // e.g. { 'ENST00000123456'  => 'ENST00000123456.7' }
+    const transcripts = new Map(
+        Object.entries(ensembl.grch38) // GRCh38
+            .filter(r => r[1].id !== undefined)
+            .map((r) => [r[0], r[1].id]),
+    );
+
+    // Corresponding GraphKB records
+    // Leveraging displayName (incl. version #)
+    try {
+        const records = await conn.getRecords({
+            filters: {
+                AND: [
+                    { biotype: 'transcript' },
+                    { displayName: [...transcripts.values()] },
+                    { source: { filters: { name: 'ensembl' }, target: 'Source' } },
+                ]
+            },
+            returnProperties: ['@rid', 'displayName'],
+            target: 'Feature',
+        })
+        records.forEach((r) => transcriptMap.set(r.displayName.split('.')[0], r['@rid']));
+    } catch (err) {
+        logger.warn('Cannot bulk-fetch corresponding GraphKB records');
+    }
+
+    const missing = new Map([...transcripts].filter(([k]) => !transcriptMap.has(k)));
+    logger.info(`Found ${transcriptMap.size}/${transcripts.size} corresponding gene Features in GraphKB (${missing.size} missing)`);
+
+    // Uploading missing records
+    if (missing.size > 0) {
+        logger.info(`Uploading ${missing.size} missing records...`);
+
+        for (const [unversioned, versioned] of missing) {
+            const [sourceId, sourceIdVersion] = versioned.split('.');
+
+            try {
+                const record = await _ensembl.fetchAndLoadById(conn, {
+                    biotype: 'transcript',
+                    sourceId: sourceId.toLowerCase(),
+                    sourceIdVersion,
+                });
+                transcriptMap.set(unversioned, rid(record));
+                logger.info(`${unversioned} (${versioned}) => ${transcriptMap.get(unversioned)}`);
+            } catch (err) {
+                logger.warn(`Some errors happened when uploading Ensembl ${versioned} to GraphKB: ${err}`);
+            }
+        }
+    }
+
+    return transcriptMap;
+};
 
 /**
  * Mapping between OncoKB levels and GraphKB evidence levels (RID)
@@ -463,16 +656,22 @@ const vocabMapping = async (conn) => {
  * @param {object} opt
  * @param {ApiConnection} opt.conn the API connection object
  * @param {object} opt.data the parsed OncoKB file contents
+ * @param {string} opt.ensemblVersions the filepath to the stored Ensembl version json file
+ * @param {string} opt.recode recoding strategy from GRCh37 to GRCH38
  * @param {object} opt.source the GraphKB Source record for OncoKB
  * @returns {Promise<object>} an object with all the ontology mappings
  */
-const ontologyMappings = async ({ conn, data, source }) => {
+const ontologyMappings = async ({
+    conn, data, ensemblVersions, recode, source,
+}) => {
     const Onto = {};
 
     logger.info('\n\n** ONTOLOGIES **');
     Onto.source = source; // from upstream conn.addSource()
     Onto.chromosomes = await chromosomeMapping(conn);
     Onto.genes = await geneMapping({ conn, data });
+    Onto.ensembl = await getEnsemblVersions(data, ensemblVersions); // Ensembl versioned ids
+    Onto.transcripts = await transcriptMapping({ conn, data, ensembl: Onto.ensembl });
     Onto.evidenceLevels = await evidenceLevelMapping({ conn, data, source });
     Onto.relevances = await relevanceMapping({ conn, data, levels: Onto.evidenceLevels.keys() });
     Onto.diseases = await diseaseMapping({ conn, data });
@@ -482,7 +681,9 @@ const ontologyMappings = async ({ conn, data, source }) => {
     Onto.vocabulary = await vocabMapping(conn);
 
     // Biomarkers
-    Onto.variants = await variantMapping({ conn, data, ontologies: Onto });
+    Onto.variants = await variantMapping({
+        conn, data, ontologies: Onto, recode,
+    });
 
     return Onto;
 };
@@ -495,11 +696,13 @@ module.exports = {
     diseaseMapping,
     evidenceLevelMapping,
     geneMapping,
+    getEnsemblVersions,
     getEvidences,
     ontologyMappings,
     parseLevelIntoRelevanceTerm,
     publicationMapping,
     relevanceMapping,
+    transcriptMapping,
     typeMapping,
     vocabMapping,
 };
