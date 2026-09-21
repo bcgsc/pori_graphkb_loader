@@ -69,7 +69,7 @@ docker run bcgsc/pori-graphkb-loader --help
 
 To write and test the GraphKB loaders you will need the following
 
-- NodeJS version 12 or higher
+- NodeJS version 16 or higher
 - An instance of the GraphKB API and its required OrientDB instance
 - An instance of keycloak for testing authentication
 
