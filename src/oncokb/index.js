@@ -1,3 +1,4 @@
+/* eslint-disable multiline-ternary */
 /**
  * @module importer/oncokb
  *
@@ -209,29 +210,31 @@ const processRecord = ({
 /**
  * Given some OncoKB input files (see README.md),
  * upload the OncoKB records as Statements into GraphKB.
- *
  * Some missing referenced ontology records may also be uploaded as needed.
+ * 
+ * To save time and ressources, already acquired Ensembl versions can be fetched/saved
+ * from/to a file (opt.ensemblVersions).
+ *
+ * Variants referencing GRCh37-linked Ensembl transcripts can be recoded to GRCh38:
+ * - 'optimistic' recoding keeps original cds/protein notations when recoding fails
+ * - 'pessimistic' recoding discard a notation when the recoding fails
+ * - 'no' recoding (default) keeps the original GRCh37 notation as-is.
  *
  * Attention!
- * - Make sure all the relevant ontology loaders has been run lately
+ * - Make sure all the relevant ontology loaders has been run recently
  * - Make sure the graphkb-parser depedency is up-to-date
  *
  * @param {object} opt
  * @param {ApiConnection} opt.conn the GraphKB api connection object
- * @param {string} opt.dirpath the directory path of the OncoKB input files
- * @param {string} opt.errorLogPrefix prefix to use for module specific log files
- * @param {boolean} opt.ignoreCache do not check for previously loaded statements
- * @param {number} opt.maxRecords maximum number of statement records to upload
+ * @param {boolean} [opt.deleteDeprecated=false] if deleting deprecated OncoKB records
+ * @param {string} [opt.ensemblVersions='ensembl.json'] the filepath to the stored Ensembl version json file
+ * @param {string} [opt.errorLogPrefix] prefix to use for module specific log files
+ * @param {string} opt.filename the directory path of the OncoKB input files
+ * @param {boolean} [opt.ignoreCache=false] do not check for previously loaded statements
+ * @param {number} [opt.maxRecords] maximum number of statement records to upload
+ * @param {string} [opt.recode='no'] for recoding variants from GRCh37 to GRCH38
  */
 const uploadFile = async ({ conn, filename: dirpath, ...opt }) => {
-    const { errorLogPrefix, ignoreCache, maxRecords } = opt;
-
-    if (!ignoreCache) {
-        logger.warn('ignoreCache is set to false; deprecated OncoKB statements will be deleted and updates will occur when needed');
-    } else {
-        logger.warn('ignoreCache is set to true; deprecated OncoKB statements won\'t be deleted but updates will occur when needed');
-    }
-
     const errorList = [];
     const counts = {
         errors: 0,
@@ -240,11 +243,41 @@ const uploadFile = async ({ conn, filename: dirpath, ...opt }) => {
         success: 0,
     };
 
-    // DATA & ONTOLOGIES
+    // OPTIONS
+    const {
+        deleteDeprecated,
+        ensemblVersions,
+        errorLogPrefix,
+        ignoreCache,
+        maxRecords,
+        recode,
+    } = opt;
+
+    if (!ignoreCache) {
+        logger.warn('ignoreCache is set to false; existing records will be updated when needed');
+    } else {
+        logger.warn('ignoreCache is set to true; existing records will NOT be considered. NO updates NO deletions.');
+
+        if (deleteDeprecated) {
+            logger.warn('--deleteDeprecated is ignored when --ignoreCache is set to true');
+        }
+    }
+    if (!ignoreCache && deleteDeprecated) {
+        logger.warn('deleteDeprecated is set to true; deprecated OncoKB statements will be deleted');
+    } else if (!deleteDeprecated) {
+        logger.warn('deleteDeprecated is set to false; deprecated OncoKB statements will NOT be deleted');
+    }
+    logger.warn(`Variant recoding strategy: ${recode.toUpperCase()} recoding.`);
+
+    // DATA
     const source = await conn.addSource(SOURCE_DEFN);
-    const previous = await fetchPrevious({ conn, source });
+    const previous = !ignoreCache ? await fetchPrevious({ conn, source }) : new Map();
     const data = getDataAndApplyFixes(dirpath);
-    const ontologies = await ontologyMappings({ conn, data, source });
+
+    // ONTOLOGIES, incl. VARIANTS/BIOMARKERS
+    const ontologies = await ontologyMappings({
+        conn, data, ensemblVersions, recode, source,
+    });
 
     // PROCESSING RECORDS INTO STATEMENTS CONTENT
     logger.info('\n\n** PROCESSING ONCOKB RECORDS **');
@@ -294,15 +327,17 @@ const uploadFile = async ({ conn, filename: dirpath, ...opt }) => {
         try {
             const newRecord = await conn.addRecord({
                 content,
+                existsOk: !!ignoreCache,
+                fetchExisting: !!ignoreCache,
                 target: 'Statement',
             });
-            logger.info(`Succesfully uploaded new Statement ${sourceId} (${rid(newRecord)})`);
+            logger.info(`Succesfully uploaded Statement ${sourceId} (${rid(newRecord)})`);
             counts.success++;
             // count per relevance
             const relevance = String(vocab.get(content.relevance));
             uploaded[relevance] = (uploaded[relevance] || 0) + 1;
         } catch (err) {
-            logger.error(`Unexpected error while uploading new Statement ${sourceId} (${JSON.stringify(content)}): ${err.toString()}`);
+            logger.error(`Unexpected error while uploading Statement ${sourceId} (${JSON.stringify(content)}): ${err.toString()}`);
             counts.errors++;
             errorList.push({
                 ...content,
@@ -312,44 +347,56 @@ const uploadFile = async ({ conn, filename: dirpath, ...opt }) => {
         }
     }
     logger.info('Uploaded records per relevance term:');
-    logger.info(JSON.stringify(uploaded));
+
+    for (const [relevance, count] of Object.entries(uploaded)
+        .sort(([, a], [, b]) => b - a)) { // DESC count
+        logger.info(`- ${relevance}: ${count}`);
+    }
 
     // UPDATES
-    const updates = new Map([...statements].filter(([sourceId]) => previous.has(sourceId)));
     logger.info('\n\n** UPDATE **');
-    logger.info(`Updating ${updates.size} existing Statement records...`);
+    const updates = new Map([...statements].filter(([sourceId]) => previous.has(sourceId)));
 
-    for (const [sourceId, content] of updates) {
-        try {
-            const existing = previous.get(sourceId);
+    if (!ignoreCache) {
+        logger.info(`Checking for updates on ${updates.size} existing Statement records...`);
 
-            if (shouldUpdate('Statement', existing, content)) {
-                await conn.updateRecord('Statement', rid(existing), content);
-                logger.info(`Succesfully updated existing Statement ${sourceId} (${rid(existing)})`);
-                counts.success++;
-            } else {
-                counts.existing++;
+        for (const [sourceId, content] of updates) {
+            try {
+                const existing = previous.get(sourceId);
+
+                if (shouldUpdate('Statement', existing, content)) {
+                    await conn.updateRecord('Statement', rid(existing), content);
+                    logger.info(`Succesfully updated existing Statement ${sourceId} (${rid(existing)})`);
+                    counts.success++;
+                } else {
+                    counts.existing++;
+                }
+            } catch (err) {
+                logger.error(`Unexpected error while updating Statement ${sourceId} (${JSON.stringify(content)}): ${err}`);
+                counts.errors++;
+                errorList.push({
+                    ...content,
+                    error: err.error || err,
+                    errorMessage: err.toString(),
+                });
             }
-        } catch (err) {
-            logger.error(`Unexpected error while updating Statement ${sourceId} (${JSON.stringify(content)}): ${err}`);
-            counts.errors++;
-            errorList.push({
-                ...content,
-                error: err.error || err,
-                errorMessage: err.toString(),
-            });
         }
+    } else {
+        logger.warn('NOT updating existing Statement records');
     }
 
     // DELETIONS
-    if (!ignoreCache) {
-        const deletions = new Map([...previous].filter(([sourceId]) => !statements.has(sourceId)));
-        logger.info('\n\n** DELETE **');
+    logger.info('\n\n** DELETE **');
+    const deletions = new Map([...previous].filter(([sourceId]) => !statements.has(sourceId)));
+
+    if (deleteDeprecated) {
         logger.info(`Deleting ${deletions.size} deprecated Statement records...`);
 
         for (const [sourceId, record] of deletions) {
             try {
-                await conn.deleteRecord('Statement', rid(record));
+                const deleted = await conn.deleteRecord('Statement', rid(record));
+                logger.info(`Succesfully deleted deprecated Statement ${sourceId} (${rid(deleted)})`);
+                // counts.success++;
             } catch (err) {
                 logger.error(`Unexpected error while deleting Statement ${sourceId} (${rid(record)}): ${err}`);
                 counts.errors++;
@@ -360,10 +407,21 @@ const uploadFile = async ({ conn, filename: dirpath, ...opt }) => {
                 });
             }
         }
+    } else {
+        logger.warn(`NOT deleting ${deletions.size} deprecated Statement records`);
+
+        if ((deletions.size > 0)) {
+            const deletionsOutput = `${errorLogPrefix}-deletions-oncokb.json`;
+            logger.info(`writing deletion sourceId to ${deletionsOutput}`);
+            fs.writeFileSync(
+                deletionsOutput,
+                JSON.stringify({ sourceId: [...deletions.keys()] }, null, 2),
+            );
+        }
     }
 
     // OUTPUT
-    logger.info('\n\n** END OF SCRIPT LOGGINGS **');
+    logger.info('\n\n** END OF SCRIPT **');
     const errorOutput = `${errorLogPrefix}-oncokb.json`;
     logger.info(`writing errors to ${errorOutput}`);
     fs.writeFileSync(errorOutput, JSON.stringify({ records: errorList }, null, 2));
