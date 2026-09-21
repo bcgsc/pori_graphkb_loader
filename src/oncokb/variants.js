@@ -5,6 +5,7 @@ const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
 const _entrezGene = require('../entrez/gene');
 const { orderPreferredOntologyTerms, rid } = require('../graphkb');
 const { logger } = require('../logging');
+const { recoder } = require('./recoding');
 const { hashOncokbRecordToId } = require('./util');
 
 /** @typedef {import('../graphkb').ApiConnection} ApiConnection */
@@ -560,31 +561,31 @@ const parseNotations = (r) => {
 
     if (cds) {
         try {
-            parsed.c = jsonifyVariant(
-                parseVariant(cds, false),
-            );
-        } catch (err) { }
+            parsed.c = parseVariant(cds, false);
+        } catch (err) {
+            logger.error(`Error parsing CDS variant ${cds}`);
+        }
     }
     if (exonic) {
         try {
-            parsed.e = jsonifyVariant(
-                parseVariant(exonic, false),
-            );
-        } catch (err) { }
+            parsed.e = parseVariant(exonic, false);
+        } catch (err) {
+            logger.error(`Error parsing Exonic variant ${exonic}`);
+        }
     }
     if (genomic) {
         try {
-            parsed.g = jsonifyVariant(
-                parseVariant(genomic, true), // with feature
-            );
-        } catch (err) { }
+            parsed.g = parseVariant(genomic, true); // with feature;
+        } catch (err) {
+            logger.error(`Error parsing Genomic variant ${genomic}`);
+        }
     }
     if (protein) {
         try {
-            parsed.p = jsonifyVariant(
-                parseVariant(protein, false),
-            );
-        } catch (err) { }
+            parsed.p = parseVariant(protein, false);
+        } catch (err) {
+            // No error logging for protein since we're trying to parse almost anything from proteinChange
+        }
     }
 
     if (parsed.c || parsed.e || parsed.g || parsed.p) {
@@ -603,22 +604,56 @@ const parseNotations = (r) => {
  * @param {ApiConnection} opt.conn the API connection object
  * @param {object} opt.data the parsed OncoKB file contents
  * @param {object} opt.ontologies the ontologies mapping object
+ * @param {string} opt.recode recoding strategy from GRCh37 to GRCH38
  * @returns {Promise<Map<string, string>>}
  */
-const processPositionalVariants = async ({ conn, data, ontologies }) => {
+const processPositionalVariants = async ({
+    conn,
+    data,
+    ontologies,
+    recode,
+}) => {
     logger.info('\nPOSITIONAL VARIANTS:');
-    const { chromosomes, genes, types } = ontologies;
     const positionalVariants = new Map();
+    const {
+        chromosomes,
+        ensembl,
+        genes,
+        transcripts,
+        types,
+    } = ontologies;
 
     for (const r of [...data.actionable, ...data.annotated]) {
         const pvs = { c: null, e: null, g: null, p: null };
         const id = hashOncokbRecordToId(r);
 
-        // extract and parse notations
+        // Extract and parse notations
         const parsed = parseNotations(r);
 
         if (!parsed) {
             continue;
+        }
+
+        // Recode to GRCh38
+        if (recode && ['optimistic', 'pessimistic'].includes(recode)) {
+            const recoded = await recoder(r, parsed, ensembl);
+
+            for (const level of ['c', 'e', 'p']) {
+                if (recoded[level]) {
+                    parsed[level] = recoded[level];
+                } else if (recode === 'pessimistic') {
+                    parsed[level] = null;
+                }
+            }
+
+            for (const level of ['g']) {
+                if (recoded[level]) {
+                    parsed[level] = recoded[level];
+                } else {
+                    // always pessimistic for genomic
+                    parsed[level] = null;
+                }
+            }
         }
 
         // Upload/fetch each extracted level (c, e, g and/or p)
@@ -631,19 +666,21 @@ const processPositionalVariants = async ({ conn, data, ontologies }) => {
             let reference1;
 
             if (level === 'c') {
-                reference1 = genes.get(r.entrezGeneId);
+                // always use the GRCh38 transcript version
+                reference1 = transcripts.get(r.grch38Isoform);
             }
             if (level === 'g') {
                 reference1 = chromosomes.get(content.reference1);
             }
             if (['e', 'p'].includes(level)) {
+                // always use the gene
                 reference1 = genes.get(r.entrezGeneId);
             }
 
             try {
                 pvs[level] = await conn.addVariant({
                     content: {
-                        ...content,
+                        ...jsonifyVariant(content),
                         germline: r.setting === 'Germline',
                         reference1,
                         type: types.get(content.type),
@@ -703,6 +740,7 @@ const processPositionalVariants = async ({ conn, data, ontologies }) => {
  * @param {ApiConnection} opt.conn the API connection object
  * @param {object} opt.data the parsed OncoKB file contents
  * @param {object} opt.ontologies the ontologies mapping object
+ * @param {string} opt.recode recoding strategy from GRCh37 to GRCH38
  * @returns {Promise<Map<string, string|undefined>>}
  */
 const variantMapping = async (opt) => {
