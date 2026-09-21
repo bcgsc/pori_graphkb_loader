@@ -544,7 +544,7 @@ const parseNotations = (r) => {
 
     // genomic
     let genomic;
-    const genomicMatch = proteinChange.match(/^(?:[1-9]|1\d|2[0-2]|X|Y|M|MT):g\..+$/i);
+    const genomicMatch = proteinChange.match(/^(?:[1-9]|1\d|2[0-2]|X|Y|MT):g\..+$/i);
 
     if (genomicMatch) {
         genomic = `chr${genomicMatch[0]}`.toLowerCase();
