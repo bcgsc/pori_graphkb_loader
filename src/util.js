@@ -151,8 +151,13 @@ const request = async ({
     if (json) {
         defaultHeaders = { Accept: 'application/json', 'Content-Type': 'application/json' };
     }
+
     const resp = await fetch(url, {
-        body: JSON.stringify(body),
+        body: body instanceof URLSearchParams
+            ? body.toString()
+            : body
+                ? JSON.stringify(body)
+                : undefined,
         headers: { ...defaultHeaders, ...headers },
         method,
     });
@@ -174,8 +179,17 @@ const request = async ({
 /**
  *  Try again for too many requests errors. Helpful for APIs with a rate limit (ex. pubmed)
  */
-const requestWithRetry = async (requestOpt, { waitSeconds = 2, retries = 1, useCache = true } = {}) => {
-    const reqId = stableStringify(requestOpt);
+const requestWithRetry = async (requestOpt, { waitMilliseconds = 2000, retries = 1, useCache = true } = {}) => {
+    let reqId;
+
+    if (requestOpt && requestOpt.body instanceof URLSearchParams) {
+        reqId = stableStringify({
+            ...requestOpt,
+            body: requestOpt.body.toString(),
+        });
+    } else {
+        reqId = stableStringify(requestOpt);
+    }
 
     if (useCache && REQUESTS_CACHE[reqId]) {
         return REQUESTS_CACHE[reqId];
@@ -190,9 +204,13 @@ const requestWithRetry = async (requestOpt, { waitSeconds = 2, retries = 1, useC
         return result;
     } catch (err) {
         if (err.statusCode === HTTP_STATUS_CODES.TOO_MANY_REQUESTS && retries > 0) {
-            await sleep(waitSeconds);
-            logger.warn(`TIMEOUT, retrying request ${requestOpt.uri} ${JSON.stringify(requestOpt.qs)}`);
-            return requestWithRetry(requestOpt, { retries: retries - 1, waitSeconds });
+            await sleep(waitMilliseconds);
+            logger.warn(`TIMEOUT, retrying request ${requestOpt.uri} ${JSON.stringify(requestOpt.qs) || ''}`);
+            return await requestWithRetry(requestOpt, {
+                retries: retries - 1,
+                useCache,
+                waitMilliseconds,
+            });
         }
         throw err;
     }
