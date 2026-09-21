@@ -249,6 +249,16 @@ const getDataAndApplyFixes = (dirpath) => {
                 data[type][i]._comments += `${msg}\n`;
                 logger.warn(msg);
             }
+            
+            // Known deprecated transcript
+            if (r.grch38Isoform === 'ENST00000289153') {
+                const fix = 'ENST00000674063';
+                const msg = `Updated grch38Isoform ${r.grch38Isoform} to ${fix}`;
+                data[type][i].grch38Isoform = fix;
+                data[type][i]._comments += `${msg}\n`;
+                logger.warn(msg);
+            }
+
             // Hardcoded variant fixes
             if (HARDCODED_VARIANT.has(r.variant)) {
                 const fix = HARDCODED_VARIANT.get(r.variant);
