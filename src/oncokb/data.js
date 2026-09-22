@@ -85,6 +85,9 @@ const HARDCODED_GENE = new Map([
     ['FIG', 'GOPC'], // ...chose GOPC over DEPP1 because the later is not on same chr.
     ['SIL', 'STIL'], // ...chose STIL over PMEL because the later is not on same chr.
 ]);
+const HARDCODED_GRCH38ISOFORM = new Map([
+    ['ENST00000289153', 'ENST00000674063'],
+]);
 const HARDCODED_PROTEIN_CHANGE = new Map([
     // extra whitespace:
     ['HNRNPA2B1- NTRK3 Fusion', 'HNRNPA2B1-NTRK3 Fusion'],
@@ -249,10 +252,10 @@ const getDataAndApplyFixes = (dirpath) => {
                 data[type][i]._comments += `${msg}\n`;
                 logger.warn(msg);
             }
-            
+
             // Known deprecated transcript
-            if (r.grch38Isoform === 'ENST00000289153') {
-                const fix = 'ENST00000674063';
+            if (HARDCODED_GRCH38ISOFORM.has(r.grch38Isoform)) {
+                const fix = HARDCODED_GRCH38ISOFORM.get(r.grch38Isoform);
                 const msg = `Updated grch38Isoform ${r.grch38Isoform} to ${fix}`;
                 data[type][i].grch38Isoform = fix;
                 data[type][i]._comments += `${msg}\n`;
