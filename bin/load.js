@@ -121,10 +121,6 @@ fileModuleParsers.oncokb.add_argument('--deleteDeprecated', {
     default: false,
     help: 'Will delete GraphKB Statements from deprecated records',
 });
-fileModuleParsers.oncokb.add_argument('--ensemblVersions', {
-    default: 'ensembl.json',
-    help: 'The filepath to the stored Ensembl version json file',
-});
 fileModuleParsers.oncokb.add_argument('--recode', {
     choices: ['no', 'optimistic', 'pessimistic'],
     default: 'no',

@@ -212,8 +212,8 @@ const processRecord = ({
  * upload the OncoKB records as Statements into GraphKB.
  * Some missing referenced ontology records may also be uploaded as needed.
  *
- * To save time and ressources, already acquired Ensembl versions can be fetched/saved
- * from/to a file (opt.ensemblVersions).
+ * To save time and ressources, already acquired Ensembl are fetched/saved
+ * from/to a file (ensembl.json).
  *
  * Variants referencing GRCh37-linked Ensembl transcripts can be recoded to GRCh38:
  * - 'optimistic' recoding keeps original cds/protein notations when recoding fails
@@ -227,7 +227,6 @@ const processRecord = ({
  * @param {object} opt
  * @param {ApiConnection} opt.conn the GraphKB api connection object
  * @param {boolean} [opt.deleteDeprecated=false] if deleting deprecated OncoKB records
- * @param {string} [opt.ensemblVersions='ensembl.json'] the filepath to the stored Ensembl version json file
  * @param {string} [opt.errorLogPrefix] prefix to use for module specific log files
  * @param {string} opt.filename the directory path of the OncoKB input files
  * @param {boolean} [opt.ignoreCache=false] do not check for previously loaded statements
@@ -246,7 +245,6 @@ const uploadFile = async ({ conn, filename: dirpath, ...opt }) => {
     // OPTIONS
     const {
         deleteDeprecated,
-        ensemblVersions,
         errorLogPrefix,
         ignoreCache,
         maxRecords,
@@ -276,7 +274,7 @@ const uploadFile = async ({ conn, filename: dirpath, ...opt }) => {
 
     // ONTOLOGIES, incl. VARIANTS/BIOMARKERS
     const ontologies = await ontologyMappings({
-        conn, data, ensemblVersions, recode, source,
+        conn, data, recode, source,
     });
 
     // PROCESSING RECORDS INTO STATEMENTS CONTENT

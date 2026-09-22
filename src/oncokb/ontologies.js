@@ -1,5 +1,6 @@
 /* eslint-disable multiline-ternary */
 const fs = require('fs');
+const path = require('path');
 
 const { constants: { TYPES_TO_NOTATION } } = require('@bcgsc-pori/graphkb-parser');
 
@@ -97,22 +98,22 @@ const ensemblLookupById = async (id, {
  * - or both when an id is given as both grch37Isoform and grch38Isoform;
  *
  * Leverage the REST API Ensembl lookup endpoint.
- * Optionally (default) load from and save to file to speed up subsequent uploads.
+ * Load from and save to file to speed up subsequent uploads.
  *
  * @param {object} data the parsed OncoKB files contentrelease
- * @param {string} [filepath='ensembl.json'] the filepath for Ensembl versions
  * @returns {Promise<{grch37?: <object>, : grch38?: <object>>}}
  */
-const getEnsemblVersions = async (data, filepath = '') => {
+const getEnsemblVersions = async (data) => {
     logger.info('\nTRANSCRIPTS:');
     logger.info('Mapping Ensembl accession number to versions...');
 
+    const filepath = path.join(__dirname, 'ensembl.json');
     let ensembl = { grch37: {}, grch38: {} };
-
-    if (filepath && fs.existsSync(filepath)) {
-        logger.info(`Loading existing mappings from file: ${filepath}`);
+    
+    try {
         ensembl = JSON.parse(fs.readFileSync(filepath, 'utf8'));
-    }
+        logger.info(`Loading existing mappings from file: ${filepath}`);
+    } catch (err) {}
 
     // utility
     // => { id: '', proteinId: '' } || {}
@@ -138,13 +139,34 @@ const getEnsemblVersions = async (data, filepath = '') => {
         }
     }
 
-    const mapped = Object.values(ensembl.grch38)
-        .filter(r => r.id !== undefined);
-    logger.info(`${mapped.length}/${Object.keys(ensembl.grch38).length} transcripts with successfull version mapping`);
+    // Removing empty objects prior of saving to file
+    const grch37 = Object.fromEntries(
+        Object.entries(ensembl.grch37)
+            .filter(([, v]) => v.id !== undefined)
+    );
+    const grch38 = Object.fromEntries(
+        Object.entries(ensembl.grch38)
+            .filter(([, v]) => v.id !== undefined)
+    );
 
-    if (filepath) {
-        fs.writeFileSync(filepath, JSON.stringify(ensembl, null, 4));
-    }
+    logger.info(`${Object.keys(grch38).length}/${Object.keys(ensembl.grch38).length} transcripts with successfull version mapping`);
+
+    try {
+        const grch37 = Object.fromEntries(
+            Object.entries(ensembl.grch37).filter(([, v]) =>
+                !(v && typeof v === 'object' && Object.keys(v).length === 0)
+            )
+        );
+        const grch38 = Object.fromEntries(
+            Object.entries(ensembl.grch38).filter(([, v]) =>
+                !(v && typeof v === 'object' && Object.keys(v).length === 0)
+            )
+        );
+
+        fs.writeFileSync(filepath, JSON.stringify({ grch37, grch38 }, null, 4));
+        logger.info(`Saving updated mappings to file: ${filepath}`);
+    } catch (err) {}
+
     return ensembl;
 };
 
@@ -190,7 +212,7 @@ const transcriptMapping = async ({ conn, ensembl }) => {
     }
 
     const missing = new Map([...transcripts].filter(([k]) => !transcriptMap.has(k)));
-    logger.info(`Found ${transcriptMap.size}/${transcripts.size} corresponding gene Features in GraphKB (${missing.size} missing)`);
+    logger.info(`Found ${transcriptMap.size}/${transcripts.size} corresponding transcript Features in GraphKB (${missing.size} missing)`);
 
     // Uploading missing records
     if (missing.size > 0) {
@@ -655,13 +677,12 @@ const vocabMapping = async (conn) => {
  * @param {object} opt
  * @param {ApiConnection} opt.conn the API connection object
  * @param {object} opt.data the parsed OncoKB file contents
- * @param {string} opt.ensemblVersions the filepath to the stored Ensembl version json file
  * @param {string} opt.recode recoding strategy from GRCh37 to GRCH38
  * @param {object} opt.source the GraphKB Source record for OncoKB
  * @returns {Promise<object>} an object with all the ontology mappings
  */
 const ontologyMappings = async ({
-    conn, data, ensemblVersions, recode, source,
+    conn, data, recode, source,
 }) => {
     const Onto = {};
 
@@ -669,7 +690,7 @@ const ontologyMappings = async ({
     Onto.source = source; // from upstream conn.addSource()
     Onto.chromosomes = await chromosomeMapping(conn);
     Onto.genes = await geneMapping({ conn, data });
-    Onto.ensembl = await getEnsemblVersions(data, ensemblVersions); // Ensembl versioned ids
+    Onto.ensembl = await getEnsemblVersions(data);
     Onto.transcripts = await transcriptMapping({ conn, ensembl: Onto.ensembl });
     Onto.evidenceLevels = await evidenceLevelMapping({ conn, data, source });
     Onto.relevances = await relevanceMapping({ conn, data, levels: Onto.evidenceLevels.keys() });
