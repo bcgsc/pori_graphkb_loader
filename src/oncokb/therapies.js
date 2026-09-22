@@ -34,6 +34,7 @@ const preferredTherapy = (a, b, drugName) => {
         rec.deprecated === true ? 0 : 1,
         rec.alias === true ? 0 : 1,
         rec.name === name ? 1 : 0,
+        rec.updatedAt ?? 0,
     ];
 
     const ra = rank(a, drugName);
@@ -73,6 +74,7 @@ const fetchTherapies = async ({ conn, drugs }) => {
             'deprecated',
             'name',
             'sourceId',
+            'updatedAt',
         ],
         target: 'Therapy',
     });

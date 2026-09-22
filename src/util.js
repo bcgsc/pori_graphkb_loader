@@ -153,6 +153,7 @@ const request = async ({
     }
 
     const resp = await fetch(url, {
+        // eslint-disable-next-line no-nested-ternary
         body: body instanceof URLSearchParams
             ? body.toString()
             : body
@@ -206,6 +207,7 @@ const requestWithRetry = async (requestOpt, { waitMilliseconds = 2000, retries =
         if (err.statusCode === HTTP_STATUS_CODES.TOO_MANY_REQUESTS && retries > 0) {
             await sleep(waitMilliseconds);
             logger.warn(`TIMEOUT, retrying request ${requestOpt.uri} ${JSON.stringify(requestOpt.qs) || ''}`);
+            // eslint-disable-next-line no-return-await
             return await requestWithRetry(requestOpt, {
                 retries: retries - 1,
                 useCache,
