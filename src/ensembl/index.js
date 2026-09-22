@@ -48,32 +48,48 @@ const generalize = async (conn, record) => {
  * and then link via element of, return the parent feature
  */
 const linkFeatureToParent = async (conn, transcript, parentBiotype = 'gene') => {
-    const { Parent: geneId } = await requestWithRetry({
-        json: true,
-        method: 'GET',
-        uri: `${BASE_URL}/lookup/id/${transcript.sourceId}`,
-    });
+    let geneId;
+    const uri = `${BASE_URL}/lookup/id/${transcript.sourceId}`;
+
+    try {
+        const { Parent } = await requestWithRetry({
+            json: true,
+            method: 'GET',
+            uri,
+        });
+        geneId = Parent;
+    } catch (err) {
+        logger.warn(`Cannot fetch from Ensembl ${uri}: ${err}`);
+        throw err;
+    }
 
     if (!geneId) {
+        logger.warn(`Cannot link ${transcript.sourceId} to parent ${parentBiotype}`);
         return null;
     }
-    const gene = await conn.addRecord({
-        content: {
-            biotype: parentBiotype,
-            source: rid(transcript.source),
-            sourceId: geneId,
-            sourceIdVersion: null,
-        },
-        existsOk: true,
-        target: 'Feature',
-    });
-    await conn.addRecord({
-        content: { in: rid(gene), out: rid(transcript), source: rid(transcript.source) },
-        existsOk: true,
-        fetchExisting: false,
-        target: 'ElementOf',
-    });
-    return gene;
+
+    try {
+        const gene = await conn.addRecord({
+            content: {
+                biotype: parentBiotype,
+                source: rid(transcript.source),
+                sourceId: geneId,
+                sourceIdVersion: null,
+            },
+            existsOk: true,
+            target: 'Feature',
+        });
+        await conn.addRecord({
+            content: { in: rid(gene), out: rid(transcript), source: rid(transcript.source) },
+            existsOk: true,
+            fetchExisting: false,
+            target: 'ElementOf',
+        });
+        return gene;
+    } catch (err) {
+        logger.warn(`Cannot link ${transcript.sourceId} to ${geneId}: ${err}`);
+        throw err;
+    }
 };
 
 
