@@ -155,11 +155,10 @@ const getEnsemblVersions = async (data, filepath = '') => {
  * Missing records get uploaded to GraphKB.
  *
  * @param {ApiConnection} opt.conn the API connection object
- * @param {object} opt.data the parsed OncoKB files content
  * @param {object} opt.ensembl the Ensembl isoform versions mapping
  * @returns {Promise<Map<string, string>>}
  */
-const transcriptMapping = async ({ conn, data, ensembl }) => {
+const transcriptMapping = async ({ conn, ensembl }) => {
     logger.info('Mapping OncoKB GRCh38-linked Ensembl accession number to GraphKB records...');
     const transcriptMap = new Map();
 
@@ -671,7 +670,7 @@ const ontologyMappings = async ({
     Onto.chromosomes = await chromosomeMapping(conn);
     Onto.genes = await geneMapping({ conn, data });
     Onto.ensembl = await getEnsemblVersions(data, ensemblVersions); // Ensembl versioned ids
-    Onto.transcripts = await transcriptMapping({ conn, data, ensembl: Onto.ensembl });
+    Onto.transcripts = await transcriptMapping({ conn, ensembl: Onto.ensembl });
     Onto.evidenceLevels = await evidenceLevelMapping({ conn, data, source });
     Onto.relevances = await relevanceMapping({ conn, data, levels: Onto.evidenceLevels.keys() });
     Onto.diseases = await diseaseMapping({ conn, data });
