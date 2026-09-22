@@ -91,6 +91,11 @@ const fetchByIdList = async (rawIdList, opt) => {
         Object.keys(result).filter(k => k !== 'uids').forEach((key) => {
             const rec = result[key];
 
+            if (rec.error) {
+                logger.error(`error fetching record for id ${key}: ${rec.error}`);
+                return;
+            }
+
             try {
                 records.push(parser(rec));
             } catch (err) {
