@@ -6,7 +6,7 @@ const { constants: { TYPES_TO_NOTATION } } = require('@bcgsc-pori/graphkb-parser
 const { therapyMapping } = require('./therapies');
 const { parseEvidence } = require('./util');
 const { CATEGORIES, variantMapping } = require('./variants');
-const _ensembl = require('../ensembl')
+const _ensembl = require('../ensembl');
 const _pubmed = require('../entrez/pubmed');
 const _entrezGene = require('../entrez/gene');
 const { orderPreferredOntologyTerms, rid } = require('../graphkb');
@@ -105,10 +105,10 @@ const ensemblLookupById = async (id, {
  */
 const getEnsemblVersions = async (data, filepath = '') => {
     logger.info('\nTRANSCRIPTS:');
-    logger.info(`Mapping Ensembl accession number to versions...`);
-    
+    logger.info('Mapping Ensembl accession number to versions...');
+
     let ensembl = { grch37: {}, grch38: {} };
-    
+
     if (filepath && fs.existsSync(filepath)) {
         logger.info(`Loading existing mappings from file: ${filepath}`);
         ensembl = JSON.parse(fs.readFileSync(filepath, 'utf8'));
@@ -180,11 +180,11 @@ const transcriptMapping = async ({ conn, data, ensembl }) => {
                     { biotype: 'transcript' },
                     { displayName: [...transcripts.values()] },
                     { source: { filters: { name: 'ensembl' }, target: 'Source' } },
-                ]
+                ],
             },
             returnProperties: ['@rid', 'displayName'],
             target: 'Feature',
-        })
+        });
         records.forEach((r) => transcriptMap.set(r.displayName.split('.')[0], r['@rid']));
     } catch (err) {
         logger.warn('Cannot bulk-fetch corresponding GraphKB records');

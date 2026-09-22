@@ -140,14 +140,13 @@ const mutalyzerMapper = async (hgvs, ref) => {
                 uri: `${MUTALIZER_BASE_URL}/normalize/${encodeURIComponent(genomic)}`,
             }, { waitMilliseconds: 5000 });
 
-            // 
             const equivalent = resp.equivalent_descriptions.c;
             const [cds] = equivalent
                 .filter((r) => r.reference.selector.id === ref)
                 .map((r) => r.description);
 
             logger.info(`Mutalizer: successfully recoded ${hgvs} into ${cds}`);
-            return cds
+            return cds;
         } catch (err) {
             logger.warn(`Mutalizer: error normalizing ${genomic} (from ${hgvs} mapping) to CDS: ${err}`);
         }

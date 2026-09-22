@@ -211,7 +211,7 @@ const processRecord = ({
  * Given some OncoKB input files (see README.md),
  * upload the OncoKB records as Statements into GraphKB.
  * Some missing referenced ontology records may also be uploaded as needed.
- * 
+ *
  * To save time and ressources, already acquired Ensembl versions can be fetched/saved
  * from/to a file (opt.ensemblVersions).
  *
