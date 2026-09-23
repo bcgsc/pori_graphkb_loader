@@ -152,17 +152,6 @@ const getEnsemblVersions = async (data) => {
     logger.info(`${Object.keys(grch38).length}/${Object.keys(ensembl.grch38).length} transcripts with successfull version mapping`);
 
     try {
-        const grch37 = Object.fromEntries(
-            Object.entries(ensembl.grch37).filter(([, v]) =>
-                !(v && typeof v === 'object' && Object.keys(v).length === 0)
-            )
-        );
-        const grch38 = Object.fromEntries(
-            Object.entries(ensembl.grch38).filter(([, v]) =>
-                !(v && typeof v === 'object' && Object.keys(v).length === 0)
-            )
-        );
-
         fs.writeFileSync(filepath, JSON.stringify({ grch37, grch38 }, null, 4));
         logger.info(`Saving updated mappings to file: ${filepath}`);
     } catch (err) {}
