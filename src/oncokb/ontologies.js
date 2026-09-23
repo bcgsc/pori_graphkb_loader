@@ -88,7 +88,7 @@ const ensemblLookupById = async (id, {
     } catch (err) {
         logger.error(`Cannot Retreive version ids for ${grch37 ? 'GRCh37' : 'GRCh38'} ${id}`);
     }
-    return {};
+    return {}; // Returning an empty object, so the same id dosen't get queried again and again.
 };
 
 /**
