@@ -183,21 +183,28 @@ const transcriptMapping = async ({ conn, ensembl }) => {
 
     // Corresponding GraphKB records
     // Leveraging displayName (incl. version #)
-    try {
-        const records = await conn.getRecords({
-            filters: {
-                AND: [
-                    { biotype: 'transcript' },
-                    { displayName: [...transcripts.values()] },
-                    { source: { filters: { name: 'ensembl' }, target: 'Source' } },
-                ],
-            },
-            returnProperties: ['@rid', 'displayName'],
-            target: 'Feature',
-        });
-        records.forEach((r) => transcriptMap.set(r.displayName.split('.')[0], r['@rid']));
-    } catch (err) {
-        logger.warn('Cannot bulk-fetch corresponding GraphKB records');
+    const transcriptArray = [...transcripts.values()];
+    const BATCH_SIZE = 250;
+
+    for (let i = 0; i < transcriptArray.length; i += BATCH_SIZE) {
+        const batch = transcriptArray.slice(i, i + BATCH_SIZE);
+
+        try {
+            const records = await conn.getRecords({
+                filters: {
+                    AND: [
+                        { biotype: 'transcript' },
+                        { displayName: batch },
+                        { source: { filters: { name: 'ensembl' }, target: 'Source' } },
+                    ],
+                },
+                returnProperties: ['@rid', 'displayName'],
+                target: 'Feature',
+            });
+            records.forEach((r) => transcriptMap.set(r.displayName.split('.')[0], r['@rid']));
+        } catch (err) {
+            logger.warn('Cannot bulk-fetch corresponding GraphKB records');
+        }
     }
 
     const missing = new Map([...transcripts].filter(([k]) => !transcriptMap.has(k)));
