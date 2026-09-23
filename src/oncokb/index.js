@@ -287,7 +287,6 @@ const uploadFile = async ({ conn, filename: dirpath, ...opt }) => {
         for (const record of data[type]) {
             if (maxRecords && statements.size >= maxRecords) {
                 logger.info(`Reached maxRecords limit (${maxRecords})`);
-                counts.skip += (record.length - maxRecords);
                 break;
             }
 
