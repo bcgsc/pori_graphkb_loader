@@ -8,12 +8,12 @@ const { logger } = require('../logging');
 
 // FIXES
 const CATALOGUE_VARIANT = new Set([
-    'ar-v567es', // AR-V567es
-    'egfr-viv', // EGFR-vIV   ?? malformed?
-    'egfr-vii', // EGFR-VII
-    'egfr-viii', // EGFR-VIII
-    'egfr-vix', // EGFR-IX
-    'DNMT3B-DNMT3B7', // ?
+    'ar-v567es',
+    'egfr-vii',
+    'egfr-viii',
+    'egfr-viv',
+    // 'egfr-vv', // keeping since the corresponding proteinChange is given
+    'dnmt3b-dnmt3b7',
 ]);
 const DISCARDED_PROTEIN_CHANGE = new Map([
     // ['762_823ins {excluding A763_Y764insFQEA}', 'Ambiguous insertion'],
