@@ -2,7 +2,7 @@
 
 
 ### API Token
-An API Token must first be obtain from OncoKB. Save as **ONCOKB_TOKEN** environment variable.
+An API Token must first be obtained from OncoKB. Save it as **ONCOKB_TOKEN** environment variable.
 
 ### Downloading files
 Relevant OncoKB files can be downloaded using the provided script. A release version can be passed as 1st argument. Creates a subdirectory per version.
