@@ -109,7 +109,7 @@ const getEnsemblVersions = async (data) => {
 
     const filepath = path.join(__dirname, 'ensembl.json');
     let ensembl = { grch37: {}, grch38: {} };
-    
+
     try {
         ensembl = JSON.parse(fs.readFileSync(filepath, 'utf8'));
         logger.info(`Loading existing mappings from file: ${filepath}`);
@@ -142,11 +142,11 @@ const getEnsemblVersions = async (data) => {
     // Removing empty objects prior of saving to file
     const grch37 = Object.fromEntries(
         Object.entries(ensembl.grch37)
-            .filter(([, v]) => v.id !== undefined)
+            .filter(([, v]) => v.id !== undefined),
     );
     const grch38 = Object.fromEntries(
         Object.entries(ensembl.grch38)
-            .filter(([, v]) => v.id !== undefined)
+            .filter(([, v]) => v.id !== undefined),
     );
 
     logger.info(`${Object.keys(grch38).length}/${Object.keys(ensembl.grch38).length} transcripts with successfull version mapping`);
