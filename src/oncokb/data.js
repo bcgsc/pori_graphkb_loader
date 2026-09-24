@@ -183,7 +183,7 @@ const getDataAndApplyFixes = (dirpath) => {
             // Negative entrezGeneId other than -2 (other biomarkers); e.g. -1029 (in v7.2)
             if (r.entrezGeneId < 0 && r.entrezGeneId !== -2) {
                 const fix = Math.abs(r.entrezGeneId);
-                const msg = `Fixed malformed negative entrezGeneId (${r.entrezGeneId} to ${fix})`;
+                const msg = `Fixed malformed negative entrezGeneId (${r.entrezGeneId} to ${fix}).`;
                 data[type][i].entrezGeneId = fix;
                 data[type][i]._comments += `${msg}\n`;
                 logger.warn(msg);
@@ -192,7 +192,7 @@ const getDataAndApplyFixes = (dirpath) => {
             // NECESSARY ??
             if (GENE_WITH_ALIAS_REGEX.exec(r.gene)) {
                 const fix = r.gene.match(GENE_WITH_ALIAS_REGEX)[1];
-                const msg = `Fixed malformed gene notation (${r.gene} to ${fix})`;
+                const msg = `Fixed malformed gene notation (${r.gene} to ${fix}).`;
                 data[type][i].gene = fix;
                 data[type][i]._comments += `${msg}\n`;
                 logger.warn(msg);
@@ -215,7 +215,7 @@ const getDataAndApplyFixes = (dirpath) => {
                         if (r.variant === r.proteinChange) {
                             data[type][i].proteinChange = fix;
                         }
-                        const msg = `Fixed deprecated gene notation in fusion variant (${r.variant} to ${fix})`;
+                        const msg = `Fixed deprecated gene notation in fusion variant (${r.variant} to ${fix}).`;
                         data[type][i].variant = fix;
                         data[type][i]._comments += `${msg}\n`;
                         logger.warn(msg);
@@ -226,20 +226,20 @@ const getDataAndApplyFixes = (dirpath) => {
             // BIOMARKERS
             // Discarded Alu element
             if (/^c\..*alu$/i.test(r.variant)) {
-                const msg = `Discarding variant (${r.variant}): Ambiguous Alu element`;
+                const msg = `Discarding variant (${r.variant}): Ambiguous Alu element.`;
                 data[type][i].variant = null;
                 data[type][i]._comments += `${msg}\n`;
                 logger.warn(msg);
             }
             // Hardcoded discarded cases
             if (DISCARDED_VARIANT.has(r.variant)) {
-                const msg = `Discarding variant (${r.variant}): ${DISCARDED_VARIANT.get(r.variant)}`;
+                const msg = `Discarding variant (${r.variant}): ${DISCARDED_VARIANT.get(r.variant)}.`;
                 data[type][i].variant = null;
                 data[type][i]._comments += `${msg}\n`;
                 logger.warn(msg);
             }
             if (DISCARDED_PROTEIN_CHANGE.has(r.proteinChange)) {
-                const msg = `Discarding proteinChange (${r.proteinChange}): ${DISCARDED_PROTEIN_CHANGE.get(r.proteinChange)}`;
+                const msg = `Discarding proteinChange (${r.proteinChange}): ${DISCARDED_PROTEIN_CHANGE.get(r.proteinChange)}.`;
                 data[type][i].proteinChange = null;
                 data[type][i]._comments += `${msg}\n`;
                 logger.warn(msg);
@@ -247,7 +247,7 @@ const getDataAndApplyFixes = (dirpath) => {
             // Hardcoded proteinChange fixes
             if (HARDCODED_PROTEIN_CHANGE.has(r.proteinChange)) {
                 const fix = HARDCODED_PROTEIN_CHANGE.get(r.proteinChange);
-                const msg = `Fixed malformed proteinChange notation (${r.proteinChange} to ${fix})`;
+                const msg = `Fixed malformed proteinChange notation (${r.proteinChange} to ${fix}).`;
                 data[type][i].proteinChange = fix;
                 data[type][i]._comments += `${msg}\n`;
                 logger.warn(msg);
@@ -256,7 +256,7 @@ const getDataAndApplyFixes = (dirpath) => {
             // Known deprecated transcript
             if (HARDCODED_GRCH38ISOFORM.has(r.grch38Isoform)) {
                 const fix = HARDCODED_GRCH38ISOFORM.get(r.grch38Isoform);
-                const msg = `Updated grch38Isoform ${r.grch38Isoform} to ${fix}`;
+                const msg = `Updated grch38Isoform ${r.grch38Isoform} to ${fix}.`;
                 data[type][i].grch38Isoform = fix;
                 data[type][i]._comments += `${msg}\n`;
                 logger.warn(msg);
@@ -265,7 +265,7 @@ const getDataAndApplyFixes = (dirpath) => {
             // Hardcoded variant fixes
             if (HARDCODED_VARIANT.has(r.variant)) {
                 const fix = HARDCODED_VARIANT.get(r.variant);
-                const msg = `Fixed malformed variant notation (${r.variant} to ${fix})`;
+                const msg = `Fixed malformed variant notation (${r.variant} to ${fix}).`;
                 data[type][i].variant = fix;
                 data[type][i]._comments += `${msg}\n`;
                 logger.warn(msg);
@@ -273,7 +273,7 @@ const getDataAndApplyFixes = (dirpath) => {
             // One specific case involving both variant and proteinChange props (v7.2)
             if (r.proteinChange === 'c465C>T' && r.variant === 'Single Nucleotide Polymorphism') {
                 const fix = 'c.465C>T';
-                const msg = `Fixed malformed notation (${r.proteinChange} to ${fix}), from proteinChange to variant`;
+                const msg = `Fixed malformed notation (${r.proteinChange} to ${fix}), from proteinChange to variant.`;
                 data[type][i].proteinChange = null;
                 data[type][i].variant = fix; // from proteinChange, with edit
                 data[type][i]._comments += `${msg}\n`;
@@ -281,7 +281,7 @@ const getDataAndApplyFixes = (dirpath) => {
             }
             // Not supporting catalogue variant yet
             if (CATALOGUE_VARIANT.has(`${r.gene}-${r.variant}`.toLowerCase())) {
-                const msg = `Not supporting catalogue variant yet (${r.gene}-${r.variant})`;
+                const msg = `Not supporting catalogue variant yet (${r.gene}-${r.variant}).`;
                 data[type][i].variant = null;
                 data[type][i].proteinChange = null;
                 data[type][i]._comments += `${msg}\n`;
@@ -292,7 +292,7 @@ const getDataAndApplyFixes = (dirpath) => {
             for (const prop of ['variant', 'proteinChange']) {
                 if (EXCLUSIONS_REGEX.exec(r[prop])) {
                     const [, category, exclusions] = r[prop].match(EXCLUSIONS_REGEX);
-                    const msg = `Discarded exclusions '${exclusions}' on ${r.setting} ${r.gene} ${r[prop]} (${prop})`;
+                    const msg = `Discarded exclusions '${exclusions}' on ${r.setting} ${r.gene} ${r[prop]} (${prop}).`;
                     data[type][i][prop] = category;
                     data[type][i]._comments += `${msg}\n`;
                     logger.warn(msg);
@@ -303,7 +303,7 @@ const getDataAndApplyFixes = (dirpath) => {
             // (needs to come after the exclusions fixes)
             if (r.variant === 'Pathogenic Variants') {
                 const fix = 'Oncogenic Mutations';
-                const msg = `Changing variant notation ${r.variant} to ${fix}`;
+                const msg = `Changing variant notation ${r.variant} to ${fix}.`;
                 data[type][i].variant = fix;
                 data[type][i]._comments += `${msg}\n`;
                 logger.info(msg); // info!
@@ -320,7 +320,7 @@ const getDataAndApplyFixes = (dirpath) => {
                 // Hardcoded disease fixes
                 if (HARDCODED_DISEASE.has(data[type][i].cancerType)) {
                     const fix = HARDCODED_DISEASE.get(data[type][i].cancerType);
-                    const msg = `Fixed disease notation from ${r.cancerType} to ${fix}`;
+                    const msg = `Fixed disease notation from ${r.cancerType} to ${fix}.`;
                     data[type][i].cancerType = fix;
                     data[type][i]._comments += `${msg}\n`;
                     logger.warn(msg);
