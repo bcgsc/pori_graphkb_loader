@@ -1,0 +1,250 @@
+{
+  "actionable": {
+    "filename": "allActionableVariants.json",
+    "spec": {
+      "items": {
+        "properties": {
+          "abstracts": {
+            "type": "string"
+          },
+          "cancerType": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "drugs": {
+            "type": "string"
+          },
+          "entrezGeneId": {
+            "type": "number"
+          },
+          "gene": {
+            "type": "string"
+          },
+          "grch37Isoform": {
+            "type": "string"
+          },
+          "grch37RefSeq": {
+            "type": "string"
+          },
+          "grch38Isoform": {
+            "type": "string"
+          },
+          "grch38RefSeq": {
+            "type": "string"
+          },
+          "level": {
+            "type": "string"
+          },
+          "liquidPropagationLevel": {
+            "type": "string"
+          },
+          "pmids": {
+            "type": "string"
+          },
+          "proteinChange": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "referenceGenome": {
+            "type": "string"
+          },
+          "setting": {
+            "type": "string"
+          },
+          "solidPropagationLevel": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "abstracts",
+          "cancerType",
+          "description",
+          "drugs",
+          "entrezGeneId",
+          "gene",
+          "grch37Isoform",
+          "grch37RefSeq",
+          "grch38Isoform",
+          "grch38RefSeq",
+          "level",
+          "liquidPropagationLevel",
+          "pmids",
+          "proteinChange",
+          "setting",
+          "solidPropagationLevel",
+          "variant"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "annotated": {
+    "filename": "allAnnotatedVariants.json",
+    "spec": {
+      "items": {
+        "properties": {
+          "description": {
+            "type": "string"
+          },
+          "entrezGeneId": {
+            "type": "number"
+          },
+          "gene": {
+            "type": "string"
+          },
+          "grch37Isoform": {
+            "type": "string"
+          },
+          "grch37RefSeq": {
+            "type": "string"
+          },
+          "grch38Isoform": {
+            "type": "string"
+          },
+          "grch38RefSeq": {
+            "type": "string"
+          },
+          "mutationEffect": {
+            "type": "string"
+          },
+          "mutationEffectAbstracts": {
+            "type": "string"
+          },
+          "mutationEffectPmids": {
+            "type": "string"
+          },
+          "oncogenicity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "proteinChange": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "referenceGenome": {
+            "type": "string"
+          },
+          "setting": {
+            "type": "string"
+          },
+          "variant": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "description",
+          "entrezGeneId",
+          "gene",
+          "grch37Isoform",
+          "grch37RefSeq",
+          "grch38Isoform",
+          "grch38RefSeq",
+          "mutationEffect",
+          "mutationEffectAbstracts",
+          "mutationEffectPmids",
+          "oncogenicity",
+          "proteinChange",
+          "setting",
+          "variant"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "drugs": {
+    "filename": "drugs.json",
+    "spec": {
+      "items": {
+        "properties": {
+          "drugName": {
+            "type": "string"
+          },
+          "ncitCode": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "drugName",
+          "ncitCode"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  },
+  "genes": {
+    "filename": "allCuratedGenes.json",
+    "spec": {
+      "items": {
+        "additionalProperties": true,
+        "properties": {
+          "background": {
+            "type": "string"
+          },
+          "entrezGeneId": {
+            "type": "number"
+          },
+          "geneType": {
+            "type": "string"
+          },
+          "grch37Isoform": {
+            "type": "string"
+          },
+          "grch37RefSeq": {
+            "type": "string"
+          },
+          "grch38Isoform": {
+            "type": "string"
+          },
+          "grch38RefSeq": {
+            "type": "string"
+          },
+          "highestResistanceLevel": {
+            "type": "string"
+          },
+          "highestSensitiveLevel": {
+            "type": "string"
+          },
+          "hugoSymbol": {
+            "type": "string"
+          },
+          "setting": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "background",
+          "entrezGeneId",
+          "geneType",
+          "grch37Isoform",
+          "grch37RefSeq",
+          "grch38Isoform",
+          "grch38RefSeq",
+          "highestResistanceLevel",
+          "highestSensitiveLevel",
+          "hugoSymbol",
+          "setting",
+          "summary"
+        ],
+        "type": "object"
+      },
+      "type": "array"
+    }
+  }
+}

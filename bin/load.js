@@ -4,9 +4,9 @@ const { createOptionsMenu, fileExists } = require('../src/cli');
 const civic = require('../src/civic');
 const dgidb = require('../src/dgidb');
 const docm = require('../src/docm');
+const oncokb = require('../src/oncokb');
 const oncotree = require('../src/oncotree');
 const fdaApprovals = require('../src/fdaApprovals');
-
 const cancerhotspots = require('../src/cancerhotspots');
 const cgi = require('../src/cancergenomeinterpreter');
 const cgl = require('../src/cgl');
@@ -26,9 +26,7 @@ const uberon = require('../src/uberon');
 const variants = require('../src/variants');
 const asco = require('../src/asco');
 const moa = require('../src/moa');
-
 const clinicaltrialsgov = require('../src/clinicaltrialsgov');
-
 const cosmicResistance = require('../src/cosmic/resistance');
 const cosmicFusions = require('../src/cosmic/fusions');
 
@@ -40,7 +38,6 @@ const API_MODULES = {
     moa,
     oncotree,
 };
-
 const FILE_MODULES = {
     PMC4232638,
     PMC4468049,
@@ -54,18 +51,17 @@ const FILE_MODULES = {
     gscTherapeuticOntology,
     ncit,
     ncitFdaXref,
+    oncokb,
     ontology,
     refseq,
     sources,
     uberon,
     variants,
 };
-
 const COSMIC_MODULES = {
     fusions: cosmicFusions,
     resistance: cosmicResistance,
 };
-
 const ALL_MODULES = {
     ...API_MODULES,
     ...FILE_MODULES,
@@ -75,39 +71,64 @@ const ALL_MODULES = {
 };
 
 const parser = createOptionsMenu();
-
 const subparsers = parser.add_subparsers({ dest: 'subparser_name', help: 'Sub-command help', required: true });
+
+// API PARSER
 const apiParser = subparsers.add_parser('api');
 apiParser.add_argument('module', {
     choices: Object.keys(API_MODULES),
     help: 'module to run',
 });
 
+// FILE PARSER
 const fileParser = subparsers.add_parser('file');
-fileParser.add_argument('module', {
-    choices: Object.keys(FILE_MODULES),
-    help: 'module to run',
-});
-fileParser.add_argument('input', {
-    help: 'path to the file/dir to be loaded',
-    type: fileExists,
-});
-fileParser.add_argument('--ignoreCache', {
+const fileSubparsers = fileParser.add_subparsers({ dest: 'module', help: 'module to run', required: true });
+
+const addSharedFileArguments = (targetParser) => {
+    targetParser.add_argument('input', {
+        help: 'path to the file/dir to be loaded',
+        type: fileExists,
+    });
+    targetParser.add_argument('--ignoreCache', {
+        action: 'store_true',
+        default: false,
+        help: 'Load the full content, to not check for previously loaded records already in the GraphKB instance',
+    });
+    targetParser.add_argument('--ignoreSynonyms', {
+        action: 'store_true',
+        default: false,
+        help: 'For NCIt loader only: ignore synonyms instead upload as alias records (overrides default behavior)',
+    });
+    targetParser.add_argument('--ignoreDeprecating', {
+        action: 'store_true',
+        default: false,
+        help: 'For NCIt loader only: ignore deprecation of old records (overrides default behavior)',
+    });
+};
+
+const fileModuleParsers = {};
+
+Object.keys(FILE_MODULES)
+    .forEach((moduleName) => {
+        const moduleParser = fileSubparsers.add_parser(moduleName);
+        addSharedFileArguments(moduleParser);
+        fileModuleParsers[moduleName] = moduleParser;
+    });
+
+// FILE PARSER - OncoKB
+fileModuleParsers.oncokb.add_argument('--deleteDeprecated', {
     action: 'store_true',
     default: false,
-    help: 'Load the full content, to not check for previously loaded records already in the GraphKB instance',
+    help: 'Will delete GraphKB Statements from deprecated records',
 });
-fileParser.add_argument('--ignoreSynonyms', {
-    action: 'store_true',
-    default: false,
-    help: 'For NCIt loader only: ignore synonyms instead upload as alias records (overrides default behavior)',
-});
-fileParser.add_argument('--ignoreDeprecating', {
-    action: 'store_true',
-    default: false,
-    help: 'For NCIt loader only: ignore deprecation of old records (overrides default behavior)',
+fileModuleParsers.oncokb.add_argument('--recode', {
+    choices: ['no', 'optimistic', 'pessimistic'],
+    default: 'no',
+    help: 'Recoding strategy for variants from GRCh37 to GRCh38. When it fails, optimistic recoding keep the original notation where pessimistic discard the variant',
 });
 
+
+// CIViC PARSER
 const civicParser = subparsers.add_parser('civic');
 civicParser.add_argument('--trustedCurators', {
     default: [],
@@ -130,12 +151,14 @@ civicParser.add_argument('--deleteDeprecated', {
     help: 'Will delete GraphKB Statements from deprecated sourceID',
 });
 
+// clinicaltrials.gov PARSER
 const clinicaltrialsgovParser = subparsers.add_parser('clinicaltrialsgov');
 clinicaltrialsgovParser.add_argument('--days', {
     help: 'Load new and existing studies added or modified (last update posted) in the last # of days',
     type: Number,
 });
 
+// COSMIC PARSER
 const cosmicParser = subparsers.add_parser('cosmic');
 cosmicParser.add_argument('module', {
     choices: Object.keys(COSMIC_MODULES),
@@ -150,6 +173,8 @@ cosmicParser.add_argument('classification', {
     type: fileExists,
 });
 
+
+// LOADER FUNCTION AND OPTIONS
 const {
     subparser_name, module: moduleName, input, ...options
 } = parser.parse_args();
