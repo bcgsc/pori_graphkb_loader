@@ -17,6 +17,8 @@ const {
 } = require('../../src/oncokb/ontologies');
 
 
+const ONCOKB_SOURCE = { '@rid': '#456:78', name: 'oncokb' };
+
 afterEach(() => {
     jest.restoreAllMocks();
 });
@@ -92,7 +94,7 @@ describe('evidenceLevelMapping', () => {
             }),
         };
 
-        evidenceLevels = await evidenceLevelMapping({ conn, data, source: { '@rid': '#123::02' } });
+        evidenceLevels = await evidenceLevelMapping({ conn, data, source: ONCOKB_SOURCE });
 
         expect(evidenceLevels).toEqual(new Map([
             ['Dx1', '#123:01'],
@@ -151,7 +153,7 @@ describe('getEvidences', () => {
         publications: new Map([
             ['12345', '#123:45'],
         ]),
-        source: { '@rid': '#123:01' },
+        source: ONCOKB_SOURCE,
     };
 
     test('uses source OncoKB as evidences for oncogenicity', () => {
@@ -160,7 +162,7 @@ describe('getEvidences', () => {
             true, // for Annotated Variants oncogenicity
         )).toEqual({
             comments: '',
-            evidences: ['#123:01'],
+            evidences: [ONCOKB_SOURCE['@rid']],
         });
     });
 
@@ -180,7 +182,7 @@ describe('getEvidences', () => {
             false,
         )).toEqual({
             comments: '',
-            evidences: ['#123:01'],
+            evidences: [ONCOKB_SOURCE['@rid']],
         });
     });
 });
@@ -239,16 +241,16 @@ describe('relevanceMapping', () => {
         const conn = {
             getUniqueRecordBy: jest.fn().mockImplementation(async (opt) => {
                 if (opt.filters.name === 'gain of function') {
-                    return { '@rid': '#123:01', name: 'gain of function' };
+                    return { '@rid': '#123:01', name: 'gain of function' }; // mutationEffect
                 }
                 if (opt.filters.name === 'likely neutral') {
-                    return { '@rid': '#123:02', name: 'likely neutral' };
+                    return { '@rid': '#123:02', name: 'likely neutral' }; // oncogenicity
                 }
                 if (opt.filters.name === 'resistance') {
-                    return { '@rid': '#123:03', name: 'resistance' };
+                    return { '@rid': '#123:03', name: 'resistance' }; // level R1
                 }
                 if (opt.filters.name === 'sensitivity') {
-                    return { '@rid': '#123:04', name: 'sensitivity' };
+                    return { '@rid': '#123:04', name: 'sensitivity' }; // level 1
                 }
                 throw new Error();
             }),
