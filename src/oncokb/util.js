@@ -87,6 +87,10 @@ const hashContentToSourceId = (content) => {
  * returns a hash of selected props as id.
  * Used for linking each OncoKB variant record to a GraphKB biomarker
  *
+ * Following fields are ignored:
+ * abstracts, description, liquidPropagationLevel, mutationEffectAbstracts,
+ * mutationEffectPmids, pmids, referenceGenome, solidPropagationLevel
+ *
  * @param {object} r the OncoKB variant record
  * @returns {string}
  */
@@ -104,8 +108,8 @@ const hashOncokbRecordToId = (r) => hashRecordToId(r, [
     'drugs',
     'level',
     // annotated-specific props:
-    'oncogenicity',
     'mutationEffect',
+    'oncogenicity',
 ]);
 
 module.exports = {
