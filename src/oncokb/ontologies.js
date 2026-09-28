@@ -228,6 +228,9 @@ const transcriptMapping = async ({ conn, ensembl }) => {
             } catch (err) {
                 logger.warn(`Some errors happened when uploading Ensembl ${versioned} to GraphKB: ${err}`);
             }
+
+            // Ensembl REST API needs some pause between individual requests
+            await new Promise(resolve => { setTimeout(resolve, 2000); });
         }
     }
 
