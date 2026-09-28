@@ -21,12 +21,15 @@ chmod +x src/oncokb/fetch.sh
 
 ```Bash
 # Usage
-node bin/load.js file oncokb <dirpath>
+node bin/load.js [OPTIONS] file oncokb [ONCOKB_OPTIONS] <dirpath>
 
 # Complete example
 node bin/load.js \
     -g $GRAPHKB_API_URL \
     -u $USER \
     -p $PASSWORD \
-    file oncokb src/oncokb/v7.2
+    file oncokb \
+    --deleteDeprecated \
+    --recode optimistic \
+    src/oncokb/v7.2
 ```
