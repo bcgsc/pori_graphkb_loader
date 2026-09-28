@@ -135,8 +135,7 @@ rule download_PMC4232638:
 rule download_cgi:
     output: f'{DATA_DIR}/cgi/cgi_biomarkers_per_variant.tsv'
     shell: f'''
-        curl --create-dirs -o {DATA_DIR}/cgi/cgi_biomarkers.zip https://www.cancergenomeinterpreter.org/data/biomarkers/cgi_biomarkers_20180117.zip
-        unzip -d {DATA_DIR}/cgi {DATA_DIR}/cgi/cgi_biomarkers.zip
+        curl --create-dirs -o {DATA_DIR}/cgi/cgi_biomarkers_per_variant.tsv https://www.cancergenomeinterpreter.org/2021/data/biomarkers/cgi_biomarkers_latest.tsv
         '''
 
 
@@ -161,7 +160,7 @@ rule download_cancerhotspots:
 rule download_cosmic_resistance:
     output: f'{DATA_DIR}/cosmic/CosmicResistanceMutations.tsv'
     shell: f'''
-        ./downloadCosmic.sh mutations {COSMIC_EMAIL} {COSMIC_PASSWORD} "https://cancer.sanger.ac.uk/api/mono/products/v1/downloads/scripted?path=grch38/cosmic/v101/Cosmic_ResistanceMutations_Tsv_v101_GRCh38.tar&bucket=downloads" {DATA_DIR}
+        ./downloadCosmic.sh mutations {COSMIC_EMAIL} {COSMIC_PASSWORD} "https://cancer.sanger.ac.uk/api/mono/products/v1/downloads/scripted?path=grch38/cosmic/v104/Cosmic_ResistanceMutations_Tsv_v104_GRCh38.tar&bucket=downloads" {DATA_DIR}
         mv {DATA_DIR}/cosmic/mutations/Cosmic_ResistanceMutations_v[0-9]*_GRCh38.tsv {DATA_DIR}/cosmic/CosmicResistanceMutations.tsv
         '''
 
@@ -169,7 +168,7 @@ rule download_cosmic_resistance:
 rule download_cosmic_diseases:
     output: f'{DATA_DIR}/cosmic/classification.csv'
     shell: f'''
-        ./downloadCosmic.sh diseases {COSMIC_EMAIL} {COSMIC_PASSWORD} "https://cancer.sanger.ac.uk/api/mono/products/v1/downloads/scripted?path=grch38/cosmic/v101/Cosmic_Classification_Tsv_v101_GRCh38.tar&bucket=downloads" {DATA_DIR}
+        ./downloadCosmic.sh diseases {COSMIC_EMAIL} {COSMIC_PASSWORD} "https://cancer.sanger.ac.uk/api/mono/products/v1/downloads/scripted?path=grch38/cosmic/v104/Cosmic_Classification_Tsv_v104_GRCh38.tar&bucket=downloads" {DATA_DIR}
         mv {DATA_DIR}/cosmic/diseases/Cosmic_Classification_v[0-9]*_GRCh38.tsv {DATA_DIR}/cosmic/diseases/classification.tsv
         tr ',' '\\t' < {DATA_DIR}/cosmic/diseases/classification.tsv > {DATA_DIR}/cosmic/classification.csv
         '''
@@ -178,7 +177,7 @@ rule download_cosmic_diseases:
 rule download_cosmic_fusions:
     output: f'{DATA_DIR}/cosmic/CosmicFusionExport.tsv'
     shell: f'''
-        ./downloadCosmic.sh fusion {COSMIC_EMAIL} {COSMIC_PASSWORD} "https://cancer.sanger.ac.uk/api/mono/products/v1/downloads/scripted?path=grch38/cosmic/v101/Cosmic_Fusion_Tsv_v101_GRCh38.tar&bucket=downloads" {DATA_DIR}
+        ./downloadCosmic.sh fusion {COSMIC_EMAIL} {COSMIC_PASSWORD} "https://cancer.sanger.ac.uk/api/mono/products/v1/downloads/scripted?path=grch38/cosmic/v104/Cosmic_Fusion_Tsv_v104_GRCh38.tar&bucket=downloads" {DATA_DIR}
         mv {DATA_DIR}/cosmic/fusion/Cosmic_Fusion_v[0-9]*_GRCh38.tsv {DATA_DIR}/cosmic/CosmicFusionExport.tsv
         '''
 
