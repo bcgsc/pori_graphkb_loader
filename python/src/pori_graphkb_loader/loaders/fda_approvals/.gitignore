@@ -1,0 +1,10 @@
+__pycache__
+.venv
+venv*
+.coverage
+.pytest_cache
+temp*
+*venv*
+.fda_cache
+nohup*
+.fda_id_map.json

@@ -1,0 +1,35 @@
+[project]
+name = "fda-approvals"
+version = "0.1.0"
+description = ""
+authors = [
+    {name = "Caralyn Reisle",email = "creisle@bcgsc.ca"}
+]
+requires-python = ">=3.11"
+dependencies = [
+    "beautifulsoup4 (>=4.15.0,<5.0.0)",
+    "playwright (>=1.63.0,<2.0.0)",
+    "tqdm (>=4.70.1,<5.0.0)",
+    "pori-python (>=1.5.0,<2.0.0)"
+]
+
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry]
+package-mode = true
+packages = [{include = "fda_approvals"}]
+
+[tool.poetry.scripts]
+install-browsers = "fda_approvals.setup:install_browsers"
+
+[tool.pytest.ini_options]
+addopts = "--cov=fda_approvals --cov-report=term-missing"
+
+[dependency-groups]
+dev = [
+    "pytest (>=9.1.1,<10.0.0)",
+    "pytest-cov (>=7.1.0,<8.0.0)"
+]
