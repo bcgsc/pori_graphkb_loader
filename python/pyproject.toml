@@ -97,21 +97,13 @@ line-length = 100
 src = ["src", "tests"]
 
 [tool.ruff.format]
-quote-style = "single"
+quote-style = "double"
+skip-magic-trailing-comma = true
 
-[tool.ruff.lint]
-select = [
-    "B",
-    "E",
-    "F",
-    "I",
-    "UP",
-]
 
-[tool.ruff.lint.isort]
-known-first-party = [
-    "pori_graphkb_loader",
-]
+[lint]
+select = ["E303"]
+
 
 
 # ---------------------------------------------------------------------------

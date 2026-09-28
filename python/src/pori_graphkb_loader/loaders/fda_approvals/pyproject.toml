@@ -33,3 +33,9 @@ dev = [
     "pytest (>=9.1.1,<10.0.0)",
     "pytest-cov (>=7.1.0,<8.0.0)"
 ]
+
+[tool.ruff.format]
+skip-magic-trailing-comma = true
+
+[lint]
+select = ["E303"]

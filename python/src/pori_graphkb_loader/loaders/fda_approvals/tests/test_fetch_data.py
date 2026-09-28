@@ -1,3 +1,4 @@
+import argparse
 import json
 import os
 from datetime import date, datetime, timedelta
@@ -5,7 +6,7 @@ from unittest.mock import MagicMock
 
 import pytest
 
-from fda_approval_announcements import scrape
+from fda_approvals import fetch_data
 
 INDEX_HTML = """
 <table>
@@ -28,6 +29,7 @@ INDEX_HTML = """
     </tbody>
 </table>
 """
+
 
 ANNOUNCEMENT_HTML = """
 <html>
@@ -59,7 +61,7 @@ class FakePage:
         self.select = FakeSelect()
         self.visited = None
 
-    def goto(self, url, wait_until=None):
+    def goto(self, url, wait_until=None, timeout=None):
         self.visited = url
 
     def locator(self, selector):
@@ -77,16 +79,16 @@ class FakePage:
     [("2026-01-01", date(2026, 1, 1)), ("2025-12-31", date(2025, 12, 31))],
 )
 def test_parse_date(value, expected):
-    assert scrape.parse_date(value) == expected
+    assert fetch_data.parse_date(value) == expected
 
 
 def test_parse_date_invalid():
     with pytest.raises(ValueError):
-        scrape.parse_date("2026/01/01")
+        fetch_data.parse_date("2026/01/01")
 
 
 def test_page_cache_set_and_get(tmp_path):
-    cache = scrape.PageCache(tmp_path)
+    cache = fetch_data.PageCache(tmp_path)
 
     url = "https://www.fda.gov/drugs/example"
     content = "<html>example</html>"
@@ -97,16 +99,13 @@ def test_page_cache_set_and_get(tmp_path):
 
 
 def test_page_cache_missing(tmp_path):
-    cache = scrape.PageCache(tmp_path)
+    cache = fetch_data.PageCache(tmp_path)
 
     assert cache.get("https://www.fda.gov/drugs/missing") is None
 
 
 def test_page_cache_expired(tmp_path):
-    cache = scrape.PageCache(
-        tmp_path,
-        max_age=timedelta(days=1),
-    )
+    cache = fetch_data.PageCache(tmp_path, max_age=timedelta(days=1))
 
     url = "https://www.fda.gov/drugs/example"
     cache.set(url, "<html>example</html>")
@@ -114,6 +113,7 @@ def test_page_cache_expired(tmp_path):
     path = cache._path(url)
 
     old_timestamp = (datetime.now() - timedelta(days=2)).timestamp()
+
     os.utime(path, (old_timestamp, old_timestamp))
 
     assert cache.get(url) is None
@@ -122,12 +122,15 @@ def test_page_cache_expired(tmp_path):
 def test_get_uses_cache():
     page = MagicMock()
     cache = MagicMock()
+
     cache.get.return_value = "<html>cached</html>"
 
-    result = scrape.get(page, "/drugs/example", cache=cache)
+    result = fetch_data.get(page, "/drugs/example", cache=cache)
 
     assert result == "<html>cached</html>"
+
     cache.get.assert_called_once_with("https://www.fda.gov/drugs/example")
+
     page.goto.assert_not_called()
     cache.set.assert_not_called()
 
@@ -139,12 +142,14 @@ def test_get_fetches_and_caches_on_miss():
     cache = MagicMock()
     cache.get.return_value = None
 
-    result = scrape.get(page, "/drugs/example", cache=cache)
+    result = fetch_data.get(page, "/drugs/example", cache=cache)
 
     assert result == "<html>fresh</html>"
 
     page.goto.assert_called_once_with(
-        "https://www.fda.gov/drugs/example", wait_until="networkidle"
+        "https://www.fda.gov/drugs/example",
+        wait_until="domcontentloaded",
+        timeout=120_000,
     )
 
     cache.set.assert_called_once_with(
@@ -156,12 +161,14 @@ def test_get_without_cache():
     page = MagicMock()
     page.content.return_value = "<html>fresh</html>"
 
-    result = scrape.get(page, "/drugs/example")
+    result = fetch_data.get(page, "/drugs/example")
 
     assert result == "<html>fresh</html>"
 
     page.goto.assert_called_once_with(
-        "https://www.fda.gov/drugs/example", wait_until="networkidle"
+        "https://www.fda.gov/drugs/example",
+        wait_until="domcontentloaded",
+        timeout=120_000,
     )
 
 
@@ -188,34 +195,23 @@ def test_get_without_cache():
 def test_fetch_announcement_links(min_date, expected):
     page = FakePage(INDEX_HTML)
 
-    result = scrape.fetch_announcement_links(
-        page,
-        min_date=min_date,
-    )
+    result = fetch_data.fetch_announcement_links(page, min_date=min_date)
 
     assert result == expected
 
     # The index page must always be fetched directly.
-    assert page.visited == scrape.BASE_URL + scrape.INDEX_PATH
+    assert page.visited == fetch_data.BASE_URL + fetch_data.INDEX_PATH
 
 
-@pytest.mark.parametrize(
-    ("select_count", "expected_selected"),
-    [
-        (1, "-1"),
-        (0, None),
-    ],
-)
-def test_fetch_announcement_links_datatable(
-    select_count,
-    expected_selected,
-):
+@pytest.mark.parametrize(("select_count", "expected_selected"), [(1, "-1"), (0, None)])
+def test_fetch_announcement_links_datatable(select_count, expected_selected):
     page = FakePage(INDEX_HTML)
     page.select = FakeSelect(count=select_count)
 
-    result = scrape.fetch_announcement_links(page)
+    result = fetch_data.fetch_announcement_links(page)
 
     assert len(result) == 3
+
     assert page.select.selected == expected_selected
 
 
@@ -235,26 +231,27 @@ def test_fetch_announcement_links_datatable(
 def test_fetch_announcement_links_skips_invalid_rows(row):
     page = FakePage(f"<table><tbody>{row}</tbody></table>")
 
-    assert scrape.fetch_announcement_links(page) == []
+    assert fetch_data.fetch_announcement_links(page) == []
 
 
 def test_parse_announcement_page(monkeypatch):
     get_mock = MagicMock(return_value=ANNOUNCEMENT_HTML)
-    monkeypatch.setattr(scrape, "get", get_mock)
+
+    monkeypatch.setattr(fetch_data, "get", get_mock)
 
     cache = MagicMock()
 
-    result = scrape.parse_announcement_page(
+    result = fetch_data.parse_announcement_page(
         page=None, path="/drugs/approval-1", page_date=date(2026, 9, 20), cache=cache
     )
 
     assert result == {
         "content": ("On September 20, 2026, the FDA approved an example drug."),
         "sourceIdVersion": "2026-09-20",
-        "displayName": "FDA approves example drug",
+        "displayName": ("FDA approves example drug"),
         "name": "FDA approves example drug",
         "sourceId": "/drugs/approval-1",
-        "url": "https://www.fda.gov/drugs/approval-1",
+        "url": ("https://www.fda.gov/drugs/approval-1"),
         "year": "2026",
     }
 
@@ -274,23 +271,19 @@ def test_parse_announcement_page(monkeypatch):
         """
         <html>
             <body>
-                <h1 class="content-title">Title</h1>
+                <h1 class="content-title">
+                    Title
+                </h1>
             </body>
         </html>
         """,
     ],
 )
-def test_parse_announcement_page_missing_required_element(
-    monkeypatch,
-    html,
-):
-    monkeypatch.setattr(scrape, "get", lambda page, path, cache=None: html)
+def test_parse_announcement_page_missing_required_element(monkeypatch, html):
+    monkeypatch.setattr(fetch_data, "get", lambda page, path, cache=None: html)
 
-    with pytest.raises(
-        ValueError,
-        match="Unexpected FDA page structure",
-    ):
-        scrape.parse_announcement_page(
+    with pytest.raises(ValueError, match="Unexpected FDA page structure"):
+        fetch_data.parse_announcement_page(
             page=None, path="/drugs/bad-page", page_date=date(2026, 1, 1)
         )
 
@@ -300,36 +293,37 @@ def test_parse_announcement_page_missing_required_element(
     [
         (
             """
-            <h1 class="content-title">FDA approval</h1>
+            <h1 class="content-title">
+                FDA approval
+            </h1>
             <article>
-                On January 1, 2026 something happened.
+                On January 1, 2026 something
+                happened.
             </article>
             """,
             "2026",
         ),
         (
             """
-            <h1 class="content-title">FDA approval</h1>
+            <h1 class="content-title">
+                FDA approval
+            </h1>
             <article>
-                On January 1, 2026 something happened.
-                On December 1, 2025 something else happened.
+                On January 1, 2026 something
+                happened.
+                On December 1, 2025 something
+                else happened.
             </article>
             """,
             None,
         ),
     ],
 )
-def test_parse_announcement_page_year(
-    monkeypatch,
-    html,
-    expected_year,
-):
-    monkeypatch.setattr(scrape, "get", lambda page, path, cache=None: html)
+def test_parse_announcement_page_year(monkeypatch, html, expected_year):
+    monkeypatch.setattr(fetch_data, "get", lambda page, path, cache=None: html)
 
-    result = scrape.parse_announcement_page(
-        page=None,
-        path="/drugs/approval",
-        page_date=date(2026, 1, 1),
+    result = fetch_data.parse_announcement_page(
+        page=None, path="/drugs/approval", page_date=date(2026, 1, 1)
     )
 
     if expected_year is None:
@@ -338,89 +332,71 @@ def test_parse_announcement_page_year(
         assert result["year"] == expected_year
 
 
-def test_scrape(monkeypatch):
+def _mock_playwright(monkeypatch):
+    """Create a mocked Playwright/browser/page stack."""
+
     page = MagicMock()
     browser = MagicMock()
     playwright = MagicMock()
 
     browser.new_page.return_value = page
+
     playwright.chromium.launch.return_value = browser
 
     context = MagicMock()
     context.__enter__.return_value = playwright
     context.__exit__.return_value = None
 
-    monkeypatch.setattr(scrape, "sync_playwright", lambda: context)
+    monkeypatch.setattr(fetch_data, "sync_playwright", lambda: context)
+
+    return page, browser, playwright
+
+
+def test_fetch_records(monkeypatch):
+    page, browser, _ = _mock_playwright(monkeypatch)
 
     monkeypatch.setattr(
-        scrape,
+        fetch_data,
         "fetch_announcement_links",
         lambda page, min_date=None: [("/drugs/approval-1", date(2026, 9, 20))],
     )
 
     monkeypatch.setattr(
-        scrape,
+        fetch_data,
         "parse_announcement_page",
         lambda page, path, page_date, cache=None: {
             "sourceId": path,
-            "sourceIdVersion": page_date.isoformat(),
+            "sourceIdVersion": (page_date.isoformat()),
         },
     )
 
-    result = scrape.scrape(min_date=date(2026, 1, 1))
+    result = fetch_data.fetch_records(min_date=date(2026, 1, 1))
 
     assert result == [
-        {
-            "sourceId": "/drugs/approval-1",
-            "sourceIdVersion": "2026-09-20",
-        }
+        {"sourceId": "/drugs/approval-1", "sourceIdVersion": "2026-09-20"}
     ]
 
     browser.close.assert_called_once()
 
 
-def test_scrape_uses_cache(monkeypatch, tmp_path):
-    page = MagicMock()
-    browser = MagicMock()
-    playwright = MagicMock()
-
-    browser.new_page.return_value = page
-    playwright.chromium.launch.return_value = browser
-
-    context = MagicMock()
-    context.__enter__.return_value = playwright
-    context.__exit__.return_value = None
+def test_fetch_records_uses_cache(monkeypatch, tmp_path):
+    page, _, _ = _mock_playwright(monkeypatch)
 
     monkeypatch.setattr(
-        scrape,
-        "sync_playwright",
-        lambda: context,
-    )
-
-    monkeypatch.setattr(
-        scrape,
+        fetch_data,
         "fetch_announcement_links",
-        lambda page, min_date=None: [
-            (
-                "/drugs/approval-1",
-                date(2026, 9, 20),
-            )
-        ],
+        lambda page, min_date=None: [("/drugs/approval-1", date(2026, 9, 20))],
     )
 
-    parse_mock = MagicMock(
-        return_value={
-            "sourceId": "/drugs/approval-1",
-        }
-    )
-    monkeypatch.setattr(scrape, "parse_announcement_page", parse_mock)
+    parse_mock = MagicMock(return_value={"sourceId": "/drugs/approval-1"})
+    monkeypatch.setattr(fetch_data, "parse_announcement_page", parse_mock)
 
     cache_mock = MagicMock()
     page_cache_mock = MagicMock(return_value=cache_mock)
 
-    monkeypatch.setattr(scrape, "PageCache", page_cache_mock)
+    monkeypatch.setattr(fetch_data, "PageCache", page_cache_mock)
 
-    scrape.scrape(cache_dir=tmp_path, cache_max_age=30)
+    fetch_data.fetch_records(cache_dir=tmp_path, cache_max_age=30)
 
     page_cache_mock.assert_called_once_with(tmp_path, max_age=timedelta(days=30))
 
@@ -429,79 +405,96 @@ def test_scrape_uses_cache(monkeypatch, tmp_path):
     )
 
 
-def test_scrape_skips_invalid_page(monkeypatch):
-    page = MagicMock()
-    browser = MagicMock()
-    playwright = MagicMock()
-
-    browser.new_page.return_value = page
-    playwright.chromium.launch.return_value = browser
-
-    context = MagicMock()
-    context.__enter__.return_value = playwright
-    context.__exit__.return_value = None
-
-    monkeypatch.setattr(scrape, "sync_playwright", lambda: context)
+def test_fetch_records_skips_invalid_page(monkeypatch):
+    _mock_playwright(monkeypatch)
 
     monkeypatch.setattr(
-        scrape,
+        fetch_data,
         "fetch_announcement_links",
         lambda page, min_date=None: [("/drugs/bad", date(2026, 1, 1))],
     )
 
     monkeypatch.setattr(
-        scrape,
+        fetch_data,
         "parse_announcement_page",
         MagicMock(side_effect=ValueError("bad page")),
     )
 
-    assert scrape.scrape() == []
+    assert fetch_data.fetch_records() == []
 
 
-def test_main(monkeypatch, tmp_path):
-    output = tmp_path / "output.jsonl"
-    cache_dir = tmp_path / "cache"
+def test_add_arguments():
+    parser = argparse.ArgumentParser()
 
-    monkeypatch.setattr(
-        "sys.argv",
+    fetch_data.add_arguments(parser)
+
+    args = parser.parse_args(
         [
-            "scrape",
-            str(output),
-            "--min_date",
+            "--min-date",
             "2026-01-01",
-            "--cache_dir",
-            str(cache_dir),
-            "--cache_max_age",
+            "--cache-dir",
+            "/tmp/fda-cache",
+            "--cache-max-age",
             "30",
-        ],
+        ]
     )
 
-    scrape_mock = MagicMock(return_value=[{"sourceId": "/drugs/example"}])
+    assert args.min_date == date(2026, 1, 1)
 
-    monkeypatch.setattr(scrape, "scrape", scrape_mock)
+    assert args.cache_dir == "/tmp/fda-cache"
+    assert args.cache_max_age == 30
 
-    scrape.main()
 
-    assert [json.loads(line) for line in output.read_text().splitlines()] == [
-        {"sourceId": "/drugs/example"}
+def test_add_arguments_defaults():
+    parser = argparse.ArgumentParser()
+
+    fetch_data.add_arguments(parser)
+
+    args = parser.parse_args([])
+
+    assert args.min_date is None
+    assert args.cache_dir == ".fda_cache"
+    assert args.cache_max_age is None
+
+
+def test_fetch_data_writes_jsonl(monkeypatch, tmp_path):
+    output = tmp_path / "output.jsonl"
+
+    records = [
+        {"sourceId": "/drugs/approval-1", "sourceIdVersion": "2026-09-20"},
+        {"sourceId": "/drugs/approval-2", "sourceIdVersion": "2026-05-10"},
     ]
 
-    scrape_mock.assert_called_once_with(
-        min_date=date(2026, 1, 1), cache_dir=str(cache_dir), cache_max_age=30.0
+    fetch_records_mock = MagicMock(return_value=records)
+
+    monkeypatch.setattr(fetch_data, "fetch_records", fetch_records_mock)
+
+    fetch_data.fetch_data(
+        output=output, min_date=date(2026, 1, 1), cache_dir=".cache", cache_max_age=30
+    )
+
+    assert [json.loads(line) for line in output.read_text().splitlines()] == records
+
+    fetch_records_mock.assert_called_once_with(
+        min_date=date(2026, 1, 1), cache_dir=".cache", cache_max_age=30
     )
 
 
-def test_main_cache_defaults(monkeypatch, tmp_path):
+def test_fetch_data_creates_parent_directory(monkeypatch, tmp_path):
+    output = tmp_path / "nested" / "directory" / "output.jsonl"
+
+    monkeypatch.setattr(fetch_data, "fetch_records", MagicMock(return_value=[]))
+
+    fetch_data.fetch_data(output=output)
+
+    assert output.exists()
+
+
+def test_fetch_data_empty_result(monkeypatch, tmp_path):
     output = tmp_path / "output.jsonl"
 
-    monkeypatch.setattr("sys.argv", ["scrape", str(output)])
+    monkeypatch.setattr(fetch_data, "fetch_records", MagicMock(return_value=[]))
 
-    scrape_mock = MagicMock(return_value=[])
+    fetch_data.fetch_data(output=output)
 
-    monkeypatch.setattr(scrape, "scrape", scrape_mock)
-
-    scrape.main()
-
-    scrape_mock.assert_called_once_with(
-        min_date=None, cache_dir=".fda_cache", cache_max_age=None
-    )
+    assert output.read_text() == ""
