@@ -158,28 +158,78 @@ const request = async ({
 /**
  *  Try again for too many requests errors. Helpful for APIs with a rate limit (ex. pubmed)
  */
-const requestWithRetry = async (requestOpt, { waitSeconds = 2, retries = 1, useCache = true } = {}) => {
+class AsyncQueue {
+    constructor() {
+        this.current = Promise.resolve();
+    }
+
+    run(task) {
+        const next = this.current.then(task, task);
+        this.current = next.catch(() => {});
+        return next;
+    }
+}
+
+const ENTREZ_QUEUE = new AsyncQueue();
+
+/**
+ * Request wrapper that safely respects PubMed / Entrez throttling.
+ * This function MUST be used for all Entrez calls.
+ */
+const requestWithRetry = async (
+    requestOpt,
+    {
+        retries = 3,
+        useCache = true
+    } = {}) => {
     const reqId = stableStringify(requestOpt);
 
     if (useCache && REQUESTS_CACHE[reqId]) {
         return REQUESTS_CACHE[reqId];
     }
 
-    try {
-        const result = await request(requestOpt);
+    return ENTREZ_QUEUE.run(async () => {
+        let attempt = 0;
 
-        if (useCache) {
-            REQUESTS_CACHE[reqId] = result;
+        while (true) {
+            try {
+                const result = await request(requestOpt);
+
+                if (useCache) {
+                    REQUESTS_CACHE[reqId] = result;
+                }
+                return result;
+            } catch (err) {
+                attempt++;
+
+                if (attempt > retries) {
+                    throw err;
+                }
+
+                // Proper PubMed throttling handling
+                if (err.statusCode === 429) {
+                    const retryAfter =
+                        Number(
+                            err.response?.headers?.get?.('retry-after')
+                        ) || 2;
+
+                    logger.warn(
+                        `429 from Entrez, waiting ${retryAfter}s (${attempt}/${retries})`
+                    );
+
+                    await sleep(retryAfter * 1000);
+                    continue;
+                }
+
+                // Generic transient failure backoff
+                const backoffMs = attempt * 500;
+                logger.warn(
+                    `Request failed (${attempt}/${retries}), retrying in ${backoffMs}ms`
+                );
+                await sleep(backoffMs);
+            }
         }
-        return result;
-    } catch (err) {
-        if (err.statusCode === HTTP_STATUS_CODES.TOO_MANY_REQUESTS && retries > 0) {
-            await sleep(waitSeconds);
-            logger.warn(`TIMEOUT, retrying request ${requestOpt.url}`);
-            return requestWithRetry(requestOpt, { retries: retries - 1, waitSeconds });
-        }
-        throw err;
-    }
+    });
 };
 
 
