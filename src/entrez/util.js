@@ -2,6 +2,22 @@
  * @module importer/entrez/util
  */
 
+class RateLimiter {
+    constructor(ratePerSec) {
+        this.interval = 1000 / ratePerSec;
+        this.lastTime = 0;
+    }
+
+    async wait() {
+        const now = Date.now();
+        const delay = Math.max(0, this.interval - (now - this.lastTime));
+        if (delay > 0) {
+            await new Promise(r => setTimeout(r, delay));
+        }
+        this.lastTime = Date.now();
+    }
+}
+
 const {
     requestWithRetry, orderPreferredOntologyTerms,
 } = require('../util');
@@ -17,6 +33,7 @@ const DEFAULT_QS = {
 const BASE_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi';
 const BASE_SEARCH_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi';
 const BASE_FETCH_URL = 'https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi';
+const NCBI_API_KEY = '0e2339ab00d09acf972dcc1b170bdd22f809'
 const MAX_CONSEC_IDS = 150;
 
 
@@ -55,7 +72,7 @@ const fetchByIdList = async (rawIdList, opt) => {
     const {
         url = BASE_URL, db = 'pubmed', parser, cache = {}, dbfrom = null,
     } = opt;
-
+    const limiter = new RateLimiter(3);
     if (rawIdList.length === 0) {
         return [];
     }
@@ -68,13 +85,16 @@ const fetchByIdList = async (rawIdList, opt) => {
             .map(id => id.toString())
             .join(',');
 
-        const queryParams = { ...DEFAULT_QS, db, id: idListString };
+        const queryParams = { ...DEFAULT_QS, db, id: idListString, api_key: NCBI_API_KEY };
 
         if (dbfrom) {
             queryParams.dbfrom = dbfrom;
         }
 
         logger.debug(`loading: ${url}?db=${db}`);
+
+        await limiter.wait();
+
         const { result, error } = await requestWithRetry({
             headers: { Accept: 'application/json' },
             json: true,
@@ -138,7 +158,6 @@ const fetchRecord = async (api, {
  * @param {boolean} opt.fetchFirst attempt to get the record by source Id before uploading it
  * @param {string} opt.target
  * @param {object} opt.sourceDefn
- * @param {boolean} opt.upsert update the record if already exists
  * @param {function} opt.createDisplayName
  */
 const uploadRecord = async (api, content, opt = {}) => {
@@ -258,23 +277,14 @@ const preLoadCache = async (api, { sourceDefn, cache, target }) => {
  * @param {Array.<string>} idListIn list of pubmed IDs
  * @param {Object} opt
  * @param {string} opt.dbName name of the entrez db to pull from ex. gene
- * @param {boolean} opt.fetchFirst override uploadRecord() fetchFirst
  * @param {function} opt.parser function to convert records from the api to the graphkb format
  * @param {object} opt.cache
  * @param {number} opt.MAX_CONSEC maximum consecutive records to upload at once
  * @param {string} opt.target the graphkb api target to upload to
  * @param {object} opt.sourceDefn the object with the source information
- * @param {boolean} opt.upsert override uploadRecord() upsert
  */
 const fetchAndLoadByIds = async (api, idListIn, {
-    dbName,
-    fetchFirst,
-    parser,
-    cache,
-    MAX_CONSEC = 100,
-    target,
-    sourceDefn,
-    upsert,
+    dbName, parser, cache, MAX_CONSEC = 100, target, sourceDefn,
 }) => {
     const records = await fetchByIdList(
         idListIn,
@@ -291,10 +301,8 @@ const fetchAndLoadByIds = async (api, idListIn, {
         const newRecords = await Promise.all(current.map(
             async record => uploadRecord(api, record, {
                 cache,
-                fetchFirst,
                 sourceDefn,
                 target,
-                upsert,
             }),
         ));
         result.push(...newRecords);

@@ -118,7 +118,7 @@
                                                 "__typename": {
                                                     "type": "string"
                                                 },
-                                                "id": {
+                                                "entrezId": {
                                                     "type": "number"
                                                 },
                                                 "name": {
@@ -127,7 +127,7 @@
                                             },
                                             "required":[
                                                 "__typename",
-                                                "id",
+                                                "entrezId",
                                                 "name"
                                             ],
                                             "type": "object"

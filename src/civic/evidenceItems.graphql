@@ -70,10 +70,10 @@ query evidenceItems(
       source {
         ascoAbstractId
         citationId
-        name
         publicationYear
         sourceType
         sourceUrl
+        title
       }
       status
       therapies {
@@ -83,7 +83,6 @@ query evidenceItems(
       }
       therapyInteractionType
     }
-    pageCount
     pageInfo {
       endCursor
       hasNextPage

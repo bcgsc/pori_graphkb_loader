@@ -1,6 +1,6 @@
 const fs = require('fs');
 
-const { jsonifyVariant, parseVariant } = require('@bcgsc-pori/graphkb-parser');
+const kbParser = require('@bcgsc-pori/graphkb-parser');
 
 const {
     loadDelimToJson,
@@ -217,7 +217,7 @@ const processVariants = async ({ conn, row, source }) => {
     }
 
     if (genomic && !isCat) {
-        const parsed = jsonifyVariant(parseVariant(genomic));
+        const parsed = kbParser.variant.parse(genomic).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
             filters: {
                 AND: [
@@ -242,7 +242,7 @@ const processVariants = async ({ conn, row, source }) => {
     }
 
     if (protein && !isCat) {
-        const parsed = jsonifyVariant(parseVariant(`${gene}:${protein.split(':')[1]}`));
+        const parsed = kbParser.variant.parse(`${gene}:${protein.split(':')[1]}`).toJSON();
         const type = await conn.getVocabularyTerm(parsed.type);
         proteinVariant = await conn.addVariant({
             content: { ...parsed, reference1: rid(gene1Record), type },
@@ -251,7 +251,7 @@ const processVariants = async ({ conn, row, source }) => {
         });
     }
     if (transcript && cds && !isCat) {
-        const parsed = jsonifyVariant(parseVariant(`${transcript}:${cds}`));
+        const parsed = kbParser.variant.parse(`${transcript}:${cds}`).toJSON();
         const reference1 = await conn.getUniqueRecordBy({
             filters: { AND: [{ biotype: 'transcript' }, { sourceId: transcript }, { sourceIdVersion: null }] },
             sort: orderPreferredOntologyTerms,
@@ -265,7 +265,7 @@ const processVariants = async ({ conn, row, source }) => {
         });
     }
     if (exonic && !isCat) {
-        const parsed = jsonifyVariant(parseVariant(`${gene}:${exonic}`));
+        const parsed = kbParser.variant.parse(`${gene}:${exonic}`).toJSON();
         const type = await conn.getVocabularyTerm(parsed.type);
         exonicVariant = await conn.addVariant({
             content: { ...parsed, reference1: rid(gene1Record), type },

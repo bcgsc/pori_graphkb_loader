@@ -1,8 +1,8 @@
-FROM node:16
+FROM node:18
 WORKDIR /usr/src/app
 # Bundle app source
 COPY package*.json ./
-RUN npm ci --only=production
+RUN npm ci --omit=dev
 # COPY everything not in dockerignore file
 COPY . .
 # set to avoid errors when singularity overloads working dir
