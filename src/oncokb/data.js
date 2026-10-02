@@ -149,6 +149,9 @@ const parseAndValidateData = (dirpath, specs = SPECS) => {
         }
     }
 
+    // temporarily discarding annotated records
+    data.annotated = [];
+
     return data;
 };
 
@@ -305,8 +308,8 @@ const getDataAndApplyFixes = (dirpath) => {
                 const fix = 'Oncogenic Mutations';
                 const msg = `Changing variant notation ${r.variant} to ${fix}.`;
                 data[type][i].variant = fix;
-                data[type][i]._comments += `${msg}\n`;
-                logger.info(msg); // info!
+                // data[type][i]._comments += `${msg}\n`; // temporarily disabling _comments logging for those cases
+                // logger.info(msg); // info!
             }
 
             // DISEASES
@@ -328,6 +331,17 @@ const getDataAndApplyFixes = (dirpath) => {
             }
         }
     }
+
+    // temporarily discarding records with hardcoded fixes
+    const actionable = [];
+
+    for (const r of data.actionable) {
+        if (r._comments === '') {
+            actionable.push(r);
+        }
+    }
+    logger.warn(`Discarding ${data.actionable.length - actionable.length} actionable records with hardcoded fixes (_comments not empty)`);
+    data.actionable = actionable;
 
     return data;
 };
