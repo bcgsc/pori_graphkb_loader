@@ -70,7 +70,7 @@ const HARDCODED_DISEASE = new Map([
     ],
     [
         'pediatric-type diffuse high-grade glioma (excluding diffuse hemispheric glioma, h3 g34-mutant, infant-type hemispheric glioma, diffuse pediatric-type high-grade glioma, h3-wildtype and idh-wildtype)',
-        'diffuse high-grade glioma in childhood, h3-wildtype', // Needs revision
+        'pediatric-type diffuse High-grade glioma', // From OncoTree 2025_10_03. Needs revision
     ],
     [
         'primary dlbcl of the central nervous system',
