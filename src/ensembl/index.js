@@ -48,32 +48,48 @@ const generalize = async (conn, record) => {
  * and then link via element of, return the parent feature
  */
 const linkFeatureToParent = async (conn, transcript, parentBiotype = 'gene') => {
-    const { Parent: geneId } = await requestWithRetry({
-        json: true,
-        method: 'GET',
-        uri: `${BASE_URL}/lookup/id/${transcript.sourceId}`,
-    });
+    let geneId;
+    const uri = `${BASE_URL}/lookup/id/${transcript.sourceId}`;
+
+    try {
+        const { Parent } = await requestWithRetry({
+            json: true,
+            method: 'GET',
+            uri,
+        });
+        geneId = Parent;
+    } catch (err) {
+        logger.warn(`Cannot fetch from Ensembl ${uri}: ${err}`);
+        throw err;
+    }
 
     if (!geneId) {
+        logger.warn(`Cannot link ${transcript.sourceId} to parent ${parentBiotype}`);
         return null;
     }
-    const gene = await conn.addRecord({
-        content: {
-            biotype: parentBiotype,
-            source: rid(transcript.source),
-            sourceId: geneId,
-            sourceIdVersion: null,
-        },
-        existsOk: true,
-        target: 'Feature',
-    });
-    await conn.addRecord({
-        content: { in: rid(gene), out: rid(transcript), source: rid(transcript.source) },
-        existsOk: true,
-        fetchExisting: false,
-        target: 'ElementOf',
-    });
-    return gene;
+
+    try {
+        const gene = await conn.addRecord({
+            content: {
+                biotype: parentBiotype,
+                source: rid(transcript.source),
+                sourceId: geneId,
+                sourceIdVersion: null,
+            },
+            existsOk: true,
+            target: 'Feature',
+        });
+        await conn.addRecord({
+            content: { in: rid(gene), out: rid(transcript), source: rid(transcript.source) },
+            existsOk: true,
+            fetchExisting: false,
+            target: 'ElementOf',
+        });
+        return gene;
+    } catch (err) {
+        logger.warn(`Cannot link ${transcript.sourceId} to ${geneId}: ${err}`);
+        throw err;
+    }
 };
 
 
@@ -104,6 +120,11 @@ const linkGeneToEntrez = async (conn, record) => {
 
 
 const fetchAndLoadById = async (conn, { sourceId, sourceIdVersion, biotype }) => {
+    if (!['gene', 'protein', 'transcript'].includes(biotype)) {
+        throw Error(`unsupported biotype: ${biotype}`);
+    }
+
+    // formatting & cache
     if (sourceId.includes('.') && !sourceIdVersion) {
         [sourceId, sourceIdVersion] = sourceId.split('.');
     }
@@ -112,7 +133,8 @@ const fetchAndLoadById = async (conn, { sourceId, sourceIdVersion, biotype }) =>
     if (CACHE[cacheKey]) {
         return CACHE[cacheKey];
     }
-    // get the source record from the cache
+
+    // store the source record in the cache
     if (!CACHE._source) {
         CACHE._source = rid(await conn.addSource(SOURCE_DEFN));
     }
@@ -132,6 +154,7 @@ const fetchAndLoadById = async (conn, { sourceId, sourceIdVersion, biotype }) =>
         return CACHE[cacheKey];
     } catch (err) {}
 
+    // add as-is to graphkb. Entrez/Ensembl APIs not involved.
     const current = await conn.addRecord({
         content: {
             biotype,
@@ -142,6 +165,7 @@ const fetchAndLoadById = async (conn, { sourceId, sourceIdVersion, biotype }) =>
         target: 'Feature',
     });
 
+    // get the generalized (unversioned) record. Entrez/Ensembl APIs not involved.
     let generalCurrent;
 
     if (sourceIdVersion != null) {
@@ -150,22 +174,24 @@ const fetchAndLoadById = async (conn, { sourceId, sourceIdVersion, biotype }) =>
         generalCurrent = current;
     }
 
-    if (biotype === 'gene') {
-        await linkGeneToEntrez(conn, current);
-        return current;
-    } if (biotype === 'transcript') {
-        // link to the gene
-        await linkFeatureToParent(conn, generalCurrent, 'gene');
-    } else if (biotype === 'protein') {
-        // link to the transcript
-        const transcript = await linkFeatureToParent(conn, generalCurrent, 'transcript');
-        // link to the gene
-        await linkFeatureToParent(conn, transcript, 'gene');
-    } else {
-        throw Error(`unsupported biotype: ${biotype}`);
-    }
+    // link to parent feature. Entrez and/or Ensembl APIs envolved
+    try {
+        if (biotype === 'gene') {
+            await linkGeneToEntrez(conn, current);
+            return current;
+        } if (biotype === 'transcript') {
+            // link to the gene
+            await linkFeatureToParent(conn, generalCurrent, 'gene');
+        } else if (biotype === 'protein') {
+            // link to the transcript
+            const transcript = await linkFeatureToParent(conn, generalCurrent, 'transcript');
+            // link to the gene
+            await linkFeatureToParent(conn, transcript, 'gene');
+        }
+    } catch (err) {}
+
     CACHE[cacheKey] = current;
-    return current;
+    return CACHE[cacheKey];
 };
 
 

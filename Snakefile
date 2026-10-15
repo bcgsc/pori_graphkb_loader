@@ -4,6 +4,7 @@ from textwrap import dedent
 CONTAINER = 'docker://bcgsc/pori-graphkb-loader:v6.4.0'
 DATA_DIR = 'snakemake_data'
 LOGS_DIR = 'snakemake_logs'
+WORKFLOW_DIR = os.path.dirname(os.path.realpath(__file__))
 
 if not os.path.exists(DATA_DIR):
     os.mkdir(DATA_DIR)
@@ -25,6 +26,8 @@ USE_DRUGBANK = DRUGBANK_EMAIL or DRUGBANK_PASSWORD
 COSMIC_EMAIL = config.get('cosmic_email')
 COSMIC_PASSWORD = config.get('cosmic_password')
 USE_COSMIC = COSMIC_EMAIL or COSMIC_PASSWORD
+ONCOKB_TOKEN = os.environ.get('ONCOKB_TOKEN', '').strip()
+USE_ONCOKB = bool(ONCOKB_TOKEN)
 BACKFILL_TRIALS = config.get('trials')
 GITHUB_DATA = 'https://raw.githubusercontent.com/bcgsc/pori_graphkb_loader/develop/data'
 
@@ -41,6 +44,7 @@ rule all:
         f'{DATA_DIR}/cancerhotspots.COMPLETE',
         f'{DATA_DIR}/moa.COMPLETE',
         f'{DATA_DIR}/ncitFdaXref.COMPLETE',
+        *([f'{DATA_DIR}/oncokb.COMPLETE'] if USE_ONCOKB else []),
         *([f'{DATA_DIR}/clinicaltrialsgov.COMPLETE'] if BACKFILL_TRIALS else []),
         *([f'{DATA_DIR}/cosmic_resistance.COMPLETE', f'{DATA_DIR}/cosmic_fusions.COMPLETE'] if USE_COSMIC else [])
 
@@ -164,6 +168,15 @@ rule download_cancerhotspots:
         cd {DATA_DIR}/cancerhotspots
         wget https://cbioportal-download.s3.amazonaws.com/cancerhotspots.v2.maf.gz
         gunzip cancerhotspots.v2.maf.gz
+        ''')
+
+
+rule download_oncokb:
+    output: directory(f'{DATA_DIR}/oncokb')
+    shell: dedent(f'''\
+        mkdir -p {output}
+        cd {output}
+        bash {WORKFLOW_DIR}/src/oncokb/fetch.sh
         ''')
 
 
@@ -343,6 +356,18 @@ rule load_cancerhotspots:
     log: f'{LOGS_DIR}/cancerhotspots.logs.txt'
     output: f'{DATA_DIR}/cancerhotspots.COMPLETE'
     shell: LOADER_COMMAND + ' file cancerhotspots {input.data} &> {log}; cp {log} {output}'
+
+
+rule load_oncokb:
+    input: expand(rules.load_local.output, local=['vocab', 'signatures', 'chromosomes', 'evidenceLevels']),
+        rules.all_diseases.output,
+        rules.all_drugs.output,
+        rules.load_ensembl.output,
+        data=rules.download_oncokb.output
+    container: CONTAINER
+    log: f'{LOGS_DIR}/oncokb.logs.txt'
+    output: f'{DATA_DIR}/oncokb.COMPLETE'
+    shell: LOADER_COMMAND + ' file oncokb --deleteDeprecated $(find {input.data} -mindepth 1 -maxdepth 1 -type d | sort -V | tail -n 1) &> {log}; cp {log} {output}'
 
 
 rule load_PMC4232638:
