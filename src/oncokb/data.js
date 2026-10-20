@@ -306,7 +306,7 @@ const getDataAndApplyFixes = (dirpath) => {
             // (needs to come after the exclusions fixes)
             if (r.variant === 'Pathogenic Variants') {
                 const fix = 'Oncogenic Mutations';
-                const msg = `Changing variant notation ${r.variant} to ${fix}.`;
+                // const msg = `Changing variant notation ${r.variant} to ${fix}.`;
                 data[type][i].variant = fix;
                 // data[type][i]._comments += `${msg}\n`; // temporarily disabling _comments logging for those cases
                 // logger.info(msg); // info!
