@@ -56,7 +56,7 @@ const linkFeatureToParent = async (conn, transcript, parentBiotype = 'gene') => 
             json: true,
             method: 'GET',
             uri,
-        });
+        }, { retries: 10, statusCode: [429, 500, 503], waitMilliseconds: 20000 }); // 20 sec!
         geneId = Parent;
     } catch (err) {
         logger.warn(`Cannot fetch from Ensembl ${uri}: ${err}`);

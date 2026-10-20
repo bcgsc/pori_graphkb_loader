@@ -180,7 +180,13 @@ const request = async ({
 /**
  *  Try again for too many requests errors. Helpful for APIs with a rate limit (ex. pubmed)
  */
-const requestWithRetry = async (requestOpt, { waitMilliseconds = 2000, retries = 1, useCache = true } = {}) => {
+const requestWithRetry = async (requestOpt, {
+    statusCodes, // Array of integers
+    retries = 1,
+    useCache = true,
+    waitMilliseconds = 2000,
+} = {}) => {
+    // cache id
     let reqId;
 
     if (requestOpt && requestOpt.body instanceof URLSearchParams) {
@@ -196,6 +202,20 @@ const requestWithRetry = async (requestOpt, { waitMilliseconds = 2000, retries =
         return REQUESTS_CACHE[reqId];
     }
 
+    // retry on given status codes
+    let codes;
+
+    if (statusCodes) {
+        if (Array.isArray(statusCodes)) {
+            codes = statusCodes;
+        } else {
+            codes = [statusCodes];
+        }
+    } else {
+        codes = [HTTP_STATUS_CODES.TOO_MANY_REQUESTS];
+    }
+
+    // query with retry
     try {
         const result = await request(requestOpt);
 
@@ -204,12 +224,13 @@ const requestWithRetry = async (requestOpt, { waitMilliseconds = 2000, retries =
         }
         return result;
     } catch (err) {
-        if (err.statusCode === HTTP_STATUS_CODES.TOO_MANY_REQUESTS && retries > 0) {
+        if (codes.includes(err.statusCode) && retries > 0) {
             await sleep(waitMilliseconds);
             logger.warn(`TIMEOUT, retrying request ${requestOpt.uri} ${JSON.stringify(requestOpt.qs) || ''}`);
             // eslint-disable-next-line no-return-await
             return await requestWithRetry(requestOpt, {
                 retries: retries - 1,
+                statusCodes,
                 useCache,
                 waitMilliseconds,
             });
