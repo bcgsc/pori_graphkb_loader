@@ -226,7 +226,7 @@ const requestWithRetry = async (requestOpt, {
     } catch (err) {
         if (codes.includes(err.statusCode) && retries > 0) {
             await sleep(waitMilliseconds);
-            logger.warn(`TIMEOUT, retrying request ${requestOpt.uri} ${JSON.stringify(requestOpt.qs) || ''}`);
+            logger.warn(`${err.statusCode}, retrying request ${requestOpt.uri} ${JSON.stringify(requestOpt.qs) || ''}`);
             // eslint-disable-next-line no-return-await
             return await requestWithRetry(requestOpt, {
                 retries: retries - 1,
