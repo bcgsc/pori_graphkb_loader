@@ -2,13 +2,12 @@
  * Module for Loading content from the oncotree web API
  * @module importer/oncotree
  */
-
-const { request } = require('../util');
-
+const { grouping } = require('./groups');
 const { convertRecordToQueryFilters, orderPreferredOntologyTerms, rid } = require('../graphkb');
 const { logger } = require('../logging');
 const { SOURCE_DEFN: { name: ncitName } } = require('../ncit');
 const { oncotree: SOURCE_DEFN } = require('../sources');
+const { request } = require('../util');
 
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
@@ -301,6 +300,10 @@ const upload = async (opt) => {
     } else {
         logger.info(`All ${ncitMissingRecords.size} ncit records has been successfully retreived for linking`);
     }
+
+    // KBDEV-1590/1610/1613
+    // Links oncotree terms to all solid/liquid tumors
+    await grouping(conn, { source });
 };
 
 
