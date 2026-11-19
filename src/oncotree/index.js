@@ -13,6 +13,15 @@ const { request } = require('../util');
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
 const CURRENT_VERSION_ID = 'oncotree_latest_stable';
 
+// for a given OncoTree code as key (lowercases),
+// override the provided NCIt mapping xRefs with values in array
+const NCI_XREF_OVERRIDES = new Map([
+    // KBDEV-1606
+    ['sbwdnet', []], // here ommiting C9461
+    ['cecc', []], // here ommiting C6344
+    ['uccc', []], // here ommiting C6344
+]);
+
 
 class OncotreeAPI {
     constructor(baseurl) {
@@ -135,7 +144,13 @@ class OncotreeAPI {
                         }
                     }
 
-                    for (const [xrefSource, xrefIdList] of Object.entries(externalReferences)) {
+                    for (let [xrefSource, xrefIdList] of Object.entries(externalReferences)) {
+                        if (xrefSource === 'NCI') {
+                            if (NCI_XREF_OVERRIDES.has(code)) {
+                                xrefIdList = NCI_XREF_OVERRIDES.get(code);
+                            }
+                        }
+
                         for (const sourceId of xrefIdList) {
                             record.crossReferenceOf.push({ source: xrefSource, sourceId });
                         }
