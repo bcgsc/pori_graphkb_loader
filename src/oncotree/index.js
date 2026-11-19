@@ -204,8 +204,19 @@ const upload = async (opt) => {
     const oncotreeApi = new OncotreeAPI(opt.url || ONCOTREE_API);
 
     const versions = await oncotreeApi.getVersions();
-    const records = await oncotreeApi.getAllRecords(versions);
 
+    // KBDEV-1613
+    // TEMPORARY MESURE UNTIL KBDEV-1629 FIX
+    const index = versions.findIndex((obj) => obj.name === '2025-10-03');
+
+    if (index !== -1) {
+        versions.splice(index);
+        logger.warn('*****************************************************************');
+        logger.warn('Skipping release 2025-10-03 and following ones. Temporary mesure (KBDEV-1629).');
+        logger.warn('******************************************************************************');
+    }
+
+    const records = await oncotreeApi.getAllRecords(versions);
     const source = await conn.addSource(SOURCE_DEFN);
 
     let ncitSource;
