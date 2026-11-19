@@ -11,7 +11,6 @@ const { request } = require('../util');
 
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
-
 const CURRENT_VERSION_ID = 'oncotree_latest_stable';
 
 
@@ -53,6 +52,7 @@ class OncotreeAPI {
             }
             return 0;
         });
+
         return result;
     }
 
@@ -207,7 +207,7 @@ const upload = async (opt) => {
     const dbRecordsByCode = {};
     const ncitMissingRecords = new Set();
 
-    // upload the results
+    // upload Disease nodes & crossReferenceOf edges
     logger.info(`Uploading ${records.length} OncoTree Disease records`);
     let count = 0;
 
@@ -264,10 +264,12 @@ const upload = async (opt) => {
     logger.info('Creating \'subclassOf\' & \'deprecatedBy\' links between records');
     count = 0;
 
+    // upload subclassOf & deprecatedBy edges
     for (const record of records) {
         count++;
         logger.info(`${count}/${records.length} - subclassOf: ${(record.subclassOf || []).length}; deprecates: ${(record.deprecates || []).length}`);
 
+        // subclassOf to other oncotree terms
         for (const parentRecord of record.subclassOf || []) {
             await conn.addRecord({
                 content: {
@@ -308,5 +310,8 @@ const upload = async (opt) => {
 
 
 module.exports = {
-    OncotreeAPI, SOURCE_DEFN, dependencies: [ncitName], upload,
+    OncotreeAPI,
+    SOURCE_DEFN,
+    dependencies: [ncitName],
+    upload,
 };
