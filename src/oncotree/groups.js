@@ -94,13 +94,32 @@ const cancerTerm = async (conn, { source }) => {
  * @returns {object} the grouping term record
  */
 const groupingTerm = async (conn, { cancer, source, term }) => {
+    let record;
     const body = { name: term, sourceId: term };
-    const record = await conn.addRecord({
-        content: { ...body, source: rid(source) },
-        fetchConditions: convertRecordToQueryFilters(body),
-        target: 'Disease',
-        upsert: true,
-    });
+
+    try {
+        // First try to update former oncokb term
+        record = await conn.addRecord({
+            content: {
+                ...body,
+                source: rid(source),
+            },
+            fetchConditions: convertRecordToQueryFilters(body),
+            target: 'Disease',
+            upsert: true,
+        });
+    } catch (err) {
+        // Otherwise fetch/upload. Needs to be done in a seperate query
+        // since we were updating the fetching condition in the previous query
+        record = await conn.addRecord({
+            content: {
+                ...body,
+                source: rid(source),
+            },
+            existsOk: true,
+            target: 'Disease',
+        });
+    }
 
     // SubClassOf cancer
     if (record && cancer) {
