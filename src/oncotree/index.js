@@ -115,16 +115,24 @@ class OncotreeAPI {
                 return newRec;
             });
 
-            for (const { name, mainType, code } of records) {
+            // Adding root term TISSUE to all versions
+            records.push({
+                code: 'tissue',
+                externalReferences: {},
+                history: [],
+                name: 'Tissue',
+            });
+
+            for (const { name, code } of records) {
                 if (recordsByCode[code] === undefined) {
                     recordsByCode[code] = {
-                        crossReferenceOf: [],
-                        deprecates: [],
+                        crossReferenceOf: [], // from externalReferences
+                        deprecatedBy: null, // from history
+                        deprecates: [], // from hitory
                         name,
                         sourceId: code,
                         sourceIdVersion: version.name,
                         subclassOf: [],
-                        subsets: [mainType],
                     };
                 }
             }
