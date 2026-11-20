@@ -179,7 +179,7 @@ const uploadLinks = async (conn, {
     // specific tissues
     const tissues = tissue.in_SubClassOf
         .map((r) => r.out)
-        .filter((r) => r.source === rid(oncotree));
+        .filter((r) => rid(r.source) === rid(oncotree));
 
     // grouping by solid/liquid tumors. Default to solid if not explicitly liquid
     const groups = {
