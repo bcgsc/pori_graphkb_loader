@@ -7,7 +7,7 @@ const { convertRecordToQueryFilters, orderPreferredOntologyTerms, rid } = requir
 const { logger } = require('../logging');
 const { SOURCE_DEFN: { name: ncitName } } = require('../ncit');
 const { oncotree: SOURCE_DEFN } = require('../sources');
-const { request } = require('../util');
+const { requestWithRetry } = require('../util');
 
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
@@ -32,7 +32,7 @@ class OncotreeAPI {
      * Retrieve version information from the oncotree api
      */
     async getVersions() {
-        const versions = await request({
+        const versions = await requestWithRetry({
             json: true,
             method: 'GET',
             uri: `${this.baseurl}/versions`,
@@ -66,7 +66,7 @@ class OncotreeAPI {
     }
 
     async getRecords(versionApiKey) {
-        const records = await request({
+        const records = await requestWithRetry({
             json: true,
             method: 'GET',
             uri: `${this.baseurl}/tumorTypes?version=${versionApiKey}`,
