@@ -171,8 +171,10 @@ class OncotreeAPI {
                                 const deprecated = recordsByCode[previousCode];
 
                                 if (!deprecated) {
-                                    throw new Error(`Cannot deprecate. Previous Code (${previousCode}) not found`);
-                                } if (deprecated.deprecatedBy) {
+                                    if (previousCode !== 'mft') { // known issue; skipping mft as it predates first release
+                                        throw new Error(`Cannot deprecate. Previous Code (${previousCode}) not found`);
+                                    }
+                                } if (deprecated && deprecated.deprecatedBy) {
                                     throw new Error(`cannot deprecate (${
                                         code
                                     }) the same record twice. Currently deprecated by ${
@@ -183,8 +185,11 @@ class OncotreeAPI {
                                         previousCode
                                     }`);
                                 }
-                                deprecated.deprecatedBy = record;
-                                record.deprecates.push(deprecated);
+
+                                if (deprecated) {
+                                    deprecated.deprecatedBy = record;
+                                    record.deprecates.push(deprecated); // referencing record obj.
+                                }
                             }
                         }
                     }
@@ -333,7 +338,7 @@ const upload = async (opt) => {
 
     if (ncitMissingRecords.size) {
         logger.warn(`Unable to retrieve ${ncitMissingRecords.size} ncit records for linking`);
-    } else {
+    } else if (ncitSource) {
         logger.info(`All ${ncitMissingRecords.size} ncit records has been successfully retreived for linking`);
     }
 
