@@ -211,7 +211,7 @@ const upload = async (opt) => {
 
     if (index !== -1) {
         versions.splice(index);
-        logger.warn('*****************************************************************');
+        logger.warn('******************************************************************************');
         logger.warn('Skipping release 2025-10-03 and following ones. Temporary mesure (KBDEV-1629).');
         logger.warn('******************************************************************************');
     }
