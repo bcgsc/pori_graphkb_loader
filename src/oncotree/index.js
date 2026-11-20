@@ -2,18 +2,25 @@
  * Module for Loading content from the oncotree web API
  * @module importer/oncotree
  */
-
-const { request } = require('../util');
-
+const { grouping } = require('./groups');
 const { convertRecordToQueryFilters, orderPreferredOntologyTerms, rid } = require('../graphkb');
 const { logger } = require('../logging');
 const { SOURCE_DEFN: { name: ncitName } } = require('../ncit');
 const { oncotree: SOURCE_DEFN } = require('../sources');
+const { requestWithRetry } = require('../util');
 
 
 const ONCOTREE_API = 'http://oncotree.mskcc.org/api';
-
 const CURRENT_VERSION_ID = 'oncotree_latest_stable';
+
+// for a given OncoTree code as key (lowercases),
+// override the provided NCIt mapping xRefs with values in array
+const NCI_XREF_OVERRIDES = new Map([
+    // KBDEV-1606
+    ['sbwdnet', []], // here ommiting C9461
+    ['cecc', []], // here ommiting C6344
+    ['uccc', []], // here ommiting C6344
+]);
 
 
 class OncotreeAPI {
@@ -25,7 +32,7 @@ class OncotreeAPI {
      * Retrieve version information from the oncotree api
      */
     async getVersions() {
-        const versions = await request({
+        const versions = await requestWithRetry({
             json: true,
             method: 'GET',
             uri: `${this.baseurl}/versions`,
@@ -54,11 +61,12 @@ class OncotreeAPI {
             }
             return 0;
         });
+
         return result;
     }
 
     async getRecords(versionApiKey) {
-        const records = await request({
+        const records = await requestWithRetry({
             json: true,
             method: 'GET',
             uri: `${this.baseurl}/tumorTypes?version=${versionApiKey}`,
@@ -107,16 +115,24 @@ class OncotreeAPI {
                 return newRec;
             });
 
-            for (const { name, mainType, code } of records) {
+            // Adding root term TISSUE to all versions
+            records.push({
+                code: 'tissue',
+                externalReferences: {},
+                history: [],
+                name: 'Tissue',
+            });
+
+            for (const { name, code } of records) {
                 if (recordsByCode[code] === undefined) {
                     recordsByCode[code] = {
-                        crossReferenceOf: [],
-                        deprecates: [],
+                        crossReferenceOf: [], // from externalReferences
+                        deprecatedBy: null, // from history
+                        deprecates: [], // from hitory
                         name,
                         sourceId: code,
                         sourceIdVersion: version.name,
                         subclassOf: [],
-                        subsets: [mainType],
                     };
                 }
             }
@@ -136,7 +152,13 @@ class OncotreeAPI {
                         }
                     }
 
-                    for (const [xrefSource, xrefIdList] of Object.entries(externalReferences)) {
+                    for (let [xrefSource, xrefIdList] of Object.entries(externalReferences)) {
+                        if (xrefSource === 'NCI') {
+                            if (NCI_XREF_OVERRIDES.has(code)) {
+                                xrefIdList = NCI_XREF_OVERRIDES.get(code);
+                            }
+                        }
+
                         for (const sourceId of xrefIdList) {
                             record.crossReferenceOf.push({ source: xrefSource, sourceId });
                         }
@@ -149,8 +171,10 @@ class OncotreeAPI {
                                 const deprecated = recordsByCode[previousCode];
 
                                 if (!deprecated) {
-                                    throw new Error(`Cannot deprecate. Previous Code (${previousCode}) not found`);
-                                } if (deprecated.deprecatedBy) {
+                                    if (previousCode !== 'mft') { // known issue; skipping mft as it predates first release
+                                        throw new Error(`Cannot deprecate. Previous Code (${previousCode}) not found`);
+                                    }
+                                } if (deprecated && deprecated.deprecatedBy) {
                                     throw new Error(`cannot deprecate (${
                                         code
                                     }) the same record twice. Currently deprecated by ${
@@ -161,8 +185,11 @@ class OncotreeAPI {
                                         previousCode
                                     }`);
                                 }
-                                deprecated.deprecatedBy = record;
-                                record.deprecates.push(deprecated);
+
+                                if (deprecated) {
+                                    deprecated.deprecatedBy = record;
+                                    record.deprecates.push(deprecated); // referencing record obj.
+                                }
                             }
                         }
                     }
@@ -190,8 +217,19 @@ const upload = async (opt) => {
     const oncotreeApi = new OncotreeAPI(opt.url || ONCOTREE_API);
 
     const versions = await oncotreeApi.getVersions();
-    const records = await oncotreeApi.getAllRecords(versions);
 
+    // KBDEV-1613
+    // TEMPORARY MESURE UNTIL KBDEV-1629 FIX
+    const index = versions.findIndex((obj) => obj.name === '2025-10-03');
+
+    if (index !== -1) {
+        versions.splice(index);
+        logger.warn('******************************************************************************');
+        logger.warn('Skipping release 2025-10-03 and following ones. Temporary mesure (KBDEV-1629).');
+        logger.warn('******************************************************************************');
+    }
+
+    const records = await oncotreeApi.getAllRecords(versions);
     const source = await conn.addSource(SOURCE_DEFN);
 
     let ncitSource;
@@ -208,7 +246,7 @@ const upload = async (opt) => {
     const dbRecordsByCode = {};
     const ncitMissingRecords = new Set();
 
-    // upload the results
+    // upload Disease nodes & crossReferenceOf edges
     logger.info(`Uploading ${records.length} OncoTree Disease records`);
     let count = 0;
 
@@ -265,10 +303,12 @@ const upload = async (opt) => {
     logger.info('Creating \'subclassOf\' & \'deprecatedBy\' links between records');
     count = 0;
 
+    // upload subclassOf & deprecatedBy edges
     for (const record of records) {
         count++;
         logger.info(`${count}/${records.length} - subclassOf: ${(record.subclassOf || []).length}; deprecates: ${(record.deprecates || []).length}`);
 
+        // subclassOf to other oncotree terms
         for (const parentRecord of record.subclassOf || []) {
             await conn.addRecord({
                 content: {
@@ -298,12 +338,19 @@ const upload = async (opt) => {
 
     if (ncitMissingRecords.size) {
         logger.warn(`Unable to retrieve ${ncitMissingRecords.size} ncit records for linking`);
-    } else {
+    } else if (ncitSource) {
         logger.info(`All ${ncitMissingRecords.size} ncit records has been successfully retreived for linking`);
     }
+
+    // KBDEV-1590/1610/1613
+    // Links oncotree terms to all solid/liquid tumors
+    await grouping(conn, { source });
 };
 
 
 module.exports = {
-    OncotreeAPI, SOURCE_DEFN, dependencies: [ncitName], upload,
+    OncotreeAPI,
+    SOURCE_DEFN,
+    dependencies: [ncitName],
+    upload,
 };
