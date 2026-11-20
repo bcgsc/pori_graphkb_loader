@@ -41,6 +41,7 @@ const cancerTerm = async (conn, { source }) => {
             target: 'Disease',
             upsert: true,
         });
+        logger.info('Fetched/uploaded/updated cancer term');
     } catch (err) {
         // Otherwise fetch/upload. Needs to be done in a seperate query
         // since we were updating the fetching condition in the previous query
@@ -49,6 +50,7 @@ const cancerTerm = async (conn, { source }) => {
             existsOk: true,
             target: 'Disease',
         });
+        logger.info('Fetched/uploaded cancer term');
     }
 
     // NCIt cancer term
@@ -63,7 +65,7 @@ const cancerTerm = async (conn, { source }) => {
             target: 'Disease',
         });
     } catch (err) {
-        logger.error('cannot find \'cancer\' term from NCIt. Make sure the NCIt loader has been run!');
+        logger.warn('cannot find \'cancer\' term from NCIt. Make sure the NCIt loader has been run!');
     }
 
     // 3. CrossReferenceOf NCIt cancer
@@ -77,6 +79,7 @@ const cancerTerm = async (conn, { source }) => {
             existsOk: true,
             target: 'CrossReferenceOf',
         });
+        logger.info('Linked cancer term to NCIt cancer term');
     }
 
     return cancer;
@@ -108,6 +111,7 @@ const groupingTerm = async (conn, { cancer, source, term }) => {
             target: 'Disease',
             upsert: true,
         });
+        logger.info(`Fetched/uploaded/updated grouping term ${term}`);
     } catch (err) {
         // If more than one term, then fetch/upload term sourced from GraphKB
         record = await conn.addRecord({
@@ -118,6 +122,7 @@ const groupingTerm = async (conn, { cancer, source, term }) => {
             existsOk: true,
             target: 'Disease',
         });
+        logger.info(`Fetched/uploaded grouping term ${term}`);
     }
 
     // SubClassOf cancer
@@ -131,6 +136,7 @@ const groupingTerm = async (conn, { cancer, source, term }) => {
             existsOk: true,
             target: 'SubClassOf',
         });
+        logger.info('Linked grouping term to cancer');
     }
 
     return record;
