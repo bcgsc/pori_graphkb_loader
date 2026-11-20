@@ -98,7 +98,7 @@ const groupingTerm = async (conn, { cancer, source, term }) => {
     const body = { name: term, sourceId: term };
 
     try {
-        // First try to update former oncokb term
+        // First try term from any source; will update former term (e.g. OncoKB) to GraphKB
         record = await conn.addRecord({
             content: {
                 ...body,
@@ -109,8 +109,7 @@ const groupingTerm = async (conn, { cancer, source, term }) => {
             upsert: true,
         });
     } catch (err) {
-        // Otherwise fetch/upload. Needs to be done in a seperate query
-        // since we were updating the fetching condition in the previous query
+        // If more than one term, then fetch/upload term sourced from GraphKB
         record = await conn.addRecord({
             content: {
                 ...body,
